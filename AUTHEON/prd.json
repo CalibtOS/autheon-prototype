@@ -1,0 +1,644 @@
+{
+  "feature": "AUTHEON Phase 1 - Vehicle Transport Platform",
+  "version": "PRD v1.2 - Unified Master (merged compact PRD + expanded backlog, English)",
+  "goal": "Replace manual vehicle transport dispatch with a contract-driven platform that supports marketplace job distribution, direct assignment, binding driver acceptance, controlled returns, automatic transport-order PDF generation, operational tracking, and basic financial lifecycle tracking.",
+  "product_context": {
+    "platform_type": "Vehicle transport / vehicle relocation operations platform",
+    "primary_users": [
+      "Admin / Dispatcher",
+      "Driver / Service Partner"
+    ],
+    "core_object": "Transport job / tour / official transport-order PDF",
+    "source_inputs": [
+      "Scope PWA document",
+      "Driver PWA wireframes",
+      "Admin backend wireframes",
+      "Draft transport-order Word/PDF template (repository asset)",
+      "Vehicle / operational CSV list (legacy column glossary)"
+    ],
+    "important_notes": [
+      "Drivers transport vehicles between pickup and delivery locations.",
+      "Acceptance is binding.",
+      "Drivers cannot directly reject directly assigned jobs.",
+      "Drivers cannot cancel accepted or assigned jobs themselves; they use return or escalation flows only.",
+      "Published and Assigned are separate mutually exclusive paths in Phase 1.",
+      "Admins may cancel jobs from Accepted or Assigned when operations require it.",
+      "The platform does not include chat, GPS tracking, live tracking, or map modules in Phase 1."
+    ]
+  },
+  "domain_model_summary": {
+    "job_fields": [
+      "tourNumber",
+      "category",
+      "customer",
+      "pickup company/customer",
+      "pickup address/location",
+      "pickup contact",
+      "pickup phone",
+      "pickup date/time window",
+      "delivery company/customer",
+      "delivery address/location",
+      "delivery contact",
+      "delivery phone",
+      "delivery date/time window",
+      "distanceKm",
+      "vehicle type",
+      "vehicle model/description",
+      "license plate",
+      "VIN",
+      "axle type: own axle / third-party axle",
+      "price/revenue",
+      "driver compensation",
+      "expenses",
+      "invoice received",
+      "invoice number",
+      "payment status",
+      "internal notes",
+      "driver-visible notes",
+      "generated PDF reference",
+      "status",
+      "status history",
+      "assigned/accepted driver"
+    ],
+    "statuses": [
+      "Draft",
+      "Published",
+      "Assigned",
+      "Accepted",
+      "Return Requested",
+      "Completed",
+      "Cancelled"
+    ],
+    "financial_substates": [
+      "Invoice Missing",
+      "Invoice Received",
+      "Unpaid",
+      "Paid"
+    ],
+    "driver_statuses": [
+      "Active",
+      "Blocked",
+      "Deactivated"
+    ]
+  },
+  "global_business_rules": [
+    "A job can follow either marketplace flow or direct assignment flow.",
+    "Marketplace flow: Draft → Published → Accepted → Completed.",
+    "Direct assignment flow: Draft → Assigned → Completed.",
+    "Published → Assigned is not part of Phase 1. If a published job must be changed or reassigned manually, it should return to Draft first.",
+    "Driver acceptance must be atomic. Only one driver can successfully accept a Published job.",
+    "After acceptance, sensitive job details become visible to the accepting driver.",
+    "Before acceptance, marketplace previews show only reduced data.",
+    "Directly assigned jobs appear in the assigned driver's My Jobs area.",
+    "Assigned jobs cannot be rejected directly by the driver.",
+    "Return requests are allowed only until midnight on the day before the relevant job date, subject to final timezone confirmation.",
+    "Approved return requests remove the driver assignment and return the job to Draft.",
+    "Rejected return requests keep the job in its previous execution state.",
+    "Admins may transition Accepted or Assigned jobs to Cancelled when required; cancelled jobs leave marketplace and active driver job lists.",
+    "Completed jobs move to the driver's Completed area and into post-completion financial tracking.",
+    "PDF generation must be based on the current structured job data.",
+    "Only the currently active PDF needs to be visible in the base scope; regeneration events must be auditable."
+  ],
+  "tasks": [
+    {
+      "id": 1,
+      "epic": "Domain Model & Data Foundation",
+      "priority": 1,
+      "story": "As a platform owner, I want a persisted domain model for tours/jobs, drivers, customers, documents, statuses, and financial fields so that all flows share one source of truth.",
+      "acceptance": [
+        "Job entity includes all operational fields required by the transport-order template: tour number, category, customer, route, contacts, dates/time windows, vehicle data, distance, price, driver, notes, and PDF reference.",
+        "Job entity includes financial fields aligned with the legacy operational spreadsheet: revenue, driver compensation, invoice received, invoice type, invoice number, expenses, payment status, and notes.",
+        "Pricing supports commercial breakdown required for PDF output: net amount, VAT rate (template uses 19 percent where applicable), gross/total.",
+        "Optional parity with legacy vehicle-list spreadsheet: fields or export mapping for assignment method, logistics status, proof of protocol, confirmation, contractor/carrier, remarks.",
+        "Driver entity includes identity, contact information, status, service partner identifier, and notification/filter preferences.",
+        "Customer/master-data entities support reusable pickup/delivery companies, addresses, and contacts.",
+        "Constrained values exist for job statuses and driver statuses.",
+        "Published and Assigned are mutually exclusive where relevant.",
+        "Schema/migration artifacts are versioned."
+      ],
+      "status": "pending",
+      "files": [
+        "database/schema.sql",
+        "supabase/migrations/",
+        "packages/domain-types/"
+      ]
+    },
+    {
+      "id": 2,
+      "epic": "Authentication & Access Control",
+      "priority": 2,
+      "story": "As an admin or driver, I want secure authentication and role-based access so every user only sees and changes allowed data.",
+      "acceptance": [
+        "Roles supported: Admin and Driver/Service Partner.",
+        "Admin can manage jobs, drivers, customers, documents, returns, audit logs, and financial fields.",
+        "Driver can access only Published jobs in Portal, own Assigned/Accepted jobs, own Completed/Cancelled jobs, Profile, Info, and permitted PDFs.",
+        "Blocked/deactivated drivers cannot access Portal or active jobs.",
+        "Blocked/deactivated drivers may still access profile/info and historical jobs if this matches client confirmation.",
+        "Unauthorized API calls return safe error messages and never leak sensitive data."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/admin/middleware.ts",
+        "apps/driver-pwa/src/auth/",
+        "services/auth/"
+      ]
+    },
+    {
+      "id": 3,
+      "epic": "Admin User & Driver Management",
+      "priority": 3,
+      "story": "As an admin, I want to create and manage service partners and admin users so that platform access is controlled by AUTHEON.",
+      "acceptance": [
+        "Admin can create, edit, activate, block, and deactivate drivers.",
+        "Admin can create, edit, activate, and deactivate admin accounts.",
+        "Admin can trigger password reset for drivers and admins.",
+        "Driver profile fields include name, company, service partner ID, address, email, phone/mobile, and account status.",
+        "Driver cannot edit master data directly in the PWA.",
+        "Every activation, block, or deactivation event is logged."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/admin/src/users/",
+        "services/users/"
+      ]
+    },
+    {
+      "id": 4,
+      "epic": "Customer Master Data",
+      "priority": 4,
+      "story": "As an admin, I want reusable customer, pickup, delivery, and contact master data so job creation is faster and consistent.",
+      "acceptance": [
+        "Admin can create and edit customer records.",
+        "Admin can store reusable pickup and delivery locations.",
+        "Admin can store contact persons, phone numbers, and additional instructions.",
+        "Job creation form can prefill data from customer master data.",
+        "Changes to master data do not unintentionally rewrite historical job PDFs unless explicitly regenerated."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/admin/src/customers/",
+        "services/customers/"
+      ]
+    },
+    {
+      "id": 5,
+      "epic": "Job Creation",
+      "priority": 5,
+      "story": "As an admin, I want to create and save jobs as drafts with structured sections matching the backend wireframes.",
+      "acceptance": [
+        "Creation form includes sections: Customer, Route, Pickup, Delivery, Contacts, Time Windows, Vehicle, Price, Notes.",
+        "Job can be saved as Draft.",
+        "System generates unique tour number using agreed format such as 0001-26, with yearly sequencing.",
+        "Required fields are validated before Publish or Direct Assign.",
+        "Vehicle fields support structured values from the vehicle list where applicable.",
+        "Sensitive fields are persisted but not exposed to drivers before commitment."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/admin/src/jobs/create/",
+        "services/jobs/draft.ts"
+      ]
+    },
+    {
+      "id": 6,
+      "epic": "Publishing & Direct Assignment",
+      "priority": 6,
+      "story": "As an admin, I want to publish jobs to the marketplace or assign them directly so jobs follow the correct operational path.",
+      "acceptance": [
+        "Publish transitions Draft to Published only after validation.",
+        "Direct assign transitions Draft to Assigned only after selecting an eligible driver.",
+        "Assigned jobs do not appear in Portal.",
+        "Published jobs appear only as reduced previews in Portal.",
+        "Published to Assigned without Draft is blocked in Phase 1 unless the job is returned to Draft first.",
+        "Publish and direct assignment actions create audit log entries."
+      ],
+      "status": "pending",
+      "files": [
+        "services/jobs/publish.ts",
+        "services/jobs/assign.ts",
+        "apps/admin/src/jobs/actions/"
+      ]
+    },
+    {
+      "id": 7,
+      "epic": "Driver Portal",
+      "priority": 7,
+      "story": "As a driver, I want to browse available published jobs with filters so I can find relevant transports.",
+      "acceptance": [
+        "Portal displays only jobs with status Published.",
+        "Job cards show reduced data: start postal code or location summary, destination postal code or location summary, distance, date/time window, vehicle type, axle type, and price.",
+        "Filters include postal code or location, date or date range, vehicle type, and own axle versus third-party axle.",
+        "Portal supports empty state when no matching jobs exist.",
+        "Blocked/deactivated drivers cannot access Portal.",
+        "Data leakage tests verify hidden fields are not returned before acceptance."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/driver-pwa/src/marketplace/",
+        "services/jobs/list-published.ts"
+      ]
+    },
+    {
+      "id": 8,
+      "epic": "Job Details & Data Visibility",
+      "priority": 8,
+      "story": "As a driver, I want job details to show safe information before acceptance and full information after commitment.",
+      "acceptance": [
+        "Before acceptance, visible fields are limited to route summary, distance, time window, vehicle type, axle type, and price.",
+        "Before acceptance, full addresses, contacts, VIN, license plate, internal notes, and sensitive instructions are hidden.",
+        "Locked section clearly explains that details unlock after acceptance.",
+        "After acceptance or direct assignment, assigned driver can see full pickup/delivery addresses, contacts, phone numbers, vehicle identifiers, notes, and PDF.",
+        "Server-side authorization enforces visibility rules."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/driver-pwa/src/jobs/detail.tsx",
+        "services/jobs/driver-detail.ts"
+      ]
+    },
+    {
+      "id": 9,
+      "epic": "Job Acceptance",
+      "priority": 9,
+      "story": "As a driver, I want to accept a marketplace job with a binding confirmation so the commitment is deliberate.",
+      "acceptance": [
+        "Acceptance requires slide-to-confirm or equivalent deliberate gesture.",
+        "Acceptance screen shows binding warning and links or mentions applicable terms.",
+        "Backend validates driver is active and job is still Published.",
+        "Acceptance uses atomic database logic so exactly one driver can win.",
+        "Success transitions Published to Accepted and assigns the accepting driver.",
+        "Success removes job from Portal for other drivers.",
+        "Failure state shows a clear message such as job already taken."
+      ],
+      "status": "pending",
+      "files": [
+        "services/jobs/accept-marketplace.ts",
+        "apps/driver-pwa/src/jobs/accept.tsx"
+      ]
+    },
+    {
+      "id": 10,
+      "epic": "My Jobs",
+      "priority": 10,
+      "story": "As a driver, I want to manage my assigned and accepted jobs in My Jobs so I can execute current work and review completed work.",
+      "acceptance": [
+        "My Jobs includes Active (in progress) and Completed tabs.",
+        "Active includes Assigned, Accepted, and Return Requested jobs where applicable.",
+        "Completed includes Completed jobs.",
+        "Cancelled jobs are either shown in a separate tab or a clearly labelled historical section if required by final UX.",
+        "Each job card shows route summary, date/time, vehicle type, price, and status badge.",
+        "Driver sees only own jobs."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/driver-pwa/src/jobs/my-jobs.tsx"
+      ]
+    },
+    {
+      "id": 11,
+      "epic": "Completion",
+      "priority": 11,
+      "story": "As a driver, I want to mark a job as completed when the vehicle transfer is done.",
+      "acceptance": [
+        "Completion action is available only for the driver's active Assigned or Accepted jobs.",
+        "On completion, status changes to Completed.",
+        "Completed job moves to Completed tab.",
+        "Completion timestamp is stored.",
+        "Completion action is disabled after status becomes Completed or Cancelled.",
+        "Completion event is logged."
+      ],
+      "status": "pending",
+      "files": [
+        "services/jobs/complete.ts",
+        "apps/driver-pwa/src/jobs/active.tsx"
+      ]
+    },
+    {
+      "id": 12,
+      "epic": "Return & Escalation",
+      "priority": 12,
+      "story": "As a driver with an active job, I want to request a return or report blocking problems so dispatch can decide.",
+      "acceptance": [
+        "Return/problem options include: return request, pickup not possible, accident/breakdown.",
+        "Submission requires explanation text.",
+        "Return deadline is enforced server-side: only until midnight on the day before the relevant job date, with timezone to be confirmed.",
+        "After deadline, return button is disabled or blocked with clear message.",
+        "Submitted request creates admin-visible state Return Requested.",
+        "Driver-facing copy reinforces immediate reporting of delays, accidents, or anomalies to dispatch (consistent with PDF wording).",
+        "Driver cannot directly reject assigned jobs.",
+        "Driver cannot directly cancel accepted or assigned jobs."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/driver-pwa/src/jobs/return-request.tsx",
+        "services/jobs/return-request.ts"
+      ]
+    },
+    {
+      "id": 13,
+      "epic": "Return Decision",
+      "priority": 13,
+      "story": "As an admin, I want to approve or reject return requests with notes so operations stay controlled.",
+      "acceptance": [
+        "Admin can view request details, driver explanation, job, driver, and deadline context.",
+        "Approve removes driver assignment and returns job to Draft.",
+        "Reject keeps job in previous Assigned or Accepted state.",
+        "Admin can add decision notes.",
+        "Decision is reflected in status history and audit log."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/admin/src/jobs/returns/",
+        "services/jobs/return-decision.ts"
+      ]
+    },
+    {
+      "id": 14,
+      "epic": "Admin Job Cancellation",
+      "priority": 14,
+      "story": "As an admin, I want to cancel jobs from Accepted or Assigned when operations require it.",
+      "acceptance": [
+        "Transition Accepted or Assigned to Cancelled.",
+        "Cancellation does not allow casual driver-side cancellation after commitment (driver-initiated cancel remains out of scope unless separately approved).",
+        "Cancelled jobs are excluded from active driver lists and the marketplace.",
+        "Cancellation is recorded in status history and audit log."
+      ],
+      "status": "pending",
+      "files": [
+        "services/jobs/cancel.ts",
+        "apps/admin/src/jobs/detail.tsx"
+      ]
+    },
+    {
+      "id": 15,
+      "epic": "Admin Job Overview",
+      "priority": 15,
+      "story": "As an admin, I want a job overview table for daily dispatch monitoring.",
+      "acceptance": [
+        "Table includes customer, pickup/delivery route, driver, status, vehicle, date/time, and financial/payment indicators where feasible.",
+        "Export or column mapping can align with legacy vehicle-list spreadsheet headers where Phase 1 needs continuity (order number, pickup and delivery company and location, appointment date, pickup time, principal, contractor, assignment method, logistics status, revenue, invoice received flag, invoice type, invoice number, expenses, paid flag, remarks, job notes).",
+        "Table supports filtering and sorting by status, date, driver, and customer at minimum.",
+        "Rows navigate to job detail.",
+        "Drafts are visible to admins with created/updated metadata.",
+        "High-volume list remains usable on desktop."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/admin/src/jobs/overview.tsx",
+        "services/jobs/admin-list.ts"
+      ]
+    },
+    {
+      "id": 16,
+      "epic": "Admin Job Detail",
+      "priority": 16,
+      "story": "As an admin, I want job detail with full data, assignment, history, PDF, return state, and financial fields.",
+      "acceptance": [
+        "Shows all route, contact, vehicle, pricing, driver, notes, and document data.",
+        "Shows assignment and status history timeline.",
+        "Shows generated PDF and regeneration action where allowed.",
+        "Shows return request state if present.",
+        "Shows financial section: revenue/job price, driver compensation, expenses; invoice received, invoice type, invoice number, paid/unpaid; optional legacy operational codes if still used.",
+        "Operational auxiliary fields from legacy spreadsheet supported or stubbed: proof of protocol, confirmation, assignment method, logistics status, remarks.",
+        "Driver-facing SLA from PDF (submit single or consolidated invoice within seven calendar days to the invoice inbox shown on the template) surfaced as informational text on completed job detail or linked PDF summary where useful.",
+        "Admin can edit Draft jobs and permitted non-critical fields according to final business rules."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/admin/src/jobs/detail.tsx",
+        "services/jobs/financial.ts"
+      ]
+    },
+    {
+      "id": 17,
+      "epic": "PDF Generation & Document Automation",
+      "priority": 17,
+      "story": "As the system, I want to generate an AUTHEON-style transport-order PDF so drivers have official job instructions.",
+      "acceptance": [
+        "PDF layout follows the provided draft Word template structure on disk (legal sign-off before production).",
+        "PDF includes tour number, category, send/issue date, driver, customer, vehicle transfer description (including axle-based wording where applicable), distance, net price and VAT/tax totals where applicable, general instructions, protocol submission details, customer/principal, vehicle type, license plate, VIN, pickup and delivery sections with time windows and contacts, phones, and additional instructions.",
+        "Operational/legal clauses align with template where required: pre-trip inspection; fuel rules; direct route; digital proof with fallback and protocol inbox; incident reporting; safety clothing on logistics yards; weather-appropriate tires; invoice submission SLA; binding effect after confirmation.",
+        "PDF can be generated after direct assignment and after marketplace acceptance.",
+        "If generated at publish time, driver access remains restricted until acceptance.",
+        "Admin can manually regenerate PDF after relevant job data changes.",
+        "Only current active PDF is shown in base scope.",
+        "PDF generation and regeneration are audited.",
+        "Legal wording must be reviewed before production."
+      ],
+      "status": "pending",
+      "files": [
+        "services/pdf/transport-order.tsx",
+        "services/pdf/generate.ts",
+        "storage/contracts/"
+      ]
+    },
+    {
+      "id": 18,
+      "epic": "Driver Info Center & Documents",
+      "priority": 18,
+      "story": "As a driver, I want an Info area with operational documents so I can access instructions and legal information anytime.",
+      "acceptance": [
+        "Info area contains work instructions, process notes, emergency/contact information, PDFs, general terms, privacy policy, and imprint.",
+        "Documents can be categorized.",
+        "Documents can be viewed or opened from the PWA.",
+        "Admin can upload, replace, hide/show, and categorize documents.",
+        "Some documents can be global for all drivers and others individually assigned if supported in Phase 1."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/driver-pwa/src/info/",
+        "apps/admin/src/documents/",
+        "services/documents/"
+      ]
+    },
+    {
+      "id": 19,
+      "epic": "Driver Profile & Notification Settings",
+      "priority": 19,
+      "story": "As a driver, I want to view my profile and manage notification preferences.",
+      "acceptance": [
+        "Profile shows read-only first name, last name, company, service partner ID, address, email, phone/mobile, and account status.",
+        "Profile explains that master-data changes must be requested through AUTHEON.",
+        "Notification preferences include postal code or location, vehicle type, and own versus third-party axle filters.",
+        "Drivers can enable or disable push notifications.",
+        "If no filters are configured, targeted notifications are not sent according to agreed rule."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/driver-pwa/src/profile/",
+        "services/notifications/preferences.ts"
+      ]
+    },
+    {
+      "id": 20,
+      "epic": "Push Notifications",
+      "priority": 20,
+      "story": "As a driver, I want to receive relevant push notifications when suitable jobs are published.",
+      "acceptance": [
+        "Push notifications are triggered for newly Published portal jobs.",
+        "Matching uses driver preferences such as postal code or location, vehicle type, and axle type.",
+        "Notifications are not sent for directly assigned jobs unless separately confirmed by client.",
+        "Android support is validated.",
+        "iOS support is documented as requiring compatible iOS version, home-screen installation, and user permission.",
+        "Notification sending is logged or traceable."
+      ],
+      "status": "pending",
+      "files": [
+        "services/notifications/",
+        "apps/driver-pwa/src/push/"
+      ]
+    },
+    {
+      "id": 21,
+      "epic": "Financial Tracking",
+      "priority": 21,
+      "story": "As an admin, I want to track basic financial information per job so operations and settlement are visible.",
+      "acceptance": [
+        "Job financial fields include revenue/price, driver compensation, expenses, invoice received, invoice type, invoice number, payment status, and notes.",
+        "Admin can view financial fields in overview/detail.",
+        "Admin can update financial status manually in Phase 1 unless integration is later added.",
+        "Completed jobs can proceed into invoice/payment tracking.",
+        "Advanced margin automation and accounting integration are marked out of scope unless separately scoped."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/admin/src/finance/",
+        "services/jobs/financial.ts"
+      ]
+    },
+    {
+      "id": 22,
+      "epic": "Audit Log & Status History",
+      "priority": 22,
+      "story": "As AUTHEON, I want all important actions logged so the system is traceable.",
+      "acceptance": [
+        "Audit log records action type, actor, affected entity, timestamp, and relevant metadata.",
+        "Logged actions include job created, changed, published, directly assigned, accepted, completed, cancelled (including admin cancellation), return requested, return approved/rejected, user blocked/deactivated, document uploaded/replaced, PDF generated/regenerated, and acceptance confirmation.",
+        "Admin can view audit log entries.",
+        "Status history is visible on job detail."
+      ],
+      "status": "pending",
+      "files": [
+        "services/audit/",
+        "apps/admin/src/audit/"
+      ]
+    },
+    {
+      "id": 23,
+      "epic": "Error Handling & UX Feedback",
+      "priority": 23,
+      "story": "As a user, I want clear feedback when an action cannot be completed so I understand what happened.",
+      "acceptance": [
+        "If job is already taken, driver sees a clear already-taken message.",
+        "If return deadline passed, driver sees why the action is unavailable.",
+        "If blocked driver opens Portal, access denied or eligibility message is shown.",
+        "If PDF generation fails, admin sees retry/regenerate option and error is logged.",
+        "Validation errors in admin forms identify missing or invalid fields."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/driver-pwa/src/errors/",
+        "apps/admin/src/errors/",
+        "services/errors/"
+      ]
+    },
+    {
+      "id": 24,
+      "epic": "Exports & Reporting Basics",
+      "priority": 24,
+      "story": "As an admin, I want to export relevant job data so AUTHEON can continue operational and financial reporting.",
+      "acceptance": [
+        "Admin can export relevant job data in CSV or Excel format.",
+        "Export includes operational fields and basic financial fields.",
+        "Optional export column preset maps to legacy vehicle-list template columns for spreadsheet continuity (same glossary as admin overview task).",
+        "Export respects admin-only access.",
+        "Legacy template files may contain spreadsheet errors; exports are system-generated and validated, not raw re-export of broken templates.",
+        "Advanced dashboards/BI are out of scope unless separately approved."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/admin/src/exports/",
+        "services/exports/"
+      ]
+    },
+    {
+      "id": 25,
+      "epic": "PWA Platform Requirements",
+      "priority": 25,
+      "story": "As a driver, I want the PWA to work reliably on mobile devices so I can use it during daily operations.",
+      "acceptance": [
+        "PWA is mobile-first and responsive for smartphones and tablets.",
+        "PWA can be added to home screen where supported.",
+        "Navigation is fast and optimized for frequent use.",
+        "Important actions remain usable on small screens.",
+        "iOS and Android behavior is tested, especially push notification onboarding."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/driver-pwa/",
+        "apps/driver-pwa/public/manifest.json",
+        "apps/driver-pwa/src/service-worker/"
+      ]
+    },
+    {
+      "id": 26,
+      "epic": "QA & Automated Validation",
+      "priority": 26,
+      "story": "As a QA engineer, I want automated and manual coverage for critical workflows so the platform is safe to operate.",
+      "acceptance": [
+        "Test: two simultaneous accepts result in exactly one success and one clean failure.",
+        "Test: return request after deadline is blocked.",
+        "Test: blocked or restricted driver cannot access marketplace/API active jobs.",
+        "Test: pre-acceptance driver cannot fetch locked fields.",
+        "Test: Draft can Publish or Assign, but Published cannot Assign in Phase 1 without returning to Draft.",
+        "Test: direct assigned jobs do not appear in marketplace.",
+        "Test: acceptance unlocks full details and PDF for accepted driver only.",
+        "Test: PDF generation includes required template fields.",
+        "Test: admin can cancel Accepted or Assigned job; job leaves marketplace and driver active lists.",
+        "Test: completed job moves to Completed tab.",
+        "Test: financial status fields can be updated by admin only.",
+        "Test: audit logs are created for critical actions."
+      ],
+      "status": "pending",
+      "files": [
+        "tests/jobs/accept-concurrency.test.ts",
+        "tests/jobs/return-deadline.test.ts",
+        "tests/jobs/rbac.test.ts",
+        "tests/pdf/transport-order.test.ts"
+      ]
+    }
+  ],
+  "out_of_scope": [
+    "Chat / messaging between admin and drivers",
+    "GPS tracking, live tracking, maps, or real-time driver location",
+    "Driver rating/ranking",
+    "Automated driver-job matching",
+    "Advanced BI dashboards and margin automation beyond basic recorded fields",
+    "Accounting/invoicing system integration",
+    "Driver upload of proofs/documents unless separately scoped",
+    "Multilingual support unless separately scoped",
+    "External customer import interfaces/PDF recognition unless separately scoped",
+    "Any behavior not described in PRD v1.2 or validated wireframes/PDF requires client change request"
+  ],
+  "open_questions": [
+    "Confirm exact timezone for return deadline calculation.",
+    "Confirm whether the deadline is based on pickup date, delivery date, or operational start date.",
+    "Confirm whether blocked/deactivated drivers may still view historical completed/cancelled jobs.",
+    "Confirm whether PDF should be generated on Publish or only on Acceptance/Direct Assignment. Current logic supports generation on commitment while preserving access restrictions.",
+    "Confirm whether drivers need a separate Cancelled tab in My Jobs or only historical completed view.",
+    "Confirm whether directly assigned jobs should trigger notification to the assigned driver.",
+    "Confirm tax calculation requirements in PDF totals.",
+    "Confirm exact vehicle categories and whether the vehicle CSV is master data or operational import data.",
+    "Confirm whether invoice tracking is Phase 1 core or admin-only optional field set."
+  ],
+  "risks": [
+    "Legal wording inside the transport-order PDF requires legal review before production.",
+    "Atomic marketplace acceptance requires transaction-safe implementation; wrong implementation can cause double assignment.",
+    "Return deadline wording needs timezone and date-source clarification to avoid disputes.",
+    "Wireframes may imply UI flows not fully described in text scope; reconcile during UX specification.",
+    "Financial tracking is basic in Phase 1; accounting integration is out of scope.",
+    "PWA push behavior differs between Android and iOS; iOS requires careful onboarding and testing.",
+    "If Directus is used for admin, critical workflow state changes must still go through controlled business logic to avoid inconsistent data.",
+    "Legacy vehicle-list CSV in the repository may contain spreadsheet errors; use only as a column glossary unless cleansed for import."
+  ]
+}
