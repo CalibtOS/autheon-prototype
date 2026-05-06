@@ -10,8 +10,8 @@ const Pill = ({ status, children, className = "" }) => {
   return <span className={`pill ${cls} ${className}`}>{label}</span>;
 };
 
-const Lbl = ({ children, className = "" }) => (
-  <span className={`label ${className}`}>{children}</span>
+const Lbl = ({ children, className = "", ...props }) => (
+  <span className={`label ${className}`} {...props}>{children}</span>
 );
 
 const Ic = {
@@ -492,6 +492,7 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
 // JOB DETAIL — UNLOCKED (after acceptance / running)
 // =========================================================================
 const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
+  const { t } = useI18n();
   const isCompleted = job.status === "completed";
   const deadlinePassed = AuthStore.isReturnDeadlinePassed(job);
   const deadline = AuthStore.returnDeadline(job);
