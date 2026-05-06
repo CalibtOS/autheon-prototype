@@ -14,6 +14,44 @@ const Lbl = ({ children, className = "", ...props }) => (
   <span className={`label ${className}`} {...props}>{children}</span>
 );
 
+const displayAxle = (value, t) => ({
+  "All": t("all"),
+  "Own axle": t("ownAxle"),
+  "Third-party axle": t("thirdPartyAxle"),
+}[value] || value);
+
+const displayVehicle = (value, t) => ({
+  "All": t("all"),
+  "Light truck <3.5t": t("lightTruck"),
+}[value] || value);
+
+const displayDriverStatus = (value, t) => ({
+  "Active": t("driverStatusActive"),
+}[value] || value);
+
+const displayDocTitle = (doc, t) => ({
+  "DOC-001": t("docGeneralWorkInstructions"),
+  "DOC-002": t("docPartnerTerms"),
+  "DOC-003": t("docEmergencyContacts"),
+  "DOC-004": t("docPrivacyPolicy"),
+  "DOC-005": t("docImprint"),
+}[doc.id] || doc.title);
+
+const displayDocCategory = (category, t) => ({
+  "Operations": t("docCategoryOperations"),
+  "Legal": t("docCategoryLegal"),
+  "Safety": t("docCategorySafety"),
+}[category] || category);
+
+const displayDocScope = (scope, t) => ({
+  "Global": t("docScopeGlobal"),
+}[scope] || scope);
+
+const displayDriverNote = (note, t) => ({
+  "Please confirm arrival 15 minutes early.": t("noteConfirmArrival"),
+  "Report any pickup delay immediately to dispatch.": t("noteReportPickupDelay"),
+}[note] || note);
+
 const Ic = {
   Filter: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 5h18M6 12h12M10 19h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
   Search: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8"/><path d="m20 20-4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
@@ -67,7 +105,7 @@ const Ic = {
 // ROUTE STACK (vertical Start → End)
 // =========================================================================
 const RouteStack = ({ job, big = true }) => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
   <div className="route">
     <div className="rail">
@@ -134,7 +172,7 @@ const JobCard = ({ job, onOpen }) => {
         <RouteStack job={job} />
         <div style={{ textAlign: "right" }}>
           <div className="price">€ {job.price.toFixed(2)}</div>
-          <Lbl className="label" style={{ marginTop: 6, display: "inline-block" }}>{job.axle}</Lbl>
+          <Lbl className="label" style={{ marginTop: 6, display: "inline-block" }}>{displayAxle(job.axle, t)}</Lbl>
         </div>
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
@@ -143,7 +181,7 @@ const JobCard = ({ job, onOpen }) => {
       </div>
       <hr className="dash" style={{ margin: "14px 0 10px" }} />
       <div className="mono" style={{ fontSize: 11.5, color: "var(--muted)", letterSpacing: 0.02 }}>
-        {job.vehicle} · {job.vehicleModel}
+        {displayVehicle(job.vehicle, t)} · {job.vehicleModel}
       </div>
     </div>
   );
@@ -215,8 +253,8 @@ const Portal = ({ filters, setFilters, openFilter, onOpenJob }) => {
   const activeChips = [];
   if (filters.startPlz) activeChips.push({ key: "startPlz", label: t("pickupPlz", { plz: filters.startPlz }) });
   if (filters.endPlz) activeChips.push({ key: "endPlz", label: t("dropPlz", { plz: filters.endPlz }) });
-  if (filters.vehicle && filters.vehicle !== "All") activeChips.push({ key: "vehicle", label: filters.vehicle });
-  if (filters.axle && filters.axle !== "All") activeChips.push({ key: "axle", label: filters.axle });
+  if (filters.vehicle && filters.vehicle !== "All") activeChips.push({ key: "vehicle", label: displayVehicle(filters.vehicle, t) });
+  if (filters.axle && filters.axle !== "All") activeChips.push({ key: "axle", label: displayAxle(filters.axle, t) });
 
   return (
     <>
@@ -312,9 +350,9 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
 
           <div className="field-label" style={{ marginTop: 18 }}>{t("vehicleType")}</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {types.map(t => (
-              <span key={t} className={"chip actionable " + (local.vehicle === t ? "on" : "")} style={{cursor:"pointer"}} onClick={() => setLocal({ ...local, vehicle: local.vehicle === t ? "All" : t })}>
-                {t}
+            {types.map((type) => (
+              <span key={type} className={"chip actionable " + (local.vehicle === type ? "on" : "")} style={{cursor:"pointer"}} onClick={() => setLocal({ ...local, vehicle: local.vehicle === type ? "All" : type })}>
+                {displayVehicle(type, t)}
               </span>
             ))}
           </div>
@@ -322,7 +360,7 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
           <div className="field-label" style={{ marginTop: 18 }}>{t("axleConfiguration")}</div>
           <div className="seg full">
             {axles.map(a => (
-              <button key={a.val} type="button" className={local.axle === a.val ? "on" : ""} onClick={() => setLocal({ ...local, axle: a.val })}>{a.label}</button>
+              <button key={a.val} type="button" className={local.axle === a.val ? "on" : ""} onClick={() => setLocal({ ...local, axle: a.val })}>{displayAxle(a.val, t)}</button>
             ))}
           </div>
         </div>
@@ -457,8 +495,8 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
   return (
     <div className="sheet-backdrop center" onClick={onCancel}>
       <div className="sheet modal" onClick={e => e.stopPropagation()} style={{ padding: 24 }}>
-        <Lbl>Binding acceptance</Lbl>
-        <h2 style={{ margin: "6px 0 18px", fontSize: 24, fontWeight: 700, letterSpacing: "-0.015em" }}>Accept this tour?</h2>
+        <Lbl>{t("bindingAcceptance")}</Lbl>
+        <h2 style={{ margin: "6px 0 18px", fontSize: 24, fontWeight: 700, letterSpacing: "-0.015em" }}>{t("acceptThisTour")}</h2>
 
         <div style={{ border: "1px solid var(--line)", borderRadius: "var(--r-2)", padding: 14, background: "var(--paper-2)" }}>
           <div className="label" style={{ marginBottom: 8 }}>Tour #{job.id}</div>
@@ -470,19 +508,19 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
         </div>
 
         <p style={{ margin: "16px 0 14px", fontSize: 13.5, lineHeight: 1.55 }}>
-          Acceptance is <strong>binding</strong>. To hand the tour back you must use <strong>Request return</strong> before midnight on the day before the job date (timezone TBD per PRD).
+          {t("acceptanceLegal")}
         </p>
         <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 18 }}>
-          Partner terms apply. <button type="button" className="btn ghost xs" style={{ color: "var(--primary)", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }} onClick={() => window.alert("Demo document: Partner terms are available in the Driver Info area and admin Documents module.")}>View partner policy</button>
+          {t("partnerTermsApply")} <button type="button" className="btn ghost xs" style={{ color: "var(--primary)", padding: 0, textDecoration: "underline", textUnderlineOffset: 3 }} onClick={() => window.alert(t("partnerPolicyAlert"))}>{t("viewPartnerPolicy")}</button>
         </div>
 
         <div ref={trackRef} className={"slide-confirm " + (done ? "done" : "")}>
-          <div className="track-text">{done ? "ACCEPTED" : "SLIDE TO CONFIRM →"}</div>
+          <div className="track-text">{done ? t("slideAccepted") : t("slideToConfirm")}</div>
           <div className="thumb" style={{ width: done ? "100%" : 92 + pos }} onMouseDown={onStart} onTouchStart={onStart}>
             {!done && "›››"}
           </div>
         </div>
-        <button type="button" className="btn block" style={{ marginTop: 12 }} onClick={onCancel}>Cancel</button>
+        <button type="button" className="btn block" style={{ marginTop: 12 }} onClick={onCancel}>{t("cancel")}</button>
       </div>
     </div>
   );
@@ -492,12 +530,12 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
 // JOB DETAIL — UNLOCKED (after acceptance / running)
 // =========================================================================
 const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const isCompleted = job.status === "completed";
   const deadlinePassed = AuthStore.isReturnDeadlinePassed(job);
   const deadline = AuthStore.returnDeadline(job);
   const deadlineStr = deadline
-    ? deadline.toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+    ? deadline.toLocaleString(locale === "de" ? "de-DE" : "en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
     : "—";
   const returnBlocked = job.status === "return_requested" || deadlinePassed;
   const canComplete = ["assigned", "accepted"].includes(job.status);
@@ -510,22 +548,22 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
         <button type="button" className="btn icon sm" onClick={onBack}><Ic.Back /></button>
         <div style={{ flex: 1 }}>
           <h2 style={{ margin: 0, fontSize: 16.5, fontWeight: 700 }}>Tour #{job.tour}</h2>
-          <div className="label" style={{ marginTop: 2 }}>My jobs · execution detail</div>
+          <div className="label" style={{ marginTop: 2 }}>{t("myJobsExecutionDetail")}</div>
         </div>
       </div>
     </div>
 
     <div className="scroll" style={{ padding: "12px 18px 22px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px dashed var(--line-dash)" }}>
-        {job.status === "completed" ? <Pill status="completed">Completed</Pill>
-          : job.status === "return_requested" ? <Pill status="return_requested">Return requested</Pill>
-          : job.status === "assigned" ? <Pill status="assigned">Assigned</Pill>
-          : <Pill status="accepted">Accepted · active</Pill>}
+        {job.status === "completed" ? <Pill status="completed">{t("completed")}</Pill>
+          : job.status === "return_requested" ? <Pill status="return_requested">{t("returnRequested")}</Pill>
+          : job.status === "assigned" ? <Pill status="assigned">{t("assignedShort")}</Pill>
+          : <Pill status="accepted">{t("acceptedActive")}</Pill>}
         <span className="label mono">{job.id}</span>
       </div>
 
       <div style={{ marginTop: 18 }}>
-        <Lbl>Pickup</Lbl>
+        <Lbl>{t("pickup")}</Lbl>
         <div style={{ display: "grid", gridTemplateColumns: "16px 1fr", gap: 14, marginTop: 10 }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 6 }}>
             <span style={{ width: 11, height: 11, borderRadius: "50%", border: "1.5px solid var(--primary-ink)" }}></span>
@@ -535,8 +573,8 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
           <div>
             <div style={{ fontWeight: 700, fontSize: 15.5 }}>{job.startCompany || job.customer}</div>
             <div className="mono" style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{job.startStreet} · {job.startPlz} {job.startCity}</div>
-            <Lbl style={{ marginTop: 18, display: "block" }}>Delivery</Lbl>
-            <div style={{ fontWeight: 700, fontSize: 15.5, marginTop: 6 }}>{job.endCompany || ("Contact · " + job.endCity)}</div>
+            <Lbl style={{ marginTop: 18, display: "block" }}>{t("delivery")}</Lbl>
+            <div style={{ fontWeight: 700, fontSize: 15.5, marginTop: 6 }}>{job.endCompany || (t("contacts") + " · " + job.endCity)}</div>
             <div className="mono" style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{job.endStreet} · {job.endPlz} {job.endCity}</div>
           </div>
         </div>
@@ -544,22 +582,22 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
 
       <hr className="dash" style={{ margin: "20px 0" }} />
 
-      <Lbl>Vehicle</Lbl>
+      <Lbl>{t("vehicle")}</Lbl>
       <div style={{ marginTop: 6, fontWeight: 700, fontSize: 15.5 }}>{job.vehicleModel} · {job.vehicle}</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
         <div>
-          <Lbl>License plate</Lbl>
+          <Lbl>{t("licensePlate")}</Lbl>
           <div className="mono" style={{ fontWeight: 600, marginTop: 4, padding: "5px 10px", border: "1.5px solid var(--primary-ink)", display: "inline-block", borderRadius: 3, fontSize: 13 }}>{job.plate}</div>
         </div>
         <div>
-          <Lbl>VIN</Lbl>
+          <Lbl>{t("vin")}</Lbl>
           <div className="mono" style={{ fontSize: 12, marginTop: 6 }}>{job.vin}</div>
         </div>
       </div>
 
       <hr className="dash" style={{ margin: "20px 0" }} />
 
-      <Lbl>Contacts</Lbl>
+      <Lbl>{t("contacts")}</Lbl>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 }}>
         {[[t("pickup"), pickup], [t("delivery"), drop]].map(([k, c]) => (
           <div key={k} className="card flat" style={{ padding: 12 }}>
@@ -574,45 +612,45 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
 
       <hr className="dash" style={{ margin: "20px 0" }} />
 
-      <Lbl>Transport order (PDF)</Lbl>
+      <Lbl>{t("transportOrderPdf")}</Lbl>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, padding: 12, border: "1px solid var(--line)", borderRadius: "var(--r-2)" }}>
         <div style={{ color: "var(--primary-ink)", flexShrink: 0 }}><Ic.Pdf /></div>
         <div style={{ flex: 1 }}>
           <div className="mono" style={{ fontSize: 12 }}>transport-order-{job.id}.pdf</div>
-          <div className="label" style={{ marginTop: 2 }}>Demo asset · v{job.pdfVersion || 1}</div>
+          <div className="label" style={{ marginTop: 2 }}>{t("demoAsset")} · v{job.pdfVersion || 1}</div>
         </div>
-        <button type="button" className="btn xs" onClick={() => AuthStore.viewPdf(job.id)}><Ic.Eye /> View</button>
+        <button type="button" className="btn xs" onClick={() => AuthStore.viewPdf(job.id)}><Ic.Eye /> {t("view")}</button>
         <button type="button" className="btn icon sm" onClick={() => AuthStore.downloadPdf(job.id)}><Ic.Down /></button>
       </div>
 
       <hr className="dash" style={{ margin: "20px 0" }} />
 
-      <Lbl>Operational instructions</Lbl>
-      <p style={{ fontSize: 13, lineHeight: 1.6, margin: "8px 0 0", color: "var(--muted)" }}>{job.notesDriver || "No driver-facing add-ons."}</p>
+      <Lbl>{t("operationalInstructions")}</Lbl>
+      <p style={{ fontSize: 13, lineHeight: 1.6, margin: "8px 0 0", color: "var(--muted)" }}>{displayDriverNote(job.notesDriver, t) || t("noDriverAddons")}</p>
 
-      <Lbl style={{ marginTop: 16, display: "block" }}>Dispatch notes</Lbl>
+      <Lbl style={{ marginTop: 16, display: "block" }}>{t("dispatchNotes")}</Lbl>
       <p style={{ fontSize: 13, lineHeight: 1.6, margin: "8px 0 0" }}>{job.notes || "—"}</p>
 
       <hr className="dash" style={{ margin: "20px 0" }} />
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
         <div>
-          <Lbl>Payout</Lbl>
-          <div className="mono" style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>{job.distanceKm} km · {job.axle}</div>
+          <Lbl>{t("payout")}</Lbl>
+          <div className="mono" style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>{job.distanceKm} km · {displayAxle(job.axle, t)}</div>
         </div>
         <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em" }} className="tnum">€ {job.price.toFixed(2)}</div>
       </div>
 
       <div className="dash-area" style={{ marginTop: 18, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted)" }}>
-        Return deadline · end of day before job date ({deadlineStr}){deadlinePassed ? " · closed" : ""}
+        {t("returnDeadlineNote", { deadline: deadlineStr, closed: deadlinePassed ? t("closedSuffix") : "" })}
       </div>
     </div>
     {!isCompleted && (
       <div style={{ padding: "12px 16px 18px", borderTop: "1px solid var(--line)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, background: "var(--paper)" }}>
         <button type="button" className="btn" onClick={onReturn} disabled={returnBlocked}>
-          {job.status === "return_requested" ? "Awaiting dispatch" : deadlinePassed ? "Return window closed" : "Return / report issue"}
+          {job.status === "return_requested" ? t("awaitingDispatch") : deadlinePassed ? t("returnWindowClosed") : t("returnReportIssue")}
         </button>
-        <button type="button" className="btn primary" onClick={onComplete} disabled={!canComplete}>Mark completed</button>
+        <button type="button" className="btn primary" onClick={onComplete} disabled={!canComplete}>{t("markCompleted")}</button>
       </div>
     )}
   </>
@@ -633,11 +671,11 @@ const MyJobs = ({ onOpen }) => {
   const list = tab === "active" ? active : tab === "done" ? done : cancelled;
 
   const pillFor = (job) => {
-    if (job.status === "return_requested") return <Pill status="return_requested">Return</Pill>;
-    if (job.status === "assigned") return <Pill status="assigned">Assigned</Pill>;
-    if (job.status === "accepted") return <Pill status="accepted">Active</Pill>;
-    if (job.status === "completed") return <Pill status="completed">Completed</Pill>;
-    if (job.status === "cancelled") return <Pill status="cancelled">Cancelled</Pill>;
+    if (job.status === "return_requested") return <Pill status="return_requested">{t("returnShort")}</Pill>;
+    if (job.status === "assigned") return <Pill status="assigned">{t("assignedShort")}</Pill>;
+    if (job.status === "accepted") return <Pill status="accepted">{t("active")}</Pill>;
+    if (job.status === "completed") return <Pill status="completed">{t("completed")}</Pill>;
+    if (job.status === "cancelled") return <Pill status="cancelled">{t("cancelled")}</Pill>;
     return <Pill status="draft">{AuthStore.statusLabel(job.status)}</Pill>;
   };
 
@@ -673,7 +711,7 @@ const MyJobs = ({ onOpen }) => {
             </div>
             <hr className="dash" style={{ margin: "12px 0 8px" }} />
             <div className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
-              {job.date} · {job.windowFlex ? t("flexible") : `${job.windowFrom}–${job.windowTo}`} · {job.vehicle}
+              {job.date} · {job.windowFlex ? t("flexible") : `${job.windowFrom}–${job.windowTo}`} · {displayVehicle(job.vehicle, t)}
             </div>
           </div>
         ))}
@@ -687,12 +725,12 @@ const MyJobs = ({ onOpen }) => {
 // RETURN / PROBLEM SHEET
 // =========================================================================
 const ReturnSheet = ({ job, onClose, onSubmit }) => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [reason, setReason] = useState("return");
   const [text, setText] = useState("");
   const valid = text.trim().length >= 10;
   const dl = AuthStore.returnDeadline(job);
-  const dlStr = dl ? dl.toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+  const dlStr = dl ? dl.toLocaleString(locale === "de" ? "de-DE" : "en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
   const closed = AuthStore.isReturnDeadlinePassed(job);
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -704,32 +742,32 @@ const ReturnSheet = ({ job, onClose, onSubmit }) => {
         </div>
         <div className="sheet-body">
           <div className="mono" style={{ fontSize: 11, color: closed ? "var(--st-cancelled)" : "var(--muted)", marginBottom: 12 }}>
-            Cut-off: end of day before job · ({dlStr}){closed ? " · closed" : ""}
+            {t("cutoffBeforeJob", { deadline: dlStr, closed: closed ? t("closedSuffix") : "" })}
           </div>
           <div className="field-label">{t("reason")}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
             {[
-              ["return", "Request formal return", "Creates Return requested state for dispatch"],
-              ["pickup", t("pickup") + " blocked", "Vehicle / keys unavailable at pickup"],
-              ["accident", "Incident / breakdown", "Immediate escalation path"],
-            ].map(([id,t,s]) => (
+              ["return", t("returnReasonFormal"), t("returnReasonFormalSub")],
+              ["pickup", t("returnReasonPickupBlocked"), t("returnReasonPickupBlockedSub")],
+              ["accident", t("returnReasonIncident"), t("returnReasonIncidentSub")],
+            ].map(([id, label, sub]) => (
               <div key={id} role="button" tabIndex={0} className={"radio-card " + (reason === id ? "on" : "") + (closed ? "" : "")} style={{opacity: closed ? 0.5 : 1}} onClick={() => !closed && setReason(id)}>
                 <span className="ring"></span>
                 <div>
-                  <div className="t">{t}</div>
-                  <div className="s">{s}</div>
+                  <div className="t">{label}</div>
+                  <div className="s">{sub}</div>
                 </div>
               </div>
             ))}
           </div>
           <div className="field-label">{t("explanationRequired")}</div>
-          <textarea className="input" placeholder="Describe what happened (min. 10 characters)." value={text} onChange={e => setText(e.target.value)} disabled={closed} />
+          <textarea className="input" placeholder={t("returnPlaceholder")} value={text} onChange={e => setText(e.target.value)} disabled={closed} />
           <div className="label" style={{ marginTop: 6 }}>
             {t("charsRequired")} <span style={{ color: "var(--muted-2)", marginLeft: 8 }}>{text.length}/10</span>
           </div>
           <hr className="dash" style={{ margin: "16px 0" }} />
           <div className="mono" style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.6, letterSpacing: 0.04 }}>
-            AUTHEON dispatch reviews every submission; stay reachable on your registered mobile number.
+            {t("returnSubmissionNotice")}
           </div>
         </div>
         <div className="sheet-foot">
@@ -741,141 +779,152 @@ const ReturnSheet = ({ job, onClose, onSubmit }) => {
   );
 };
 
-const PendingNotice = ({ onClose }) => (
-  <div className="sheet-backdrop center" onClick={onClose}>
-    <div className="sheet modal" onClick={e => e.stopPropagation()} style={{ padding: 26, textAlign: "center", maxWidth: 320 }}>
-      <div style={{ width: 52, height: 52, borderRadius: "50%", background: "var(--st-accepted-bg)", margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M6 12l4 4 8-9" stroke="var(--st-accepted)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+const PendingNotice = ({ onClose }) => {
+  const { t } = useI18n();
+  return (
+    <div className="sheet-backdrop center" onClick={onClose}>
+      <div className="sheet modal" onClick={e => e.stopPropagation()} style={{ padding: 26, textAlign: "center", maxWidth: 320 }}>
+        <div style={{ width: 52, height: 52, borderRadius: "50%", background: "var(--st-accepted-bg)", margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M6 12l4 4 8-9" stroke="var(--st-accepted)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </div>
+        <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 700 }}>{t("requestSent")}</h3>
+        <p style={{ margin: 0, fontSize: 13.5, color: "var(--muted)", lineHeight: 1.55 }}>{t("returnSentStatus")} <strong style={{color:"var(--text)"}}>{t("returnRequested")}</strong>. {t("dispatchWillFollowUp")}</p>
+        <button type="button" className="btn block primary" style={{ marginTop: 20 }} onClick={onClose}>{t("ok")}</button>
       </div>
-      <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 700 }}>Request sent</h3>
-      <p style={{ margin: 0, fontSize: 13.5, color: "var(--muted)", lineHeight: 1.55 }}>Status: <strong style={{color:"var(--text)"}}>Return requested</strong>. Dispatch will follow up.</p>
-      <button type="button" className="btn block primary" style={{ marginTop: 20 }} onClick={onClose}>OK</button>
     </div>
-  </div>
-);
+  );
+};
 
 // =========================================================================
 // SIMPLE PROFILE / INFO
 // =========================================================================
-const ProfilePane = () => (
+const ProfilePane = () => {
+  const { t } = useI18n();
+  return (
   <div className="scroll" style={{ padding: "10px 22px" }}>
-    <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Profile</h1>
+    <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{t("profileTitle")}</h1>
     <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "20px 0 16px", borderBottom: "1px solid var(--line)" }}>
       <span className="avatar" style={{width:48, height:48, fontSize:14}}>JB</span>
       <div>
         <div style={{ fontWeight: 700, fontSize: 16 }}>{AuthStore.DEMO_DRIVER}</div>
-        <div className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>partner-id: AU-41-0228 · Active</div>
+        <div className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>{t("partnerId")}: AU-41-0228 · {t("driverStatusActive")}</div>
       </div>
     </div>
     {[
-      ["Master data", "Address · VAT · banking (read-only here)"],
-      ["Settlements", "Statements · payouts"],
-      ["Equipment", "Trailers · onboard kits"],
-      ["Notifications", "Push filters mirror Portal preferences"],
-      ["Legal", "Terms · privacy · imprint"],
-    ].map(([t,s]) => (
-      <div key={t} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0", borderBottom: "1px solid var(--line)", cursor: "pointer" }}>
+      [t("profileMasterData"), t("vatBankingReadonly")],
+      [t("settlements"), t("settlementsSub")],
+      [t("equipment"), t("equipmentSub")],
+      [t("notifications"), t("notificationsSub")],
+      [t("legal"), t("legalSub")],
+    ].map(([label, sub]) => (
+      <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0", borderBottom: "1px solid var(--line)", cursor: "pointer" }}>
         <div>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>{t}</div>
-          <div style={{ fontSize: 12, color: "var(--muted)" }}>{s}</div>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>{label}</div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>{sub}</div>
         </div>
         <Ic.Chev />
       </div>
     ))}
-    <button type="button" className="btn block" style={{ marginTop: 24 }} onClick={() => window.alert("Demo sign out: authentication will be implemented in production.")}><Ic.Logout /> Sign out</button>
+    <button type="button" className="btn block" style={{ marginTop: 24 }} onClick={() => window.alert(t("signOutAlert"))}><Ic.Logout /> {t("signOut")}</button>
   </div>
-);
+  );
+};
 
-const InfoPane = () => (
+const InfoPane = () => {
+  const { t } = useI18n();
+  return (
   <div className="scroll" style={{ padding: "10px 22px" }}>
-    <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Knowledge base</h1>
+    <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{t("knowledgeBase")}</h1>
     {[
-      ["AUTHEON workflow", "How marketplace vs assigned tours differ"],
-      ["Binding acceptance", "Legal commitment after sliding to confirm"],
-      ["Returns & incidents", "When and how to escalate"],
-      ["Settlement rhythm", "Invoice SLA reminders from PDF wording"],
-      ["Dispatcher hotline", "Mon–Fri 07:00–22:00 CET (demo)"],
-    ].map(([t,s]) => (
-      <div key={t} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0", borderBottom: "1px solid var(--line)", cursor: "pointer" }}>
+      [t("autheonWorkflow"), t("autheonWorkflowSub")],
+      [t("bindingAcceptanceInfo"), t("bindingAcceptanceInfoSub")],
+      [t("returnsIncidents"), t("returnsIncidentsSub")],
+      [t("settlementRhythm"), t("settlementRhythmSub")],
+      [t("dispatcherHotline"), t("dispatcherHotlineSub")],
+    ].map(([label, sub]) => (
+      <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0", borderBottom: "1px solid var(--line)", cursor: "pointer" }}>
         <div>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>{t}</div>
-          <div style={{ fontSize: 12, color: "var(--muted)" }}>{s}</div>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>{label}</div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>{sub}</div>
         </div>
         <Ic.Chev />
       </div>
     ))}
   </div>
-);
+  );
+};
 
 const ProfilePaneFull = () => {
+  const { t } = useI18n();
   const store = useAuthStore();
   const d = store.getCurrentDriver();
   const prefs = d?.prefs || {};
   const setPref = (patch) => store.updateDriverPrefs(patch);
   return (
     <div className="scroll" style={{ padding: "10px 22px" }}>
-      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Profile</h1>
+      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{t("profileTitle")}</h1>
       <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "20px 0 16px", borderBottom: "1px solid var(--line)" }}>
         <span className="avatar" style={{width:48, height:48, fontSize:14}}>JB</span>
         <div>
           <div style={{ fontWeight: 700, fontSize: 16 }}>{d?.name}</div>
-          <div className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>partner-id: {d?.partnerId} · {d?.status}</div>
+          <div className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>{t("partnerId")}: {d?.partnerId} · {displayDriverStatus(d?.status, t)}</div>
         </div>
       </div>
       <div className="card" style={{ padding: 14, marginTop: 16 }}>
-        <Lbl>Read-only master data</Lbl>
-        {[["Company", d?.company], ["Address", d?.address], ["Email", d?.email], ["Phone", d?.phone], ["Account status", d?.status]].map(([k, v]) => (
+        <Lbl>{t("profileMasterData")}</Lbl>
+        {[[t("company"), d?.company], [t("address"), d?.address], [t("email"), d?.email], [t("phone"), d?.phone], [t("accountStatus"), displayDriverStatus(d?.status, t)]].map(([k, v]) => (
           <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
             <span className="label" style={{ fontSize: 9.5 }}>{k}</span>
             <span style={{ fontSize: 12.5, textAlign: "right" }}>{v}</span>
           </div>
         ))}
-        <p style={{ margin: "12px 0 0", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>Master-data changes must be requested through AUTHEON dispatch.</p>
+        <p style={{ margin: "12px 0 0", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>{t("masterDataChangeNotice")}</p>
       </div>
       <div className="card" style={{ padding: 14, marginTop: 14 }}>
-        <Lbl>Notification preferences</Lbl>
-        <label className="field-label" style={{ marginTop: 14 }}>Pickup postal area</label>
+        <Lbl>{t("notificationPreferences")}</Lbl>
+        <label className="field-label" style={{ marginTop: 14 }}>{t("pickupPostalArea")}</label>
         <input className="input mono" value={prefs.startPlz || ""} onChange={(e) => setPref({ startPlz: e.target.value })} placeholder="e.g. 80" />
-        <label className="field-label" style={{ marginTop: 12 }}>Vehicle type</label>
+        <label className="field-label" style={{ marginTop: 12 }}>{t("vehicleType")}</label>
         <select className="input" value={prefs.vehicle || "All"} onChange={(e) => setPref({ vehicle: e.target.value })}>
-          {["All", "PKW", "SUV", "Van", "Light truck <3.5t"].map((x) => <option key={x}>{x}</option>)}
+          {["All", "PKW", "SUV", "Van", "Light truck <3.5t"].map((x) => <option key={x} value={x}>{displayVehicle(x, t)}</option>)}
         </select>
-        <label className="field-label" style={{ marginTop: 12 }}>Axle</label>
+        <label className="field-label" style={{ marginTop: 12 }}>{t("axle")}</label>
         <div className="seg full">
           {["All", "Own axle", "Third-party axle"].map((x) => (
-            <button key={x} type="button" className={(prefs.axle || "All") === x ? "on" : ""} onClick={() => setPref({ axle: x })}>{x}</button>
+            <button key={x} type="button" className={(prefs.axle || "All") === x ? "on" : ""} onClick={() => setPref({ axle: x })}>{displayAxle(x, t)}</button>
           ))}
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, fontSize: 13 }}>
           <input type="checkbox" checked={!!prefs.push} onChange={(e) => setPref({ push: e.target.checked })} />
-          Push notifications enabled
+          {t("pushNotificationsEnabled")}
         </label>
         <div className="dash-area" style={{ marginTop: 12, fontFamily: "var(--font-sans)", fontSize: 12, letterSpacing: 0, textTransform: "none" }}>
-          Android supported in app flow. iOS requires home-screen installation, compatible iOS version, and permission.
+          {t("pushSupportNotice")}
         </div>
       </div>
-      <button type="button" className="btn block" style={{ marginTop: 18 }} onClick={() => window.alert("Demo sign out: authentication will be implemented in production.")}><Ic.Logout /> Sign out</button>
+      <button type="button" className="btn block" style={{ marginTop: 18 }} onClick={() => window.alert(t("signOutAlert"))}><Ic.Logout /> {t("signOut")}</button>
     </div>
   );
 };
 
 const InfoPaneFull = () => {
+  const { t } = useI18n();
   const store = useAuthStore();
   const docs = store.getDocuments().filter((d) => d.visible);
   return (
     <div className="scroll" style={{ padding: "10px 22px" }}>
-      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Info</h1>
+      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{t("infoTitle")}</h1>
       {docs.map((d) => (
         <div key={d.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0", borderBottom: "1px solid var(--line)", cursor: "pointer" }}>
           <div>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{d.title}</div>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>{d.category} · {d.scope} · {d.version}</div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{displayDocTitle(d, t)}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>{displayDocCategory(d.category, t)} · {displayDocScope(d.scope, t)} · {d.version}</div>
           </div>
           <Ic.Chev />
         </div>
       ))}
       <div className="dash-area" style={{ marginTop: 16, fontFamily: "var(--font-sans)", fontSize: 12, letterSpacing: 0, textTransform: "none" }}>
-        Emergency dispatch: Mon-Fri 07:00-22:00 CET. Incidents, delays, and anomalies must be reported immediately.
+        {t("emergencyDispatchNotice")}
       </div>
     </div>
   );
