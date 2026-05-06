@@ -889,10 +889,15 @@ function bumpPdf(job) {
     viewPdf(id) {
       const txt = api.transportOrderText(id);
       if (!txt) return { ok: false };
-      const w = window.open("", "_blank");
+      const escaped = txt.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>AUTHEON transport order</title></head><body><pre style="font:13px/1.5 monospace;white-space:pre-wrap;padding:24px">${escaped}</pre></body></html>`;
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, "_blank");
       if (w) {
-        w.document.write(`<pre style="font:13px/1.5 monospace;white-space:pre-wrap;padding:24px">${txt.replace(/[&<>]/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;" }[c]))}</pre>`);
-        w.document.title = "AUTHEON transport order";
+        w.addEventListener("load", () => URL.revokeObjectURL(url), { once: true });
+      } else {
+        URL.revokeObjectURL(url);
       }
       log("pdf_viewed", DEMO_ADMIN, id, "Client-side transport order preview");
       emit();
