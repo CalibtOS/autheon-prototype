@@ -360,9 +360,9 @@
         } else if (section === "invoices") {
           body = <PartnerInvoicesPane showToast={showToast} />;
         } else if (section === "finance") {
-          body = <FinancePane />;
+          body = <FinancePane showToast={showToast} />;
         } else if (section === "audit") {
-          body = <AuditPane />;
+          body = <AuditPane showToast={showToast} />;
         } else if (section === "features") {
           body = <FeaturesPane />;
         } else {

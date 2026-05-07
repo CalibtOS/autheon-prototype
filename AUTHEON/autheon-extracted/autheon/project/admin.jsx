@@ -2384,10 +2384,25 @@ const PartnerInvoicesPane = ({ showToast }) => {
   const store = useAuthStore();
   const { t, locale } = useI18n();
   const [viewId, setViewId] = useStateA(null);
+  const [editId, setEditId] = useStateA(null);
+  const [editForm, setEditForm] = useStateA(null);
+  const [regJobId, setRegJobId] = useStateA(
+    () => store.getJobs()[0]?.id ?? "",
+  );
+  const [regDriverId, setRegDriverId] = useStateA(
+    () => store.getDrivers()[0]?.id ?? "",
+  );
+  const [regFileName, setRegFileName] = useStateA("");
+  const [regMime, setRegMime] = useStateA("");
+  const [regNotes, setRegNotes] = useStateA("");
+  const [regPush, setRegPush] = useStateA(true);
+  const [registerOpen, setRegisterOpen] = useStateA(false);
   const uploads = store.getInvoiceUploads();
   const jobs = store.getJobs();
+  const drivers = store.getDrivers();
   const viewing = viewId ? uploads.find((u) => u.id === viewId) : null;
   const fmtIso = (iso) => {
+    if (iso == null || iso === "") return "—";
     try {
       return new Date(iso).toLocaleString(locale === "de" ? "de-DE" : "en-GB", {
         dateStyle: "short",
@@ -2397,6 +2412,49 @@ const PartnerInvoicesPane = ({ showToast }) => {
       return iso;
     }
   };
+  const sourceLabel = (u) =>
+    u.source === "admin" ? t("adminInvoiceSourceAdmin") : t("adminInvoiceSourceDriver");
+
+  const openEdit = (u) => {
+    setEditId(u.id);
+    setEditForm({
+      fileName: u.fileName,
+      invoiceId: u.invoiceId || "",
+      jobId: u.jobId || "",
+      driverId: u.driverId || "",
+      notes: u.notes || "",
+    });
+  };
+  const closeEdit = () => {
+    setEditId(null);
+    setEditForm(null);
+  };
+
+  const invoiceActionErr = (r) => {
+    if (r && r.ok) return "";
+    const reason = r && r.reason;
+    if (reason === "bad_job") return t("adminInvoiceErrBadJob");
+    if (reason === "bad_driver") return t("adminInvoiceErrBadDriver");
+    if (reason === "no_filename") return t("adminInvoiceErrFilename");
+    if (reason === "job_required") return t("adminInvoiceErrJobRequired");
+    if (reason === "no_invoice_id") return t("adminInvoiceErrInvoiceIdRequired");
+    return t("adminInvoiceErrGeneric");
+  };
+
+  const closeRegister = () => setRegisterOpen(false);
+
+  useEffectA(() => {
+    if (!registerOpen && !editId && !viewId) return undefined;
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (registerOpen) closeRegister();
+      else if (editId) closeEdit();
+      else if (viewId) setViewId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [registerOpen, editId, viewId]);
+
   return (
     <div>
       <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
@@ -2405,6 +2463,191 @@ const PartnerInvoicesPane = ({ showToast }) => {
       <p style={{ color: "var(--muted)", marginTop: 8 }}>
         {t("partnerInvoicesDesc")}
       </p>
+
+      <div style={{ marginTop: 18 }}>
+        <button
+          type="button"
+          className="btn primary"
+          disabled={!jobs.length || !drivers.length}
+          onClick={() => {
+            const jl = store.getJobs();
+            const dl = store.getDrivers();
+            setRegJobId((id) =>
+              jl.some((j) => j.id === id) ? id : jl[0]?.id ?? "",
+            );
+            setRegDriverId((id) =>
+              dl.some((d) => d.id === id) ? id : dl[0]?.id ?? "",
+            );
+            setRegisterOpen(true);
+          }}
+        >
+          {t("adminInvoiceRegisterOpenBtn")}
+        </button>
+      </div>
+
+      {registerOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reg-invoice-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            zIndex: 102,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+          onClick={closeRegister}
+        >
+          <div
+            className="card elev"
+            style={{ maxWidth: 520, width: "100%", padding: 22, maxHeight: "90vh", overflow: "auto" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="reg-invoice-title" style={{ margin: "0 0 8px", fontSize: 17 }}>
+              {t("adminInvoiceRegisterTitle")}
+            </h2>
+            <p
+              className="label"
+              style={{ margin: "0 0 16px", fontSize: 12.5, lineHeight: 1.55 }}
+            >
+              {t("adminInvoiceRegisterHint")}
+            </p>
+            <div style={{ display: "grid", gap: 12 }}>
+              <div>
+                <label className="field-label" htmlFor="reg-job">
+                  {t("adminInvoiceSelectJob")}
+                </label>
+                <select
+                  id="reg-job"
+                  className="input"
+                  value={regJobId}
+                  onChange={(e) => setRegJobId(e.target.value)}
+                >
+                  {jobs.map((j) => (
+                    <option key={j.id} value={j.id}>
+                      {j.tour} · {j.customer}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="field-label" htmlFor="reg-drv">
+                  {t("adminInvoiceSelectPartner")}
+                </label>
+                <select
+                  id="reg-drv"
+                  className="input"
+                  value={regDriverId}
+                  onChange={(e) => setRegDriverId(e.target.value)}
+                >
+                  {drivers.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} ({d.id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="field-label" htmlFor="reg-fn">
+                  {t("adminInvoiceDocRef")}
+                </label>
+                <input
+                  id="reg-fn"
+                  className="input mono"
+                  value={regFileName}
+                  onChange={(e) => setRegFileName(e.target.value)}
+                  placeholder="e.g. bundled-invoice-2026-04.pdf"
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="reg-mime">
+                  {t("adminInvoiceMimeLabel")}
+                </label>
+                <input
+                  id="reg-mime"
+                  className="input mono"
+                  value={regMime}
+                  onChange={(e) => setRegMime(e.target.value)}
+                  placeholder={t("adminInvoiceMimePlaceholder")}
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="reg-notes">
+                  {t("adminInvoiceNotes")}
+                </label>
+                <textarea
+                  id="reg-notes"
+                  className="input"
+                  rows={2}
+                  value={regNotes}
+                  onChange={(e) => setRegNotes(e.target.value)}
+                  style={{ resize: "vertical", minHeight: 52 }}
+                />
+              </div>
+              <label
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "flex-start",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={regPush}
+                  onChange={(e) => setRegPush(e.target.checked)}
+                  style={{ marginTop: 3 }}
+                />
+                <span className="label" style={{ margin: 0, lineHeight: 1.45 }}>
+                  {t("adminInvoicePushToJob")}
+                </span>
+              </label>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginTop: 18,
+                justifyContent: "flex-end",
+                flexWrap: "wrap",
+              }}
+            >
+              <button type="button" className="btn" onClick={closeRegister}>
+                {t("adminInvoiceCancel")}
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                disabled={!jobs.length || !drivers.length}
+                onClick={() => {
+                  const r = store.addPartnerInvoiceRecordAdmin({
+                    jobId: regJobId,
+                    driverId: regDriverId,
+                    fileName: regFileName.trim(),
+                    mimeType: regMime.trim() || undefined,
+                    notes: regNotes.trim(),
+                    pushToJob: regPush,
+                  });
+                  if (r.ok) {
+                    showToast?.(t("adminInvoiceRegistered"), r.invoiceId);
+                    setRegFileName("");
+                    setRegMime("");
+                    setRegNotes("");
+                    closeRegister();
+                  } else showToast?.(invoiceActionErr(r));
+                }}
+              >
+                {t("adminInvoiceAdd")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <table className="tbl" style={{ marginTop: 18 }}>
         <thead>
           <tr>
@@ -2413,6 +2656,7 @@ const PartnerInvoicesPane = ({ showToast }) => {
             <th>{t("invoiceColPartner")}</th>
             <th>{t("invoiceColJob")}</th>
             <th>{t("invoiceColUploaded")}</th>
+            <th>{t("adminInvoiceColSource")}</th>
             <th>{t("invoiceColProcessed")}</th>
             <th></th>
           </tr>
@@ -2421,7 +2665,7 @@ const PartnerInvoicesPane = ({ showToast }) => {
           {uploads.length === 0 ? (
             <tr>
               <td
-                colSpan={7}
+                colSpan={8}
                 className="label"
                 style={{ padding: "22px 12px" }}
               >
@@ -2464,6 +2708,9 @@ const PartnerInvoicesPane = ({ showToast }) => {
                 <td className="mono" style={{ fontSize: 12 }}>
                   {fmtIso(u.uploadedAt)}
                 </td>
+                <td className="label" style={{ fontSize: 12 }}>
+                  {sourceLabel(u)}
+                </td>
                 <td>
                   <label
                     style={{
@@ -2499,9 +2746,19 @@ const PartnerInvoicesPane = ({ showToast }) => {
                     type="button"
                     className="btn xs"
                     style={{ marginLeft: 6 }}
+                    onClick={() => openEdit(u)}
+                  >
+                    {t("adminInvoiceEdit")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn xs"
+                    style={{ marginLeft: 6 }}
                     onClick={() => {
-                      AuthStore.downloadInvoicePlaceholder(u.id);
-                      showToast?.(t("invoiceDownload"), u.fileName);
+                      const r = store.downloadInvoicePlaceholder(u.id);
+                      if (r && r.ok)
+                        showToast?.(t("invoiceDownload"), u.fileName);
+                      else showToast?.(t("adminInvoiceErrGeneric"));
                     }}
                   >
                     {t("invoiceDownload")}
@@ -2514,6 +2771,7 @@ const PartnerInvoicesPane = ({ showToast }) => {
                       if (window.confirm(t("invoiceDeleteConfirm"))) {
                         store.deleteInvoiceUpload(u.id);
                         if (viewId === u.id) setViewId(null);
+                        if (editId === u.id) closeEdit();
                         showToast?.(t("invoiceDelete"), u.fileName);
                       }
                     }}
@@ -2526,6 +2784,158 @@ const PartnerInvoicesPane = ({ showToast }) => {
           )}
         </tbody>
       </table>
+
+      {editId && editForm && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            zIndex: 101,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+          onClick={closeEdit}
+        >
+          <div
+            className="card elev"
+            style={{ maxWidth: 480, width: "100%", padding: 22 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ margin: "0 0 16px", fontSize: 18 }}>
+              {t("adminInvoiceEdit")}
+            </h2>
+            <div style={{ display: "grid", gap: 12 }}>
+              <div>
+                <label className="field-label" htmlFor="ed-job">
+                  {t("adminInvoiceSelectJob")}
+                </label>
+                <select
+                  id="ed-job"
+                  className="input"
+                  value={editForm.jobId}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, jobId: e.target.value }))
+                  }
+                >
+                  {editForm.jobId &&
+                  !jobs.some((j) => j.id === editForm.jobId) ? (
+                    <option value={editForm.jobId}>
+                      {editForm.jobId} {t("adminInvoiceOrphanSuffix")}
+                    </option>
+                  ) : null}
+                  {jobs.map((j) => (
+                    <option key={j.id} value={j.id}>
+                      {j.tour} · {j.customer}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="field-label" htmlFor="ed-drv">
+                  {t("adminInvoiceSelectPartner")}
+                </label>
+                <select
+                  id="ed-drv"
+                  className="input"
+                  value={editForm.driverId}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, driverId: e.target.value }))
+                  }
+                >
+                  {editForm.driverId &&
+                  !drivers.some((d) => d.id === editForm.driverId) ? (
+                    <option value={editForm.driverId}>
+                      {editForm.driverId} {t("adminInvoiceOrphanSuffix")}
+                    </option>
+                  ) : null}
+                  {drivers.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} ({d.id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="field-label" htmlFor="ed-fn">
+                  {t("adminInvoiceDocRef")}
+                </label>
+                <input
+                  id="ed-fn"
+                  className="input mono"
+                  value={editForm.fileName}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, fileName: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="ed-inv">
+                  {t("invoiceIdLabel")}
+                </label>
+                <input
+                  id="ed-inv"
+                  className="input mono"
+                  value={editForm.invoiceId}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, invoiceId: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="ed-notes">
+                  {t("adminInvoiceNotes")}
+                </label>
+                <textarea
+                  id="ed-notes"
+                  className="input"
+                  rows={2}
+                  value={editForm.notes}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, notes: e.target.value }))
+                  }
+                  style={{ resize: "vertical", minHeight: 52 }}
+                />
+              </div>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginTop: 18,
+                justifyContent: "flex-end",
+              }}
+            >
+              <button type="button" className="btn" onClick={closeEdit}>
+                {t("adminInvoiceCancel")}
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => {
+                  const r = store.updateInvoiceUpload(editId, {
+                    jobId: editForm.jobId.trim(),
+                    driverId: editForm.driverId.trim(),
+                    fileName: editForm.fileName.trim(),
+                    invoiceId: editForm.invoiceId.trim(),
+                    notes: editForm.notes,
+                  });
+                  if (r.ok) {
+                    showToast?.(t("adminInvoiceSaved"), editForm.fileName);
+                    closeEdit();
+                  } else showToast?.(invoiceActionErr(r));
+                }}
+              >
+                {t("adminInvoiceSave")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {viewing && (
         <div
@@ -2577,20 +2987,26 @@ const PartnerInvoicesPane = ({ showToast }) => {
                 `${t("invoiceIdLabel")}: ${viewing.invoiceId || "—"}`,
                 `${t("adminInvoiceMetaFile")} ${viewing.fileName}`,
                 `${t("adminInvoiceMetaMime")} ${viewing.mimeType}`,
+                `${t("adminInvoiceMetaSource")} ${sourceLabel(viewing)}`,
                 `${t("adminInvoiceMetaPartner")} ${viewing.driverName}`,
                 `${t("adminInvoiceMetaJob")} ${
                   viewing.jobId || t("adminInvoiceJobNone")
                 }`,
+                viewing.notes
+                  ? `${t("adminInvoiceMetaNotes")} ${viewing.notes}`
+                  : null,
                 `${t("adminInvoiceMetaUploaded")} ${viewing.uploadedAt}`,
                 `${t("adminInvoiceMetaProcessed")} ${
                   viewing.processed
                     ? t("adminInvoiceMetaYes")
                     : t("adminInvoiceMetaNo")
                 }`,
-                `${t("adminInvoiceMetaSize")} ${viewing.sizeBytes} ${t(
+                `${t("adminInvoiceMetaSize")} ${viewing.sizeBytes ?? 0} ${t(
                   "adminInvoiceBytesUnit",
                 )}`,
-              ].join("\n")}
+              ]
+                .filter(Boolean)
+                .join("\n")}
             </pre>
             <button
               type="button"
@@ -2607,10 +3023,12 @@ const PartnerInvoicesPane = ({ showToast }) => {
   );
 };
 
-const FinancePane = () => {
+const FinancePane = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const jobs = store.getJobs();
+  const [finEditId, setFinEditId] = useStateA(null);
+  const [finDraft, setFinDraft] = useStateA(null);
   const paymentLabel = (code) => {
     const m = {
       "Invoice Missing": "adminPaymentOptMissing",
@@ -2621,6 +3039,39 @@ const FinancePane = () => {
     const key = m[code];
     return key ? t(key) : code || t("adminPaymentOptUnpaid");
   };
+  const toN = (v) => {
+    if (v === "" || v == null) return null;
+    const n = Number(String(v).replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  };
+  const openFinEdit = (j) => {
+    setFinEditId(j.id);
+    setFinDraft({
+      revenue: j.revenue ?? j.price ?? "",
+      driverCompensation: j.driverCompensation ?? "",
+      expenses: j.expenses ?? "",
+      netAmount: j.netAmount ?? "",
+      grossAmount: j.grossAmount ?? j.price ?? "",
+      vatRate: j.vatRate ?? 19,
+      paymentStatus: j.paymentStatus || "Unpaid",
+      invoiceNumber: j.invoiceNumber || "",
+      invoiceReceived: !!j.invoiceReceived,
+    });
+  };
+  const closeFinEdit = () => {
+    setFinEditId(null);
+    setFinDraft(null);
+  };
+
+  useEffectA(() => {
+    if (!finEditId) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") closeFinEdit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [finEditId]);
+
   const totalRevenue = jobs.reduce(
     (s, j) => s + Number(j.revenue || j.price || 0),
     0,
@@ -2653,57 +3104,349 @@ const FinancePane = () => {
             <th>{t("financeExpenses")}</th>
             <th>{t("adminFinanceColInv")}</th>
             <th>{t("adminFinanceColPay")}</th>
+            <th style={{ width: 72 }}></th>
           </tr>
         </thead>
         <tbody>
           {jobs.map((j) => (
-              <tr key={j.id}>
-                <td className="mono">{j.tour}</td>
-                <td>{j.customer}</td>
-                <td>€ {Number(j.revenue || j.price || 0).toFixed(2)}</td>
-                <td>€ {Number(j.driverCompensation || 0).toFixed(2)}</td>
-                <td>€ {Number(j.expenses || 0).toFixed(2)}</td>
-                <td>
-                  {j.invoiceReceived
-                    ? t("adminFinanceRecvShort")
-                    : t("adminFinanceMissingShort")}
-                  <div
-                    className="mono"
-                    style={{ fontSize: 11, color: "var(--muted)" }}
-                  >
-                    {j.invoiceNumber || t("adminFinanceNoInvNum")}
-                  </div>
-                </td>
-                <td>
-                  <Pill
-                    status={
-                      j.paymentStatus === "Paid" ? "completed" : "assigned"
-                    }
-                  >
-                    {paymentLabel(j.paymentStatus)}
-                  </Pill>
-                </td>
-              </tr>
-            ))}
+            <tr key={j.id}>
+              <td className="mono">{j.tour}</td>
+              <td>{j.customer}</td>
+              <td>€ {Number(j.revenue || j.price || 0).toFixed(2)}</td>
+              <td>€ {Number(j.driverCompensation || 0).toFixed(2)}</td>
+              <td>€ {Number(j.expenses || 0).toFixed(2)}</td>
+              <td>
+                {j.invoiceReceived
+                  ? t("adminFinanceRecvShort")
+                  : t("adminFinanceMissingShort")}
+                <div
+                  className="mono"
+                  style={{ fontSize: 11, color: "var(--muted)" }}
+                >
+                  {j.invoiceNumber || t("adminFinanceNoInvNum")}
+                </div>
+              </td>
+              <td>
+                <Pill
+                  status={
+                    j.paymentStatus === "Paid" ? "completed" : "assigned"
+                  }
+                >
+                  {paymentLabel(j.paymentStatus)}
+                </Pill>
+              </td>
+              <td>
+                <button
+                  type="button"
+                  className="btn xs"
+                  onClick={() => openFinEdit(j)}
+                >
+                  {t("adminFinanceEditRow")}
+                </button>
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
+
+      {finEditId && finDraft && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+          onClick={closeFinEdit}
+        >
+          <div
+            className="card elev"
+            style={{ maxWidth: 520, width: "100%", padding: 22 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ margin: "0 0 6px", fontSize: 18 }}>
+              {t("adminFinanceEditTitle")}
+            </h2>
+            <p className="label" style={{ margin: "0 0 16px", fontSize: 12 }}>
+              {(() => {
+                const j = jobs.find((x) => x.id === finEditId);
+                return j ? `${j.tour} · ${j.customer}` : finEditId;
+              })()}
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 12,
+              }}
+            >
+              <div>
+                <label className="field-label" htmlFor="fe-rev">
+                  {t("financeRevenuePrice")} (€)
+                </label>
+                <input
+                  id="fe-rev"
+                  className="input tnum"
+                  value={finDraft.revenue}
+                  onChange={(e) =>
+                    setFinDraft((p) => ({ ...p, revenue: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="fe-dc">
+                  {t("financeDriverComp")} (€)
+                </label>
+                <input
+                  id="fe-dc"
+                  className="input tnum"
+                  value={finDraft.driverCompensation}
+                  onChange={(e) =>
+                    setFinDraft((p) => ({
+                      ...p,
+                      driverCompensation: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="fe-ex">
+                  {t("financeExpenses")} (€)
+                </label>
+                <input
+                  id="fe-ex"
+                  className="input tnum"
+                  value={finDraft.expenses}
+                  onChange={(e) =>
+                    setFinDraft((p) => ({ ...p, expenses: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="fe-vat">
+                  {t("financeVatRateShort")} (%)
+                </label>
+                <input
+                  id="fe-vat"
+                  className="input tnum"
+                  value={finDraft.vatRate}
+                  onChange={(e) =>
+                    setFinDraft((p) => ({ ...p, vatRate: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="fe-net">
+                  {t("financeNetVat", {
+                    vat:
+                      toN(finDraft.vatRate) ??
+                      (typeof finDraft.vatRate === "number"
+                        ? finDraft.vatRate
+                        : 19),
+                  })}{" "}
+                  (€)
+                </label>
+                <input
+                  id="fe-net"
+                  className="input tnum"
+                  value={finDraft.netAmount}
+                  onChange={(e) =>
+                    setFinDraft((p) => ({ ...p, netAmount: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="fe-gross">
+                  {t("financeGross")} (€)
+                </label>
+                <input
+                  id="fe-gross"
+                  className="input tnum"
+                  value={finDraft.grossAmount}
+                  onChange={(e) =>
+                    setFinDraft((p) => ({ ...p, grossAmount: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="fe-pay">
+                  {t("paymentStatus")}
+                </label>
+                <select
+                  id="fe-pay"
+                  className="input"
+                  value={finDraft.paymentStatus}
+                  onChange={(e) =>
+                    setFinDraft((p) => ({
+                      ...p,
+                      paymentStatus: e.target.value,
+                    }))
+                  }
+                >
+                  {[
+                    ["Invoice Missing", "adminPaymentOptMissing"],
+                    ["Invoice Received", "adminPaymentOptReceived"],
+                    ["Unpaid", "adminPaymentOptUnpaid"],
+                    ["Paid", "adminPaymentOptPaid"],
+                  ].map(([val, key]) => (
+                    <option key={val} value={val}>
+                      {t(key)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="field-label" htmlFor="fe-inv">
+                  {t("invoiceNumber")}
+                </label>
+                <input
+                  id="fe-inv"
+                  className="input mono"
+                  value={finDraft.invoiceNumber}
+                  onChange={(e) =>
+                    setFinDraft((p) => ({
+                      ...p,
+                      invoiceNumber: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <label
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "center",
+                marginTop: 14,
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={finDraft.invoiceReceived}
+                onChange={(e) =>
+                  setFinDraft((p) => ({
+                    ...p,
+                    invoiceReceived: e.target.checked,
+                  }))
+                }
+              />
+              <span className="label" style={{ margin: 0 }}>
+                {t("invoiceReceived")}
+              </span>
+            </label>
+            <p
+              className="label"
+              style={{
+                margin: "14px 0 0",
+                fontSize: 11.5,
+                lineHeight: 1.45,
+              }}
+            >
+              {t("adminFinanceCompletedInvoiceNote")}
+            </p>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginTop: 18,
+                justifyContent: "flex-end",
+              }}
+            >
+              <button type="button" className="btn" onClick={closeFinEdit}>
+                {t("adminInvoiceCancel")}
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => {
+                  const rev = toN(finDraft.revenue);
+                  const patch = {
+                    driverCompensation: toN(finDraft.driverCompensation),
+                    expenses: toN(finDraft.expenses),
+                    netAmount: toN(finDraft.netAmount),
+                    grossAmount: toN(finDraft.grossAmount),
+                    vatRate: toN(finDraft.vatRate) ?? 19,
+                    paymentStatus: finDraft.paymentStatus,
+                    invoiceNumber: finDraft.invoiceNumber,
+                    invoiceReceived: finDraft.invoiceReceived,
+                  };
+                  if (rev != null) {
+                    patch.revenue = rev;
+                    patch.price = rev;
+                  }
+                  const r = store.updateFinancial(finEditId, patch);
+                  if (r.ok) {
+                    const j = jobs.find((x) => x.id === finEditId);
+                    showToast?.(
+                      t("adminFinanceSaved"),
+                      j ? `${j.tour} · ${j.customer}` : "",
+                    );
+                    closeFinEdit();
+                  } else showToast?.(t("adminFinanceErrSave"));
+                }}
+              >
+                {t("adminInvoiceSave")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const AuditPane = () => {
+const AuditPane = ({ showToast }) => {
+  const { t } = useI18n();
   const store = useAuthStore();
   return (
     <div>
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>Audit log</h1>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+          {t("navAuditLog")}
+        </h1>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => {
+            const csv = store.exportAuditLogCsv();
+            const blob = new Blob([csv], {
+              type: "text/csv;charset=utf-8",
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "autheon-audit-log.csv";
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast?.(t("adminAuditExportTitle"), t("adminAuditExportSub"));
+          }}
+        >
+          <Ic.Down /> {t("adminAuditDownloadCsv")}
+        </button>
+      </div>
       <table className="tbl" style={{ marginTop: 18 }}>
         <thead>
           <tr>
-            <th>Time</th>
-            <th>Action</th>
-            <th>Actor</th>
-            <th>Entity</th>
-            <th>Metadata</th>
+            <th>{t("adminAuditColTime")}</th>
+            <th>{t("adminAuditColAction")}</th>
+            <th>{t("adminAuditColActor")}</th>
+            <th>{t("adminAuditColEntity")}</th>
+            <th>{t("adminAuditColMeta")}</th>
           </tr>
         </thead>
         <tbody>

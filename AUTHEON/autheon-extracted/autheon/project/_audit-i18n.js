@@ -1,6 +1,7 @@
 const fs = require("fs");
+const path = require("path");
 const vm = require("vm");
-const code = fs.readFileSync("i18n.js", "utf8");
+const code = fs.readFileSync(path.join(__dirname, "i18n.js"), "utf8");
 const ctx = {
   window: {},
   localStorage: { getItem: () => null, setItem: () => {} },

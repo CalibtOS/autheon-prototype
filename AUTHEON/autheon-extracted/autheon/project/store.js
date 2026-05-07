@@ -1116,6 +1116,23 @@ window.AuthStore = (() => {
       return rows.join("\n");
     },
 
+    exportAuditLogCsv() {
+      const cols = ["at", "action", "actor", "entity", "meta"];
+      const esc = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+      const list = api.getAuditLog();
+      const rows = [cols.join(",")].concat(
+        list.map((a) => cols.map((c) => esc(a[c])).join(",")),
+      );
+      log(
+        "audit_log_exported",
+        DEMO_ADMIN,
+        "CSV",
+        `${list.length} rows`,
+      );
+      emit();
+      return rows.join("\n");
+    },
+
     transportOrderText(id) {
       const j = api.getJob(id);
       if (!j) return "";
@@ -1211,6 +1228,8 @@ window.AuthStore = (() => {
         sizeBytes: typeof file.size === "number" ? file.size : 0,
         uploadedAt: new Date().toISOString(),
         processed: false,
+        source: "driver",
+        notes: "",
       };
       invoiceUploads.unshift(row);
       if (jobId) {
@@ -1241,11 +1260,92 @@ window.AuthStore = (() => {
       return invoiceUploads.filter((x) => x.jobId === jobId);
     },
 
+    addPartnerInvoiceRecordAdmin(opts = {}) {
+      const jobRaw =
+        opts.jobId != null && String(opts.jobId).trim()
+          ? String(opts.jobId).trim()
+          : "";
+      if (!jobRaw || !api.getJob(jobRaw))
+        return { ok: false, reason: "bad_job" };
+      const driverRaw =
+        opts.driverId != null && String(opts.driverId).trim()
+          ? String(opts.driverId).trim()
+          : "";
+      const d = drivers.find((x) => x.id === driverRaw);
+      if (!d) return { ok: false, reason: "bad_driver" };
+      const fileName = String(opts.fileName || "").trim();
+      if (!fileName) return { ok: false, reason: "no_filename" };
+      const mime =
+        String(opts.mimeType || "application/octet-stream").trim() ||
+        "application/octet-stream";
+      const notes = String(opts.notes || "").trim();
+      const invoiceId = `INV-${Date.now().toString(36).toUpperCase()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)
+        .toUpperCase()}`;
+      const row = {
+        id: `IU-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        invoiceId,
+        driverId: d.id,
+        driverName: d.name,
+        jobId: jobRaw,
+        fileName,
+        mimeType: mime,
+        sizeBytes: 0,
+        uploadedAt: new Date().toISOString(),
+        processed: false,
+        source: "admin",
+        notes,
+      };
+      invoiceUploads.unshift(row);
+      const push = opts.pushToJob !== false;
+      if (push) {
+        const j = api.getJob(jobRaw);
+        if (j)
+          api.updateFinancial(jobRaw, {
+            invoiceNumber: invoiceId,
+            invoiceReceived: true,
+          });
+      }
+      log(
+        "partner_invoice_admin_registered",
+        DEMO_ADMIN,
+        row.fileName,
+        `${jobRaw} · ${invoiceId}`,
+      );
+      emit();
+      return { ok: true, id: row.id, invoiceId: row.invoiceId };
+    },
+
     updateInvoiceUpload(id, patch) {
       const u = invoiceUploads.find((x) => x.id === id);
       if (!u) return { ok: false };
-      if (patch.jobId !== undefined)
-        return { ok: false, reason: "job_scope_readonly" };
+      if (patch.jobId !== undefined) {
+        const jid =
+          patch.jobId === "" || patch.jobId == null
+            ? ""
+            : String(patch.jobId).trim();
+        if (!jid) return { ok: false, reason: "job_required" };
+        if (!api.getJob(jid)) return { ok: false, reason: "bad_job" };
+        u.jobId = jid;
+      }
+      if (patch.fileName !== undefined) {
+        const fn = String(patch.fileName || "").trim();
+        if (!fn) return { ok: false, reason: "no_filename" };
+        u.fileName = fn;
+      }
+      if (patch.invoiceId !== undefined) {
+        const inv = String(patch.invoiceId || "").trim();
+        if (!inv) return { ok: false, reason: "no_invoice_id" };
+        u.invoiceId = inv;
+      }
+      if (patch.driverId !== undefined) {
+        const dr = drivers.find((x) => x.id === patch.driverId);
+        if (!dr) return { ok: false, reason: "bad_driver" };
+        u.driverId = dr.id;
+        u.driverName = dr.name;
+      }
+      if (patch.notes !== undefined) u.notes = String(patch.notes ?? "");
       if (patch.processed !== undefined) u.processed = !!patch.processed;
       log(
         "invoice_upload_updated",
@@ -1277,6 +1377,7 @@ window.AuthStore = (() => {
       const jobLine = u.jobId ? `Job ID: ${u.jobId}` : "Job: (none / unscoped)";
       const body = [
         "AUTHEON prototype — binary file not stored.",
+        `Source: ${u.source === "admin" ? "admin (off-channel)" : "driver PWA"}`,
         `Invoice ID: ${u.invoiceId || "(pending)"}`,
         `Original filename: ${u.fileName}`,
         `MIME: ${u.mimeType}`,
@@ -1284,9 +1385,12 @@ window.AuthStore = (() => {
         `Driver: ${u.driverName} (${u.driverId})`,
         jobLine,
         `Processed: ${u.processed ? "yes" : "no"}`,
+        u.notes ? `Notes: ${u.notes}` : "",
         "",
         "This placeholder replaces an actual PDF/image in the demo.",
-      ].join("\r\n");
+      ]
+        .filter(Boolean)
+        .join("\r\n");
       const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

@@ -1,7 +1,7 @@
 {
   "feature": "AUTHEON Phase 1 - Vehicle Transport Platform",
-  "version": "PRD v1.2 - Unified Master (merged compact PRD + expanded backlog, English)",
-  "goal": "Replace manual vehicle transport dispatch with a contract-driven platform that supports marketplace job distribution, direct assignment, binding driver acceptance, controlled returns, automatic transport-order PDF generation, operational tracking, and basic financial lifecycle tracking.",
+  "version": "PRD v1.3 - Unified Master (+ partner invoices & billing reconciliation; prototype gap pass, English)",
+  "goal": "Replace manual vehicle transport dispatch with a contract-driven platform that supports marketplace job distribution, direct assignment, binding driver acceptance, controlled returns, automatic transport-order PDF generation, operational tracking, partner invoice ingestion per tour, reconciled invoice-received state, and basic financial lifecycle tracking.",
   "product_context": {
     "platform_type": "Vehicle transport / vehicle relocation operations platform",
     "primary_users": [
@@ -24,8 +24,16 @@
       "Published and Assigned are separate mutually exclusive paths in Phase 1.",
       "Admins may cancel jobs from Accepted or Assigned when operations require it.",
       "The platform does not include chat, GPS tracking, live tracking, or map modules in Phase 1."
-    ]
+    ],
+    "prototype_reference": "AUTHEON/autheon-extracted/autheon/project (single-page HTML/React Babel demo: admin.jsx, driver.jsx, store.js, i18n.js — not production repo layout; maps conceptually to apps/* paths in tasks)."
   },
+  "prototype_coverage_notes": [
+    "Driver PWA (demo): marketplace, My Jobs, job detail visibility, accept slide, complete, return request, invoice upload per job (job id required), profile/info, notification prefs behind feature flag.",
+    "Admin (demo): job overview with filters/pagination, job detail + return decision, PDF view/download/regenerate, separate Finance and Partner invoices nav with cross-links, users/customers/documents panes, audit log, CSV export, feature flags pane.",
+    "Billing (demo): job fields include adminInvoiceOverride; invoiceReceived reconciled from (processed partner uploads linked to job) OR admin override; upload add/update/delete triggers reconcile.",
+    "Audit log (demo): entries viewable in admin; CSV download for offline search (export is logged).",
+    "i18n: EN/DE in prototype for UX demo; product-wide multilingual rollout remains a separate decision (see out_of_scope)."
+  ],
   "domain_model_summary": {
     "job_fields": [
       "tourNumber",
@@ -50,7 +58,8 @@
       "price/revenue",
       "driver compensation",
       "expenses",
-      "invoice received",
+      "invoice received (may be system-derived — see business rules)",
+      "admin invoice override (optional explicit lock: manual invoice-received independent of uploads)",
       "invoice number",
       "payment status",
       "internal notes",
@@ -79,6 +88,16 @@
       "Active",
       "Blocked",
       "Deactivated"
+    ],
+    "partner_invoice_document_fields": [
+      "document id",
+      "driver id and display name",
+      "job id (required from driver PWA upload)",
+      "original file name and MIME type",
+      "size (bytes) for production",
+      "uploaded at (timestamp)",
+      "processed (admin/bookkeeping flag)",
+      "storage reference / placeholder in prototype (metadata-only demo)"
     ]
   },
   "global_business_rules": [
@@ -97,7 +116,10 @@
     "Admins may transition Accepted or Assigned jobs to Cancelled when required; cancelled jobs leave marketplace and active driver job lists.",
     "Completed jobs move to the driver's Completed area and into post-completion financial tracking.",
     "PDF generation must be based on the current structured job data.",
-    "Only the currently active PDF needs to be visible in the base scope; regeneration events must be auditable."
+    "Only the currently active PDF needs to be visible in the base scope; regeneration events must be auditable.",
+    "Partner invoice files are always submitted in the context of a specific job/tour (job id required); there is no driver-facing unattached invoice inbox in the PWA.",
+    "Invoice received on a job reflects either (a) admin manual override, or (b) presence of at least one partner invoice document for that job marked processed by admin, unless an explicit false override is used for dispute flows.",
+    "Finance ledger views (amounts, payment status, invoice number) and partner invoice inbox (file queue, linking, processed) are separate admin surfaces but share one reconciliation rule for invoice received."
   ],
   "tasks": [
     {
@@ -107,7 +129,8 @@
       "story": "As a platform owner, I want a persisted domain model for tours/jobs, drivers, customers, documents, statuses, and financial fields so that all flows share one source of truth.",
       "acceptance": [
         "Job entity includes all operational fields required by the transport-order template: tour number, category, customer, route, contacts, dates/time windows, vehicle data, distance, price, driver, notes, and PDF reference.",
-        "Job entity includes financial fields aligned with the legacy operational spreadsheet: revenue, driver compensation, invoice received, invoice type, invoice number, expenses, payment status, and notes.",
+        "Job entity includes financial fields aligned with the legacy operational spreadsheet: revenue, driver compensation, invoice received (including derivation rules and optional admin override per business rules), invoice type, invoice number, expenses, payment status, and notes.",
+        "Partner invoice document entity exists for driver-submitted billing files linked to a job (see task 27).",
         "Pricing supports commercial breakdown required for PDF output: net amount, VAT rate (template uses 19 percent where applicable), gross/total.",
         "Optional parity with legacy vehicle-list spreadsheet: fields or export mapping for assignment method, logistics status, proof of protocol, confirmation, contractor/carrier, remarks.",
         "Driver entity includes identity, contact information, status, service partner identifier, and notification/filter preferences.",
@@ -378,6 +401,7 @@
         "Table includes customer, pickup/delivery route, driver, status, vehicle, date/time, and financial/payment indicators where feasible.",
         "Export or column mapping can align with legacy vehicle-list spreadsheet headers where Phase 1 needs continuity (order number, pickup and delivery company and location, appointment date, pickup time, principal, contractor, assignment method, logistics status, revenue, invoice received flag, invoice type, invoice number, expenses, paid flag, remarks, job notes).",
         "Table supports filtering and sorting by status, date, driver, and customer at minimum.",
+        "Desktop list remains usable at high volume via pagination, density controls, or equivalent (prototype includes pagination and filter panel patterns).",
         "Rows navigate to job detail.",
         "Drafts are visible to admins with created/updated metadata.",
         "High-volume list remains usable on desktop."
@@ -398,7 +422,7 @@
         "Shows assignment and status history timeline.",
         "Shows generated PDF and regeneration action where allowed.",
         "Shows return request state if present.",
-        "Shows financial section: revenue/job price, driver compensation, expenses; invoice received, invoice type, invoice number, paid/unpaid; optional legacy operational codes if still used.",
+        "Shows financial section: revenue/job price, driver compensation, expenses; invoice received (manual and/or derived from partner uploads per task 27), invoice type, invoice number, paid/unpaid; optional legacy operational codes if still used.",
         "Operational auxiliary fields from legacy spreadsheet supported or stubbed: proof of protocol, confirmation, assignment method, logistics status, remarks.",
         "Driver-facing SLA from PDF (submit single or consolidated invoice within seven calendar days to the invoice inbox shown on the template) surfaced as informational text on completed job detail or linked PDF summary where useful.",
         "Admin can edit Draft jobs and permitted non-critical fields according to final business rules."
@@ -461,12 +485,14 @@
         "Profile explains that master-data changes must be requested through AUTHEON.",
         "Notification preferences include postal code or location, vehicle type, and own versus third-party axle filters.",
         "Drivers can enable or disable push notifications.",
-        "If no filters are configured, targeted notifications are not sent according to agreed rule."
+        "If no filters are configured, targeted notifications are not sent according to agreed rule.",
+        "If product uses phased rollout, admin may expose feature toggles that control optional driver UI (e.g. notification preference section visibility); toggles are auditable."
       ],
       "status": "pending",
       "files": [
         "apps/driver-pwa/src/profile/",
-        "services/notifications/preferences.ts"
+        "services/notifications/preferences.ts",
+        "apps/admin/src/settings/feature-flags.ts"
       ]
     },
     {
@@ -495,15 +521,44 @@
       "story": "As an admin, I want to track basic financial information per job so operations and settlement are visible.",
       "acceptance": [
         "Job financial fields include revenue/price, driver compensation, expenses, invoice received, invoice type, invoice number, payment status, and notes.",
-        "Admin can view financial fields in overview/detail.",
-        "Admin can update financial status manually in Phase 1 unless integration is later added.",
+        "Optional explicit adminInvoiceOverride (or equivalent) distinguishes manual invoice-received intent from system derivation from partner invoice documents (see task 27).",
+        "Admin can view and edit financial fields in overview/detail (including adjustments when documents arrive by non-PWA channels).",
         "Completed jobs can proceed into invoice/payment tracking.",
+        "Dedicated Finance ledger view (per-job table/summary) is available separately from Partner invoices inbox if both exist (see task 27).",
         "Advanced margin automation and accounting integration are marked out of scope unless separately scoped."
       ],
       "status": "pending",
       "files": [
         "apps/admin/src/finance/",
-        "services/jobs/financial.ts"
+        "services/jobs/financial.ts",
+        "services/billing/reconcile.ts"
+      ]
+    },
+    {
+      "id": 27,
+      "epic": "Partner invoices & billing reconciliation",
+      "priority": 21,
+      "story": "As a driver, I want to upload invoice files per tour; as an admin, I want a partner-invoice inbox and invoice-received state that stays consistent with processed uploads.",
+      "acceptance": [
+        "Driver submits invoice uploads only in the context of a valid job/tour: API requires job id on create (no unattached driver uploads in PWA).",
+        "Accepted file types include PDF and standard images (JPEG, PNG, WebP, GIF) unless compliance policy changes.",
+        "Production persists file storage with appropriate security; prototype may use metadata-only placeholders.",
+        "Blocked/restricted drivers cannot create uploads.",
+        "Admin Partner invoices view lists uploads with file metadata, partner, linked job/tour, upload time, processed flag, and actions (open linked job, view metadata, download).",
+        "Backend and admin UI support creating and editing partner invoice document records (and linking to jobs) for channels outside the PWA, such as bundled invoices sent by email; prototype may remain upload/list/process-only without manual create.",
+        "Admin Finance view remains the per-job ledger (amounts, invoice number, payment status, invoice received display).",
+        "Invoice received on job reconciles idempotently: true if adminInvoiceOverride is true, false if override is explicitly false (dispute path), else true iff at least one upload for that job is marked processed.",
+        "Changing upload processed flag, link to job, or deleting upload triggers reconcile on all affected jobs.",
+        "Cross-links between Finance and Partner invoices and job-detail banners for pending linked uploads match agreed UX (see prototype reference).",
+        "CSV/export includes columns needed for continuity (e.g. invoiceReceived, adminInvoiceOverride) where operations require it."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/driver-pwa/src/jobs/invoice-upload.tsx",
+        "apps/admin/src/billing/partner-invoices.tsx",
+        "apps/admin/src/billing/finance.tsx",
+        "services/billing/partner-invoices.ts",
+        "services/billing/reconcile.ts"
       ]
     },
     {
@@ -513,13 +568,15 @@
       "story": "As AUTHEON, I want all important actions logged so the system is traceable.",
       "acceptance": [
         "Audit log records action type, actor, affected entity, timestamp, and relevant metadata.",
-        "Logged actions include job created, changed, published, directly assigned, accepted, completed, cancelled (including admin cancellation), return requested, return approved/rejected, user blocked/deactivated, document uploaded/replaced, PDF generated/regenerated, and acceptance confirmation.",
-        "Admin can view audit log entries.",
+        "Logged actions include job created, changed, published, directly assigned, accepted, completed, cancelled (including admin cancellation), return requested, return approved/rejected, user blocked/deactivated, document uploaded/replaced, PDF generated/regenerated, acceptance confirmation, partner invoice upload registered/updated/deleted, financial field updates, audit log export, and feature flag changes if used.",
+        "Admin can view audit log entries in the admin console.",
+        "Admin can download or export the audit log (e.g. CSV) for offline search, filtering, and archival; export is admin-only and is itself auditable.",
         "Status history is visible on job detail."
       ],
       "status": "pending",
       "files": [
         "services/audit/",
+        "services/audit/export.ts",
         "apps/admin/src/audit/"
       ]
     },
@@ -548,9 +605,9 @@
       "priority": 24,
       "story": "As an admin, I want to export relevant job data so AUTHEON can continue operational and financial reporting.",
       "acceptance": [
-        "Admin can export relevant job data in CSV or Excel format.",
+        "Admin can export relevant job data and the audit log in CSV or Excel format.",
         "Export includes operational fields and basic financial fields.",
-        "Optional export column preset maps to legacy vehicle-list template columns for spreadsheet continuity (same glossary as admin overview task).",
+        "Optional export column preset maps to legacy vehicle-list template columns for spreadsheet continuity (same glossary as admin overview task), including billing-projection fields such as adminInvoiceOverride when operations require audit trail.",
         "Export respects admin-only access.",
         "Legacy template files may contain spreadsheet errors; exports are system-generated and validated, not raw re-export of broken templates.",
         "Advanced dashboards/BI are out of scope unless separately approved."
@@ -596,7 +653,9 @@
         "Test: PDF generation includes required template fields.",
         "Test: admin can cancel Accepted or Assigned job; job leaves marketplace and driver active lists.",
         "Test: completed job moves to Completed tab.",
-        "Test: financial status fields can be updated by admin only.",
+        "Test: financial and invoice-received fields update correctly for admin-only users.",
+        "Test: partner invoice upload requires job id; processed flag and reconciliation update job invoice received per task 27 rules.",
+        "Test: admin can export audit log for download; export creates an auditable event.",
         "Test: audit logs are created for critical actions."
       ],
       "status": "pending",
@@ -614,11 +673,10 @@
     "Driver rating/ranking",
     "Automated driver-job matching",
     "Advanced BI dashboards and margin automation beyond basic recorded fields",
-    "Accounting/invoicing system integration",
-    "Driver upload of proofs/documents unless separately scoped",
-    "Multilingual support unless separately scoped",
+    "Accounting/invoicing system integration (export and manual fields in scope; ERP sync out of scope)",
+    "Full product multilingual/i18n rollout and localized legal copy management unless separately scoped (demo locales may exist in prototype only)",
     "External customer import interfaces/PDF recognition unless separately scoped",
-    "Any behavior not described in PRD v1.2 or validated wireframes/PDF requires client change request"
+    "Any behavior not described in PRD v1.3 or validated wireframes/PDF requires client change request"
   ],
   "open_questions": [
     "Confirm exact timezone for return deadline calculation.",
@@ -629,14 +687,14 @@
     "Confirm whether directly assigned jobs should trigger notification to the assigned driver.",
     "Confirm tax calculation requirements in PDF totals.",
     "Confirm exact vehicle categories and whether the vehicle CSV is master data or operational import data.",
-    "Confirm whether invoice tracking is Phase 1 core or admin-only optional field set."
+    "Confirm production file retention, encryption at rest, malware scanning, and DSGVO handling for partner invoice uploads (task 27)."
   ],
   "risks": [
     "Legal wording inside the transport-order PDF requires legal review before production.",
     "Atomic marketplace acceptance requires transaction-safe implementation; wrong implementation can cause double assignment.",
     "Return deadline wording needs timezone and date-source clarification to avoid disputes.",
     "Wireframes may imply UI flows not fully described in text scope; reconcile during UX specification.",
-    "Financial tracking is basic in Phase 1; accounting integration is out of scope.",
+    "Financial tracking is basic in Phase 1; accounting integration is out of scope; partner invoice uploads and reconciliation are in scope per tasks 21 and 27.",
     "PWA push behavior differs between Android and iOS; iOS requires careful onboarding and testing.",
     "If Directus is used for admin, critical workflow state changes must still go through controlled business logic to avoid inconsistent data.",
     "Legacy vehicle-list CSV in the repository may contain spreadsheet errors; use only as a column glossary unless cleansed for import."
