@@ -18,7 +18,10 @@ window.AuthStore = (() => {
     published: { i18n: "status.published", cls: "published" },
     assigned: { i18n: "status.assigned", cls: "assigned" },
     accepted: { i18n: "status.accepted", cls: "accepted" },
-    return_requested: { i18n: "status.return_requested", cls: "return_requested" },
+    return_requested: {
+      i18n: "status.return_requested",
+      cls: "return_requested",
+    },
     completed: { i18n: "status.completed", cls: "completed" },
     cancelled: { i18n: "status.cancelled", cls: "cancelled" },
   };
@@ -88,7 +91,13 @@ window.AuthStore = (() => {
       email: "jordan.blake@example.com",
       phone: "+49 170 4400228",
       status: "Active",
-      prefs: { startPlz: "80", endPlz: "", vehicle: "PKW", axle: "All", push: true },
+      prefs: {
+        startPlz: "80",
+        endPlz: "",
+        vehicle: "PKW",
+        axle: "All",
+        push: true,
+      },
     },
     {
       id: "DRV-0177",
@@ -99,13 +108,31 @@ window.AuthStore = (() => {
       email: "mira.vogt@example.com",
       phone: "+49 171 991177",
       status: "Blocked",
-      prefs: { startPlz: "10", endPlz: "", vehicle: "SUV", axle: "Own axle", push: false },
+      prefs: {
+        startPlz: "10",
+        endPlz: "",
+        vehicle: "SUV",
+        axle: "Own axle",
+        push: false,
+      },
     },
   ];
 
   const admins = [
-    { id: "ADM-001", name: DEMO_ADMIN, email: "anna.bauer@autheon.example", status: "Active", role: "Dispatcher" },
-    { id: "ADM-002", name: "Lukas Reimann", email: "lukas.reimann@autheon.example", status: "Active", role: "Operations lead" },
+    {
+      id: "ADM-001",
+      name: DEMO_ADMIN,
+      email: "anna.bauer@autheon.example",
+      status: "Active",
+      role: "Dispatcher",
+    },
+    {
+      id: "ADM-002",
+      name: "Lukas Reimann",
+      email: "lukas.reimann@autheon.example",
+      status: "Active",
+      role: "Operations lead",
+    },
   ];
 
   const customers = [
@@ -127,21 +154,97 @@ window.AuthStore = (() => {
       delivery: "Marsstr. 22, 80339 München",
       contact: "S. Keller",
       phone: "+49 711 441122",
-      instructions: "Historic vehicles require enclosed transport confirmation.",
+      instructions:
+        "Historic vehicles require enclosed transport confirmation.",
     },
   ];
 
   const documents = [
-    { id: "DOC-001", title: "General work instructions", category: "Operations", visible: true, scope: "Global", version: "v1.2", updatedAt: "04.05. 09:10" },
-    { id: "DOC-002", title: "Partner terms", category: "Legal", visible: true, scope: "Global", version: "v3.0", updatedAt: "02.05. 14:45" },
-    { id: "DOC-003", title: "Emergency contacts", category: "Safety", visible: true, scope: "Global", version: "v1.0", updatedAt: "01.05. 08:00" },
-    { id: "DOC-004", title: "Privacy policy", category: "Legal", visible: true, scope: "Global", version: "v2.1", updatedAt: "29.04. 11:30" },
-    { id: "DOC-005", title: "Imprint", category: "Legal", visible: true, scope: "Global", version: "v1.0", updatedAt: "29.04. 11:31" },
+    {
+      id: "DOC-001",
+      title: "General work instructions",
+      category: "Operations",
+      visible: true,
+      scope: "Global",
+      version: "v1.2",
+      updatedAt: "04.05. 09:10",
+    },
+    {
+      id: "DOC-002",
+      title: "Partner terms",
+      category: "Legal",
+      visible: true,
+      scope: "Global",
+      version: "v3.0",
+      updatedAt: "02.05. 14:45",
+    },
+    {
+      id: "DOC-003",
+      title: "Emergency contacts",
+      category: "Safety",
+      visible: true,
+      scope: "Global",
+      version: "v1.0",
+      updatedAt: "01.05. 08:00",
+    },
+    {
+      id: "DOC-004",
+      title: "Privacy policy",
+      category: "Legal",
+      visible: true,
+      scope: "Global",
+      version: "v2.1",
+      updatedAt: "29.04. 11:30",
+    },
+    {
+      id: "DOC-005",
+      title: "Imprint",
+      category: "Legal",
+      visible: true,
+      scope: "Global",
+      version: "v1.0",
+      updatedAt: "29.04. 11:31",
+    },
   ];
 
+  const featureFlags = {
+    ...(window.AUTHEON_FLAG_DEFAULTS || { notificationPreferences: false }),
+  };
+
   const auditLog = [
-    { action: "prototype_loaded", actor: "System", entity: "AUTHEON demo", at: "05.05. 15:49", meta: "Client-side PRD coverage prototype" },
+    {
+      action: "prototype_loaded",
+      actor: "System",
+      entity: "AUTHEON demo",
+      at: "05.05. 15:49",
+      meta: "Client-side PRD coverage prototype",
+    },
   ];
+
+  /** Partner invoice file references only (no binary persisted) — mock uploads from Driver PWA. */
+  const invoiceUploads = [];
+
+  function guessMimeFromName(name) {
+    const ext = (String(name).split(".").pop() || "").toLowerCase();
+    const map = {
+      pdf: "application/pdf",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      webp: "image/webp",
+      gif: "image/gif",
+    };
+    return map[ext] || "";
+  }
+
+  function isAllowedInvoiceFile(file) {
+    if (!file || !file.name) return false;
+    const ty = (file.type || "").trim().toLowerCase();
+    if (ty === "application/pdf" || /^image\/(jpeg|png|webp|gif)$/.test(ty))
+      return true;
+    const ext = file.name.split(".").pop().toLowerCase();
+    return ["pdf", "jpg", "jpeg", "png", "webp", "gif"].includes(ext);
+  }
 
   const jobs = [
     mk({
@@ -178,7 +281,8 @@ window.AuthStore = (() => {
       paymentStatus: "Unpaid",
       contactPickup: { name: "H. Schneider", phone: "+49 89 1234567" },
       contactDelivery: { name: "F. Becker", phone: "+49 30 9876543" },
-      notes: "Key handover at reception. Vehicle prepared, fuel approx. ½ tank. Ref: KR-88213.",
+      notes:
+        "Key handover at reception. Vehicle prepared, fuel approx. ½ tank. Ref: KR-88213.",
       notesDriver: "Please confirm arrival 15 minutes early.",
       status: "published",
       pdfVersion: 1,
@@ -255,7 +359,8 @@ window.AuthStore = (() => {
       driver: DEMO_DRIVER,
       hasReturnRequest: true,
       returnReason: "return",
-      returnMessage: "Customer postponed pickup; requesting dispatch to re-open tour.",
+      returnMessage:
+        "Customer postponed pickup; requesting dispatch to re-open tour.",
       preReturnStatus: "assigned",
       pdfVersion: 1,
       history: [
@@ -539,7 +644,15 @@ window.AuthStore = (() => {
   function returnDeadline(job) {
     const d = parseJobDate(job);
     if (!d || Number.isNaN(d.getTime())) return null;
-    const deadline = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1, 23, 59, 59, 999);
+    const deadline = new Date(
+      d.getFullYear(),
+      d.getMonth(),
+      d.getDate() - 1,
+      23,
+      59,
+      59,
+      999,
+    );
     return deadline;
   }
 
@@ -559,12 +672,18 @@ window.AuthStore = (() => {
   }
 
   function log(action, actor, entity, meta) {
-    auditLog.unshift({ action, actor, entity, at: nowStamp(), meta: meta || "" });
+    auditLog.unshift({
+      action,
+      actor,
+      entity,
+      at: nowStamp(),
+      meta: meta || "",
+    });
   }
 
-function bumpPdf(job) {
-  job.pdfVersion = (job.pdfVersion || 0) + 1;
-}
+  function bumpPdf(job) {
+    job.pdfVersion = (job.pdfVersion || 0) + 1;
+  }
 
   const api = {
     STATUSES,
@@ -586,7 +705,8 @@ function bumpPdf(job) {
     getCustomers: () => customers,
     getDocuments: () => documents,
     getAuditLog: () => auditLog,
-    getCurrentDriver: () => drivers.find((d) => d.name === DEMO_DRIVER) || drivers[0],
+    getCurrentDriver: () =>
+      drivers.find((d) => d.name === DEMO_DRIVER) || drivers[0],
     isCurrentDriverActive() {
       const d = api.getCurrentDriver();
       return !d || d.status === "Active";
@@ -607,7 +727,11 @@ function bumpPdf(job) {
       if (driverState.acceptedIds.has(j.id)) return true;
       if (driverState.completedIds.has(j.id)) return true;
       if (driverState.pendingIds.has(j.id)) return true;
-      if (j.driver === DEMO_DRIVER && ["assigned", "accepted", "return_requested"].includes(j.status)) return true;
+      if (
+        j.driver === DEMO_DRIVER &&
+        ["assigned", "accepted", "return_requested"].includes(j.status)
+      )
+        return true;
       return false;
     },
 
@@ -617,13 +741,18 @@ function bumpPdf(job) {
 
     acceptJob(id) {
       const j = api.getJob(id);
-      if (!j || j.status !== "published") return { ok: false, reason: "not_available" };
-      if (!api.isCurrentDriverActive()) return { ok: false, reason: "driver_restricted" };
+      if (!j || j.status !== "published")
+        return { ok: false, reason: "not_available" };
+      if (!api.isCurrentDriverActive())
+        return { ok: false, reason: "driver_restricted" };
       j.preReturnStatus = null;
       j.status = "accepted";
       j.driver = DEMO_DRIVER;
       j.pdfVersion = Math.max(1, j.pdfVersion || 0);
-      j.history = [...(j.history || []), { st: "accepted", at: nowStamp(), by: DEMO_DRIVER }];
+      j.history = [
+        ...(j.history || []),
+        { st: "accepted", at: nowStamp(), by: DEMO_DRIVER },
+      ];
       driverState.acceptedIds.add(id);
       log("job_accepted", DEMO_DRIVER, j.tour, "Binding slide confirmation");
       emit();
@@ -632,27 +761,40 @@ function bumpPdf(job) {
 
     completeJob(id) {
       const j = api.getJob(id);
-      if (!j || !["assigned", "accepted"].includes(j.status)) return { ok: false };
+      if (!j || !["assigned", "accepted"].includes(j.status))
+        return { ok: false };
       j.status = "completed";
       j.completedAt = nowStamp();
-      j.history = [...(j.history || []), { st: "completed", at: nowStamp(), by: j.driver || DEMO_DRIVER }];
+      j.history = [
+        ...(j.history || []),
+        { st: "completed", at: nowStamp(), by: j.driver || DEMO_DRIVER },
+      ];
       driverState.completedIds.add(id);
       driverState.acceptedIds.delete(id);
-      log("job_completed", j.driver || DEMO_DRIVER, j.tour, "Driver marked completed");
+      log(
+        "job_completed",
+        j.driver || DEMO_DRIVER,
+        j.tour,
+        "Driver marked completed",
+      );
       emit();
       return { ok: true };
     },
 
     submitReturn(id, reason, message) {
       const j = api.getJob(id);
-      if (!j || !["assigned", "accepted"].includes(j.status)) return { ok: false, reason: "invalid_state" };
+      if (!j || !["assigned", "accepted"].includes(j.status))
+        return { ok: false, reason: "invalid_state" };
       if (isReturnDeadlinePassed(j)) return { ok: false, reason: "deadline" };
       j.preReturnStatus = j.status;
       j.returnReason = reason;
       j.returnMessage = message;
       j.hasReturnRequest = true;
       j.status = "return_requested";
-      j.history = [...(j.history || []), { st: "return_requested", at: nowStamp(), by: DEMO_DRIVER }];
+      j.history = [
+        ...(j.history || []),
+        { st: "return_requested", at: nowStamp(), by: DEMO_DRIVER },
+      ];
       driverState.pendingIds.add(id);
       log("return_requested", DEMO_DRIVER, j.tour, `${reason}: ${message}`);
       emit();
@@ -665,10 +807,23 @@ function bumpPdf(job) {
       j.driver = null;
       j.hasReturnRequest = false;
       j.status = "draft";
-      j.history = [...(j.history || []), { st: "draft", at: nowStamp(), by: "A. Bauer", meta: "Return approved → Draft" }];
+      j.history = [
+        ...(j.history || []),
+        {
+          st: "draft",
+          at: nowStamp(),
+          by: "A. Bauer",
+          meta: "Return approved → Draft",
+        },
+      ];
       driverState.pendingIds.delete(id);
       driverState.acceptedIds.delete(id);
-      log("return_approved", DEMO_ADMIN, j.tour, "Assignment removed; job returned to Draft");
+      log(
+        "return_approved",
+        DEMO_ADMIN,
+        j.tour,
+        "Assignment removed; job returned to Draft",
+      );
       emit();
       return { ok: true };
     },
@@ -681,10 +836,20 @@ function bumpPdf(job) {
       j.hasReturnRequest = false;
       j.history = [
         ...(j.history || []),
-        { st: restore, at: nowStamp(), by: "A. Bauer", meta: `Return rejected${note ? `: ${note}` : ""}` },
+        {
+          st: restore,
+          at: nowStamp(),
+          by: "A. Bauer",
+          meta: `Return rejected${note ? `: ${note}` : ""}`,
+        },
       ];
       driverState.pendingIds.delete(id);
-      log("return_rejected", DEMO_ADMIN, j.tour, note || "Kept previous execution state");
+      log(
+        "return_rejected",
+        DEMO_ADMIN,
+        j.tour,
+        note || "Kept previous execution state",
+      );
       emit();
       return { ok: true };
     },
@@ -695,10 +860,27 @@ function bumpPdf(job) {
       j.status = "published";
       j.isNew = false;
       j.pdfVersion = Math.max(1, j.pdfVersion || 0);
-      j.history = [...(j.history || []), { st: "published", at: nowStamp(), by: "A. Bauer" }];
-      log("job_published", DEMO_ADMIN, j.tour, "Visible as reduced marketplace preview");
-      const notified = drivers.filter((d) => d.status === "Active" && d.prefs?.push).map((d) => d.name);
-      log("notification_queued", "System", j.tour, notified.length ? `Matched: ${notified.join(", ")}` : "No active matching preferences");
+      j.history = [
+        ...(j.history || []),
+        { st: "published", at: nowStamp(), by: "A. Bauer" },
+      ];
+      log(
+        "job_published",
+        DEMO_ADMIN,
+        j.tour,
+        "Visible as reduced marketplace preview",
+      );
+      const notified = drivers
+        .filter((d) => d.status === "Active" && d.prefs?.push)
+        .map((d) => d.name);
+      log(
+        "notification_queued",
+        "System",
+        j.tour,
+        notified.length
+          ? `Matched: ${notified.join(", ")}`
+          : "No active matching preferences",
+      );
       emit();
       return { ok: true };
     },
@@ -709,7 +891,10 @@ function bumpPdf(job) {
       j.status = "assigned";
       j.driver = driverName || DEMO_DRIVER;
       j.pdfVersion = Math.max(1, j.pdfVersion || 0);
-      j.history = [...(j.history || []), { st: "assigned", at: nowStamp(), by: "A. Bauer" }];
+      j.history = [
+        ...(j.history || []),
+        { st: "assigned", at: nowStamp(), by: "A. Bauer" },
+      ];
       log("job_assigned", DEMO_ADMIN, j.tour, `Driver: ${j.driver}`);
       emit();
       return { ok: true };
@@ -717,9 +902,16 @@ function bumpPdf(job) {
 
     cancelJob(id) {
       const j = api.getJob(id);
-      if (!j || !["accepted", "assigned", "return_requested"].includes(j.status)) return { ok: false };
+      if (
+        !j ||
+        !["accepted", "assigned", "return_requested"].includes(j.status)
+      )
+        return { ok: false };
       j.status = "cancelled";
-      j.history = [...(j.history || []), { st: "cancelled", at: nowStamp(), by: "A. Bauer" }];
+      j.history = [
+        ...(j.history || []),
+        { st: "cancelled", at: nowStamp(), by: "A. Bauer" },
+      ];
       driverState.acceptedIds.delete(id);
       driverState.pendingIds.delete(id);
       log("job_cancelled", DEMO_ADMIN, j.tour, "Admin cancellation");
@@ -740,12 +932,19 @@ function bumpPdf(job) {
       const seq = nextTourSeq++;
       const tour = `${String(seq).padStart(4, "0")}-26`;
       const id = `A-2026-${String(seq).padStart(5, "0")}`;
-      const axleMap = { Eigenachse: "Own axle", Fremdachse: "Third-party axle", "Own axle": "Own axle", "Third-party axle": "Third-party axle" };
+      const axleMap = {
+        Eigenachse: "Own axle",
+        Fremdachse: "Third-party axle",
+        "Own axle": "Own axle",
+        "Third-party axle": "Third-party axle",
+      };
       const axle = axleMap[form.axle] || form.axle || "Own axle";
-      const price = parseFloat(String(form.price || "0").replace(",", ".")) || 0;
+      const price =
+        parseFloat(String(form.price || "0").replace(",", ".")) || 0;
       const dist = parseInt(form.distance || form.distanceKm || 0, 10) || 0;
       const vat = 19;
-      const net = price > 0 ? Math.round((price / (1 + vat / 100)) * 100) / 100 : null;
+      const net =
+        price > 0 ? Math.round((price / (1 + vat / 100)) * 100) / 100 : null;
       const newJob = mk({
         id,
         tour,
@@ -764,7 +963,8 @@ function bumpPdf(job) {
         windowFrom: form.from || form.windowFrom,
         windowTo: form.to || form.windowTo,
         vehicle: form.vehicleType || form.vehicle || "PKW",
-        vehicleModel: [form.brand, form.model].filter(Boolean).join(" ").trim() || "—",
+        vehicleModel:
+          [form.brand, form.model].filter(Boolean).join(" ").trim() || "—",
         plate: form.plate,
         vin: form.vin,
         axle,
@@ -784,7 +984,12 @@ function bumpPdf(job) {
         history: [{ st: "draft", at: nowStamp(), by: "A. Bauer" }],
       });
       jobs.unshift(newJob);
-      log("job_created", DEMO_ADMIN, newJob.tour, "Draft created from admin form");
+      log(
+        "job_created",
+        DEMO_ADMIN,
+        newJob.tour,
+        "Draft created from admin form",
+      );
       emit();
       return newJob;
     },
@@ -793,7 +998,12 @@ function bumpPdf(job) {
       const j = api.getJob(id);
       if (!j) return { ok: false };
       Object.assign(j, patch);
-      log("financial_updated", DEMO_ADMIN, j.tour, Object.keys(patch).join(", "));
+      log(
+        "financial_updated",
+        DEMO_ADMIN,
+        j.tour,
+        Object.keys(patch).join(", "),
+      );
       emit();
       return { ok: true };
     },
@@ -817,7 +1027,10 @@ function bumpPdf(job) {
     },
 
     addCustomer(data) {
-      const c = { id: `CUST-${String(customers.length + 1).padStart(3, "0")}`, ...data };
+      const c = {
+        id: `CUST-${String(customers.length + 1).padStart(3, "0")}`,
+        ...data,
+      };
       customers.unshift(c);
       log("customer_created", DEMO_ADMIN, c.name, "Master data");
       emit();
@@ -828,7 +1041,12 @@ function bumpPdf(job) {
       const d = documents.find((x) => x.id === id);
       if (!d) return { ok: false };
       d.visible = !d.visible;
-      log("document_visibility_changed", DEMO_ADMIN, d.title, d.visible ? "Shown" : "Hidden");
+      log(
+        "document_visibility_changed",
+        DEMO_ADMIN,
+        d.title,
+        d.visible ? "Shown" : "Hidden",
+      );
       emit();
       return { ok: true };
     },
@@ -847,16 +1065,53 @@ function bumpPdf(job) {
       const d = api.getCurrentDriver();
       if (!d) return { ok: false };
       d.prefs = { ...(d.prefs || {}), ...patch };
-      log("notification_preferences_updated", DEMO_DRIVER, d.partnerId, Object.keys(patch).join(", "));
+      log(
+        "notification_preferences_updated",
+        DEMO_DRIVER,
+        d.partnerId,
+        Object.keys(patch).join(", "),
+      );
       emit();
       return { ok: true };
     },
 
     exportJobsCsv() {
-      const cols = ["tour","customer","startCompany","startPlz","startCity","endCompany","endPlz","endCity","date","windowFrom","windowTo","driver","status","vehicle","vehicleModel","axle","revenue","driverCompensation","expenses","invoiceReceived","invoiceType","invoiceNumber","paymentStatus","notes"];
+      const cols = [
+        "tour",
+        "customer",
+        "startCompany",
+        "startPlz",
+        "startCity",
+        "endCompany",
+        "endPlz",
+        "endCity",
+        "date",
+        "windowFrom",
+        "windowTo",
+        "driver",
+        "status",
+        "vehicle",
+        "vehicleModel",
+        "axle",
+        "revenue",
+        "driverCompensation",
+        "expenses",
+        "invoiceReceived",
+        "invoiceType",
+        "invoiceNumber",
+        "paymentStatus",
+        "notes",
+      ];
       const esc = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
-      const rows = [cols.join(",")].concat(jobs.map((j) => cols.map((c) => esc(j[c])).join(",")));
-      log("jobs_exported", DEMO_ADMIN, "CSV/XLSX continuity", `${jobs.length} rows`);
+      const rows = [cols.join(",")].concat(
+        jobs.map((j) => cols.map((c) => esc(j[c])).join(",")),
+      );
+      log(
+        "jobs_exported",
+        DEMO_ADMIN,
+        "CSV/XLSX continuity",
+        `${jobs.length} rows`,
+      );
       emit();
       return rows.join("\n");
     },
@@ -889,13 +1144,18 @@ function bumpPdf(job) {
     viewPdf(id) {
       const txt = api.transportOrderText(id);
       if (!txt) return { ok: false };
-      const escaped = txt.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+      const escaped = txt.replace(
+        /[&<>]/g,
+        (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c],
+      );
       const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>AUTHEON transport order</title></head><body><pre style="font:13px/1.5 monospace;white-space:pre-wrap;padding:24px">${escaped}</pre></body></html>`;
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const w = window.open(url, "_blank");
       if (w) {
-        w.addEventListener("load", () => URL.revokeObjectURL(url), { once: true });
+        w.addEventListener("load", () => URL.revokeObjectURL(url), {
+          once: true,
+        });
       } else {
         URL.revokeObjectURL(url);
       }
@@ -915,9 +1175,118 @@ function bumpPdf(job) {
       a.download = `transport-order-${j.id}.txt`;
       a.click();
       URL.revokeObjectURL(url);
-      log("pdf_downloaded", DEMO_ADMIN, j.tour, "Client-side generated transport order");
+      log(
+        "pdf_downloaded",
+        DEMO_ADMIN,
+        j.tour,
+        "Client-side generated transport order",
+      );
       emit();
       return { ok: true };
+    },
+
+    addInvoiceUpload(file, opts = {}) {
+      if (!file) return { ok: false, reason: "no_file" };
+      if (!isAllowedInvoiceFile(file))
+        return { ok: false, reason: "invalid_type" };
+      if (!api.isCurrentDriverActive())
+        return { ok: false, reason: "driver_restricted" };
+      const d = api.getCurrentDriver();
+      if (!d) return { ok: false, reason: "no_driver" };
+      let jobId = opts.jobId != null && opts.jobId !== "" ? opts.jobId : null;
+      if (jobId && !api.getJob(jobId)) jobId = null;
+      const mime = (file.type || guessMimeFromName(file.name) || "").trim();
+      const row = {
+        id: `IU-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        driverId: d.id,
+        driverName: d.name,
+        jobId,
+        fileName: file.name,
+        mimeType: mime || "application/octet-stream",
+        sizeBytes: typeof file.size === "number" ? file.size : 0,
+        uploadedAt: new Date().toISOString(),
+        processed: false,
+      };
+      invoiceUploads.unshift(row);
+      log(
+        "invoice_upload_registered",
+        d.name,
+        row.fileName,
+        row.jobId || "unscoped",
+      );
+      emit();
+      return { ok: true, id: row.id };
+    },
+
+    getInvoiceUploads() {
+      return invoiceUploads.slice();
+    },
+
+    updateInvoiceUpload(id, patch) {
+      const u = invoiceUploads.find((x) => x.id === id);
+      if (!u) return { ok: false };
+      if (patch.jobId !== undefined) {
+        const jid = patch.jobId;
+        if (jid === "" || jid === null) u.jobId = null;
+        else if (api.getJob(jid)) u.jobId = jid;
+        else return { ok: false, reason: "bad_job" };
+      }
+      if (patch.processed !== undefined) u.processed = !!patch.processed;
+      log(
+        "invoice_upload_updated",
+        DEMO_ADMIN,
+        u.fileName,
+        JSON.stringify(patch),
+      );
+      emit();
+      return { ok: true };
+    },
+
+    deleteInvoiceUpload(id) {
+      const i = invoiceUploads.findIndex((x) => x.id === id);
+      if (i < 0) return { ok: false };
+      const [removed] = invoiceUploads.splice(i, 1);
+      log("invoice_upload_deleted", DEMO_ADMIN, removed.fileName, removed.id);
+      emit();
+      return { ok: true };
+    },
+
+    downloadInvoicePlaceholder(id) {
+      const u = invoiceUploads.find((x) => x.id === id);
+      if (!u) return { ok: false };
+      const raw =
+        (u.fileName || "invoice").replace(/[^a-zA-Z0-9._-]/g, "_") || "invoice";
+      const stubName = /\.txt$/i.test(raw)
+        ? raw
+        : `${raw.replace(/\.[^.]+$/, "")}-AUTHEON-placeholder.txt`;
+      const jobLine = u.jobId ? `Job ID: ${u.jobId}` : "Job: (none / unscoped)";
+      const body = [
+        "AUTHEON prototype — binary file not stored.",
+        `Original filename: ${u.fileName}`,
+        `MIME: ${u.mimeType}`,
+        `Uploaded (ISO): ${u.uploadedAt}`,
+        `Driver: ${u.driverName} (${u.driverId})`,
+        jobLine,
+        `Processed: ${u.processed ? "yes" : "no"}`,
+        "",
+        "This placeholder replaces an actual PDF/image in the demo.",
+      ].join("\r\n");
+      const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = stubName;
+      a.click();
+      URL.revokeObjectURL(url);
+      return { ok: true };
+    },
+
+    getFeatureFlag: (key) => featureFlags[key],
+    getFeatureFlags: () => ({ ...featureFlags }),
+    setFeatureFlag(key, value) {
+      featureFlags[key] = !!value;
+      log("feature_flag_changed", DEMO_ADMIN, key, String(!!value));
+      emit();
     },
 
     subscribe,
@@ -928,6 +1297,9 @@ function bumpPdf(job) {
 
 window.useAuthStore = function () {
   const [, setT] = React.useState(0);
-  React.useEffect(() => window.AuthStore.subscribe(() => setT((t) => t + 1)), []);
+  React.useEffect(
+    () => window.AuthStore.subscribe(() => setT((t) => t + 1)),
+    [],
+  );
   return window.AuthStore;
 };

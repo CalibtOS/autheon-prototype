@@ -47,6 +47,27 @@ window.I18n = (() => {
         completed: "Completed",
         cancelled: "Cancelled",
       },
+      statusExplain: {
+        title: "What do statuses mean?",
+        intro:
+          "Phase 1 rules: only Draft tours can be published to the marketplace or directly assigned. You cannot assign from Published—bring the tour back to Draft first (for example by approving a driver return). Two paths: marketplace (Draft → Published → driver accepts → Accepted) or direct dispatch (Draft → Assigned). Both can complete, request return before the deadline, or be cancelled by dispatch while active.",
+        noteSeparate:
+          "Driver account Active/Blocked and finance payment labels are separate from tour lifecycle status.",
+        draft:
+          "Internal preparation only; edit the tour, publish to the marketplace, or assign a driver. The transport order PDF is available after the tour leaves Draft.",
+        published:
+          "Visible on the driver marketplace; a partner accepts to take the tour. In Phase 1 you cannot switch Published to Assigned from here—use Draft again after an approved return if you need direct assignment.",
+        assigned:
+          "Dispatcher assigned a partner from Draft (direct dispatch). Active execution with the same completion, return, and cancel rules as Accepted.",
+        accepted:
+          "Partner accepted a Published marketplace offer. Active execution alongside Assigned.",
+        return_requested:
+          "Partner asked to return the tour to dispatch. Approve (→ Draft, assignment cleared) or reject (restore Assigned or Accepted). Return requests close at midnight on the day before the job date.",
+        completed:
+          "Partner marked the tour finished. Terminal state for successful execution.",
+        cancelled:
+          "Dispatch cancelled an active tour (Assigned, Accepted, or Return requested). Removed from marketplace and active lists.",
+      },
       themeLight: "Light",
       themeDark: "Dark",
       blockedDriverTitle: "Marketplace unavailable",
@@ -139,6 +160,34 @@ window.I18n = (() => {
       documentsDesc: "Policies, templates, and downloadable PDFs.",
       financeDesc: "Settlement and invoice tracking.",
       auditDesc: "Immutable timeline of critical actions.",
+      navPartnerInvoices: "Partner invoices",
+      partnerInvoicesDesc:
+        "Driver-submitted invoice references (PDF or images). This prototype stores file names and metadata only — no binary upload.",
+      navInvoices: "Invoices",
+      invoiceUploadSectionJob: "Invoice for this tour",
+      invoiceUploadSectionGlobal: "Your invoices",
+      invoiceUploadHint:
+        "Submit billing documents for this tour only. PDF or images (JPEG, PNG, WebP, GIF). Demo: file contents are not stored — only the name and metadata.",
+      invoiceUploadButton: "Upload invoice",
+      invoiceUploadInvalidType: "Only PDF or image files are accepted.",
+      invoiceUploadRestricted: "Uploads are unavailable while your account is restricted.",
+      invoiceUploadEmpty: "No uploads yet.",
+      invoiceColFile: "File",
+      invoiceColPartner: "Partner",
+      invoiceColJob: "Tour / job",
+      invoiceColUploaded: "Uploaded",
+      invoiceColProcessed: "Processed",
+      invoiceJobNone: "None (unscoped)",
+      invoiceProcessedBadge: "Processed",
+      invoicePendingBadge: "Pending",
+      invoiceView: "View",
+      invoiceDownload: "Download",
+      invoiceDelete: "Delete",
+      invoiceDeleteConfirm: "Remove this upload reference from the list?",
+      invoiceViewTitle: "Invoice reference",
+      invoiceViewDisclaimer:
+        "Prototype: file contents are not stored. Only metadata is shown to dispatch.",
+      invoiceSizeKb: "{n} KB",
       publishBlockedDraftOnly: "Tour must be in Draft.",
       draftSavedTour: "Draft saved · Tour {tour}",
       driversNowSeePreview: "Drivers now see the marketplace preview.",
@@ -290,6 +339,27 @@ window.I18n = (() => {
         completed: "Abgeschlossen",
         cancelled: "Storniert",
       },
+      statusExplain: {
+        title: "Was bedeuten die Status?",
+        intro:
+          "Regeln Phase 1: Nur Entwürfe können veröffentlicht oder direkt zugewiesen werden. Von Veröffentlicht aus keine Direktzuweisung—holen Sie die Tour zuerst wieder in den Entwurf (z. B. durch Genehmigung einer Fahrer-Rückgabe). Zwei Wege: Marktplatz (Entwurf → Veröffentlicht → Annahme durch Fahrer → Akzeptiert) oder Direktzuweisung (Entwurf → Zugewiesen). Beide können abgeschlossen werden, eine Rückgabe vor Fristende anfragen oder von der Disposition storniert werden.",
+        noteSeparate:
+          "Kontostatus des Fahrers (Aktiv/Gesperrt) und Zahlungsstatus in der Finanzübersicht sind vom Tour-Lebenszyklus getrennt.",
+        draft:
+          "Nur interne Vorbereitung; Tour bearbeiten, veröffentlichen oder Fahrer zuweisen. Der Transportauftrag (PDF) steht zur Verfügung, sobald die Tour den Entwurf verlässt.",
+        published:
+          "Sichtbar im Fahrermarktplatz; ein Partner nimmt die Tour an. In Phase 1 kein Wechsel zu Zugewiesen von hier—bei Bedarf zuerst wieder Entwurf nach genehmigter Rückgabe.",
+        assigned:
+          "Disposition hat einen Partner aus dem Entwurf zugewiesen (Direktdispatch). Aktive Ausführung mit denselben Regeln für Abschluss, Rückgabe und Storno wie Akzeptiert.",
+        accepted:
+          "Partner hat ein veröffentlichtes Marktplatzangebot angenommen. Aktive Ausführung parallel zu Zugewiesen.",
+        return_requested:
+          "Partner möchte die Tour an die Disposition zurückgeben. Genehmigen (→ Entwurf, Zuweisung entfernen) oder ablehnen (Zugewiesen oder Akzeptiert wiederherstellen). Rückgaben enden um Mitternacht am Vortag des Tourdatums.",
+        completed:
+          "Partner hat die Tour als erledigt gemeldet. Endzustand bei erfolgreicher Ausführung.",
+        cancelled:
+          "Disposition hat eine aktive Tour storniert (Zugewiesen, Akzeptiert oder Rückgabe angefragt). Aus Marktplatz und aktiven Listen entfernt.",
+      },
       themeLight: "Hell",
       themeDark: "Dunkel",
       blockedDriverTitle: "Marktplatz nicht verfügbar",
@@ -382,6 +452,34 @@ window.I18n = (() => {
       documentsDesc: "Richtlinien, Vorlagen und herunterladbare PDFs.",
       financeDesc: "Abrechnung und Zahlungsstatus.",
       auditDesc: "Unveränderliche Zeitleiste kritischer Aktionen.",
+      navPartnerInvoices: "Partner-Rechnungen",
+      partnerInvoicesDesc:
+        "Vom Fahrer gemeldete Rechnungsreferenzen (PDF oder Bilder). Prototyp: nur Dateiname und Metadaten — kein Dateiinhalt.",
+      navInvoices: "Rechnungen",
+      invoiceUploadSectionJob: "Rechnung für diese Tour",
+      invoiceUploadSectionGlobal: "Ihre Rechnungen",
+      invoiceUploadHint:
+        "Rechnungsnachweise nur für diese Tour. Nur PDF oder Bilder (JPEG, PNG, WebP, GIF). Demo: keine Speicherung der Datei — nur Name und Metadaten.",
+      invoiceUploadButton: "Rechnung hochladen",
+      invoiceUploadInvalidType: "Nur PDF- oder Bilddateien sind erlaubt.",
+      invoiceUploadRestricted: "Upload nicht möglich, solange das Konto eingeschränkt ist.",
+      invoiceUploadEmpty: "Noch keine Uploads.",
+      invoiceColFile: "Datei",
+      invoiceColPartner: "Partner",
+      invoiceColJob: "Tour / Auftrag",
+      invoiceColUploaded: "Hochgeladen",
+      invoiceColProcessed: "Bearbeitet",
+      invoiceJobNone: "Keine (ohne Tour)",
+      invoiceProcessedBadge: "Bearbeitet",
+      invoicePendingBadge: "Ausstehend",
+      invoiceView: "Ansehen",
+      invoiceDownload: "Herunterladen",
+      invoiceDelete: "Löschen",
+      invoiceDeleteConfirm: "Diese Referenz aus der Liste entfernen?",
+      invoiceViewTitle: "Rechnungsreferenz",
+      invoiceViewDisclaimer:
+        "Prototyp: Keine gespeicherten Dateiinhalte. Nur Metadaten für die Disposition.",
+      invoiceSizeKb: "{n} KB",
       publishBlockedDraftOnly: "Tour muss im Entwurf sein.",
       draftSavedTour: "Entwurf gespeichert · Tour {tour}",
       driversNowSeePreview: "Fahrer sehen jetzt die Marktplatz-Vorschau.",

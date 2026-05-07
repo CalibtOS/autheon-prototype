@@ -1,371 +1,611 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#1E40AF" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231E40AF'/%3E%3Cpath d='M16 6 26 26H6Z' fill='white'/%3E%3C/svg%3E" />
-  <title>AUTHEON — Vehicle Transport Platform</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <div id="root"></div>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#1E40AF" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231E40AF'/%3E%3Cpath d='M16 6 26 26H6Z' fill='white'/%3E%3C/svg%3E"
+    />
+    <title>AUTHEON — Vehicle Transport Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="root"></div>
 
-  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+    <script
+      src="https://unpkg.com/react@18.3.1/umd/react.development.js"
+      integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"
+      integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"
+      integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y"
+      crossorigin="anonymous"
+    ></script>
 
-  <script src="i18n.js"></script>
-  <script src="store.js"></script>
-  <script type="text/babel" src="driver.jsx"></script>
-  <script type="text/babel" src="admin.jsx"></script>
+    <script src="feature-flags.js"></script>
+    <script src="i18n.js"></script>
+    <script src="store.js"></script>
+    <script type="text/babel" src="driver.jsx"></script>
+    <script type="text/babel" src="admin.jsx"></script>
 
-  <script type="text/babel" data-presets="env,react">
-    const { useState, useEffect } = React;
-    const demoDriver = () => AuthStore.DEMO_DRIVER;
+    <script type="text/babel" data-presets="env,react">
+      const { useState, useEffect } = React;
+      const demoDriver = () => AuthStore.DEMO_DRIVER;
 
-    // =====================================================================
-    // DRIVER PWA APP
-    // =====================================================================
-    function DriverApp() {
-      const store = useAuthStore();
-      const { t } = useI18n();
-      const [tab, setTab] = useState("portal");
-      const [filters, setFilters] = useState({});
-      const [showFilter, setShowFilter] = useState(false);
-      const [activeJob, setActiveJob] = useState(null);  // {id, mode}
-      const [acceptModal, setAcceptModal] = useState(null);
-      const [returnSheet, setReturnSheet] = useState(null);
-      const [pendingNotice, setPendingNotice] = useState(false);
-      const [banner, setBanner] = useState(null);
+      // =====================================================================
+      // DRIVER PWA APP
+      // =====================================================================
+      function DriverApp() {
+        const store = useAuthStore();
+        const { t } = useI18n();
+        const [tab, setTab] = useState("portal");
+        const [filters, setFilters] = useState({});
+        const [showFilter, setShowFilter] = useState(false);
+        const [activeJob, setActiveJob] = useState(null); // {id, mode}
+        const [acceptModal, setAcceptModal] = useState(null);
+        const [returnSheet, setReturnSheet] = useState(null);
+        const [pendingNotice, setPendingNotice] = useState(false);
+        const [banner, setBanner] = useState(null);
 
-      const handleOpenJob = (j) => {
-        const portalLocked =
-          j.status === "published" && !store.isAccepted(j.id) && !store.isCompleted(j.id);
-        const mode =
-          portalLocked ? "locked" : "unlocked";
-        setActiveJob({ id: j.id, mode });
-      };
-      const back = () => setActiveJob(null);
+        const handleOpenJob = (j) => {
+          const portalLocked =
+            j.status === "published" &&
+            !store.isAccepted(j.id) &&
+            !store.isCompleted(j.id);
+          const mode = portalLocked ? "locked" : "unlocked";
+          setActiveJob({ id: j.id, mode });
+        };
+        const back = () => setActiveJob(null);
 
-      const job = activeJob ? store.getJob(activeJob.id) : null;
+        const job = activeJob ? store.getJob(activeJob.id) : null;
 
-      let body;
-      if (activeJob && job) {
-        if (activeJob.mode === "locked") {
-          body = <JobLocked job={job} onBack={back} onAccept={() => setAcceptModal(job)} />;
+        let body;
+        if (activeJob && job) {
+          if (activeJob.mode === "locked") {
+            body = (
+              <JobLocked
+                job={job}
+                onBack={back}
+                onAccept={() => setAcceptModal(job)}
+              />
+            );
+          } else {
+            body = (
+              <JobUnlocked
+                job={job}
+                onBack={back}
+                onReturn={() => setReturnSheet(job)}
+                onComplete={() => {
+                  const r = store.completeJob(job.id);
+                  if (!r.ok) setBanner(t("completionBlocked"));
+                  else setActiveJob({ id: job.id, mode: "unlocked" });
+                }}
+              />
+            );
+          }
+        } else if (tab === "portal") {
+          body = (
+            <Portal
+              filters={filters}
+              setFilters={setFilters}
+              openFilter={() => setShowFilter(true)}
+              onOpenJob={handleOpenJob}
+            />
+          );
+        } else if (tab === "mine") {
+          body = (
+            <MyJobs
+              onOpen={(j) => setActiveJob({ id: j.id, mode: "unlocked" })}
+            />
+          );
+        } else if (tab === "info") {
+          body = <InfoPaneFull />;
         } else {
-          body = <JobUnlocked job={job}
-                              onBack={back}
-                              onReturn={() => setReturnSheet(job)}
-                              onComplete={() => {
-                                const r = store.completeJob(job.id);
-                                if (!r.ok) setBanner(t("completionBlocked"));
-                                else setActiveJob({ id: job.id, mode: "unlocked" });
-                              }} />;
+          body = <ProfilePaneFull />;
         }
-      } else if (tab === "portal") {
-        body = <Portal filters={filters} setFilters={setFilters}
-                       openFilter={() => setShowFilter(true)}
-                       onOpenJob={handleOpenJob} />;
-      } else if (tab === "mine") {
-        body = <MyJobs onOpen={(j) => setActiveJob({ id: j.id, mode: "unlocked" })} />;
-      } else if (tab === "info") {
-        body = <InfoPaneFull />;
-      } else {
-        body = <ProfilePaneFull />;
-      }
 
-      return (
-        <div className="phone-shell">
-          <div className="pwa-tag">{t("pwaTag")}</div>
-          <div className="phone">
-            <div className="notch"></div>
-            <div className="phone-screen">
-              <PhoneStatusBar />
-              <div style={{flex:1, display:"flex", flexDirection:"column", minHeight:0}}>
-                {banner && (
-                  <div className="banner banner-warn" role="alert">
-                    {banner}
-                    <button type="button" className="btn xs" style={{marginLeft:10}} onClick={() => setBanner(null)}>{t("dismiss")}</button>
-                  </div>
+        return (
+          <div className="phone-shell">
+            <div className="pwa-tag">{t("pwaTag")}</div>
+            <div className="phone">
+              <div className="notch"></div>
+              <div className="phone-screen">
+                <PhoneStatusBar />
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    minHeight: 0,
+                  }}
+                >
+                  {banner && (
+                    <div className="banner banner-warn" role="alert">
+                      {banner}
+                      <button
+                        type="button"
+                        className="btn xs"
+                        style={{ marginLeft: 10 }}
+                        onClick={() => setBanner(null)}
+                      >
+                        {t("dismiss")}
+                      </button>
+                    </div>
+                  )}
+                  {body}
+                </div>
+                {!activeJob && <TabBar tab={tab} setTab={setTab} />}
+                {showFilter && (
+                  <FilterSheet
+                    filters={filters}
+                    setFilters={setFilters}
+                    onClose={() => setShowFilter(false)}
+                  />
                 )}
-                {body}
+                {acceptModal && (
+                  <AcceptanceModal
+                    job={acceptModal}
+                    onCancel={() => setAcceptModal(null)}
+                    onConfirm={() => {
+                      const r = store.acceptJob(acceptModal.id);
+                      const id = acceptModal.id;
+                      setAcceptModal(null);
+                      if (!r.ok) {
+                        setBanner(
+                          r.reason === "driver_restricted"
+                            ? t("blockedDriverBody")
+                            : t("toastAssignedElsewhere"),
+                        );
+                        setActiveJob({ id, mode: "locked" });
+                        return;
+                      }
+                      setActiveJob({ id, mode: "unlocked" });
+                    }}
+                  />
+                )}
+                {returnSheet && (
+                  <ReturnSheet
+                    job={returnSheet}
+                    onClose={() => setReturnSheet(null)}
+                    onSubmit={(reason, msg) => {
+                      const r = store.submitReturn(returnSheet.id, reason, msg);
+                      setReturnSheet(null);
+                      if (!r.ok && r.reason === "deadline") {
+                        setBanner(t("returnDeadlineBlocked"));
+                        return;
+                      }
+                      if (!r.ok) return;
+                      setPendingNotice(true);
+                    }}
+                  />
+                )}
+                {pendingNotice && (
+                  <PendingNotice onClose={() => setPendingNotice(false)} />
+                )}
               </div>
-              {!activeJob && <TabBar tab={tab} setTab={setTab} />}
-              {showFilter && <FilterSheet filters={filters} setFilters={setFilters} onClose={() => setShowFilter(false)} />}
-              {acceptModal && (
-                <AcceptanceModal job={acceptModal}
-                                 onCancel={() => setAcceptModal(null)}
-                                 onConfirm={() => {
-                                   const r = store.acceptJob(acceptModal.id);
-                                   const id = acceptModal.id;
-                                   setAcceptModal(null);
-                                   if (!r.ok) {
-                                     setBanner(r.reason === "driver_restricted" ? t("blockedDriverBody") : t("toastAssignedElsewhere"));
-                                     setActiveJob({ id, mode: "locked" });
-                                     return;
-                                   }
-                                   setActiveJob({ id, mode: "unlocked" });
-                                 }} />
-              )}
-              {returnSheet && (
-                <ReturnSheet job={returnSheet}
-                             onClose={() => setReturnSheet(null)}
-                             onSubmit={(reason, msg) => {
-                               const r = store.submitReturn(returnSheet.id, reason, msg);
-                               setReturnSheet(null);
-                               if (!r.ok && r.reason === "deadline") {
-                                 setBanner(t("returnDeadlineBlocked"));
-                                 return;
-                               }
-                               if (!r.ok) return;
-                               setPendingNotice(true);
-                             }} />
-              )}
-              {pendingNotice && <PendingNotice onClose={() => setPendingNotice(false)} />}
             </div>
-          </div>
-        </div>
-      );
-    }
-
-    // =====================================================================
-    // ADMIN APP
-    // =====================================================================
-    function AdminApp() {
-      const store = useAuthStore();
-      const { t } = useI18n();
-      const [section, setSection] = useState("overview"); // overview, detail, new, ...
-      const [activeJob, setActiveJob] = useState(null);
-      const [toast, setToast] = useState(null);
-      const [freshId, setFreshId] = useState(null);
-      const [newOrderForm, setNewOrderForm] = useState({});
-      const [newOrderValid, setNewOrderValid] = useState(false);
-
-      const showToast = (msg, sub, action) => {
-        setToast({ msg, sub, action });
-        clearTimeout(window.__t);
-        window.__t = setTimeout(() => setToast(null), 5000);
-      };
-
-      const onOpenJob = (j) => { setActiveJob(j); setSection("detail"); };
-      const onBack = () => { setSection("overview"); setActiveJob(null); };
-
-      // crumbs
-      const crumbs = (() => {
-        if (section === "new") return <><span>{t("navJobs")}</span><span className="sep">/</span><strong>{t("navNewJob")}</strong></>;
-        if (section === "detail" && activeJob) return <><span style={{cursor:"pointer"}} onClick={onBack}>{t("navJobs")}</span><span className="sep">/</span><strong>{t("tourNo")} {activeJob.tour}</strong></>;
-        return <strong>{t("navJobs")}</strong>;
-      })();
-
-      // top right
-      const topRight = (() => {
-        if (section === "overview") return (
-          <div style={{display:"flex", gap:10}}>
-            <button type="button" className="btn" onClick={() => {
-              const csv = store.exportJobsCsv();
-              const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "autheon-jobs-export.csv";
-              a.click();
-              URL.revokeObjectURL(url);
-              showToast(t("exportGenerated"), t("exportGeneratedSub"));
-            }}><Ic.Down /> Export CSV / XLSX</button>
-            <button type="button" className="btn primary" onClick={() => setSection("new")}><Ic.Plus /> {t("navNewJob")}</button>
           </div>
         );
-        return null;
-      })();
+      }
 
-      // body
-      let body;
-      if (section === "overview") {
-        body = <Overview onOpen={onOpenJob} freshId={freshId} />;
-      } else if (section === "detail" && activeJob) {
-        // re-read from store in case status changed
-        const fresh = store.getJob(activeJob.id) || activeJob;
-        body = <AdminDetail job={fresh}
-                            onBack={onBack}
-                            onPublish={() => {
-                              const r = store.publishJob(fresh.id);
-                              if (!r.ok) showToast(t("publishBlocked"), t("publishBlockedSub"));
-                              else showToast(t("publishedTour", { tour: fresh.tour }), t("publishedPortalVisible"));
-                            }}
-                            onAssign={() => {
-                              const r = store.assignJob(fresh.id, demoDriver());
-                              if (!r.ok) showToast(t("assignBlocked"), t("assignBlockedSub"));
-                              else showToast(t("assignedDriver", { driver: demoDriver() }), t("assignedTour", { tour: fresh.tour }));
-                            }}
-                            onCancel={() => {
-                              const r = store.cancelJob(fresh.id);
-                              if (!r.ok) showToast(t("cancellationBlocked"), t("cancellationRules"));
-                              else showToast(t("cancelledTour", { tour: fresh.tour }), t("cancelledSub"));
-                            }}
-                            onEdit={() => setSection("new")} />;
-      } else if (section === "new") {
-        body = <NewOrder onCancel={onBack}
-                         onSaveDraft={() => {}}
-                         onPublish={() => {}}
-                         onFormChange={(f, v) => { setNewOrderForm(f); setNewOrderValid(v); }} />;
-      } else if (section === "users") {
-        body = <UsersPane showToast={showToast} />;
-      } else if (section === "customers") {
-        body = <CustomersPane showToast={showToast} />;
-      } else if (section === "documents") {
-        body = <DocumentsPane showToast={showToast} />;
-      } else if (section === "finance") {
-        body = <FinancePane />;
-      } else if (section === "audit") {
-        body = <AuditPane />;
-      } else {
-        const titles = {
-          users: [t("navUsers"), t("usersDesc")],
-          customers: [t("navCustomers"), t("customersDesc")],
-          documents: [t("navDocuments"), t("documentsDesc")],
-          finance: [t("navFinance"), t("financeDesc")],
-          audit: [t("navAuditLog"), t("auditDesc")],
+      // =====================================================================
+      // ADMIN APP
+      // =====================================================================
+      function AdminApp() {
+        const store = useAuthStore();
+        const { t } = useI18n();
+        const [section, setSection] = useState("overview"); // overview, detail, new, ...
+        const [activeJob, setActiveJob] = useState(null);
+        const [toast, setToast] = useState(null);
+        const [freshId, setFreshId] = useState(null);
+        const [newOrderForm, setNewOrderForm] = useState({});
+        const [newOrderValid, setNewOrderValid] = useState(false);
+
+        const showToast = (msg, sub, action) => {
+          setToast({ msg, sub, action });
+          clearTimeout(window.__t);
+          window.__t = setTimeout(() => setToast(null), 5000);
         };
-        const t = titles[section] || ["—", ""];
-        body = <Stub title={t[0]} desc={t[1]} />;
-      }
 
-      // footer per section
-      let footer = null;
-      if (section === "overview") {
-        const all = store.getJobs();
-        footer = <OverviewFooter filteredCount={all.length} totalCount={all.length} />;
-      } else if (section === "detail" && activeJob) {
-        const fresh = store.getJob(activeJob.id);
-        footer = <AdminDetailFooter job={fresh}
-                  onPublish={() => {
-                    const r = store.publishJob(fresh.id);
-                    if (!r.ok) showToast(t("publishBlocked"), t("publishBlockedDraftOnly"));
-                    else showToast(t("publishedTour", { tour: fresh.tour }), t("driversNowSeePreview"));
-                  }}
-                  onAssign={() => {
-                    const r = store.assignJob(fresh.id, demoDriver());
-                    if (!r.ok) showToast(t("assignBlocked"), t("publishBlockedDraftOnly"));
-                    else showToast(t("assignedDriver", { driver: demoDriver() }), "");
-                  }}
-                  onEdit={() => setSection("new")}
-                  onCancel={() => {
-                    const r = store.cancelJob(fresh.id);
-                    if (!r.ok) showToast(t("cancellationBlocked"), "");
-                    else showToast(t("cancelledTour", { tour: fresh.tour }), "");
-                  }} />;
-      } else if (section === "new") {
-        // Saved-draft + publish handlers via window store; pull form from window
-        footer = <NewOrderFooter
-          form={newOrderForm}
-          valid={newOrderValid}
-          onCancel={onBack}
-          onSaveDraft={() => {
-            const newJob = store.saveDraft(newOrderForm || {});
-            setFreshId(newJob.id);
-            showToast(t("draftSavedTour", { tour: newJob.tour }), (newJob.customer || "—") + " · " + (newJob.startPlz || "—") + " → " + (newJob.endPlz || "—"), { label:t("open"), run:() => onOpenJob(newJob) });
-            onBack();
-          }}
-          onPublish={() => {
-            if (!newOrderValid) return;
-            const newJob = store.saveDraft(newOrderForm || {});
-            const r = store.publishJob(newJob.id);
-            setFreshId(newJob.id);
-            if (!r.ok) showToast(t("couldNotPublish"), t("publishBlockedDraftOnly"));
-            else showToast(t("publishedTour", { tour: newJob.tour }), t("driversNowSeePreview"));
-            onBack();
-          }}
-          onAssign={() => {
-            if (!newOrderValid) return;
-            const newJob = store.saveDraft(newOrderForm || {});
-            const r = store.assignJob(newJob.id, demoDriver());
-            setFreshId(newJob.id);
-            if (!r.ok) showToast(t("couldNotAssign"), t("publishBlockedDraftOnly"));
-            else showToast(t("assignedDriver", { driver: demoDriver() }), t("assignedTour", { tour: newJob.tour }));
-            onBack();
-          }}
-        />;
-      }
+        const onOpenJob = (j) => {
+          setActiveJob(j);
+          setSection("detail");
+        };
+        const onBack = () => {
+          setSection("overview");
+          setActiveJob(null);
+        };
 
-      return (
-        <div className="admin">
-          <AdminNav section={section === "detail" ? "overview" : section} setSection={(s) => { setSection(s); setActiveJob(null); }} />
-          <div className="admin-main">
-            <div className="admin-top">
-              <div className="crumbs">{crumbs}</div>
-              {topRight}
-            </div>
-            <div className="admin-content">{body}</div>
-            {footer && <div className="admin-foot">{footer}</div>}
-            {toast && (
-              <div className="toast">
-                <span className="check">✓</span>
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:600}}>{toast.msg}</div>
-                  {toast.sub && <div className="sub">{toast.sub}</div>}
+        // crumbs
+        const crumbs = (() => {
+          if (section === "new")
+            return (
+              <>
+                <span>{t("navJobs")}</span>
+                <span className="sep">/</span>
+                <strong>{t("navNewJob")}</strong>
+              </>
+            );
+          if (section === "detail" && activeJob)
+            return (
+              <>
+                <span style={{ cursor: "pointer" }} onClick={onBack}>
+                  {t("navJobs")}
+                </span>
+                <span className="sep">/</span>
+                <strong>
+                  {t("tourNo")} {activeJob.tour}
+                </strong>
+              </>
+            );
+          if (section === "invoices")
+            return <strong>{t("navPartnerInvoices")}</strong>;
+          return <strong>{t("navJobs")}</strong>;
+        })();
+
+        // top right
+        const topRight = (() => {
+          if (section === "overview")
+            return (
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    const csv = store.exportJobsCsv();
+                    const blob = new Blob([csv], {
+                      type: "text/csv;charset=utf-8",
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "autheon-jobs-export.csv";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showToast(t("exportGenerated"), t("exportGeneratedSub"));
+                  }}
+                >
+                  <Ic.Down /> Export CSV / XLSX
+                </button>
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => setSection("new")}
+                >
+                  <Ic.Plus /> {t("navNewJob")}
+                </button>
+              </div>
+            );
+          return null;
+        })();
+
+        // body
+        let body;
+        if (section === "overview") {
+          body = <Overview onOpen={onOpenJob} freshId={freshId} />;
+        } else if (section === "detail" && activeJob) {
+          // re-read from store in case status changed
+          const fresh = store.getJob(activeJob.id) || activeJob;
+          body = (
+            <AdminDetail
+              job={fresh}
+              onBack={onBack}
+              onPublish={() => {
+                const r = store.publishJob(fresh.id);
+                if (!r.ok)
+                  showToast(t("publishBlocked"), t("publishBlockedSub"));
+                else
+                  showToast(
+                    t("publishedTour", { tour: fresh.tour }),
+                    t("publishedPortalVisible"),
+                  );
+              }}
+              onAssign={() => {
+                const r = store.assignJob(fresh.id, demoDriver());
+                if (!r.ok) showToast(t("assignBlocked"), t("assignBlockedSub"));
+                else
+                  showToast(
+                    t("assignedDriver", { driver: demoDriver() }),
+                    t("assignedTour", { tour: fresh.tour }),
+                  );
+              }}
+              onCancel={() => {
+                const r = store.cancelJob(fresh.id);
+                if (!r.ok)
+                  showToast(t("cancellationBlocked"), t("cancellationRules"));
+                else
+                  showToast(
+                    t("cancelledTour", { tour: fresh.tour }),
+                    t("cancelledSub"),
+                  );
+              }}
+              onEdit={() => setSection("new")}
+            />
+          );
+        } else if (section === "new") {
+          body = (
+            <NewOrder
+              onCancel={onBack}
+              onSaveDraft={() => {}}
+              onPublish={() => {}}
+              onFormChange={(f, v) => {
+                setNewOrderForm(f);
+                setNewOrderValid(v);
+              }}
+            />
+          );
+        } else if (section === "users") {
+          body = <UsersPane showToast={showToast} />;
+        } else if (section === "customers") {
+          body = <CustomersPane showToast={showToast} />;
+        } else if (section === "documents") {
+          body = <DocumentsPane showToast={showToast} />;
+        } else if (section === "invoices") {
+          body = <PartnerInvoicesPane showToast={showToast} />;
+        } else if (section === "finance") {
+          body = <FinancePane />;
+        } else if (section === "audit") {
+          body = <AuditPane />;
+        } else if (section === "features") {
+          body = <FeaturesPane />;
+        } else {
+          const titles = {
+            users: [t("navUsers"), t("usersDesc")],
+            customers: [t("navCustomers"), t("customersDesc")],
+            documents: [t("navDocuments"), t("documentsDesc")],
+            invoices: [t("navPartnerInvoices"), t("partnerInvoicesDesc")],
+            finance: [t("navFinance"), t("financeDesc")],
+            audit: [t("navAuditLog"), t("auditDesc")],
+          };
+          const t = titles[section] || ["—", ""];
+          body = <Stub title={t[0]} desc={t[1]} />;
+        }
+
+        // footer per section
+        let footer = null;
+        if (section === "overview") {
+          const all = store.getJobs();
+          footer = (
+            <OverviewFooter
+              filteredCount={all.length}
+              totalCount={all.length}
+            />
+          );
+        } else if (section === "detail" && activeJob) {
+          const fresh = store.getJob(activeJob.id);
+          footer = (
+            <AdminDetailFooter
+              job={fresh}
+              onPublish={() => {
+                const r = store.publishJob(fresh.id);
+                if (!r.ok)
+                  showToast(t("publishBlocked"), t("publishBlockedDraftOnly"));
+                else
+                  showToast(
+                    t("publishedTour", { tour: fresh.tour }),
+                    t("driversNowSeePreview"),
+                  );
+              }}
+              onAssign={() => {
+                const r = store.assignJob(fresh.id, demoDriver());
+                if (!r.ok)
+                  showToast(t("assignBlocked"), t("publishBlockedDraftOnly"));
+                else
+                  showToast(t("assignedDriver", { driver: demoDriver() }), "");
+              }}
+              onEdit={() => setSection("new")}
+              onCancel={() => {
+                const r = store.cancelJob(fresh.id);
+                if (!r.ok) showToast(t("cancellationBlocked"), "");
+                else showToast(t("cancelledTour", { tour: fresh.tour }), "");
+              }}
+            />
+          );
+        } else if (section === "new") {
+          // Saved-draft + publish handlers via window store; pull form from window
+          footer = (
+            <NewOrderFooter
+              form={newOrderForm}
+              valid={newOrderValid}
+              onCancel={onBack}
+              onSaveDraft={() => {
+                const newJob = store.saveDraft(newOrderForm || {});
+                setFreshId(newJob.id);
+                showToast(
+                  t("draftSavedTour", { tour: newJob.tour }),
+                  (newJob.customer || "—") +
+                    " · " +
+                    (newJob.startPlz || "—") +
+                    " → " +
+                    (newJob.endPlz || "—"),
+                  { label: t("open"), run: () => onOpenJob(newJob) },
+                );
+                onBack();
+              }}
+              onPublish={() => {
+                if (!newOrderValid) return;
+                const newJob = store.saveDraft(newOrderForm || {});
+                const r = store.publishJob(newJob.id);
+                setFreshId(newJob.id);
+                if (!r.ok)
+                  showToast(t("couldNotPublish"), t("publishBlockedDraftOnly"));
+                else
+                  showToast(
+                    t("publishedTour", { tour: newJob.tour }),
+                    t("driversNowSeePreview"),
+                  );
+                onBack();
+              }}
+              onAssign={() => {
+                if (!newOrderValid) return;
+                const newJob = store.saveDraft(newOrderForm || {});
+                const r = store.assignJob(newJob.id, demoDriver());
+                setFreshId(newJob.id);
+                if (!r.ok)
+                  showToast(t("couldNotAssign"), t("publishBlockedDraftOnly"));
+                else
+                  showToast(
+                    t("assignedDriver", { driver: demoDriver() }),
+                    t("assignedTour", { tour: newJob.tour }),
+                  );
+                onBack();
+              }}
+            />
+          );
+        }
+
+        return (
+          <div className="admin">
+            <AdminNav
+              section={section === "detail" ? "overview" : section}
+              setSection={(s) => {
+                setSection(s);
+                setActiveJob(null);
+              }}
+            />
+            <div className="admin-main">
+              <div className="admin-top">
+                <div className="crumbs">{crumbs}</div>
+                {topRight}
+              </div>
+              <div className="admin-content">{body}</div>
+              {footer && <div className="admin-foot">{footer}</div>}
+              {toast && (
+                <div className="toast">
+                  <span className="check">✓</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600 }}>{toast.msg}</div>
+                    {toast.sub && <div className="sub">{toast.sub}</div>}
+                  </div>
+                  {toast.action && (
+                    <button
+                      className="btn xs"
+                      style={{
+                        background: "#fff",
+                        color: "#000",
+                        borderColor: "#fff",
+                      }}
+                      onClick={() => {
+                        toast.action.run();
+                        setToast(null);
+                      }}
+                    >
+                      {toast.action.label}
+                    </button>
+                  )}
+                  <button
+                    className="btn icon sm"
+                    style={{ borderColor: "transparent", color: "#fff" }}
+                    onClick={() => setToast(null)}
+                  >
+                    <Ic.X />
+                  </button>
                 </div>
-                {toast.action && <button className="btn xs" style={{background:"#fff", color:"#000", borderColor:"#fff"}} onClick={() => { toast.action.run(); setToast(null); }}>{toast.action.label}</button>}
-                <button className="btn icon sm" style={{borderColor:"transparent", color:"#fff"}} onClick={() => setToast(null)}><Ic.X /></button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      );
-    }
+        );
+      }
 
-    // =====================================================================
-    // SHELL
-    // =====================================================================
-    function App() {
-      const [view, setView] = useState("driver"); // driver | admin
-      const [theme, setTheme] = useState(localStorage.getItem("autheon-theme") || "light");
-      const { locale, setLocale, t } = useI18n();
+      // =====================================================================
+      // SHELL
+      // =====================================================================
+      function App() {
+        const [view, setView] = useState("driver"); // driver | admin
+        const [theme, setTheme] = useState(
+          localStorage.getItem("autheon-theme") || "light",
+        );
+        const { locale, setLocale, t } = useI18n();
 
-      useEffect(() => {
-        document.documentElement.setAttribute("data-theme", theme);
-        localStorage.setItem("autheon-theme", theme);
-      }, [theme]);
+        useEffect(() => {
+          document.documentElement.setAttribute("data-theme", theme);
+          localStorage.setItem("autheon-theme", theme);
+        }, [theme]);
 
-      return (
-        <div className="app">
-          <header className="app-header">
-            <div className="brand">
-              <span className="mark"></span>
-              <span>AUTHEON</span>
-              <span style={{opacity:0.45, marginLeft:6, fontWeight:400}}>· {t("appTitle")}</span>
-            </div>
-            <div className="app-controls">
-              <div className="switcher">
-                <button className={view==="driver" ? "on" : ""} onClick={() => setView("driver")}>{t("driverPwa")}</button>
-                <button className={view==="admin" ? "on" : ""} onClick={() => setView("admin")}>{t("adminBackend")}</button>
+        return (
+          <div className="app">
+            <header className="app-header">
+              <div className="brand">
+                <span className="mark"></span>
+                <span>AUTHEON</span>
+                <span style={{ opacity: 0.45, marginLeft: 6, fontWeight: 400 }}>
+                  · {t("appTitle")}
+                </span>
               </div>
-              <div className="switcher locale-switch">
-                <button className={locale==="en" ? "on" : ""} onClick={() => setLocale("en")}>EN</button>
-                <button className={locale==="de" ? "on" : ""} onClick={() => setLocale("de")}>DE</button>
+              <div className="app-controls">
+                <div className="switcher">
+                  <button
+                    className={view === "driver" ? "on" : ""}
+                    onClick={() => setView("driver")}
+                  >
+                    {t("driverPwa")}
+                  </button>
+                  <button
+                    className={view === "admin" ? "on" : ""}
+                    onClick={() => setView("admin")}
+                  >
+                    {t("adminBackend")}
+                  </button>
+                </div>
+                <div className="switcher locale-switch">
+                  <button
+                    className={locale === "en" ? "on" : ""}
+                    onClick={() => setLocale("en")}
+                  >
+                    EN
+                  </button>
+                  <button
+                    className={locale === "de" ? "on" : ""}
+                    onClick={() => setLocale("de")}
+                  >
+                    DE
+                  </button>
+                </div>
+                <div className="switcher theme-switch">
+                  <button
+                    className={theme === "light" ? "on" : ""}
+                    onClick={() => setTheme("light")}
+                  >
+                    {t("themeLight")}
+                  </button>
+                  <button
+                    className={theme === "dark" ? "on" : ""}
+                    onClick={() => setTheme("dark")}
+                  >
+                    {t("themeDark")}
+                  </button>
+                </div>
               </div>
-              <div className="switcher theme-switch">
-                <button className={theme==="light" ? "on" : ""} onClick={() => setTheme("light")}>{t("themeLight")}</button>
-                <button className={theme==="dark" ? "on" : ""} onClick={() => setTheme("dark")}>{t("themeDark")}</button>
+              <div className="right">
+                <span>v1.0 · {t("clientPreview")}</span>
+                <span className="demo-tag">{t("mockData")}</span>
               </div>
-            </div>
-            <div className="right">
-              <span>v1.0 · {t("clientPreview")}</span>
-              <span className="demo-tag">{t("mockData")}</span>
-            </div>
-          </header>
-          <main className="app-stage">
-            {view === "driver" ? <DriverApp /> : <AdminApp />}
-          </main>
-        </div>
-      );
-    }
+            </header>
+            <main className="app-stage">
+              {view === "driver" ? <DriverApp /> : <AdminApp />}
+            </main>
+          </div>
+        );
+      }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-  </script>
-</body>
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
 </html>

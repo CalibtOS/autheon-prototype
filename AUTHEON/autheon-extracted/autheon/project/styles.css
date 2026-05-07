@@ -354,6 +354,73 @@ textarea.input { min-height: 92px; resize: vertical; }
 .card.flat { box-shadow: none; }
 .card.elev { box-shadow: var(--sh-2); }
 
+/* Job overview — “What do statuses mean?” (readability) */
+.status-explain {
+  padding: 20px 22px 24px;
+  margin-bottom: 16px;
+}
+.status-explain-summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  line-height: 1.45;
+  padding: 2px 0 6px;
+  list-style-position: outside;
+}
+.status-explain-body {
+  margin-top: 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 68ch;
+}
+.status-explain-intro {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--ink-2);
+  letter-spacing: 0.01em;
+}
+.status-explain-note {
+  margin: 0;
+  padding: 16px 18px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--muted);
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  box-shadow: var(--sh-inset);
+}
+.status-explain-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.status-explain-list > li {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.status-explain-pill {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.status-explain-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  letter-spacing: 0.01em;
+}
+
 /* Segmented */
 .seg {
   display: inline-grid;
