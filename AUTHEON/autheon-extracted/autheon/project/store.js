@@ -1196,8 +1196,13 @@ window.AuthStore = (() => {
       let jobId = opts.jobId != null && opts.jobId !== "" ? opts.jobId : null;
       if (jobId && !api.getJob(jobId)) jobId = null;
       const mime = (file.type || guessMimeFromName(file.name) || "").trim();
+      const invoiceId = `INV-${Date.now().toString(36).toUpperCase()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)
+        .toUpperCase()}`;
       const row = {
         id: `IU-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        invoiceId,
         driverId: d.id,
         driverName: d.name,
         jobId,
@@ -1208,6 +1213,14 @@ window.AuthStore = (() => {
         processed: false,
       };
       invoiceUploads.unshift(row);
+      if (jobId) {
+        const j = api.getJob(jobId);
+        if (j)
+          api.updateFinancial(jobId, {
+            invoiceNumber: invoiceId,
+            invoiceReceived: true,
+          });
+      }
       log(
         "invoice_upload_registered",
         d.name,
@@ -1215,22 +1228,24 @@ window.AuthStore = (() => {
         row.jobId || "unscoped",
       );
       emit();
-      return { ok: true, id: row.id };
+      return { ok: true, id: row.id, invoiceId: row.invoiceId };
     },
 
     getInvoiceUploads() {
       return invoiceUploads.slice();
     },
 
+    /** Invoice uploads scoped to a tour/job (Partner invoices ↔ Finance). */
+    getInvoiceUploadsForJob(jobId) {
+      if (!jobId) return [];
+      return invoiceUploads.filter((x) => x.jobId === jobId);
+    },
+
     updateInvoiceUpload(id, patch) {
       const u = invoiceUploads.find((x) => x.id === id);
       if (!u) return { ok: false };
-      if (patch.jobId !== undefined) {
-        const jid = patch.jobId;
-        if (jid === "" || jid === null) u.jobId = null;
-        else if (api.getJob(jid)) u.jobId = jid;
-        else return { ok: false, reason: "bad_job" };
-      }
+      if (patch.jobId !== undefined)
+        return { ok: false, reason: "job_scope_readonly" };
       if (patch.processed !== undefined) u.processed = !!patch.processed;
       log(
         "invoice_upload_updated",
@@ -1262,6 +1277,7 @@ window.AuthStore = (() => {
       const jobLine = u.jobId ? `Job ID: ${u.jobId}` : "Job: (none / unscoped)";
       const body = [
         "AUTHEON prototype — binary file not stored.",
+        `Invoice ID: ${u.invoiceId || "(pending)"}`,
         `Original filename: ${u.fileName}`,
         `MIME: ${u.mimeType}`,
         `Uploaded (ISO): ${u.uploadedAt}`,

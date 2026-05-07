@@ -366,7 +366,7 @@
         } else if (section === "features") {
           body = <FeaturesPane />;
         } else {
-          const titles = {
+          const stubTitles = {
             users: [t("navUsers"), t("usersDesc")],
             customers: [t("navCustomers"), t("customersDesc")],
             documents: [t("navDocuments"), t("documentsDesc")],
@@ -374,8 +374,8 @@
             finance: [t("navFinance"), t("financeDesc")],
             audit: [t("navAuditLog"), t("auditDesc")],
           };
-          const t = titles[section] || ["—", ""];
-          body = <Stub title={t[0]} desc={t[1]} />;
+          const stubPair = stubTitles[section] || ["—", ""];
+          body = <Stub title={stubPair[0]} desc={stubPair[1]} />;
         }
 
         // footer per section

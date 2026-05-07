@@ -33,7 +33,7 @@ const AdminNav = ({ section, setSection }) => {
     },
     { id: "finance", label: t("navFinance"), count: null, I: Ic.N.Audit },
     { id: "audit", label: t("navAuditLog"), count: null, I: Ic.N.Audit },
-    { id: "features", label: "Features", count: null, I: Ic.N.Settings },
+    { id: "features", label: t("navFeatures"), count: null, I: Ic.N.Settings },
   ];
   return (
     <aside className="admin-nav">
@@ -86,12 +86,8 @@ const AdminNav = ({ section, setSection }) => {
         </div>
         <button
           className="btn icon sm"
-          title="Logout"
-          onClick={() =>
-            window.alert(
-              "Demo sign out: authentication will be implemented in production.",
-            )
-          }
+          title={t("adminLogoutTitle")}
+          onClick={() => window.alert(t("adminLogoutDemoAlert"))}
         >
           <Ic.Logout />
         </button>
@@ -231,7 +227,8 @@ const Overview = ({ onOpen, freshId }) => {
             style={{ cursor: "pointer" }}
             onClick={() => setStatusFilter(null)}
           >
-            Status: {AuthStore.statusLabel(statusFilter)}{" "}
+            {t("adminFilterStatusPrefix")}{" "}
+            {AuthStore.statusLabel(statusFilter)}{" "}
             <span className="x">
               <Ic.X />
             </span>
@@ -253,14 +250,14 @@ const Overview = ({ onOpen, freshId }) => {
             className={density === "comfort" ? "on" : ""}
             onClick={() => setDensity("comfort")}
           >
-            Comfort
+            {t("adminComfort")}
           </button>
           <button
             type="button"
             className={density === "dense" ? "on" : ""}
             onClick={() => setDensity("dense")}
           >
-            Dense
+            {t("adminDense")}
           </button>
         </div>
         <span
@@ -283,7 +280,7 @@ const Overview = ({ onOpen, freshId }) => {
             alignItems: "center",
           }}
         >
-          <span className="label">Quick filters</span>
+          <span className="label">{t("adminQuickFilters")}</span>
           {stats.map(([s, lbl]) => (
             <button
               key={s}
@@ -303,7 +300,7 @@ const Overview = ({ onOpen, freshId }) => {
               setSearch("");
             }}
           >
-            Reset
+            {t("adminReset")}
           </button>
         </div>
       )}
@@ -312,15 +309,15 @@ const Overview = ({ onOpen, freshId }) => {
         <table className={`tbl ${density === "dense" ? "dense" : ""}`}>
           <thead>
             <tr>
-              <th style={{ width: 96 }}>Tour</th>
-              <th>Customer</th>
-              <th>Origin</th>
-              <th>Destination</th>
-              <th>Appointment</th>
-              <th>Vehicle</th>
-              <th>Driver</th>
-              <th>Status</th>
-              <th>Return</th>
+              <th style={{ width: 96 }}>{t("adminColTour")}</th>
+              <th>{t("adminColCustomer")}</th>
+              <th>{t("adminColOrigin")}</th>
+              <th>{t("adminColDestination")}</th>
+              <th>{t("adminColAppointment")}</th>
+              <th>{t("adminColVehicle")}</th>
+              <th>{t("adminColDriver")}</th>
+              <th>{t("adminColStatusHeader")}</th>
+              <th>{t("adminColReturn")}</th>
             </tr>
           </thead>
           <tbody>
@@ -341,7 +338,7 @@ const Overview = ({ onOpen, freshId }) => {
                       className="label"
                       style={{ fontSize: 9.5, marginTop: 2 }}
                     >
-                      Demo
+                      {t("adminRowDemo")}
                     </div>
                   )}
                 </td>
@@ -350,10 +347,10 @@ const Overview = ({ onOpen, freshId }) => {
                 <td className="mono date" style={{ fontSize: 12 }}>
                   {j.date} ·{" "}
                   {j.windowFlex
-                    ? "flex"
+                    ? t("adminWindowFlex")
                     : `${j.windowFrom?.slice(0, 2)}-${j.windowTo?.slice(0, 2)}`}
                 </td>
-                <td>{j.vehicle === "Transporter" ? "Trp." : j.vehicle}</td>
+                <td>{j.vehicle === "Transporter" ? t("adminVehicleTrp") : j.vehicle}</td>
                 <td>{j.driver || "—"}</td>
                 <td>
                   <Pill status={j.status} />
@@ -400,7 +397,7 @@ const OverviewFooter = ({ filteredCount, totalCount }) => {
           to: Math.min(rows, filteredCount),
           total: totalCount,
         })}{" "}
-        · page {page}/{maxPage}
+        {t("adminOverviewPage", { cur: page, max: maxPage })}
       </span>
       <div style={{ display: "inline-flex", alignItems: "center", gap: 14 }}>
         <span className="label">{t("rowsPerPage")}</span>
@@ -487,6 +484,7 @@ const OverviewFooter = ({ filteredCount, totalCount }) => {
 const JobFinancePanel = ({ job }) => {
   const { t } = useI18n();
   const store = useAuthStore();
+  const linkedInvoices = store.getInvoiceUploadsForJob(job.id);
   const fmt = (n) =>
     n == null || n === "" ? "—" : `€ ${Number(n).toFixed(2)}`;
   return (
@@ -496,7 +494,7 @@ const JobFinancePanel = ({ job }) => {
           <span className="num">06</span>
           {t("navFinance")}
         </h3>
-        <span className="label">Admin-only · Phase 1</span>
+        <span className="label">{t("adminBadgePhase1")}</span>
       </div>
       <div
         style={{
@@ -559,13 +557,16 @@ const JobFinancePanel = ({ job }) => {
               store.updateFinancial(job.id, { paymentStatus: e.target.value })
             }
           >
-            {["Invoice Missing", "Invoice Received", "Unpaid", "Paid"].map(
-              (p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ),
-            )}
+            {[
+              ["Invoice Missing", "adminPaymentOptMissing"],
+              ["Invoice Received", "adminPaymentOptReceived"],
+              ["Unpaid", "adminPaymentOptUnpaid"],
+              ["Paid", "adminPaymentOptPaid"],
+            ].map(([val, key]) => (
+              <option key={val} value={val}>
+                {t(key)}
+              </option>
+            ))}
           </select>
         </div>
         <div>
@@ -602,6 +603,40 @@ const JobFinancePanel = ({ job }) => {
           {t("invoiceReceived")}
         </span>
       </label>
+      <div style={{ marginTop: 16 }}>
+        <div className="label">{t("financePartnerUploadSection")}</div>
+        {linkedInvoices.length === 0 ? (
+          <div
+            className="label"
+            style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.45 }}
+          >
+            {t("financePartnerUploadNone")}
+          </div>
+        ) : (
+          <ul
+            style={{
+              margin: "8px 0 0",
+              paddingLeft: 18,
+              fontSize: 12.5,
+              lineHeight: 1.5,
+            }}
+          >
+            {linkedInvoices.map((u) => (
+              <li key={u.id}>
+                <span className="mono" style={{ fontSize: 12 }}>
+                  {u.invoiceId || "—"}
+                </span>
+                <span style={{ color: "var(--muted)" }}> · {u.fileName}</span>
+                {u.processed && (
+                  <span className="label" style={{ marginLeft: 6 }}>
+                    {t("invoiceColProcessed")}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <p
         style={{
           margin: "12px 0 0",
@@ -610,9 +645,7 @@ const JobFinancePanel = ({ job }) => {
           lineHeight: 1.55,
         }}
       >
-        Completed jobs: submit single or consolidated invoice within{" "}
-        <strong>7 calendar days</strong> to the inbox referenced on the
-        transport-order PDF (legal wording subject to client sign-off).
+        {t("adminFinanceCompletedInvoiceNote")}
       </p>
     </section>
   );
@@ -634,9 +667,15 @@ const ReturnDecisionPanel = ({ job }) => {
       </div>
       <p style={{ margin: "10px 0 0", fontSize: 13.5, lineHeight: 1.55 }}>
         <strong>{job.driver}</strong> ·{" "}
-        {(job.returnReason || "")
-          .replace("pickup", "Pickup blocked")
-          .replace("accident", "Incident")}
+        {(() => {
+          const rr = job.returnReason;
+          const map = {
+            return: t("returnReasonFormal"),
+            pickup: t("returnReasonPickupBlocked"),
+            accident: t("returnReasonIncident"),
+          };
+          return rr ? map[rr] || rr : "—";
+        })()}
       </p>
       <div
         className="dash-area"
@@ -658,14 +697,16 @@ const ReturnDecisionPanel = ({ job }) => {
           className="btn primary"
           onClick={() => store.approveReturn(job.id)}
         >
-          Approve → {AuthStore.statusLabel("draft")}
+          {t("returnApproveToStatus", {
+            status: AuthStore.statusLabel("draft"),
+          })}
         </button>
         <button
           type="button"
           className="btn"
           onClick={() => store.rejectReturn(job.id, rejectNote)}
         >
-          Reject · keep status
+          {t("returnRejectKeep")}
         </button>
       </div>
       <label
@@ -673,12 +714,12 @@ const ReturnDecisionPanel = ({ job }) => {
         style={{ marginTop: 14 }}
         htmlFor={`rej-${job.id}`}
       >
-        Decision notes (optional)
+        {t("returnDecisionNotes")}
       </label>
       <textarea
         id={`rej-${job.id}`}
         className="input"
-        placeholder="Reason shown in internal history…"
+        placeholder={t("adminRejectNotePlaceholder")}
         value={rejectNote}
         onChange={(e) => setRejectNote(e.target.value)}
       />
@@ -727,7 +768,7 @@ const AdminDetail = ({
                 letterSpacing: 0.05,
               }}
             >
-              Tour {job.tour}
+              {t("adminColTour")} {job.tour}
             </span>
             <Pill status={job.status} />
             {job.hasReturnRequest && (
@@ -786,7 +827,7 @@ const AdminDetail = ({
               marginTop: 2,
             }}
           >
-            {job.axle} · lump sum
+            {job.axle} · {t("adminPayoutLumpSum")}
           </div>
         </div>
       </div>
@@ -953,7 +994,7 @@ const AdminDetail = ({
                 </div>
               </div>
               <div>
-                <div className="label">FIN</div>
+                <div className="label">{t("labelFin")}</div>
                 <div
                   className="mono"
                   style={{ fontSize: 12, marginTop: 6, wordBreak: "break-all" }}
@@ -1045,8 +1086,7 @@ const AdminDetail = ({
                   letterSpacing: 0.06,
                 }}
               >
-                Generated when publishing or assigning (driver access still
-                gated until acceptance per PRD).
+                {t("adminPdfDraftPlaceholder")}
               </div>
             ) : (
               <div
@@ -1066,7 +1106,7 @@ const AdminDetail = ({
                     transport-order-{job.id}.pdf
                   </div>
                   <div className="label" style={{ marginTop: 2 }}>
-                    Issued {job.createdAt}
+                    {t("adminPdfIssued", { at: job.createdAt })}
                   </div>
                 </div>
                 <button
@@ -1074,21 +1114,21 @@ const AdminDetail = ({
                   className="btn xs"
                   onClick={() => AuthStore.viewPdf(job.id)}
                 >
-                  <Ic.Eye /> View
+                  <Ic.Eye /> {t("view")}
                 </button>
                 <button
                   type="button"
                   className="btn xs"
                   onClick={() => AuthStore.downloadPdf(job.id)}
                 >
-                  <Ic.Down /> Download
+                  <Ic.Down /> {t("download")}
                 </button>
                 <button
                   type="button"
                   className="btn xs cta"
                   onClick={() => AuthStore.regeneratePdf(job.id)}
                 >
-                  <Ic.Refresh /> Regenerate
+                  <Ic.Refresh /> {t("regenerate")}
                 </button>
               </div>
             )}
@@ -1098,7 +1138,7 @@ const AdminDetail = ({
           <section className="card" style={{ padding: 22 }}>
             <div className="sec-head">
               <h3>
-                <span className="num">05</span> Notes
+                <span className="num">05</span> {t("sectionNotes")}
               </h3>
             </div>
             <div
@@ -1110,7 +1150,7 @@ const AdminDetail = ({
               }}
             >
               <div>
-                <div className="label">Internal notes</div>
+                <div className="label">{t("adminInternalNotes")}</div>
                 <p
                   style={{
                     margin: "6px 0 0",
@@ -1122,7 +1162,7 @@ const AdminDetail = ({
                 </p>
               </div>
               <div>
-                <div className="label">Driver-visible notes</div>
+                <div className="label">{t("adminDriverVisibleNotes")}</div>
                 <p
                   style={{
                     margin: "6px 0 0",
@@ -1143,7 +1183,7 @@ const AdminDetail = ({
 
         <aside style={{ position: "sticky", top: 0 }} className="stack-18">
           <div className="card" style={{ padding: 18 }}>
-            <div className="label">Assigned driver</div>
+            <div className="label">{t("adminAssignedDriver")}</div>
             <div
               style={{
                 marginTop: 10,
@@ -1155,15 +1195,15 @@ const AdminDetail = ({
                 color: job.driver ? "var(--text)" : "var(--muted)",
               }}
             >
-              {job.driver || "— none —"}
+              {job.driver || t("adminDriverNone")}
             </div>
           </div>
           <div className="card" style={{ padding: 18 }}>
-            <div className="label">Metadata</div>
+            <div className="label">{t("adminMetadata")}</div>
             <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
               <div>
                 <div className="label" style={{ fontSize: 9.5 }}>
-                  Created
+                  {t("adminLabelCreated")}
                 </div>
                 <div className="mono" style={{ fontSize: 12, marginTop: 2 }}>
                   {job.createdAt} · A. Bauer
@@ -1171,7 +1211,7 @@ const AdminDetail = ({
               </div>
               <div>
                 <div className="label" style={{ fontSize: 9.5 }}>
-                  Last updated
+                  {t("adminLabelLastUpdated")}
                 </div>
                 <div className="mono" style={{ fontSize: 12, marginTop: 2 }}>
                   {job.createdAt} · A. Bauer
@@ -1179,16 +1219,16 @@ const AdminDetail = ({
               </div>
               <div>
                 <div className="label" style={{ fontSize: 9.5 }}>
-                  Source
+                  {t("adminLabelSource")}
                 </div>
                 <div className="mono" style={{ fontSize: 12, marginTop: 2 }}>
-                  Manual · Admin form
+                  {t("adminSourceManualForm")}
                 </div>
               </div>
             </div>
           </div>
           <div className="card" style={{ padding: 18 }}>
-            <div className="label">Status history</div>
+            <div className="label">{t("adminStatusHistory")}</div>
             <div
               style={{
                 marginTop: 12,
@@ -1238,51 +1278,57 @@ const AdminDetail = ({
   );
 };
 
-const AdminDetailFooter = ({ job, onPublish, onAssign, onEdit, onCancel }) => (
-  <>
-    <span className="label">Actions · {AuthStore.statusLabel(job.status)}</span>
-    <div
-      style={{
-        display: "inline-flex",
-        gap: 10,
-        flexWrap: "wrap",
-        justifyContent: "flex-end",
-      }}
-    >
-      {job.status === "draft" && (
-        <button type="button" className="btn" onClick={onEdit}>
-          Edit draft…
-        </button>
-      )}
-      {job.status === "draft" && (
-        <>
-          <button type="button" className="btn" onClick={onAssign}>
-            Assign driver…
+const AdminDetailFooter = ({ job, onPublish, onAssign, onEdit, onCancel }) => {
+  const { t } = useI18n();
+  return (
+    <>
+      <span className="label">
+        {t("adminActionsStatus", {
+          status: AuthStore.statusLabel(job.status),
+        })}
+      </span>
+      <div
+        style={{
+          display: "inline-flex",
+          gap: 10,
+          flexWrap: "wrap",
+          justifyContent: "flex-end",
+        }}
+      >
+        {job.status === "draft" && (
+          <button type="button" className="btn" onClick={onEdit}>
+            {t("adminEditDraft")}
           </button>
-          <button type="button" className="btn primary" onClick={onPublish}>
-            Publish to marketplace
+        )}
+        {job.status === "draft" && (
+          <>
+            <button type="button" className="btn" onClick={onAssign}>
+              {t("adminAssignDriver")}
+            </button>
+            <button type="button" className="btn primary" onClick={onPublish}>
+              {t("adminPublishToMarketplace")}
+            </button>
+          </>
+        )}
+        {job.status === "published" && (
+          <span
+            className="label"
+            style={{ maxWidth: 520, textAlign: "right", lineHeight: 1.5 }}
+          >
+            {t("adminPhase1PublishedNoAssign")}
+          </span>
+        )}
+        {(job.status === "accepted" ||
+          job.status === "assigned" ||
+          job.status === "return_requested") && (
+          <button type="button" className="btn danger" onClick={onCancel}>
+            {t("adminCancelJob")}
           </button>
-        </>
-      )}
-      {job.status === "published" && (
-        <span
-          className="label"
-          style={{ maxWidth: 520, textAlign: "right", lineHeight: 1.5 }}
-        >
-          Phase 1: cannot assign from Published. Move back to Draft first
-          (approve a return or recreate the tour).
-        </span>
-      )}
-      {(job.status === "accepted" ||
-        job.status === "assigned" ||
-        job.status === "return_requested") && (
-        <button type="button" className="btn danger" onClick={onCancel}>
-          Cancel job…
-        </button>
-      )}
-    </div>
-  </>
-);
+        )}
+      </div>
+    </>
+  );
+};
 
 // =========================================================================
 // ADMIN — NEUER AUFTRAG
@@ -1938,73 +1984,77 @@ const NewOrderFooter = ({
   onPublish,
   onAssign,
   valid,
-}) => (
-  <>
-    <span className="label">
-      Mandatory fields gate marketplace publish &amp; direct assignment
-    </span>
-    <div style={{ display: "inline-flex", gap: 10, flexWrap: "wrap" }}>
-      <button type="button" className="btn" onClick={onCancel}>
-        Cancel
-      </button>
-      <button type="button" className="btn" onClick={onSaveDraft}>
-        Save draft
-      </button>
-      <button
-        type="button"
-        className="btn"
-        disabled={!valid}
-        onClick={onAssign}
-      >
-        Assign driver…
-      </button>
-      <button
-        type="button"
-        className="btn primary"
-        disabled={!valid}
-        onClick={onPublish}
-      >
-        Publish to marketplace
-      </button>
-    </div>
-  </>
-);
+}) => {
+  const { t } = useI18n();
+  return (
+    <>
+      <span className="label">{t("newOrderFooterHint")}</span>
+      <div style={{ display: "inline-flex", gap: 10, flexWrap: "wrap" }}>
+        <button type="button" className="btn" onClick={onCancel}>
+          {t("newOrderCancel")}
+        </button>
+        <button type="button" className="btn" onClick={onSaveDraft}>
+          {t("newOrderSaveDraft")}
+        </button>
+        <button
+          type="button"
+          className="btn"
+          disabled={!valid}
+          onClick={onAssign}
+        >
+          {t("adminAssignDriver")}
+        </button>
+        <button
+          type="button"
+          className="btn primary"
+          disabled={!valid}
+          onClick={onPublish}
+        >
+          {t("adminPublishToMarketplace")}
+        </button>
+      </div>
+    </>
+  );
+};
 
 // =========================================================================
 // PLACEHOLDERS for unused nav items
 // =========================================================================
-const Stub = ({ title, desc }) => (
-  <div style={{ maxWidth: 680 }}>
-    <h1
-      style={{
-        margin: 0,
-        fontSize: 30,
-        fontWeight: 700,
-        letterSpacing: "-0.02em",
-      }}
-    >
-      {title}
-    </h1>
-    <p style={{ color: "var(--muted)", marginTop: 10, fontSize: 14 }}>{desc}</p>
-    <div
-      className="dash-area"
-      style={{ marginTop: 24, padding: 50, textAlign: "center" }}
-    >
-      Demo panel placeholder for non-primary routes.
+const Stub = ({ title, desc }) => {
+  const { t } = useI18n();
+  return (
+    <div style={{ maxWidth: 680 }}>
+      <h1
+        style={{
+          margin: 0,
+          fontSize: 30,
+          fontWeight: 700,
+          letterSpacing: "-0.02em",
+        }}
+      >
+        {title}
+      </h1>
+      <p style={{ color: "var(--muted)", marginTop: 10, fontSize: 14 }}>{desc}</p>
+      <div
+        className="dash-area"
+        style={{ marginTop: 24, padding: 50, textAlign: "center" }}
+      >
+        {t("adminStubBody")}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const UsersPane = ({ showToast }) => {
+  const { t } = useI18n();
   const store = useAuthStore();
   return (
     <div>
       <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
-        Users & drivers
+        {t("adminUsersDriversTitle")}
       </h1>
       <p style={{ color: "var(--muted)", marginTop: 8 }}>
-        Client-side management demo for service partners, admin users, account
-        status, and password resets.
+        {t("adminUsersDescLong")}
       </p>
       <div
         style={{
@@ -2016,26 +2066,26 @@ const UsersPane = ({ showToast }) => {
       >
         <section className="card" style={{ padding: 18 }}>
           <div className="sec-head">
-            <h3>Service partners</h3>
+            <h3>{t("adminUsersSectionPartners")}</h3>
             <button
               className="btn xs primary"
               onClick={() =>
                 showToast?.(
-                  "New driver form",
-                  "Demo: production flow will open the driver creation dialog.",
+                  t("adminUsersToastNewDriverTitle"),
+                  t("adminUsersToastNewDriverSub"),
                 )
               }
             >
-              <Ic.Plus /> New driver
+              <Ic.Plus /> {t("adminUsersNewDriver")}
             </button>
           </div>
           <table className="tbl" style={{ marginTop: 12 }}>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Partner ID</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>{t("adminUsersColName")}</th>
+                <th>{t("adminUsersColPartnerId")}</th>
+                <th>{t("adminUsersColStatus")}</th>
+                <th>{t("adminUsersColActions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -2067,28 +2117,33 @@ const UsersPane = ({ showToast }) => {
                             d.id,
                             d.status === "Active" ? "Blocked" : "Active",
                           );
-                          showToast?.("Driver status changed", d.name);
+                          showToast?.(
+                            t("adminUsersToastDriverChanged"),
+                            d.name,
+                          );
                         }}
                       >
-                        {d.status === "Active" ? "Block" : "Activate"}
+                        {d.status === "Active"
+                          ? t("adminUsersBlock")
+                          : t("adminUsersActivate")}
                       </button>
                       <button
                         className="btn xs"
                         onClick={() => {
                           store.setDriverStatus(d.id, "Deactivated");
-                          showToast?.("Driver deactivated", d.name);
+                          showToast?.(t("adminUsersToastDriverOff"), d.name);
                         }}
                       >
-                        Deactivate
+                        {t("adminUsersDeactivate")}
                       </button>
                       <button
                         className="btn xs"
                         onClick={() => {
                           store.resetPassword("driver", d.id);
-                          showToast?.("Password reset triggered", d.name);
+                          showToast?.(t("adminUsersToastPwDriver"), d.name);
                         }}
                       >
-                        Reset
+                        {t("adminUsersResetPw")}
                       </button>
                     </div>
                   </td>
@@ -2099,17 +2154,17 @@ const UsersPane = ({ showToast }) => {
         </section>
         <section className="card" style={{ padding: 18 }}>
           <div className="sec-head">
-            <h3>Admin accounts</h3>
+            <h3>{t("adminUsersSectionAdmins")}</h3>
             <button
               className="btn xs primary"
               onClick={() =>
                 showToast?.(
-                  "New admin form",
-                  "Demo: production flow will open the admin creation dialog.",
+                  t("adminUsersToastNewAdminTitle"),
+                  t("adminUsersToastNewAdminSub"),
                 )
               }
             >
-              <Ic.Plus /> New admin
+              <Ic.Plus /> {t("adminUsersNewAdmin")}
             </button>
           </div>
           {store.getAdmins().map((a) => (
@@ -2143,10 +2198,10 @@ const UsersPane = ({ showToast }) => {
                 style={{ marginTop: 10 }}
                 onClick={() => {
                   store.resetPassword("admin", a.id);
-                  showToast?.("Admin password reset triggered", a.name);
+                  showToast?.(t("adminUsersToastPwAdmin"), a.name);
                 }}
               >
-                Trigger password reset
+                {t("adminUsersTriggerPwReset")}
               </button>
             </div>
           ))}
@@ -2157,12 +2212,13 @@ const UsersPane = ({ showToast }) => {
 };
 
 const CustomersPane = ({ showToast }) => {
+  const { t } = useI18n();
   const store = useAuthStore();
   const [name, setName] = useStateA("");
   return (
     <div>
       <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
-        Customer master data
+        {t("adminCustomerMasterTitle")}
       </h1>
       <div
         style={{
@@ -2176,10 +2232,10 @@ const CustomersPane = ({ showToast }) => {
           <table className="tbl">
             <thead>
               <tr>
-                <th>Customer</th>
-                <th>Reusable pickup</th>
-                <th>Reusable delivery</th>
-                <th>Contact</th>
+                <th>{t("adminCustomersColCust")}</th>
+                <th>{t("adminCustomersColPickup")}</th>
+                <th>{t("adminCustomersColDeliv")}</th>
+                <th>{t("adminCustomersColContact")}</th>
               </tr>
             </thead>
             <tbody>
@@ -2208,13 +2264,13 @@ const CustomersPane = ({ showToast }) => {
           </table>
         </section>
         <section className="card" style={{ padding: 18 }}>
-          <h3 style={{ margin: "0 0 12px" }}>Add customer</h3>
-          <label className="field-label">Name</label>
+          <h3 style={{ margin: "0 0 12px" }}>{t("adminCustomerAddTitle")}</h3>
+          <label className="field-label">{t("adminUsersColName")}</label>
           <input
             className="input"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Customer name"
+            placeholder={t("adminPlaceholderCustName")}
           />
           <button
             className="btn primary block"
@@ -2231,10 +2287,13 @@ const CustomersPane = ({ showToast }) => {
                 instructions: "Prefill-ready instructions",
               });
               setName("");
-              showToast?.("Customer created", "Available for job prefill");
+              showToast?.(
+                t("adminCustomersCreated"),
+                t("adminCustomersCreatedSub"),
+              );
             }}
           >
-            Create
+            {t("adminCustomerCreate")}
           </button>
           <div
             className="dash-area"
@@ -2245,8 +2304,7 @@ const CustomersPane = ({ showToast }) => {
               letterSpacing: 0,
             }}
           >
-            Historical PDFs are not changed unless a job PDF is explicitly
-            regenerated.
+            {t("adminHistoricalPdfNote")}
           </div>
         </section>
       </div>
@@ -2255,23 +2313,25 @@ const CustomersPane = ({ showToast }) => {
 };
 
 const DocumentsPane = ({ showToast }) => {
+  const { t } = useI18n();
   const store = useAuthStore();
   return (
     <div>
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>Documents</h1>
+      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+        {t("navDocuments")}
+      </h1>
       <p style={{ color: "var(--muted)", marginTop: 8 }}>
-        Upload/replace/hide/show prototype for driver Info documents and legal
-        PDFs.
+        {t("adminDocumentsPaneDesc")}
       </p>
       <table className="tbl" style={{ marginTop: 18 }}>
         <thead>
           <tr>
-            <th>Document</th>
-            <th>Category</th>
-            <th>Scope</th>
-            <th>Version</th>
-            <th>Visible</th>
-            <th>Actions</th>
+            <th>{t("adminDocumentsColDoc")}</th>
+            <th>{t("adminDocumentsColCat")}</th>
+            <th>{t("adminDocumentsColScope")}</th>
+            <th>{t("adminDocumentsColVer")}</th>
+            <th>{t("adminDocumentsColVis")}</th>
+            <th>{t("adminDocumentsColAct")}</th>
           </tr>
         </thead>
         <tbody>
@@ -2280,7 +2340,7 @@ const DocumentsPane = ({ showToast }) => {
               <td>
                 <strong>{d.title}</strong>
                 <div className="label" style={{ fontSize: 9.5 }}>
-                  Updated {d.updatedAt}
+                  {t("adminDocumentUpdated", { at: d.updatedAt })}
                 </div>
               </td>
               <td>{d.category}</td>
@@ -2288,7 +2348,7 @@ const DocumentsPane = ({ showToast }) => {
               <td className="mono">{d.version}</td>
               <td>
                 <Pill status={d.visible ? "accepted" : "cancelled"}>
-                  {d.visible ? "Shown" : "Hidden"}
+                  {d.visible ? t("adminDocsShown") : t("adminDocsHidden")}
                 </Pill>
               </td>
               <td>
@@ -2296,20 +2356,20 @@ const DocumentsPane = ({ showToast }) => {
                   className="btn xs"
                   onClick={() => {
                     store.replaceDocument(d.id);
-                    showToast?.("Document replaced", d.title);
+                    showToast?.(t("adminDocumentsReplaced"), d.title);
                   }}
                 >
-                  Replace
+                  {t("adminDocReplace")}
                 </button>
                 <button
                   className="btn xs"
                   style={{ marginLeft: 8 }}
                   onClick={() => {
                     store.toggleDocument(d.id);
-                    showToast?.("Visibility updated", d.title);
+                    showToast?.(t("adminDocumentsVisUp"), d.title);
                   }}
                 >
-                  {d.visible ? "Hide" : "Show"}
+                  {d.visible ? t("adminDocHide") : t("adminDocShow")}
                 </button>
               </td>
             </tr>
@@ -2349,6 +2409,7 @@ const PartnerInvoicesPane = ({ showToast }) => {
         <thead>
           <tr>
             <th>{t("invoiceColFile")}</th>
+            <th>{t("invoiceIdLabel")}</th>
             <th>{t("invoiceColPartner")}</th>
             <th>{t("invoiceColJob")}</th>
             <th>{t("invoiceColUploaded")}</th>
@@ -2360,7 +2421,7 @@ const PartnerInvoicesPane = ({ showToast }) => {
           {uploads.length === 0 ? (
             <tr>
               <td
-                colSpan={6}
+                colSpan={7}
                 className="label"
                 style={{ padding: "22px 12px" }}
               >
@@ -2378,26 +2439,27 @@ const PartnerInvoicesPane = ({ showToast }) => {
                     {u.mimeType}
                   </div>
                 </td>
+                <td className="mono" style={{ fontSize: 12 }}>
+                  {u.invoiceId || "—"}
+                </td>
                 <td>{u.driverName}</td>
-                <td style={{ minWidth: 240 }}>
-                  <select
-                    className="input"
-                    style={{ width: "100%", fontSize: 13 }}
-                    value={u.jobId || ""}
-                    onChange={(e) => {
-                      const r = store.updateInvoiceUpload(u.id, {
-                        jobId: e.target.value || null,
-                      });
-                      if (!r.ok) showToast?.("Update failed", u.fileName);
-                    }}
-                  >
-                    <option value="">{t("invoiceJobNone")}</option>
-                    {jobs.map((j) => (
-                      <option key={j.id} value={j.id}>
-                        {j.tour} · {j.customer}
-                      </option>
-                    ))}
-                  </select>
+                <td style={{ minWidth: 220 }}>
+                  {u.jobId ? (
+                    (() => {
+                      const j = jobs.find((x) => x.id === u.jobId);
+                      return j ? (
+                        <span style={{ fontSize: 13 }}>
+                          {j.tour} · {j.customer}
+                        </span>
+                      ) : (
+                        <span className="mono label" style={{ fontSize: 12 }}>
+                          {u.jobId}
+                        </span>
+                      );
+                    })()
+                  ) : (
+                    <span className="label">{t("invoiceJobNone")}</span>
+                  )}
                 </td>
                 <td className="mono" style={{ fontSize: 12 }}>
                   {fmtIso(u.uploadedAt)}
@@ -2512,13 +2574,22 @@ const PartnerInvoicesPane = ({ showToast }) => {
               }}
             >
               {[
-                `File: ${viewing.fileName}`,
-                `MIME: ${viewing.mimeType}`,
-                `Partner: ${viewing.driverName}`,
-                `Job: ${viewing.jobId || "(none)"}`,
-                `Uploaded: ${viewing.uploadedAt}`,
-                `Processed: ${viewing.processed ? "yes" : "no"}`,
-                `Size: ${viewing.sizeBytes} bytes`,
+                `${t("invoiceIdLabel")}: ${viewing.invoiceId || "—"}`,
+                `${t("adminInvoiceMetaFile")} ${viewing.fileName}`,
+                `${t("adminInvoiceMetaMime")} ${viewing.mimeType}`,
+                `${t("adminInvoiceMetaPartner")} ${viewing.driverName}`,
+                `${t("adminInvoiceMetaJob")} ${
+                  viewing.jobId || t("adminInvoiceJobNone")
+                }`,
+                `${t("adminInvoiceMetaUploaded")} ${viewing.uploadedAt}`,
+                `${t("adminInvoiceMetaProcessed")} ${
+                  viewing.processed
+                    ? t("adminInvoiceMetaYes")
+                    : t("adminInvoiceMetaNo")
+                }`,
+                `${t("adminInvoiceMetaSize")} ${viewing.sizeBytes} ${t(
+                  "adminInvoiceBytesUnit",
+                )}`,
               ].join("\n")}
             </pre>
             <button
@@ -2537,8 +2608,19 @@ const PartnerInvoicesPane = ({ showToast }) => {
 };
 
 const FinancePane = () => {
+  const { t } = useI18n();
   const store = useAuthStore();
   const jobs = store.getJobs();
+  const paymentLabel = (code) => {
+    const m = {
+      "Invoice Missing": "adminPaymentOptMissing",
+      "Invoice Received": "adminPaymentOptReceived",
+      Unpaid: "adminPaymentOptUnpaid",
+      Paid: "adminPaymentOptPaid",
+    };
+    const key = m[code];
+    return key ? t(key) : code || t("adminPaymentOptUnpaid");
+  };
   const totalRevenue = jobs.reduce(
     (s, j) => s + Number(j.revenue || j.price || 0),
     0,
@@ -2547,58 +2629,62 @@ const FinancePane = () => {
   return (
     <div>
       <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
-        Finance tracking
+        {t("adminFinanceTrackingTitle")}
       </h1>
       <div className="statgrid" style={{ marginTop: 22 }}>
         <div className="stat">
-          <div className="label">Revenue</div>
+          <div className="label">{t("adminFinanceColRev")}</div>
           <div className="num">€ {totalRevenue.toFixed(0)}</div>
-          <Pill status="accepted">Tracked</Pill>
+          <Pill status="accepted">{t("adminFinanceTrackedPill")}</Pill>
         </div>
         <div className="stat">
-          <div className="label">Unpaid / missing</div>
+          <div className="label">{t("adminFinanceStatUnpaidRow")}</div>
           <div className="num">{unpaid}</div>
-          <Pill status="assigned">Manual</Pill>
+          <Pill status="assigned">{t("adminFinanceManualPill")}</Pill>
         </div>
       </div>
       <table className="tbl">
         <thead>
           <tr>
-            <th>Tour</th>
-            <th>Customer</th>
-            <th>Revenue</th>
-            <th>Driver comp.</th>
-            <th>Expenses</th>
-            <th>Invoice</th>
-            <th>Payment</th>
+            <th>{t("adminColTour")}</th>
+            <th>{t("adminColCustomer")}</th>
+            <th>{t("adminFinanceColRev")}</th>
+            <th>{t("adminFinanceColDrvComp")}</th>
+            <th>{t("financeExpenses")}</th>
+            <th>{t("adminFinanceColInv")}</th>
+            <th>{t("adminFinanceColPay")}</th>
           </tr>
         </thead>
         <tbody>
           {jobs.map((j) => (
-            <tr key={j.id}>
-              <td className="mono">{j.tour}</td>
-              <td>{j.customer}</td>
-              <td>€ {Number(j.revenue || j.price || 0).toFixed(2)}</td>
-              <td>€ {Number(j.driverCompensation || 0).toFixed(2)}</td>
-              <td>€ {Number(j.expenses || 0).toFixed(2)}</td>
-              <td>
-                {j.invoiceReceived ? "Received" : "Missing"}
-                <div
-                  className="mono"
-                  style={{ fontSize: 11, color: "var(--muted)" }}
-                >
-                  {j.invoiceNumber || "no number"}
-                </div>
-              </td>
-              <td>
-                <Pill
-                  status={j.paymentStatus === "Paid" ? "completed" : "assigned"}
-                >
-                  {j.paymentStatus || "Unpaid"}
-                </Pill>
-              </td>
-            </tr>
-          ))}
+              <tr key={j.id}>
+                <td className="mono">{j.tour}</td>
+                <td>{j.customer}</td>
+                <td>€ {Number(j.revenue || j.price || 0).toFixed(2)}</td>
+                <td>€ {Number(j.driverCompensation || 0).toFixed(2)}</td>
+                <td>€ {Number(j.expenses || 0).toFixed(2)}</td>
+                <td>
+                  {j.invoiceReceived
+                    ? t("adminFinanceRecvShort")
+                    : t("adminFinanceMissingShort")}
+                  <div
+                    className="mono"
+                    style={{ fontSize: 11, color: "var(--muted)" }}
+                  >
+                    {j.invoiceNumber || t("adminFinanceNoInvNum")}
+                  </div>
+                </td>
+                <td>
+                  <Pill
+                    status={
+                      j.paymentStatus === "Paid" ? "completed" : "assigned"
+                    }
+                  >
+                    {paymentLabel(j.paymentStatus)}
+                  </Pill>
+                </td>
+              </tr>
+            ))}
         </tbody>
       </table>
     </div>

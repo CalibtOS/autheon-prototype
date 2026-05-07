@@ -1350,8 +1350,24 @@ const JobInvoiceUpload = ({ jobId }) => {
                 gap: 8,
               }}
             >
-              <span className="mono" style={{ wordBreak: "break-all" }}>
-                {u.fileName}
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span
+                  className="mono"
+                  style={{
+                    wordBreak: "break-all",
+                    display: "block",
+                  }}
+                >
+                  {u.fileName}
+                </span>
+                {u.invoiceId && (
+                  <span
+                    className="mono label"
+                    style={{ fontSize: 11, marginTop: 4, display: "block" }}
+                  >
+                    {u.invoiceId}
+                  </span>
+                )}
               </span>
               {u.processed ? (
                 <Pill status="completed">{t("invoiceProcessedBadge")}</Pill>
