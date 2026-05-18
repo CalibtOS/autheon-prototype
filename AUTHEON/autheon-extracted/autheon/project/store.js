@@ -885,6 +885,31 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
+    revertJobToDraft(id) {
+      const j = api.getJob(id);
+      if (!j || j.status !== "published") return { ok: false, reason: "not_published" };
+      j.status = "draft";
+      j.driver = null;
+      j.hasReturnRequest = false;
+      j.history = [
+        ...(j.history || []),
+        {
+          st: "draft",
+          at: nowStamp(),
+          by: DEMO_ADMIN,
+          meta: "Reverted from Published",
+        },
+      ];
+      log(
+        "job_reverted_to_draft",
+        DEMO_ADMIN,
+        j.tour,
+        "Removed from marketplace; editable as draft",
+      );
+      emit();
+      return { ok: true };
+    },
+
     assignJob(id, driverName) {
       const j = api.getJob(id);
       if (!j || j.status !== "draft") return { ok: false };
@@ -1273,10 +1298,13 @@ window.AuthStore = (() => {
           : "";
       const d = drivers.find((x) => x.id === driverRaw);
       if (!d) return { ok: false, reason: "bad_driver" };
-      const fileName = String(opts.fileName || "").trim();
-      if (!fileName) return { ok: false, reason: "no_filename" };
+      const file = opts.file;
+      if (!file) return { ok: false, reason: "no_file" };
+      if (!isAllowedInvoiceFile(file))
+        return { ok: false, reason: "invalid_type" };
+      const fileName = file.name;
       const mime =
-        String(opts.mimeType || "application/octet-stream").trim() ||
+        (file.type || guessMimeFromName(file.name) || "").trim() ||
         "application/octet-stream";
       const notes = String(opts.notes || "").trim();
       const invoiceId = `INV-${Date.now().toString(36).toUpperCase()}-${Math.random()
@@ -1291,7 +1319,7 @@ window.AuthStore = (() => {
         jobId: jobRaw,
         fileName,
         mimeType: mime,
-        sizeBytes: 0,
+        sizeBytes: typeof file.size === "number" ? file.size : 0,
         uploadedAt: new Date().toISOString(),
         processed: false,
         source: "admin",
@@ -1329,7 +1357,17 @@ window.AuthStore = (() => {
         if (!api.getJob(jid)) return { ok: false, reason: "bad_job" };
         u.jobId = jid;
       }
-      if (patch.fileName !== undefined) {
+      if (patch.file !== undefined) {
+        const file = patch.file;
+        if (!file) return { ok: false, reason: "no_file" };
+        if (!isAllowedInvoiceFile(file))
+          return { ok: false, reason: "invalid_type" };
+        u.fileName = file.name;
+        u.mimeType =
+          (file.type || guessMimeFromName(file.name) || "").trim() ||
+          "application/octet-stream";
+        u.sizeBytes = typeof file.size === "number" ? file.size : 0;
+      } else if (patch.fileName !== undefined) {
         const fn = String(patch.fileName || "").trim();
         if (!fn) return { ok: false, reason: "no_filename" };
         u.fileName = fn;

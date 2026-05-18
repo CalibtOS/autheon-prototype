@@ -1,6 +1,6 @@
 {
   "feature": "AUTHEON Phase 1 - Vehicle Transport Platform",
-  "version": "PRD v1.3 - Unified Master (+ partner invoices & billing reconciliation; prototype gap pass, English)",
+  "version": "PRD v1.4 - Unified Master (prototype sync May 2026: revert-to-draft, partner invoice file upload UX, admin new-job i18n)",
   "goal": "Replace manual vehicle transport dispatch with a contract-driven platform that supports marketplace job distribution, direct assignment, binding driver acceptance, controlled returns, automatic transport-order PDF generation, operational tracking, partner invoice ingestion per tour, reconciled invoice-received state, and basic financial lifecycle tracking.",
   "product_context": {
     "platform_type": "Vehicle transport / vehicle relocation operations platform",
@@ -22,6 +22,7 @@
       "Drivers cannot directly reject directly assigned jobs.",
       "Drivers cannot cancel accepted or assigned jobs themselves; they use return or escalation flows only.",
       "Published and Assigned are separate mutually exclusive paths in Phase 1.",
+      "Dispatch may return a Published marketplace job to Draft (admin action) to edit, re-publish, or direct-assign without requiring a driver return approval.",
       "Admins may cancel jobs from Accepted or Assigned when operations require it.",
       "The platform does not include chat, GPS tracking, live tracking, or map modules in Phase 1."
     ],
@@ -30,10 +31,23 @@
   "prototype_coverage_notes": [
     "Driver PWA (demo): marketplace, My Jobs, job detail visibility, accept slide, complete, return request, invoice upload per job (job id required), profile/info, notification prefs behind feature flag.",
     "Admin (demo): job overview with filters/pagination, job detail + return decision, PDF view/download/regenerate, separate Finance and Partner invoices nav with cross-links, users/customers/documents panes, audit log, CSV export, feature flags pane.",
-    "Billing (demo): job fields include adminInvoiceOverride; invoiceReceived reconciled from (processed partner uploads linked to job) OR admin override; upload add/update/delete triggers reconcile.",
-    "Audit log (demo): entries viewable in admin; CSV download for offline search (export is logged).",
+    "Publishing (demo): admin Return to draft on Published jobs (store.revertJobToDraft); job leaves marketplace until re-published or directly assigned from Draft.",
+    "Partner invoices (demo): driver and admin register/edit use file picker (PDF/images); prototype stores metadata only (no binary persistence); placeholder download stub.",
+    "Admin new job form (demo): fully localized EN/DE (all sections, labels, validation, live preview).",
+    "Billing (demo): job invoiceReceived updated on publish/assign and partner-invoice register; full adminInvoiceOverride + idempotent reconcile from processed uploads is production scope (see task 27).",
+    "Audit log (demo): entries viewable in admin; CSV download for offline search (export is logged); includes job_reverted_to_draft.",
     "i18n: EN/DE in prototype for UX demo; product-wide multilingual rollout remains a separate decision (see out_of_scope)."
   ],
+  "prototype_validation": {
+    "last_synced": "2026-05-18",
+    "audit_document": "AUTHEON/prd-prototype-validation.md",
+    "verdict": "Static prototype covers Phase 1 UX/workflows; all tasks remain pending for production backend, persistence, auth, and automated tests.",
+    "sync_pass_notes": [
+      "Added Published→Draft admin revert (revertJobToDraft, AdminDetailFooter).",
+      "Partner invoice admin off-channel flow uses document file upload, not manual filename/MIME fields.",
+      "New job (NewOrder) wired to i18n EN/DE."
+    ]
+  },
   "domain_model_summary": {
     "job_fields": [
       "tourNumber",
@@ -97,14 +111,17 @@
       "size (bytes) for production",
       "uploaded at (timestamp)",
       "processed (admin/bookkeeping flag)",
-      "storage reference / placeholder in prototype (metadata-only demo)"
+      "source (driver PWA vs admin off-channel)",
+      "internal notes (admin)",
+      "storage reference / placeholder in prototype (metadata-only demo; file picker UX for upload)"
     ]
   },
   "global_business_rules": [
     "A job can follow either marketplace flow or direct assignment flow.",
     "Marketplace flow: Draft → Published → Accepted → Completed.",
     "Direct assignment flow: Draft → Assigned → Completed.",
-    "Published → Assigned is not part of Phase 1. If a published job must be changed or reassigned manually, it should return to Draft first.",
+    "Published → Assigned is not part of Phase 1. If a published job must be changed or reassigned manually, it should return to Draft first (admin revert to Draft and/or approved driver return).",
+    "Admin may revert Published → Draft directly (removes from marketplace, clears assignment if any, enables edit/re-publish or direct assign).",
     "Driver acceptance must be atomic. Only one driver can successfully accept a Published job.",
     "After acceptance, sensitive job details become visible to the accepting driver.",
     "Before acceptance, marketplace previews show only reduced data.",
@@ -214,7 +231,8 @@
         "System generates unique tour number using agreed format such as 0001-26, with yearly sequencing.",
         "Required fields are validated before Publish or Direct Assign.",
         "Vehicle fields support structured values from the vehicle list where applicable.",
-        "Sensitive fields are persisted but not exposed to drivers before commitment."
+        "Sensitive fields are persisted but not exposed to drivers before commitment.",
+        "Prototype: multi-section New Job form with live validation summary; fully localized EN/DE."
       ],
       "status": "pending",
       "files": [
@@ -233,12 +251,16 @@
         "Assigned jobs do not appear in Portal.",
         "Published jobs appear only as reduced previews in Portal.",
         "Published to Assigned without Draft is blocked in Phase 1 unless the job is returned to Draft first.",
-        "Publish and direct assignment actions create audit log entries."
+        "Admin can revert Published to Draft (removes from marketplace, clears assignment if any, enables edit/re-publish or direct assign).",
+        "Revert is available on admin job detail for Published jobs (prototype: Return to draft).",
+        "Revert and return-approval paths both land in Draft; only Published jobs use admin revert (not Accepted/Assigned).",
+        "Publish, direct assignment, and revert-to-draft actions create audit log entries (prototype: job_published, job_assigned, job_reverted_to_draft)."
       ],
       "status": "pending",
       "files": [
         "services/jobs/publish.ts",
         "services/jobs/assign.ts",
+        "services/jobs/revert-to-draft.ts",
         "apps/admin/src/jobs/actions/"
       ]
     },
@@ -425,12 +447,14 @@
         "Shows financial section: revenue/job price, driver compensation, expenses; invoice received (manual and/or derived from partner uploads per task 27), invoice type, invoice number, paid/unpaid; optional legacy operational codes if still used.",
         "Operational auxiliary fields from legacy spreadsheet supported or stubbed: proof of protocol, confirmation, assignment method, logistics status, remarks.",
         "Driver-facing SLA from PDF (submit single or consolidated invoice within seven calendar days to the invoice inbox shown on the template) surfaced as informational text on completed job detail or linked PDF summary where useful.",
-        "Admin can edit Draft jobs and permitted non-critical fields according to final business rules."
+        "Admin can edit Draft jobs and permitted non-critical fields according to final business rules.",
+        "Published jobs show Return to draft in admin footer (prototype); after revert, Draft actions (edit, publish, assign) apply."
       ],
       "status": "pending",
       "files": [
         "apps/admin/src/jobs/detail.tsx",
-        "services/jobs/financial.ts"
+        "services/jobs/financial.ts",
+        "services/jobs/revert-to-draft.ts"
       ]
     },
     {
@@ -544,8 +568,9 @@
         "Accepted file types include PDF and standard images (JPEG, PNG, WebP, GIF) unless compliance policy changes.",
         "Production persists file storage with appropriate security; prototype may use metadata-only placeholders.",
         "Blocked/restricted drivers cannot create uploads.",
-        "Admin Partner invoices view lists uploads with file metadata, partner, linked job/tour, upload time, processed flag, and actions (open linked job, view metadata, download).",
-        "Backend and admin UI support creating and editing partner invoice document records (and linking to jobs) for channels outside the PWA, such as bundled invoices sent by email; prototype may remain upload/list/process-only without manual create.",
+        "Admin Partner invoices view lists uploads with file metadata, partner, linked job/tour, upload time, processed flag, source (driver vs admin), and actions (open linked job, view metadata, download placeholder).",
+        "Admin off-channel registration uses document file upload (PDF/images), not free-text filename or MIME fields; same allowed types as driver upload.",
+        "Admin can edit partner invoice records (job link, partner, invoice id, internal notes, replace document via file picker).",
         "Admin Finance view remains the per-job ledger (amounts, invoice number, payment status, invoice received display).",
         "Invoice received on job reconciles idempotently: true if adminInvoiceOverride is true, false if override is explicitly false (dispute path), else true iff at least one upload for that job is marked processed.",
         "Changing upload processed flag, link to job, or deleting upload triggers reconcile on all affected jobs.",
@@ -568,7 +593,7 @@
       "story": "As AUTHEON, I want all important actions logged so the system is traceable.",
       "acceptance": [
         "Audit log records action type, actor, affected entity, timestamp, and relevant metadata.",
-        "Logged actions include job created, changed, published, directly assigned, accepted, completed, cancelled (including admin cancellation), return requested, return approved/rejected, user blocked/deactivated, document uploaded/replaced, PDF generated/regenerated, acceptance confirmation, partner invoice upload registered/updated/deleted, financial field updates, audit log export, and feature flag changes if used.",
+        "Logged actions include job created, changed, published, reverted to draft (Published → Draft by admin), directly assigned, accepted, completed, cancelled (including admin cancellation), return requested, return approved/rejected, user blocked/deactivated, document uploaded/replaced, PDF generated/regenerated, acceptance confirmation, partner invoice upload registered/updated/deleted, financial field updates, audit log export, and feature flag changes if used.",
         "Admin can view audit log entries in the admin console.",
         "Admin can download or export the audit log (e.g. CSV) for offline search, filtering, and archival; export is admin-only and is itself auditable.",
         "Status history is visible on job detail."
@@ -648,6 +673,7 @@
         "Test: blocked or restricted driver cannot access marketplace/API active jobs.",
         "Test: pre-acceptance driver cannot fetch locked fields.",
         "Test: Draft can Publish or Assign, but Published cannot Assign in Phase 1 without returning to Draft.",
+        "Test: admin can revert Published job to Draft; job leaves marketplace and can Publish or Assign again from Draft.",
         "Test: direct assigned jobs do not appear in marketplace.",
         "Test: acceptance unlocks full details and PDF for accepted driver only.",
         "Test: PDF generation includes required template fields.",
@@ -676,7 +702,7 @@
     "Accounting/invoicing system integration (export and manual fields in scope; ERP sync out of scope)",
     "Full product multilingual/i18n rollout and localized legal copy management unless separately scoped (demo locales may exist in prototype only)",
     "External customer import interfaces/PDF recognition unless separately scoped",
-    "Any behavior not described in PRD v1.3 or validated wireframes/PDF requires client change request"
+    "Any behavior not described in PRD v1.4 or validated wireframes/PDF requires client change request"
   ],
   "open_questions": [
     "Confirm exact timezone for return deadline calculation.",

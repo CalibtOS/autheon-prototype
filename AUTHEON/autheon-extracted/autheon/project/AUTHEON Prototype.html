@@ -411,6 +411,19 @@
                   showToast(t("assignedDriver", { driver: demoDriver() }), "");
               }}
               onEdit={() => setSection("new")}
+              onRevertToDraft={() => {
+                const r = store.revertJobToDraft(fresh.id);
+                if (!r.ok)
+                  showToast(
+                    t("revertToDraftBlocked"),
+                    t("revertToDraftBlockedSub"),
+                  );
+                else
+                  showToast(
+                    t("revertedToDraftTour", { tour: fresh.tour }),
+                    t("adminRevertToDraftSub"),
+                  );
+              }}
               onCancel={() => {
                 const r = store.cancelJob(fresh.id);
                 if (!r.ok) showToast(t("cancellationBlocked"), "");

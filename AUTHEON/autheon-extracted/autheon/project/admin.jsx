@@ -1278,14 +1278,23 @@ const AdminDetail = ({
   );
 };
 
-const AdminDetailFooter = ({ job, onPublish, onAssign, onEdit, onCancel }) => {
+const AdminDetailFooter = ({
+  job,
+  onPublish,
+  onAssign,
+  onEdit,
+  onCancel,
+  onRevertToDraft,
+}) => {
   const { t } = useI18n();
   return (
     <>
       <span className="label">
-        {t("adminActionsStatus", {
-          status: AuthStore.statusLabel(job.status),
-        })}
+        {job.status === "published"
+          ? t("adminRevertToDraftSub")
+          : t("adminActionsStatus", {
+              status: AuthStore.statusLabel(job.status),
+            })}
       </span>
       <div
         style={{
@@ -1311,12 +1320,9 @@ const AdminDetailFooter = ({ job, onPublish, onAssign, onEdit, onCancel }) => {
           </>
         )}
         {job.status === "published" && (
-          <span
-            className="label"
-            style={{ maxWidth: 520, textAlign: "right", lineHeight: 1.5 }}
-          >
-            {t("adminPhase1PublishedNoAssign")}
-          </span>
+          <button type="button" className="btn" onClick={onRevertToDraft}>
+            {t("adminRevertToDraft")}
+          </button>
         )}
         {(job.status === "accepted" ||
           job.status === "assigned" ||
@@ -1335,6 +1341,18 @@ const AdminDetailFooter = ({ job, onPublish, onAssign, onEdit, onCancel }) => {
 // =========================================================================
 const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
   const store = useAuthStore();
+  const { t } = useI18n();
+  const vehicleTypes = [
+    { value: "SUV", label: t("newOrderVtSuv") },
+    { value: "PKW", label: t("newOrderVtPkw") },
+    { value: "Transporter", label: t("newOrderVtTransporter") },
+    { value: "LKW < 3,5t", label: t("lightTruck") },
+    { value: "Oldtimer", label: t("newOrderVtClassic") },
+  ];
+  const axles = [
+    { value: "Eigenachse", label: t("ownAxle") },
+    { value: "Fremdachse", label: t("thirdPartyAxle") },
+  ];
   const [form, setForm] = useStateA({
     customer: "",
     startCity: "",
@@ -1409,13 +1427,13 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
   }, [form, valid]);
 
   const sections = [
-    ["01", "Kunde"],
-    ["02", "Route"],
-    ["03", "Termin"],
-    ["04", "Fahrzeug"],
-    ["05", "Kontakte"],
-    ["06", "Vergütung"],
-    ["07", "Notizen"],
+    ["01", t("newOrderSecCustomer")],
+    ["02", t("newOrderSecRoute")],
+    ["03", t("newOrderSecSchedule")],
+    ["04", t("newOrderSecVehicle")],
+    ["05", t("newOrderSecContacts")],
+    ["06", t("newOrderSecCompensation")],
+    ["07", t("newOrderSecNotes")],
   ];
 
   return (
@@ -1429,7 +1447,7 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
         }}
       >
         <div>
-          <div className="label">Neuer Fahrauftrag</div>
+          <div className="label">{t("newOrderSubtitle")}</div>
           <h1
             style={{
               margin: "6px 0 0",
@@ -1438,14 +1456,14 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
               letterSpacing: "-0.02em",
             }}
           >
-            Neuer Auftrag
+            {t("navNewJob")}
           </h1>
         </div>
         <div
           className="card"
           style={{ padding: "10px 16px", textAlign: "right" }}
         >
-          <div className="label">Tour-Nr</div>
+          <div className="label">{t("tourNo")}</div>
           <div
             className="mono"
             style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}
@@ -1459,7 +1477,7 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
         {/* TOC */}
         <aside style={{ position: "sticky", top: 0 }}>
           <div className="label" style={{ marginBottom: 12 }}>
-            Form-Abschnitte
+            {t("newOrderFormSections")}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {sections.map(([n, l]) => (
@@ -1493,9 +1511,9 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
           <section id="sec-01" className="card" style={{ padding: 22 }}>
             <div className="sec-head">
               <h3>
-                <span className="num">01</span> Kunde / Auftraggeber
+                <span className="num">01</span> {t("newOrderSecCustomerTitle")}
               </h3>
-              <span className="label">Pre-fill aus Master-Daten</span>
+              <span className="label">{t("newOrderPrefillMaster")}</span>
             </div>
             <div
               style={{
@@ -1506,23 +1524,23 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
               }}
             >
               <div>
-                <label className="field-label">Kunde auswählen *</label>
+                <label className="field-label">{t("newOrderSelectCustomer")}</label>
                 <input
                   className="input"
-                  placeholder="Kunde suchen oder aus Liste wählen…"
+                  placeholder={t("newOrderCustomerSearchPh")}
                   value={form.customer}
                   onChange={(e) => set("customer", e.target.value)}
                 />
               </div>
               <div>
-                <label className="field-label">Oder neu anlegen</label>
+                <label className="field-label">{t("newOrderOrCreateNew")}</label>
                 <button
                   type="button"
                   className="btn block"
                   style={{ padding: "10px 12px" }}
                   onClick={prefillCustomer}
                 >
-                  <Ic.Plus /> Aus Master-Daten
+                  <Ic.Plus /> {t("newOrderFromMasterData")}
                 </button>
               </div>
             </div>
@@ -1540,10 +1558,9 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
                 }}
               >
                 <strong style={{ color: "var(--text)" }}>
-                  ⓘ Noch kein Kunde gewählt.
+                  ⓘ {t("newOrderNoCustomerTitle")}
                 </strong>{" "}
-                Adressen, Kontakte und Notizen werden nach Auswahl automatisch
-                vorausgefüllt.
+                {t("newOrderNoCustomerHint")}
               </div>
             )}
           </section>
@@ -1551,7 +1568,7 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
           <section id="sec-02" className="card" style={{ padding: 22 }}>
             <div className="sec-head">
               <h3>
-                <span className="num">02</span> Route
+                <span className="num">02</span> {t("newOrderSecRoute")}
               </h3>
             </div>
             <div
@@ -1563,10 +1580,10 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
               }}
             >
               <div>
-                <label className="field-label">Startadresse *</label>
+                <label className="field-label">{t("newOrderStartAddress")}</label>
                 <input
                   className="input"
-                  placeholder="Straße + Nr"
+                  placeholder={t("newOrderStreetPh")}
                   value={form.startStreet}
                   onChange={(e) => set("startStreet", e.target.value)}
                 />
@@ -1580,23 +1597,23 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
                 >
                   <input
                     className="input mono"
-                    placeholder="PLZ"
+                    placeholder={t("newOrderPlzPh")}
                     value={form.startPlz}
                     onChange={(e) => set("startPlz", e.target.value)}
                   />
                   <input
                     className="input"
-                    placeholder="Stadt / Ort"
+                    placeholder={t("newOrderCityPh")}
                     value={form.startCity}
                     onChange={(e) => set("startCity", e.target.value)}
                   />
                 </div>
               </div>
               <div>
-                <label className="field-label">Zieladresse *</label>
+                <label className="field-label">{t("newOrderEndAddress")}</label>
                 <input
                   className="input"
-                  placeholder="Straße + Nr"
+                  placeholder={t("newOrderStreetPh")}
                   value={form.endStreet}
                   onChange={(e) => set("endStreet", e.target.value)}
                 />
@@ -1610,13 +1627,13 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
                 >
                   <input
                     className="input mono"
-                    placeholder="PLZ"
+                    placeholder={t("newOrderPlzPh")}
                     value={form.endPlz}
                     onChange={(e) => set("endPlz", e.target.value)}
                   />
                   <input
                     className="input"
-                    placeholder="Stadt / Ort"
+                    placeholder={t("newOrderCityPh")}
                     value={form.endCity}
                     onChange={(e) => set("endCity", e.target.value)}
                   />
@@ -1624,7 +1641,7 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
               </div>
             </div>
             <div style={{ marginTop: 14 }}>
-              <label className="field-label">Distanz (km)</label>
+              <label className="field-label">{t("newOrderDistanceKm")}</label>
               <input
                 className="input mono"
                 style={{ maxWidth: 200 }}
@@ -1638,7 +1655,7 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
           <section id="sec-03" className="card" style={{ padding: 22 }}>
             <div className="sec-head">
               <h3>
-                <span className="num">03</span> Termin / Zeitfenster
+                <span className="num">03</span> {t("newOrderSecScheduleTitle")}
               </h3>
             </div>
             <div
@@ -1650,28 +1667,28 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
               }}
             >
               <div>
-                <label className="field-label">Datum *</label>
+                <label className="field-label">{t("date")} *</label>
                 <input
                   className="input mono"
-                  placeholder="TT.MM.JJJJ"
+                  placeholder={t("newOrderDatePh")}
                   value={form.date}
                   onChange={(e) => set("date", e.target.value)}
                 />
               </div>
               <div>
-                <label className="field-label">Zeitfenster von</label>
+                <label className="field-label">{t("newOrderWindowFrom")}</label>
                 <input
                   className="input mono"
-                  placeholder="—:—"
+                  placeholder={t("newOrderTimePh")}
                   value={form.from}
                   onChange={(e) => set("from", e.target.value)}
                 />
               </div>
               <div>
-                <label className="field-label">Zeitfenster bis</label>
+                <label className="field-label">{t("newOrderWindowTo")}</label>
                 <input
                   className="input mono"
-                  placeholder="—:—"
+                  placeholder={t("newOrderTimePh")}
                   value={form.to}
                   onChange={(e) => set("to", e.target.value)}
                 />
@@ -1682,23 +1699,23 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
           <section id="sec-04" className="card" style={{ padding: 22 }}>
             <div className="sec-head">
               <h3>
-                <span className="num">04</span> Fahrzeug
+                <span className="num">04</span> {t("newOrderSecVehicle")}
               </h3>
             </div>
             <div style={{ marginTop: 14 }}>
-              <label className="field-label">Fahrzeugtyp *</label>
+              <label className="field-label">{t("vehicleType")} *</label>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {["SUV", "PKW", "Transporter", "LKW < 3,5t", "Oldtimer"].map(
-                  (t) => (
-                    <span
-                      key={t}
-                      className={"chip " + (form.vehicleType === t ? "on" : "")}
-                      onClick={() => set("vehicleType", t)}
-                    >
-                      {t}
-                    </span>
-                  ),
-                )}
+                {vehicleTypes.map((vt) => (
+                  <span
+                    key={vt.value}
+                    className={
+                      "chip " + (form.vehicleType === vt.value ? "on" : "")
+                    }
+                    onClick={() => set("vehicleType", vt.value)}
+                  >
+                    {vt.label}
+                  </span>
+                ))}
               </div>
             </div>
             <div
@@ -1710,55 +1727,58 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
               }}
             >
               <div>
-                <label className="field-label">Marke</label>
+                <label className="field-label">{t("newOrderBrand")}</label>
                 <input
                   className="input"
-                  placeholder="z.B. Volkswagen"
+                  placeholder={t("newOrderBrandPh")}
                   value={form.brand}
                   onChange={(e) => set("brand", e.target.value)}
                 />
               </div>
               <div>
-                <label className="field-label">Modell</label>
+                <label className="field-label">{t("newOrderModel")}</label>
                 <input
                   className="input"
-                  placeholder="z.B. Passat Variant"
+                  placeholder={t("newOrderModelPh")}
                   value={form.model}
                   onChange={(e) => set("model", e.target.value)}
                 />
               </div>
               <div>
-                <label className="field-label">Kennzeichen *</label>
+                <label className="field-label">{t("plate")} *</label>
                 <input
                   className="input mono"
-                  placeholder="XX-XX 0000"
+                  placeholder={t("newOrderPlatePh")}
                   value={form.plate}
                   onChange={(e) => set("plate", e.target.value)}
                 />
               </div>
               <div>
-                <label className="field-label">FIN (17-stellig)</label>
+                <label className="field-label">
+                  {t("vin")} ({t("newOrderVinLen")})
+                </label>
                 <input
                   className="input mono"
-                  placeholder="17-stellig"
+                  placeholder={t("newOrderVinLen")}
                   value={form.vin}
                   onChange={(e) => set("vin", e.target.value)}
                 />
               </div>
             </div>
             <div style={{ marginTop: 14 }}>
-              <label className="field-label">Achse</label>
+              <label className="field-label">{t("axle")}</label>
               <div
                 className="seg"
                 style={{ display: "inline-grid", gridAutoFlow: "column" }}
               >
-                {["Eigenachse", "Fremdachse"].map((a) => (
+                {axles.map((a) => (
                   <button
-                    key={a}
-                    className={form.axle === a ? "on" : ""}
-                    onClick={() => set("axle", a)}
+                    key={a.value}
+                    type="button"
+                    className={form.axle === a.value ? "on" : ""}
+                    onClick={() => set("axle", a.value)}
                   >
-                    {a}
+                    {a.label}
                   </button>
                 ))}
               </div>
@@ -1768,7 +1788,7 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
           <section id="sec-05" className="card" style={{ padding: 22 }}>
             <div className="sec-head">
               <h3>
-                <span className="num">05</span> Kontakte
+                <span className="num">05</span> {t("newOrderSecContacts")}
               </h3>
             </div>
             <div
@@ -1780,33 +1800,33 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
               }}
             >
               <div>
-                <label className="field-label">Kontakt · Übernahme</label>
+                <label className="field-label">{t("newOrderContactPickup")}</label>
                 <input
                   className="input"
-                  placeholder="Ansprechpartner"
+                  placeholder={t("newOrderContactPersonPh")}
                   value={form.cName1}
                   onChange={(e) => set("cName1", e.target.value)}
                 />
                 <input
                   className="input mono"
                   style={{ marginTop: 10 }}
-                  placeholder="+49 …"
+                  placeholder={t("newOrderPhonePh")}
                   value={form.cPhone1}
                   onChange={(e) => set("cPhone1", e.target.value)}
                 />
               </div>
               <div>
-                <label className="field-label">Kontakt · Übergabe</label>
+                <label className="field-label">{t("newOrderContactDelivery")}</label>
                 <input
                   className="input"
-                  placeholder="Ansprechpartner"
+                  placeholder={t("newOrderContactPersonPh")}
                   value={form.cName2}
                   onChange={(e) => set("cName2", e.target.value)}
                 />
                 <input
                   className="input mono"
                   style={{ marginTop: 10 }}
-                  placeholder="+49 …"
+                  placeholder={t("newOrderPhonePh")}
                   value={form.cPhone2}
                   onChange={(e) => set("cPhone2", e.target.value)}
                 />
@@ -1817,15 +1837,15 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
           <section id="sec-06" className="card" style={{ padding: 22 }}>
             <div className="sec-head">
               <h3>
-                <span className="num">06</span> Vergütung
+                <span className="num">06</span> {t("newOrderSecCompensation")}
               </h3>
             </div>
             <div style={{ marginTop: 14 }}>
-              <label className="field-label">Preis (EUR) *</label>
+              <label className="field-label">{t("newOrderPriceEur")}</label>
               <input
                 className="input mono"
                 style={{ maxWidth: 200, fontSize: 18, fontWeight: 700 }}
-                placeholder="0,00 €"
+                placeholder={t("newOrderPricePh")}
                 value={form.price}
                 onChange={(e) => set("price", e.target.value)}
               />
@@ -1838,26 +1858,21 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
               style={{ justifyContent: "space-between" }}
             >
               <h3>
-                <span className="num">07</span> Notizen
+                <span className="num">07</span> {t("newOrderSecNotes")}
               </h3>
               <button
                 type="button"
                 className="btn ghost xs"
-                onClick={() =>
-                  set(
-                    "notes",
-                    "Standard: Bitte Fahrzeug vor Fahrtantritt prüfen, Schäden dokumentieren und Verzögerungen sofort an AUTHEON melden.",
-                  )
-                }
+                onClick={() => set("notes", t("newOrderStandardNotesText"))}
               >
-                + Standard-Formulierung
+                {t("newOrderStandardWording")}
               </button>
             </div>
             <div style={{ marginTop: 14 }}>
-              <label className="field-label">Freitext</label>
+              <label className="field-label">{t("newOrderNotesFree")}</label>
               <textarea
                 className="input"
-                placeholder="Hinweise für den Fahrer…"
+                placeholder={t("newOrderNotesDriverPh")}
                 value={form.notes}
                 onChange={(e) => set("notes", e.target.value)}
               />
@@ -1875,10 +1890,10 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
             gap: 14,
           }}
         >
-          <div className="label">Live-Zusammenfassung</div>
+          <div className="label">{t("newOrderLiveSummary")}</div>
           <div className="card" style={{ padding: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>
-              Auftrag-Vorschau
+              {t("newOrderPreviewTitle")}
             </div>
             <div
               style={{
@@ -1888,11 +1903,13 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
                 background: "var(--paper-2)",
               }}
             >
-              <div className="label">Tour 0848-26</div>
+              <div className="label">
+                {t("newOrderTourLabel", { tour: "0848-26" })}
+              </div>
               <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                 <div>
                   <div className="label" style={{ fontSize: 9.5 }}>
-                    Kunde
+                    {t("adminColCustomer")}
                   </div>
                   <div
                     style={{
@@ -1901,12 +1918,12 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
                       color: form.customer ? "var(--text)" : "var(--muted)",
                     }}
                   >
-                    {form.customer || "— noch nicht gewählt —"}
+                    {form.customer || t("newOrderCustomerPending")}
                   </div>
                 </div>
                 <div>
                   <div className="label" style={{ fontSize: 9.5 }}>
-                    Route
+                    {t("route")}
                   </div>
                   <div
                     className="mono"
@@ -1916,12 +1933,13 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
                       color: form.startPlz ? "var(--text)" : "var(--muted)",
                     }}
                   >
-                    {form.startPlz || "PLZ"} → {form.endPlz || "PLZ"}
+                    {form.startPlz || t("newOrderPlzPh")} →{" "}
+                    {form.endPlz || t("newOrderPlzPh")}
                   </div>
                 </div>
                 <div>
                   <div className="label" style={{ fontSize: 9.5 }}>
-                    Termin
+                    {t("newOrderSecSchedule")}
                   </div>
                   <div
                     className="mono"
@@ -1931,18 +1949,19 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
                       color: form.date ? "var(--text)" : "var(--muted)",
                     }}
                   >
-                    {form.date || "TT.MM."} · {form.from || "—:—"}
+                    {form.date || t("newOrderDatePreview")} ·{" "}
+                    {form.from || t("newOrderTimePh")}
                   </div>
                 </div>
                 <div>
                   <div className="label" style={{ fontSize: 9.5 }}>
-                    Vergütung
+                    {t("newOrderSecCompensation")}
                   </div>
                   <div
                     className="mono"
                     style={{ fontSize: 18, fontWeight: 700, marginTop: 2 }}
                   >
-                    € {form.price || "0,00"}
+                    € {form.price || t("newOrderPriceZero")}
                   </div>
                 </div>
               </div>
@@ -1950,10 +1969,10 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
           </div>
 
           <div className="card" style={{ padding: 18 }}>
-            <div className="label">Validierung</div>
+            <div className="label">{t("newOrderValidation")}</div>
             <div style={{ marginTop: 10 }}>
               <div style={{ fontSize: 14, fontWeight: 600 }}>
-                {total - filled} Pflichtfelder offen
+                {t("newOrderRequiredOpen", { count: total - filled })}
               </div>
               <div className="bar" style={{ marginTop: 10 }}>
                 <span style={{ width: (filled / total) * 100 + "%" }}></span>
@@ -1967,7 +1986,7 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
                   letterSpacing: 0.04,
                 }}
               >
-                {filled} / {total} KOMPLETT
+                {t("newOrderProgressComplete", { filled, total })}
               </div>
             </div>
           </div>
@@ -2392,11 +2411,14 @@ const PartnerInvoicesPane = ({ showToast }) => {
   const [regDriverId, setRegDriverId] = useStateA(
     () => store.getDrivers()[0]?.id ?? "",
   );
-  const [regFileName, setRegFileName] = useStateA("");
-  const [regMime, setRegMime] = useStateA("");
+  const [regFile, setRegFile] = useStateA(null);
+  const regFileRef = useRefA(null);
+  const editFileRef = useRefA(null);
   const [regNotes, setRegNotes] = useStateA("");
   const [regPush, setRegPush] = useStateA(true);
   const [registerOpen, setRegisterOpen] = useStateA(false);
+  const invoiceFileAccept =
+    "application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif";
   const uploads = store.getInvoiceUploads();
   const jobs = store.getJobs();
   const drivers = store.getDrivers();
@@ -2419,6 +2441,7 @@ const PartnerInvoicesPane = ({ showToast }) => {
     setEditId(u.id);
     setEditForm({
       fileName: u.fileName,
+      replaceFile: null,
       invoiceId: u.invoiceId || "",
       jobId: u.jobId || "",
       driverId: u.driverId || "",
@@ -2435,13 +2458,32 @@ const PartnerInvoicesPane = ({ showToast }) => {
     const reason = r && r.reason;
     if (reason === "bad_job") return t("adminInvoiceErrBadJob");
     if (reason === "bad_driver") return t("adminInvoiceErrBadDriver");
-    if (reason === "no_filename") return t("adminInvoiceErrFilename");
+    if (reason === "no_file" || reason === "no_filename")
+      return t("adminInvoiceErrNoFile");
+    if (reason === "invalid_type") return t("invoiceUploadInvalidType");
     if (reason === "job_required") return t("adminInvoiceErrJobRequired");
     if (reason === "no_invoice_id") return t("adminInvoiceErrInvoiceIdRequired");
     return t("adminInvoiceErrGeneric");
   };
 
-  const closeRegister = () => setRegisterOpen(false);
+  const closeRegister = () => {
+    setRegisterOpen(false);
+    setRegFile(null);
+    if (regFileRef.current) regFileRef.current.value = "";
+  };
+  const onRegFilePick = (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    setRegFile(f || null);
+  };
+  const onEditFilePick = (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    setEditForm((p) =>
+      p ? { ...p, replaceFile: f, fileName: f.name } : p,
+    );
+  };
 
   useEffectA(() => {
     if (!registerOpen && !editId && !viewId) return undefined;
@@ -2552,28 +2594,32 @@ const PartnerInvoicesPane = ({ showToast }) => {
                 </select>
               </div>
               <div>
-                <label className="field-label" htmlFor="reg-fn">
-                  {t("adminInvoiceDocRef")}
+                <label className="field-label" htmlFor="reg-file">
+                  {t("adminInvoiceUploadLabel")}
                 </label>
                 <input
-                  id="reg-fn"
-                  className="input mono"
-                  value={regFileName}
-                  onChange={(e) => setRegFileName(e.target.value)}
-                  placeholder="e.g. bundled-invoice-2026-04.pdf"
+                  id="reg-file"
+                  ref={regFileRef}
+                  type="file"
+                  accept={invoiceFileAccept}
+                  style={{ display: "none" }}
+                  onChange={onRegFilePick}
                 />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="reg-mime">
-                  {t("adminInvoiceMimeLabel")}
-                </label>
-                <input
-                  id="reg-mime"
-                  className="input mono"
-                  value={regMime}
-                  onChange={(e) => setRegMime(e.target.value)}
-                  placeholder={t("adminInvoiceMimePlaceholder")}
-                />
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => regFileRef.current?.click()}
+                >
+                  <Ic.Plus /> {t("adminInvoiceUploadButton")}
+                </button>
+                {regFile ? (
+                  <p
+                    className="label mono"
+                    style={{ margin: "8px 0 0", fontSize: 12.5, wordBreak: "break-all" }}
+                  >
+                    {regFile.name}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <label className="field-label" htmlFor="reg-notes">
@@ -2622,20 +2668,17 @@ const PartnerInvoicesPane = ({ showToast }) => {
               <button
                 type="button"
                 className="btn primary"
-                disabled={!jobs.length || !drivers.length}
+                disabled={!jobs.length || !drivers.length || !regFile}
                 onClick={() => {
                   const r = store.addPartnerInvoiceRecordAdmin({
                     jobId: regJobId,
                     driverId: regDriverId,
-                    fileName: regFileName.trim(),
-                    mimeType: regMime.trim() || undefined,
+                    file: regFile,
                     notes: regNotes.trim(),
                     pushToJob: regPush,
                   });
                   if (r.ok) {
                     showToast?.(t("adminInvoiceRegistered"), r.invoiceId);
-                    setRegFileName("");
-                    setRegMime("");
                     setRegNotes("");
                     closeRegister();
                   } else showToast?.(invoiceActionErr(r));
@@ -2861,17 +2904,27 @@ const PartnerInvoicesPane = ({ showToast }) => {
                 </select>
               </div>
               <div>
-                <label className="field-label" htmlFor="ed-fn">
-                  {t("adminInvoiceDocRef")}
-                </label>
+                <label className="field-label">{t("adminInvoiceUploadLabel")}</label>
+                <p
+                  className="label mono"
+                  style={{ margin: "0 0 8px", fontSize: 12.5, wordBreak: "break-all" }}
+                >
+                  {editForm.fileName}
+                </p>
                 <input
-                  id="ed-fn"
-                  className="input mono"
-                  value={editForm.fileName}
-                  onChange={(e) =>
-                    setEditForm((p) => ({ ...p, fileName: e.target.value }))
-                  }
+                  ref={editFileRef}
+                  type="file"
+                  accept={invoiceFileAccept}
+                  style={{ display: "none" }}
+                  onChange={onEditFilePick}
                 />
+                <button
+                  type="button"
+                  className="btn xs"
+                  onClick={() => editFileRef.current?.click()}
+                >
+                  {t("adminInvoiceReplaceDocument")}
+                </button>
               </div>
               <div>
                 <label className="field-label" htmlFor="ed-inv">
@@ -2917,13 +2970,14 @@ const PartnerInvoicesPane = ({ showToast }) => {
                 type="button"
                 className="btn primary"
                 onClick={() => {
-                  const r = store.updateInvoiceUpload(editId, {
+                  const patch = {
                     jobId: editForm.jobId.trim(),
                     driverId: editForm.driverId.trim(),
-                    fileName: editForm.fileName.trim(),
                     invoiceId: editForm.invoiceId.trim(),
                     notes: editForm.notes,
-                  });
+                  };
+                  if (editForm.replaceFile) patch.file = editForm.replaceFile;
+                  const r = store.updateInvoiceUpload(editId, patch);
                   if (r.ok) {
                     showToast?.(t("adminInvoiceSaved"), editForm.fileName);
                     closeEdit();

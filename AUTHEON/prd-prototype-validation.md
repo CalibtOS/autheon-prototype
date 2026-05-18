@@ -1,5 +1,7 @@
 # AUTHEON PRD vs Static Prototype Final Audit
 
+Last PRD sync: **2026-05-18** (PRD v1.4 — revert-to-draft, partner invoice file upload UX, admin new-job i18n).
+
 Validated against:
 
 - `AUTHEON/prd.json`
@@ -24,7 +26,7 @@ It is still not a production implementation. Items such as database persistence,
 | 3 | Admin user & driver management | Covered: Users screen shows service partners/admins, status changes, deactivation, password-reset actions, and audit logging. |
 | 4 | Customer master data | Covered: Customers screen shows reusable pickup/delivery/contact data and create-customer action; historical PDF behavior is explained. |
 | 5 | Job creation | Covered: New Job form has structured sections, required-field validation, draft save, generated tour number, publish, and direct assign paths. |
-| 6 | Publishing & direct assignment | Covered: Draft can publish or assign; Published-to-Assigned is blocked; assigned jobs do not appear in marketplace; publish/assign actions create audit entries. |
+| 6 | Publishing & direct assignment | Covered: Draft can publish or assign; Published-to-Assigned is blocked; admin can revert Published→Draft (Return to draft); assigned jobs do not appear in marketplace; publish/assign/revert actions create audit entries. |
 | 7 | Driver portal | Covered: Marketplace lists Published jobs only, reduced cards, postal/date/vehicle/axle filters, empty state, and restricted-driver state. |
 | 8 | Job details & data visibility | Covered: locked preview before acceptance, unlock copy, full details/PDF after acceptance or assignment. Server-side enforcement remains implementation work. |
 | 9 | Job acceptance | Covered: binding slide-to-confirm, warning copy, partner-policy link, Accepted transition, marketplace removal, already-taken/restricted failure messages. Atomic concurrency remains backend work. |
