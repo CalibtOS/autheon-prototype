@@ -1276,21 +1276,31 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
 // =========================================================================
 // INVOICE UPLOADS (mock metadata only)
 // =========================================================================
-const JobInvoiceUpload = ({ jobId }) => {
+const JobInvoiceUpload = ({ job }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const inputRef = useRef(null);
+  const jobId = job.id;
+  const tourCompleted = job.status === "completed";
   const uploads = store.getInvoiceUploads().filter((u) => u.jobId === jobId);
   const active = store.isCurrentDriverActive();
+  const invoiceUploadErr = (reason) => {
+    if (reason === "invalid_type") window.alert(t("invoiceUploadInvalidType"));
+    else if (reason === "driver_restricted")
+      window.alert(t("invoiceUploadRestricted"));
+    else if (reason === "job_not_completed")
+      window.alert(t("invoiceUploadRequiresCompleted"));
+    else if (reason === "not_assigned_driver")
+      window.alert(t("invoiceUploadNotYourTour"));
+    else if (reason === "job_required" || reason === "bad_job")
+      window.alert(t("invoiceUploadTourRequired"));
+  };
   const onPick = (e) => {
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f) return;
     const r = AuthStore.addInvoiceUpload(f, { jobId });
-    if (!r.ok && r.reason === "invalid_type")
-      window.alert(t("invoiceUploadInvalidType"));
-    else if (!r.ok && r.reason === "driver_restricted")
-      window.alert(t("invoiceUploadRestricted"));
+    if (!r.ok) invoiceUploadErr(r.reason);
   };
   if (!active) return null;
   return (
@@ -1312,22 +1322,28 @@ const JobInvoiceUpload = ({ jobId }) => {
           lineHeight: 1.55,
         }}
       >
-        {t("invoiceUploadHint")}
+        {tourCompleted
+          ? t("invoiceUploadHint")
+          : t("invoiceUploadAfterCompleteHint")}
       </p>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
-        style={{ display: "none" }}
-        onChange={onPick}
-      />
-      <button
-        type="button"
-        className="btn xs"
-        onClick={() => inputRef.current?.click()}
-      >
-        <Ic.Plus /> {t("invoiceUploadButton")}
-      </button>
+      {tourCompleted ? (
+        <>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
+            style={{ display: "none" }}
+            onChange={onPick}
+          />
+          <button
+            type="button"
+            className="btn xs"
+            onClick={() => inputRef.current?.click()}
+          >
+            <Ic.Plus /> {t("invoiceUploadButton")}
+          </button>
+        </>
+      ) : null}
       {uploads.length > 0 ? (
         <ul
           style={{
@@ -1642,7 +1658,7 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
           </button>
         </div>
 
-        <JobInvoiceUpload jobId={job.id} />
+        <JobInvoiceUpload job={job} />
 
         <hr className="dash" style={{ margin: "20px 0" }} />
 

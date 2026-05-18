@@ -565,6 +565,7 @@
       "story": "As a driver, I want to upload invoice files per tour; as an admin, I want a partner-invoice inbox and invoice-received state that stays consistent with processed uploads.",
       "acceptance": [
         "Driver submits invoice uploads only in the context of a valid job/tour: API requires job id on create (no unattached driver uploads in PWA).",
+        "Driver cannot upload until job.status is completed (store gate job_not_completed; PWA hides upload control until Mark completed).",
         "Accepted file types include PDF and standard images (JPEG, PNG, WebP, GIF) unless compliance policy changes.",
         "Production persists file storage with appropriate security; prototype may use metadata-only placeholders.",
         "Blocked/restricted drivers cannot create uploads.",

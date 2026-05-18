@@ -171,6 +171,12 @@ window.I18n = (() => {
       invoiceUploadButton: "Upload invoice",
       invoiceUploadInvalidType: "Only PDF or image files are accepted.",
       invoiceUploadRestricted: "Uploads are unavailable while your account is restricted.",
+      invoiceUploadAfterCompleteHint:
+        "Mark this tour completed before uploading your invoice. PDF or images (JPEG, PNG, WebP, GIF).",
+      invoiceUploadRequiresCompleted:
+        "You can upload an invoice only after the tour is marked completed.",
+      invoiceUploadNotYourTour: "You can only upload invoices for tours assigned to you.",
+      invoiceUploadTourRequired: "Invoice upload must be linked to a valid tour.",
       invoiceUploadEmpty: "No uploads yet.",
       invoiceColFile: "File",
       invoiceIdLabel: "Invoice ID",
@@ -747,6 +753,14 @@ window.I18n = (() => {
       invoiceUploadButton: "Rechnung hochladen",
       invoiceUploadInvalidType: "Nur PDF- oder Bilddateien sind erlaubt.",
       invoiceUploadRestricted: "Upload nicht möglich, solange das Konto eingeschränkt ist.",
+      invoiceUploadAfterCompleteHint:
+        "Tour zuerst als abgeschlossen markieren, danach Rechnung hochladen. PDF oder Bilder (JPEG, PNG, WebP, GIF).",
+      invoiceUploadRequiresCompleted:
+        "Rechnung kann erst hochgeladen werden, wenn die Tour als abgeschlossen markiert ist.",
+      invoiceUploadNotYourTour:
+        "Rechnungen können nur für Ihnen zugewiesene Touren hochgeladen werden.",
+      invoiceUploadTourRequired:
+        "Der Upload muss einer gültigen Tour zugeordnet sein.",
       invoiceUploadEmpty: "Noch keine Uploads.",
       invoiceColFile: "Datei",
       invoiceIdLabel: "Rechnungs-ID",

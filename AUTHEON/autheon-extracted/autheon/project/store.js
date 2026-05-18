@@ -1357,6 +1357,21 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
+    canDriverUploadInvoice(jobId) {
+      const id =
+        jobId != null && String(jobId).trim() ? String(jobId).trim() : "";
+      if (!id) return { ok: false, reason: "job_required" };
+      const j = api.getJob(id);
+      if (!j) return { ok: false, reason: "bad_job" };
+      if (j.status !== "completed")
+        return { ok: false, reason: "job_not_completed" };
+      const d = api.getCurrentDriver();
+      if (!d) return { ok: false, reason: "no_driver" };
+      if (j.driver && j.driver !== d.name)
+        return { ok: false, reason: "not_assigned_driver" };
+      return { ok: true, jobId: id };
+    },
+
     addInvoiceUpload(file, opts = {}) {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedInvoiceFile(file))
@@ -1365,8 +1380,9 @@ window.AuthStore = (() => {
         return { ok: false, reason: "driver_restricted" };
       const d = api.getCurrentDriver();
       if (!d) return { ok: false, reason: "no_driver" };
-      let jobId = opts.jobId != null && opts.jobId !== "" ? opts.jobId : null;
-      if (jobId && !api.getJob(jobId)) jobId = null;
+      const gate = api.canDriverUploadInvoice(opts.jobId);
+      if (!gate.ok) return gate;
+      const jobId = gate.jobId;
       const mime = (file.type || guessMimeFromName(file.name) || "").trim();
       const invoiceId = `INV-${Date.now().toString(36).toUpperCase()}-${Math.random()
         .toString(36)
