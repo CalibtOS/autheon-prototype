@@ -35,6 +35,7 @@
     "Partner invoices (demo): driver and admin register/edit use file picker (PDF/images); prototype stores metadata only (no binary persistence); placeholder download stub.",
     "Admin new job form (demo): fully localized EN/DE (all sections, labels, validation, live preview).",
     "Billing UX separation (demo): job detail Financial snapshot is read-only with deep-links to Finance (ledger) and Partner invoices (documents); invoiceReceived reconciles from processed uploads + adminInvoiceOverride in Finance modal.",
+    "Admin cancel job (demo): cancelJob for assigned/accepted/return_requested; driver cancelledIds + My Jobs Cancelled tab; confirm dialog; audit job_cancelled.",
     "Audit log (demo): entries viewable in admin; CSV download for offline search (export is logged); includes job_reverted_to_draft.",
     "i18n: EN/DE in prototype for UX demo; product-wide multilingual rollout remains a separate decision (see out_of_scope)."
   ],

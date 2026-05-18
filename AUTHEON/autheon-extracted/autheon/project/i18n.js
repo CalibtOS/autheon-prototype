@@ -155,6 +155,8 @@ window.I18n = (() => {
       cancellationRules: "Admin can cancel Accepted, Assigned, or Return-requested tours.",
       cancelledTour: "Cancelled · Tour {tour}",
       cancelledSub: "Removed from marketplace and active lists.",
+      driverTourCancelledNotice:
+        "Dispatch cancelled this tour. You can view details here; no further actions are required.",
       usersDesc: "Manage dispatcher accounts and partner profiles.",
       customersDesc: "Reusable master data for shippers, sites, and contacts.",
       documentsDesc: "Policies, templates, and downloadable PDFs.",
@@ -378,7 +380,9 @@ window.I18n = (() => {
       adminPublishToMarketplace: "Publish to marketplace",
       adminEditDraft: "Edit draft…",
       adminAssignDriver: "Assign driver…",
-      adminCancelJob: "Cancel job…",
+      adminCancelJob: "Cancel job",
+      adminCancelJobConfirm:
+        "Cancel this tour? It will be removed from the marketplace and the driver’s active list.",
       adminPhase1PublishedNoAssign:
         "Phase 1: you cannot assign from Published. Return the tour to Draft first, then edit, re-publish, or assign directly.",
       adminRevertToDraft: "Return to draft",
@@ -737,6 +741,8 @@ window.I18n = (() => {
       cancellationRules: "Admin kann akzeptierte, zugewiesene oder rückgabeangefragte Touren stornieren.",
       cancelledTour: "Storniert · Tour {tour}",
       cancelledSub: "Aus Marktplatz und aktiven Listen entfernt.",
+      driverTourCancelledNotice:
+        "Die Disposition hat diese Tour storniert. Details sind einsehbar; es sind keine weiteren Schritte nötig.",
       usersDesc: "Verwalte Dispatcher-Konten und Partnerprofile.",
       customersDesc: "Wiederverwendbare Stammdaten für Auftraggeber, Standorte und Kontakte.",
       documentsDesc: "Richtlinien, Vorlagen und herunterladbare PDFs.",
@@ -963,7 +969,9 @@ window.I18n = (() => {
       adminPublishToMarketplace: "Auf Marktplatz veröffentlichen",
       adminEditDraft: "Entwurf bearbeiten…",
       adminAssignDriver: "Fahrer zuweisen…",
-      adminCancelJob: "Auftrag stornieren…",
+      adminCancelJob: "Auftrag stornieren",
+      adminCancelJobConfirm:
+        "Diese Tour stornieren? Sie wird aus dem Marktplatz und der aktiven Fahrerliste entfernt.",
       adminPhase1PublishedNoAssign:
         "Phase 1: Zuweisung aus „Veröffentlicht“ nicht möglich. Zuerst auf Entwurf zurück, dann bearbeiten, erneut veröffentlichen oder direkt zuweisen.",
       adminRevertToDraft: "Zurück auf Entwurf",

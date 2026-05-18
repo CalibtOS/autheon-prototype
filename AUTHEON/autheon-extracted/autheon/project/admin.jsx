@@ -1330,7 +1330,14 @@ const AdminDetailFooter = ({
         {(job.status === "accepted" ||
           job.status === "assigned" ||
           job.status === "return_requested") && (
-          <button type="button" className="btn danger" onClick={onCancel}>
+          <button
+            type="button"
+            className="btn danger"
+            onClick={() => {
+              if (!window.confirm(t("adminCancelJobConfirm"))) return;
+              onCancel();
+            }}
+          >
             {t("adminCancelJob")}
           </button>
         )}

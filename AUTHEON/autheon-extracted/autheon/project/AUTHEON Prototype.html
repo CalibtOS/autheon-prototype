@@ -461,8 +461,13 @@
               }}
               onCancel={() => {
                 const r = store.cancelJob(fresh.id);
-                if (!r.ok) showToast(t("cancellationBlocked"), "");
-                else showToast(t("cancelledTour", { tour: fresh.tour }), "");
+                if (!r.ok)
+                  showToast(t("cancellationBlocked"), t("cancellationRules"));
+                else
+                  showToast(
+                    t("cancelledTour", { tour: fresh.tour }),
+                    t("cancelledSub"),
+                  );
               }}
             />
           );

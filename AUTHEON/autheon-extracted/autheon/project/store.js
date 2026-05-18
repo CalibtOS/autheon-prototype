@@ -735,6 +735,7 @@ window.AuthStore = (() => {
     acceptedIds: new Set(["A-2026-00845", "A-2026-00843"]),
     completedIds: new Set(["A-2026-00842"]),
     pendingIds: new Set(["A-2026-00846"]),
+    cancelledIds: new Set(["A-2026-00841"]),
   };
 
   let nextTourSeq = 849;
@@ -830,9 +831,11 @@ window.AuthStore = (() => {
 
     isMineJob(j) {
       if (!j) return false;
+      if (driverState.cancelledIds.has(j.id)) return true;
       if (driverState.acceptedIds.has(j.id)) return true;
       if (driverState.completedIds.has(j.id)) return true;
       if (driverState.pendingIds.has(j.id)) return true;
+      if (j.status === "cancelled" && j.driver === DEMO_DRIVER) return true;
       if (
         j.driver === DEMO_DRIVER &&
         ["assigned", "accepted", "return_requested"].includes(j.status)
@@ -1037,14 +1040,18 @@ window.AuthStore = (() => {
         !j ||
         !["accepted", "assigned", "return_requested"].includes(j.status)
       )
-        return { ok: false };
+        return { ok: false, reason: "not_cancellable" };
       j.status = "cancelled";
+      j.preReturnStatus = null;
+      j.hasReturnRequest = false;
       j.history = [
         ...(j.history || []),
-        { st: "cancelled", at: nowStamp(), by: "A. Bauer" },
+        { st: "cancelled", at: nowStamp(), by: DEMO_ADMIN },
       ];
       driverState.acceptedIds.delete(id);
       driverState.pendingIds.delete(id);
+      driverState.completedIds.delete(id);
+      driverState.cancelledIds.add(id);
       log("job_cancelled", DEMO_ADMIN, j.tour, "Admin cancellation");
       emit();
       return { ok: true };

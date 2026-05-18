@@ -1408,6 +1408,7 @@ const JobInvoiceUpload = ({ job }) => {
 const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
   const { t, locale } = useI18n();
   const isCompleted = job.status === "completed";
+  const isCancelled = job.status === "cancelled";
   const deadlinePassed = AuthStore.isReturnDeadlinePassed(job);
   const deadline = AuthStore.returnDeadline(job);
   const deadlineStr = deadline
@@ -1447,6 +1448,15 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
       </div>
 
       <div className="scroll" style={{ padding: "12px 18px 22px" }}>
+        {isCancelled && (
+          <div
+            className="banner banner-warn"
+            style={{ marginBottom: 14, fontSize: 13, lineHeight: 1.5 }}
+            role="status"
+          >
+            {t("driverTourCancelledNotice")}
+          </div>
+        )}
         <div
           style={{
             display: "flex",
@@ -1458,6 +1468,8 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
         >
           {job.status === "completed" ? (
             <Pill status="completed">{t("completed")}</Pill>
+          ) : job.status === "cancelled" ? (
+            <Pill status="cancelled">{t("cancelled")}</Pill>
           ) : job.status === "return_requested" ? (
             <Pill status="return_requested">{t("returnRequested")}</Pill>
           ) : job.status === "assigned" ? (
@@ -1722,7 +1734,7 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
           })}
         </div>
       </div>
-      {!isCompleted && (
+      {!isCompleted && job.status !== "cancelled" && (
         <div
           style={{
             padding: "12px 16px 18px",
