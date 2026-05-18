@@ -481,20 +481,32 @@ const OverviewFooter = ({ filteredCount, totalCount }) => {
   );
 };
 
-const JobFinancePanel = ({ job }) => {
+const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const linkedInvoices = store.getInvoiceUploadsForJob(job.id);
   const fmt = (n) =>
     n == null || n === "" ? "—" : `€ ${Number(n).toFixed(2)}`;
+  const paymentLabel = (code) => {
+    const m = {
+      "Invoice Missing": "adminPaymentOptMissing",
+      "Invoice Received": "adminPaymentOptReceived",
+      Unpaid: "adminPaymentOptUnpaid",
+      Paid: "adminPaymentOptPaid",
+    };
+    const key = m[code];
+    return key ? t(key) : code || t("adminPaymentOptUnpaid");
+  };
+  const showPendingBanner =
+    linkedInvoices.length > 0 && !linkedInvoices.some((u) => u.processed);
   return (
     <section className="card" style={{ padding: 22 }}>
       <div className="sec-head">
         <h3>
           <span className="num">06</span>
-          {t("navFinance")}
+          {t("adminFinanceSnapshotTitle")}
         </h3>
-        <span className="label">{t("adminBadgePhase1")}</span>
+        <span className="label pill-muted">{t("adminViewOnlyBadge")}</span>
       </div>
       <div
         style={{
@@ -537,106 +549,91 @@ const JobFinancePanel = ({ job }) => {
           </div>
         </div>
       </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 14,
-          marginTop: 18,
-        }}
-      >
+      <div className="finance-snapshot-strip">
         <div>
-          <label className="field-label" htmlFor={`pay-${job.id}`}>
-            {t("paymentStatus")}
-          </label>
-          <select
-            id={`pay-${job.id}`}
-            className="input"
-            value={job.paymentStatus || "Unpaid"}
-            onChange={(e) =>
-              store.updateFinancial(job.id, { paymentStatus: e.target.value })
-            }
+          <div className="label">{t("adminFinanceSnapshotPayment")}</div>
+          <Pill
+            status={job.paymentStatus === "Paid" ? "completed" : "assigned"}
+            style={{ marginTop: 8 }}
           >
-            {[
-              ["Invoice Missing", "adminPaymentOptMissing"],
-              ["Invoice Received", "adminPaymentOptReceived"],
-              ["Unpaid", "adminPaymentOptUnpaid"],
-              ["Paid", "adminPaymentOptPaid"],
-            ].map(([val, key]) => (
-              <option key={val} value={val}>
-                {t(key)}
-              </option>
-            ))}
-          </select>
+            {paymentLabel(job.paymentStatus)}
+          </Pill>
         </div>
         <div>
-          <label className="field-label" htmlFor={`inv-${job.id}`}>
-            {t("invoiceNumber")}
-          </label>
-          <input
-            id={`inv-${job.id}`}
-            className="input mono"
-            defaultValue={job.invoiceNumber || ""}
-            onBlur={(e) =>
-              store.updateFinancial(job.id, { invoiceNumber: e.target.value })
-            }
-          />
+          <div className="label">{t("adminFinanceSnapshotInvNum")}</div>
+          <div className="mono" style={{ marginTop: 8, fontWeight: 600 }}>
+            {job.invoiceNumber || "—"}
+          </div>
         </div>
       </div>
-      <label
+
+      {linkedInvoices.length > 0 && (
+        <table className="tbl compact" style={{ marginTop: 16 }}>
+          <thead>
+            <tr>
+              <th>{t("adminFinanceUploadColId")}</th>
+              <th>{t("adminFinanceUploadColFile")}</th>
+              <th>{t("adminFinanceUploadColStatus")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {linkedInvoices.map((u) => (
+              <tr key={u.id}>
+                <td className="mono" style={{ fontSize: 12 }}>
+                  {u.invoiceId || "—"}
+                </td>
+                <td style={{ fontSize: 13 }}>{u.fileName}</td>
+                <td>
+                  <Pill status={u.processed ? "accepted" : "assigned"}>
+                    {u.processed
+                      ? t("invoiceColProcessed")
+                      : t("adminInvoicePendingBadge")}
+                  </Pill>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {showPendingBanner && (
+        <div className="finance-snapshot-banner" style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 13.5, lineHeight: 1.5 }}>
+            {t("adminFinancePendingBanner")}
+          </div>
+          {onOpenPartnerInvoices && (
+            <button
+              type="button"
+              className="btn xs"
+              style={{ marginTop: 10 }}
+              onClick={onOpenPartnerInvoices}
+            >
+              {t("adminFinanceReviewInvoices")}
+            </button>
+          )}
+        </div>
+      )}
+
+      <div
         style={{
           display: "flex",
           gap: 10,
-          alignItems: "center",
-          marginTop: 14,
-          cursor: "pointer",
+          marginTop: 18,
+          flexWrap: "wrap",
         }}
       >
-        <input
-          type="checkbox"
-          checked={!!job.invoiceReceived}
-          onChange={(e) =>
-            store.updateFinancial(job.id, { invoiceReceived: e.target.checked })
-          }
-        />
-        <span className="label" style={{ margin: 0 }}>
-          {t("invoiceReceived")}
-        </span>
-      </label>
-      <div style={{ marginTop: 16 }}>
-        <div className="label">{t("financePartnerUploadSection")}</div>
-        {linkedInvoices.length === 0 ? (
-          <div
-            className="label"
-            style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.45 }}
-          >
-            {t("financePartnerUploadNone")}
-          </div>
-        ) : (
-          <ul
-            style={{
-              margin: "8px 0 0",
-              paddingLeft: 18,
-              fontSize: 12.5,
-              lineHeight: 1.5,
-            }}
-          >
-            {linkedInvoices.map((u) => (
-              <li key={u.id}>
-                <span className="mono" style={{ fontSize: 12 }}>
-                  {u.invoiceId || "—"}
-                </span>
-                <span style={{ color: "var(--muted)" }}> · {u.fileName}</span>
-                {u.processed && (
-                  <span className="label" style={{ marginLeft: 6 }}>
-                    {t("invoiceColProcessed")}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+        {onEditFinances && (
+          <button type="button" className="btn primary" onClick={onEditFinances}>
+            {t("adminEditFinancesBtn")}
+          </button>
+        )}
+        {onOpenPartnerInvoices && (
+          <button type="button" className="btn" onClick={onOpenPartnerInvoices}>
+            {t("adminOpenPartnerInvoicesBtn")}
+          </button>
         )}
       </div>
+
       <p
         style={{
           margin: "12px 0 0",
@@ -737,6 +734,8 @@ const AdminDetail = ({
   onAssign,
   onCancel,
   onEdit,
+  onEditFinances,
+  onOpenPartnerInvoices,
 }) => {
   const { t } = useI18n();
   useAuthStore();
@@ -1177,7 +1176,11 @@ const AdminDetail = ({
             </div>
           </section>
 
-          <JobFinancePanel job={job} />
+          <JobFinancePanel
+            job={job}
+            onEditFinances={onEditFinances}
+            onOpenPartnerInvoices={onOpenPartnerInvoices}
+          />
           <ReturnDecisionPanel job={job} />
         </div>
 
@@ -2399,7 +2402,12 @@ const DocumentsPane = ({ showToast }) => {
   );
 };
 
-const PartnerInvoicesPane = ({ showToast }) => {
+const PartnerInvoicesPane = ({
+  showToast,
+  filterJobId,
+  onClearFilter,
+  onOpenJob,
+}) => {
   const store = useAuthStore();
   const { t, locale } = useI18n();
   const [viewId, setViewId] = useStateA(null);
@@ -2415,13 +2423,16 @@ const PartnerInvoicesPane = ({ showToast }) => {
   const regFileRef = useRefA(null);
   const editFileRef = useRefA(null);
   const [regNotes, setRegNotes] = useStateA("");
-  const [regPush, setRegPush] = useStateA(true);
   const [registerOpen, setRegisterOpen] = useStateA(false);
   const invoiceFileAccept =
     "application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif";
   const uploads = store.getInvoiceUploads();
   const jobs = store.getJobs();
   const drivers = store.getDrivers();
+  const filterJob = filterJobId ? jobs.find((j) => j.id === filterJobId) : null;
+  const visibleUploads = filterJobId
+    ? uploads.filter((u) => u.jobId === filterJobId)
+    : uploads;
   const viewing = viewId ? uploads.find((u) => u.id === viewId) : null;
   const fmtIso = (iso) => {
     if (iso == null || iso === "") return "—";
@@ -2505,6 +2516,23 @@ const PartnerInvoicesPane = ({ showToast }) => {
       <p style={{ color: "var(--muted)", marginTop: 8 }}>
         {t("partnerInvoicesDesc")}
       </p>
+
+      {filterJobId && filterJob && (
+        <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 10 }}>
+          <button
+            type="button"
+            className="chip on billing-filter-chip"
+            onClick={onClearFilter}
+            title={t("adminClearFilter")}
+          >
+            {t("adminFinanceFilteredTour", {
+              tour: filterJob.tour,
+              customer: filterJob.customer,
+            })}{" "}
+            ×
+          </button>
+        </div>
+      )}
 
       <div style={{ marginTop: 18 }}>
         <button
@@ -2634,24 +2662,6 @@ const PartnerInvoicesPane = ({ showToast }) => {
                   style={{ resize: "vertical", minHeight: 52 }}
                 />
               </div>
-              <label
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "flex-start",
-                  cursor: "pointer",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={regPush}
-                  onChange={(e) => setRegPush(e.target.checked)}
-                  style={{ marginTop: 3 }}
-                />
-                <span className="label" style={{ margin: 0, lineHeight: 1.45 }}>
-                  {t("adminInvoicePushToJob")}
-                </span>
-              </label>
             </div>
             <div
               style={{
@@ -2675,7 +2685,6 @@ const PartnerInvoicesPane = ({ showToast }) => {
                     driverId: regDriverId,
                     file: regFile,
                     notes: regNotes.trim(),
-                    pushToJob: regPush,
                   });
                   if (r.ok) {
                     showToast?.(t("adminInvoiceRegistered"), r.invoiceId);
@@ -2705,7 +2714,7 @@ const PartnerInvoicesPane = ({ showToast }) => {
           </tr>
         </thead>
         <tbody>
-          {uploads.length === 0 ? (
+          {visibleUploads.length === 0 ? (
             <tr>
               <td
                 colSpan={8}
@@ -2716,8 +2725,11 @@ const PartnerInvoicesPane = ({ showToast }) => {
               </td>
             </tr>
           ) : (
-            uploads.map((u) => (
-              <tr key={u.id}>
+            visibleUploads.map((u) => (
+              <tr
+                key={u.id}
+                className={u.processed ? "st-accepted-bg" : undefined}
+              >
                 <td>
                   <strong className="mono" style={{ fontSize: 13 }}>
                     {u.fileName}
@@ -2735,9 +2747,21 @@ const PartnerInvoicesPane = ({ showToast }) => {
                     (() => {
                       const j = jobs.find((x) => x.id === u.jobId);
                       return j ? (
-                        <span style={{ fontSize: 13 }}>
-                          {j.tour} · {j.customer}
-                        </span>
+                        <div>
+                          <span style={{ fontSize: 13 }}>
+                            {j.tour} · {j.customer}
+                          </span>
+                          {onOpenJob && (
+                            <button
+                              type="button"
+                              className="btn xs"
+                              style={{ marginTop: 6, display: "block" }}
+                              onClick={() => onOpenJob(j.id)}
+                            >
+                              {t("adminOpenTourFromInvoice")}
+                            </button>
+                          )}
+                        </div>
                       ) : (
                         <span className="mono label" style={{ fontSize: 12 }}>
                           {u.jobId}
@@ -3077,12 +3101,19 @@ const PartnerInvoicesPane = ({ showToast }) => {
   );
 };
 
-const FinancePane = ({ showToast }) => {
+const FinancePane = ({
+  showToast,
+  initialJobId,
+  initialOpenEdit,
+  onNavConsumed,
+  onOpenPartnerInvoices,
+}) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const jobs = store.getJobs();
   const [finEditId, setFinEditId] = useStateA(null);
   const [finDraft, setFinDraft] = useStateA(null);
+  const [highlightJobId, setHighlightJobId] = useStateA(initialJobId || null);
   const paymentLabel = (code) => {
     const m = {
       "Invoice Missing": "adminPaymentOptMissing",
@@ -3108,14 +3139,28 @@ const FinancePane = ({ showToast }) => {
       grossAmount: j.grossAmount ?? j.price ?? "",
       vatRate: j.vatRate ?? 19,
       paymentStatus: j.paymentStatus || "Unpaid",
-      invoiceNumber: j.invoiceNumber || "",
-      invoiceReceived: !!j.invoiceReceived,
     });
   };
   const closeFinEdit = () => {
     setFinEditId(null);
     setFinDraft(null);
   };
+
+  useEffectA(() => {
+    if (!initialJobId || !initialOpenEdit) return;
+    const j = store.getJob(initialJobId);
+    if (j) {
+      openFinEdit(j);
+      setHighlightJobId(initialJobId);
+    }
+    onNavConsumed?.();
+  }, []);
+
+  useEffectA(() => {
+    if (!highlightJobId) return undefined;
+    const tmr = setTimeout(() => setHighlightJobId(null), 3200);
+    return () => clearTimeout(tmr);
+  }, [highlightJobId]);
 
   useEffectA(() => {
     if (!finEditId) return undefined;
@@ -3163,42 +3208,38 @@ const FinancePane = ({ showToast }) => {
         </thead>
         <tbody>
           {jobs.map((j) => (
-            <tr key={j.id}>
-              <td className="mono">{j.tour}</td>
-              <td>{j.customer}</td>
-              <td>€ {Number(j.revenue || j.price || 0).toFixed(2)}</td>
-              <td>€ {Number(j.driverCompensation || 0).toFixed(2)}</td>
-              <td>€ {Number(j.expenses || 0).toFixed(2)}</td>
-              <td>
-                {j.invoiceReceived
-                  ? t("adminFinanceRecvShort")
-                  : t("adminFinanceMissingShort")}
-                <div
-                  className="mono"
-                  style={{ fontSize: 11, color: "var(--muted)" }}
-                >
+              <tr
+                key={j.id}
+                data-job-id={j.id}
+                className={highlightJobId === j.id ? "fin-row-highlight" : ""}
+              >
+                <td className="mono">{j.tour}</td>
+                <td>{j.customer}</td>
+                <td>€ {Number(j.revenue || j.price || 0).toFixed(2)}</td>
+                <td>€ {Number(j.driverCompensation || 0).toFixed(2)}</td>
+                <td>€ {Number(j.expenses || 0).toFixed(2)}</td>
+                <td className="mono" style={{ fontSize: 12 }}>
                   {j.invoiceNumber || t("adminFinanceNoInvNum")}
-                </div>
-              </td>
-              <td>
-                <Pill
-                  status={
-                    j.paymentStatus === "Paid" ? "completed" : "assigned"
-                  }
-                >
-                  {paymentLabel(j.paymentStatus)}
-                </Pill>
-              </td>
-              <td>
-                <button
-                  type="button"
-                  className="btn xs"
-                  onClick={() => openFinEdit(j)}
-                >
-                  {t("adminFinanceEditRow")}
-                </button>
-              </td>
-            </tr>
+                </td>
+                <td>
+                  <Pill
+                    status={
+                      j.paymentStatus === "Paid" ? "completed" : "assigned"
+                    }
+                  >
+                    {paymentLabel(j.paymentStatus)}
+                  </Pill>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="btn xs"
+                    onClick={() => openFinEdit(j)}
+                  >
+                    {t("adminFinanceEditRow")}
+                  </button>
+                </td>
+              </tr>
           ))}
         </tbody>
       </table>
@@ -3355,46 +3396,20 @@ const FinancePane = ({ showToast }) => {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="field-label" htmlFor="fe-inv">
-                  {t("invoiceNumber")}
-                </label>
-                <input
-                  id="fe-inv"
-                  className="input mono"
-                  value={finDraft.invoiceNumber}
-                  onChange={(e) =>
-                    setFinDraft((p) => ({
-                      ...p,
-                      invoiceNumber: e.target.value,
-                    }))
-                  }
-                />
-              </div>
             </div>
-            <label
-              style={{
-                display: "flex",
-                gap: 10,
-                alignItems: "center",
-                marginTop: 14,
-                cursor: "pointer",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={finDraft.invoiceReceived}
-                onChange={(e) =>
-                  setFinDraft((p) => ({
-                    ...p,
-                    invoiceReceived: e.target.checked,
-                  }))
-                }
-              />
-              <span className="label" style={{ margin: 0 }}>
-                {t("invoiceReceived")}
-              </span>
-            </label>
+            {onOpenPartnerInvoices && (
+              <button
+                type="button"
+                className="btn xs"
+                style={{ marginTop: 14 }}
+                onClick={() => {
+                  closeFinEdit();
+                  onOpenPartnerInvoices(finEditId);
+                }}
+              >
+                {t("adminFinanceOpenPartnerInvoicesLink")}
+              </button>
+            )}
             <p
               className="label"
               style={{
@@ -3428,8 +3443,6 @@ const FinancePane = ({ showToast }) => {
                     grossAmount: toN(finDraft.grossAmount),
                     vatRate: toN(finDraft.vatRate) ?? 19,
                     paymentStatus: finDraft.paymentStatus,
-                    invoiceNumber: finDraft.invoiceNumber,
-                    invoiceReceived: finDraft.invoiceReceived,
                   };
                   if (rev != null) {
                     patch.revenue = rev;
@@ -3437,12 +3450,14 @@ const FinancePane = ({ showToast }) => {
                   }
                   const r = store.updateFinancial(finEditId, patch);
                   if (r.ok) {
-                    const j = jobs.find((x) => x.id === finEditId);
+                    const j = store.getJob(finEditId);
                     showToast?.(
                       t("adminFinanceSaved"),
                       j ? `${j.tour} · ${j.customer}` : "",
                     );
                     closeFinEdit();
+                  } else if (r.reason === "use_partner_invoices") {
+                    showToast?.(t("adminFinanceErrUsePartnerInvoices"));
                   } else showToast?.(t("adminFinanceErrSave"));
                 }}
               >

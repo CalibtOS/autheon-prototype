@@ -217,6 +217,17 @@
         const [freshId, setFreshId] = useState(null);
         const [newOrderForm, setNewOrderForm] = useState({});
         const [newOrderValid, setNewOrderValid] = useState(false);
+        const [billingNav, setBillingNav] = useState(null);
+
+        const clearBillingNav = () => setBillingNav(null);
+        const openFinancesForJob = (jobId) => {
+          setBillingNav({ jobId, openFinEdit: true });
+          setSection("finance");
+        };
+        const openPartnerInvoicesForJob = (jobId) => {
+          setBillingNav({ jobId, invoiceFilter: true });
+          setSection("invoices");
+        };
 
         const showToast = (msg, sub, action) => {
           setToast({ msg, sub, action });
@@ -337,6 +348,8 @@
                   );
               }}
               onEdit={() => setSection("new")}
+              onEditFinances={() => openFinancesForJob(fresh.id)}
+              onOpenPartnerInvoices={() => openPartnerInvoicesForJob(fresh.id)}
             />
           );
         } else if (section === "new") {
@@ -358,9 +371,31 @@
         } else if (section === "documents") {
           body = <DocumentsPane showToast={showToast} />;
         } else if (section === "invoices") {
-          body = <PartnerInvoicesPane showToast={showToast} />;
+          body = (
+            <PartnerInvoicesPane
+              showToast={showToast}
+              filterJobId={billingNav?.invoiceFilter ? billingNav.jobId : null}
+              onClearFilter={clearBillingNav}
+              onOpenJob={(jobId) => {
+                const j = store.getJob(jobId);
+                if (j) {
+                  setActiveJob(j);
+                  setSection("detail");
+                  clearBillingNav();
+                }
+              }}
+            />
+          );
         } else if (section === "finance") {
-          body = <FinancePane showToast={showToast} />;
+          body = (
+            <FinancePane
+              showToast={showToast}
+              initialJobId={billingNav?.openFinEdit ? billingNav.jobId : null}
+              initialOpenEdit={!!billingNav?.openFinEdit}
+              onNavConsumed={clearBillingNav}
+              onOpenPartnerInvoices={openPartnerInvoicesForJob}
+            />
+          );
         } else if (section === "audit") {
           body = <AuditPane showToast={showToast} />;
         } else if (section === "features") {
@@ -491,6 +526,7 @@
               setSection={(s) => {
                 setSection(s);
                 setActiveJob(null);
+                if (s !== "finance" && s !== "invoices") clearBillingNav();
               }}
             />
             <div className="admin-main">

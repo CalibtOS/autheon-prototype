@@ -1173,3 +1173,46 @@ textarea.input { min-height: 92px; resize: vertical; }
 }
 .tabs button.on { color: var(--text); font-weight: 600; border-bottom-color: var(--primary); }
 .tabs button .count { font-family: var(--font-mono); font-size: 11px; margin-left: 6px; color: var(--muted); }
+
+/* Billing UI separation */
+.finance-snapshot-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  background: var(--paper-3);
+  border-radius: var(--r-2);
+}
+.finance-snapshot-banner {
+  padding: 12px 14px;
+  background: var(--paper-3);
+  border-radius: var(--r-2);
+  border-left: 3px solid var(--st-warn);
+}
+.fin-row-highlight {
+  animation: fin-row-highlight-fade 3.2s ease-out;
+}
+@keyframes fin-row-highlight-fade {
+  0% { background: var(--st-published-bg); }
+  70% { background: var(--st-published-bg); }
+  100% { background: transparent; }
+}
+.billing-filter-chip {
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.label.pill-muted {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.tbl tr.st-accepted-bg {
+  background: var(--st-accepted-bg);
+}
+.tbl.compact th,
+.tbl.compact td {
+  padding: 8px 10px;
+  font-size: 12.5px;
+}

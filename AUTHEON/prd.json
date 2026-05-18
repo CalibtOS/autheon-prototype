@@ -34,7 +34,7 @@
     "Publishing (demo): admin Return to draft on Published jobs (store.revertJobToDraft); job leaves marketplace until re-published or directly assigned from Draft.",
     "Partner invoices (demo): driver and admin register/edit use file picker (PDF/images); prototype stores metadata only (no binary persistence); placeholder download stub.",
     "Admin new job form (demo): fully localized EN/DE (all sections, labels, validation, live preview).",
-    "Billing (demo): job invoiceReceived updated on publish/assign and partner-invoice register; full adminInvoiceOverride + idempotent reconcile from processed uploads is production scope (see task 27).",
+    "Billing UX separation (demo): job detail Financial snapshot is read-only with deep-links to Finance (ledger) and Partner invoices (documents); invoiceReceived reconciles from processed uploads + adminInvoiceOverride in Finance modal.",
     "Audit log (demo): entries viewable in admin; CSV download for offline search (export is logged); includes job_reverted_to_draft.",
     "i18n: EN/DE in prototype for UX demo; product-wide multilingual rollout remains a separate decision (see out_of_scope)."
   ],
@@ -546,9 +546,9 @@
       "acceptance": [
         "Job financial fields include revenue/price, driver compensation, expenses, invoice received, invoice type, invoice number, payment status, and notes.",
         "Optional explicit adminInvoiceOverride (or equivalent) distinguishes manual invoice-received intent from system derivation from partner invoice documents (see task 27).",
-        "Admin can view and edit financial fields in overview/detail (including adjustments when documents arrive by non-PWA channels).",
+        "Job detail shows a read-only Financial snapshot (amounts, payment/invoice pills, linked uploads); ledger edits happen only in the Finance tab modal.",
         "Completed jobs can proceed into invoice/payment tracking.",
-        "Dedicated Finance ledger view (per-job table/summary) is available separately from Partner invoices inbox if both exist (see task 27).",
+        "Dedicated Finance ledger view (per-job table/summary) is available separately from Partner invoices inbox (see task 27); invoice number and invoice-received are not edited on job detail.",
         "Advanced margin automation and accounting integration are marked out of scope unless separately scoped."
       ],
       "status": "pending",
@@ -571,7 +571,9 @@
         "Admin Partner invoices view lists uploads with file metadata, partner, linked job/tour, upload time, processed flag, source (driver vs admin), and actions (open linked job, view metadata, download placeholder).",
         "Admin off-channel registration uses document file upload (PDF/images), not free-text filename or MIME fields; same allowed types as driver upload.",
         "Admin can edit partner invoice records (job link, partner, invoice id, internal notes, replace document via file picker).",
-        "Admin Finance view remains the per-job ledger (amounts, invoice number, payment status, invoice received display).",
+        "Admin Finance view is the per-job ledger (amounts, payment status, invoice received override segment); invoice number is read-only in Finance and synced from processed partner uploads.",
+        "Job detail shows derived invoice-received state (read-only); adminInvoiceOverride (Auto / Force received / Force missing) is edited only in Finance modal.",
+        "Partner invoices is the only surface for document upload, processed flag, and off-channel registration.",
         "Invoice received on job reconciles idempotently: true if adminInvoiceOverride is true, false if override is explicitly false (dispute path), else true iff at least one upload for that job is marked processed.",
         "Changing upload processed flag, link to job, or deleting upload triggers reconcile on all affected jobs.",
         "Cross-links between Finance and Partner invoices and job-detail banners for pending linked uploads match agreed UX (see prototype reference).",

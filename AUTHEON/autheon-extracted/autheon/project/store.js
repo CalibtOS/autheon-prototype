@@ -78,6 +78,8 @@ window.AuthStore = (() => {
     netAmount: null,
     vatRate: 19,
     grossAmount: null,
+    /** null = derive from processed partner uploads; true/false = manual override */
+    adminInvoiceOverride: null,
     ...over,
   });
 
@@ -240,10 +242,114 @@ window.AuthStore = (() => {
   function isAllowedInvoiceFile(file) {
     if (!file || !file.name) return false;
     const ty = (file.type || "").trim().toLowerCase();
-    if (ty === "application/pdf" || /^image\/(jpeg|png|webp|gif)$/.test(ty))
+    if (ty === "application/pdf" || /^image\/(jpeg|webp|gif)$/.test(ty))
       return true;
     const ext = file.name.split(".").pop().toLowerCase();
     return ["pdf", "jpg", "jpeg", "png", "webp", "gif"].includes(ext);
+  }
+
+  const FIN_LEDGER_KEYS = new Set([
+    "revenue",
+    "price",
+    "driverCompensation",
+    "expenses",
+    "netAmount",
+    "grossAmount",
+    "vatRate",
+    "paymentStatus",
+    "financialNotes",
+    "adminInvoiceOverride",
+  ]);
+
+  const FIN_BLOCKED_KEYS = new Set(["invoiceReceived", "invoiceNumber"]);
+
+  function uploadsForJob(jobId) {
+    if (!jobId) return [];
+    return invoiceUploads.filter((x) => x.jobId === jobId);
+  }
+
+  function primaryProcessedUpload(jobId) {
+    return uploadsForJob(jobId).find((x) => x.processed) || null;
+  }
+
+  function applyInvoiceReceivedReconcile(jobId) {
+    const j = jobs.find((x) => x.id === jobId);
+    if (!j) return;
+    const prev = !!j.invoiceReceived;
+    let next;
+    if (j.adminInvoiceOverride === true) next = true;
+    else if (j.adminInvoiceOverride === false) next = false;
+    else next = uploadsForJob(jobId).some((u) => u.processed);
+    if (prev !== next) {
+      j.invoiceReceived = next;
+      log(
+        "invoice_received_reconciled",
+        DEMO_ADMIN,
+        j.tour,
+        next ? "received" : "missing",
+      );
+    }
+  }
+
+  function syncJobInvoiceNumberFromUploads(jobId, onlyIfEmpty = true) {
+    const j = jobs.find((x) => x.id === jobId);
+    if (!j) return;
+    const primary = primaryProcessedUpload(jobId);
+    if (!primary?.invoiceId) return;
+    if (
+      !onlyIfEmpty ||
+      !String(j.invoiceNumber || "").trim()
+    ) {
+      j.invoiceNumber = primary.invoiceId;
+    }
+  }
+
+  function afterInvoiceMutation(jobIds) {
+    const ids = [...new Set((jobIds || []).filter(Boolean))];
+    ids.forEach((id) => {
+      syncJobInvoiceNumberFromUploads(id, true);
+      applyInvoiceReceivedReconcile(id);
+    });
+    if (ids.length) emit();
+  }
+
+  function getJobInvoiceReceivedMeta(jobId) {
+    const j = jobs.find((x) => x.id === jobId);
+    const linked = uploadsForJob(jobId);
+    const processed = linked.filter((u) => u.processed);
+    const pendingCount = linked.length - processed.length;
+    const primary = processed[0] || null;
+    if (!j) {
+      return {
+        received: false,
+        source: "none",
+        pendingCount: 0,
+        processedUpload: null,
+      };
+    }
+    if (j.adminInvoiceOverride === true) {
+      return {
+        received: true,
+        source: "override_yes",
+        pendingCount,
+        processedUpload: primary,
+      };
+    }
+    if (j.adminInvoiceOverride === false) {
+      return {
+        received: false,
+        source: "override_no",
+        pendingCount,
+        processedUpload: primary,
+      };
+    }
+    const received = processed.length > 0;
+    return {
+      received,
+      source: received ? "processed" : linked.length ? "pending" : "none",
+      pendingCount,
+      processedUpload: primary,
+    };
   }
 
   const jobs = [
@@ -1022,15 +1128,38 @@ window.AuthStore = (() => {
     updateFinancial(id, patch) {
       const j = api.getJob(id);
       if (!j) return { ok: false };
-      Object.assign(j, patch);
+      for (const k of FIN_BLOCKED_KEYS) {
+        if (Object.prototype.hasOwnProperty.call(patch, k)) {
+          return { ok: false, reason: "use_partner_invoices" };
+        }
+      }
+      const ledger = {};
+      for (const k of Object.keys(patch)) {
+        if (FIN_LEDGER_KEYS.has(k)) ledger[k] = patch[k];
+      }
+      if (!Object.keys(ledger).length) return { ok: false, reason: "no_fields" };
+      Object.assign(j, ledger);
+      if (Object.prototype.hasOwnProperty.call(ledger, "adminInvoiceOverride")) {
+        applyInvoiceReceivedReconcile(id);
+      }
       log(
         "financial_updated",
         DEMO_ADMIN,
         j.tour,
-        Object.keys(patch).join(", "),
+        Object.keys(ledger).join(", "),
       );
       emit();
       return { ok: true };
+    },
+
+    reconcileJobInvoiceReceived(jobId) {
+      applyInvoiceReceivedReconcile(jobId);
+      emit();
+      return { ok: true };
+    },
+
+    getJobInvoiceReceivedMeta(jobId) {
+      return getJobInvoiceReceivedMeta(jobId);
     },
 
     setDriverStatus(id, status) {
@@ -1122,6 +1251,7 @@ window.AuthStore = (() => {
         "driverCompensation",
         "expenses",
         "invoiceReceived",
+        "adminInvoiceOverride",
         "invoiceType",
         "invoiceNumber",
         "paymentStatus",
@@ -1257,21 +1387,13 @@ window.AuthStore = (() => {
         notes: "",
       };
       invoiceUploads.unshift(row);
-      if (jobId) {
-        const j = api.getJob(jobId);
-        if (j)
-          api.updateFinancial(jobId, {
-            invoiceNumber: invoiceId,
-            invoiceReceived: true,
-          });
-      }
       log(
         "invoice_upload_registered",
         d.name,
         row.fileName,
         row.jobId || "unscoped",
       );
-      emit();
+      afterInvoiceMutation([jobId]);
       return { ok: true, id: row.id, invoiceId: row.invoiceId };
     },
 
@@ -1329,11 +1451,9 @@ window.AuthStore = (() => {
       const push = opts.pushToJob !== false;
       if (push) {
         const j = api.getJob(jobRaw);
-        if (j)
-          api.updateFinancial(jobRaw, {
-            invoiceNumber: invoiceId,
-            invoiceReceived: true,
-          });
+        if (j) {
+          j.invoiceNumber = invoiceId;
+        }
       }
       log(
         "partner_invoice_admin_registered",
@@ -1341,13 +1461,15 @@ window.AuthStore = (() => {
         row.fileName,
         `${jobRaw} · ${invoiceId}`,
       );
-      emit();
+      afterInvoiceMutation([jobRaw]);
       return { ok: true, id: row.id, invoiceId: row.invoiceId };
     },
 
     updateInvoiceUpload(id, patch) {
       const u = invoiceUploads.find((x) => x.id === id);
       if (!u) return { ok: false };
+      const affected = new Set([u.jobId]);
+      const prevJobId = u.jobId;
       if (patch.jobId !== undefined) {
         const jid =
           patch.jobId === "" || patch.jobId == null
@@ -1356,6 +1478,7 @@ window.AuthStore = (() => {
         if (!jid) return { ok: false, reason: "job_required" };
         if (!api.getJob(jid)) return { ok: false, reason: "bad_job" };
         u.jobId = jid;
+        affected.add(jid);
       }
       if (patch.file !== undefined) {
         const file = patch.file;
@@ -1384,14 +1507,23 @@ window.AuthStore = (() => {
         u.driverName = dr.name;
       }
       if (patch.notes !== undefined) u.notes = String(patch.notes ?? "");
-      if (patch.processed !== undefined) u.processed = !!patch.processed;
+      if (patch.processed !== undefined) {
+        u.processed = !!patch.processed;
+        if (u.processed && u.jobId && u.invoiceId) {
+          const j = api.getJob(u.jobId);
+          if (j && !String(j.invoiceNumber || "").trim()) {
+            j.invoiceNumber = u.invoiceId;
+          }
+        }
+      }
       log(
         "invoice_upload_updated",
         DEMO_ADMIN,
         u.fileName,
         JSON.stringify(patch),
       );
-      emit();
+      affected.add(prevJobId);
+      afterInvoiceMutation([...affected]);
       return { ok: true };
     },
 
@@ -1400,7 +1532,7 @@ window.AuthStore = (() => {
       if (i < 0) return { ok: false };
       const [removed] = invoiceUploads.splice(i, 1);
       log("invoice_upload_deleted", DEMO_ADMIN, removed.fileName, removed.id);
-      emit();
+      afterInvoiceMutation([removed.jobId]);
       return { ok: true };
     },
 
