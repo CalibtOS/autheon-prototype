@@ -1,5 +1,6 @@
-// AUTHEON — Shared store (prototype). Single source of truth for Driver + Admin views.
-// Business rules aligned with PRD v1.2 Phase 1 (publish/assign only from Draft; no Published→Assigned).
+// AUTHEON — Shared store (PRD v1.5 prototype). Single source of truth for Driver + Admin views.
+// Operational statuses: draft, published, assigned, accepted, performed, cancelled, special_case.
+// Ordering party, pickup, and delivery are separate; legacy flat fields are derived for tables.
 
 window.AuthStore = (() => {
   const listeners = new Set();
@@ -9,222 +10,1058 @@ window.AuthStore = (() => {
   };
   const emit = () => listeners.forEach((fn) => fn());
 
-  /** Logged-in driver persona for this demo (matches assigned/accepted seed rows). */
   const DEMO_DRIVER = "Jordan Blake";
   const DEMO_ADMIN = "Anna Bauer";
+
+  const AXLE_OWN = "driven on own wheels";
+  const AXLE_THIRD = "third-party axle";
 
   const STATUSES = {
     draft: { i18n: "status.draft", cls: "draft" },
     published: { i18n: "status.published", cls: "published" },
     assigned: { i18n: "status.assigned", cls: "assigned" },
     accepted: { i18n: "status.accepted", cls: "accepted" },
-    return_requested: {
-      i18n: "status.return_requested",
-      cls: "return_requested",
-    },
-    completed: { i18n: "status.completed", cls: "completed" },
+    performed: { i18n: "status.performed", cls: "performed" },
     cancelled: { i18n: "status.cancelled", cls: "cancelled" },
+    special_case: { i18n: "status.special_case", cls: "special_case" },
   };
 
-  const mk = (over) => ({
-    id: "",
-    tour: "",
-    customer: "",
-    category: "Standard",
-    startCity: "",
-    startPlz: "",
-    startStreet: "",
-    startCompany: "",
-    endCity: "",
-    endPlz: "",
-    endStreet: "",
-    endCompany: "",
-    distanceKm: 0,
-    date: "",
-    dateLong: "",
-    windowFrom: "",
-    windowTo: "",
-    windowFlex: false,
-    vehicle: "",
-    vehicleModel: "",
-    plate: "",
-    vin: "",
-    axle: "Own axle",
-    price: 0,
-    contactPickup: { name: "", phone: "" },
-    contactDelivery: { name: "", phone: "" },
-    notes: "",
-    notesDriver: "",
-    status: "draft",
-    driver: null,
-    isNew: false,
-    hasReturnRequest: false,
-    returnReason: "",
-    returnMessage: "",
-    preReturnStatus: null,
-    history: [],
-    createdAt: "",
-    pdfVersion: 0,
-    completedAt: "",
-    // Financial (PRD task 21 / domain model)
-    revenue: null,
-    driverCompensation: null,
-    expenses: null,
-    invoiceReceived: false,
-    invoiceType: "",
-    invoiceNumber: "",
-    paymentStatus: "Unpaid",
-    financialNotes: "",
-    netAmount: null,
-    vatRate: 19,
-    grossAmount: null,
-    /** null = derive from processed partner uploads; true/false = manual override */
-    adminInvoiceOverride: null,
-    ...over,
-  });
+  const DOC_REVIEW = [
+    "missing",
+    "uploaded",
+    "under_review",
+    "accepted",
+    "rejected",
+    "correction_required",
+  ];
 
-  const drivers = [
-    {
-      id: "DRV-0228",
-      name: DEMO_DRIVER,
-      company: "Blake Transport Services",
-      partnerId: "AU-41-0228",
-      address: "Landsberger Str. 22, 80339 München",
-      email: "jordan.blake@example.com",
-      phone: "+49 170 4400228",
-      status: "Active",
-      prefs: {
-        startPlz: "80",
-        endPlz: "",
-        vehicle: "PKW",
-        axle: "All",
-        push: true,
+  const SETTLEMENT_STATES = [
+    "Not Started",
+    "Pending",
+    "Processed",
+    "Paid",
+    "Needs Clarification",
+    "Closed",
+  ];
+
+  function mkLocation(over = {}) {
+    return {
+      locationId: over.locationId || null,
+      name: over.name || "",
+      street: over.street || "",
+      houseNumber: over.houseNumber || "",
+      postalCode: over.postalCode || "",
+      city: over.city || "",
+      country: over.country || "DE",
+      contactPerson: over.contactPerson || "",
+      phone: over.phone || "",
+      secondPhone: over.secondPhone || "",
+      email: over.email || "",
+      notes: over.notes || "",
+      date: over.date || "",
+      dateLong: over.dateLong || "",
+      windowFrom: over.windowFrom || "",
+      windowTo: over.windowTo || "",
+      windowFlex: !!over.windowFlex,
+    };
+  }
+
+  function mk(over) {
+    const job = {
+      id: "",
+      tour: "",
+      category: "Standard",
+      orderingPartyId: "",
+      orderingPartyName: "",
+      pickup: mkLocation(),
+      delivery: mkLocation(),
+      distanceKm: 0,
+      distanceManualOverride: null,
+      distanceEstimateSource: null,
+      vehicle: "",
+      vehicleModel: "",
+      plate: "",
+      vin: "",
+      axle: AXLE_OWN,
+
+      revenue: null,
+      driverCompensation: null,
+      expenses: null,
+      notes: "",
+      notesDriver: "",
+      status: "draft",
+      driver: null,
+      isNew: false,
+      history: [],
+      createdAt: "",
+      pdfVersion: 0,
+      performedAt: "",
+      documentReviewSummary: "Not Started",
+      settlementState: "Not Started",
+      specialCaseReport: null,
+      // Legacy flat fields (syncDisplayFields)
+      customer: "",
+      startCity: "",
+      startPlz: "",
+      startStreet: "",
+      startCompany: "",
+      endCity: "",
+      endPlz: "",
+      endStreet: "",
+      endCompany: "",
+      date: "",
+      dateLong: "",
+      windowFrom: "",
+      windowTo: "",
+      windowFlex: false,
+      contactPickup: { name: "", phone: "" },
+      contactDelivery: { name: "", phone: "" },
+      netAmount: null,
+      vatRate: 19,
+      grossAmount: null,
+      invoiceReceived: false,
+      invoiceType: "",
+      invoiceNumber: "",
+      paymentStatus: "Unpaid",
+      financialNotes: "",
+      adminInvoiceOverride: null,
+      ...over,
+    };
+    if (over.pickup) job.pickup = mkLocation({ ...job.pickup, ...over.pickup });
+    if (over.delivery)
+      job.delivery = mkLocation({ ...job.delivery, ...over.delivery });
+    syncDisplayFields(job);
+    return job;
+  }
+
+  function formatStreet(loc) {
+    const s = [loc.street, loc.houseNumber].filter(Boolean).join(" ");
+    return s.trim();
+  }
+
+  function partnerOfferAmount(job) {
+    if (!job) return 0;
+    const n = job.driverCompensation;
+    if (n == null || n === "") return 0;
+    const v = Number(n);
+    return Number.isFinite(v) ? v : 0;
+  }
+
+  function syncDisplayFields(job) {
+    if (!job) return job;
+    const pu = job.pickup || mkLocation();
+    const del = job.delivery || mkLocation();
+    job.customer = job.orderingPartyName || job.customer || "";
+    job.startCity = pu.city || "";
+    job.startPlz = pu.postalCode || "";
+    job.startStreet = formatStreet(pu) || pu.street || "";
+    job.startCompany = pu.name || job.orderingPartyName || "";
+    job.endCity = del.city || "";
+    job.endPlz = del.postalCode || "";
+    job.endStreet = formatStreet(del) || del.street || "";
+    job.endCompany = del.name || "";
+    job.date = pu.date || del.date || job.date || "";
+    job.dateLong = pu.dateLong || del.dateLong || job.dateLong || "";
+    job.windowFrom = pu.windowFrom || "";
+    job.windowTo = pu.windowTo || "";
+    job.windowFlex = !!(pu.windowFlex || del.windowFlex);
+    job.contactPickup = {
+      name: pu.contactPerson || "",
+      phone: pu.phone || "",
+    };
+    job.contactDelivery = {
+      name: del.contactPerson || "",
+      phone: del.phone || "",
+    };
+    return job;
+  }
+
+  function normalizeAxle(raw) {
+    const s = String(raw || "").trim();
+    const map = {
+      Eigenachse: AXLE_OWN,
+      Fremdachse: AXLE_THIRD,
+      "Own axle": AXLE_OWN,
+      "Third-party axle": AXLE_THIRD,
+      [AXLE_OWN]: AXLE_OWN,
+      [AXLE_THIRD]: AXLE_THIRD,
+    };
+    return map[s] || AXLE_OWN;
+  }
+
+  function seedOrderingParties() {
+    return [
+      {
+        id: "OP-001",
+        name: "Muller Automobile GmbH",
+        type: "Dealer group",
+        contact: "H. Schneider",
+        phone: "+49 89 1234567",
+        email: "logistics@muller-auto.example",
+        billingNotes: "Net 14 days; PO required on invoice.",
+        instructions: "Keys at reception; logistics yard requires safety vest.",
       },
-    },
-    {
-      id: "DRV-0177",
-      name: "Mira Vogt",
-      company: "Vogt Fahrservice",
-      partnerId: "AU-41-0177",
-      address: "Kantstr. 18, 10623 Berlin",
-      email: "mira.vogt@example.com",
-      phone: "+49 171 991177",
-      status: "Blocked",
-      prefs: {
-        startPlz: "10",
-        endPlz: "",
+      {
+        id: "OP-002",
+        name: "Classic Cars AG",
+        type: "Fleet customer",
+        contact: "S. Keller",
+        phone: "+49 711 441122",
+        email: "dispatch@classiccars.example",
+        billingNotes: "Historic vehicle surcharge may apply.",
+        instructions:
+          "Historic vehicles require enclosed transport confirmation.",
+      },
+      {
+        id: "OP-003",
+        name: "Nord-Flotte GmbH",
+        type: "Fleet customer",
+        contact: "T. Brandt",
+        phone: "+49 421 778899",
+        email: "ops@nordflotte.example",
+        billingNotes: "",
+        instructions: "Report pickup delays to dispatch immediately.",
+      },
+      {
+        id: "OP-004",
+        name: "AutoLogistik KG",
+        type: "Logistics hub",
+        contact: "J. Tausch",
+        phone: "+49 30 552288",
+        email: "hub@autologistik.example",
+        billingNotes: "Hub-to-hub transfers.",
+        instructions: "",
+      },
+    ];
+  }
+
+  function seedAddresses() {
+    return [
+      {
+        id: "ADDR-001",
+        label: "Muller Munich yard",
+        street: "Landsberger Str.",
+        houseNumber: "142",
+        postalCode: "80339",
+        city: "Munchen",
+        country: "DE",
+        contactPerson: "H. Schneider",
+        phone: "+49 89 1234567",
+        notes: "Reception key handover.",
+      },
+      {
+        id: "ADDR-002",
+        label: "Autohaus Nord Berlin",
+        street: "Chausseestr.",
+        houseNumber: "88",
+        postalCode: "10115",
+        city: "Berlin",
+        country: "DE",
+        contactPerson: "F. Becker",
+        phone: "+49 30 9876543",
+        notes: "",
+      },
+      {
+        id: "ADDR-003",
+        label: "Classic Cars Stuttgart",
+        street: "Plieninger Str.",
+        houseNumber: "14",
+        postalCode: "70565",
+        city: "Stuttgart",
+        country: "DE",
+        contactPerson: "S. Keller",
+        phone: "+49 711 441122",
+        notes: "Logistics gate B.",
+      },
+      {
+        id: "ADDR-004",
+        label: "Classic Cars Munich showroom",
+        street: "Marsstr.",
+        houseNumber: "22",
+        postalCode: "80339",
+        city: "Munchen",
+        country: "DE",
+        contactPerson: "R. Meier",
+        phone: "+49 89 441100",
+        notes: "",
+      },
+      {
+        id: "ADDR-005",
+        label: "Nord-Flotte Bremen",
+        street: "Marktplatz",
+        houseNumber: "1",
+        postalCode: "28195",
+        city: "Bremen",
+        country: "DE",
+        contactPerson: "T. Brandt",
+        phone: "+49 421 778899",
+        notes: "",
+      },
+      {
+        id: "ADDR-006",
+        label: "Hamburg Vehicle Yard",
+        street: "Reeperbahn",
+        houseNumber: "30",
+        postalCode: "22767",
+        city: "Hamburg",
+        country: "DE",
+        contactPerson: "M. Linke",
+        phone: "+49 40 556677",
+        notes: "",
+      },
+    ];
+  }
+
+  function seedDocuments() {
+    return [
+      {
+        id: "DOC-001",
+        title: "General work instructions",
+        category: "Operations",
+        visible: true,
+        scope: "Global",
+        version: "v1.3",
+        updatedAt: "04.05. 09:10",
+      },
+      {
+        id: "DOC-002",
+        title: "Partner terms",
+        category: "Legal",
+        visible: true,
+        scope: "Global",
+        version: "v3.0",
+        updatedAt: "02.05. 14:45",
+      },
+      {
+        id: "DOC-003",
+        title: "Emergency contacts",
+        category: "Safety",
+        visible: true,
+        scope: "Global",
+        version: "v1.0",
+        updatedAt: "01.05. 08:00",
+      },
+      {
+        id: "DOC-004",
+        title: "Privacy policy",
+        category: "Legal",
+        visible: true,
+        scope: "Global",
+        version: "v2.1",
+        updatedAt: "29.04. 11:30",
+      },
+      {
+        id: "DOC-005",
+        title: "Imprint",
+        category: "Legal",
+        visible: true,
+        scope: "Global",
+        version: "v1.0",
+        updatedAt: "29.04. 11:31",
+      },
+    ];
+  }
+
+  function seedNews() {
+    return [
+      {
+        id: "NEWS-001",
+        title: "New document upload flow",
+        body: "After marking a tour performed, upload partner invoice and delivery proof from the tour detail screen.",
+        publishedAt: "05.05. 08:00",
+        visible: true,
+        readBy: [],
+      },
+      {
+        id: "NEWS-002",
+        title: "Report Problem replaces returns",
+        body: "Use Report Problem to cancel or flag a tour as not performable. Not performable creates a special case for dispatch.",
+        publishedAt: "03.05. 14:30",
+        visible: true,
+        readBy: [],
+      },
+    ];
+  }
+
+  function pu(
+    addrId,
+    name,
+    street,
+    hn,
+    plz,
+    city,
+    date,
+    dateLong,
+    from,
+    to,
+    contact,
+    phone,
+    flex,
+  ) {
+    return mkLocation({
+      locationId: addrId,
+      name,
+      street,
+      houseNumber: hn,
+      postalCode: plz,
+      city,
+      country: "DE",
+      contactPerson: contact,
+      phone,
+      date,
+      dateLong,
+      windowFrom: from,
+      windowTo: to,
+      windowFlex: flex,
+    });
+  }
+
+  function seedJobs() {
+    return [
+      mk({
+        id: "A-2026-00847",
+        tour: "0847-26",
+        orderingPartyId: "OP-001",
+        orderingPartyName: "Muller Automobile GmbH",
+        pickup: pu(
+          "ADDR-001",
+          "Muller Automobile GmbH",
+          "Landsberger Str.",
+          "142",
+          "80339",
+          "Munchen",
+          "23.04.",
+          "Wed, 23.04.2026",
+          "08:00",
+          "12:00",
+          "H. Schneider",
+          "+49 89 1234567",
+        ),
+        delivery: pu(
+          "ADDR-002",
+          "Autohaus Nord Berlin",
+          "Chausseestr.",
+          "88",
+          "10115",
+          "Berlin",
+          "24.04.",
+          "Thu, 24.04.2026",
+          "10:00",
+          "14:00",
+          "F. Becker",
+          "+49 30 9876543",
+        ),
+        distanceKm: 585,
+        distanceEstimateSource: "seed",
         vehicle: "SUV",
-        axle: "Own axle",
-        push: false,
+        vehicleModel: "VW Tiguan 2.0 TDI",
+        plate: "M-AB 1234",
+        vin: "WVGZZZ5NZKW123456",
+        axle: AXLE_OWN,
+
+        revenue: 340,
+        netAmount: 285.71,
+        grossAmount: 340,
+        driverCompensation: 260,
+        expenses: 12,
+        notes:
+          "Key handover at reception. Vehicle prepared, fuel approx. 1/2 tank. Ref: KR-88213.",
+        notesDriver: "Please confirm arrival 15 minutes early.",
+        status: "published",
+        pdfVersion: 0,
+        history: [
+          { st: "draft", at: "23.04. 09:14", by: "A. Bauer" },
+          { st: "published", at: "23.04. 11:02", by: "A. Bauer" },
+        ],
+        createdAt: "23.04. 09:14",
+      }),
+      mk({
+        id: "A-2026-00848",
+        tour: "0848-26",
+        orderingPartyId: "OP-003",
+        orderingPartyName: "Nord-Flotte GmbH",
+        pickup: pu(
+          "ADDR-005",
+          "Nord-Flotte Dispatch",
+          "Marktplatz",
+          "1",
+          "28195",
+          "Bremen",
+          "08.05.",
+          "Fri, 08.05.2026",
+          "09:00",
+          "12:00",
+          "T. Brandt",
+          "+49 421 778899",
+        ),
+        delivery: pu(
+          "ADDR-006",
+          "Hamburg Vehicle Yard",
+          "Reeperbahn",
+          "30",
+          "22767",
+          "Hamburg",
+          "08.05.",
+          "Fri, 08.05.2026",
+          "12:00",
+          "16:00",
+          "M. Linke",
+          "+49 40 556677",
+        ),
+        distanceKm: 124,
+        distanceEstimateSource: "seed",
+        vehicle: "PKW",
+        vehicleModel: "Skoda Superb",
+        plate: "HB-NF 848",
+        vin: "TMBJH7NP8P0123848",
+        axle: AXLE_OWN,
+
+        revenue: 185,
+        driverCompensation: 145,
+        status: "assigned",
+        driver: DEMO_DRIVER,
+        pdfVersion: 1,
+        notesDriver: "Report any pickup delay immediately to dispatch.",
+        createdAt: "05.05. 10:00",
+        history: [
+          { st: "draft", at: "05.05. 10:00", by: "A. Bauer" },
+          { st: "assigned", at: "05.05. 10:05", by: "A. Bauer" },
+        ],
+      }),
+      mk({
+        id: "A-2026-00846",
+        tour: "0846-26",
+        orderingPartyId: "OP-002",
+        orderingPartyName: "Classic Cars AG",
+        pickup: pu(
+          "ADDR-003",
+          "Classic Cars AG · Logistics",
+          "Plieninger Str.",
+          "14",
+          "70565",
+          "Stuttgart",
+          "23.04.",
+          "Wed, 23.04.2026",
+          "06:00",
+          "10:00",
+          "S. Keller",
+          "+49 711 441122",
+        ),
+        delivery: pu(
+          "ADDR-004",
+          "Classic Cars AG · Showroom",
+          "Marsstr.",
+          "22",
+          "80339",
+          "Munchen",
+          "23.04.",
+          "Wed, 23.04.2026",
+          "14:00",
+          "18:00",
+          "R. Meier",
+          "+49 89 441100",
+        ),
+        distanceKm: 232,
+        vehicle: "PKW",
+        vehicleModel: "BMW 3 Touring",
+        plate: "S-CC 220",
+        vin: "WBA8E1100K5J12345",
+        axle: AXLE_THIRD,
+
+        revenue: 220,
+        driverCompensation: 175,
+        status: "special_case",
+        driver: DEMO_DRIVER,
+        pdfVersion: 1,
+        specialCaseReport: {
+          type: "not_performable",
+          reason: "access_blocked",
+          message:
+            "Customer yard closed unexpectedly; vehicle not accessible for pickup.",
+          reportedAt: "23.04. 08:40",
+          reportedBy: DEMO_DRIVER,
+        },
+        history: [
+          { st: "draft", at: "22.04. 16:11", by: "A. Bauer" },
+          { st: "assigned", at: "23.04. 07:55", by: "A. Bauer" },
+          { st: "accepted", at: "23.04. 08:10", by: DEMO_DRIVER },
+          {
+            st: "special_case",
+            at: "23.04. 08:40",
+            by: DEMO_DRIVER,
+            meta: "Report Problem: not performable",
+          },
+        ],
+        createdAt: "22.04. 16:11",
+      }),
+      mk({
+        id: "A-2026-00845",
+        tour: "0845-26",
+        orderingPartyId: "OP-004",
+        orderingPartyName: "AutoLogistik KG",
+        pickup: pu(
+          null,
+          "AutoLogistik · Hub Koln",
+          "Hohe Str.",
+          "110",
+          "50667",
+          "Koln",
+          "24.04.",
+          "Thu, 24.04.2026",
+          "10:00",
+          "14:00",
+          "Hub Koln",
+          "+49 221 100200",
+        ),
+        delivery: pu(
+          null,
+          "AutoLogistik · Hub Frankfurt",
+          "Zeil",
+          "90",
+          "60311",
+          "Frankfurt",
+          "24.04.",
+          "Thu, 24.04.2026",
+          "14:00",
+          "18:00",
+          "Hub Frankfurt",
+          "+49 69 300400",
+        ),
+        distanceKm: 186,
+        vehicle: "PKW",
+        vehicleModel: "Audi A4",
+        plate: "K-AL 845",
+        vin: "WAUZZZ4M5KA000001",
+        axle: AXLE_THIRD,
+
+        revenue: 145,
+        driverCompensation: 110,
+        status: "accepted",
+        driver: DEMO_DRIVER,
+        pdfVersion: 1,
+        history: [
+          { st: "draft", at: "21.04. 10:00", by: "A. Bauer" },
+          { st: "published", at: "21.04. 10:30", by: "A. Bauer" },
+          { st: "accepted", at: "21.04. 14:22", by: DEMO_DRIVER },
+        ],
+        createdAt: "21.04. 10:00",
+      }),
+      mk({
+        id: "A-2026-00844",
+        tour: "0844-26",
+        orderingPartyId: "OP-001",
+        orderingPartyName: "Muller Automobile GmbH",
+        pickup: pu(
+          null,
+          "Muller Hamburg",
+          "Monckebergstr.",
+          "7",
+          "20095",
+          "Hamburg",
+          "22.04.",
+          "Tue, 22.04.2026",
+          "",
+          "",
+          "",
+          "",
+          true,
+        ),
+        delivery: pu(
+          null,
+          "Hannover outlet",
+          "Karmarschstr.",
+          "30",
+          "30159",
+          "Hannover",
+          "22.04.",
+          "Tue, 22.04.2026",
+          "12:00",
+          "16:00",
+          "",
+          "",
+        ),
+        distanceKm: 156,
+        vehicle: "PKW",
+        vehicleModel: "VW Polo",
+        plate: "HH-MA 88",
+        vin: "WVWZZZ6RZKY098765",
+        axle: AXLE_THIRD,
+        driverCompensation: 165,
+        status: "published",
+        pdfVersion: 0,
+        createdAt: "20.04. 14:00",
+        history: [{ st: "published", at: "20.04. 14:30", by: "A. Bauer" }],
+      }),
+      mk({
+        id: "A-2026-00843",
+        tour: "0843-26",
+        orderingPartyId: "OP-002",
+        orderingPartyName: "Classic Cars AG",
+        pickup: pu(
+          null,
+          "Classic Cars Stuttgart",
+          "Konigstr.",
+          "60",
+          "70173",
+          "Stuttgart",
+          "26.04.",
+          "Sat, 26.04.2026",
+          "06:00",
+          "10:00",
+          "",
+          "",
+        ),
+        delivery: pu(
+          null,
+          "Marienplatz delivery",
+          "Marienplatz",
+          "8",
+          "80331",
+          "Munchen",
+          "26.04.",
+          "Sat, 26.04.2026",
+          "12:00",
+          "16:00",
+          "",
+          "",
+        ),
+        distanceKm: 232,
+        vehicle: "Van",
+        vehicleModel: "Mercedes Sprinter",
+        plate: "S-CC 130",
+        vin: "WDB9067321V123987",
+        axle: AXLE_OWN,
+        driverCompensation: 280,
+        status: "accepted",
+        driver: DEMO_DRIVER,
+        pdfVersion: 1,
+        createdAt: "20.04. 09:00",
+        history: [{ st: "accepted", at: "23.04. 06:11", by: DEMO_DRIVER }],
+      }),
+      mk({
+        id: "A-2026-00842",
+        tour: "0842-26",
+        orderingPartyId: "OP-003",
+        orderingPartyName: "Nord-Flotte GmbH",
+        pickup: pu(
+          "ADDR-006",
+          "Hamburg depot",
+          "Steinstr.",
+          "5",
+          "20095",
+          "Hamburg",
+          "21.04.",
+          "Mon, 21.04.2026",
+          "09:00",
+          "11:00",
+          "Depot lead",
+          "+49 40 111222",
+        ),
+        delivery: pu(
+          "ADDR-005",
+          "Bremen hub",
+          "Domshof",
+          "8",
+          "28195",
+          "Bremen",
+          "21.04.",
+          "Mon, 21.04.2026",
+          "13:00",
+          "15:00",
+          "Hub Bremen",
+          "+49 421 333444",
+        ),
+        distanceKm: 124,
+        vehicle: "PKW",
+        vehicleModel: "Skoda Octavia",
+        plate: "HH-NF 42",
+        vin: "TMBJG7NE7K0123456",
+        axle: AXLE_THIRD,
+        driverCompensation: 110,
+        revenue: 135,
+        grossAmount: 135,
+        paymentStatus: "Paid",
+        settlementState: "Paid",
+        documentReviewSummary: "Accepted",
+        status: "performed",
+        driver: DEMO_DRIVER,
+        performedAt: "21.04. 12:48",
+        pdfVersion: 1,
+        history: [
+          { st: "accepted", at: "21.04. 09:00", by: DEMO_DRIVER },
+          { st: "performed", at: "21.04. 12:48", by: DEMO_DRIVER },
+        ],
+        createdAt: "19.04. 13:00",
+      }),
+      mk({
+        id: "A-2026-00841",
+        tour: "0841-26",
+        orderingPartyId: "OP-001",
+        orderingPartyName: "Muller & Sohn KG",
+        pickup: pu(
+          null,
+          "Berlin branch",
+          "Kantstr.",
+          "41",
+          "10623",
+          "Berlin",
+          "22.04.",
+          "Tue, 22.04.2026",
+          "",
+          "",
+          "",
+          "",
+          true,
+        ),
+        delivery: pu(
+          null,
+          "Leipzig outlet",
+          "Augustusplatz",
+          "9",
+          "04109",
+          "Leipzig",
+          "22.04.",
+          "Tue, 22.04.2026",
+          "",
+          "",
+          "",
+          "",
+          true,
+        ),
+        distanceKm: 188,
+        vehicle: "SUV",
+        vehicleModel: "Ford Kuga",
+        plate: "B-MS 200",
+        vin: "WF0AXXTTGA000111",
+        axle: AXLE_OWN,
+        driverCompensation: 195,
+        status: "cancelled",
+        driver: DEMO_DRIVER,
+        history: [
+          {
+            st: "cancelled",
+            at: "21.04. 22:00",
+            by: "Dispatch",
+            meta: "Report Problem: cancel",
+          },
+        ],
+        createdAt: "18.04. 15:00",
+      }),
+      mk({
+        id: "A-2026-00840",
+        tour: "0840-26",
+        orderingPartyId: "OP-002",
+        orderingPartyName: "Classic Cars AG",
+        pickup: pu(
+          null,
+          "Dusseldorf showroom",
+          "Konigsallee",
+          "12",
+          "40213",
+          "Dusseldorf",
+          "25.04.",
+          "Fri, 25.04.2026",
+          "12:00",
+          "16:00",
+          "",
+          "",
+        ),
+        delivery: pu(
+          null,
+          "Koln hub",
+          "Hohe Str.",
+          "22",
+          "50667",
+          "Koln",
+          "25.04.",
+          "Fri, 25.04.2026",
+          "16:00",
+          "18:00",
+          "",
+          "",
+        ),
+        distanceKm: 78,
+        vehicle: "PKW",
+        vehicleModel: "Audi Q3",
+        plate: "D-CC 80",
+        vin: "WAUZZZF38K1234567",
+        axle: AXLE_OWN,
+        driverCompensation: 110,
+        status: "assigned",
+        driver: DEMO_DRIVER,
+        pdfVersion: 1,
+        createdAt: "21.04. 11:00",
+        history: [
+          { st: "draft", at: "21.04. 11:00", by: "A. Bauer" },
+          { st: "assigned", at: "21.04. 11:04", by: "A. Bauer" },
+        ],
+      }),
+      mk({
+        id: "A-2026-00839",
+        tour: "0839-26",
+        orderingPartyId: "OP-004",
+        orderingPartyName: "AutoLogistik KG",
+        pickup: pu(
+          null,
+          "Berlin hub",
+          "Invalidenstr.",
+          "80",
+          "10115",
+          "Berlin",
+          "27.04.",
+          "Sat, 27.04.2026",
+          "06:00",
+          "09:00",
+          "J. Tausch",
+          "+49 30 552288",
+        ),
+        delivery: pu(
+          "ADDR-003",
+          "Stuttgart hub",
+          "Konigstr.",
+          "80",
+          "70173",
+          "Stuttgart",
+          "28.04.",
+          "Sun, 28.04.2026",
+          "10:00",
+          "14:00",
+          "R. Wagner",
+          "+49 711 224488",
+        ),
+        distanceKm: 632,
+        vehicle: "PKW",
+        vehicleModel: "Audi A6",
+        plate: "B-AL 60",
+        vin: "WAUZZZ4G9KN123456",
+        axle: AXLE_OWN,
+        driverCompensation: 365,
+        status: "draft",
+        pdfVersion: 0,
+        createdAt: "20.04. 17:00",
+        history: [{ st: "draft", at: "20.04. 17:00", by: "A. Bauer" }],
+      }),
+    ];
+  }
+
+  function seedDriverState() {
+    return {
+      acceptedIds: new Set(["A-2026-00845", "A-2026-00843"]),
+      performedIds: new Set(["A-2026-00842"]),
+      specialCaseIds: new Set(["A-2026-00846"]),
+      cancelledIds: new Set(["A-2026-00841"]),
+    };
+  }
+
+  function seedDrivers() {
+    return [
+      {
+        id: "DRV-0228",
+        name: DEMO_DRIVER,
+        company: "Blake Transport Services",
+        partnerId: "AU-41-0228",
+        address: "Landsberger Str. 22, 80339 Munchen",
+        email: "jordan.blake@example.com",
+        phone: "+49 170 4400228",
+        status: "Active",
+        prefs: {
+          startPlz: "80",
+          endPlz: "",
+          vehicle: "PKW",
+          axle: "All",
+          push: true,
+        },
       },
-    },
-  ];
+      {
+        id: "DRV-0177",
+        name: "Mira Vogt",
+        company: "Vogt Fahrservice",
+        partnerId: "AU-41-0177",
+        address: "Kantstr. 18, 10623 Berlin",
+        email: "mira.vogt@example.com",
+        phone: "+49 171 991177",
+        status: "Blocked",
+        prefs: {
+          startPlz: "10",
+          endPlz: "",
+          vehicle: "SUV",
+          axle: AXLE_OWN,
+          push: false,
+        },
+      },
+    ];
+  }
 
-  const admins = [
-    {
-      id: "ADM-001",
-      name: DEMO_ADMIN,
-      email: "anna.bauer@autheon.example",
-      status: "Active",
-      role: "Dispatcher",
-    },
-    {
-      id: "ADM-002",
-      name: "Lukas Reimann",
-      email: "lukas.reimann@autheon.example",
-      status: "Active",
-      role: "Operations lead",
-    },
-  ];
+  function seedAdmins() {
+    return [
+      {
+        id: "ADM-001",
+        name: DEMO_ADMIN,
+        email: "anna.bauer@autheon.example",
+        status: "Active",
+        role: "Dispatcher",
+      },
+      {
+        id: "ADM-002",
+        name: "Lukas Reimann",
+        email: "lukas.reimann@autheon.example",
+        status: "Active",
+        role: "Operations lead",
+      },
+    ];
+  }
 
-  const customers = [
-    {
-      id: "CUST-001",
-      name: "Muller Automobile GmbH",
-      type: "Dealer group",
-      pickup: "Landsberger Str. 142, 80339 München",
-      delivery: "Chausseestr. 88, 10115 Berlin",
-      contact: "H. Schneider",
-      phone: "+49 89 1234567",
-      instructions: "Keys at reception; logistics yard requires safety vest.",
-    },
-    {
-      id: "CUST-002",
-      name: "Classic Cars AG",
-      type: "Fleet customer",
-      pickup: "Plieninger Str. 14, 70565 Stuttgart",
-      delivery: "Marsstr. 22, 80339 München",
-      contact: "S. Keller",
-      phone: "+49 711 441122",
-      instructions:
-        "Historic vehicles require enclosed transport confirmation.",
-    },
-  ];
+  function seedAudit() {
+    return [
+      {
+        action: "prototype_loaded",
+        actor: "System",
+        entity: "Transport Portal demo",
+        at: "05.05. 15:49",
+        meta: "PRD v1.5 client-side prototype",
+      },
+    ];
+  }
 
-  const documents = [
-    {
-      id: "DOC-001",
-      title: "General work instructions",
-      category: "Operations",
-      visible: true,
-      scope: "Global",
-      version: "v1.2",
-      updatedAt: "04.05. 09:10",
-    },
-    {
-      id: "DOC-002",
-      title: "Partner terms",
-      category: "Legal",
-      visible: true,
-      scope: "Global",
-      version: "v3.0",
-      updatedAt: "02.05. 14:45",
-    },
-    {
-      id: "DOC-003",
-      title: "Emergency contacts",
-      category: "Safety",
-      visible: true,
-      scope: "Global",
-      version: "v1.0",
-      updatedAt: "01.05. 08:00",
-    },
-    {
-      id: "DOC-004",
-      title: "Privacy policy",
-      category: "Legal",
-      visible: true,
-      scope: "Global",
-      version: "v2.1",
-      updatedAt: "29.04. 11:30",
-    },
-    {
-      id: "DOC-005",
-      title: "Imprint",
-      category: "Legal",
-      visible: true,
-      scope: "Global",
-      version: "v1.0",
-      updatedAt: "29.04. 11:31",
-    },
-  ];
+  let orderingParties = seedOrderingParties();
+  let addresses = seedAddresses();
+  let documents = seedDocuments();
+  let newsItems = seedNews();
+  let jobs = seedJobs();
+  let drivers = seedDrivers();
+  let admins = seedAdmins();
+  let auditLog = seedAudit();
+  let driverState = seedDriverState();
+  let tourDocuments = [];
+  let adminEmailQueue = [];
+  let nextTourSeq = 849;
 
+  const legacyFlagDefaults = window.AUTHEON_FLAG_DEFAULTS || {};
+  const branding = {
+    appDisplayName:
+      window.AUTHEON_BRANDING_DEFAULTS?.appDisplayName ||
+      legacyFlagDefaults.appDisplayName ||
+      "Transport Portal",
+  };
+  const { appDisplayName: _legacyName, ...flagDefaults } = legacyFlagDefaults;
   const featureFlags = {
-    ...(window.AUTHEON_FLAG_DEFAULTS || { notificationPreferences: false }),
+    documentsModule: true,
+    financeModule: false,
+    notificationPreferences: true,
+    ...flagDefaults,
   };
 
-  const auditLog = [
-    {
-      action: "prototype_loaded",
-      actor: "System",
-      entity: "AUTHEON demo",
-      at: "05.05. 15:49",
-      meta: "Client-side PRD coverage prototype",
-    },
-  ];
-
-  /** Partner invoice file references only (no binary persisted) — mock uploads from Driver PWA. */
-  const invoiceUploads = [];
+  const DISTANCE_TABLE = {
+    "80339-10115": 585,
+    "28195-22767": 124,
+    "70565-80339": 232,
+    "50667-60311": 186,
+    "20095-30159": 156,
+    "70173-80331": 232,
+    "20095-28195": 124,
+    "40213-50667": 78,
+    "10115-70173": 632,
+  };
 
   function guessMimeFromName(name) {
     const ext = (String(name).split(".").pop() || "").toLowerCase();
@@ -239,534 +1076,13 @@ window.AuthStore = (() => {
     return map[ext] || "";
   }
 
-  function isAllowedInvoiceFile(file) {
+  function isAllowedTourDocumentFile(file) {
     if (!file || !file.name) return false;
     const ty = (file.type || "").trim().toLowerCase();
-    if (ty === "application/pdf" || /^image\/(jpeg|webp|gif)$/.test(ty))
+    if (ty === "application/pdf" || /^image\/(jpeg|webp|gif|png)$/.test(ty))
       return true;
     const ext = file.name.split(".").pop().toLowerCase();
     return ["pdf", "jpg", "jpeg", "png", "webp", "gif"].includes(ext);
-  }
-
-  const FIN_LEDGER_KEYS = new Set([
-    "revenue",
-    "price",
-    "driverCompensation",
-    "expenses",
-    "netAmount",
-    "grossAmount",
-    "vatRate",
-    "paymentStatus",
-    "financialNotes",
-    "adminInvoiceOverride",
-  ]);
-
-  const FIN_BLOCKED_KEYS = new Set(["invoiceReceived", "invoiceNumber"]);
-
-  function uploadsForJob(jobId) {
-    if (!jobId) return [];
-    return invoiceUploads.filter((x) => x.jobId === jobId);
-  }
-
-  function primaryProcessedUpload(jobId) {
-    return uploadsForJob(jobId).find((x) => x.processed) || null;
-  }
-
-  function applyInvoiceReceivedReconcile(jobId) {
-    const j = jobs.find((x) => x.id === jobId);
-    if (!j) return;
-    const prev = !!j.invoiceReceived;
-    let next;
-    if (j.adminInvoiceOverride === true) next = true;
-    else if (j.adminInvoiceOverride === false) next = false;
-    else next = uploadsForJob(jobId).some((u) => u.processed);
-    if (prev !== next) {
-      j.invoiceReceived = next;
-      log(
-        "invoice_received_reconciled",
-        DEMO_ADMIN,
-        j.tour,
-        next ? "received" : "missing",
-      );
-    }
-  }
-
-  function syncJobInvoiceNumberFromUploads(jobId, onlyIfEmpty = true) {
-    const j = jobs.find((x) => x.id === jobId);
-    if (!j) return;
-    const primary = primaryProcessedUpload(jobId);
-    if (!primary?.invoiceId) return;
-    if (
-      !onlyIfEmpty ||
-      !String(j.invoiceNumber || "").trim()
-    ) {
-      j.invoiceNumber = primary.invoiceId;
-    }
-  }
-
-  function afterInvoiceMutation(jobIds) {
-    const ids = [...new Set((jobIds || []).filter(Boolean))];
-    ids.forEach((id) => {
-      syncJobInvoiceNumberFromUploads(id, true);
-      applyInvoiceReceivedReconcile(id);
-    });
-    if (ids.length) emit();
-  }
-
-  function getJobInvoiceReceivedMeta(jobId) {
-    const j = jobs.find((x) => x.id === jobId);
-    const linked = uploadsForJob(jobId);
-    const processed = linked.filter((u) => u.processed);
-    const pendingCount = linked.length - processed.length;
-    const primary = processed[0] || null;
-    if (!j) {
-      return {
-        received: false,
-        source: "none",
-        pendingCount: 0,
-        processedUpload: null,
-      };
-    }
-    if (j.adminInvoiceOverride === true) {
-      return {
-        received: true,
-        source: "override_yes",
-        pendingCount,
-        processedUpload: primary,
-      };
-    }
-    if (j.adminInvoiceOverride === false) {
-      return {
-        received: false,
-        source: "override_no",
-        pendingCount,
-        processedUpload: primary,
-      };
-    }
-    const received = processed.length > 0;
-    return {
-      received,
-      source: received ? "processed" : linked.length ? "pending" : "none",
-      pendingCount,
-      processedUpload: primary,
-    };
-  }
-
-  const jobs = [
-    mk({
-      id: "A-2026-00847",
-      tour: "0847-26",
-      customer: "Müller Automobile GmbH",
-      startCity: "München",
-      startPlz: "80339",
-      startStreet: "Landsberger Str. 142",
-      startCompany: "Müller Automobile GmbH",
-      endCity: "Berlin",
-      endPlz: "10115",
-      endStreet: "Chausseestr. 88",
-      endCompany: "Autohaus Nord Berlin",
-      distanceKm: 585,
-      date: "23.04.",
-      dateLong: "Wed, 23.04.2026",
-      windowFrom: "08:00",
-      windowTo: "12:00",
-      vehicle: "SUV",
-      vehicleModel: "VW Tiguan 2.0 TDI",
-      plate: "M-AB 1234",
-      vin: "WVGZZZ5NZKW123456",
-      axle: "Own axle",
-      price: 340,
-      revenue: 340,
-      netAmount: 285.71,
-      grossAmount: 340,
-      driverCompensation: 260,
-      expenses: 12,
-      invoiceReceived: false,
-      invoiceType: "Net",
-      invoiceNumber: "",
-      paymentStatus: "Unpaid",
-      contactPickup: { name: "H. Schneider", phone: "+49 89 1234567" },
-      contactDelivery: { name: "F. Becker", phone: "+49 30 9876543" },
-      notes:
-        "Key handover at reception. Vehicle prepared, fuel approx. ½ tank. Ref: KR-88213.",
-      notesDriver: "Please confirm arrival 15 minutes early.",
-      status: "published",
-      pdfVersion: 1,
-      history: [
-        { st: "draft", at: "23.04. 09:14", by: "A. Bauer" },
-        { st: "published", at: "23.04. 11:02", by: "A. Bauer" },
-      ],
-      createdAt: "23.04. 09:14",
-    }),
-    mk({
-      id: "A-2026-00848",
-      tour: "0848-26",
-      customer: "Nord-Flotte GmbH",
-      startCity: "Bremen",
-      startPlz: "28195",
-      startStreet: "Marktplatz 1",
-      startCompany: "Nord-Flotte Dispatch",
-      endCity: "Hamburg",
-      endPlz: "22767",
-      endStreet: "Reeperbahn 30",
-      endCompany: "Hamburg Vehicle Yard",
-      distanceKm: 124,
-      date: "08.05.",
-      dateLong: "Fri, 08.05.2026",
-      windowFrom: "09:00",
-      windowTo: "12:00",
-      vehicle: "PKW",
-      vehicleModel: "Skoda Superb",
-      plate: "HB-NF 848",
-      vin: "TMBJH7NP8P0123848",
-      axle: "Own axle",
-      price: 185,
-      revenue: 185,
-      driverCompensation: 145,
-      status: "assigned",
-      driver: DEMO_DRIVER,
-      pdfVersion: 1,
-      contactPickup: { name: "T. Brandt", phone: "+49 421 778899" },
-      contactDelivery: { name: "M. Linke", phone: "+49 40 556677" },
-      notesDriver: "Report any pickup delay immediately to dispatch.",
-      createdAt: "05.05. 10:00",
-      history: [
-        { st: "draft", at: "05.05. 10:00", by: "A. Bauer" },
-        { st: "assigned", at: "05.05. 10:05", by: "A. Bauer" },
-      ],
-    }),
-    mk({
-      id: "A-2026-00846",
-      tour: "0846-26",
-      customer: "Classic Cars AG",
-      startCity: "Stuttgart",
-      startPlz: "70565",
-      startStreet: "Plieninger Str. 14",
-      startCompany: "Classic Cars AG · Logistics",
-      endCity: "München",
-      endPlz: "80339",
-      endStreet: "Marsstr. 22",
-      endCompany: "Classic Cars AG · Showroom",
-      distanceKm: 232,
-      date: "23.04.",
-      dateLong: "Wed, 23.04.2026",
-      windowFrom: "06:00",
-      windowTo: "10:00",
-      vehicle: "PKW",
-      vehicleModel: "BMW 3 Touring",
-      plate: "S-CC 220",
-      vin: "WBA8E1100K5J12345",
-      axle: "Third-party axle",
-      price: 220,
-      revenue: 220,
-      driverCompensation: 175,
-      expenses: 0,
-      status: "return_requested",
-      driver: DEMO_DRIVER,
-      hasReturnRequest: true,
-      returnReason: "return",
-      returnMessage:
-        "Customer postponed pickup; requesting dispatch to re-open tour.",
-      preReturnStatus: "assigned",
-      pdfVersion: 1,
-      history: [
-        { st: "draft", at: "22.04. 16:11", by: "A. Bauer" },
-        { st: "assigned", at: "23.04. 07:55", by: "A. Bauer" },
-        { st: "return_requested", at: "23.04. 08:40", by: DEMO_DRIVER },
-      ],
-      createdAt: "22.04. 16:11",
-    }),
-    mk({
-      id: "A-2026-00845",
-      tour: "0845-26",
-      customer: "AutoLogistik KG",
-      startCity: "Köln",
-      startPlz: "50667",
-      startStreet: "Hohe Str. 110",
-      startCompany: "AutoLogistik · Hub Köln",
-      endCity: "Frankfurt",
-      endPlz: "60311",
-      endStreet: "Zeil 90",
-      endCompany: "AutoLogistik · Hub Frankfurt",
-      distanceKm: 186,
-      date: "24.04.",
-      dateLong: "Thu, 24.04.2026",
-      windowFrom: "10:00",
-      windowTo: "14:00",
-      vehicle: "PKW",
-      vehicleModel: "Audi A4",
-      plate: "K-AL 845",
-      vin: "WAUZZZ4M5KA000001",
-      axle: "Third-party axle",
-      price: 145,
-      revenue: 145,
-      driverCompensation: 110,
-      status: "accepted",
-      driver: DEMO_DRIVER,
-      pdfVersion: 1,
-      history: [
-        { st: "draft", at: "21.04. 10:00", by: "A. Bauer" },
-        { st: "published", at: "21.04. 10:30", by: "A. Bauer" },
-        { st: "accepted", at: "21.04. 14:22", by: DEMO_DRIVER },
-      ],
-      createdAt: "21.04. 10:00",
-    }),
-    mk({
-      id: "A-2026-00844",
-      tour: "0844-26",
-      customer: "Müller Automobile GmbH",
-      startCity: "Hamburg",
-      startPlz: "20095",
-      startStreet: "Mönckebergstr. 7",
-      endCity: "Hannover",
-      endPlz: "30159",
-      endStreet: "Karmarschstr. 30",
-      distanceKm: 156,
-      date: "22.04.",
-      dateLong: "Tue, 22.04.2026",
-      windowFlex: true,
-      vehicle: "PKW",
-      vehicleModel: "VW Polo",
-      plate: "HH-MA 88",
-      vin: "WVWZZZ6RZKY098765",
-      axle: "Third-party axle",
-      price: 165,
-      status: "published",
-      pdfVersion: 1,
-      createdAt: "20.04. 14:00",
-      history: [{ st: "published", at: "20.04. 14:30", by: "A. Bauer" }],
-    }),
-    mk({
-      id: "A-2026-00843",
-      tour: "0843-26",
-      customer: "Classic Cars AG",
-      startCity: "Stuttgart",
-      startPlz: "70173",
-      startStreet: "Königstr. 60",
-      endCity: "München",
-      endPlz: "80331",
-      endStreet: "Marienplatz 8",
-      distanceKm: 232,
-      date: "26.04.",
-      dateLong: "Sat, 26.04.2026",
-      windowFrom: "06:00",
-      windowTo: "10:00",
-      vehicle: "Van",
-      vehicleModel: "Mercedes Sprinter",
-      plate: "S-CC 130",
-      vin: "WDB9067321V123987",
-      axle: "Own axle",
-      price: 280,
-      status: "accepted",
-      driver: DEMO_DRIVER,
-      pdfVersion: 1,
-      createdAt: "20.04. 09:00",
-      history: [{ st: "accepted", at: "23.04. 06:11", by: DEMO_DRIVER }],
-    }),
-    mk({
-      id: "A-2026-00842",
-      tour: "0842-26",
-      customer: "Nord-Flotte GmbH",
-      startCity: "Hamburg",
-      startPlz: "20095",
-      startStreet: "Steinstr. 5",
-      endCity: "Bremen",
-      endPlz: "28195",
-      endStreet: "Domshof 8",
-      distanceKm: 124,
-      date: "21.04.",
-      dateLong: "Mon, 21.04.2026",
-      windowFrom: "09:00",
-      windowTo: "11:00",
-      vehicle: "PKW",
-      vehicleModel: "Skoda Octavia",
-      plate: "HH-NF 42",
-      vin: "TMBJG7NE7K0123456",
-      axle: "Third-party axle",
-      price: 135,
-      revenue: 135,
-      paymentStatus: "Paid",
-      invoiceReceived: true,
-      invoiceNumber: "INV-NF-2188",
-      status: "completed",
-      driver: DEMO_DRIVER,
-      completedAt: "21.04. 12:48",
-      pdfVersion: 1,
-      history: [{ st: "completed", at: "21.04. 12:48", by: DEMO_DRIVER }],
-      createdAt: "19.04. 13:00",
-    }),
-    mk({
-      id: "A-2026-00841",
-      tour: "0841-26",
-      customer: "Müller & Sohn KG",
-      startCity: "Berlin",
-      startPlz: "10623",
-      startStreet: "Kantstr. 41",
-      endCity: "Leipzig",
-      endPlz: "04109",
-      endStreet: "Augustusplatz 9",
-      distanceKm: 188,
-      date: "22.04.",
-      dateLong: "Tue, 22.04.2026",
-      windowFlex: true,
-      vehicle: "SUV",
-      vehicleModel: "Ford Kuga",
-      plate: "B-MS 200",
-      vin: "WF0AXXTTGA000111",
-      axle: "Own axle",
-      price: 195,
-      status: "cancelled",
-      driver: DEMO_DRIVER,
-      history: [{ st: "cancelled", at: "21.04. 22:00", by: "Dispatch" }],
-      createdAt: "18.04. 15:00",
-    }),
-    mk({
-      id: "A-2026-00840",
-      tour: "0840-26",
-      customer: "Classic Cars AG",
-      startCity: "Düsseldorf",
-      startPlz: "40213",
-      startStreet: "Königsallee 12",
-      endCity: "Köln",
-      endPlz: "50667",
-      endStreet: "Hohe Str. 22",
-      distanceKm: 78,
-      date: "25.04.",
-      dateLong: "Fri, 25.04.2026",
-      windowFrom: "12:00",
-      windowTo: "16:00",
-      vehicle: "PKW",
-      vehicleModel: "Audi Q3",
-      plate: "D-CC 80",
-      vin: "WAUZZZF38K1234567",
-      axle: "Own axle",
-      price: 110,
-      status: "assigned",
-      driver: DEMO_DRIVER,
-      pdfVersion: 1,
-      createdAt: "21.04. 11:00",
-      history: [
-        { st: "draft", at: "21.04. 11:00", by: "A. Bauer" },
-        { st: "assigned", at: "21.04. 11:04", by: "A. Bauer" },
-      ],
-    }),
-    mk({
-      id: "A-2026-00839",
-      tour: "0839-26",
-      customer: "AutoLogistik KG",
-      startCity: "Berlin",
-      startPlz: "10115",
-      startStreet: "Invalidenstr. 80",
-      endCity: "Stuttgart",
-      endPlz: "70173",
-      endStreet: "Königstr. 80",
-      distanceKm: 632,
-      date: "27.04.",
-      dateLong: "Sat, 27.04.2026",
-      windowFrom: "06:00",
-      windowTo: "09:00",
-      vehicle: "PKW",
-      vehicleModel: "Audi A6",
-      plate: "B-AL 60",
-      vin: "WAUZZZ4G9KN123456",
-      axle: "Own axle",
-      price: 365,
-      status: "published",
-      pdfVersion: 1,
-      contactPickup: { name: "J. Tausch", phone: "+49 30 552288" },
-      contactDelivery: { name: "R. Wagner", phone: "+49 711 224488" },
-      createdAt: "20.04. 17:00",
-    }),
-    mk({
-      id: "A-2026-00838",
-      tour: "0838-26",
-      customer: "Nord-Flotte GmbH",
-      startCity: "Bremen",
-      startPlz: "28195",
-      startStreet: "Marktplatz 1",
-      endCity: "Hamburg",
-      endPlz: "22767",
-      endStreet: "Reeperbahn 30",
-      distanceKm: 124,
-      date: "25.04.",
-      dateLong: "Fri, 25.04.2026",
-      windowFrom: "10:00",
-      windowTo: "12:00",
-      vehicle: "Light truck <3.5t",
-      vehicleModel: "Iveco Daily",
-      plate: "HB-NF 11",
-      vin: "ZCFC135C805678123",
-      axle: "Own axle",
-      price: 175,
-      status: "published",
-      pdfVersion: 1,
-      contactPickup: { name: "F. Brandt", phone: "+49 421 113355" },
-      contactDelivery: { name: "G. Linke", phone: "+49 40 998822" },
-      createdAt: "22.04. 09:30",
-    }),
-    mk({
-      id: "A-2026-00837",
-      tour: "0837-26",
-      customer: "Müller Automobile GmbH",
-      startCity: "Nürnberg",
-      startPlz: "90402",
-      startStreet: "Königstr. 2",
-      endCity: "Frankfurt",
-      endPlz: "60311",
-      endStreet: "Zeil 56",
-      distanceKm: 226,
-      date: "28.04.",
-      dateLong: "Sun, 28.04.2026",
-      windowFrom: "08:00",
-      windowTo: "10:00",
-      vehicle: "PKW",
-      vehicleModel: "VW Golf",
-      plate: "N-MA 14",
-      vin: "WVWZZZ1KZAW123456",
-      axle: "Third-party axle",
-      price: 185,
-      status: "published",
-      pdfVersion: 1,
-      createdAt: "23.04. 08:00",
-    }),
-  ];
-
-  const driverState = {
-    acceptedIds: new Set(["A-2026-00845", "A-2026-00843"]),
-    completedIds: new Set(["A-2026-00842"]),
-    pendingIds: new Set(["A-2026-00846"]),
-    cancelledIds: new Set(["A-2026-00841"]),
-  };
-
-  let nextTourSeq = 849;
-
-  function parseJobDate(job) {
-    const m = job.dateLong && job.dateLong.match(/(\d{2})\.(\d{2})\.(\d{4})/);
-    if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
-    const m2 = job.date && job.date.match(/(\d{2})\.(\d{2})\./);
-    if (m2) return new Date(2026, +m2[2] - 1, +m2[1]);
-    return null;
-  }
-
-  function returnDeadline(job) {
-    const d = parseJobDate(job);
-    if (!d || Number.isNaN(d.getTime())) return null;
-    const deadline = new Date(
-      d.getFullYear(),
-      d.getMonth(),
-      d.getDate() - 1,
-      23,
-      59,
-      59,
-      999,
-    );
-    return deadline;
-  }
-
-  function isReturnDeadlinePassed(job) {
-    const deadline = returnDeadline(job);
-    if (!deadline) return false;
-    return new Date() > deadline;
   }
 
   function nowStamp() {
@@ -792,28 +1108,188 @@ window.AuthStore = (() => {
     job.pdfVersion = (job.pdfVersion || 0) + 1;
   }
 
+  function distanceKey(job) {
+    const a = job.pickup?.postalCode || "";
+    const b = job.delivery?.postalCode || "";
+    if (!a || !b) return "";
+    return `${a}-${b}`;
+  }
+
+  function estimateDistanceKm(job) {
+    if (!job) return 0;
+    if (job.distanceManualOverride != null && job.distanceManualOverride !== "")
+      return Number(job.distanceManualOverride) || 0;
+    const key = distanceKey(job);
+    if (key && DISTANCE_TABLE[key]) return DISTANCE_TABLE[key];
+    const alt = `${job.pickup?.postalCode || ""}-${job.delivery?.postalCode || ""}`;
+    if (DISTANCE_TABLE[alt]) return DISTANCE_TABLE[alt];
+    const base = Math.abs(
+      (parseInt(job.pickup?.postalCode, 10) || 10000) -
+        (parseInt(job.delivery?.postalCode, 10) || 20000),
+    );
+    return Math.max(40, Math.min(720, Math.round(base / 8)));
+  }
+
+  function queuePushNotification(job, context) {
+    const notified = drivers
+      .filter((d) => d.status === "Active" && d.prefs?.push)
+      .map((d) => d.name);
+    log(
+      "notification_queued",
+      "System",
+      job.tour,
+      notified.length
+        ? `${context}: ${notified.join(", ")}`
+        : `${context}: no active push subscribers`,
+    );
+  }
+
+  function queueAdminEmailAlert(event, jobId, meta) {
+    const j = jobId ? jobs.find((x) => x.id === jobId) : null;
+    const row = {
+      id: `ALERT-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      event,
+      jobId: jobId || "",
+      tour: j?.tour || "",
+      meta: meta || "",
+      at: nowStamp(),
+      sent: false,
+    };
+    adminEmailQueue.unshift(row);
+    log("admin_email_alert_queued", "System", j?.tour || event, meta || event);
+    return row;
+  }
+
+  function reconcileDocumentReviewSummary(jobId) {
+    const j = jobs.find((x) => x.id === jobId);
+    if (!j) return;
+    const docs = tourDocuments.filter((d) => d.jobId === jobId);
+    if (!docs.length) {
+      j.documentReviewSummary = "Not Started";
+      return;
+    }
+    if (docs.some((d) => d.reviewStatus === "rejected"))
+      j.documentReviewSummary = "Rejected";
+    else if (docs.some((d) => d.reviewStatus === "correction_required"))
+      j.documentReviewSummary = "Correction Required";
+    else if (docs.some((d) => d.reviewStatus === "under_review"))
+      j.documentReviewSummary = "Under Review";
+    else if (docs.every((d) => d.reviewStatus === "accepted"))
+      j.documentReviewSummary = "Accepted";
+    else if (docs.some((d) => d.reviewStatus === "uploaded"))
+      j.documentReviewSummary = "Uploaded";
+    else j.documentReviewSummary = "Pending";
+  }
+
+  function reconcileJobInvoiceFromTourDocuments(jobId) {
+    const j = jobs.find((x) => x.id === jobId);
+    if (!j) return;
+    const invoices = tourDocuments.filter(
+      (d) =>
+        d.jobId === jobId &&
+        (d.documentType === "partner_invoice" || d.documentType === "invoice"),
+    );
+    const accepted = invoices.filter(
+      (d) => d.reviewStatus === "accepted" || d.processed,
+    );
+    if (!accepted.length) return;
+    j.invoiceReceived = true;
+    const primary = accepted[accepted.length - 1];
+    if (!j.invoiceNumber && primary.fileName) {
+      j.invoiceNumber = String(primary.fileName).replace(/\.[^.]+$/i, "");
+    }
+    if (j.paymentStatus === "Invoice Missing") {
+      j.paymentStatus = "Invoice Received";
+    }
+  }
+
+  function locationFromForm(prefix, form) {
+    const p = prefix || "";
+    const cap = (k) => p + k.charAt(0).toUpperCase() + k.slice(1);
+    return mkLocation({
+      locationId: form[cap("locationId")] || form[`${p}LocationId`] || null,
+      name: form[cap("name")] || form[`${p}Name`] || "",
+      street: form[cap("street")] || form[`${p}Street`] || "",
+      houseNumber:
+        form[cap("houseNumber")] || form[`${p}HouseNumber`] || "",
+      postalCode: form[cap("postalCode")] || form[`${p}Plz`] || form[`${p}PostalCode`] || "",
+      city: form[cap("city")] || form[`${p}City`] || "",
+      country: form[cap("country")] || form[`${p}Country`] || "DE",
+      contactPerson:
+        form[cap("contactPerson")] ||
+        form[`${p}Contact`] ||
+        form[`cName${p === "pickup" ? "1" : "2"}`] ||
+        "",
+      phone:
+        form[cap("phone")] ||
+        form[`${p}Phone`] ||
+        form[`cPhone${p === "pickup" ? "1" : "2"}`] ||
+        "",
+      date: form[cap("date")] || form.date || "",
+      dateLong: form[cap("dateLong")] || form.dateLong || form.date || "",
+      windowFrom:
+        form[cap("windowFrom")] ||
+        form[`${p}From`] ||
+        (p === "pickup" ? form.from : form.to) ||
+        form.windowFrom ||
+        "",
+      windowTo:
+        form[cap("windowTo")] ||
+        form[`${p}To`] ||
+        form.windowTo ||
+        "",
+      windowFlex: !!(form[cap("windowFlex")] || form.windowFlex),
+    });
+  }
+
   const api = {
     STATUSES,
+    DOC_REVIEW,
+    SETTLEMENT_STATES,
     DEMO_DRIVER,
     DEMO_ADMIN,
+    AXLE_OWN,
+    AXLE_THIRD,
+    syncDisplayFields,
+
     statusLabel: (s) => {
       const key = STATUSES[s]?.i18n;
       if (key && window.I18n?.t) return window.I18n.t(key);
       return s;
     },
     statusCls: (s) => STATUSES[s]?.cls || "",
-    returnDeadline,
-    isReturnDeadlinePassed,
+
+    getAppDisplayName() {
+      return branding.appDisplayName || "Transport Portal";
+    },
+
+    getBranding: () => ({ ...branding }),
+
+    setAppDisplayName(name) {
+      const next = String(name || "").trim() || "Transport Portal";
+      if (branding.appDisplayName === next) return { ok: true };
+      branding.appDisplayName = next;
+      log("branding_changed", DEMO_ADMIN, "appDisplayName", next);
+      emit();
+      return { ok: true };
+    },
 
     getJobs: () => jobs,
     getJob: (id) => jobs.find((j) => j.id === id),
+    getPartnerOffer: (id) => partnerOfferAmount(api.getJob(id)),
+    partnerOfferAmount,
     getDrivers: () => drivers,
     getAdmins: () => admins,
-    getCustomers: () => customers,
+    getOrderingParties: () => orderingParties,
+    getAddresses: () => addresses,
     getDocuments: () => documents,
+    getNews: () => newsItems.filter((n) => n.visible !== false),
     getAuditLog: () => auditLog,
+    getAdminEmailQueue: () => adminEmailQueue.slice(),
+
     getCurrentDriver: () =>
       drivers.find((d) => d.name === DEMO_DRIVER) || drivers[0],
+
     isCurrentDriverActive() {
       const d = api.getCurrentDriver();
       return !d || d.status === "Active";
@@ -833,20 +1309,111 @@ window.AuthStore = (() => {
       if (!j) return false;
       if (driverState.cancelledIds.has(j.id)) return true;
       if (driverState.acceptedIds.has(j.id)) return true;
-      if (driverState.completedIds.has(j.id)) return true;
-      if (driverState.pendingIds.has(j.id)) return true;
+      if (driverState.performedIds.has(j.id)) return true;
+      if (driverState.specialCaseIds.has(j.id)) return true;
       if (j.status === "cancelled" && j.driver === DEMO_DRIVER) return true;
       if (
         j.driver === DEMO_DRIVER &&
-        ["assigned", "accepted", "return_requested"].includes(j.status)
+        ["assigned", "accepted", "special_case", "performed"].includes(j.status)
       )
         return true;
       return false;
     },
 
     isAccepted: (id) => driverState.acceptedIds.has(id),
-    isCompleted: (id) => driverState.completedIds.has(id),
-    isPending: (id) => driverState.pendingIds.has(id),
+    isPerformed: (id) => driverState.performedIds.has(id),
+    isSpecialCase: (id) => driverState.specialCaseIds.has(id),
+
+    addOrderingParty(data) {
+      const op = {
+        id: `OP-${String(orderingParties.length + 1).padStart(3, "0")}`,
+        name: data.name || "New ordering party",
+        type: data.type || "",
+        contact: data.contact || "",
+        phone: data.phone || "",
+        email: data.email || "",
+        billingNotes: data.billingNotes || "",
+        instructions: data.instructions || "",
+      };
+      orderingParties.unshift(op);
+      log("ordering_party_created", DEMO_ADMIN, op.name, op.id);
+      emit();
+      return op;
+    },
+
+    addAddress(data) {
+      const addr = {
+        id: `ADDR-${String(addresses.length + 1).padStart(3, "0")}`,
+        label: data.label || data.name || "New address",
+        street: data.street || "",
+        houseNumber: data.houseNumber || "",
+        postalCode: data.postalCode || "",
+        city: data.city || "",
+        country: data.country || "DE",
+        contactPerson: data.contactPerson || "",
+        phone: data.phone || "",
+        notes: data.notes || "",
+      };
+      addresses.unshift(addr);
+      log("address_created", DEMO_ADMIN, addr.label, addr.id);
+      emit();
+      return addr;
+    },
+
+    markNewsRead(newsId, readerId) {
+      const n = newsItems.find((x) => x.id === newsId);
+      if (!n) return { ok: false };
+      const rid = readerId || api.getCurrentDriver()?.id || DEMO_DRIVER;
+      if (!n.readBy.includes(rid)) n.readBy.push(rid);
+      emit();
+      return { ok: true };
+    },
+
+    addNewsItem(data) {
+      const item = {
+        id: `NEWS-${String(newsItems.length + 1).padStart(3, "0")}`,
+        title: data.title || "Announcement",
+        body: data.body || "",
+        publishedAt: data.publishedAt || nowStamp(),
+        visible: data.visible !== false,
+        readBy: [],
+      };
+      newsItems.unshift(item);
+      log("news_item_created", DEMO_ADMIN, item.title, item.id);
+      emit();
+      return item;
+    },
+
+    estimateDistance(jobOrId) {
+      const j =
+        typeof jobOrId === "object"
+          ? jobOrId
+          : jobs.find((x) => x.id === jobOrId);
+      if (!j) return { ok: false, km: 0 };
+      const km = estimateDistanceKm(j);
+      return { ok: true, km, source: "estimate" };
+    },
+
+    recalculateDistance(id) {
+      const j = api.getJob(id);
+      if (!j) return { ok: false };
+      if (j.distanceManualOverride != null && j.distanceManualOverride !== "") {
+        j.distanceKm = Number(j.distanceManualOverride) || j.distanceKm;
+        j.distanceEstimateSource = "manual";
+      } else {
+        j.distanceKm = estimateDistanceKm(j);
+        j.distanceEstimateSource = "recalculated";
+      }
+      syncDisplayFields(j);
+      log(
+        "distance_recalculated",
+        DEMO_ADMIN,
+        j.tour,
+        `${j.distanceKm} km (${j.distanceEstimateSource})`,
+      );
+      emit();
+      return { ok: true, km: j.distanceKm };
+    },
 
     acceptJob(id) {
       const j = api.getJob(id);
@@ -854,111 +1421,182 @@ window.AuthStore = (() => {
         return { ok: false, reason: "not_available" };
       if (!api.isCurrentDriverActive())
         return { ok: false, reason: "driver_restricted" };
-      j.preReturnStatus = null;
       j.status = "accepted";
       j.driver = DEMO_DRIVER;
-      j.pdfVersion = Math.max(1, j.pdfVersion || 0);
+      bumpPdf(j);
       j.history = [
         ...(j.history || []),
         { st: "accepted", at: nowStamp(), by: DEMO_DRIVER },
       ];
       driverState.acceptedIds.add(id);
       log("job_accepted", DEMO_DRIVER, j.tour, "Binding slide confirmation");
+      queueAdminEmailAlert("job_accepted", id, `Driver ${DEMO_DRIVER}`);
       emit();
       return { ok: true };
     },
 
-    completeJob(id) {
-      const j = api.getJob(id);
-      if (!j || !["assigned", "accepted"].includes(j.status))
-        return { ok: false };
-      j.status = "completed";
-      j.completedAt = nowStamp();
-      j.history = [
-        ...(j.history || []),
-        { st: "completed", at: nowStamp(), by: j.driver || DEMO_DRIVER },
-      ];
-      driverState.completedIds.add(id);
-      driverState.acceptedIds.delete(id);
-      log(
-        "job_completed",
-        j.driver || DEMO_DRIVER,
-        j.tour,
-        "Driver marked completed",
-      );
-      emit();
-      return { ok: true };
-    },
-
-    submitReturn(id, reason, message) {
+    markPerformed(id) {
       const j = api.getJob(id);
       if (!j || !["assigned", "accepted"].includes(j.status))
         return { ok: false, reason: "invalid_state" };
-      if (isReturnDeadlinePassed(j)) return { ok: false, reason: "deadline" };
-      j.preReturnStatus = j.status;
-      j.returnReason = reason;
-      j.returnMessage = message;
-      j.hasReturnRequest = true;
-      j.status = "return_requested";
+      if (j.driver && j.driver !== DEMO_DRIVER)
+        return { ok: false, reason: "not_assigned_driver" };
+      j.status = "performed";
+      j.performedAt = nowStamp();
+      j.settlementState = j.settlementState || "Pending";
       j.history = [
         ...(j.history || []),
-        { st: "return_requested", at: nowStamp(), by: DEMO_DRIVER },
+        { st: "performed", at: nowStamp(), by: j.driver || DEMO_DRIVER },
       ];
-      driverState.pendingIds.add(id);
-      log("return_requested", DEMO_DRIVER, j.tour, `${reason}: ${message}`);
-      emit();
-      return { ok: true };
-    },
-
-    approveReturn(id) {
-      const j = api.getJob(id);
-      if (!j || j.status !== "return_requested") return { ok: false };
-      j.driver = null;
-      j.hasReturnRequest = false;
-      j.status = "draft";
-      j.history = [
-        ...(j.history || []),
-        {
-          st: "draft",
-          at: nowStamp(),
-          by: "A. Bauer",
-          meta: "Return approved → Draft",
-        },
-      ];
-      driverState.pendingIds.delete(id);
+      driverState.performedIds.add(id);
       driverState.acceptedIds.delete(id);
       log(
-        "return_approved",
-        DEMO_ADMIN,
+        "job_performed",
+        j.driver || DEMO_DRIVER,
         j.tour,
-        "Assignment removed; job returned to Draft",
+        "Driver marked tour performed",
       );
+      queueAdminEmailAlert("job_performed", id, j.tour);
       emit();
       return { ok: true };
     },
 
-    rejectReturn(id, note) {
+    reportProblemCancel(id, reason, message) {
       const j = api.getJob(id);
-      if (!j || j.status !== "return_requested") return { ok: false };
-      const restore = j.preReturnStatus || "accepted";
-      j.status = restore;
-      j.hasReturnRequest = false;
+      if (!j || !["assigned", "accepted"].includes(j.status))
+        return { ok: false, reason: "invalid_state" };
+      if (j.driver && j.driver !== DEMO_DRIVER)
+        return { ok: false, reason: "not_assigned_driver" };
+      j.status = "cancelled";
       j.history = [
         ...(j.history || []),
         {
-          st: restore,
+          st: "cancelled",
           at: nowStamp(),
-          by: "A. Bauer",
-          meta: `Return rejected${note ? `: ${note}` : ""}`,
+          by: DEMO_DRIVER,
+          meta: `Report Problem cancel: ${reason}`,
         },
       ];
-      driverState.pendingIds.delete(id);
+      driverState.acceptedIds.delete(id);
+      driverState.cancelledIds.add(id);
       log(
-        "return_rejected",
-        DEMO_ADMIN,
+        "report_problem_cancel",
+        DEMO_DRIVER,
         j.tour,
-        note || "Kept previous execution state",
+        `${reason}: ${message}`,
       );
+      queueAdminEmailAlert("report_problem_cancel", id, message);
+      emit();
+      return { ok: true };
+    },
+
+    reportProblemNotPerformable(id, reason, message) {
+      const j = api.getJob(id);
+      if (!j || !["assigned", "accepted"].includes(j.status))
+        return { ok: false, reason: "invalid_state" };
+      if (j.driver && j.driver !== DEMO_DRIVER)
+        return { ok: false, reason: "not_assigned_driver" };
+      j.status = "special_case";
+      j.specialCaseReport = {
+        type: "not_performable",
+        reason: reason || "other",
+        message: message || "",
+        reportedAt: nowStamp(),
+        reportedBy: DEMO_DRIVER,
+      };
+      j.history = [
+        ...(j.history || []),
+        {
+          st: "special_case",
+          at: nowStamp(),
+          by: DEMO_DRIVER,
+          meta: "Report Problem: not performable",
+        },
+      ];
+      driverState.specialCaseIds.add(id);
+      driverState.acceptedIds.delete(id);
+      log(
+        "special_case_created",
+        DEMO_DRIVER,
+        j.tour,
+        `${reason}: ${message}`,
+      );
+      queueAdminEmailAlert("special_case_created", id, message);
+      emit();
+      return { ok: true };
+    },
+
+    resolveSpecialCase(id, decision, note) {
+      const j = api.getJob(id);
+      if (!j || j.status !== "special_case") return { ok: false };
+      const d = String(decision || "").toLowerCase();
+      if (d === "cancel" || d === "cancelled") {
+        j.status = "cancelled";
+        driverState.specialCaseIds.delete(id);
+        driverState.cancelledIds.add(id);
+        j.history = [
+          ...(j.history || []),
+          {
+            st: "cancelled",
+            at: nowStamp(),
+            by: DEMO_ADMIN,
+            meta: note || "Special case resolved → cancelled",
+          },
+        ];
+        log("special_case_resolved", DEMO_ADMIN, j.tour, "Cancelled");
+      } else if (d === "reopen" || d === "draft" || d === "republish") {
+        j.status = "draft";
+        j.driver = null;
+        j.specialCaseReport = null;
+        driverState.specialCaseIds.delete(id);
+        j.history = [
+          ...(j.history || []),
+          {
+            st: "draft",
+            at: nowStamp(),
+            by: DEMO_ADMIN,
+            meta: note || "Special case resolved → draft",
+          },
+        ];
+        log("special_case_resolved", DEMO_ADMIN, j.tour, "Returned to draft");
+      } else if (
+        d === "assign" ||
+        d === "assigned" ||
+        d === "continue"
+      ) {
+        j.status = "assigned";
+        j.specialCaseReport = null;
+        driverState.specialCaseIds.delete(id);
+        j.history = [
+          ...(j.history || []),
+          {
+            st: "assigned",
+            at: nowStamp(),
+            by: DEMO_ADMIN,
+            meta: note || "Special case resolved → reassigned",
+          },
+        ];
+        log("special_case_resolved", DEMO_ADMIN, j.tour, "Reassigned");
+      } else if (d === "close") {
+        j.status = "performed";
+        j.performedAt = j.performedAt || nowStamp();
+        j.settlementState = "Closed";
+        j.specialCaseReport = null;
+        driverState.specialCaseIds.delete(id);
+        driverState.performedIds.add(id);
+        j.history = [
+          ...(j.history || []),
+          {
+            st: "performed",
+            at: nowStamp(),
+            by: DEMO_ADMIN,
+            meta: note || "Special case resolved → closed",
+          },
+        ];
+        log("special_case_resolved", DEMO_ADMIN, j.tour, "Closed");
+      } else {
+        return { ok: false, reason: "unknown_decision" };
+      }
       emit();
       return { ok: true };
     },
@@ -968,7 +1606,6 @@ window.AuthStore = (() => {
       if (!j || j.status !== "draft") return { ok: false };
       j.status = "published";
       j.isNew = false;
-      j.pdfVersion = Math.max(1, j.pdfVersion || 0);
       j.history = [
         ...(j.history || []),
         { st: "published", at: nowStamp(), by: "A. Bauer" },
@@ -979,27 +1616,17 @@ window.AuthStore = (() => {
         j.tour,
         "Visible as reduced marketplace preview",
       );
-      const notified = drivers
-        .filter((d) => d.status === "Active" && d.prefs?.push)
-        .map((d) => d.name);
-      log(
-        "notification_queued",
-        "System",
-        j.tour,
-        notified.length
-          ? `Matched: ${notified.join(", ")}`
-          : "No active matching preferences",
-      );
+      queuePushNotification(j, "publish");
       emit();
       return { ok: true };
     },
 
     revertJobToDraft(id) {
       const j = api.getJob(id);
-      if (!j || j.status !== "published") return { ok: false, reason: "not_published" };
+      if (!j || j.status !== "published")
+        return { ok: false, reason: "not_published" };
       j.status = "draft";
       j.driver = null;
-      j.hasReturnRequest = false;
       j.history = [
         ...(j.history || []),
         {
@@ -1024,35 +1651,46 @@ window.AuthStore = (() => {
       if (!j || j.status !== "draft") return { ok: false };
       j.status = "assigned";
       j.driver = driverName || DEMO_DRIVER;
-      j.pdfVersion = Math.max(1, j.pdfVersion || 0);
+      bumpPdf(j);
       j.history = [
         ...(j.history || []),
         { st: "assigned", at: nowStamp(), by: "A. Bauer" },
       ];
       log("job_assigned", DEMO_ADMIN, j.tour, `Driver: ${j.driver}`);
+      queuePushNotification(j, "assign");
+      queueAdminEmailAlert("job_assigned", id, `Driver: ${j.driver}`);
       emit();
       return { ok: true };
     },
 
-    cancelJob(id) {
+    cancelJob(id, opts = {}) {
       const j = api.getJob(id);
-      if (
-        !j ||
-        !["accepted", "assigned", "return_requested"].includes(j.status)
-      )
+      const allowed = [
+        "accepted",
+        "assigned",
+        "special_case",
+        "performed",
+        "published",
+      ];
+      if (!j || !allowed.includes(j.status))
         return { ok: false, reason: "not_cancellable" };
       j.status = "cancelled";
-      j.preReturnStatus = null;
-      j.hasReturnRequest = false;
+      j.specialCaseReport = null;
       j.history = [
         ...(j.history || []),
-        { st: "cancelled", at: nowStamp(), by: DEMO_ADMIN },
+        {
+          st: "cancelled",
+          at: nowStamp(),
+          by: opts.by || DEMO_ADMIN,
+          meta: opts.note || "Admin cancellation",
+        },
       ];
       driverState.acceptedIds.delete(id);
-      driverState.pendingIds.delete(id);
-      driverState.completedIds.delete(id);
+      driverState.performedIds.delete(id);
+      driverState.specialCaseIds.delete(id);
       driverState.cancelledIds.add(id);
-      log("job_cancelled", DEMO_ADMIN, j.tour, "Admin cancellation");
+      log("job_cancelled", opts.by || DEMO_ADMIN, j.tour, opts.note || "");
+      queueAdminEmailAlert("job_cancelled", id, opts.note || "");
       emit();
       return { ok: true };
     },
@@ -1070,49 +1708,66 @@ window.AuthStore = (() => {
       const seq = nextTourSeq++;
       const tour = `${String(seq).padStart(4, "0")}-26`;
       const id = `A-2026-${String(seq).padStart(5, "0")}`;
-      const axleMap = {
-        Eigenachse: "Own axle",
-        Fremdachse: "Third-party axle",
-        "Own axle": "Own axle",
-        "Third-party axle": "Third-party axle",
-      };
-      const axle = axleMap[form.axle] || form.axle || "Own axle";
-      const price =
-        parseFloat(String(form.price || "0").replace(",", ".")) || 0;
-      const dist = parseInt(form.distance || form.distanceKm || 0, 10) || 0;
-      const vat = 19;
-      const net =
-        price > 0 ? Math.round((price / (1 + vat / 100)) * 100) / 100 : null;
+      const opId = form.orderingPartyId || "";
+      const op =
+        orderingParties.find((x) => x.id === opId) ||
+        orderingParties.find((x) => x.name === form.customer);
+      const partnerOffer =
+        parseFloat(String(form.driverCompensation || "0").replace(",", ".")) ||
+        0;
+      const distRaw =
+        form.distanceKm ?? form.distance ?? form.distanceManualOverride;
+      const dist = parseInt(distRaw, 10) || 0;
+      const pickup =
+        form.pickup && typeof form.pickup === "object"
+          ? mkLocation(form.pickup)
+          : locationFromForm("pickup", form);
+      const delivery =
+        form.delivery && typeof form.delivery === "object"
+          ? mkLocation(form.delivery)
+          : locationFromForm("delivery", form);
+      if (!pickup.city && form.startCity) {
+        Object.assign(pickup, {
+          city: form.startCity,
+          postalCode: form.startPlz,
+          street: form.startStreet,
+          name: form.startCompany || form.customer,
+        });
+      }
+      if (!delivery.city && form.endCity) {
+        Object.assign(delivery, {
+          city: form.endCity,
+          postalCode: form.endPlz,
+          street: form.endStreet,
+          name: form.endCompany,
+        });
+      }
       const newJob = mk({
         id,
         tour,
-        customer: form.customer || "New customer",
-        startCity: form.startCity,
-        startPlz: form.startPlz,
-        startStreet: form.startStreet,
-        startCompany: form.startCompany || form.customer,
-        endCity: form.endCity,
-        endPlz: form.endPlz,
-        endStreet: form.endStreet,
-        endCompany: form.endCompany || form.customer,
+        orderingPartyId: op?.id || opId,
+        orderingPartyName: op?.name || form.customer || "New ordering party",
+        pickup,
+        delivery,
         distanceKm: dist,
-        date: form.date,
-        dateLong: form.dateLong || form.date,
-        windowFrom: form.from || form.windowFrom,
-        windowTo: form.to || form.windowTo,
+        distanceManualOverride:
+          form.distanceManualOverride != null
+            ? form.distanceManualOverride
+            : null,
+        category: form.category || "Standard",
         vehicle: form.vehicleType || form.vehicle || "PKW",
         vehicleModel:
           [form.brand, form.model].filter(Boolean).join(" ").trim() || "—",
         plate: form.plate,
         vin: form.vin,
-        axle,
-        price,
-        revenue: price,
-        netAmount: net,
-        vatRate: vat,
-        grossAmount: price,
-        contactPickup: { name: form.cName1, phone: form.cPhone1 },
-        contactDelivery: { name: form.cName2, phone: form.cPhone2 },
+        axle: normalizeAxle(form.axle),
+        driverCompensation: partnerOffer,
+        revenue: null,
+        netAmount: null,
+        vatRate: 19,
+        grossAmount: null,
+        expenses:
+          parseFloat(String(form.expenses || "").replace(",", ".")) || null,
         notes: form.notes,
         notesDriver: form.notesDriver || "",
         status: "draft",
@@ -1121,6 +1776,10 @@ window.AuthStore = (() => {
         pdfVersion: 0,
         history: [{ st: "draft", at: nowStamp(), by: "A. Bauer" }],
       });
+      if (!newJob.distanceKm) {
+        newJob.distanceKm = estimateDistanceKm(newJob);
+        newJob.distanceEstimateSource = "estimate";
+      }
       jobs.unshift(newJob);
       log(
         "job_created",
@@ -1132,46 +1791,16 @@ window.AuthStore = (() => {
       return newJob;
     },
 
-    updateFinancial(id, patch) {
-      const j = api.getJob(id);
-      if (!j) return { ok: false };
-      for (const k of FIN_BLOCKED_KEYS) {
-        if (Object.prototype.hasOwnProperty.call(patch, k)) {
-          return { ok: false, reason: "use_partner_invoices" };
-        }
-      }
-      const ledger = {};
-      for (const k of Object.keys(patch)) {
-        if (FIN_LEDGER_KEYS.has(k)) ledger[k] = patch[k];
-      }
-      if (!Object.keys(ledger).length) return { ok: false, reason: "no_fields" };
-      Object.assign(j, ledger);
-      if (Object.prototype.hasOwnProperty.call(ledger, "adminInvoiceOverride")) {
-        applyInvoiceReceivedReconcile(id);
-      }
-      log(
-        "financial_updated",
-        DEMO_ADMIN,
-        j.tour,
-        Object.keys(ledger).join(", "),
-      );
-      emit();
-      return { ok: true };
-    },
-
-    reconcileJobInvoiceReceived(jobId) {
-      applyInvoiceReceivedReconcile(jobId);
-      emit();
-      return { ok: true };
-    },
-
-    getJobInvoiceReceivedMeta(jobId) {
-      return getJobInvoiceReceivedMeta(jobId);
-    },
-
     setDriverStatus(id, status) {
+      const allowed = [
+        "Active",
+        "Blocked",
+        "Inactive",
+        "Archived",
+        "Soft Deleted",
+      ];
       const d = drivers.find((x) => x.id === id);
-      if (!d) return { ok: false };
+      if (!d || !allowed.includes(status)) return { ok: false };
       d.status = status;
       log("driver_status_changed", DEMO_ADMIN, d.name, status);
       emit();
@@ -1185,17 +1814,6 @@ window.AuthStore = (() => {
       log("password_reset_triggered", DEMO_ADMIN, u.name, kind);
       emit();
       return { ok: true };
-    },
-
-    addCustomer(data) {
-      const c = {
-        id: `CUST-${String(customers.length + 1).padStart(3, "0")}`,
-        ...data,
-      };
-      customers.unshift(c);
-      log("customer_created", DEMO_ADMIN, c.name, "Master data");
-      emit();
-      return c;
     },
 
     toggleDocument(id) {
@@ -1236,42 +1854,283 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
-    exportJobsCsv() {
-      const cols = [
-        "tour",
-        "customer",
-        "startCompany",
-        "startPlz",
-        "startCity",
-        "endCompany",
-        "endPlz",
-        "endCity",
-        "date",
-        "windowFrom",
-        "windowTo",
-        "driver",
-        "status",
-        "vehicle",
-        "vehicleModel",
-        "axle",
+    canDriverUploadTourDocument(jobId) {
+      const id =
+        jobId != null && String(jobId).trim() ? String(jobId).trim() : "";
+      if (!id) return { ok: false, reason: "job_required" };
+      const j = api.getJob(id);
+      if (!j) return { ok: false, reason: "bad_job" };
+      if (j.status !== "performed")
+        return { ok: false, reason: "job_not_performed" };
+      const d = api.getCurrentDriver();
+      if (!d) return { ok: false, reason: "no_driver" };
+      if (j.driver && j.driver !== d.name)
+        return { ok: false, reason: "not_assigned_driver" };
+      return { ok: true, jobId: id };
+    },
+
+    addTourDocument(file, opts = {}) {
+      if (!file) return { ok: false, reason: "no_file" };
+      if (!isAllowedTourDocumentFile(file))
+        return { ok: false, reason: "invalid_type" };
+      if (!api.isCurrentDriverActive())
+        return { ok: false, reason: "driver_restricted" };
+      const gate = api.canDriverUploadTourDocument(opts.jobId);
+      if (!gate.ok) return gate;
+      const jobId = gate.jobId;
+      const d = api.getCurrentDriver();
+      const mime = (file.type || guessMimeFromName(file.name) || "").trim();
+      const row = {
+        id: `TD-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        jobId,
+        driverId: d.id,
+        driverName: d.name,
+        fileName: file.name,
+        mimeType: mime || "application/octet-stream",
+        sizeBytes: typeof file.size === "number" ? file.size : 0,
+        uploadedAt: new Date().toISOString(),
+        documentType: opts.documentType || "partner_invoice",
+        reviewStatus: "uploaded",
+        rejectionReason: "",
+        processed: false,
+        source: opts.source || "driver",
+        notes: opts.notes || "",
+      };
+      tourDocuments.unshift(row);
+      reconcileDocumentReviewSummary(jobId);
+      log(
+        "tour_document_uploaded",
+        d.name,
+        row.fileName,
+        `${jobId} · ${row.documentType}`,
+      );
+      queueAdminEmailAlert("tour_document_uploaded", jobId, row.documentType);
+      emit();
+      return { ok: true, id: row.id };
+    },
+
+    updateTourDocument(id, patch) {
+      const doc = tourDocuments.find((x) => x.id === id);
+      if (!doc) return { ok: false };
+      const jobId = doc.jobId;
+      if (patch.reviewStatus !== undefined) {
+        const st = String(patch.reviewStatus);
+        if (!DOC_REVIEW.includes(st)) return { ok: false, reason: "bad_status" };
+        doc.reviewStatus = st;
+        if (st === "accepted") doc.processed = true;
+        if (st !== "rejected") doc.rejectionReason = "";
+      }
+      if (patch.processed !== undefined) doc.processed = !!patch.processed;
+      if (patch.documentType !== undefined)
+        doc.documentType = patch.documentType;
+      if (patch.notes !== undefined) doc.notes = String(patch.notes ?? "");
+      if (patch.file !== undefined) {
+        const file = patch.file;
+        if (!file) return { ok: false, reason: "no_file" };
+        if (!isAllowedTourDocumentFile(file))
+          return { ok: false, reason: "invalid_type" };
+        doc.fileName = file.name;
+        doc.mimeType =
+          (file.type || guessMimeFromName(file.name) || "").trim() ||
+          "application/octet-stream";
+        doc.sizeBytes = typeof file.size === "number" ? file.size : 0;
+        doc.reviewStatus = "uploaded";
+        doc.processed = false;
+      }
+      reconcileDocumentReviewSummary(jobId);
+      reconcileJobInvoiceFromTourDocuments(jobId);
+      log("tour_document_updated", DEMO_ADMIN, doc.fileName, doc.reviewStatus);
+      emit();
+      return { ok: true };
+    },
+
+    rejectTourDocument(id, reason) {
+      const doc = tourDocuments.find((x) => x.id === id);
+      if (!doc) return { ok: false };
+      doc.reviewStatus = "rejected";
+      doc.rejectionReason = reason || "";
+      doc.processed = false;
+      reconcileDocumentReviewSummary(doc.jobId);
+      reconcileJobInvoiceFromTourDocuments(doc.jobId);
+      log(
+        "tour_document_rejected",
+        DEMO_ADMIN,
+        doc.fileName,
+        doc.rejectionReason,
+      );
+      queueAdminEmailAlert(
+        "tour_document_rejected",
+        doc.jobId,
+        doc.rejectionReason,
+      );
+      emit();
+      return { ok: true };
+    },
+
+    getTourDocuments: () => tourDocuments.slice(),
+
+    getTourDocumentsForJob(jobId) {
+      if (!jobId) return [];
+      return tourDocuments.filter((x) => x.jobId === jobId);
+    },
+
+    registerTourDocumentAdmin(opts = {}) {
+      const jobRaw =
+        opts.jobId != null && String(opts.jobId).trim()
+          ? String(opts.jobId).trim()
+          : "";
+      if (!jobRaw || !api.getJob(jobRaw))
+        return { ok: false, reason: "bad_job" };
+      const driverRaw =
+        opts.driverId != null && String(opts.driverId).trim()
+          ? String(opts.driverId).trim()
+          : "";
+      const d = drivers.find((x) => x.id === driverRaw);
+      if (!d) return { ok: false, reason: "bad_driver" };
+      const file = opts.file;
+      if (!file) return { ok: false, reason: "no_file" };
+      if (!isAllowedTourDocumentFile(file))
+        return { ok: false, reason: "invalid_type" };
+      const mime =
+        (file.type || guessMimeFromName(file.name) || "").trim() ||
+        "application/octet-stream";
+      const row = {
+        id: `TD-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        jobId: jobRaw,
+        driverId: d.id,
+        driverName: d.name,
+        fileName: file.name,
+        mimeType: mime,
+        sizeBytes: typeof file.size === "number" ? file.size : 0,
+        uploadedAt: new Date().toISOString(),
+        documentType: opts.documentType || "partner_invoice",
+        reviewStatus: "uploaded",
+        rejectionReason: "",
+        processed: false,
+        source: "admin",
+        notes: String(opts.notes || "").trim(),
+      };
+      tourDocuments.unshift(row);
+      reconcileDocumentReviewSummary(jobRaw);
+      reconcileJobInvoiceFromTourDocuments(jobRaw);
+      log(
+        "tour_document_admin_registered",
+        DEMO_ADMIN,
+        row.fileName,
+        `${jobRaw} · ${row.documentType}`,
+      );
+      queueAdminEmailAlert("tour_document_uploaded", jobRaw, row.documentType);
+      emit();
+      return { ok: true, id: row.id };
+    },
+
+    downloadTourDocumentPlaceholder(id) {
+      const doc = tourDocuments.find((x) => x.id === id);
+      if (!doc) return { ok: false };
+      const raw =
+        (doc.fileName || "document").replace(/[^a-zA-Z0-9._-]/g, "_") ||
+        "document";
+      const stubName = /\.txt$/i.test(raw)
+        ? raw
+        : `${raw.replace(/\.[^.]+$/, "")}-placeholder.txt`;
+      const body = [
+        `${api.getAppDisplayName()} prototype — binary file not stored.`,
+        `Source: ${doc.source === "admin" ? "admin off-channel" : "driver PWA"}`,
+        `Type: ${doc.documentType}`,
+        `Original filename: ${doc.fileName}`,
+        `MIME: ${doc.mimeType}`,
+        `Uploaded (ISO): ${doc.uploadedAt}`,
+        `Driver: ${doc.driverName} (${doc.driverId})`,
+        `Job ID: ${doc.jobId}`,
+        `Review: ${doc.reviewStatus}`,
+        doc.rejectionReason ? `Rejection: ${doc.rejectionReason}` : "",
+        doc.notes ? `Notes: ${doc.notes}` : "",
+        "",
+        "Placeholder replaces an actual PDF/image in the demo.",
+      ]
+        .filter(Boolean)
+        .join("\r\n");
+      const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = stubName;
+      a.click();
+      URL.revokeObjectURL(url);
+      return { ok: true };
+    },
+
+    updateFinancial(id, patch = {}) {
+      const j = api.getJob(id);
+      if (!j) return { ok: false, reason: "bad_job" };
+      if (
+        patch.invoiceReceived !== undefined ||
+        patch.invoiceNumber !== undefined
+      ) {
+        return { ok: false, reason: "use_partner_invoices" };
+      }
+      const allowed = [
         "revenue",
         "driverCompensation",
         "expenses",
-        "invoiceReceived",
-        "adminInvoiceOverride",
-        "invoiceType",
-        "invoiceNumber",
+        "netAmount",
+        "grossAmount",
+        "vatRate",
         "paymentStatus",
-        "notes",
+      ];
+      for (const key of allowed) {
+        if (patch[key] !== undefined) j[key] = patch[key];
+      }
+      syncDisplayFields(j);
+      log(
+        "financial_updated",
+        DEMO_ADMIN,
+        j.tour,
+        "Ledger fields updated (invoice via partner invoices)",
+      );
+      emit();
+      return { ok: true };
+    },
+
+    exportJobsCsv() {
+      const cols = [
+        { header: "tour", key: "tour" },
+        { header: "orderingPartyName", key: "orderingPartyName" },
+        { header: "startCompany", key: "startCompany" },
+        { header: "startPlz", key: "startPlz" },
+        { header: "startCity", key: "startCity" },
+        { header: "endCompany", key: "endCompany" },
+        { header: "endPlz", key: "endPlz" },
+        { header: "endCity", key: "endCity" },
+        { header: "date", key: "date" },
+        { header: "windowFrom", key: "windowFrom" },
+        { header: "windowTo", key: "windowTo" },
+        { header: "driver", key: "driver" },
+        { header: "status", key: "status" },
+        { header: "vehicle", key: "vehicle" },
+        { header: "vehicleModel", key: "vehicleModel" },
+        { header: "axle", key: "axle" },
+        { header: "distanceKm", key: "distanceKm" },
+        { header: "documentReviewSummary", key: "documentReviewSummary" },
+        { header: "settlementState", key: "settlementState" },
+        { header: "revenue", key: "revenue" },
+        { header: "grossAmount", key: "grossAmount" },
+        { header: "netAmount", key: "netAmount" },
+        { header: "partnerOffer", key: "driverCompensation" },
+        { header: "expenses", key: "expenses" },
+        { header: "invoiceReceived", key: "invoiceReceived" },
+        { header: "invoiceNumber", key: "invoiceNumber" },
+        { header: "paymentStatus", key: "paymentStatus" },
+        { header: "notes", key: "notes" },
       ];
       const esc = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
-      const rows = [cols.join(",")].concat(
-        jobs.map((j) => cols.map((c) => esc(j[c])).join(",")),
+      const rows = [cols.map((c) => c.header).join(",")].concat(
+        jobs.map((j) => cols.map((c) => esc(j[c.key])).join(",")),
       );
       log(
         "jobs_exported",
         DEMO_ADMIN,
-        "CSV/XLSX continuity",
+        "CSV export",
         `${jobs.length} rows`,
       );
       emit();
@@ -1298,24 +2157,31 @@ window.AuthStore = (() => {
     transportOrderText(id) {
       const j = api.getJob(id);
       if (!j) return "";
+      const appName = api.getAppDisplayName();
+      const pu = j.pickup || mkLocation();
+      const del = j.delivery || mkLocation();
       return [
-        "AUTHEON TRANSPORT ORDER",
+        `${appName.toUpperCase()} TRANSPORT ORDER`,
         `Tour: ${j.tour}`,
         `Category: ${j.category}`,
         `Issued: ${nowStamp()}`,
         `Driver: ${j.driver || "To be assigned"}`,
-        `Customer: ${j.customer}`,
-        `Pickup: ${j.startCompany || j.customer}, ${j.startStreet}, ${j.startPlz} ${j.startCity}`,
-        `Pickup contact: ${j.contactPickup?.name || ""} ${j.contactPickup?.phone || ""}`,
-        `Delivery: ${j.endCompany || j.customer}, ${j.endStreet}, ${j.endPlz} ${j.endCity}`,
-        `Delivery contact: ${j.contactDelivery?.name || ""} ${j.contactDelivery?.phone || ""}`,
+        `Ordering party: ${j.orderingPartyName}`,
+        `Pickup: ${pu.name}, ${formatStreet(pu)}, ${pu.postalCode} ${pu.city}`,
+        `Pickup contact: ${pu.contactPerson} ${pu.phone}`,
+        `Pickup schedule: ${pu.date} ${pu.windowFrom}-${pu.windowTo}`,
+        `Delivery: ${del.name}, ${formatStreet(del)}, ${del.postalCode} ${del.city}`,
+        `Delivery contact: ${del.contactPerson} ${del.phone}`,
+        `Delivery schedule: ${del.date} ${del.windowFrom}-${del.windowTo}`,
         `Vehicle: ${j.vehicleModel} / ${j.vehicle}`,
         `License plate: ${j.plate}`,
         `VIN: ${j.vin}`,
         `Axle: ${j.axle}`,
         `Distance: ${j.distanceKm} km`,
-        `Net: ${j.netAmount || ""} VAT: ${j.vatRate || 19}% Gross: ${j.grossAmount || j.price}`,
-        "Instructions: pre-trip inspection, direct route, incident reporting, digital proof/protocol submission, safety clothing on logistics yards, weather-appropriate tires, invoice within seven calendar days.",
+        `Partner offer: ${j.driverCompensation ?? "—"} | Customer gross: ${j.grossAmount ?? j.revenue ?? "—"} | Net: ${j.netAmount ?? "—"} VAT: ${j.vatRate ?? 19}%`,
+        `Document review: ${j.documentReviewSummary}`,
+        `Settlement: ${j.settlementState}`,
+        "Instructions: pre-trip inspection, direct route, incident reporting, digital proof submission, safety clothing on logistics yards.",
         "Legal wording subject to final production review.",
       ].join("\n");
     },
@@ -1327,7 +2193,8 @@ window.AuthStore = (() => {
         /[&<>]/g,
         (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c],
       );
-      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>AUTHEON transport order</title></head><body><pre style="font:13px/1.5 monospace;white-space:pre-wrap;padding:24px">${escaped}</pre></body></html>`;
+      const appName = api.getAppDisplayName();
+      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${appName} transport order</title></head><body><pre style="font:13px/1.5 monospace;white-space:pre-wrap;padding:24px">${escaped}</pre></body></html>`;
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const w = window.open(url, "_blank");
@@ -1364,246 +2231,50 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
-    canDriverUploadInvoice(jobId) {
-      const id =
-        jobId != null && String(jobId).trim() ? String(jobId).trim() : "";
-      if (!id) return { ok: false, reason: "job_required" };
-      const j = api.getJob(id);
-      if (!j) return { ok: false, reason: "bad_job" };
-      if (j.status !== "completed")
-        return { ok: false, reason: "job_not_completed" };
-      const d = api.getCurrentDriver();
-      if (!d) return { ok: false, reason: "no_driver" };
-      if (j.driver && j.driver !== d.name)
-        return { ok: false, reason: "not_assigned_driver" };
-      return { ok: true, jobId: id };
-    },
-
-    addInvoiceUpload(file, opts = {}) {
-      if (!file) return { ok: false, reason: "no_file" };
-      if (!isAllowedInvoiceFile(file))
-        return { ok: false, reason: "invalid_type" };
-      if (!api.isCurrentDriverActive())
-        return { ok: false, reason: "driver_restricted" };
-      const d = api.getCurrentDriver();
-      if (!d) return { ok: false, reason: "no_driver" };
-      const gate = api.canDriverUploadInvoice(opts.jobId);
-      if (!gate.ok) return gate;
-      const jobId = gate.jobId;
-      const mime = (file.type || guessMimeFromName(file.name) || "").trim();
-      const invoiceId = `INV-${Date.now().toString(36).toUpperCase()}-${Math.random()
-        .toString(36)
-        .slice(2, 8)
-        .toUpperCase()}`;
-      const row = {
-        id: `IU-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        invoiceId,
-        driverId: d.id,
-        driverName: d.name,
-        jobId,
-        fileName: file.name,
-        mimeType: mime || "application/octet-stream",
-        sizeBytes: typeof file.size === "number" ? file.size : 0,
-        uploadedAt: new Date().toISOString(),
-        processed: false,
-        source: "driver",
-        notes: "",
-      };
-      invoiceUploads.unshift(row);
-      log(
-        "invoice_upload_registered",
-        d.name,
-        row.fileName,
-        row.jobId || "unscoped",
-      );
-      afterInvoiceMutation([jobId]);
-      return { ok: true, id: row.id, invoiceId: row.invoiceId };
-    },
-
-    getInvoiceUploads() {
-      return invoiceUploads.slice();
-    },
-
-    /** Invoice uploads scoped to a tour/job (Partner invoices ↔ Finance). */
-    getInvoiceUploadsForJob(jobId) {
-      if (!jobId) return [];
-      return invoiceUploads.filter((x) => x.jobId === jobId);
-    },
-
-    addPartnerInvoiceRecordAdmin(opts = {}) {
-      const jobRaw =
-        opts.jobId != null && String(opts.jobId).trim()
-          ? String(opts.jobId).trim()
-          : "";
-      if (!jobRaw || !api.getJob(jobRaw))
-        return { ok: false, reason: "bad_job" };
-      const driverRaw =
-        opts.driverId != null && String(opts.driverId).trim()
-          ? String(opts.driverId).trim()
-          : "";
-      const d = drivers.find((x) => x.id === driverRaw);
-      if (!d) return { ok: false, reason: "bad_driver" };
-      const file = opts.file;
-      if (!file) return { ok: false, reason: "no_file" };
-      if (!isAllowedInvoiceFile(file))
-        return { ok: false, reason: "invalid_type" };
-      const fileName = file.name;
-      const mime =
-        (file.type || guessMimeFromName(file.name) || "").trim() ||
-        "application/octet-stream";
-      const notes = String(opts.notes || "").trim();
-      const invoiceId = `INV-${Date.now().toString(36).toUpperCase()}-${Math.random()
-        .toString(36)
-        .slice(2, 8)
-        .toUpperCase()}`;
-      const row = {
-        id: `IU-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        invoiceId,
-        driverId: d.id,
-        driverName: d.name,
-        jobId: jobRaw,
-        fileName,
-        mimeType: mime,
-        sizeBytes: typeof file.size === "number" ? file.size : 0,
-        uploadedAt: new Date().toISOString(),
-        processed: false,
-        source: "admin",
-        notes,
-      };
-      invoiceUploads.unshift(row);
-      const push = opts.pushToJob !== false;
-      if (push) {
-        const j = api.getJob(jobRaw);
-        if (j) {
-          j.invoiceNumber = invoiceId;
-        }
-      }
-      log(
-        "partner_invoice_admin_registered",
-        DEMO_ADMIN,
-        row.fileName,
-        `${jobRaw} · ${invoiceId}`,
-      );
-      afterInvoiceMutation([jobRaw]);
-      return { ok: true, id: row.id, invoiceId: row.invoiceId };
-    },
-
-    updateInvoiceUpload(id, patch) {
-      const u = invoiceUploads.find((x) => x.id === id);
-      if (!u) return { ok: false };
-      const affected = new Set([u.jobId]);
-      const prevJobId = u.jobId;
-      if (patch.jobId !== undefined) {
-        const jid =
-          patch.jobId === "" || patch.jobId == null
-            ? ""
-            : String(patch.jobId).trim();
-        if (!jid) return { ok: false, reason: "job_required" };
-        if (!api.getJob(jid)) return { ok: false, reason: "bad_job" };
-        u.jobId = jid;
-        affected.add(jid);
-      }
-      if (patch.file !== undefined) {
-        const file = patch.file;
-        if (!file) return { ok: false, reason: "no_file" };
-        if (!isAllowedInvoiceFile(file))
-          return { ok: false, reason: "invalid_type" };
-        u.fileName = file.name;
-        u.mimeType =
-          (file.type || guessMimeFromName(file.name) || "").trim() ||
-          "application/octet-stream";
-        u.sizeBytes = typeof file.size === "number" ? file.size : 0;
-      } else if (patch.fileName !== undefined) {
-        const fn = String(patch.fileName || "").trim();
-        if (!fn) return { ok: false, reason: "no_filename" };
-        u.fileName = fn;
-      }
-      if (patch.invoiceId !== undefined) {
-        const inv = String(patch.invoiceId || "").trim();
-        if (!inv) return { ok: false, reason: "no_invoice_id" };
-        u.invoiceId = inv;
-      }
-      if (patch.driverId !== undefined) {
-        const dr = drivers.find((x) => x.id === patch.driverId);
-        if (!dr) return { ok: false, reason: "bad_driver" };
-        u.driverId = dr.id;
-        u.driverName = dr.name;
-      }
-      if (patch.notes !== undefined) u.notes = String(patch.notes ?? "");
-      if (patch.processed !== undefined) {
-        u.processed = !!patch.processed;
-        if (u.processed && u.jobId && u.invoiceId) {
-          const j = api.getJob(u.jobId);
-          if (j && !String(j.invoiceNumber || "").trim()) {
-            j.invoiceNumber = u.invoiceId;
-          }
-        }
-      }
-      log(
-        "invoice_upload_updated",
-        DEMO_ADMIN,
-        u.fileName,
-        JSON.stringify(patch),
-      );
-      affected.add(prevJobId);
-      afterInvoiceMutation([...affected]);
-      return { ok: true };
-    },
-
-    deleteInvoiceUpload(id) {
-      const i = invoiceUploads.findIndex((x) => x.id === id);
-      if (i < 0) return { ok: false };
-      const [removed] = invoiceUploads.splice(i, 1);
-      log("invoice_upload_deleted", DEMO_ADMIN, removed.fileName, removed.id);
-      afterInvoiceMutation([removed.jobId]);
-      return { ok: true };
-    },
-
-    downloadInvoicePlaceholder(id) {
-      const u = invoiceUploads.find((x) => x.id === id);
-      if (!u) return { ok: false };
-      const raw =
-        (u.fileName || "invoice").replace(/[^a-zA-Z0-9._-]/g, "_") || "invoice";
-      const stubName = /\.txt$/i.test(raw)
-        ? raw
-        : `${raw.replace(/\.[^.]+$/, "")}-AUTHEON-placeholder.txt`;
-      const jobLine = u.jobId ? `Job ID: ${u.jobId}` : "Job: (none / unscoped)";
-      const body = [
-        "AUTHEON prototype — binary file not stored.",
-        `Source: ${u.source === "admin" ? "admin (off-channel)" : "driver PWA"}`,
-        `Invoice ID: ${u.invoiceId || "(pending)"}`,
-        `Original filename: ${u.fileName}`,
-        `MIME: ${u.mimeType}`,
-        `Uploaded (ISO): ${u.uploadedAt}`,
-        `Driver: ${u.driverName} (${u.driverId})`,
-        jobLine,
-        `Processed: ${u.processed ? "yes" : "no"}`,
-        u.notes ? `Notes: ${u.notes}` : "",
-        "",
-        "This placeholder replaces an actual PDF/image in the demo.",
-      ]
-        .filter(Boolean)
-        .join("\r\n");
-      const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = stubName;
-      a.click();
-      URL.revokeObjectURL(url);
+    reloadDemo() {
+      orderingParties = seedOrderingParties();
+      addresses = seedAddresses();
+      documents = seedDocuments();
+      newsItems = seedNews();
+      jobs = seedJobs();
+      drivers = seedDrivers();
+      admins = seedAdmins();
+      auditLog = seedAudit();
+      driverState = seedDriverState();
+      tourDocuments = [];
+      adminEmailQueue = [];
+      nextTourSeq = 849;
+      branding.appDisplayName =
+        window.AUTHEON_BRANDING_DEFAULTS?.appDisplayName || "Transport Portal";
+      const reloadFlags = window.AUTHEON_FLAG_DEFAULTS || {};
+      const { appDisplayName: _n, ...reloadOnlyFlags } = reloadFlags;
+      Object.assign(featureFlags, {
+        documentsModule: true,
+        financeModule: false,
+        notificationPreferences: true,
+        ...reloadOnlyFlags,
+      });
+      log("demo_reloaded", "System", "Transport Portal", "PRD v1.5 seed");
+      emit();
       return { ok: true };
     },
 
     getFeatureFlag: (key) => featureFlags[key],
     getFeatureFlags: () => ({ ...featureFlags }),
     setFeatureFlag(key, value) {
+      if (key === "appDisplayName") {
+        return api.setAppDisplayName(value);
+      }
       featureFlags[key] = !!value;
-      log("feature_flag_changed", DEMO_ADMIN, key, String(!!value));
+      log("feature_flag_changed", DEMO_ADMIN, key, String(value));
       emit();
+      return { ok: true };
     },
 
     subscribe,
   };
+
+  jobs.forEach(syncDisplayFields);
 
   return api;
 })();

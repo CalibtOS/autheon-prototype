@@ -31,15 +31,15 @@
   --st-published:      #2563EB;
   --st-assigned:       #C2410C;
   --st-accepted:       #059669;
-  --st-return-request: #A855F7;
-  --st-completed:      #0F172A;
+  --st-special-case:   #A855F7;
+  --st-performed:      #0F172A;
   --st-cancelled:      #DC2626;
   --st-warn:           #EA580C;
 
   --st-published-bg: #EFF6FF;
   --st-assigned-bg:  #FFF7ED;
   --st-accepted-bg:  #ECFDF5;
-  --st-return-bg:    #F5F3FF;
+  --st-special-bg:   #F5F3FF;
   --st-cancelled-bg: #FEF2F2;
   --st-warn-bg:      #FFEDD5;
 
@@ -84,7 +84,7 @@
   --st-published-bg: #172554;
   --st-assigned-bg: #3a2210;
   --st-accepted-bg: #092a24;
-  --st-return-bg: #2c1f50;
+  --st-special-bg: #2c1f50;
   --st-cancelled-bg: #3e1520;
   --st-warn-bg: #4a2b12;
   --sh-1: 0 1px 2px rgba(2, 6, 23, 0.45);
@@ -312,9 +312,9 @@ textarea.input { min-height: 92px; resize: vertical; }
 .pill.published { background: var(--st-published-bg); color: var(--st-published); }
 .pill.assigned  { background: var(--st-assigned-bg); color: var(--st-assigned); }
 .pill.accepted  { background: var(--st-accepted-bg); color: var(--st-accepted); }
-.pill.completed { background: var(--st-completed); color: #fff; }
+.pill.performed { background: var(--st-performed); color: #fff; }
+.pill.special_case { background: var(--st-special-bg); color: var(--st-special-case); }
 .pill.cancelled { background: var(--st-cancelled-bg); color: var(--st-cancelled); }
-.pill.return_requested { background: var(--st-return-bg); color: var(--st-return-request); }
 .pill.warn      { background: var(--st-warn-bg); color: var(--st-warn); }
 .pill.outline   { background: transparent; border-color: var(--line-2); color: var(--text); }
 
@@ -631,7 +631,7 @@ textarea.input { min-height: 92px; resize: vertical; }
 }
 .jobcard:hover { box-shadow: var(--sh-2); border-color: var(--line-2); transform: translateY(-1px); }
 .jobcard:active { transform: translateY(0); }
-.jobcard .price {
+.jobcard .partner-offer {
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.015em;

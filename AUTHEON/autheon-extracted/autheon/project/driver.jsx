@@ -63,6 +63,46 @@ const displayDriverNote = (note, t) =>
     ),
   })[note] || note;
 
+const fmtPartnerOffer = (job) => {
+  const n = job?.driverCompensation;
+  if (n == null || n === "") return 0;
+  const v = Number(n);
+  return Number.isFinite(v) ? v : 0;
+};
+
+const googleMapsSearchUrl = (street, plz, city) => {
+  const q = [street, plz, city].filter(Boolean).join(", ");
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+};
+
+const displayTourDocType = (type, t) =>
+  ({
+    invoice: t("tourDocInvoice"),
+    partner_invoice: t("tourDocPartnerInvoice"),
+    fuel_receipt: t("tourDocFuelReceipt"),
+    toll_receipt: t("tourDocTollReceipt"),
+    delivery_note: t("tourDocDeliveryNote"),
+    waiting_time_evidence: t("tourDocWaitingTimeEvidence"),
+    other_proof: t("tourDocOtherProof"),
+    other_receipt: t("tourDocOtherReceipt"),
+  })[type] || type;
+
+const displayDocReviewStatus = (st, t) =>
+  ({
+    missing: t("docReviewMissing"),
+    uploaded: t("docReviewUploaded"),
+    under_review: t("docReviewUnderReview"),
+    accepted: t("docReviewAccepted"),
+    rejected: t("docReviewRejected"),
+    correction_required: t("docReviewCorrectionRequired"),
+  })[st] || st;
+
+const jobNeedsDocCorrection = (job, store) =>
+  /correction/i.test(String(job.documentReviewSummary || "")) ||
+  store.getTourDocumentsForJob(job.id).some(
+    (d) => d.reviewStatus === "correction_required",
+  );
+
 const Ic = {
   Filter: () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -298,6 +338,17 @@ const Ic = {
       />
     </svg>
   ),
+  Map: () => (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  ),
   Logout: () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
       <path
@@ -448,10 +499,15 @@ const PhoneStatusBar = () => (
 
 const TabBar = ({ tab, setTab }) => {
   const { t } = useI18n();
+  const store = useAuthStore();
+  const readerId = store.getCurrentDriver()?.id || AuthStore.DEMO_DRIVER;
+  const unreadNews = store
+    .getNews()
+    .filter((n) => !n.readBy.includes(readerId)).length;
   const items = [
     { id: "portal", label: t("marketplace"), I: Ic.Tab },
     { id: "mine", label: t("myJobs"), I: Ic.TabList },
-    { id: "info", label: t("info"), I: Ic.TabInfo },
+    { id: "info", label: t("infopoint"), I: Ic.TabInfo, badge: unreadNews },
     { id: "profile", label: t("profile"), I: Ic.TabUser },
   ];
   return (
@@ -462,8 +518,31 @@ const TabBar = ({ tab, setTab }) => {
           className={tab === it.id ? "on" : ""}
           onClick={() => setTab(it.id)}
         >
-          <span className="tab-icon">
+          <span className="tab-icon" style={{ position: "relative" }}>
             <it.I on={tab === it.id} />
+            {it.badge > 0 ? (
+              <span
+                className="mono"
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  right: -8,
+                  minWidth: 16,
+                  height: 16,
+                  padding: "0 4px",
+                  borderRadius: 8,
+                  background: "var(--primary)",
+                  color: "#fff",
+                  fontSize: 9,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {it.badge > 9 ? "9+" : it.badge}
+              </span>
+            ) : null}
           </span>
           <span>{it.label}</span>
         </button>
@@ -489,7 +568,7 @@ const JobCard = ({ job, onOpen }) => {
       >
         <RouteStack job={job} />
         <div style={{ textAlign: "right" }}>
-          <div className="price">€ {job.price.toFixed(2)}</div>
+          <div className="partner-offer">€ {fmtPartnerOffer(job).toFixed(2)}</div>
           <Lbl
             className="label"
             style={{ marginTop: 6, display: "inline-block" }}
@@ -522,6 +601,33 @@ const Portal = ({ filters, setFilters, openFilter, onOpenJob }) => {
   const { t, locale } = useI18n();
   const store = useAuthStore();
   const [sortDir, setSortDir] = useState("asc");
+  const [refreshing, setRefreshing] = useState(false);
+  const scrollRef = useRef(null);
+  const pullRef = useRef({ startY: 0, pulling: false });
+
+  const onRefresh = () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    store.reloadDemo();
+    setTimeout(() => setRefreshing(false), 400);
+  };
+
+  const onScrollTouchStart = (e) => {
+    const el = scrollRef.current;
+    if (!el || el.scrollTop > 4) return;
+    pullRef.current = { startY: e.touches[0].clientY, pulling: true };
+  };
+  const onScrollTouchMove = (e) => {
+    if (!pullRef.current.pulling || refreshing) return;
+    const dy = e.touches[0].clientY - pullRef.current.startY;
+    if (dy > 72) {
+      pullRef.current.pulling = false;
+      onRefresh();
+    }
+  };
+  const onScrollTouchEnd = () => {
+    pullRef.current.pulling = false;
+  };
 
   const parseDdMm = (raw) => {
     const m = String(raw || "").match(/(\d{2})\.(\d{2})/);
@@ -643,6 +749,7 @@ const Portal = ({ filters, setFilters, openFilter, onOpenJob }) => {
         style={{
           padding: "8px 22px 18px",
           borderBottom: "1px solid var(--line)",
+          position: "relative",
         }}
       >
         <h1
@@ -655,8 +762,18 @@ const Portal = ({ filters, setFilters, openFilter, onOpenJob }) => {
         >
           {t("marketplace")}
         </h1>
+        <button
+          type="button"
+          className="btn icon sm"
+          style={{ position: "absolute", top: 8, right: 22 }}
+          title={t("refreshDemo")}
+          disabled={refreshing}
+          onClick={onRefresh}
+        >
+          <Ic.Refresh />
+        </button>
         <div className="label" style={{ marginTop: 4 }}>
-          {all.length} {t("openTours")} ·{" "}
+          {store.getAppDisplayName()} · {all.length} {t("openTours")} ·{" "}
           {new Date().toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", {
             weekday: "short",
             day: "2-digit",
@@ -688,9 +805,21 @@ const Portal = ({ filters, setFilters, openFilter, onOpenJob }) => {
         </div>
       </div>
       <div
+        ref={scrollRef}
         className="scroll"
         style={{ padding: "16px 18px 24px", background: "var(--paper-2)" }}
+        onTouchStart={onScrollTouchStart}
+        onTouchMove={onScrollTouchMove}
+        onTouchEnd={onScrollTouchEnd}
       >
+        {refreshing ? (
+          <div
+            className="label"
+            style={{ textAlign: "center", marginBottom: 10 }}
+          >
+            <Ic.Refresh /> {t("refreshDemo")}
+          </div>
+        ) : null}
         <div
           style={{
             display: "flex",
@@ -1048,12 +1177,12 @@ const JobLocked = ({ job, onBack, onAccept }) => {
             alignItems: "center",
           }}
         >
-          <Lbl>{t("payout")}</Lbl>
+          <Lbl>{t("partnerOffer")}</Lbl>
           <div
             style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em" }}
             className="tnum"
           >
-            € {job.price.toFixed(2)}
+            € {fmtPartnerOffer(job).toFixed(2)}
           </div>
         </div>
 
@@ -1223,7 +1352,7 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
             style={{ fontSize: 18, fontWeight: 700, marginTop: 10 }}
             className="tnum"
           >
-            € {job.price.toFixed(2)}
+            € {fmtPartnerOffer(job).toFixed(2)}
           </div>
         </div>
 
@@ -1274,33 +1403,56 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
 };
 
 // =========================================================================
-// INVOICE UPLOADS (mock metadata only)
+// TOUR DOCUMENTS (mock metadata only)
 // =========================================================================
-const JobInvoiceUpload = ({ job }) => {
+const TOUR_DOC_TYPES = [
+  "invoice",
+  "fuel_receipt",
+  "toll_receipt",
+  "delivery_note",
+  "waiting_time_evidence",
+  "other_proof",
+  "other_receipt",
+];
+
+const JobTourDocuments = ({ job }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const inputRef = useRef(null);
   const jobId = job.id;
-  const tourCompleted = job.status === "completed";
-  const uploads = store.getInvoiceUploads().filter((u) => u.jobId === jobId);
+  const tourPerformed = job.status === "performed";
+  const uploads = store.getTourDocumentsForJob(jobId);
+  const [categoryModal, setCategoryModal] = useState(false);
+  const [pendingType, setPendingType] = useState(null);
   const active = store.isCurrentDriverActive();
-  const invoiceUploadErr = (reason) => {
+  const uploadErr = (reason) => {
     if (reason === "invalid_type") window.alert(t("invoiceUploadInvalidType"));
     else if (reason === "driver_restricted")
       window.alert(t("invoiceUploadRestricted"));
-    else if (reason === "job_not_completed")
-      window.alert(t("invoiceUploadRequiresCompleted"));
+    else if (reason === "job_not_performed")
+      window.alert(t("tourDocRequiresPerformed"));
     else if (reason === "not_assigned_driver")
       window.alert(t("invoiceUploadNotYourTour"));
     else if (reason === "job_required" || reason === "bad_job")
       window.alert(t("invoiceUploadTourRequired"));
   };
+  const startUpload = (documentType) => {
+    const gate = store.canDriverUploadTourDocument(jobId);
+    if (!gate.ok) {
+      uploadErr(gate.reason);
+      return;
+    }
+    setPendingType(documentType);
+    setCategoryModal(false);
+    inputRef.current?.click();
+  };
   const onPick = (e) => {
     const f = e.target.files?.[0];
     e.target.value = "";
-    if (!f) return;
-    const r = AuthStore.addInvoiceUpload(f, { jobId });
-    if (!r.ok) invoiceUploadErr(r.reason);
+    if (!f || !pendingType) return;
+    const r = store.addTourDocument(f, { jobId, documentType: pendingType });
+    setPendingType(null);
+    if (!r.ok) uploadErr(r.reason);
   };
   if (!active) return null;
   return (
@@ -1313,7 +1465,7 @@ const JobInvoiceUpload = ({ job }) => {
         background: "var(--paper-2)",
       }}
     >
-      <Lbl>{t("invoiceUploadSectionJob")}</Lbl>
+      <Lbl>{t("tourDocumentsSection")}</Lbl>
       <p
         style={{
           fontSize: 12,
@@ -1322,28 +1474,24 @@ const JobInvoiceUpload = ({ job }) => {
           lineHeight: 1.55,
         }}
       >
-        {tourCompleted
-          ? t("invoiceUploadHint")
-          : t("invoiceUploadAfterCompleteHint")}
+        {tourPerformed ? t("tourDocUploadHint") : t("tourDocAfterPerformedHint")}
       </p>
-      {tourCompleted ? (
-        <>
-          <input
-            ref={inputRef}
-            type="file"
-            accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
-            style={{ display: "none" }}
-            onChange={onPick}
-          />
-          <button
-            type="button"
-            className="btn xs"
-            onClick={() => inputRef.current?.click()}
-          >
-            <Ic.Plus /> {t("invoiceUploadButton")}
-          </button>
-        </>
+      {tourPerformed ? (
+        <button
+          type="button"
+          className="btn xs"
+          onClick={() => setCategoryModal(true)}
+        >
+          <Ic.Plus /> {t("tourDocUploadButton")}
+        </button>
       ) : null}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
+        style={{ display: "none" }}
+        onChange={onPick}
+      />
       {uploads.length > 0 ? (
         <ul
           style={{
@@ -1376,54 +1524,107 @@ const JobInvoiceUpload = ({ job }) => {
                 >
                   {u.fileName}
                 </span>
-                {u.invoiceId && (
-                  <span
-                    className="mono label"
-                    style={{ fontSize: 11, marginTop: 4, display: "block" }}
-                  >
-                    {u.invoiceId}
-                  </span>
-                )}
+                <span
+                  className="label"
+                  style={{ fontSize: 11, marginTop: 4, display: "block" }}
+                >
+                  {displayTourDocType(u.documentType, t)}
+                </span>
               </span>
-              {u.processed ? (
-                <Pill status="completed">{t("invoiceProcessedBadge")}</Pill>
-              ) : (
-                <Pill status="assigned">{t("invoicePendingBadge")}</Pill>
-              )}
+              <Pill
+                status={
+                  u.reviewStatus === "accepted"
+                    ? "performed"
+                    : u.reviewStatus === "rejected" ||
+                        u.reviewStatus === "correction_required"
+                      ? "cancelled"
+                      : "assigned"
+                }
+              >
+                {displayDocReviewStatus(u.reviewStatus, t)}
+              </Pill>
             </li>
           ))}
         </ul>
       ) : (
         <div className="label" style={{ marginTop: 12 }}>
-          {t("invoiceUploadEmpty")}
+          {t("tourDocUploadEmpty")}
         </div>
       )}
+      {categoryModal ? (
+        <div className="sheet-backdrop" onClick={() => setCategoryModal(false)}>
+          <div
+            className="sheet modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ padding: 20 }}
+          >
+            <Lbl>{t("tourDocChooseCategory")}</Lbl>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                marginTop: 14,
+              }}
+            >
+              {TOUR_DOC_TYPES.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  className="btn block"
+                  onClick={() => startUpload(type)}
+                >
+                  {displayTourDocType(type, t)}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="btn block"
+              style={{ marginTop: 10 }}
+              onClick={() => setCategoryModal(false)}
+            >
+              {t("cancel")}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
 
+const JobInvoiceUpload = JobTourDocuments;
+
 // =========================================================================
 // JOB DETAIL — UNLOCKED (after acceptance / running)
 // =========================================================================
-const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
-  const { t, locale } = useI18n();
-  const isCompleted = job.status === "completed";
+const JobUnlocked = ({
+  job,
+  onBack,
+  onReturn,
+  onComplete,
+  onReportProblem,
+  onPerform,
+}) => {
+  const { t } = useI18n();
+  const onReport = onReportProblem || onReturn;
+  const onMarkPerformed = onPerform || onComplete;
+  const isPerformed = job.status === "performed";
   const isCancelled = job.status === "cancelled";
-  const deadlinePassed = AuthStore.isReturnDeadlinePassed(job);
-  const deadline = AuthStore.returnDeadline(job);
-  const deadlineStr = deadline
-    ? deadline.toLocaleString(locale === "de" ? "de-DE" : "en-GB", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "—";
-  const returnBlocked = job.status === "return_requested" || deadlinePassed;
-  const canComplete = ["assigned", "accepted"].includes(job.status);
+  const isSpecialCase = job.status === "special_case";
+  const canPerform = ["assigned", "accepted"].includes(job.status);
   const pickup = job.contactPickup || {};
   const drop = job.contactDelivery || {};
+  const pickupMaps = googleMapsSearchUrl(
+    job.startStreet,
+    job.startPlz,
+    job.startCity,
+  );
+  const deliveryMaps = googleMapsSearchUrl(
+    job.endStreet,
+    job.endPlz,
+    job.endCity,
+  );
   return (
     <>
       <div
@@ -1466,12 +1667,14 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
             borderBottom: "1px dashed var(--line-dash)",
           }}
         >
-          {job.status === "completed" ? (
-            <Pill status="completed">{t("completed")}</Pill>
+          {job.status === "performed" ? (
+            <Pill status="performed">{AuthStore.statusLabel("performed")}</Pill>
           ) : job.status === "cancelled" ? (
             <Pill status="cancelled">{t("cancelled")}</Pill>
-          ) : job.status === "return_requested" ? (
-            <Pill status="return_requested">{t("returnRequested")}</Pill>
+          ) : job.status === "special_case" ? (
+            <Pill status="special_case">
+              {AuthStore.statusLabel("special_case")}
+            </Pill>
           ) : job.status === "assigned" ? (
             <Pill status="assigned">{t("assignedShort")}</Pill>
           ) : (
@@ -1534,6 +1737,15 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
               >
                 {job.startStreet} · {job.startPlz} {job.startCity}
               </div>
+              <a
+                href={pickupMaps}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn xs"
+                style={{ marginTop: 8, display: "inline-flex" }}
+              >
+                <Ic.Map /> {t("openInMaps")}
+              </a>
               <Lbl style={{ marginTop: 18, display: "block" }}>
                 {t("delivery")}
               </Lbl>
@@ -1546,6 +1758,15 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
               >
                 {job.endStreet} · {job.endPlz} {job.endCity}
               </div>
+              <a
+                href={deliveryMaps}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn xs"
+                style={{ marginTop: 8, display: "inline-flex" }}
+              >
+                <Ic.Map /> {t("openInMaps")}
+              </a>
             </div>
           </div>
         </div>
@@ -1670,7 +1891,7 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
           </button>
         </div>
 
-        <JobInvoiceUpload job={job} />
+        <JobTourDocuments job={job} />
 
         <hr className="dash" style={{ margin: "20px 0" }} />
 
@@ -1703,7 +1924,7 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
           }}
         >
           <div>
-            <Lbl>{t("payout")}</Lbl>
+            <Lbl>{t("partnerOffer")}</Lbl>
             <div
               className="mono"
               style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}
@@ -1715,26 +1936,12 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
             style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em" }}
             className="tnum"
           >
-            € {job.price.toFixed(2)}
+            € {fmtPartnerOffer(job).toFixed(2)}
           </div>
         </div>
 
-        <div
-          className="dash-area"
-          style={{
-            marginTop: 18,
-            fontFamily: "var(--font-mono)",
-            fontSize: 11,
-            color: "var(--muted)",
-          }}
-        >
-          {t("returnDeadlineNote", {
-            deadline: deadlineStr,
-            closed: deadlinePassed ? t("closedSuffix") : "",
-          })}
-        </div>
       </div>
-      {!isCompleted && job.status !== "cancelled" && (
+      {!isPerformed && !isCancelled && !isSpecialCase && (
         <div
           style={{
             padding: "12px 16px 18px",
@@ -1745,25 +1952,16 @@ const JobUnlocked = ({ job, onBack, onReturn, onComplete }) => {
             background: "var(--paper)",
           }}
         >
-          <button
-            type="button"
-            className="btn"
-            onClick={onReturn}
-            disabled={returnBlocked}
-          >
-            {job.status === "return_requested"
-              ? t("awaitingDispatch")
-              : deadlinePassed
-                ? t("returnWindowClosed")
-                : t("returnReportIssue")}
+          <button type="button" className="btn" onClick={onReport}>
+            {t("reportProblem")}
           </button>
           <button
             type="button"
             className="btn primary"
-            onClick={onComplete}
-            disabled={!canComplete}
+            onClick={onMarkPerformed}
+            disabled={!canPerform}
           >
-            {t("markCompleted")}
+            {t("markPerformed")}
           </button>
         </div>
       )}
@@ -1780,21 +1978,35 @@ const MyJobs = ({ onOpen }) => {
   const store = useAuthStore();
   const mine = store.getJobs().filter((j) => store.isMineJob(j));
   const active = mine.filter((j) =>
-    ["assigned", "accepted", "return_requested"].includes(j.status),
+    ["assigned", "accepted"].includes(j.status),
   );
-  const done = mine.filter((j) => j.status === "completed");
+  const performed = mine.filter((j) => j.status === "performed");
   const cancelled = mine.filter((j) => j.status === "cancelled");
-  const list = tab === "active" ? active : tab === "done" ? done : cancelled;
+  const special = mine.filter((j) => j.status === "special_case");
+  const list =
+    tab === "active"
+      ? active
+      : tab === "performed"
+        ? performed
+        : tab === "cancelled"
+          ? cancelled
+          : special;
 
   const pillFor = (job) => {
-    if (job.status === "return_requested")
-      return <Pill status="return_requested">{t("returnShort")}</Pill>;
+    if (job.status === "special_case")
+      return (
+        <Pill status="special_case">
+          {AuthStore.statusLabel("special_case")}
+        </Pill>
+      );
     if (job.status === "assigned")
       return <Pill status="assigned">{t("assignedShort")}</Pill>;
     if (job.status === "accepted")
       return <Pill status="accepted">{t("active")}</Pill>;
-    if (job.status === "completed")
-      return <Pill status="completed">{t("completed")}</Pill>;
+    if (job.status === "performed")
+      return (
+        <Pill status="performed">{AuthStore.statusLabel("performed")}</Pill>
+      );
     if (job.status === "cancelled")
       return <Pill status="cancelled">{t("cancelled")}</Pill>;
     return <Pill status="draft">{AuthStore.statusLabel(job.status)}</Pill>;
@@ -1818,8 +2030,9 @@ const MyJobs = ({ onOpen }) => {
         <div className="tabs">
           {[
             ["active", t("active"), active.length],
-            ["done", t("completed"), done.length],
-            ["cxl", t("cancelled"), cancelled.length],
+            ["performed", t("performedTab"), performed.length],
+            ["cancelled", t("cancelled"), cancelled.length],
+            ["special", t("specialCaseTab"), special.length],
           ].map(([id, lbl, n]) => (
             <button
               key={id}
@@ -1853,9 +2066,24 @@ const MyJobs = ({ onOpen }) => {
                 justifyContent: "space-between",
                 alignItems: "center",
                 marginBottom: 12,
+                gap: 8,
+                flexWrap: "wrap",
               }}
             >
-              {pillFor(job)}
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {pillFor(job)}
+                {jobNeedsDocCorrection(job, store) ? (
+                  <span
+                    className="chip mono"
+                    style={{
+                      borderColor: "var(--st-cancelled)",
+                      color: "var(--st-cancelled)",
+                    }}
+                  >
+                    {t("correctionRequiredBadge")}
+                  </span>
+                ) : null}
+              </div>
               <span className="label">#{job.tour}</span>
             </div>
             <div
@@ -1870,7 +2098,7 @@ const MyJobs = ({ onOpen }) => {
                 style={{ textAlign: "right", fontSize: 19, fontWeight: 700 }}
                 className="tnum"
               >
-                € {job.price.toFixed(2)}
+                € {fmtPartnerOffer(job).toFixed(2)}
               </div>
             </div>
             <hr className="dash" style={{ margin: "12px 0 8px" }} />
@@ -1893,138 +2121,234 @@ const MyJobs = ({ onOpen }) => {
 };
 
 // =========================================================================
-// RETURN / PROBLEM SHEET
+// REPORT PROBLEM SHEET
 // =========================================================================
-const ReturnSheet = ({ job, onClose, onSubmit }) => {
-  const { t, locale } = useI18n();
-  const [reason, setReason] = useState("return");
+const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
+  const { t } = useI18n();
+  const [path, setPath] = useState(null);
+  const [reason, setReason] = useState("other");
   const [text, setText] = useState("");
+  const [slidePos, setSlidePos] = useState(0);
+  const [slideDone, setSlideDone] = useState(false);
+  const trackRef = useRef(null);
   const valid = text.trim().length >= 10;
-  const dl = AuthStore.returnDeadline(job);
-  const dlStr = dl
-    ? dl.toLocaleString(locale === "de" ? "de-DE" : "en-GB", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "—";
-  const closed = AuthStore.isReturnDeadlinePassed(job);
+
+  const pathOptions = [
+    ["cancel", t("reportProblemCancelTitle"), t("reportProblemCancelSub")],
+    [
+      "not_performable",
+      t("reportProblemNotPerformableTitle"),
+      t("reportProblemNotPerformableSub"),
+    ],
+  ];
+  const cancelReasons = [
+    ["customer_cancelled", t("reportCancelCustomer"), t("reportCancelCustomerSub")],
+    ["cannot_complete", t("reportCancelCannotComplete"), t("reportCancelCannotCompleteSub")],
+    ["other", t("reportCancelOther"), t("reportCancelOtherSub")],
+  ];
+  const notPerformableReasons = [
+    ["vehicle_not_on_site", t("problemReasonNotOnSite"), t("problemReasonNotOnSiteSub")],
+    ["vehicle_not_roadworthy", t("problemReasonNotRoadworthy"), t("problemReasonNotRoadworthySub")],
+    ["contact_unreachable", t("problemReasonNoContact"), t("problemReasonNoContactSub")],
+    ["wrong_address", t("problemReasonWrongAddress"), t("problemReasonWrongAddressSub")],
+    ["other", t("problemReasonOther"), t("problemReasonOtherSub")],
+  ];
+  const reasonList = path === "cancel" ? cancelReasons : notPerformableReasons;
+
+  const onSlideStart = (e) => {
+    e.preventDefault();
+    if (slideDone || !valid) return;
+    const startX = e.touches ? e.touches[0].clientX : e.clientX;
+    const startPos = slidePos;
+    const move = (ev) => {
+      const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const rect = trackRef.current.getBoundingClientRect();
+      const dx = Math.max(
+        0,
+        Math.min(rect.width - 92, startPos + (cx - startX)),
+      );
+      setSlidePos(dx);
+      if (dx >= rect.width - 100) {
+        setSlideDone(true);
+        cleanup();
+        setTimeout(() => onSubmit("cancel", reason, text.trim()), 380);
+      }
+    };
+    const up = () => {
+      cleanup();
+      if (!slideDone) setSlidePos(0);
+    };
+    const cleanup = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      window.removeEventListener("touchmove", move);
+      window.removeEventListener("touchend", up);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    window.addEventListener("touchmove", move, { passive: false });
+    window.addEventListener("touchend", up);
+  };
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="grabber"></div>
         <div className="sheet-head">
-          <h2>{t("returnEscalate")}</h2>
+          <h2>{t("reportProblem")}</h2>
           <button type="button" onClick={onClose} className="btn icon sm">
             <Ic.X />
           </button>
         </div>
         <div className="sheet-body">
-          <div
-            className="mono"
-            style={{
-              fontSize: 11,
-              color: closed ? "var(--st-cancelled)" : "var(--muted)",
-              marginBottom: 12,
-            }}
-          >
-            {t("cutoffBeforeJob", {
-              deadline: dlStr,
-              closed: closed ? t("closedSuffix") : "",
-            })}
-          </div>
-          <div className="field-label">{t("reason")}</div>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              marginBottom: 18,
-            }}
-          >
-            {[
-              ["return", t("returnReasonFormal"), t("returnReasonFormalSub")],
-              [
-                "pickup",
-                t("returnReasonPickupBlocked"),
-                t("returnReasonPickupBlockedSub"),
-              ],
-              [
-                "accident",
-                t("returnReasonIncident"),
-                t("returnReasonIncidentSub"),
-              ],
-            ].map(([id, label, sub]) => (
-              <div
-                key={id}
-                role="button"
-                tabIndex={0}
-                className={
-                  "radio-card " +
-                  (reason === id ? "on" : "") +
-                  (closed ? "" : "")
-                }
-                style={{ opacity: closed ? 0.5 : 1 }}
-                onClick={() => !closed && setReason(id)}
-              >
-                <span className="ring"></span>
-                <div>
-                  <div className="t">{label}</div>
-                  <div className="s">{sub}</div>
+          {!path ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {pathOptions.map(([id, label, sub]) => (
+                <div
+                  key={id}
+                  role="button"
+                  tabIndex={0}
+                  className="radio-card"
+                  onClick={() => {
+                    setPath(id);
+                    setReason(id === "cancel" ? "customer_cancelled" : "other");
+                    setText("");
+                    setSlidePos(0);
+                    setSlideDone(false);
+                  }}
+                >
+                  <span className="ring"></span>
+                  <div>
+                    <div className="t">{label}</div>
+                    <div className="s">{sub}</div>
+                  </div>
                 </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn ghost xs"
+                style={{ marginBottom: 12, padding: 0 }}
+                onClick={() => {
+                  setPath(null);
+                  setSlidePos(0);
+                  setSlideDone(false);
+                }}
+              >
+                {t("back")}
+              </button>
+              <div className="field-label">{t("reason")}</div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                  marginBottom: 18,
+                }}
+              >
+                {reasonList.map(([id, label, sub]) => (
+                  <div
+                    key={id}
+                    role="button"
+                    tabIndex={0}
+                    className={"radio-card " + (reason === id ? "on" : "")}
+                    onClick={() => setReason(id)}
+                  >
+                    <span className="ring"></span>
+                    <div>
+                      <div className="t">{label}</div>
+                      <div className="s">{sub}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="field-label">{t("explanationRequired")}</div>
-          <textarea
-            className="input"
-            placeholder={t("returnPlaceholder")}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            disabled={closed}
-          />
-          <div className="label" style={{ marginTop: 6 }}>
-            {t("charsRequired")}{" "}
-            <span style={{ color: "var(--muted-2)", marginLeft: 8 }}>
-              {text.length}/10
-            </span>
-          </div>
-          <hr className="dash" style={{ margin: "16px 0" }} />
-          <div
-            className="mono"
-            style={{
-              fontSize: 11,
-              color: "var(--muted)",
-              lineHeight: 1.6,
-              letterSpacing: 0.04,
-            }}
-          >
-            {t("returnSubmissionNotice")}
-          </div>
+              <div className="field-label">{t("explanationRequired")}</div>
+              <textarea
+                className="input"
+                placeholder={t("reportProblemPlaceholder")}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+              />
+              <div className="label" style={{ marginTop: 6 }}>
+                {t("charsRequired")}{" "}
+                <span style={{ color: "var(--muted-2)", marginLeft: 8 }}>
+                  {text.length}/10
+                </span>
+              </div>
+              {path === "cancel" ? (
+                <div style={{ marginTop: 16 }}>
+                  <div
+                    ref={trackRef}
+                    className={"slide-confirm " + (slideDone ? "done" : "")}
+                  >
+                    <div className="track-text">
+                      {slideDone
+                        ? t("reportProblemCancelConfirmed")
+                        : t("slideToCancelOrder")}
+                    </div>
+                    <div
+                      className="thumb"
+                      style={{ width: slideDone ? "100%" : 92 + slidePos }}
+                      onMouseDown={onSlideStart}
+                      onTouchStart={onSlideStart}
+                    >
+                      {!slideDone && "›››"}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p
+                  style={{
+                    margin: "14px 0 0",
+                    fontSize: 12,
+                    color: "var(--muted)",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {t("reportProblemSpecialCaseNotice")}
+                </p>
+              )}
+            </>
+          )}
         </div>
-        <div className="sheet-foot">
-          <button type="button" className="btn" onClick={onClose}>
-            {t("close")}
-          </button>
-          <button
-            type="button"
-            className="btn primary"
-            disabled={!valid || closed}
-            onClick={() => onSubmit(reason, text)}
-          >
-            {t("submit")}
-          </button>
-        </div>
+        {path === "not_performable" ? (
+          <div className="sheet-foot">
+            <button type="button" className="btn" onClick={onClose}>
+              {t("close")}
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              disabled={!valid}
+              onClick={() => onSubmit("not_performable", reason, text.trim())}
+            >
+              {t("submit")}
+            </button>
+          </div>
+        ) : path ? (
+          <div className="sheet-foot">
+            <button type="button" className="btn block" onClick={onClose}>
+              {t("close")}
+            </button>
+          </div>
+        ) : (
+          <div className="sheet-foot">
+            <button type="button" className="btn block" onClick={onClose}>
+              {t("cancel")}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-const PendingNotice = ({ onClose }) => {
+const ReturnSheet = ReportProblemSheet;
+
+const PendingNotice = ({ onClose, kind }) => {
   const { t } = useI18n();
+  const isCancel = kind === "cancel";
   return (
     <div className="sheet-backdrop center" onClick={onClose}>
       <div
@@ -2071,11 +2395,9 @@ const PendingNotice = ({ onClose }) => {
             lineHeight: 1.55,
           }}
         >
-          {t("returnSentStatus")}{" "}
-          <strong style={{ color: "var(--text)" }}>
-            {t("returnRequested")}
-          </strong>
-          . {t("dispatchWillFollowUp")}
+          {isCancel
+            ? t("reportProblemCancelSent")
+            : t("reportProblemSpecialCaseSent")}
         </p>
         <button
           type="button"
@@ -2350,54 +2672,176 @@ const ProfilePaneFull = () => {
   );
 };
 
-const InfoPaneFull = () => {
+const Infopoint = () => {
   const { t } = useI18n();
   const store = useAuthStore();
+  const [subTab, setSubTab] = useState("documents");
+  const [openNewsId, setOpenNewsId] = useState(null);
+  const readerId = store.getCurrentDriver()?.id || AuthStore.DEMO_DRIVER;
   const docs = store.getDocuments().filter((d) => d.visible);
+  const news = store.getNews();
+  const unreadCount = news.filter((n) => !n.readBy.includes(readerId)).length;
+
+  const openNews = (item) => {
+    store.markNewsRead(item.id, readerId);
+    setOpenNewsId((cur) => (cur === item.id ? null : item.id));
+  };
+
   return (
     <div className="scroll" style={{ padding: "10px 22px" }}>
       <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
-        {t("infoTitle")}
+        {t("infopoint")}
       </h1>
-      {docs.map((d) => (
-        <div
-          key={d.id}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "16px 0",
-            borderBottom: "1px solid var(--line)",
-            cursor: "pointer",
-          }}
-        >
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>
-              {displayDocTitle(d, t)}
-            </div>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>
-              {displayDocCategory(d.category, t)} ·{" "}
-              {displayDocScope(d.scope, t)} · {d.version}
-            </div>
-          </div>
-          <Ic.Chev />
-        </div>
-      ))}
-      <div
-        className="dash-area"
-        style={{
-          marginTop: 16,
-          fontFamily: "var(--font-sans)",
-          fontSize: 12,
-          letterSpacing: 0,
-          textTransform: "none",
-        }}
-      >
-        {t("emergencyDispatchNotice")}
+      <div className="label" style={{ marginTop: 4 }}>
+        {store.getAppDisplayName()}
       </div>
+      <div className="tabs" style={{ marginTop: 16 }}>
+        {[
+          ["documents", t("documentsTitle")],
+          ["news", t("infopointNewsTab"), unreadCount],
+        ].map(([id, lbl, n]) => (
+          <button
+            key={id}
+            type="button"
+            className={subTab === id ? "on" : ""}
+            style={{ cursor: "pointer" }}
+            onClick={() => setSubTab(id)}
+          >
+            {lbl}
+            {id === "news" && n > 0 ? (
+              <span className="count"> ({n})</span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+      {subTab === "documents" ? (
+        <>
+          {docs.map((d) => (
+            <div
+              key={d.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "16px 0",
+                borderBottom: "1px solid var(--line)",
+                cursor: "pointer",
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>
+                  {displayDocTitle(d, t)}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                  {displayDocCategory(d.category, t)} ·{" "}
+                  {displayDocScope(d.scope, t)} · {d.version}
+                </div>
+              </div>
+              <Ic.Chev />
+            </div>
+          ))}
+          <div
+            className="dash-area"
+            style={{
+              marginTop: 16,
+              fontFamily: "var(--font-sans)",
+              fontSize: 12,
+              letterSpacing: 0,
+              textTransform: "none",
+            }}
+          >
+            {t("emergencyDispatchNotice")}
+          </div>
+        </>
+      ) : (
+        <>
+          {news.length === 0 ? (
+            <div
+              className="dash-area"
+              style={{ marginTop: 16, padding: 20, textAlign: "center" }}
+            >
+              {t("infopointNewsEmpty")}
+            </div>
+          ) : (
+            news.map((n) => {
+              const unread = !n.readBy.includes(readerId);
+              const expanded = openNewsId === n.id;
+              return (
+                <div
+                  key={n.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openNews(n)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openNews(n);
+                    }
+                  }}
+                  style={{
+                    padding: "16px 0",
+                    borderBottom: "1px solid var(--line)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <div style={{ fontWeight: unread ? 700 : 600, fontSize: 14 }}>
+                      {n.title}
+                    </div>
+                    {unread ? (
+                      <span
+                        className="chip mono"
+                        style={{
+                          borderColor: "var(--primary)",
+                          color: "var(--primary)",
+                        }}
+                      >
+                        {t("infopointNewsUnread")}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div
+                    className="mono"
+                    style={{
+                      fontSize: 11,
+                      color: "var(--muted)",
+                      marginTop: 6,
+                    }}
+                  >
+                    {n.publishedAt}
+                  </div>
+                  <p
+                    style={{
+                      margin: "8px 0 0",
+                      fontSize: 13,
+                      color: "var(--muted)",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {expanded
+                      ? n.body
+                      : `${(n.body || "").slice(0, 120)}${
+                          (n.body || "").length > 120 ? "…" : ""
+                        }`}
+                  </p>
+                </div>
+              );
+            })
+          )}
+        </>
+      )}
     </div>
   );
 };
+
+const InfoPaneFull = Infopoint;
 
 // expose
 Object.assign(window, {
@@ -2413,12 +2857,15 @@ Object.assign(window, {
   JobLocked,
   AcceptanceModal,
   JobUnlocked,
+  JobTourDocuments,
   JobInvoiceUpload,
   MyJobs,
+  ReportProblemSheet,
   ReturnSheet,
   PendingNotice,
   ProfilePane,
   InfoPane,
   ProfilePaneFull,
+  Infopoint,
   InfoPaneFull,
 });

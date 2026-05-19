@@ -11,7 +11,7 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231E40AF'/%3E%3Cpath d='M16 6 26 26H6Z' fill='white'/%3E%3C/svg%3E"
     />
-    <title>AUTHEON — Vehicle Transport Platform</title>
+    <title>Transport Portal — Vehicle Transport Platform</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -61,14 +61,14 @@
         const [activeJob, setActiveJob] = useState(null); // {id, mode}
         const [acceptModal, setAcceptModal] = useState(null);
         const [returnSheet, setReturnSheet] = useState(null);
-        const [pendingNotice, setPendingNotice] = useState(false);
+        const [pendingNotice, setPendingNotice] = useState(null);
         const [banner, setBanner] = useState(null);
 
         const handleOpenJob = (j) => {
           const portalLocked =
             j.status === "published" &&
             !store.isAccepted(j.id) &&
-            !store.isCompleted(j.id);
+            !store.isPerformed(j.id);
           const mode = portalLocked ? "locked" : "unlocked";
           setActiveJob({ id: j.id, mode });
         };
@@ -91,9 +91,9 @@
               <JobUnlocked
                 job={job}
                 onBack={back}
-                onReturn={() => setReturnSheet(job)}
-                onComplete={() => {
-                  const r = store.completeJob(job.id);
+                onReportProblem={() => setReturnSheet(job)}
+                onPerform={() => {
+                  const r = store.markPerformed(job.id);
                   if (!r.ok) setBanner(t("completionBlocked"));
                   else setActiveJob({ id: job.id, mode: "unlocked" });
                 }}
@@ -116,7 +116,7 @@
             />
           );
         } else if (tab === "info") {
-          body = <InfoPaneFull />;
+          body = <Infopoint />;
         } else {
           body = <ProfilePaneFull />;
         }
@@ -181,23 +181,34 @@
                   />
                 )}
                 {returnSheet && (
-                  <ReturnSheet
+                  <ReportProblemSheet
                     job={returnSheet}
                     onClose={() => setReturnSheet(null)}
-                    onSubmit={(reason, msg) => {
-                      const r = store.submitReturn(returnSheet.id, reason, msg);
+                    onSubmit={(path, reason, msg) => {
+                      const r =
+                        path === "cancel"
+                          ? store.reportProblemCancel(
+                              returnSheet.id,
+                              reason,
+                              msg,
+                            )
+                          : store.reportProblemNotPerformable(
+                              returnSheet.id,
+                              reason,
+                              msg,
+                            );
                       setReturnSheet(null);
-                      if (!r.ok && r.reason === "deadline") {
-                        setBanner(t("returnDeadlineBlocked"));
-                        return;
-                      }
                       if (!r.ok) return;
-                      setPendingNotice(true);
+                      setPendingNotice(path);
+                      setActiveJob({ id: returnSheet.id, mode: "unlocked" });
                     }}
                   />
                 )}
                 {pendingNotice && (
-                  <PendingNotice onClose={() => setPendingNotice(false)} />
+                  <PendingNotice
+                    kind={pendingNotice}
+                    onClose={() => setPendingNotice(null)}
+                  />
                 )}
               </div>
             </div>
@@ -221,6 +232,10 @@
 
         const clearBillingNav = () => setBillingNav(null);
         const openFinancesForJob = (jobId) => {
+          if (!store.getFeatureFlag("financeModule")) {
+            showToast(t("adminFinanceModuleOff"), "");
+            return;
+          }
           setBillingNav({ jobId, openFinEdit: true });
           setSection("finance");
         };
@@ -293,7 +308,7 @@
                     showToast(t("exportGenerated"), t("exportGeneratedSub"));
                   }}
                 >
-                  <Ic.Down /> Export CSV / XLSX
+                  <Ic.Down /> {t("exportCsvBtn")}
                 </button>
                 <button
                   type="button"
@@ -350,14 +365,13 @@
               onEdit={() => setSection("new")}
               onEditFinances={() => openFinancesForJob(fresh.id)}
               onOpenPartnerInvoices={() => openPartnerInvoicesForJob(fresh.id)}
+              showToast={showToast}
             />
           );
         } else if (section === "new") {
           body = (
             <NewOrder
               onCancel={onBack}
-              onSaveDraft={() => {}}
-              onPublish={() => {}}
               onFormChange={(f, v) => {
                 setNewOrderForm(f);
                 setNewOrderValid(v);
@@ -366,8 +380,10 @@
           );
         } else if (section === "users") {
           body = <UsersPane showToast={showToast} />;
-        } else if (section === "customers") {
-          body = <CustomersPane showToast={showToast} />;
+        } else if (section === "orderingparties" || section === "customers") {
+          body = <OrderingPartiesPane showToast={showToast} />;
+        } else if (section === "addresses") {
+          body = <AddressesPane showToast={showToast} />;
         } else if (section === "documents") {
           body = <DocumentsPane showToast={showToast} />;
         } else if (section === "invoices") {
@@ -386,7 +402,10 @@
               }}
             />
           );
-        } else if (section === "finance") {
+        } else if (
+          section === "finance" &&
+          store.getFeatureFlag("financeModule")
+        ) {
           body = (
             <FinancePane
               showToast={showToast}
@@ -404,6 +423,11 @@
           const stubTitles = {
             users: [t("navUsers"), t("usersDesc")],
             customers: [t("navCustomers"), t("customersDesc")],
+            orderingparties: [
+              t("navOrderingParties") || "Ordering parties",
+              t("customersDesc"),
+            ],
+            addresses: [t("navAddresses") || "Addresses", t("fullAddresses")],
             documents: [t("navDocuments"), t("documentsDesc")],
             invoices: [t("navPartnerInvoices"), t("partnerInvoicesDesc")],
             finance: [t("navFinance"), t("financeDesc")],
@@ -582,6 +606,7 @@
       // SHELL
       // =====================================================================
       function App() {
+        const store = useAuthStore();
         const [view, setView] = useState("driver"); // driver | admin
         const [theme, setTheme] = useState(
           localStorage.getItem("autheon-theme") || "light",
@@ -598,7 +623,7 @@
             <header className="app-header">
               <div className="brand">
                 <span className="mark"></span>
-                <span>AUTHEON</span>
+                <span>{store.getAppDisplayName()}</span>
                 <span style={{ opacity: 0.45, marginLeft: 6, fontWeight: 400 }}>
                   · {t("appTitle")}
                 </span>

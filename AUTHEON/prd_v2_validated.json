@@ -44,8 +44,7 @@
     "Publishing (demo): admin revert Published to Draft; publish and direct assign from Draft only.",
     "Status model (demo): operational statuses draft, published, accepted, assigned, performed, cancelled, special_case only — no return_requested or completed.",
     "Branding (demo): configurable display name default Transport Portal; AUTHEON not shown in UI chrome.",
-    "i18n: EN/DE for UI strings; audit log action keys in English.",
-    "Money fields (demo): driverCompensation = partner offer (New Job + driver PWA); revenue/grossAmount/netAmount = customer side (Finance); no legacy job.price field."
+    "i18n: EN/DE for UI strings; audit log action keys in English."
   ],
   "prototype_validation": {
     "last_synced": "2026-05-19",
@@ -103,12 +102,9 @@
       "license plate",
       "VIN",
       "axle type: driven on own wheels / third-party axle",
-      "driverCompensation (partner offer for service partner / driver PWA)",
-      "revenue (customer-side, typically Finance)",
-      "grossAmount",
-      "netAmount",
-      "vatRate",
-      "expenses",
+      "price/revenue if operationally needed",
+      "driver compensation if operationally needed",
+      "expenses if operationally needed",
       "internal notes",
       "driver-visible notes",
       "generated PDF reference",
@@ -228,7 +224,7 @@
     "Admin may revert Published → Draft directly. This removes the job from the marketplace and enables edit, re-publish, or direct assignment.",
     "Driver acceptance must be atomic. Only one driver can successfully accept a Published job.",
     "After acceptance or direct assignment, sensitive job details become visible only to the assigned or accepting driver.",
-    "Before acceptance, marketplace previews show only reduced data such as rough pickup/delivery region, distance, relevant dates/time windows, vehicle type, axle type, and partner offer (driverCompensation) where applicable.",
+    "Before acceptance, marketplace previews show only reduced data such as rough pickup/delivery region, distance, relevant dates/time windows, vehicle type, axle type, and compensation/price where applicable.",
     "Directly assigned jobs appear in the assigned driver's My Jobs area and do not appear in the marketplace.",
     "Assigned jobs cannot be rejected directly by the driver.",
     "After acceptance, a service partner cannot casually return a tour. The service partner must use Report Problem.",
@@ -360,7 +356,7 @@
       "priority": 5,
       "story": "As an admin, I want to create and save orders as drafts with structured sections for ordering party, pickup, delivery, time windows, vehicle data, distance, and notes.",
       "acceptance": [
-        "Creation form includes clear sections: Ordering Party, Pickup Location, Delivery Location, Pickup Time Window, Delivery Time Window, Vehicle, Distance, Partner offer (driverCompensation) when in scope, Driver Notes, and Internal Notes.",
+        "Creation form includes clear sections: Ordering Party, Pickup Location, Delivery Location, Pickup Time Window, Delivery Time Window, Vehicle, Distance, Compensation/Price inputs if in scope, Driver Notes, and Internal Notes.",
         "Ordering party is required for reporting and billing context.",
         "Pickup and delivery locations are independent sections and can be selected from shared address master data or entered freely.",
         "Pickup and delivery each have separate date, time window from, and time window to fields.",
@@ -413,7 +409,7 @@
       "story": "As a service partner, I want to browse available published jobs with filters and refresh behavior so I can find relevant transports.",
       "acceptance": [
         "Marketplace displays only jobs with status Published.",
-        "Job cards show reduced data: rough pickup region/postal code, rough delivery region/postal code, distance, relevant date/time window, vehicle type, axle type, and partner offer (driverCompensation) where applicable.",
+        "Job cards show reduced data: rough pickup region/postal code, rough delivery region/postal code, distance, relevant date/time window, vehicle type, axle type, and price/compensation where applicable.",
         "Before acceptance, full addresses, contact persons, phone numbers, VIN, license plate, internal notes, and sensitive instructions are not returned to the driver client.",
         "Filters include postal code or location, date or date range, vehicle type, and driven on own wheels versus third-party axle where applicable.",
         "German postal code prefix filtering supports at least one-digit and two-digit prefix filters such as 4, 40, or 41.",
@@ -440,7 +436,7 @@
       "priority": 8,
       "story": "As a service partner, I want job details to show safe information before acceptance and full operational information plus navigation after commitment.",
       "acceptance": [
-        "Before acceptance, visible fields are limited to route summary, distance, relevant time windows, vehicle type, axle type, and partner offer (driverCompensation) where applicable.",
+        "Before acceptance, visible fields are limited to route summary, distance, relevant time windows, vehicle type, axle type, and price/compensation where applicable.",
         "Before acceptance, ordering party, full addresses, contacts, phone numbers, VIN, license plate, internal notes, and sensitive instructions are hidden.",
         "Locked section clearly explains that details unlock after acceptance.",
         "After acceptance or direct assignment, assigned service partner can see full pickup and delivery addresses, contacts, phone numbers, vehicle identifiers, notes, ordering party context, and permitted PDF.",
@@ -492,7 +488,7 @@
         "Cancelled jobs are either shown in a separate tab or clearly labelled historical section if required by final UX.",
         "Special Case jobs remain visible to the assigned service partner with clear status and next-step messaging until admin resolves them.",
         "Jobs requiring document correction are visibly marked in My Jobs or a correction queue.",
-        "Each job card shows route summary, date/time, vehicle type, partner offer (driverCompensation) where applicable, and status badge.",
+        "Each job card shows route summary, date/time, vehicle type, price/compensation where applicable, and status badge.",
         "Service partner sees only own assigned, accepted, performed, cancelled, or special-case jobs."
       ],
       "status": "pending",
@@ -747,7 +743,7 @@
       "priority": 21,
       "story": "As an admin, I want only the basic operational financial fields needed for dispatch and partner invoice handling while full finance dashboards remain out of Version 1 unless confirmed.",
       "acceptance": [
-        "Basic job financial fields may include revenue (customer), driverCompensation (partner offer), expenses, invoice received marker, invoice type, invoice number, payment status, and notes only where operationally useful.",
+        "Basic job financial fields may include revenue/price, driver compensation, expenses, invoice received marker, invoice type, invoice number, payment status, and notes only where operationally useful.",
         "Full Finance dashboard and advanced finance analytics are not validated for base Version 1 and should be future scope or needs clarification.",
         "Partner invoice workflow remains separate from a full Finance dashboard.",
         "Job detail may show a read-only financial snapshot if useful, but primary document/invoice actions belong to Partner Invoices/Documents if included.",

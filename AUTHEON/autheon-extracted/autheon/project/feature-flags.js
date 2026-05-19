@@ -1,5 +1,10 @@
-// AUTHEON — Feature flags.
-// Defaults only — the store owns live state; admin can toggle at runtime.
+// Prototype runtime config — store owns live state; admin can change at runtime.
+window.AUTHEON_BRANDING_DEFAULTS = {
+  appDisplayName: "Transport Portal",
+};
+
 window.AUTHEON_FLAG_DEFAULTS = {
-  notificationPreferences: false, // per-driver push + email preferences in profile
+  documentsModule: true,
+  financeModule: false,
+  notificationPreferences: true,
 };

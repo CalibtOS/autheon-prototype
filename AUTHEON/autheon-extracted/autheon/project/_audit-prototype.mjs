@@ -1,5 +1,5 @@
 /**
- * Prototype audit: i18n parity (en/de top-level keys) and t("key") references.
+ * Prototype audit: i18n parity, t() keys, PRD v1.5 forbidden legacy strings.
  */
 import fs from "fs";
 import path from "path";
@@ -68,16 +68,80 @@ if (missingFromEn.length) {
 
 const store = file("store.js");
 const critical = [
-  "addPartnerInvoiceRecordAdmin",
-  "updateInvoiceUpload",
-  "downloadInvoicePlaceholder",
+  "reportProblemCancel",
+  "reportProblemNotPerformable",
+  "resolveSpecialCase",
+  "markPerformed",
+  "getTourDocuments",
+  "registerTourDocumentAdmin",
+  "getOrderingParties",
+  "getAddresses",
+  "getAppDisplayName",
+  "setAppDisplayName",
+  "getBranding",
+  "reloadDemo",
   "updateFinancial",
-  "getInvoiceUploads",
-  "getJobs",
-  "getDrivers",
 ];
 const miss = critical.filter((c) => !store.includes(c));
 if (miss.length) {
-  out(`store.js missing strings: ${miss.join(", ")}`);
+  out(`store.js missing APIs: ${miss.join(", ")}`);
   process.exitCode = 1;
-} else out("store.js critical API strings: present");
+} else out("store.js PRD v1.5 APIs: present");
+
+const forbidden = [
+  "return_requested",
+  "submitReturn",
+  "approveReturn",
+  "completeJob",
+  "getCustomers",
+  "getInvoiceUploads",
+];
+const scanFiles = ["store.js", "driver.jsx", "admin.jsx", "AUTHEON Prototype.html"];
+for (const f of scanFiles) {
+  const s = file(f);
+  for (const bad of forbidden) {
+    if (s.includes(bad)) {
+      out(`FORBIDDEN "${bad}" found in ${f}`);
+      process.exitCode = 1;
+    }
+  }
+}
+if (!process.exitCode) out("Forbidden v1.4 API strings: none");
+
+const driver = file("driver.jsx");
+const requiredDocTypes = [
+  "invoice",
+  "fuel_receipt",
+  "toll_receipt",
+  "delivery_note",
+  "waiting_time_evidence",
+  "other_proof",
+  "other_receipt",
+];
+const missingDocTypes = requiredDocTypes.filter(
+  (type) => !driver.includes(`"${type}"`),
+);
+if (missingDocTypes.length) {
+  out(`Driver upload missing PRD document types: ${missingDocTypes.join(", ")}`);
+  process.exitCode = 1;
+} else out("Driver upload PRD document types: present");
+
+const staleCopy = [
+  "Request return",
+  "Return requested",
+  "return window",
+  "return deadline",
+  "return rules",
+  "Mark completed",
+];
+const copyFiles = ["i18n.js", "driver.jsx", "admin.jsx", "AUTHEON Prototype.html"];
+for (const f of copyFiles) {
+  const s = file(f);
+  for (const bad of staleCopy) {
+    if (s.toLowerCase().includes(bad.toLowerCase())) {
+      out(`STALE v1.4 copy "${bad}" found in ${f}`);
+      process.exitCode = 1;
+    }
+  }
+}
+if (!process.exitCode) out("Stale v1.4 user-facing copy: none");

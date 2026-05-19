@@ -13,14 +13,21 @@ const AdminNav = ({ section, setSection }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const total = store.getJobs().length;
-  const invCount = store.getInvoiceUploads().length;
+  const invCount = store.getTourDocuments().length;
+  const financeOn = store.getFeatureFlag("financeModule");
   const items = [
     { id: "overview", label: t("navJobs"), count: total, I: Ic.N.Tour },
     { id: "new", label: t("navNewJob"), count: null, I: Ic.N.Plus },
     { id: "users", label: t("navUsers"), count: null, I: Ic.N.Users },
     {
-      id: "customers",
-      label: t("navCustomers"),
+      id: "orderingparties",
+      label: t("navOrderingParties") || "Ordering parties",
+      count: null,
+      I: Ic.N.Building,
+    },
+    {
+      id: "addresses",
+      label: t("navAddresses") || "Addresses",
       count: null,
       I: Ic.N.Building,
     },
@@ -31,7 +38,9 @@ const AdminNav = ({ section, setSection }) => {
       count: invCount,
       I: Ic.N.Doc,
     },
-    { id: "finance", label: t("navFinance"), count: null, I: Ic.N.Audit },
+    ...(financeOn
+      ? [{ id: "finance", label: t("navFinance"), count: null, I: Ic.N.Audit }]
+      : []),
     { id: "audit", label: t("navAuditLog"), count: null, I: Ic.N.Audit },
     { id: "features", label: t("navFeatures"), count: null, I: Ic.N.Settings },
   ];
@@ -40,7 +49,7 @@ const AdminNav = ({ section, setSection }) => {
       <div className="nav-head">
         <div className="nav-eyebrow">{t("adminConsole")}</div>
         <div className="nav-brand">
-          <span className="mark"></span> AUTHEON
+          <span className="mark"></span> {store.getAppDisplayName()}
         </div>
       </div>
       <div className="nav-list">
@@ -104,7 +113,6 @@ const Overview = ({ onOpen, freshId }) => {
   const store = useAuthStore();
   const [statusFilter, setStatusFilter] = useStateA(null); // null = all active
   const [search, setSearch] = useStateA("");
-  const [returnsOnly, setReturnsOnly] = useStateA(false);
   const [density, setDensity] = useStateA("comfort");
   const [filtersOpen, setFiltersOpen] = useStateA(false);
   const counts = store.countsByStatus();
@@ -112,7 +120,6 @@ const Overview = ({ onOpen, freshId }) => {
   const all = store.getJobs();
   const filtered = all.filter((j) => {
     if (statusFilter && j.status !== statusFilter) return false;
-    if (returnsOnly && !j.hasReturnRequest) return false;
     if (search) {
       const q = search.toLowerCase();
       if (
@@ -134,8 +141,8 @@ const Overview = ({ onOpen, freshId }) => {
     ["published", AuthStore.statusLabel("published")],
     ["assigned", AuthStore.statusLabel("assigned")],
     ["accepted", AuthStore.statusLabel("accepted")],
-    ["return_requested", t("returnRequested")],
-    ["completed", AuthStore.statusLabel("completed")],
+    ["special_case", AuthStore.statusLabel("special_case")],
+    ["performed", AuthStore.statusLabel("performed")],
     ["cancelled", AuthStore.statusLabel("cancelled")],
   ];
 
@@ -144,8 +151,8 @@ const Overview = ({ onOpen, freshId }) => {
     "published",
     "assigned",
     "accepted",
-    "return_requested",
-    "completed",
+    "special_case",
+    "performed",
     "cancelled",
   ];
 
@@ -236,13 +243,6 @@ const Overview = ({ onOpen, freshId }) => {
         ) : (
           <span className="chip">{t("statusAll")}</span>
         )}
-        <span
-          className={"chip " + (returnsOnly ? "on" : "")}
-          style={{ cursor: "pointer" }}
-          onClick={() => setReturnsOnly(!returnsOnly)}
-        >
-          {t("returnRequested")}
-        </span>
         <span style={{ flex: 1 }}></span>
         <div className="seg density-toggle" style={{ gridAutoFlow: "column" }}>
           <button
@@ -296,7 +296,6 @@ const Overview = ({ onOpen, freshId }) => {
             className="chip"
             onClick={() => {
               setStatusFilter(null);
-              setReturnsOnly(false);
               setSearch("");
             }}
           >
@@ -317,7 +316,7 @@ const Overview = ({ onOpen, freshId }) => {
               <th>{t("adminColVehicle")}</th>
               <th>{t("adminColDriver")}</th>
               <th>{t("adminColStatusHeader")}</th>
-              <th>{t("adminColReturn")}</th>
+              <th>{t("adminColDocuments") || "Documents"}</th>
             </tr>
           </thead>
           <tbody>
@@ -356,8 +355,10 @@ const Overview = ({ onOpen, freshId }) => {
                   <Pill status={j.status} />
                 </td>
                 <td>
-                  {j.hasReturnRequest ? (
-                    <Pill status="return_requested">{t("open")}</Pill>
+                  {j.documentReviewSummary ? (
+                    <span className="label" style={{ fontSize: 11 }}>
+                      {j.documentReviewSummary}
+                    </span>
                   ) : (
                     <span style={{ color: "var(--muted-2)" }}>—</span>
                   )}
@@ -484,7 +485,7 @@ const OverviewFooter = ({ filteredCount, totalCount }) => {
 const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
   const { t } = useI18n();
   const store = useAuthStore();
-  const linkedInvoices = store.getInvoiceUploadsForJob(job.id);
+  const linkedInvoices = store.getTourDocumentsForJob(job.id);
   const fmt = (n) =>
     n == null || n === "" ? "—" : `€ ${Number(n).toFixed(2)}`;
   const paymentLabel = (code) => {
@@ -498,7 +499,11 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
     return key ? t(key) : code || t("adminPaymentOptUnpaid");
   };
   const showPendingBanner =
-    linkedInvoices.length > 0 && !linkedInvoices.some((u) => u.processed);
+    linkedInvoices.length > 0 &&
+    linkedInvoices.some(
+      (u) =>
+        u.reviewStatus === "uploaded" || u.reviewStatus === "under_review",
+    );
   return (
     <section className="card" style={{ padding: 22 }}>
       <div className="sec-head">
@@ -517,13 +522,13 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
         }}
       >
         <div>
-          <div className="label">{t("financeRevenuePrice")}</div>
+          <div className="label">{t("financeCustomerRevenue")}</div>
           <div style={{ fontWeight: 700, marginTop: 6 }} className="tnum">
-            {fmt(job.revenue ?? job.price)}
+            {fmt(job.revenue)}
           </div>
         </div>
         <div>
-          <div className="label">{t("financeDriverComp")}</div>
+          <div className="label">{t("partnerOffer")}</div>
           <div style={{ fontWeight: 600, marginTop: 6 }} className="tnum">
             {fmt(job.driverCompensation)}
           </div>
@@ -545,7 +550,7 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
         <div>
           <div className="label">{t("financeGross")}</div>
           <div style={{ fontWeight: 700, marginTop: 6 }} className="tnum">
-            {fmt(job.grossAmount ?? job.price)}
+            {fmt(job.grossAmount)}
           </div>
         </div>
       </div>
@@ -553,10 +558,21 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
         <div>
           <div className="label">{t("adminFinanceSnapshotPayment")}</div>
           <Pill
-            status={job.paymentStatus === "Paid" ? "completed" : "assigned"}
+            status={job.paymentStatus === "Paid" ? "performed" : "assigned"}
             style={{ marginTop: 8 }}
           >
             {paymentLabel(job.paymentStatus)}
+          </Pill>
+        </div>
+        <div>
+          <div className="label">{t("invoiceReceived")}</div>
+          <Pill
+            status={job.invoiceReceived ? "accepted" : "assigned"}
+            style={{ marginTop: 8 }}
+          >
+            {job.invoiceReceived
+              ? t("adminSnapshotInvoiceYes")
+              : t("adminSnapshotInvoiceNo")}
           </Pill>
         </div>
         <div>
@@ -580,14 +596,20 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
             {linkedInvoices.map((u) => (
               <tr key={u.id}>
                 <td className="mono" style={{ fontSize: 12 }}>
-                  {u.invoiceId || "—"}
+                  {u.documentType || "—"}
                 </td>
                 <td style={{ fontSize: 13 }}>{u.fileName}</td>
                 <td>
-                  <Pill status={u.processed ? "accepted" : "assigned"}>
-                    {u.processed
-                      ? t("invoiceColProcessed")
-                      : t("adminInvoicePendingBadge")}
+                  <Pill
+                    status={
+                      u.reviewStatus === "accepted"
+                        ? "accepted"
+                        : u.reviewStatus === "rejected"
+                          ? "cancelled"
+                          : "assigned"
+                    }
+                  >
+                    {u.reviewStatus || "—"}
                   </Pill>
                 </td>
               </tr>
@@ -648,31 +670,46 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
   );
 };
 
-const ReturnDecisionPanel = ({ job }) => {
+const SPECIAL_CASE_STORE_DECISION = {
+  continue: "continue",
+  republish: "republish",
+  cancel: "cancel",
+  close: "close",
+};
+
+const SpecialCaseResolutionPanel = ({ job, showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
-  const [rejectNote, setRejectNote] = useStateA("");
-  if (job.status !== "return_requested") return null;
+  const [note, setNote] = useStateA("");
+  if (job.status !== "special_case") return null;
+  const report = job.specialCaseReport || {};
+  const resolve = (decision) => {
+    const mapped = SPECIAL_CASE_STORE_DECISION[decision] || decision;
+    const r = store.resolveSpecialCase(job.id, mapped, note.trim());
+    if (r && r.ok) {
+      showToast?.(
+        t("adminSpecialCaseResolved") || "Special case resolved",
+        AuthStore.statusLabel(store.getJob(job.id)?.status || decision),
+      );
+      setNote("");
+    } else {
+      showToast?.(
+        t("adminSpecialCaseResolveFailed") || "Could not resolve special case",
+      );
+    }
+  };
   return (
     <section className="card" style={{ padding: 22, borderColor: "#c4b5fd" }}>
       <div className="sec-head">
         <h3>
           <span className="num">07</span>
-          {t("returnRequested")}
+          {t("adminSpecialCaseTitle") || "Special case"}
         </h3>
-        <Pill status="return_requested" />
+        <Pill status="special_case" />
       </div>
       <p style={{ margin: "10px 0 0", fontSize: 13.5, lineHeight: 1.55 }}>
-        <strong>{job.driver}</strong> ·{" "}
-        {(() => {
-          const rr = job.returnReason;
-          const map = {
-            return: t("returnReasonFormal"),
-            pickup: t("returnReasonPickupBlocked"),
-            accident: t("returnReasonIncident"),
-          };
-          return rr ? map[rr] || rr : "—";
-        })()}
+        <strong>{job.driver || "—"}</strong>
+        {report.reason ? ` · ${report.reason}` : ""}
       </p>
       <div
         className="dash-area"
@@ -684,7 +721,7 @@ const ReturnDecisionPanel = ({ job }) => {
           textTransform: "none",
         }}
       >
-        {job.returnMessage || "—"}
+        {report.message || report.note || "—"}
       </div>
       <div
         style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}
@@ -692,33 +729,37 @@ const ReturnDecisionPanel = ({ job }) => {
         <button
           type="button"
           className="btn primary"
-          onClick={() => store.approveReturn(job.id)}
+          onClick={() => resolve("continue")}
         >
-          {t("returnApproveToStatus", {
-            status: AuthStore.statusLabel("draft"),
-          })}
+          {t("adminSpecialCaseContinue") || "Continue tour"}
+        </button>
+        <button type="button" className="btn" onClick={() => resolve("republish")}>
+          {t("adminSpecialCaseRepublish") || "Republish / draft"}
+        </button>
+        <button type="button" className="btn" onClick={() => resolve("close")}>
+          {t("adminSpecialCaseClose") || "Close"}
         </button>
         <button
           type="button"
-          className="btn"
-          onClick={() => store.rejectReturn(job.id, rejectNote)}
+          className="btn danger"
+          onClick={() => resolve("cancel")}
         >
-          {t("returnRejectKeep")}
+          {t("adminSpecialCaseCancel") || "Cancel tour"}
         </button>
       </div>
       <label
         className="field-label"
         style={{ marginTop: 14 }}
-        htmlFor={`rej-${job.id}`}
+        htmlFor={`sc-note-${job.id}`}
       >
-        {t("returnDecisionNotes")}
+        {t("adminSpecialCaseNotes") || "Resolution notes"}
       </label>
       <textarea
-        id={`rej-${job.id}`}
+        id={`sc-note-${job.id}`}
         className="input"
         placeholder={t("adminRejectNotePlaceholder")}
-        value={rejectNote}
-        onChange={(e) => setRejectNote(e.target.value)}
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
       />
     </section>
   );
@@ -736,9 +777,11 @@ const AdminDetail = ({
   onEdit,
   onEditFinances,
   onOpenPartnerInvoices,
+  showToast,
 }) => {
   const { t } = useI18n();
-  useAuthStore();
+  const store = useAuthStore();
+  const financeOn = store.getFeatureFlag("financeModule");
   return (
     <>
       <div
@@ -770,9 +813,6 @@ const AdminDetail = ({
               {t("adminColTour")} {job.tour}
             </span>
             <Pill status={job.status} />
-            {job.hasReturnRequest && (
-              <Pill status="return_requested">{t("returnPending")}</Pill>
-            )}
           </div>
           <h1
             style={{
@@ -804,7 +844,7 @@ const AdminDetail = ({
           className="card"
           style={{ padding: "14px 18px", textAlign: "right", minWidth: 220 }}
         >
-          <div className="label">{t("payout")}</div>
+          <div className="label">{t("partnerOffer")}</div>
           <div
             style={{
               fontSize: 28,
@@ -814,7 +854,7 @@ const AdminDetail = ({
             }}
             className="tnum"
           >
-            € {job.price.toFixed(2)}
+            € {(job.driverCompensation ?? 0).toFixed(2)}
           </div>
           <div
             className="mono"
@@ -1176,12 +1216,43 @@ const AdminDetail = ({
             </div>
           </section>
 
-          <JobFinancePanel
-            job={job}
-            onEditFinances={onEditFinances}
-            onOpenPartnerInvoices={onOpenPartnerInvoices}
-          />
-          <ReturnDecisionPanel job={job} />
+          {financeOn ? (
+            <JobFinancePanel
+              job={job}
+              onEditFinances={onEditFinances}
+              onOpenPartnerInvoices={onOpenPartnerInvoices}
+            />
+          ) : (
+            onOpenPartnerInvoices && (
+              <section className="card" style={{ padding: 22 }}>
+                <div className="sec-head">
+                  <h3>
+                    <span className="num">06</span>
+                    {t("navPartnerInvoices")}
+                  </h3>
+                </div>
+                <p
+                  style={{
+                    margin: "10px 0 0",
+                    fontSize: 13,
+                    color: "var(--muted)",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {t("partnerInvoicesDesc")}
+                </p>
+                <button
+                  type="button"
+                  className="btn primary"
+                  style={{ marginTop: 14 }}
+                  onClick={onOpenPartnerInvoices}
+                >
+                  {t("adminOpenPartnerInvoicesBtn")}
+                </button>
+              </section>
+            )
+          )}
+          <SpecialCaseResolutionPanel job={job} showToast={showToast} />
         </div>
 
         <aside style={{ position: "sticky", top: 0 }} className="stack-18">
@@ -1329,7 +1400,7 @@ const AdminDetailFooter = ({
         )}
         {(job.status === "accepted" ||
           job.status === "assigned" ||
-          job.status === "return_requested") && (
+          job.status === "special_case") && (
           <button
             type="button"
             className="btn danger"
@@ -1349,7 +1420,7 @@ const AdminDetailFooter = ({
 // =========================================================================
 // ADMIN — NEUER AUFTRAG
 // =========================================================================
-const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
+const NewOrder = ({ onCancel, onFormChange }) => {
   const store = useAuthStore();
   const { t } = useI18n();
   const vehicleTypes = [
@@ -1384,7 +1455,7 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
     cPhone1: "",
     cName2: "",
     cPhone2: "",
-    price: "",
+    driverCompensation: "",
     notes: "",
     notesDriver: "",
     axle: "Eigenachse",
@@ -1392,7 +1463,7 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
   const [activeSec, setActiveSec] = useStateA("01");
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const prefillCustomer = () => {
-    const c = store.getCustomers()[0];
+    const c = store.getOrderingParties()[0];
     if (!c) return;
     setForm((f) => ({
       ...f,
@@ -1424,7 +1495,7 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
     "date",
     "vehicleType",
     "plate",
-    "price",
+    "driverCompensation",
   ];
   const filled = required.filter(
     (k) => form[k] && String(form[k]).trim(),
@@ -1442,7 +1513,7 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
     ["03", t("newOrderSecSchedule")],
     ["04", t("newOrderSecVehicle")],
     ["05", t("newOrderSecContacts")],
-    ["06", t("newOrderSecCompensation")],
+    ["06", t("newOrderSecPartnerOffer")],
     ["07", t("newOrderSecNotes")],
   ];
 
@@ -1847,17 +1918,17 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
           <section id="sec-06" className="card" style={{ padding: 22 }}>
             <div className="sec-head">
               <h3>
-                <span className="num">06</span> {t("newOrderSecCompensation")}
+                <span className="num">06</span> {t("newOrderSecPartnerOffer")}
               </h3>
             </div>
             <div style={{ marginTop: 14 }}>
-              <label className="field-label">{t("newOrderPriceEur")}</label>
+              <label className="field-label">{t("newOrderPartnerOfferEur")}</label>
               <input
                 className="input mono"
                 style={{ maxWidth: 200, fontSize: 18, fontWeight: 700 }}
-                placeholder={t("newOrderPricePh")}
-                value={form.price}
-                onChange={(e) => set("price", e.target.value)}
+                placeholder={t("newOrderPartnerOfferPh")}
+                value={form.driverCompensation}
+                onChange={(e) => set("driverCompensation", e.target.value)}
               />
             </div>
           </section>
@@ -1965,13 +2036,13 @@ const NewOrder = ({ onCancel, onSaveDraft, onPublish, onFormChange }) => {
                 </div>
                 <div>
                   <div className="label" style={{ fontSize: 9.5 }}>
-                    {t("newOrderSecCompensation")}
+                    {t("newOrderSecPartnerOffer")}
                   </div>
                   <div
                     className="mono"
                     style={{ fontSize: 18, fontWeight: 700, marginTop: 2 }}
                   >
-                    € {form.price || t("newOrderPriceZero")}
+                    € {form.driverCompensation || t("newOrderPartnerOfferZero")}
                   </div>
                 </div>
               </div>
@@ -2156,15 +2227,19 @@ const UsersPane = ({ showToast }) => {
                           ? t("adminUsersBlock")
                           : t("adminUsersActivate")}
                       </button>
-                      <button
-                        className="btn xs"
-                        onClick={() => {
-                          store.setDriverStatus(d.id, "Deactivated");
-                          showToast?.(t("adminUsersToastDriverOff"), d.name);
-                        }}
-                      >
-                        {t("adminUsersDeactivate")}
-                      </button>
+                      {["Inactive", "Archived", "Soft Deleted"].map((st) => (
+                        <button
+                          key={st}
+                          type="button"
+                          className="btn xs"
+                          onClick={() => {
+                            store.setDriverStatus(d.id, st);
+                            showToast?.(t("adminUsersToastDriverChanged"), st);
+                          }}
+                        >
+                          {st}
+                        </button>
+                      ))}
                       <button
                         className="btn xs"
                         onClick={() => {
@@ -2240,14 +2315,14 @@ const UsersPane = ({ showToast }) => {
   );
 };
 
-const CustomersPane = ({ showToast }) => {
+const OrderingPartiesPane = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [name, setName] = useStateA("");
   return (
-    <div>
+    <div id="orderingparties">
       <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
-        {t("adminCustomerMasterTitle")}
+        {t("navOrderingParties") || "Ordering parties"}
       </h1>
       <div
         style={{
@@ -2262,30 +2337,30 @@ const CustomersPane = ({ showToast }) => {
             <thead>
               <tr>
                 <th>{t("adminCustomersColCust")}</th>
-                <th>{t("adminCustomersColPickup")}</th>
-                <th>{t("adminCustomersColDeliv")}</th>
                 <th>{t("adminCustomersColContact")}</th>
+                <th>ID</th>
               </tr>
             </thead>
             <tbody>
-              {store.getCustomers().map((c) => (
-                <tr key={c.id}>
+              {store.getOrderingParties().map((op) => (
+                <tr key={op.id}>
                   <td>
-                    <strong>{c.name}</strong>
+                    <strong>{op.name}</strong>
                     <div className="label" style={{ fontSize: 9.5 }}>
-                      {c.type}
+                      {op.type || "—"}
                     </div>
                   </td>
-                  <td>{c.pickup}</td>
-                  <td>{c.delivery}</td>
                   <td>
-                    {c.contact}
+                    {op.contact || "—"}
                     <div
                       className="mono"
                       style={{ fontSize: 11, color: "var(--muted)" }}
                     >
-                      {c.phone}
+                      {op.phone || op.email || ""}
                     </div>
+                  </td>
+                  <td className="mono" style={{ fontSize: 12 }}>
+                    {op.id}
                   </td>
                 </tr>
               ))}
@@ -2306,15 +2381,7 @@ const CustomersPane = ({ showToast }) => {
             style={{ marginTop: 12 }}
             disabled={!name.trim()}
             onClick={() => {
-              store.addCustomer({
-                name,
-                type: "Demo customer",
-                pickup: "Reusable pickup address",
-                delivery: "Reusable delivery address",
-                contact: "New contact",
-                phone: "+49 ...",
-                instructions: "Prefill-ready instructions",
-              });
+              store.addOrderingParty({ name: name.trim() });
               setName("");
               showToast?.(
                 t("adminCustomersCreated"),
@@ -2324,17 +2391,91 @@ const CustomersPane = ({ showToast }) => {
           >
             {t("adminCustomerCreate")}
           </button>
-          <div
-            className="dash-area"
-            style={{
-              marginTop: 14,
-              fontFamily: "var(--font-sans)",
-              fontSize: 12,
-              letterSpacing: 0,
+        </section>
+      </div>
+    </div>
+  );
+};
+
+const AddressesPane = ({ showToast }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const [label, setLabel] = useStateA("");
+  const [city, setCity] = useStateA("");
+  return (
+    <div id="addresses">
+      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+        {t("navAddresses") || "Addresses"}
+      </h1>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 300px",
+          gap: 18,
+          marginTop: 22,
+        }}
+      >
+        <section className="card" style={{ padding: 18 }}>
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>{t("address")}</th>
+                <th>{t("adminColOrigin")}</th>
+                <th>{t("adminCustomersColContact")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {store.getAddresses().map((a) => (
+                <tr key={a.id}>
+                  <td>
+                    <strong>{a.label}</strong>
+                    <div className="label" style={{ fontSize: 9.5 }}>
+                      {a.id}
+                    </div>
+                  </td>
+                  <td className="mono" style={{ fontSize: 12 }}>
+                    {[a.street, a.houseNumber].filter(Boolean).join(" ")}
+                    <br />
+                    {[a.postalCode, a.city].filter(Boolean).join(" ")}
+                  </td>
+                  <td>{a.contactPerson || a.phone || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+        <section className="card" style={{ padding: 18 }}>
+          <h3 style={{ margin: "0 0 12px" }}>
+            {t("adminAddressAddTitle") || "Add address"}
+          </h3>
+          <label className="field-label">{t("address")}</label>
+          <input
+            className="input"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+          />
+          <label className="field-label" style={{ marginTop: 10 }}>
+            City
+          </label>
+          <input
+            className="input"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+          />
+          <button
+            type="button"
+            className="btn primary block"
+            style={{ marginTop: 12 }}
+            disabled={!label.trim()}
+            onClick={() => {
+              store.addAddress({ label: label.trim(), city: city.trim() });
+              setLabel("");
+              setCity("");
+              showToast?.(t("adminAddressCreated") || "Address created");
             }}
           >
-            {t("adminHistoricalPdfNote")}
-          </div>
+            {t("adminCustomerCreate")}
+          </button>
         </section>
       </div>
     </div>
@@ -2433,7 +2574,8 @@ const PartnerInvoicesPane = ({
   const [registerOpen, setRegisterOpen] = useStateA(false);
   const invoiceFileAccept =
     "application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif";
-  const uploads = store.getInvoiceUploads();
+  const [selected, setSelected] = useStateA(() => new Set());
+  const uploads = store.getTourDocuments();
   const jobs = store.getJobs();
   const drivers = store.getDrivers();
   const filterJob = filterJobId ? jobs.find((j) => j.id === filterJobId) : null;
@@ -2455,20 +2597,19 @@ const PartnerInvoicesPane = ({
   const sourceLabel = (u) =>
     u.source === "admin" ? t("adminInvoiceSourceAdmin") : t("adminInvoiceSourceDriver");
 
-  const openEdit = (u) => {
-    setEditId(u.id);
-    setEditForm({
-      fileName: u.fileName,
-      replaceFile: null,
-      invoiceId: u.invoiceId || "",
-      jobId: u.jobId || "",
-      driverId: u.driverId || "",
-      notes: u.notes || "",
+  const toggleSelect = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   };
-  const closeEdit = () => {
-    setEditId(null);
-    setEditForm(null);
+
+  const reviewPillStatus = (st) => {
+    if (st === "accepted") return "accepted";
+    if (st === "rejected") return "cancelled";
+    return "assigned";
   };
 
   const invoiceActionErr = (r) => {
@@ -2504,16 +2645,14 @@ const PartnerInvoicesPane = ({
   };
 
   useEffectA(() => {
-    if (!registerOpen && !editId && !viewId) return undefined;
+    if (!viewId) return undefined;
     const onKey = (e) => {
       if (e.key !== "Escape") return;
-      if (registerOpen) closeRegister();
-      else if (editId) closeEdit();
-      else if (viewId) setViewId(null);
+      setViewId(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [registerOpen, editId, viewId]);
+  }, [viewId]);
 
   return (
     <div>
@@ -2541,24 +2680,35 @@ const PartnerInvoicesPane = ({
         </div>
       )}
 
-      <div style={{ marginTop: 18 }}>
+      <div
+        style={{
+          marginTop: 18,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        <button
+          type="button"
+          className="btn"
+          disabled={selected.size === 0}
+          onClick={() => {
+            const names = uploads
+              .filter((u) => selected.has(u.id))
+              .map((u) => u.fileName)
+              .join(", ");
+            showToast?.(t("invoiceDownload") || "Download", names);
+          }}
+        >
+          <Ic.Down /> {t("invoiceDownload")} ({selected.size})
+        </button>
         <button
           type="button"
           className="btn primary"
-          disabled={!jobs.length || !drivers.length}
-          onClick={() => {
-            const jl = store.getJobs();
-            const dl = store.getDrivers();
-            setRegJobId((id) =>
-              jl.some((j) => j.id === id) ? id : jl[0]?.id ?? "",
-            );
-            setRegDriverId((id) =>
-              dl.some((d) => d.id === id) ? id : dl[0]?.id ?? "",
-            );
-            setRegisterOpen(true);
-          }}
+          onClick={() => setRegisterOpen(true)}
         >
-          {t("adminInvoiceRegisterOpenBtn")}
+          <Ic.Plus /> {t("adminInvoiceRegisterTitle")}
         </button>
       </div>
 
@@ -2687,14 +2837,15 @@ const PartnerInvoicesPane = ({
                 className="btn primary"
                 disabled={!jobs.length || !drivers.length || !regFile}
                 onClick={() => {
-                  const r = store.addPartnerInvoiceRecordAdmin({
+                  const r = store.registerTourDocumentAdmin({
                     jobId: regJobId,
                     driverId: regDriverId,
                     file: regFile,
                     notes: regNotes.trim(),
+                    documentType: "partner_invoice",
                   });
                   if (r.ok) {
-                    showToast?.(t("adminInvoiceRegistered"), r.invoiceId);
+                    showToast?.(t("adminInvoiceRegistered"), r.id);
                     setRegNotes("");
                     closeRegister();
                   } else showToast?.(invoiceActionErr(r));
@@ -2710,8 +2861,8 @@ const PartnerInvoicesPane = ({
       <table className="tbl" style={{ marginTop: 18 }}>
         <thead>
           <tr>
+            <th></th>
             <th>{t("invoiceColFile")}</th>
-            <th>{t("invoiceIdLabel")}</th>
             <th>{t("invoiceColPartner")}</th>
             <th>{t("invoiceColJob")}</th>
             <th>{t("invoiceColUploaded")}</th>
@@ -2724,7 +2875,7 @@ const PartnerInvoicesPane = ({
           {visibleUploads.length === 0 ? (
             <tr>
               <td
-                colSpan={8}
+                colSpan={9}
                 className="label"
                 style={{ padding: "22px 12px" }}
               >
@@ -2735,8 +2886,16 @@ const PartnerInvoicesPane = ({
             visibleUploads.map((u) => (
               <tr
                 key={u.id}
-                className={u.processed ? "st-accepted-bg" : undefined}
+                className={u.reviewStatus === "accepted" ? "st-accepted-bg" : undefined}
               >
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(u.id)}
+                    onChange={() => toggleSelect(u.id)}
+                    aria-label={u.fileName}
+                  />
+                </td>
                 <td>
                   <strong className="mono" style={{ fontSize: 13 }}>
                     {u.fileName}
@@ -2744,9 +2903,6 @@ const PartnerInvoicesPane = ({
                   <div className="label" style={{ fontSize: 10.5 }}>
                     {u.mimeType}
                   </div>
-                </td>
-                <td className="mono" style={{ fontSize: 12 }}>
-                  {u.invoiceId || "—"}
                 </td>
                 <td>{u.driverName}</td>
                 <td style={{ minWidth: 220 }}>
@@ -2786,27 +2942,9 @@ const PartnerInvoicesPane = ({
                   {sourceLabel(u)}
                 </td>
                 <td>
-                  <label
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 8,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!u.processed}
-                      onChange={(e) =>
-                        store.updateInvoiceUpload(u.id, {
-                          processed: e.target.checked,
-                        })
-                      }
-                    />
-                    <span className="label" style={{ margin: 0 }}>
-                      {t("invoiceColProcessed")}
-                    </span>
-                  </label>
+                  <Pill status={reviewPillStatus(u.reviewStatus)}>
+                    {u.reviewStatus || "—"}
+                  </Pill>
                 </td>
                 <td style={{ whiteSpace: "nowrap" }}>
                   <button
@@ -2818,39 +2956,40 @@ const PartnerInvoicesPane = ({
                   </button>
                   <button
                     type="button"
-                    className="btn xs"
-                    style={{ marginLeft: 6 }}
-                    onClick={() => openEdit(u)}
-                  >
-                    {t("adminInvoiceEdit")}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn xs"
+                    className="btn xs primary"
                     style={{ marginLeft: 6 }}
                     onClick={() => {
-                      const r = store.downloadInvoicePlaceholder(u.id);
-                      if (r && r.ok)
-                        showToast?.(t("invoiceDownload"), u.fileName);
-                      else showToast?.(t("adminInvoiceErrGeneric"));
+                      store.updateTourDocument(u.id, { reviewStatus: "accepted" });
+                      showToast?.(t("adminDocAccepted") || "Accepted", u.fileName);
                     }}
                   >
-                    {t("invoiceDownload")}
+                    {t("adminDocAccept") || "Accept"}
                   </button>
                   <button
                     type="button"
                     className="btn xs danger"
                     style={{ marginLeft: 6 }}
                     onClick={() => {
-                      if (window.confirm(t("invoiceDeleteConfirm"))) {
-                        store.deleteInvoiceUpload(u.id);
-                        if (viewId === u.id) setViewId(null);
-                        if (editId === u.id) closeEdit();
-                        showToast?.(t("invoiceDelete"), u.fileName);
-                      }
+                      const reason = window.prompt(
+                        t("adminRejectNotePlaceholder"),
+                        "",
+                      );
+                      if (reason == null) return;
+                      store.rejectTourDocument(u.id, reason);
+                      showToast?.(t("adminDocRejected") || "Rejected", u.fileName);
                     }}
                   >
-                    {t("invoiceDelete")}
+                    {t("adminDocReject") || "Reject"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn xs"
+                    style={{ marginLeft: 6 }}
+                    onClick={() =>
+                      showToast?.(t("invoiceDownload"), u.fileName)
+                    }
+                  >
+                    {t("invoiceDownload")}
                   </button>
                 </td>
               </tr>
@@ -2859,7 +2998,7 @@ const PartnerInvoicesPane = ({
         </tbody>
       </table>
 
-      {editId && editForm && (
+      {false && editId && editForm && (
         <div
           role="dialog"
           aria-modal="true"
@@ -3001,14 +3140,9 @@ const PartnerInvoicesPane = ({
                 type="button"
                 className="btn primary"
                 onClick={() => {
-                  const patch = {
-                    jobId: editForm.jobId.trim(),
-                    driverId: editForm.driverId.trim(),
-                    invoiceId: editForm.invoiceId.trim(),
-                    notes: editForm.notes,
-                  };
+                  const patch = { notes: editForm.notes };
                   if (editForm.replaceFile) patch.file = editForm.replaceFile;
-                  const r = store.updateInvoiceUpload(editId, patch);
+                  const r = store.updateTourDocument(editId, patch);
                   if (r.ok) {
                     showToast?.(t("adminInvoiceSaved"), editForm.fileName);
                     closeEdit();
@@ -3069,8 +3203,8 @@ const PartnerInvoicesPane = ({
               }}
             >
               {[
-                `${t("invoiceIdLabel")}: ${viewing.invoiceId || "—"}`,
                 `${t("adminInvoiceMetaFile")} ${viewing.fileName}`,
+                `Review: ${viewing.reviewStatus || "—"}`,
                 `${t("adminInvoiceMetaMime")} ${viewing.mimeType}`,
                 `${t("adminInvoiceMetaSource")} ${sourceLabel(viewing)}`,
                 `${t("adminInvoiceMetaPartner")} ${viewing.driverName}`,
@@ -3081,11 +3215,9 @@ const PartnerInvoicesPane = ({
                   ? `${t("adminInvoiceMetaNotes")} ${viewing.notes}`
                   : null,
                 `${t("adminInvoiceMetaUploaded")} ${viewing.uploadedAt}`,
-                `${t("adminInvoiceMetaProcessed")} ${
-                  viewing.processed
-                    ? t("adminInvoiceMetaYes")
-                    : t("adminInvoiceMetaNo")
-                }`,
+                viewing.rejectionReason
+                  ? `Rejection: ${viewing.rejectionReason}`
+                  : null,
                 `${t("adminInvoiceMetaSize")} ${viewing.sizeBytes ?? 0} ${t(
                   "adminInvoiceBytesUnit",
                 )}`,
@@ -3139,11 +3271,11 @@ const FinancePane = ({
   const openFinEdit = (j) => {
     setFinEditId(j.id);
     setFinDraft({
-      revenue: j.revenue ?? j.price ?? "",
+      revenue: j.revenue ?? "",
       driverCompensation: j.driverCompensation ?? "",
       expenses: j.expenses ?? "",
       netAmount: j.netAmount ?? "",
-      grossAmount: j.grossAmount ?? j.price ?? "",
+      grossAmount: j.grossAmount ?? "",
       vatRate: j.vatRate ?? 19,
       paymentStatus: j.paymentStatus || "Unpaid",
     });
@@ -3179,7 +3311,7 @@ const FinancePane = ({
   }, [finEditId]);
 
   const totalRevenue = jobs.reduce(
-    (s, j) => s + Number(j.revenue || j.price || 0),
+    (s, j) => s + Number(j.revenue || 0),
     0,
   );
   const unpaid = jobs.filter((j) => j.paymentStatus !== "Paid").length;
@@ -3206,7 +3338,7 @@ const FinancePane = ({
             <th>{t("adminColTour")}</th>
             <th>{t("adminColCustomer")}</th>
             <th>{t("adminFinanceColRev")}</th>
-            <th>{t("adminFinanceColDrvComp")}</th>
+            <th>{t("adminFinanceColPartnerOffer")}</th>
             <th>{t("financeExpenses")}</th>
             <th>{t("adminFinanceColInv")}</th>
             <th>{t("adminFinanceColPay")}</th>
@@ -3222,7 +3354,7 @@ const FinancePane = ({
               >
                 <td className="mono">{j.tour}</td>
                 <td>{j.customer}</td>
-                <td>€ {Number(j.revenue || j.price || 0).toFixed(2)}</td>
+                <td>€ {Number(j.revenue || 0).toFixed(2)}</td>
                 <td>€ {Number(j.driverCompensation || 0).toFixed(2)}</td>
                 <td>€ {Number(j.expenses || 0).toFixed(2)}</td>
                 <td className="mono" style={{ fontSize: 12 }}>
@@ -3231,7 +3363,7 @@ const FinancePane = ({
                 <td>
                   <Pill
                     status={
-                      j.paymentStatus === "Paid" ? "completed" : "assigned"
+                      j.paymentStatus === "Paid" ? "performed" : "assigned"
                     }
                   >
                     {paymentLabel(j.paymentStatus)}
@@ -3290,7 +3422,7 @@ const FinancePane = ({
             >
               <div>
                 <label className="field-label" htmlFor="fe-rev">
-                  {t("financeRevenuePrice")} (€)
+                  {t("financeCustomerRevenue")} (€)
                 </label>
                 <input
                   id="fe-rev"
@@ -3303,7 +3435,7 @@ const FinancePane = ({
               </div>
               <div>
                 <label className="field-label" htmlFor="fe-dc">
-                  {t("financeDriverComp")} (€)
+                  {t("partnerOffer")} (€)
                 </label>
                 <input
                   id="fe-dc"
@@ -3453,7 +3585,6 @@ const FinancePane = ({
                   };
                   if (rev != null) {
                     patch.revenue = rev;
-                    patch.price = rev;
                   }
                   const r = store.updateFinancial(finEditId, patch);
                   if (r.ok) {
@@ -3543,16 +3674,36 @@ const AuditPane = ({ showToast }) => {
   );
 };
 
-const FLAG_LABELS = {
+const FLAG_I18N = {
+  documentsModule: {
+    label: "adminFeatureDocumentsLabel",
+    desc: "adminFeatureDocumentsDesc",
+  },
+  financeModule: {
+    label: "adminFeatureFinanceLabel",
+    desc: "adminFeatureFinanceDesc",
+  },
   notificationPreferences: {
-    label: "Notification preferences",
-    desc: "Lets drivers configure push & email preferences from their profile tab.",
+    label: "adminFeatureNotifLabel",
+    desc: "adminFeatureNotifDesc",
   },
 };
 
 const FeaturesPane = () => {
+  const { t } = useI18n();
   const store = useAuthStore();
   const flags = store.getFeatureFlags();
+  const appDisplayName = store.getAppDisplayName();
+  const [displayName, setDisplayName] = useStateA(appDisplayName);
+
+  useEffectA(() => {
+    setDisplayName(appDisplayName);
+  }, [appDisplayName]);
+
+  const commitDisplayName = () => {
+    store.setAppDisplayName(displayName);
+  };
+
   return (
     <div style={{ maxWidth: 680 }}>
       <h1
@@ -3563,15 +3714,62 @@ const FeaturesPane = () => {
           letterSpacing: "-0.02em",
         }}
       >
-        Feature flags
+        {t("adminSettingsTitle")}
       </h1>
+
+      <section className="card" style={{ padding: 22, marginTop: 22 }}>
+        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>
+          {t("adminBrandingTitle")}
+        </h2>
+        <p
+          style={{
+            color: "var(--muted)",
+            marginTop: 8,
+            marginBottom: 0,
+            fontSize: 13,
+            lineHeight: 1.55,
+          }}
+        >
+          {t("adminBrandingBlurb")}
+        </p>
+        <div style={{ marginTop: 16 }}>
+          <label className="field-label" htmlFor="branding-app-name">
+            {t("adminAppDisplayNameLabel")}
+          </label>
+          <input
+            id="branding-app-name"
+            className="input"
+            style={{ marginTop: 8, maxWidth: 360, fontWeight: 600 }}
+            value={displayName}
+            placeholder={t("adminAppDisplayNamePh")}
+            onChange={(e) => setDisplayName(e.target.value)}
+            onBlur={commitDisplayName}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitDisplayName();
+                e.currentTarget.blur();
+              }
+            }}
+          />
+        </div>
+      </section>
+
+      <h2
+        style={{
+          margin: "28px 0 0",
+          fontSize: 17,
+          fontWeight: 700,
+        }}
+      >
+        {t("adminFeatureFlags")}
+      </h2>
       <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
-        Toggle features on/off. Changes are reflected immediately in the driver
-        app.
+        {t("adminFeatureFlagsBlurb")}
       </p>
-      <section className="card" style={{ padding: "0 18px", marginTop: 22 }}>
+      <section className="card" style={{ padding: "0 18px", marginTop: 14 }}>
         {Object.entries(flags).map(([key, enabled]) => {
-          const meta = FLAG_LABELS[key] || { label: key, desc: "" };
+          const meta = FLAG_I18N[key];
           return (
             <div
               key={key}
@@ -3585,9 +3783,9 @@ const FeaturesPane = () => {
             >
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>
-                  {meta.label}
+                  {meta ? t(meta.label) : key}
                 </div>
-                {meta.desc && (
+                {meta?.desc && (
                   <div
                     style={{
                       fontSize: 12,
@@ -3595,7 +3793,7 @@ const FeaturesPane = () => {
                       marginTop: 3,
                     }}
                   >
-                    {meta.desc}
+                    {t(meta.desc)}
                   </div>
                 )}
               </div>
@@ -3608,7 +3806,7 @@ const FeaturesPane = () => {
                 }}
               >
                 <Pill status={enabled ? "accepted" : "cancelled"}>
-                  {enabled ? "ON" : "OFF"}
+                  {enabled ? t("adminPillOn") : t("adminPillOff")}
                 </Pill>
                 <input
                   type="checkbox"
@@ -3635,7 +3833,8 @@ Object.assign(window, {
   NewOrderFooter,
   Stub,
   UsersPane,
-  CustomersPane,
+  OrderingPartiesPane,
+  AddressesPane,
   DocumentsPane,
   PartnerInvoicesPane,
   FinancePane,
