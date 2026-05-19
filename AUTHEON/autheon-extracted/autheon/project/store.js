@@ -1168,9 +1168,13 @@ window.AuthStore = (() => {
       j.documentReviewSummary = "Not Started";
       return;
     }
-    if (docs.some((d) => d.reviewStatus === "rejected"))
-      j.documentReviewSummary = "Rejected";
-    else if (docs.some((d) => d.reviewStatus === "correction_required"))
+    if (
+      docs.some(
+        (d) =>
+          d.reviewStatus === "rejected" ||
+          d.reviewStatus === "correction_required",
+      )
+    )
       j.documentReviewSummary = "Correction Required";
     else if (docs.some((d) => d.reviewStatus === "under_review"))
       j.documentReviewSummary = "Under Review";
@@ -1544,7 +1548,24 @@ window.AuthStore = (() => {
           },
         ];
         log("special_case_resolved", DEMO_ADMIN, j.tour, "Cancelled");
-      } else if (d === "reopen" || d === "draft" || d === "republish") {
+      } else if (d === "republish") {
+        j.status = "published";
+        j.driver = null;
+        j.specialCaseReport = null;
+        driverState.specialCaseIds.delete(id);
+        j.history = [
+          ...(j.history || []),
+          {
+            st: "published",
+            at: nowStamp(),
+            by: DEMO_ADMIN,
+            meta: note || "Special case resolved -> republished",
+          },
+        ];
+        log("special_case_resolved", DEMO_ADMIN, j.tour, "Republished");
+        queuePushNotification(j, "republish");
+        queueAdminEmailAlert("special_case_republished", id, note || "");
+      } else if (d === "reopen" || d === "draft") {
         j.status = "draft";
         j.driver = null;
         j.specialCaseReport = null;

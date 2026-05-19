@@ -20,6 +20,8 @@ The static prototype is **aligned with PRD v1.5** for client walkthroughs. Opera
 
 Production implementation (database, auth, real PDF template, file storage, map API, SMTP, service worker) remains out of scope for the prototype.
 
+Audit update: rejected tour documents now surface a correction-required job summary, and the Special Case republish decision returns the tour to `published` instead of Draft.
+
 ## Coverage matrix (PRD v1.5 tasks)
 
 | Task | Feature | Prototype |
