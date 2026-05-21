@@ -40,14 +40,14 @@
     "prototype_reference": "AUTHEON/autheon-extracted/autheon/project (single-page HTML/React Babel demo: admin.jsx, driver.jsx, store.js, i18n.js — not production repo layout; maps conceptually to apps/* paths in tasks). Final production PRD v1.5 supersedes prototype-only return request and broad finance assumptions with client-validated Report Problem, Special Case, and finance de-scoping decisions."
   },
   "prototype_coverage_notes": [
-    "Driver PWA (demo): marketplace with pull-to-refresh, My Jobs (Active, Performed, Cancelled, Special case), locked preview, slide accept, map handoff, Mark as performed, Report Problem (cancel + not performable), tour-linked document upload with categories and review feedback, Infopoint (documents + news), profile and push preferences (no driver workflow email).",
-    "Admin (demo): job overview with special case and performed filters, primary New job CTA on Jobs overview (no separate New job sidebar item), job detail with draft delete and special case resolution (Continue, Republish, administrative close, cancel order), distance estimate/recalculate, ordering parties and addresses master data, new order form with separated ordering party/pickup/delivery schedules, partner invoices and documents with review/reject/bulk download, Infopoint management, service partners, audit log, admin email alert demo, CSV export. Finance dashboard removed.",
+    "Driver PWA (demo): marketplace with pull-to-refresh, My Jobs (Active, Performed, Cancelled, Special case), locked preview, slide accept, map handoff, Mark as performed, Report Problem (cancel + not performable), tour-linked document upload only after Performed (categories, rejection reason, replace file), correction badge on Performed tab only, Infopoint (documents + news), profile and push preferences (no driver workflow email).",
+    "Admin (demo): job overview with special case and performed filters, primary New job CTA on Jobs overview (no separate New job sidebar item), job detail with draft delete and special case resolution (Continue, Republish, administrative close, cancel order), distance estimate/recalculate, ordering parties and addresses master data, new order form with ordering party select (dropdown from customer master data, not free-text search), direct assign and reassign via service-partner picker (active partners only), partner invoices and documents with review/reject/replace/bulk download (status via pill only, no full-row green highlight), Infopoint management, service partners, audit log, admin email alert demo, CSV export. Finance dashboard removed.",
     "Driver Report Problem (demo): Cancel Order uses slide-to-confirm locked until explanation has at least 10 characters, with clear disabled visual state; Not Performable uses Submit.",
-    "Publishing (demo): admin revert Published to Draft; publish and direct assign from Draft only; admin can delete Draft jobs from job detail.",
+    "Publishing (demo): admin revert Published to Draft; publish and direct assign from Draft only (assign opens modal to pick active service partner); admin can reassign driver on Assigned, Accepted, or Special case tours; admin can delete Draft jobs from job detail.",
     "Status model (demo): operational statuses draft, published, accepted, assigned, performed, cancelled, special_case only — no return_requested or completed.",
     "Branding (demo): configurable display name default Transport Portal; AUTHEON not shown in UI chrome.",
     "i18n: EN/DE for UI strings; audit log action keys in English.",
-    "Seed data: 10 jobs, 5 ordering parties, 17 addresses, 6 tour-linked seed documents, sample admin email alerts, expanded audit log; validateSeedData() on load checks contacts, addresses, schedules, vehicle IDs, driver compensation, history, driverState consistency, and performed-tour documents."
+    "Seed data: 10 jobs, 5 ordering parties, 17 addresses, 3 service partners (2 active, 1 blocked), 6 tour-linked seed documents (only on performed tours; rejected invoice on performed 0842, not on active tours), sample admin email alerts, expanded audit log; validateSeedData() on load checks contacts, addresses, schedules, vehicle IDs, driver compensation, history, driverState consistency, performed-tour documents, and no documents on non-performed jobs."
   ],
   "prototype_validation": {
     "last_synced": "2026-05-21",
@@ -59,7 +59,10 @@
       "De-scoped full Finance dashboard, vehicle condition documentation, CSV mass import, historical migration, internal map module, and complex tour chains from base V1.",
       "Added address master data, pull to refresh, external map navigation, admin email alerts, Infopoint, service partner management, and rollout-from-zero assumptions.",
       "2026-05-21: Admin draft permanent delete; Jobs overview primary New job entry (removed duplicate sidebar nav item); Cancel Order slide gated on min. 10-character explanation with disabled slider styling; special case resolution actions documented as Continue, Republish, administrative close (Performed + settlement Closed), and Cancel order.",
-      "2026-05-21: Prototype seed jobs and address master data completed with pickup/delivery contacts (person, phone, email, second phone) on every tour."
+      "2026-05-21: Prototype seed jobs and address master data completed with pickup/delivery contacts (person, phone, email, second phone) on every tour.",
+      "2026-05-21: New job form ordering party is a required select from customer master data; tour documents only after Performed; driver/admin document replace on performed tours; correction badge only on performed My Jobs.",
+      "2026-05-21: Direct assign from Draft and reassign on Assigned/Accepted/Special case via service-partner picker (active partners only); partner invoices table uses status pills without persistent row green background.",
+      "2026-05-21: Special case Continue restores statusBeforeSpecialCase (e.g. Accepted) instead of always Assigned; driverState.acceptedIds resynced on continue."
     ]
   },
   "domain_model_summary": {
@@ -117,7 +120,8 @@
       "document review summary",
       "settlement state if included",
       "status history",
-      "assigned/accepted driver"
+      "assigned/accepted service partner display name",
+      "assigned service partner id optional"
     ],
     "operational_job_statuses": [
       "Draft",
@@ -232,6 +236,8 @@
     "After acceptance or direct assignment, sensitive job details become visible only to the assigned or accepting driver.",
     "Before acceptance, marketplace previews show only reduced data such as rough pickup/delivery region, distance, relevant dates/time windows, vehicle type, axle type, and compensation/price where applicable.",
     "Directly assigned jobs appear in the assigned driver's My Jobs area and do not appear in the marketplace.",
+    "Admin may reassign a different active service partner on tours in Assigned, Accepted, or Special Case without changing operational status; reassignment is audited and notifies the tour context.",
+    "Published tours cannot be directly reassigned without returning to Draft first.",
     "Assigned jobs cannot be rejected directly by the driver.",
     "After acceptance, a service partner cannot casually return a tour. The service partner must use Report Problem.",
     "Report Problem has two main driver paths: Cancel Order and Report Order as Not Performable.",
@@ -366,7 +372,8 @@
       "story": "As an admin, I want to create and save orders as drafts with structured sections for ordering party, pickup, delivery, time windows, vehicle data, distance, and notes.",
       "acceptance": [
         "Creation form includes clear sections: Ordering Party, Pickup Location, Delivery Location, Pickup Time Window, Delivery Time Window, Vehicle, Distance, Compensation/Price inputs if in scope, Driver Notes, and Internal Notes.",
-        "Ordering party is required for reporting and billing context.",
+        "Ordering party is required for reporting and billing context and must be chosen from ordering party / customer master data via select control (not unstructured free-text entry).",
+        "Selecting an ordering party sets orderingPartyId and display name and may prefill default contact fields where master data provides them.",
         "Pickup and delivery locations are independent sections and can be selected from shared address master data or entered freely.",
         "Pickup and delivery each have separate date, time window from, and time window to fields.",
         "System validates obvious date/time inconsistencies such as delivery date before pickup date or time window to before time window from; admins may consciously confirm warnings where business requires flexibility.",
@@ -394,19 +401,22 @@
       "story": "As an admin, I want to publish jobs to the marketplace or assign them directly so jobs follow the correct operational path.",
       "acceptance": [
         "Publish transitions Draft to Published only after validation.",
-        "Direct assign transitions Draft to Assigned only after selecting an eligible active service partner.",
+        "Direct assign transitions Draft to Assigned only after selecting an eligible active service partner through an assign dialog (dropdown or equivalent); blocked, inactive, archived, or soft-deleted partners are not selectable.",
+        "Admin can reassign a different active service partner on tours in Assigned, Accepted, or Special Case; reassignment updates service partner id and display name, preserves operational status, records status history and audit log, and must not allow selecting the already-assigned partner.",
+        "Reassign is blocked for Draft, Published, Performed, and Cancelled unless business rules route through revert or special-case flows first.",
         "Assigned jobs do not appear in the marketplace.",
         "Published jobs appear only as reduced previews in the marketplace.",
         "Published to Assigned without Draft is blocked in Phase 1 unless the job is returned to Draft first.",
         "Admin can revert Published to Draft, which removes the job from marketplace and enables edit, re-publish, or direct assignment.",
         "Revert is available only for Published jobs, not as a replacement for accepted-job cancellation/problem handling.",
-        "Publish, direct assignment, and revert-to-draft actions create audit log entries.",
+        "Publish, direct assignment, reassignment, and revert-to-draft actions create audit log entries.",
         "Version 1 supports simple A to B tours only; A to B to A and A to B to C tour chains are represented as separate orders for now."
       ],
       "status": "pending",
       "files": [
         "services/jobs/publish.ts",
         "services/jobs/assign.ts",
+        "services/jobs/reassign.ts",
         "services/jobs/revert-to-draft.ts",
         "apps/admin/src/jobs/actions/"
       ]
@@ -496,7 +506,7 @@
         "Performed jobs move to a Performed or History area after the service partner reports operational completion.",
         "Cancelled jobs are either shown in a separate tab or clearly labelled historical section if required by final UX.",
         "Special Case jobs remain visible to the assigned service partner with clear status and next-step messaging until admin resolves them.",
-        "Jobs requiring document correction are visibly marked in My Jobs or a correction queue.",
+        "Jobs requiring document correction show a correction indicator on Performed tours only, not on Active (assigned/accepted) tours.",
         "Each job card shows route summary, date/time, vehicle type, price/compensation where applicable, and status badge.",
         "Service partner sees only own assigned, accepted, performed, cancelled, or special-case jobs."
       ],
@@ -518,7 +528,7 @@
         "Completion timestamp is stored.",
         "Completion action is disabled after operational status becomes Performed or Cancelled; administrative Closed state is tracked separately from the operational completion action.",
         "Completion event is logged.",
-        "Document upload or invoice handling may remain available after Performed if the document module is included.",
+        "Tour-linked document upload and replace are available only after operational status is Performed if the document module is included; upload is blocked on Active tours with clear messaging.",
         "Administrative or settlement closure after document/invoice review must not be confused with the service partner's operational Performed action."
       ],
       "status": "pending",
@@ -569,7 +579,7 @@
         "Admin can accept or finalize a service partner cancellation.",
         "Admin can republish a cancelled or special-case tour where business rules allow it.",
         "Admin can adjust job data and continue the tour where business rules allow it.",
-        "Admin can resolve a special case with distinct outcomes: Continue (resume assigned/accepted execution), Republish (return to Published marketplace), Administrative close (Performed with settlement/administrative Closed — case finished without treating as a driver cancellation), or Cancel order (Cancelled).",
+        "Admin can resolve a special case with distinct outcomes: Continue (restore operational status to statusBeforeSpecialCase stored when the driver reported not performable — typically Assigned or Accepted, not always Assigned), Republish (return to Published marketplace), Administrative close (Performed with settlement/administrative Closed — case finished without treating as a driver cancellation), or Cancel order (Cancelled).",
         "UI labels must distinguish administrative close from cancel order and from dismissing a dialog (production copy should not use ambiguous Close alone for administrative close).",
         "Admin can add decision notes.",
         "Decision is reflected in status history and audit log.",
@@ -642,6 +652,8 @@
         "Admin can edit Draft jobs and permitted non-critical fields according to final business rules.",
         "Admin can delete Draft jobs permanently (hard delete or equivalent soft-delete hidden from operational lists); deletion is blocked once the job leaves Draft.",
         "Published jobs show Return to Draft in admin actions; after revert, Draft actions such as edit, publish, and assign apply.",
+        "Draft and detail footers expose Assign driver; Assigned, Accepted, and Special case expose Reassign driver; both open the same service-partner picker pattern.",
+        "Assigned service partner card shows name and partner id when set.",
         "Admin can manually override distance and optionally recalculate distance if pickup or delivery addresses change."
       ],
       "status": "pending",
@@ -782,7 +794,7 @@
       "story": "As the platform owner, I want all important actions logged so the system is traceable.",
       "acceptance": [
         "Audit log records action type, actor, affected entity, timestamp, and relevant metadata.",
-        "Logged actions include job created, changed, published, reverted to draft, directly assigned, accepted, marked performed, cancelled, Report Problem submitted, special case created, special case resolved, admin cancellation decision, document uploaded/replaced/rejected/accepted, partner invoice upload registered/updated/deleted, PDF generated/regenerated, acceptance confirmation, service partner blocked/inactivated/archived/access reset, audit log export, admin alert sent, and feature flag changes if used.",
+        "Logged actions include job created, changed, published, reverted to draft, directly assigned, job reassigned, accepted, marked performed, cancelled, Report Problem submitted, special case created, special case resolved, admin cancellation decision, document uploaded/replaced/rejected/accepted, partner invoice upload registered/updated/deleted, PDF generated/regenerated, acceptance confirmation, service partner blocked/inactivated/archived/access reset, audit log export, admin alert sent, and feature flag changes if used.",
         "Status history records previous status, new status, date/time, triggering user, optional comment, and uploaded evidence if applicable.",
         "Admin can view audit log entries in the admin console.",
         "Admin can download or export the audit log for offline search, filtering, and archival; export is admin-only and is itself auditable.",
@@ -870,7 +882,8 @@
         "Test: two simultaneous accepts result in exactly one success and one clean failure.",
         "Test: blocked or inactive service partner cannot access marketplace active actions or accept jobs.",
         "Test: pre-acceptance service partner cannot fetch locked fields.",
-        "Test: Draft can Publish or Assign, but Published cannot Assign in Phase 1 without returning to Draft.",
+        "Test: Draft can Publish or Assign (with active service partner selection), but Published cannot Assign in Phase 1 without returning to Draft.",
+        "Test: admin can reassign Assigned, Accepted, or Special case tour to another active service partner; same partner selection is rejected; audit log records reassignment.",
         "Test: admin can revert Published job to Draft; job leaves marketplace and can Publish or Assign again from Draft.",
         "Test: direct assigned jobs do not appear in marketplace.",
         "Test: acceptance unlocks full details, navigation actions, and PDF for accepted service partner only.",
@@ -881,7 +894,7 @@
         "Test: admin can cancel Accepted, Assigned, Performed, or Special Case job; job leaves marketplace and active driver lists as appropriate.",
         "Test: operational completion changes status to Performed, not document/settlement Completed.",
         "Test: document statuses are independent from operational job status.",
-        "Test: partner invoice/document upload requires job id; rejection reason creates visible correction need.",
+        "Test: partner invoice/document upload requires job id and Performed status for driver uploads; rejection reason creates visible correction need on Performed My Jobs only.",
         "Test: marketplace pull to refresh fetches current data while full real-time list mutation is not required.",
         "Test: external map navigation actions produce valid handoff URLs or fallback behavior.",
         "Test: admin email alert is generated for critical events if alert module is included.",
@@ -912,7 +925,7 @@
         "Accepted file types include PDF, JPG, PNG, and common image formats such as JPEG and WebP unless compliance policy changes.",
         "Production persists files in secure storage with appropriate access control; prototype metadata-only placeholders are not sufficient for production.",
         "Blocked or restricted service partners cannot create uploads.",
-        "Admin documents/partner invoices view lists uploads with file metadata, uploader, service partner, linked job/tour, upload time, document type, review status, processed flag where applicable, source driver/admin, and actions.",
+        "Admin documents/partner invoices view lists uploads with file metadata, uploader, service partner, linked job/tour, upload time, document type, review status, processed flag where applicable, source driver/admin, and actions; review status is shown via compact status pill, not a persistent full-row background highlight.",
         "Admin can view, download, accept, reject, mark checked, mark processed/completed, and add internal notes or rejection reasons depending on document type.",
         "Driver can see whether an uploaded document is accepted, rejected, or under review.",
         "Rejected documents create a visible correction need for the service partner and show the rejection reason.",
@@ -1029,8 +1042,10 @@
     "cancel_order_slide_min_explanation_chars": 10,
     "cancel_order_slide_disabled_until_valid": true,
     "admin_new_job_entry": "Primary CTA on Jobs overview only; no separate New job item in admin sidebar navigation.",
+    "ordering_party_input_v1": "Required select from ordering party master data; free-text customer field not used for production create form.",
+    "direct_assign_and_reassign_v1": "Assign from Draft and reassign on Assigned/Accepted/Special case require picking an active service partner; reassignment preserves status.",
     "special_case_resolution_actions": {
-      "continue": "Resume tour as assigned/accepted",
+      "continue": "Resume tour to statusBeforeSpecialCase captured when Report Problem created the special case (assigned or accepted), not always assigned",
       "republish": "Return to Published on marketplace",
       "administrative_close": "Performed + settlement/administrative Closed",
       "cancel_order": "Cancelled"
@@ -1053,7 +1068,10 @@
     "files": "Metadata and placeholder download only; no binary persistence.",
     "admin_nav": "Jobs overview hosts primary New job button; no New job sidebar nav item.",
     "cancel_slide": "Slide-to-cancel locked until explanation >= 10 chars with disabled track styling in prototype.",
-    "seed_mock_data": "17 addresses, 5 ordering parties, 10 jobs (full locations + contacts), 6 tour documents, 2 admin email alerts, 5 audit entries; validateSeedData() runs on load and after reloadDemo()."
+    "special_case_continue": "reportProblemNotPerformable stores statusBeforeSpecialCase on specialCaseReport; Continue restores that status and driverState.acceptedIds when prior was accepted.",
+    "seed_mock_data": "17 addresses, 5 ordering parties, 3 service partners, 10 jobs (full locations + contacts), 6 tour documents (performed tours only), 2 admin email alerts, 5 audit entries; validateSeedData() runs on load and after reloadDemo().",
+    "assign_driver_picker": "AssignDriverDialog modal; assignJob/reassignJob by driver id; getAssignableDrivers() returns Active only.",
+    "ordering_party_select": "New job section 01 uses select populated from getOrderingParties(); sets orderingPartyId + customer name."
   },
   "production_open_questions": [
     "Confirm which map or distance API vendor to use and acceptable ongoing usage budget.",
@@ -1082,7 +1100,8 @@
       "Operational order creation with ordering party, pickup location, and delivery location separation",
       "Shared address master data with optional save",
       "Marketplace and driver PWA for simple A to B tours",
-      "Binding acceptance and direct assignment",
+      "Binding acceptance and direct assignment with service-partner picker and reassignment on active tours",
+      "Ordering party select on job creation form",
       "Report Problem with cancellation and not-performable special case flows",
       "External map app navigation handoff",
       "Pull to refresh and app-open data reload",

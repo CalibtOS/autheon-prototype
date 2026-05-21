@@ -324,6 +324,9 @@ window.I18n = (() => {
       adminSpecialCaseTitle: "Special case resolution",
       adminSpecialCaseNotes: "Decision notes",
       adminSpecialCaseContinue: "Continue",
+      adminSpecialCaseContinueTitle: "Resume tour as {status}",
+      adminSpecialCaseResumeHint:
+        "Continue restores the tour to {status} (state before the special case was reported).",
       adminSpecialCaseRepublish: "Republish",
       adminSpecialCaseClose: "Close",
       adminSpecialCaseCancel: "Cancel tour",
@@ -473,6 +476,28 @@ window.I18n = (() => {
       adminPublishToMarketplace: "Publish to marketplace",
       adminEditDraft: "Edit draft…",
       adminAssignDriver: "Assign driver…",
+      adminReassignDriver: "Reassign driver…",
+      adminAssignDriverTitle: "Assign driver",
+      adminReassignDriverTitle: "Reassign driver",
+      adminAssignDriverHint:
+        "Direct assignment moves the tour from Draft to Assigned. Only active service partners can be selected.",
+      adminReassignDriverHint:
+        "Change the assigned service partner for this tour. The tour stays in its current status.",
+      adminAssignDriverSelectLabel: "Service partner *",
+      adminAssignDriverConfirm: "Assign",
+      adminReassignDriverConfirm: "Reassign",
+      adminAssignCurrentDriver: "Currently assigned: {name}",
+      adminAssignNoActiveDrivers:
+        "No active service partners. Activate a partner under Users first.",
+      adminAssignDriverRequired: "Select a service partner.",
+      adminAssignDriverNotFound: "Service partner not found.",
+      adminAssignDriverInactive:
+        "This partner is not active. Choose an active service partner.",
+      adminReassignSameDriver: "This partner is already assigned to the tour.",
+      reassignBlocked: "Reassignment blocked",
+      reassignBlockedSub:
+        "Only Assigned, Accepted, or Special case tours can be reassigned.",
+      jobReassigned: "Reassigned · {driver}",
       adminCancelJob: "Cancel job",
       adminCancelJobConfirm:
         "Cancel this tour? It will be removed from the marketplace and the driver’s active list.",
@@ -1029,6 +1054,9 @@ window.I18n = (() => {
       adminSpecialCaseTitle: "Sonderfall auflösen",
       adminSpecialCaseNotes: "Entscheidungsnotizen",
       adminSpecialCaseContinue: "Fortsetzen",
+      adminSpecialCaseContinueTitle: "Tour als {status} fortsetzen",
+      adminSpecialCaseResumeHint:
+        "Fortsetzen stellt den Status {status} wieder her (Zustand vor dem Sonderfall).",
       adminSpecialCaseRepublish: "Erneut veröffentlichen",
       adminSpecialCaseClose: "Schließen",
       adminSpecialCaseCancel: "Tour stornieren",
@@ -1179,6 +1207,28 @@ window.I18n = (() => {
       adminPublishToMarketplace: "Auf Marktplatz veröffentlichen",
       adminEditDraft: "Entwurf bearbeiten…",
       adminAssignDriver: "Fahrer zuweisen…",
+      adminReassignDriver: "Fahrer neu zuweisen…",
+      adminAssignDriverTitle: "Fahrer zuweisen",
+      adminReassignDriverTitle: "Fahrer neu zuweisen",
+      adminAssignDriverHint:
+        "Direkte Zuweisung setzt die Tour von Entwurf auf Zugewiesen. Nur aktive Servicepartner sind wählbar.",
+      adminReassignDriverHint:
+        "Zugewiesenen Servicepartner für diese Tour ändern. Der Tourstatus bleibt unverändert.",
+      adminAssignDriverSelectLabel: "Servicepartner *",
+      adminAssignDriverConfirm: "Zuweisen",
+      adminReassignDriverConfirm: "Neu zuweisen",
+      adminAssignCurrentDriver: "Aktuell zugewiesen: {name}",
+      adminAssignNoActiveDrivers:
+        "Keine aktiven Servicepartner. Partner unter Benutzer aktivieren.",
+      adminAssignDriverRequired: "Bitte Servicepartner wählen.",
+      adminAssignDriverNotFound: "Servicepartner nicht gefunden.",
+      adminAssignDriverInactive:
+        "Dieser Partner ist nicht aktiv. Bitte aktiven Partner wählen.",
+      adminReassignSameDriver: "Dieser Partner ist der Tour bereits zugewiesen.",
+      reassignBlocked: "Neuzuweisung blockiert",
+      reassignBlockedSub:
+        "Nur Zugewiesen-, Angenommen- oder Sonderfall-Touren können neu zugewiesen werden.",
+      jobReassigned: "Neu zugewiesen · {driver}",
       adminCancelJob: "Auftrag stornieren",
       adminCancelJobConfirm:
         "Diese Tour stornieren? Sie wird aus dem Marktplatz und der aktiven Fahrerliste entfernt.",

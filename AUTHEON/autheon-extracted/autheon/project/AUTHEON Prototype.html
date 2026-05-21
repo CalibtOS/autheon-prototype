@@ -229,8 +229,44 @@
         const [newOrderForm, setNewOrderForm] = useState({});
         const [newOrderValid, setNewOrderValid] = useState(false);
         const [billingNav, setBillingNav] = useState(null);
+        const [assignDialog, setAssignDialog] = useState(null);
 
         const clearBillingNav = () => setBillingNav(null);
+        const closeAssignDialog = () => setAssignDialog(null);
+
+        const confirmAssignDriver = (driverId) => {
+          if (!assignDialog?.jobId) return;
+          const job = store.getJob(assignDialog.jobId);
+          const r =
+            assignDialog.mode === "reassign"
+              ? store.reassignJob(assignDialog.jobId, driverId)
+              : store.assignJob(assignDialog.jobId, driverId);
+          if (!r.ok) {
+            showToast(
+              assignDialog.mode === "reassign"
+                ? t("reassignBlocked")
+                : t("assignBlocked"),
+              assignDriverErr(r, t),
+            );
+            return;
+          }
+          const name = r.driver?.name || job?.driver || "";
+          const mode = assignDialog.mode;
+          const afterAssign = assignDialog.afterAssign;
+          closeAssignDialog();
+          if (mode === "reassign") {
+            showToast(
+              t("jobReassigned", { driver: name }),
+              t("assignedTour", { tour: job?.tour || "" }),
+            );
+          } else {
+            showToast(
+              t("assignedDriver", { driver: name }),
+              t("assignedTour", { tour: job?.tour || "" }),
+            );
+            if (afterAssign === "back") onBack();
+          }
+        };
         const openFinancesForJob = (jobId) => {
           if (!store.getFeatureFlag("financeModule")) {
             showToast(t("adminFinanceModuleOff"), "");
@@ -343,15 +379,12 @@
                     t("publishedPortalVisible"),
                   );
               }}
-              onAssign={() => {
-                const r = store.assignJob(fresh.id, demoDriver());
-                if (!r.ok) showToast(t("assignBlocked"), t("assignBlockedSub"));
-                else
-                  showToast(
-                    t("assignedDriver", { driver: demoDriver() }),
-                    t("assignedTour", { tour: fresh.tour }),
-                  );
-              }}
+              onRequestAssign={() =>
+                setAssignDialog({ jobId: fresh.id, mode: "assign" })
+              }
+              onRequestReassign={() =>
+                setAssignDialog({ jobId: fresh.id, mode: "reassign" })
+              }
               onCancel={() => {
                 const r = store.cancelJob(fresh.id);
                 if (!r.ok)
@@ -462,13 +495,12 @@
                     t("driversNowSeePreview"),
                   );
               }}
-              onAssign={() => {
-                const r = store.assignJob(fresh.id, demoDriver());
-                if (!r.ok)
-                  showToast(t("assignBlocked"), t("publishBlockedDraftOnly"));
-                else
-                  showToast(t("assignedDriver", { driver: demoDriver() }), "");
-              }}
+              onRequestAssign={() =>
+                setAssignDialog({ jobId: fresh.id, mode: "assign" })
+              }
+              onRequestReassign={() =>
+                setAssignDialog({ jobId: fresh.id, mode: "reassign" })
+              }
               onEdit={() => setSection("new")}
               onRevertToDraft={() => {
                 const r = store.revertJobToDraft(fresh.id);
@@ -548,16 +580,12 @@
               onAssign={() => {
                 if (!newOrderValid) return;
                 const newJob = store.saveDraft(newOrderForm || {});
-                const r = store.assignJob(newJob.id, demoDriver());
                 setFreshId(newJob.id);
-                if (!r.ok)
-                  showToast(t("couldNotAssign"), t("publishBlockedDraftOnly"));
-                else
-                  showToast(
-                    t("assignedDriver", { driver: demoDriver() }),
-                    t("assignedTour", { tour: newJob.tour }),
-                  );
-                onBack();
+                setAssignDialog({
+                  jobId: newJob.id,
+                  mode: "assign",
+                  afterAssign: "back",
+                });
               }}
             />
           );
@@ -584,6 +612,15 @@
               </div>
               <div className="admin-content">{body}</div>
               {footer && <div className="admin-foot">{footer}</div>}
+              {assignDialog && (
+                <AssignDriverDialog
+                  open
+                  mode={assignDialog.mode}
+                  job={store.getJob(assignDialog.jobId)}
+                  onClose={closeAssignDialog}
+                  onConfirm={confirmAssignDriver}
+                />
+              )}
               {toast && (
                 <div className="toast">
                   <span className="check">✓</span>

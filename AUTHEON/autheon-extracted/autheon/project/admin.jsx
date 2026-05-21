@@ -682,6 +682,17 @@ const SpecialCaseResolutionPanel = ({ job, showToast }) => {
   const [note, setNote] = useStateA("");
   if (job.status !== "special_case") return null;
   const report = job.specialCaseReport || {};
+  const priorStatus =
+    report.statusBeforeSpecialCase ||
+    (() => {
+      const hist = job.history || [];
+      for (let i = hist.length - 1; i >= 0; i--) {
+        const st = hist[i]?.st;
+        if (st === "special_case") continue;
+        if (st === "assigned" || st === "accepted") return st;
+      }
+      return "assigned";
+    })();
   const resolve = (decision) => {
     const mapped = SPECIAL_CASE_STORE_DECISION[decision] || decision;
     const r = store.resolveSpecialCase(job.id, mapped, note.trim());
@@ -722,6 +733,14 @@ const SpecialCaseResolutionPanel = ({ job, showToast }) => {
       >
         {report.message || report.note || "—"}
       </div>
+      <p
+        className="label"
+        style={{ marginTop: 10, fontSize: 11.5, lineHeight: 1.45 }}
+      >
+        {t("adminSpecialCaseResumeHint", {
+          status: AuthStore.statusLabel(priorStatus),
+        })}
+      </p>
       <div
         style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}
       >
@@ -729,6 +748,9 @@ const SpecialCaseResolutionPanel = ({ job, showToast }) => {
           type="button"
           className="btn primary"
           onClick={() => resolve("continue")}
+          title={t("adminSpecialCaseContinueTitle", {
+            status: AuthStore.statusLabel(priorStatus),
+          })}
         >
           {t("adminSpecialCaseContinue") || "Continue tour"}
         </button>
@@ -765,13 +787,159 @@ const SpecialCaseResolutionPanel = ({ job, showToast }) => {
 };
 
 // =========================================================================
+// ADMIN — ASSIGN / REASSIGN DRIVER
+// =========================================================================
+const assignDriverErr = (r, t) => {
+  if (!r || r.ok) return "";
+  const reason = r.reason;
+  if (reason === "not_draft") return t("assignBlockedSub");
+  if (reason === "not_reassignable") return t("reassignBlockedSub");
+  if (reason === "driver_required") return t("adminAssignDriverRequired");
+  if (reason === "driver_not_found") return t("adminAssignDriverNotFound");
+  if (reason === "driver_not_active") return t("adminAssignDriverInactive");
+  if (reason === "same_driver") return t("adminReassignSameDriver");
+  return t("adminInvoiceErrGeneric");
+};
+
+const AssignDriverDialog = ({
+  open,
+  mode,
+  job,
+  onClose,
+  onConfirm,
+}) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const drivers = store.getAssignableDrivers();
+  const [driverId, setDriverId] = useStateA("");
+
+  useEffectA(() => {
+    if (!open || !job) return;
+    const list = store.getAssignableDrivers();
+    const preferred =
+      job.driverId && list.some((d) => d.id === job.driverId)
+        ? job.driverId
+        : list.find((d) => d.name === job.driver)?.id;
+    setDriverId(preferred || list[0]?.id || "");
+  }, [open, job?.id, job?.driverId, job?.driver]);
+
+  if (!open || !job) return null;
+
+  const title =
+    mode === "reassign"
+      ? t("adminReassignDriverTitle")
+      : t("adminAssignDriverTitle");
+  const hint =
+    mode === "reassign"
+      ? t("adminReassignDriverHint")
+      : t("adminAssignDriverHint");
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="assign-driver-title"
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.45)",
+        zIndex: 103,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="card elev"
+        style={{ maxWidth: 480, width: "100%", padding: 22 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="assign-driver-title" style={{ margin: "0 0 6px", fontSize: 18 }}>
+          {title}
+        </h2>
+        <p
+          className="label"
+          style={{ margin: "0 0 14px", fontSize: 12.5, lineHeight: 1.55 }}
+        >
+          {hint}
+        </p>
+        <div
+          className="mono"
+          style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14 }}
+        >
+          {t("tourNo")} {job.tour} · {job.customer}
+        </div>
+        {drivers.length === 0 ? (
+          <p style={{ fontSize: 13, color: "var(--st-cancelled)" }}>
+            {t("adminAssignNoActiveDrivers")}
+          </p>
+        ) : (
+          <div>
+            <label className="field-label" htmlFor="assign-driver-select">
+              {t("adminAssignDriverSelectLabel")}
+            </label>
+            <select
+              id="assign-driver-select"
+              className="input"
+              value={driverId}
+              onChange={(e) => setDriverId(e.target.value)}
+            >
+              {drivers.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name} · {d.partnerId}
+                  {d.company ? ` · ${d.company}` : ""}
+                </option>
+              ))}
+            </select>
+            {job.driver && mode === "reassign" ? (
+              <p
+                className="label"
+                style={{ marginTop: 10, fontSize: 11.5, lineHeight: 1.45 }}
+              >
+                {t("adminAssignCurrentDriver", { name: job.driver })}
+              </p>
+            ) : null}
+          </div>
+        )}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginTop: 18,
+            justifyContent: "flex-end",
+            flexWrap: "wrap",
+          }}
+        >
+          <button type="button" className="btn" onClick={onClose}>
+            {t("adminInvoiceCancel")}
+          </button>
+          <button
+            type="button"
+            className="btn primary"
+            disabled={!driverId || drivers.length === 0}
+            onClick={() => onConfirm(driverId)}
+          >
+            {mode === "reassign"
+              ? t("adminReassignDriverConfirm")
+              : t("adminAssignDriverConfirm")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// =========================================================================
 // ADMIN — DETAIL
 // =========================================================================
 const AdminDetail = ({
   job,
   onBack,
   onPublish,
-  onAssign,
+  onRequestAssign,
+  onRequestReassign,
   onCancel,
   onEdit,
   onEditFinances,
@@ -1284,7 +1452,36 @@ const AdminDetail = ({
               }}
             >
               {job.driver || t("adminDriverNone")}
+              {job.driverId ? (
+                <div
+                  className="label"
+                  style={{ marginTop: 4, fontSize: 10.5 }}
+                >
+                  {job.driverId}
+                </div>
+              ) : null}
             </div>
+            {job.status === "draft" && onRequestAssign ? (
+              <button
+                type="button"
+                className="btn primary block"
+                style={{ marginTop: 12 }}
+                onClick={onRequestAssign}
+              >
+                {t("adminAssignDriver")}
+              </button>
+            ) : null}
+            {["assigned", "accepted", "special_case"].includes(job.status) &&
+            onRequestReassign ? (
+              <button
+                type="button"
+                className="btn block"
+                style={{ marginTop: 12 }}
+                onClick={onRequestReassign}
+              >
+                {t("adminReassignDriver")}
+              </button>
+            ) : null}
           </div>
           <div className="card" style={{ padding: 18 }}>
             <div className="label">{t("adminMetadata")}</div>
@@ -1369,7 +1566,8 @@ const AdminDetail = ({
 const AdminDetailFooter = ({
   job,
   onPublish,
-  onAssign,
+  onRequestAssign,
+  onRequestReassign,
   onEdit,
   onCancel,
   onRevertToDraft,
@@ -1400,7 +1598,7 @@ const AdminDetailFooter = ({
         )}
         {job.status === "draft" && (
           <>
-            <button type="button" className="btn" onClick={onAssign}>
+            <button type="button" className="btn" onClick={onRequestAssign}>
               {t("adminAssignDriver")}
             </button>
             <button type="button" className="btn primary" onClick={onPublish}>
@@ -1423,6 +1621,12 @@ const AdminDetailFooter = ({
             {t("adminRevertToDraft")}
           </button>
         )}
+        {["assigned", "accepted", "special_case"].includes(job.status) &&
+          onRequestReassign && (
+            <button type="button" className="btn" onClick={onRequestReassign}>
+              {t("adminReassignDriver")}
+            </button>
+          )}
         {(job.status === "accepted" ||
           job.status === "assigned" ||
           job.status === "special_case") && (
@@ -3899,6 +4103,8 @@ Object.assign(window, {
   AdminNav,
   Overview,
   OverviewFooter,
+  AssignDriverDialog,
+  assignDriverErr,
   AdminDetail,
   AdminDetailFooter,
   NewOrder,

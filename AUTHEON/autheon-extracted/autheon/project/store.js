@@ -91,6 +91,7 @@ window.AuthStore = (() => {
       notesDriver: "",
       status: "draft",
       driver: null,
+      driverId: null,
       isNew: false,
       history: [],
       createdAt: "",
@@ -750,6 +751,7 @@ window.AuthStore = (() => {
             "Customer yard closed unexpectedly; vehicle not accessible for pickup.",
           reportedAt: "23.04. 08:40",
           reportedBy: DEMO_DRIVER,
+          statusBeforeSpecialCase: "accepted",
         },
         history: [
           { st: "draft", at: "22.04. 16:11", by: "A. Bauer" },
@@ -1078,6 +1080,23 @@ window.AuthStore = (() => {
         },
       },
       {
+        id: "DRV-0301",
+        name: "Klaus Neumann",
+        company: "Neumann Logistik",
+        partnerId: "AU-41-0301",
+        address: "Hanauer Landstr. 12, 60314 Frankfurt",
+        email: "k.neumann@example.com",
+        phone: "+49 172 3300301",
+        status: "Active",
+        prefs: {
+          startPlz: "60",
+          endPlz: "",
+          vehicle: "Transporter",
+          axle: AXLE_THIRD,
+          push: true,
+        },
+      },
+      {
         id: "DRV-0177",
         name: "Mira Vogt",
         company: "Vogt Fahrservice",
@@ -1270,6 +1289,20 @@ window.AuthStore = (() => {
   let newsItems = seedNews();
   let jobs = seedJobs();
 
+  /** Restore target when admin continues a special case (fallback for legacy rows). */
+  function inferStatusBeforeSpecialCase(job) {
+    const fromReport = job?.specialCaseReport?.statusBeforeSpecialCase;
+    if (fromReport && ["assigned", "accepted"].includes(fromReport))
+      return fromReport;
+    const hist = job?.history || [];
+    for (let i = hist.length - 1; i >= 0; i--) {
+      const st = hist[i]?.st;
+      if (st === "special_case") continue;
+      if (["assigned", "accepted"].includes(st)) return st;
+    }
+    return "assigned";
+  }
+
   function validateSeedData(jobList, partyList, docList, state) {
     const issues = [];
     const partyIds = new Set(partyList.map((p) => p.id));
@@ -1329,6 +1362,13 @@ window.AuthStore = (() => {
       const j = jobList.find((x) => x.id === id);
       if (!j || j.status !== "special_case") {
         issues.push(`driverState.specialCaseIds: ${id} status mismatch`);
+      } else {
+        const prior = j.specialCaseReport?.statusBeforeSpecialCase;
+        if (!prior || !["assigned", "accepted"].includes(prior)) {
+          issues.push(
+            `${j.id}: special case missing valid statusBeforeSpecialCase`,
+          );
+        }
       }
     }
     for (const id of state.cancelledIds || []) {
@@ -1647,17 +1687,47 @@ window.AuthStore = (() => {
 
     isMineJob(j) {
       if (!j) return false;
+      const curName = api.getCurrentDriver()?.name || DEMO_DRIVER;
       if (driverState.cancelledIds.has(j.id)) return true;
       if (driverState.acceptedIds.has(j.id)) return true;
       if (driverState.performedIds.has(j.id)) return true;
       if (driverState.specialCaseIds.has(j.id)) return true;
-      if (j.status === "cancelled" && j.driver === DEMO_DRIVER) return true;
+      if (j.status === "cancelled" && j.driver === curName) return true;
       if (
-        j.driver === DEMO_DRIVER &&
+        j.driver === curName &&
         ["assigned", "accepted", "special_case", "performed"].includes(j.status)
       )
         return true;
       return false;
+    },
+
+    getAssignableDrivers() {
+      return drivers.filter((d) => d.status === "Active");
+    },
+
+    resolveAssignableDriver(ref) {
+      if (ref == null || ref === "")
+        return { ok: false, reason: "driver_required" };
+      let driver = null;
+      if (typeof ref === "object") {
+        if (ref.driverId)
+          driver = drivers.find((d) => d.id === ref.driverId) || null;
+        if (!driver && (ref.driverName || ref.name))
+          driver =
+            drivers.find(
+              (d) => d.name === ref.driverName || d.name === ref.name,
+            ) || null;
+      } else {
+        const s = String(ref).trim();
+        driver =
+          drivers.find((d) => d.id === s) ||
+          drivers.find((d) => d.name === s) ||
+          null;
+      }
+      if (!driver) return { ok: false, reason: "driver_not_found" };
+      if (driver.status !== "Active")
+        return { ok: false, reason: "driver_not_active" };
+      return { ok: true, driver };
     },
 
     isAccepted: (id) => driverState.acceptedIds.has(id),
@@ -1836,6 +1906,7 @@ window.AuthStore = (() => {
         return { ok: false, reason: "invalid_state" };
       if (j.driver && j.driver !== DEMO_DRIVER)
         return { ok: false, reason: "not_assigned_driver" };
+      const statusBeforeSpecialCase = j.status;
       j.status = "special_case";
       j.specialCaseReport = {
         type: "not_performable",
@@ -1843,6 +1914,7 @@ window.AuthStore = (() => {
         message: message || "",
         reportedAt: nowStamp(),
         reportedBy: DEMO_DRIVER,
+        statusBeforeSpecialCase,
       };
       j.history = [
         ...(j.history || []),
@@ -1921,19 +1993,31 @@ window.AuthStore = (() => {
         d === "assigned" ||
         d === "continue"
       ) {
-        j.status = "assigned";
+        const restored =
+          j.specialCaseReport?.statusBeforeSpecialCase ||
+          inferStatusBeforeSpecialCase(j);
+        j.status = restored;
         j.specialCaseReport = null;
         driverState.specialCaseIds.delete(id);
+        if (restored === "accepted") driverState.acceptedIds.add(id);
+        else driverState.acceptedIds.delete(id);
         j.history = [
           ...(j.history || []),
           {
-            st: "assigned",
+            st: restored,
             at: nowStamp(),
             by: DEMO_ADMIN,
-            meta: note || "Special case resolved → reassigned",
+            meta:
+              note ||
+              `Special case resolved → continued as ${restored}`,
           },
         ];
-        log("special_case_resolved", DEMO_ADMIN, j.tour, "Reassigned");
+        log(
+          "special_case_resolved",
+          DEMO_ADMIN,
+          j.tour,
+          `Continued as ${restored}`,
+        );
       } else if (d === "close") {
         j.status = "performed";
         j.performedAt = j.performedAt || nowStamp();
@@ -2019,21 +2103,62 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
-    assignJob(id, driverName) {
+    assignJob(id, driverRef) {
       const j = api.getJob(id);
-      if (!j || j.status !== "draft") return { ok: false };
+      if (!j || j.status !== "draft")
+        return { ok: false, reason: "not_draft" };
+      const dr = api.resolveAssignableDriver(driverRef);
+      if (!dr.ok) return dr;
       j.status = "assigned";
-      j.driver = driverName || DEMO_DRIVER;
+      j.driver = dr.driver.name;
+      j.driverId = dr.driver.id;
       bumpPdf(j);
       j.history = [
         ...(j.history || []),
-        { st: "assigned", at: nowStamp(), by: "A. Bauer" },
+        {
+          st: "assigned",
+          at: nowStamp(),
+          by: DEMO_ADMIN,
+          meta: `Driver: ${j.driver} (${j.driverId})`,
+        },
       ];
       log("job_assigned", DEMO_ADMIN, j.tour, `Driver: ${j.driver}`);
       queuePushNotification(j, "assign");
       queueAdminEmailAlert("job_assigned", id, `Driver: ${j.driver}`);
       emit();
-      return { ok: true };
+      return { ok: true, driver: dr.driver };
+    },
+
+    reassignJob(id, driverRef) {
+      const j = api.getJob(id);
+      const allowed = ["assigned", "accepted", "special_case"];
+      if (!j || !allowed.includes(j.status))
+        return { ok: false, reason: "not_reassignable" };
+      const dr = api.resolveAssignableDriver(driverRef);
+      if (!dr.ok) return dr;
+      const prev = j.driver || "";
+      if (prev === dr.driver.name) return { ok: false, reason: "same_driver" };
+      j.driver = dr.driver.name;
+      j.driverId = dr.driver.id;
+      j.history = [
+        ...(j.history || []),
+        {
+          st: j.status,
+          at: nowStamp(),
+          by: DEMO_ADMIN,
+          meta: `Reassigned: ${prev || "—"} → ${j.driver}`,
+        },
+      ];
+      log(
+        "job_reassigned",
+        DEMO_ADMIN,
+        j.tour,
+        `${prev || "—"} → ${j.driver}`,
+      );
+      queuePushNotification(j, "assign");
+      queueAdminEmailAlert("job_reassigned", id, `${prev} → ${j.driver}`);
+      emit();
+      return { ok: true, driver: dr.driver, previousDriver: prev };
     },
 
     cancelJob(id, opts = {}) {
