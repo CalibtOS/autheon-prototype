@@ -545,7 +545,11 @@ window.I18n = (() => {
       newOrderSecNotes: "Notes",
       newOrderSecCustomerTitle: "Customer / client",
       newOrderPrefillMaster: "Pre-fill from master data",
+      newOrderCustomerMasterLabel: "Customer master data",
       newOrderSelectCustomer: "Select customer *",
+      newOrderCustomerPlaceholder: "Choose a customer…",
+      newOrderCustomerSelectHint:
+        "New customers can be added under Customers before creating a job.",
       newOrderCustomerSearchPh: "Search customer or pick from list…",
       newOrderOrCreateNew: "Or create new",
       newOrderFromMasterData: "From master data",
@@ -1249,7 +1253,11 @@ window.I18n = (() => {
       newOrderSecNotes: "Notizen",
       newOrderSecCustomerTitle: "Kunde / Auftraggeber",
       newOrderPrefillMaster: "Pre-fill aus Master-Daten",
+      newOrderCustomerMasterLabel: "Kundenstammdaten",
       newOrderSelectCustomer: "Kunde auswählen *",
+      newOrderCustomerPlaceholder: "Kunde wählen…",
+      newOrderCustomerSelectHint:
+        "Neue Kunden können unter Kunden angelegt werden, bevor ein Auftrag erstellt wird.",
       newOrderCustomerSearchPh: "Kunde suchen oder aus Liste wählen…",
       newOrderOrCreateNew: "Oder neu anlegen",
       newOrderFromMasterData: "Aus Master-Daten",

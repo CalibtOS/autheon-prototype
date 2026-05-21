@@ -1460,6 +1460,7 @@ const NewOrder = ({ onCancel, onFormChange }) => {
     { value: "Fremdachse", label: t("thirdPartyAxle") },
   ];
   const [form, setForm] = useStateA({
+    orderingPartyId: "",
     customer: "",
     startCity: "",
     startPlz: "",
@@ -1487,26 +1488,29 @@ const NewOrder = ({ onCancel, onFormChange }) => {
   });
   const [activeSec, setActiveSec] = useStateA("01");
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const prefillCustomer = () => {
-    const c = store.getOrderingParties()[0];
-    if (!c) return;
+  const orderingParties = store.getOrderingParties();
+  const applyOrderingParty = (party) => {
+    if (!party) return;
     setForm((f) => ({
       ...f,
-      customer: c.name,
-      startStreet: c.pickup.split(",")[0] || f.startStreet,
-      startPlz: (c.pickup.match(/\b\d{5}\b/) || [""])[0],
-      startCity:
-        (c.pickup.split(",").pop() || "").replace(/\d/g, "").trim() ||
-        f.startCity,
-      endStreet: c.delivery.split(",")[0] || f.endStreet,
-      endPlz: (c.delivery.match(/\b\d{5}\b/) || [""])[0],
-      endCity:
-        (c.delivery.split(",").pop() || "").replace(/\d/g, "").trim() ||
-        f.endCity,
-      cName1: c.contact,
-      cPhone1: c.phone,
-      notesDriver: c.instructions,
+      orderingPartyId: party.id,
+      customer: party.name,
+      cName1: party.contact || f.cName1,
+      cPhone1: party.phone || f.cPhone1,
+      notesDriver: party.instructions || f.notesDriver,
     }));
+  };
+  const onCustomerSelect = (partyId) => {
+    if (!partyId) {
+      setForm((f) => ({
+        ...f,
+        orderingPartyId: "",
+        customer: "",
+      }));
+      return;
+    }
+    const party = orderingParties.find((x) => x.id === partyId);
+    if (party) applyOrderingParty(party);
   };
 
   const required = [
@@ -1619,36 +1623,32 @@ const NewOrder = ({ onCancel, onFormChange }) => {
               <h3>
                 <span className="num">01</span> {t("newOrderSecCustomerTitle")}
               </h3>
-              <span className="label">{t("newOrderPrefillMaster")}</span>
+              <span className="label">{t("newOrderCustomerMasterLabel")}</span>
             </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 160px",
-                gap: 14,
-                marginTop: 14,
-              }}
-            >
-              <div>
-                <label className="field-label">{t("newOrderSelectCustomer")}</label>
-                <input
-                  className="input"
-                  placeholder={t("newOrderCustomerSearchPh")}
-                  value={form.customer}
-                  onChange={(e) => set("customer", e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="field-label">{t("newOrderOrCreateNew")}</label>
-                <button
-                  type="button"
-                  className="btn block"
-                  style={{ padding: "10px 12px" }}
-                  onClick={prefillCustomer}
-                >
-                  <Ic.Plus /> {t("newOrderFromMasterData")}
-                </button>
-              </div>
+            <div style={{ marginTop: 14 }}>
+              <label className="field-label" htmlFor="new-order-customer">
+                {t("newOrderSelectCustomer")}
+              </label>
+              <select
+                id="new-order-customer"
+                className="input"
+                value={form.orderingPartyId || ""}
+                onChange={(e) => onCustomerSelect(e.target.value)}
+              >
+                <option value="">{t("newOrderCustomerPlaceholder")}</option>
+                {orderingParties.map((op) => (
+                  <option key={op.id} value={op.id}>
+                    {op.name}
+                    {op.type ? ` · ${op.type}` : ""}
+                  </option>
+                ))}
+              </select>
+              <p
+                className="label"
+                style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.45 }}
+              >
+                {t("newOrderCustomerSelectHint")}
+              </p>
             </div>
             {!form.customer && (
               <div
