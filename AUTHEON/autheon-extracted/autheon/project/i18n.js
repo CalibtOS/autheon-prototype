@@ -56,7 +56,7 @@ window.I18n = (() => {
         noteSeparate:
           "Driver account Active/Blocked and finance payment labels are separate from tour lifecycle status.",
         draft:
-          "Internal preparation only; edit the tour, publish to the marketplace, or assign a driver. The transport order PDF is available after the tour leaves Draft.",
+          "Internal preparation only; edit the tour, publish to the marketplace, assign a driver, or delete mistaken drafts. The transport order PDF is available after the tour leaves Draft.",
         published:
           "Visible on the driver marketplace; a partner accepts to take the tour. Dispatch can return the tour to Draft to edit or re-publish; direct assignment still requires Draft.",
         assigned:
@@ -182,6 +182,9 @@ window.I18n = (() => {
       problemReasonOtherSub: "Other issue requiring clarification",
       reportProblemPlaceholder: "Describe the problem (min. 10 characters)…",
       slideToCancelOrder: "Slide to cancel order",
+      slideToCancelOrderLocked: "Slider locked",
+      slideToCancelOrderHint:
+        "Enter at least 10 characters in the explanation above to unlock the slider.",
       reportProblemCancelConfirmed: "Cancellation submitted",
       reportProblemSpecialCaseNotice:
         "Dispatch will review this report and follow up.",
@@ -469,6 +472,14 @@ window.I18n = (() => {
       adminCancelJob: "Cancel job",
       adminCancelJobConfirm:
         "Cancel this tour? It will be removed from the marketplace and the driver’s active list.",
+      adminDeleteDraft: "Delete draft",
+      adminDeleteDraftConfirm:
+        "Permanently delete this draft? It will be removed from the job list and cannot be recovered.",
+      adminDeleteDraftSub:
+        "Draft removed. Use this for mistaken or test entries before publish or assign.",
+      draftDeletedTour: "Draft deleted · Tour {tour}",
+      deleteDraftBlocked: "Could not delete draft",
+      deleteDraftBlockedSub: "Only draft jobs can be deleted. Cancel or resolve other statuses instead.",
       adminPhase1PublishedNoAssign:
         "Phase 1: you cannot assign from Published. Return the tour to Draft first, then edit, re-publish, or assign directly.",
       adminRevertToDraft: "Return to draft",
@@ -739,7 +750,7 @@ window.I18n = (() => {
         noteSeparate:
           "Kontostatus des Fahrers (Aktiv/Gesperrt) und Zahlungsstatus in der Finanzübersicht sind vom Tour-Lebenszyklus getrennt.",
         draft:
-          "Nur interne Vorbereitung; Tour bearbeiten, veröffentlichen oder Fahrer zuweisen. Der Transportauftrag (PDF) steht zur Verfügung, sobald die Tour den Entwurf verlässt.",
+          "Nur interne Vorbereitung; Tour bearbeiten, veröffentlichen, Fahrer zuweisen oder fehlerhafte Entwürfe löschen. Der Transportauftrag (PDF) steht zur Verfügung, sobald die Tour den Entwurf verlässt.",
         published:
           "Sichtbar im Fahrermarktplatz; ein Partner nimmt die Tour an. Die Disposition kann die Tour auf Entwurf zurücksetzen, um sie zu bearbeiten oder erneut zu veröffentlichen; direkte Zuweisung erfordert weiterhin Entwurf.",
         assigned:
@@ -865,6 +876,9 @@ window.I18n = (() => {
       problemReasonOtherSub: "Anderes Klärungsproblem",
       reportProblemPlaceholder: "Problem beschreiben (mind. 10 Zeichen)…",
       slideToCancelOrder: "Zum Stornieren wischen",
+      slideToCancelOrderLocked: "Schieberegler gesperrt",
+      slideToCancelOrderHint:
+        "Geben Sie oben mindestens 10 Zeichen in die Erklärung ein, um den Schieberegler freizuschalten.",
       reportProblemCancelConfirmed: "Stornierung gesendet",
       reportProblemSpecialCaseNotice:
         "Die Disposition prüft den Bericht und meldet sich.",
@@ -1154,6 +1168,15 @@ window.I18n = (() => {
       adminCancelJob: "Auftrag stornieren",
       adminCancelJobConfirm:
         "Diese Tour stornieren? Sie wird aus dem Marktplatz und der aktiven Fahrerliste entfernt.",
+      adminDeleteDraft: "Entwurf löschen",
+      adminDeleteDraftConfirm:
+        "Diesen Entwurf endgültig löschen? Er wird aus der Auftragsliste entfernt und kann nicht wiederhergestellt werden.",
+      adminDeleteDraftSub:
+        "Entwurf entfernt. Für fehlerhafte oder Test-Einträge vor Veröffentlichung oder Zuweisung.",
+      draftDeletedTour: "Entwurf gelöscht · Tour {tour}",
+      deleteDraftBlocked: "Entwurf konnte nicht gelöscht werden",
+      deleteDraftBlockedSub:
+        "Nur Entwürfe können gelöscht werden. Andere Statuse stornieren oder im Sonderfall bearbeiten.",
       adminPhase1PublishedNoAssign:
         "Phase 1: Zuweisung aus „Veröffentlicht“ nicht möglich. Zuerst auf Entwurf zurück, dann bearbeiten, erneut veröffentlichen oder direkt zuweisen.",
       adminRevertToDraft: "Zurück auf Entwurf",

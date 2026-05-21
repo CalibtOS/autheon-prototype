@@ -2155,39 +2155,56 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   ];
   const reasonList = path === "cancel" ? cancelReasons : notPerformableReasons;
 
+  const slideEnabled = valid && !slideDone;
+
   const onSlideStart = (e) => {
     e.preventDefault();
-    if (slideDone || !valid) return;
-    const startX = e.touches ? e.touches[0].clientX : e.clientX;
+    if (!slideEnabled || !trackRef.current) return;
+    const thumb = e.currentTarget;
+    if (thumb.setPointerCapture && e.pointerId != null) {
+      try {
+        thumb.setPointerCapture(e.pointerId);
+      } catch (_) {
+        /* ignore */
+      }
+    }
+    const startX = e.clientX;
     const startPos = slidePos;
+    let completed = false;
     const move = (ev) => {
-      const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      if (!trackRef.current) return;
       const rect = trackRef.current.getBoundingClientRect();
       const dx = Math.max(
         0,
-        Math.min(rect.width - 92, startPos + (cx - startX)),
+        Math.min(rect.width - 92, startPos + (ev.clientX - startX)),
       );
       setSlidePos(dx);
-      if (dx >= rect.width - 100) {
+      if (dx >= rect.width - 100 && !completed) {
+        completed = true;
         setSlideDone(true);
         cleanup();
         setTimeout(() => onSubmit("cancel", reason, text.trim()), 380);
       }
     };
-    const up = () => {
+    const up = (ev) => {
       cleanup();
-      if (!slideDone) setSlidePos(0);
+      if (thumb.releasePointerCapture && ev?.pointerId != null) {
+        try {
+          thumb.releasePointerCapture(ev.pointerId);
+        } catch (_) {
+          /* ignore */
+        }
+      }
+      if (!completed) setSlidePos(0);
     };
     const cleanup = () => {
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", up);
-      window.removeEventListener("touchmove", move);
-      window.removeEventListener("touchend", up);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
     };
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
-    window.addEventListener("touchmove", move, { passive: false });
-    window.addEventListener("touchend", up);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   };
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -2268,34 +2285,59 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                 className="input"
                 placeholder={t("reportProblemPlaceholder")}
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setText(next);
+                  if (next.trim().length < 10) {
+                    setSlidePos(0);
+                    setSlideDone(false);
+                  }
+                }}
               />
               <div className="label" style={{ marginTop: 6 }}>
                 {t("charsRequired")}{" "}
-                <span style={{ color: "var(--muted-2)", marginLeft: 8 }}>
-                  {text.length}/10
+                <span
+                  className={
+                    "slide-char-count " + (valid ? "ok" : "need-more")
+                  }
+                >
+                  {text.trim().length}/10
                 </span>
               </div>
               {path === "cancel" ? (
-                <div style={{ marginTop: 16 }}>
+                <div className="slide-confirm-wrap" style={{ marginTop: 16 }}>
                   <div
                     ref={trackRef}
-                    className={"slide-confirm " + (slideDone ? "done" : "")}
+                    className={
+                      "slide-confirm" +
+                      (slideDone ? " done" : "") +
+                      (!slideEnabled ? " disabled" : "")
+                    }
+                    aria-disabled={!slideEnabled}
                   >
                     <div className="track-text">
                       {slideDone
                         ? t("reportProblemCancelConfirmed")
-                        : t("slideToCancelOrder")}
+                        : valid
+                          ? t("slideToCancelOrder")
+                          : t("slideToCancelOrderLocked")}
                     </div>
                     <div
                       className="thumb"
-                      style={{ width: slideDone ? "100%" : 92 + slidePos }}
-                      onMouseDown={onSlideStart}
-                      onTouchStart={onSlideStart}
+                      style={{
+                        width: slideDone ? "100%" : valid ? 92 + slidePos : 92,
+                      }}
+                      onPointerDown={slideEnabled ? onSlideStart : undefined}
+                      tabIndex={slideEnabled ? 0 : -1}
                     >
-                      {!slideDone && "›››"}
+                      {!slideDone && (valid ? "›››" : "LOCK")}
                     </div>
                   </div>
+                  {!valid && !slideDone && (
+                    <p className="slide-confirm-hint">
+                      {t("slideToCancelOrderHint")}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <p

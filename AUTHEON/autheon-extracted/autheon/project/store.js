@@ -1642,6 +1642,22 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
+    deleteDraftJob(id) {
+      const idx = jobs.findIndex((x) => x.id === id);
+      if (idx < 0) return { ok: false, reason: "not_found" };
+      const j = jobs[idx];
+      if (j.status !== "draft") return { ok: false, reason: "not_draft" };
+      const tour = j.tour;
+      jobs.splice(idx, 1);
+      driverState.acceptedIds.delete(id);
+      driverState.performedIds.delete(id);
+      driverState.specialCaseIds.delete(id);
+      driverState.cancelledIds.delete(id);
+      log("job_draft_deleted", DEMO_ADMIN, tour, "Draft removed by admin");
+      emit();
+      return { ok: true, tour };
+    },
+
     revertJobToDraft(id) {
       const j = api.getJob(id);
       if (!j || j.status !== "published")

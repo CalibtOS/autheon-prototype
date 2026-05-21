@@ -747,6 +747,43 @@ textarea.input { min-height: 92px; resize: vertical; }
 .slide-confirm.done .thumb { width: 100% !important; background: var(--cta); }
 .slide-confirm.done .track-text { color: #fff; }
 
+.slide-confirm-wrap { display: flex; flex-direction: column; gap: 8px; }
+.slide-char-count { margin-left: 8px; font-variant-numeric: tabular-nums; }
+.slide-char-count.need-more { color: var(--st-cancelled); font-weight: 600; }
+.slide-char-count.ok { color: var(--st-accepted); font-weight: 600; }
+.slide-confirm-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+  padding: 0 2px;
+}
+
+.slide-confirm.disabled {
+  opacity: 1;
+  background: var(--paper-2);
+  border: 1px dashed var(--line-dash);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+  filter: grayscale(0.35);
+}
+.slide-confirm.disabled .track-text {
+  color: var(--muted);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  padding: 0 12px 0 100px;
+  text-align: left;
+  justify-content: flex-start;
+}
+.slide-confirm.disabled .thumb {
+  background: var(--line-2);
+  color: var(--muted);
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none;
+  width: 92px !important;
+}
+.slide-confirm.disabled .thumb:active { cursor: not-allowed; }
+
 /* Radio cards */
 .radio-card {
   cursor: pointer;

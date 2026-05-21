@@ -1359,6 +1359,7 @@ const AdminDetailFooter = ({
   onEdit,
   onCancel,
   onRevertToDraft,
+  onDeleteDraft,
 }) => {
   const { t } = useI18n();
   return (
@@ -1390,6 +1391,16 @@ const AdminDetailFooter = ({
             </button>
             <button type="button" className="btn primary" onClick={onPublish}>
               {t("adminPublishToMarketplace")}
+            </button>
+            <button
+              type="button"
+              className="btn danger"
+              onClick={() => {
+                if (!window.confirm(t("adminDeleteDraftConfirm"))) return;
+                onDeleteDraft();
+              }}
+            >
+              {t("adminDeleteDraft")}
             </button>
           </>
         )}

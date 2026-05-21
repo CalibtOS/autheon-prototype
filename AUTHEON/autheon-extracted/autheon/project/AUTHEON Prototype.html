@@ -493,6 +493,21 @@
                     t("cancelledSub"),
                   );
               }}
+              onDeleteDraft={() => {
+                const r = store.deleteDraftJob(fresh.id);
+                if (!r.ok)
+                  showToast(
+                    t("deleteDraftBlocked"),
+                    t("deleteDraftBlockedSub"),
+                  );
+                else {
+                  showToast(
+                    t("draftDeletedTour", { tour: r.tour || fresh.tour }),
+                    t("adminDeleteDraftSub"),
+                  );
+                  onBack();
+                }
+              }}
             />
           );
         } else if (section === "new") {
