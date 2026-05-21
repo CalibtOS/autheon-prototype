@@ -1238,15 +1238,26 @@ textarea.input { min-height: 92px; resize: vertical; }
 .billing-filter-chip {
   cursor: pointer;
   font-size: 12.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-2);
+  background: var(--paper-3);
+  color: var(--text);
+  font-family: var(--font-sans);
+  transition: background 0.12s, border-color 0.12s;
+}
+.billing-filter-chip:hover {
+  background: var(--paper);
+  border-color: var(--line-3);
 }
 .label.pill-muted {
   font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
-}
-.tbl tr.st-accepted-bg {
-  background: var(--st-accepted-bg);
 }
 .tbl.compact th,
 .tbl.compact td {

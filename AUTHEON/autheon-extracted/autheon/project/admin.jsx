@@ -2641,10 +2641,22 @@ const PartnerInvoicesPane = ({
     });
   };
 
+  const displayDocReviewStatus = (st) =>
+    ({
+      missing: t("docReviewMissing"),
+      uploaded: t("docReviewUploaded"),
+      under_review: t("docReviewUnderReview"),
+      accepted: t("docReviewAccepted"),
+      rejected: t("docReviewRejected"),
+      correction_required: t("docReviewCorrectionRequired"),
+    })[st] || st || "—";
+
   const reviewPillStatus = (st) => {
     if (st === "accepted") return "accepted";
-    if (st === "rejected") return "cancelled";
-    return "assigned";
+    if (st === "rejected" || st === "correction_required") return "cancelled";
+    if (st === "under_review") return "published";
+    if (st === "uploaded") return "warn";
+    return "draft";
   };
 
   const invoiceActionErr = (r) => {
@@ -2702,7 +2714,7 @@ const PartnerInvoicesPane = ({
         <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 10 }}>
           <button
             type="button"
-            className="chip on billing-filter-chip"
+            className="billing-filter-chip"
             onClick={onClearFilter}
             title={t("adminClearFilter")}
           >
@@ -2919,10 +2931,7 @@ const PartnerInvoicesPane = ({
             </tr>
           ) : (
             visibleUploads.map((u) => (
-              <tr
-                key={u.id}
-                className={u.reviewStatus === "accepted" ? "st-accepted-bg" : undefined}
-              >
+              <tr key={u.id}>
                 <td>
                   <input
                     type="checkbox"
@@ -2978,7 +2987,7 @@ const PartnerInvoicesPane = ({
                 </td>
                 <td>
                   <Pill status={reviewPillStatus(u.reviewStatus)}>
-                    {u.reviewStatus || "—"}
+                    {displayDocReviewStatus(u.reviewStatus)}
                   </Pill>
                 </td>
                 <td style={{ whiteSpace: "nowrap" }}>
