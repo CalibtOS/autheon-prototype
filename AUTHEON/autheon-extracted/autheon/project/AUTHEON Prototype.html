@@ -566,7 +566,11 @@
         return (
           <div className="admin">
             <AdminNav
-              section={section === "detail" ? "overview" : section}
+              section={
+                section === "detail" || section === "new"
+                  ? "overview"
+                  : section
+              }
               setSection={(s) => {
                 setSection(s);
                 setActiveJob(null);

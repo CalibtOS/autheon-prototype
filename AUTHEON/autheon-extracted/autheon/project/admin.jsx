@@ -17,7 +17,6 @@ const AdminNav = ({ section, setSection }) => {
   const financeOn = store.getFeatureFlag("financeModule");
   const items = [
     { id: "overview", label: t("navJobs"), count: total, I: Ic.N.Tour },
-    { id: "new", label: t("navNewJob"), count: null, I: Ic.N.Plus },
     { id: "users", label: t("navUsers"), count: null, I: Ic.N.Users },
     {
       id: "orderingparties",
