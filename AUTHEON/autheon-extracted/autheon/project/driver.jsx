@@ -98,10 +98,13 @@ const displayDocReviewStatus = (st, t) =>
   })[st] || st;
 
 const jobNeedsDocCorrection = (job, store) =>
-  /correction/i.test(String(job.documentReviewSummary || "")) ||
-  store.getTourDocumentsForJob(job.id).some(
-    (d) => d.reviewStatus === "correction_required",
-  );
+  job.status === "performed" &&
+  (/correction/i.test(String(job.documentReviewSummary || "")) ||
+    store.getTourDocumentsForJob(job.id).some(
+      (d) =>
+        d.reviewStatus === "correction_required" ||
+        d.reviewStatus === "rejected",
+    ));
 
 const Ic = {
   Filter: () => (
@@ -1419,11 +1422,13 @@ const JobTourDocuments = ({ job }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const inputRef = useRef(null);
+  const replaceInputRef = useRef(null);
   const jobId = job.id;
   const tourPerformed = job.status === "performed";
   const uploads = store.getTourDocumentsForJob(jobId);
   const [categoryModal, setCategoryModal] = useState(false);
   const [pendingType, setPendingType] = useState(null);
+  const [replaceDocId, setReplaceDocId] = useState(null);
   const active = store.isCurrentDriverActive();
   const uploadErr = (reason) => {
     if (reason === "invalid_type") window.alert(t("invoiceUploadInvalidType"));
@@ -1435,6 +1440,10 @@ const JobTourDocuments = ({ job }) => {
       window.alert(t("invoiceUploadNotYourTour"));
     else if (reason === "job_required" || reason === "bad_job")
       window.alert(t("invoiceUploadTourRequired"));
+    else if (reason === "not_replaceable")
+      window.alert(t("tourDocReplaceNotAllowed"));
+    else if (reason === "not_owner")
+      window.alert(t("tourDocReplaceNotOwner"));
   };
   const startUpload = (documentType) => {
     const gate = store.canDriverUploadTourDocument(jobId);
@@ -1449,11 +1458,30 @@ const JobTourDocuments = ({ job }) => {
   const onPick = (e) => {
     const f = e.target.files?.[0];
     e.target.value = "";
-    if (!f || !pendingType) return;
+    if (!f) return;
+    if (replaceDocId) {
+      const r = store.replaceTourDocument(replaceDocId, f);
+      setReplaceDocId(null);
+      if (!r.ok) uploadErr(r.reason);
+      return;
+    }
+    if (!pendingType) return;
     const r = store.addTourDocument(f, { jobId, documentType: pendingType });
     setPendingType(null);
     if (!r.ok) uploadErr(r.reason);
   };
+  const startReplace = (docId) => {
+    if (!tourPerformed) {
+      uploadErr("job_not_performed");
+      return;
+    }
+    setReplaceDocId(docId);
+    setCategoryModal(false);
+    replaceInputRef.current?.click();
+  };
+  const canReplaceDoc = (u) =>
+    tourPerformed &&
+    ["rejected", "uploaded", "correction_required"].includes(u.reviewStatus);
   if (!active) return null;
   return (
     <div
@@ -1492,6 +1520,13 @@ const JobTourDocuments = ({ job }) => {
         style={{ display: "none" }}
         onChange={onPick}
       />
+      <input
+        ref={replaceInputRef}
+        type="file"
+        accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
+        style={{ display: "none" }}
+        onChange={onPick}
+      />
       {uploads.length > 0 ? (
         <ul
           style={{
@@ -1500,7 +1535,7 @@ const JobTourDocuments = ({ job }) => {
             listStyle: "none",
             display: "flex",
             flexDirection: "column",
-            gap: 8,
+            gap: 10,
           }}
         >
           {uploads.map((u) => (
@@ -1508,41 +1543,72 @@ const JobTourDocuments = ({ job }) => {
               key={u.id}
               style={{
                 fontSize: 12.5,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 8,
+                padding: 10,
+                border: "1px solid var(--line)",
+                borderRadius: "var(--r-2)",
+                background: "var(--paper)",
               }}
             >
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span
-                  className="mono"
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 8,
+                }}
+              >
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span
+                    className="mono"
+                    style={{
+                      wordBreak: "break-all",
+                      display: "block",
+                    }}
+                  >
+                    {u.fileName}
+                  </span>
+                  <span
+                    className="label"
+                    style={{ fontSize: 11, marginTop: 4, display: "block" }}
+                  >
+                    {displayTourDocType(u.documentType, t)}
+                  </span>
+                </span>
+                <Pill
+                  status={
+                    u.reviewStatus === "accepted"
+                      ? "performed"
+                      : u.reviewStatus === "rejected" ||
+                          u.reviewStatus === "correction_required"
+                        ? "cancelled"
+                        : "assigned"
+                  }
+                >
+                  {displayDocReviewStatus(u.reviewStatus, t)}
+                </Pill>
+              </div>
+              {u.reviewStatus === "rejected" && u.rejectionReason ? (
+                <p
                   style={{
-                    wordBreak: "break-all",
-                    display: "block",
+                    margin: "8px 0 0",
+                    fontSize: 11.5,
+                    lineHeight: 1.45,
+                    color: "var(--st-cancelled)",
                   }}
                 >
-                  {u.fileName}
-                </span>
-                <span
-                  className="label"
-                  style={{ fontSize: 11, marginTop: 4, display: "block" }}
+                  {t("tourDocRejectionReason", { reason: u.rejectionReason })}
+                </p>
+              ) : null}
+              {canReplaceDoc(u) ? (
+                <button
+                  type="button"
+                  className="btn xs"
+                  style={{ marginTop: 8 }}
+                  onClick={() => startReplace(u.id)}
                 >
-                  {displayTourDocType(u.documentType, t)}
-                </span>
-              </span>
-              <Pill
-                status={
-                  u.reviewStatus === "accepted"
-                    ? "performed"
-                    : u.reviewStatus === "rejected" ||
-                        u.reviewStatus === "correction_required"
-                      ? "cancelled"
-                      : "assigned"
-                }
-              >
-                {displayDocReviewStatus(u.reviewStatus, t)}
-              </Pill>
+                  {t("tourDocReplaceButton")}
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -1846,6 +1912,19 @@ const JobUnlocked = ({
               >
                 <Ic.Phone /> {c.phone || "—"}
               </a>
+              {c.secondPhone ? (
+                <div
+                  className="mono"
+                  style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}
+                >
+                  {t("phone")} 2: {c.secondPhone}
+                </div>
+              ) : null}
+              {c.email ? (
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+                  {t("email")}: {c.email}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>

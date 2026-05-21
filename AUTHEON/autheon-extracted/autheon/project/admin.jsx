@@ -1091,6 +1091,21 @@ const AdminDetail = ({
                   >
                     <Ic.Phone /> {c.phone || "—"}
                   </a>
+                  {c.secondPhone ? (
+                    <div
+                      className="mono"
+                      style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}
+                    >
+                      {t("phone")} 2: {c.secondPhone}
+                    </div>
+                  ) : null}
+                  {c.email ? (
+                    <div
+                      style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}
+                    >
+                      {t("email")}: {c.email}
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -2448,7 +2463,17 @@ const AddressesPane = ({ showToast }) => {
                     <br />
                     {[a.postalCode, a.city].filter(Boolean).join(" ")}
                   </td>
-                  <td>{a.contactPerson || a.phone || "—"}</td>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{a.contactPerson || "—"}</div>
+                    <div className="mono" style={{ fontSize: 11.5, marginTop: 2 }}>
+                      {a.phone || "—"}
+                    </div>
+                    {a.email ? (
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                        {a.email}
+                      </div>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -3001,6 +3026,34 @@ const PartnerInvoicesPane = ({
                   >
                     {t("invoiceDownload")}
                   </button>
+                  {["rejected", "uploaded", "correction_required"].includes(
+                    u.reviewStatus,
+                  ) && (
+                    <label
+                      className="btn xs"
+                      style={{ marginLeft: 6, cursor: "pointer" }}
+                    >
+                      {t("tourDocReplaceButton")}
+                      <input
+                        type="file"
+                        accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = "";
+                          if (!f) return;
+                          const r = store.replaceTourDocument(u.id, f, {
+                            actor: "admin",
+                          });
+                          if (r.ok)
+                            showToast?.(
+                              t("tourDocReplaceButton"),
+                              u.fileName,
+                            );
+                        }}
+                      />
+                    </label>
+                  )}
                 </td>
               </tr>
             ))

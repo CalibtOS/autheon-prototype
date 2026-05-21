@@ -1,12 +1,12 @@
 # PRD v1.5 vs Static Prototype Audit
 
-> **v1.4 is superseded.** Canonical spec: `AUTHEON/prd_v2_validated.json` and synced `AUTHEON/prd.json`.
+> **v1.4 is superseded.** Canonical spec: `AUTHEON/prd.json`.
 
-Last PRD sync: **2026-05-19** (PRD v1.5 — Report Problem, Performed, ordering party/address model, documents module, Infopoint, finance de-scoped).
+Last PRD sync: **2026-05-21** (prototype UX refinements: draft delete, Jobs-only New job entry, cancel slide gating, special case resolution labels).
 
 Validated against:
 
-- `AUTHEON/prd_v2_validated.json` (`resolved_defaults`, `prototype_assumptions`)
+- `AUTHEON/prd.json` (`resolved_defaults`, `prototype_assumptions`, `global_business_rules`)
 - `AUTHEON/autheon-extracted/autheon/project/AUTHEON Prototype.html`
 - `AUTHEON/autheon-extracted/autheon/project/store.js`
 - `AUTHEON/autheon-extracted/autheon/project/driver.jsx`
@@ -20,7 +20,10 @@ The static prototype is **aligned with PRD v1.5** for client walkthroughs. Opera
 
 Production implementation (database, auth, real PDF template, file storage, map API, SMTP, service worker) remains out of scope for the prototype.
 
-Audit update: rejected tour documents now surface a correction-required job summary, and the Special Case republish decision returns the tour to `published` instead of Draft.
+Audit updates:
+
+- Rejected tour documents surface a correction-required job summary; Special Case republish returns to `published` (not Draft).
+- **2026-05-21:** Draft jobs can be permanently deleted from admin detail; **New job** is only the primary CTA on Jobs overview (removed from admin sidebar). Cancel Order slide is disabled until explanation ≥ 10 characters. Special case panel: Continue, Republish, Close (administrative close → Performed + settlement Closed), Cancel tour (→ Cancelled).
 
 ## Coverage matrix (PRD v1.5 tasks)
 
@@ -30,17 +33,17 @@ Audit update: rejected tour documents now surface a correction-required job summ
 | 2 | Auth | Persona switcher; blocked/inactive partners |
 | 3 | Service partner management | Active, Blocked, Inactive, Archived, Soft deleted; access reset |
 | 4 | Ordering party & addresses | Admin panes; shared address master data |
-| 5 | Job creation | New order form (legacy flat fields + store v1.5 shape); publish/assign from Draft |
+| 5 | Job creation | New order via Jobs overview CTA (not sidebar nav); publish/assign from Draft |
 | 6 | Publishing & assignment | Revert Published→Draft; no Published→Assigned |
 | 7 | Marketplace | Published only; pull-to-refresh / reload |
 | 8 | Detail & visibility | Locked preview; map handoff after unlock |
 | 9 | Acceptance | Slide-to-confirm; binding accept |
 | 10 | My Jobs | Active, Performed, Cancelled, Special case tabs |
 | 11 | Operational completion | Mark as performed |
-| 12 | Report Problem | Cancel order + not performable |
-| 13 | Special case resolution | Admin panel: continue, republish, close, cancel |
-| 14 | Admin cancel | Accepted, Assigned, special_case |
-| 15–16 | Admin overview/detail | Filters include special_case/performed; document summary |
+| 12 | Report Problem | Cancel order (slide, min 10 chars) + not performable (submit) |
+| 13 | Special case resolution | Continue, republish, administrative close, cancel order |
+| 14 | Admin cancel / draft delete | Cancel non-draft jobs; permanent delete Draft only |
+| 15–16 | Admin overview/detail | Filters; draft delete; New job CTA on overview |
 | 17 | PDF | HTML/text preview; regenerate; on accept/assign |
 | 18 | Infopoint | Documents + News; read/unread |
 | 19 | Profile & prefs | Push prefs; no driver workflow email copy |
@@ -57,7 +60,7 @@ Audit update: rejected tour documents now surface a correction-required job summ
 
 **Driver:** marketplace → accept → maps → perform → Report Problem (cancel) → assigned tour → not performable → special case tab → upload document → Infopoint news → pull refresh.
 
-**Admin:** create/publish → special case resolve → partner invoices accept/reject → ordering parties/addresses → block driver → audit export → confirm no Finance nav.
+**Admin:** New job from Jobs overview → save draft → delete draft (optional) → publish → special case resolve (continue / republish / close / cancel) → partner invoices → ordering parties/addresses → audit export → confirm no Finance nav and no New job sidebar item.
 
 ## Automated verification
 
@@ -69,4 +72,4 @@ Expect: i18n EN/DE parity, no forbidden v1.4 store APIs, PRD v1.5 store methods 
 
 ## Remaining production work
 
-See `prototype_assumptions` in `prd_v2_validated.json` and `production_open_questions` (map API vendor, DSGVO/file retention, final app name).
+See `prototype_assumptions` and `production_open_questions` in `AUTHEON/prd.json` (map API vendor, DSGVO/file retention, final app name, production copy for special case Close vs Cancel).

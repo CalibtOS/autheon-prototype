@@ -168,10 +168,14 @@ window.AuthStore = (() => {
     job.contactPickup = {
       name: pu.contactPerson || "",
       phone: pu.phone || "",
+      secondPhone: pu.secondPhone || "",
+      email: pu.email || "",
     };
     job.contactDelivery = {
       name: del.contactPerson || "",
       phone: del.phone || "",
+      secondPhone: del.secondPhone || "",
+      email: del.email || "",
     };
     return job;
   }
@@ -232,6 +236,16 @@ window.AuthStore = (() => {
         billingNotes: "Hub-to-hub transfers.",
         instructions: "",
       },
+      {
+        id: "OP-005",
+        name: "Muller & Sohn KG",
+        type: "Dealer branch",
+        contact: "A. Weiss",
+        phone: "+49 30 334455",
+        email: "berlin.branch@muller-auto.example",
+        billingNotes: "Branch billing under parent group PO.",
+        instructions: "Berlin–Leipzig corridor; flexible windows common.",
+      },
     ];
   }
 
@@ -247,6 +261,8 @@ window.AuthStore = (() => {
         country: "DE",
         contactPerson: "H. Schneider",
         phone: "+49 89 1234567",
+        secondPhone: "+49 89 1234568",
+        email: "yard.munich@muller-auto.example",
         notes: "Reception key handover.",
       },
       {
@@ -259,7 +275,9 @@ window.AuthStore = (() => {
         country: "DE",
         contactPerson: "F. Becker",
         phone: "+49 30 9876543",
-        notes: "",
+        secondPhone: "+49 30 9876544",
+        email: "delivery.berlin@autohaus-nord.example",
+        notes: "Call 30 min before arrival.",
       },
       {
         id: "ADDR-003",
@@ -271,6 +289,8 @@ window.AuthStore = (() => {
         country: "DE",
         contactPerson: "S. Keller",
         phone: "+49 711 441122",
+        secondPhone: "+49 711 441123",
+        email: "logistics@classiccars.example",
         notes: "Logistics gate B.",
       },
       {
@@ -283,7 +303,9 @@ window.AuthStore = (() => {
         country: "DE",
         contactPerson: "R. Meier",
         phone: "+49 89 441100",
-        notes: "",
+        secondPhone: "",
+        email: "showroom.munich@classiccars.example",
+        notes: "Showroom delivery; ask for sales desk.",
       },
       {
         id: "ADDR-005",
@@ -295,6 +317,8 @@ window.AuthStore = (() => {
         country: "DE",
         contactPerson: "T. Brandt",
         phone: "+49 421 778899",
+        secondPhone: "+49 421 778800",
+        email: "dispatch@nordflotte.example",
         notes: "",
       },
       {
@@ -307,7 +331,163 @@ window.AuthStore = (() => {
         country: "DE",
         contactPerson: "M. Linke",
         phone: "+49 40 556677",
+        secondPhone: "+49 40 556678",
+        email: "yard.hamburg@nordflotte.example",
+        notes: "Gate code on request from dispatch.",
+      },
+      {
+        id: "ADDR-007",
+        label: "Muller Hamburg",
+        street: "Monckebergstr.",
+        houseNumber: "7",
+        postalCode: "20095",
+        city: "Hamburg",
+        country: "DE",
+        contactPerson: "L. Hartmann",
+        phone: "+49 40 8811220",
+        secondPhone: "+49 40 8811221",
+        email: "hamburg.logistics@muller-auto.example",
+        notes: "Loading bay via side street.",
+      },
+      {
+        id: "ADDR-008",
+        label: "Hannover outlet",
+        street: "Karmarschstr.",
+        houseNumber: "30",
+        postalCode: "30159",
+        city: "Hannover",
+        country: "DE",
+        contactPerson: "K. Ullrich",
+        phone: "+49 511 440055",
+        secondPhone: "",
+        email: "hannover@muller-auto.example",
         notes: "",
+      },
+      {
+        id: "ADDR-009",
+        label: "Classic Cars Stuttgart showroom",
+        street: "Konigstr.",
+        houseNumber: "60",
+        postalCode: "70173",
+        city: "Stuttgart",
+        country: "DE",
+        contactPerson: "S. Keller",
+        phone: "+49 711 441122",
+        secondPhone: "+49 711 441199",
+        email: "stuttgart.showroom@classiccars.example",
+        notes: "",
+      },
+      {
+        id: "ADDR-010",
+        label: "Marienplatz delivery",
+        street: "Marienplatz",
+        houseNumber: "8",
+        postalCode: "80331",
+        city: "Munchen",
+        country: "DE",
+        contactPerson: "P. Huber",
+        phone: "+49 89 552211",
+        secondPhone: "+49 89 552212",
+        email: "city.delivery@munchen-mobility.example",
+        notes: "Pedestrian zone — call on arrival.",
+      },
+      {
+        id: "ADDR-011",
+        label: "Muller Berlin branch",
+        street: "Kantstr.",
+        houseNumber: "41",
+        postalCode: "10623",
+        city: "Berlin",
+        country: "DE",
+        contactPerson: "A. Weiss",
+        phone: "+49 30 334455",
+        secondPhone: "",
+        email: "berlin.branch@muller-auto.example",
+        notes: "",
+      },
+      {
+        id: "ADDR-012",
+        label: "Leipzig outlet",
+        street: "Augustusplatz",
+        houseNumber: "9",
+        postalCode: "04109",
+        city: "Leipzig",
+        country: "DE",
+        contactPerson: "N. Scholz",
+        phone: "+49 341 778899",
+        secondPhone: "+49 341 778800",
+        email: "leipzig@muller-auto.example",
+        notes: "",
+      },
+      {
+        id: "ADDR-013",
+        label: "Dusseldorf showroom",
+        street: "Konigsallee",
+        houseNumber: "12",
+        postalCode: "40213",
+        city: "Dusseldorf",
+        country: "DE",
+        contactPerson: "C. Richter",
+        phone: "+49 211 667788",
+        secondPhone: "",
+        email: "duesseldorf@classiccars.example",
+        notes: "Valet pickup at rear entrance.",
+      },
+      {
+        id: "ADDR-014",
+        label: "Koln logistics hub",
+        street: "Hohe Str.",
+        houseNumber: "22",
+        postalCode: "50667",
+        city: "Koln",
+        country: "DE",
+        contactPerson: "D. Kruger",
+        phone: "+49 221 100200",
+        secondPhone: "+49 221 100201",
+        email: "hub.koeln@autologistik.example",
+        notes: "24h gate; ID required.",
+      },
+      {
+        id: "ADDR-015",
+        label: "AutoLogistik Hub Koln",
+        street: "Hohe Str.",
+        houseNumber: "110",
+        postalCode: "50667",
+        city: "Koln",
+        country: "DE",
+        contactPerson: "J. Tausch",
+        phone: "+49 221 100200",
+        secondPhone: "+49 221 100299",
+        email: "hub.koeln@autologistik.example",
+        notes: "Main Cologne transfer point.",
+      },
+      {
+        id: "ADDR-016",
+        label: "AutoLogistik Hub Frankfurt",
+        street: "Zeil",
+        houseNumber: "90",
+        postalCode: "60311",
+        city: "Frankfurt",
+        country: "DE",
+        contactPerson: "E. Braun",
+        phone: "+49 69 300400",
+        secondPhone: "+49 69 300401",
+        email: "hub.frankfurt@autologistik.example",
+        notes: "",
+      },
+      {
+        id: "ADDR-017",
+        label: "Berlin logistics hub",
+        street: "Invalidenstr.",
+        houseNumber: "80",
+        postalCode: "10115",
+        city: "Berlin",
+        country: "DE",
+        contactPerson: "J. Tausch",
+        phone: "+49 30 552288",
+        secondPhone: "+49 30 552289",
+        email: "hub.berlin@autologistik.example",
+        notes: "Night drop-off by appointment only.",
       },
     ];
   }
@@ -396,7 +576,8 @@ window.AuthStore = (() => {
     to,
     contact,
     phone,
-    flex,
+    flex = false,
+    extra = {},
   ) {
     return mkLocation({
       locationId: addrId,
@@ -408,49 +589,66 @@ window.AuthStore = (() => {
       country: "DE",
       contactPerson: contact,
       phone,
+      secondPhone: extra.secondPhone || "",
+      email: extra.email || "",
+      notes: extra.notes || "",
       date,
       dateLong,
       windowFrom: from,
       windowTo: to,
-      windowFlex: flex,
+      windowFlex: !!flex,
+      ...extra,
+    });
+  }
+
+  function locationFromAddress(addr, schedule = {}) {
+    if (!addr) return mkLocation(schedule);
+    return mkLocation({
+      locationId: addr.id,
+      name: addr.label,
+      street: addr.street,
+      houseNumber: addr.houseNumber,
+      postalCode: addr.postalCode,
+      city: addr.city,
+      country: addr.country || "DE",
+      contactPerson: addr.contactPerson || "",
+      phone: addr.phone || "",
+      secondPhone: addr.secondPhone || "",
+      email: addr.email || "",
+      notes: addr.notes || "",
+      date: schedule.date || "",
+      dateLong: schedule.dateLong || "",
+      windowFrom: schedule.windowFrom || "",
+      windowTo: schedule.windowTo || "",
+      windowFlex: !!schedule.windowFlex,
+      ...schedule,
     });
   }
 
   function seedJobs() {
+    const byAddr = Object.fromEntries(
+      seedAddresses().map((a) => [a.id, a]),
+    );
+    const loc = (id, schedule) => locationFromAddress(byAddr[id], schedule);
+
     return [
       mk({
         id: "A-2026-00847",
         tour: "0847-26",
         orderingPartyId: "OP-001",
         orderingPartyName: "Muller Automobile GmbH",
-        pickup: pu(
-          "ADDR-001",
-          "Muller Automobile GmbH",
-          "Landsberger Str.",
-          "142",
-          "80339",
-          "Munchen",
-          "23.04.",
-          "Wed, 23.04.2026",
-          "08:00",
-          "12:00",
-          "H. Schneider",
-          "+49 89 1234567",
-        ),
-        delivery: pu(
-          "ADDR-002",
-          "Autohaus Nord Berlin",
-          "Chausseestr.",
-          "88",
-          "10115",
-          "Berlin",
-          "24.04.",
-          "Thu, 24.04.2026",
-          "10:00",
-          "14:00",
-          "F. Becker",
-          "+49 30 9876543",
-        ),
+        pickup: loc("ADDR-001", {
+          date: "23.04.",
+          dateLong: "Wed, 23.04.2026",
+          windowFrom: "08:00",
+          windowTo: "12:00",
+        }),
+        delivery: loc("ADDR-002", {
+          date: "24.04.",
+          dateLong: "Thu, 24.04.2026",
+          windowFrom: "10:00",
+          windowTo: "14:00",
+        }),
         distanceKm: 585,
         distanceEstimateSource: "seed",
         vehicle: "SUV",
@@ -480,34 +678,18 @@ window.AuthStore = (() => {
         tour: "0848-26",
         orderingPartyId: "OP-003",
         orderingPartyName: "Nord-Flotte GmbH",
-        pickup: pu(
-          "ADDR-005",
-          "Nord-Flotte Dispatch",
-          "Marktplatz",
-          "1",
-          "28195",
-          "Bremen",
-          "08.05.",
-          "Fri, 08.05.2026",
-          "09:00",
-          "12:00",
-          "T. Brandt",
-          "+49 421 778899",
-        ),
-        delivery: pu(
-          "ADDR-006",
-          "Hamburg Vehicle Yard",
-          "Reeperbahn",
-          "30",
-          "22767",
-          "Hamburg",
-          "08.05.",
-          "Fri, 08.05.2026",
-          "12:00",
-          "16:00",
-          "M. Linke",
-          "+49 40 556677",
-        ),
+        pickup: loc("ADDR-005", {
+          date: "08.05.",
+          dateLong: "Fri, 08.05.2026",
+          windowFrom: "09:00",
+          windowTo: "12:00",
+        }),
+        delivery: loc("ADDR-006", {
+          date: "08.05.",
+          dateLong: "Fri, 08.05.2026",
+          windowFrom: "12:00",
+          windowTo: "16:00",
+        }),
         distanceKm: 124,
         distanceEstimateSource: "seed",
         vehicle: "PKW",
@@ -533,35 +715,20 @@ window.AuthStore = (() => {
         tour: "0846-26",
         orderingPartyId: "OP-002",
         orderingPartyName: "Classic Cars AG",
-        pickup: pu(
-          "ADDR-003",
-          "Classic Cars AG · Logistics",
-          "Plieninger Str.",
-          "14",
-          "70565",
-          "Stuttgart",
-          "23.04.",
-          "Wed, 23.04.2026",
-          "06:00",
-          "10:00",
-          "S. Keller",
-          "+49 711 441122",
-        ),
-        delivery: pu(
-          "ADDR-004",
-          "Classic Cars AG · Showroom",
-          "Marsstr.",
-          "22",
-          "80339",
-          "Munchen",
-          "23.04.",
-          "Wed, 23.04.2026",
-          "14:00",
-          "18:00",
-          "R. Meier",
-          "+49 89 441100",
-        ),
+        pickup: loc("ADDR-003", {
+          date: "23.04.",
+          dateLong: "Wed, 23.04.2026",
+          windowFrom: "06:00",
+          windowTo: "10:00",
+        }),
+        delivery: loc("ADDR-004", {
+          date: "23.04.",
+          dateLong: "Wed, 23.04.2026",
+          windowFrom: "14:00",
+          windowTo: "18:00",
+        }),
         distanceKm: 232,
+        distanceEstimateSource: "seed",
         vehicle: "PKW",
         vehicleModel: "BMW 3 Touring",
         plate: "S-CC 220",
@@ -570,6 +737,9 @@ window.AuthStore = (() => {
 
         revenue: 220,
         driverCompensation: 175,
+        notes:
+          "Historic vehicle on third-party axle; yard access issue reported by driver.",
+        notesDriver: "Do not attempt pickup until dispatch confirms yard reopening.",
         status: "special_case",
         driver: DEMO_DRIVER,
         pdfVersion: 1,
@@ -599,35 +769,20 @@ window.AuthStore = (() => {
         tour: "0845-26",
         orderingPartyId: "OP-004",
         orderingPartyName: "AutoLogistik KG",
-        pickup: pu(
-          null,
-          "AutoLogistik · Hub Koln",
-          "Hohe Str.",
-          "110",
-          "50667",
-          "Koln",
-          "24.04.",
-          "Thu, 24.04.2026",
-          "10:00",
-          "14:00",
-          "Hub Koln",
-          "+49 221 100200",
-        ),
-        delivery: pu(
-          null,
-          "AutoLogistik · Hub Frankfurt",
-          "Zeil",
-          "90",
-          "60311",
-          "Frankfurt",
-          "24.04.",
-          "Thu, 24.04.2026",
-          "14:00",
-          "18:00",
-          "Hub Frankfurt",
-          "+49 69 300400",
-        ),
+        pickup: loc("ADDR-015", {
+          date: "24.04.",
+          dateLong: "Thu, 24.04.2026",
+          windowFrom: "10:00",
+          windowTo: "14:00",
+        }),
+        delivery: loc("ADDR-016", {
+          date: "24.04.",
+          dateLong: "Thu, 24.04.2026",
+          windowFrom: "14:00",
+          windowTo: "18:00",
+        }),
         distanceKm: 186,
+        distanceEstimateSource: "seed",
         vehicle: "PKW",
         vehicleModel: "Audi A4",
         plate: "K-AL 845",
@@ -636,6 +791,8 @@ window.AuthStore = (() => {
 
         revenue: 145,
         driverCompensation: 110,
+        notes: "Hub-to-hub Cologne → Frankfurt.",
+        notesDriver: "Gate code required at both hubs — see address notes.",
         status: "accepted",
         driver: DEMO_DRIVER,
         pdfVersion: 1,
@@ -651,127 +808,102 @@ window.AuthStore = (() => {
         tour: "0844-26",
         orderingPartyId: "OP-001",
         orderingPartyName: "Muller Automobile GmbH",
-        pickup: pu(
-          null,
-          "Muller Hamburg",
-          "Monckebergstr.",
-          "7",
-          "20095",
-          "Hamburg",
-          "22.04.",
-          "Tue, 22.04.2026",
-          "",
-          "",
-          "",
-          "",
-          true,
-        ),
-        delivery: pu(
-          null,
-          "Hannover outlet",
-          "Karmarschstr.",
-          "30",
-          "30159",
-          "Hannover",
-          "22.04.",
-          "Tue, 22.04.2026",
-          "12:00",
-          "16:00",
-          "",
-          "",
-        ),
+        pickup: loc("ADDR-007", {
+          date: "22.04.",
+          dateLong: "Tue, 22.04.2026",
+          windowFlex: true,
+        }),
+        delivery: loc("ADDR-008", {
+          date: "22.04.",
+          dateLong: "Tue, 22.04.2026",
+          windowFrom: "12:00",
+          windowTo: "16:00",
+        }),
         distanceKm: 156,
+        distanceEstimateSource: "seed",
         vehicle: "PKW",
         vehicleModel: "VW Polo",
         plate: "HH-MA 88",
         vin: "WVWZZZ6RZKY098765",
         axle: AXLE_THIRD,
         driverCompensation: 165,
+        revenue: 198,
+        notes: "Marketplace preview tour Hamburg → Hannover.",
         status: "published",
         pdfVersion: 0,
         createdAt: "20.04. 14:00",
-        history: [{ st: "published", at: "20.04. 14:30", by: "A. Bauer" }],
+        history: [
+          { st: "draft", at: "20.04. 14:00", by: "A. Bauer" },
+          { st: "published", at: "20.04. 14:30", by: "A. Bauer" },
+        ],
       }),
       mk({
         id: "A-2026-00843",
         tour: "0843-26",
         orderingPartyId: "OP-002",
         orderingPartyName: "Classic Cars AG",
-        pickup: pu(
-          null,
-          "Classic Cars Stuttgart",
-          "Konigstr.",
-          "60",
-          "70173",
-          "Stuttgart",
-          "26.04.",
-          "Sat, 26.04.2026",
-          "06:00",
-          "10:00",
-          "",
-          "",
-        ),
-        delivery: pu(
-          null,
-          "Marienplatz delivery",
-          "Marienplatz",
-          "8",
-          "80331",
-          "Munchen",
-          "26.04.",
-          "Sat, 26.04.2026",
-          "12:00",
-          "16:00",
-          "",
-          "",
-        ),
+        pickup: loc("ADDR-009", {
+          date: "26.04.",
+          dateLong: "Sat, 26.04.2026",
+          windowFrom: "06:00",
+          windowTo: "10:00",
+        }),
+        delivery: loc("ADDR-010", {
+          date: "26.04.",
+          dateLong: "Sat, 26.04.2026",
+          windowFrom: "12:00",
+          windowTo: "16:00",
+        }),
         distanceKm: 232,
+        distanceEstimateSource: "seed",
         vehicle: "Van",
         vehicleModel: "Mercedes Sprinter",
         plate: "S-CC 130",
         vin: "WDB9067321V123987",
         axle: AXLE_OWN,
         driverCompensation: 280,
+        revenue: 310,
+        notesDriver: "Sprinter — check height clearance at Marienplatz delivery.",
         status: "accepted",
         driver: DEMO_DRIVER,
         pdfVersion: 1,
         createdAt: "20.04. 09:00",
-        history: [{ st: "accepted", at: "23.04. 06:11", by: DEMO_DRIVER }],
+        history: [
+          { st: "draft", at: "20.04. 09:00", by: "A. Bauer" },
+          { st: "published", at: "20.04. 10:00", by: "A. Bauer" },
+          { st: "accepted", at: "23.04. 06:11", by: DEMO_DRIVER },
+        ],
       }),
       mk({
         id: "A-2026-00842",
         tour: "0842-26",
         orderingPartyId: "OP-003",
         orderingPartyName: "Nord-Flotte GmbH",
-        pickup: pu(
-          "ADDR-006",
-          "Hamburg depot",
-          "Steinstr.",
-          "5",
-          "20095",
-          "Hamburg",
-          "21.04.",
-          "Mon, 21.04.2026",
-          "09:00",
-          "11:00",
-          "Depot lead",
-          "+49 40 111222",
-        ),
-        delivery: pu(
-          "ADDR-005",
-          "Bremen hub",
-          "Domshof",
-          "8",
-          "28195",
-          "Bremen",
-          "21.04.",
-          "Mon, 21.04.2026",
-          "13:00",
-          "15:00",
-          "Hub Bremen",
-          "+49 421 333444",
-        ),
+        pickup: loc("ADDR-006", {
+          name: "Hamburg depot",
+          street: "Steinstr.",
+          houseNumber: "5",
+          postalCode: "20095",
+          contactPerson: "M. Linke",
+          phone: "+49 40 556677",
+          date: "21.04.",
+          dateLong: "Mon, 21.04.2026",
+          windowFrom: "09:00",
+          windowTo: "11:00",
+        }),
+        delivery: loc("ADDR-005", {
+          name: "Bremen hub",
+          street: "Domshof",
+          houseNumber: "8",
+          contactPerson: "T. Brandt",
+          phone: "+49 421 778899",
+          date: "21.04.",
+          dateLong: "Mon, 21.04.2026",
+          windowFrom: "13:00",
+          windowTo: "15:00",
+        }),
         distanceKm: 124,
+        distanceEstimateSource: "seed",
         vehicle: "PKW",
         vehicleModel: "Skoda Octavia",
         plate: "HH-NF 42",
@@ -780,9 +912,13 @@ window.AuthStore = (() => {
         driverCompensation: 110,
         revenue: 135,
         grossAmount: 135,
+        expenses: 18,
+        notes: "Completed Hamburg depot → Bremen hub.",
         paymentStatus: "Paid",
         settlementState: "Paid",
         documentReviewSummary: "Accepted",
+        invoiceReceived: true,
+        invoiceNumber: "INV-0842-2026",
         status: "performed",
         driver: DEMO_DRIVER,
         performedAt: "21.04. 12:48",
@@ -796,48 +932,35 @@ window.AuthStore = (() => {
       mk({
         id: "A-2026-00841",
         tour: "0841-26",
-        orderingPartyId: "OP-001",
+        orderingPartyId: "OP-005",
         orderingPartyName: "Muller & Sohn KG",
-        pickup: pu(
-          null,
-          "Berlin branch",
-          "Kantstr.",
-          "41",
-          "10623",
-          "Berlin",
-          "22.04.",
-          "Tue, 22.04.2026",
-          "",
-          "",
-          "",
-          "",
-          true,
-        ),
-        delivery: pu(
-          null,
-          "Leipzig outlet",
-          "Augustusplatz",
-          "9",
-          "04109",
-          "Leipzig",
-          "22.04.",
-          "Tue, 22.04.2026",
-          "",
-          "",
-          "",
-          "",
-          true,
-        ),
+        pickup: loc("ADDR-011", {
+          date: "22.04.",
+          dateLong: "Tue, 22.04.2026",
+          windowFlex: true,
+        }),
+        delivery: loc("ADDR-012", {
+          date: "22.04.",
+          dateLong: "Tue, 22.04.2026",
+          windowFlex: true,
+        }),
         distanceKm: 188,
+        distanceEstimateSource: "seed",
         vehicle: "SUV",
         vehicleModel: "Ford Kuga",
         plate: "B-MS 200",
         vin: "WF0AXXTTGA000111",
         axle: AXLE_OWN,
         driverCompensation: 195,
+        revenue: 240,
+        notes: "Cancelled after driver Report Problem — customer withdrew slot.",
         status: "cancelled",
         driver: DEMO_DRIVER,
+        pdfVersion: 1,
         history: [
+          { st: "draft", at: "18.04. 15:00", by: "A. Bauer" },
+          { st: "assigned", at: "19.04. 08:00", by: "A. Bauer" },
+          { st: "accepted", at: "21.04. 09:30", by: DEMO_DRIVER },
           {
             st: "cancelled",
             at: "21.04. 22:00",
@@ -852,41 +975,29 @@ window.AuthStore = (() => {
         tour: "0840-26",
         orderingPartyId: "OP-002",
         orderingPartyName: "Classic Cars AG",
-        pickup: pu(
-          null,
-          "Dusseldorf showroom",
-          "Konigsallee",
-          "12",
-          "40213",
-          "Dusseldorf",
-          "25.04.",
-          "Fri, 25.04.2026",
-          "12:00",
-          "16:00",
-          "",
-          "",
-        ),
-        delivery: pu(
-          null,
-          "Koln hub",
-          "Hohe Str.",
-          "22",
-          "50667",
-          "Koln",
-          "25.04.",
-          "Fri, 25.04.2026",
-          "16:00",
-          "18:00",
-          "",
-          "",
-        ),
+        pickup: loc("ADDR-013", {
+          date: "25.04.",
+          dateLong: "Fri, 25.04.2026",
+          windowFrom: "12:00",
+          windowTo: "16:00",
+        }),
+        delivery: loc("ADDR-014", {
+          date: "25.04.",
+          dateLong: "Fri, 25.04.2026",
+          windowFrom: "16:00",
+          windowTo: "18:00",
+        }),
         distanceKm: 78,
+        distanceEstimateSource: "seed",
         vehicle: "PKW",
         vehicleModel: "Audi Q3",
         plate: "D-CC 80",
         vin: "WAUZZZF38K1234567",
         axle: AXLE_OWN,
         driverCompensation: 110,
+        revenue: 138,
+        notes: "Direct assign Dusseldorf showroom to Koln hub.",
+        notesDriver: "Valet pickup at rear entrance per site notes.",
         status: "assigned",
         driver: DEMO_DRIVER,
         pdfVersion: 1,
@@ -901,41 +1012,35 @@ window.AuthStore = (() => {
         tour: "0839-26",
         orderingPartyId: "OP-004",
         orderingPartyName: "AutoLogistik KG",
-        pickup: pu(
-          null,
-          "Berlin hub",
-          "Invalidenstr.",
-          "80",
-          "10115",
-          "Berlin",
-          "27.04.",
-          "Sat, 27.04.2026",
-          "06:00",
-          "09:00",
-          "J. Tausch",
-          "+49 30 552288",
-        ),
-        delivery: pu(
-          "ADDR-003",
-          "Stuttgart hub",
-          "Konigstr.",
-          "80",
-          "70173",
-          "Stuttgart",
-          "28.04.",
-          "Sun, 28.04.2026",
-          "10:00",
-          "14:00",
-          "R. Wagner",
-          "+49 711 224488",
-        ),
+        pickup: loc("ADDR-017", {
+          date: "27.04.",
+          dateLong: "Sat, 27.04.2026",
+          windowFrom: "06:00",
+          windowTo: "09:00",
+        }),
+        delivery: loc("ADDR-003", {
+          name: "Stuttgart hub",
+          street: "Konigstr.",
+          houseNumber: "80",
+          contactPerson: "R. Wagner",
+          phone: "+49 711 224488",
+          secondPhone: "+49 711 224489",
+          email: "hub.stuttgart@autologistik.example",
+          date: "28.04.",
+          dateLong: "Sun, 28.04.2026",
+          windowFrom: "10:00",
+          windowTo: "14:00",
+        }),
         distanceKm: 632,
+        distanceEstimateSource: "seed",
         vehicle: "PKW",
         vehicleModel: "Audi A6",
         plate: "B-AL 60",
         vin: "WAUZZZ4G9KN123456",
         axle: AXLE_OWN,
         driverCompensation: 365,
+        revenue: 420,
+        notes: "Long-haul draft Berlin hub to Stuttgart; verify night gate access.",
         status: "draft",
         pdfVersion: 0,
         createdAt: "20.04. 17:00",
@@ -1011,6 +1116,114 @@ window.AuthStore = (() => {
     ];
   }
 
+  function seedTourDocuments() {
+    return [
+      {
+        id: "TD-SEED-001",
+        jobId: "A-2026-00842",
+        driverId: "DRV-0228",
+        driverName: DEMO_DRIVER,
+        fileName: "partner-invoice-0842.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 248120,
+        uploadedAt: "2026-04-21T12:52:00.000Z",
+        documentType: "partner_invoice",
+        reviewStatus: "accepted",
+        rejectionReason: "",
+        processed: true,
+        source: "driver",
+        notes: "",
+      },
+      {
+        id: "TD-SEED-002",
+        jobId: "A-2026-00842",
+        driverId: "DRV-0228",
+        driverName: DEMO_DRIVER,
+        fileName: "delivery-note-0842.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 412800,
+        uploadedAt: "2026-04-21T12:53:00.000Z",
+        documentType: "delivery_note",
+        reviewStatus: "accepted",
+        rejectionReason: "",
+        processed: true,
+        source: "driver",
+        notes: "Signed at Bremen hub.",
+      },
+      {
+        id: "TD-SEED-003",
+        jobId: "A-2026-00846",
+        driverId: "DRV-0228",
+        driverName: DEMO_DRIVER,
+        fileName: "yard-closed-photo-0846.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 890400,
+        uploadedAt: "2026-04-23T08:38:00.000Z",
+        documentType: "other_proof",
+        reviewStatus: "under_review",
+        rejectionReason: "",
+        processed: false,
+        source: "driver",
+        notes: "Gate closed — special case evidence.",
+      },
+      {
+        id: "TD-SEED-004",
+        jobId: "A-2026-00845",
+        driverId: "DRV-0228",
+        driverName: DEMO_DRIVER,
+        fileName: "fuel-receipt-0845.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 198400,
+        uploadedAt: "2026-04-21T15:10:00.000Z",
+        documentType: "fuel_receipt",
+        reviewStatus: "uploaded",
+        rejectionReason: "",
+        processed: false,
+        source: "driver",
+        notes: "",
+      },
+      {
+        id: "TD-SEED-005",
+        jobId: "A-2026-00842",
+        driverId: "DRV-0228",
+        driverName: DEMO_DRIVER,
+        fileName: "partner-invoice-0842-v1.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 201000,
+        uploadedAt: "2026-04-21T13:05:00.000Z",
+        documentType: "partner_invoice",
+        reviewStatus: "rejected",
+        rejectionReason: "Wrong VAT line — resubmit with net amount only.",
+        processed: false,
+        source: "driver",
+        notes: "",
+      },
+    ];
+  }
+
+  function seedAdminEmailQueue() {
+    return [
+      {
+        id: "ALERT-SEED-001",
+        event: "special_case_created",
+        jobId: "A-2026-00846",
+        tour: "0846-26",
+        meta: "Report Problem: not performable — yard closed",
+        at: "23.04. 08:41",
+        sent: true,
+      },
+      {
+        id: "ALERT-SEED-002",
+        event: "job_cancelled",
+        jobId: "A-2026-00841",
+        tour: "0841-26",
+        meta: "Driver cancellation — customer cancelled",
+        at: "21.04. 22:01",
+        sent: true,
+      },
+    ];
+  }
+
   function seedAudit() {
     return [
       {
@@ -1020,6 +1233,34 @@ window.AuthStore = (() => {
         at: "05.05. 15:49",
         meta: "PRD v1.5 client-side prototype",
       },
+      {
+        action: "job_published",
+        actor: DEMO_ADMIN,
+        entity: "0847-26",
+        at: "23.04. 11:02",
+        meta: "Marketplace preview",
+      },
+      {
+        action: "job_accepted",
+        actor: DEMO_DRIVER,
+        entity: "0845-26",
+        at: "21.04. 14:22",
+        meta: "Binding slide confirmation",
+      },
+      {
+        action: "special_case_created",
+        actor: DEMO_DRIVER,
+        entity: "0846-26",
+        at: "23.04. 08:40",
+        meta: "Not performable — yard closed",
+      },
+      {
+        action: "tour_document_uploaded",
+        actor: DEMO_DRIVER,
+        entity: "partner-invoice-0842.pdf",
+        at: "21.04. 12:52",
+        meta: "A-2026-00842 · partner_invoice",
+      },
     ];
   }
 
@@ -1028,12 +1269,107 @@ window.AuthStore = (() => {
   let documents = seedDocuments();
   let newsItems = seedNews();
   let jobs = seedJobs();
+
+  function validateSeedData(jobList, partyList, docList, state) {
+    const issues = [];
+    const partyIds = new Set(partyList.map((p) => p.id));
+    const partyNames = Object.fromEntries(partyList.map((p) => [p.id, p.name]));
+
+    for (const j of jobList) {
+      if (!j.orderingPartyId || !partyIds.has(j.orderingPartyId)) {
+        issues.push(`${j.id}: invalid orderingPartyId`);
+      } else if (
+        partyNames[j.orderingPartyId] &&
+        j.orderingPartyName &&
+        j.orderingPartyName !== partyNames[j.orderingPartyId]
+      ) {
+        issues.push(
+          `${j.id}: orderingPartyName mismatch (${j.orderingPartyName} vs ${partyNames[j.orderingPartyId]})`,
+        );
+      }
+      for (const side of ["pickup", "delivery"]) {
+        const loc = j[side];
+        if (!loc?.contactPerson?.trim() || !loc?.phone?.trim()) {
+          issues.push(`${j.id}:${side}: contact`);
+        }
+        if (!loc?.street?.trim() || !loc?.city?.trim() || !loc?.postalCode?.trim()) {
+          issues.push(`${j.id}:${side}: address`);
+        }
+        if (!loc?.date?.trim() && !loc?.windowFlex) {
+          issues.push(`${j.id}:${side}: schedule`);
+        }
+      }
+      if (!j.plate?.trim() || !j.vin?.trim()) issues.push(`${j.id}: vehicle ids`);
+      if (!j.vehicle?.trim() || !j.vehicleModel?.trim()) {
+        issues.push(`${j.id}: vehicle`);
+      }
+      if (!(j.distanceKm > 0)) issues.push(`${j.id}: distanceKm`);
+      if (j.driverCompensation == null || j.driverCompensation === "") {
+        issues.push(`${j.id}: driverCompensation`);
+      }
+      if (!j.history?.length) issues.push(`${j.id}: history`);
+      if (j.status !== "draft" && !(j.pdfVersion > 0) && j.status !== "published") {
+        /* published may have pdf 0 until accept */
+      }
+    }
+
+    for (const id of state.acceptedIds || []) {
+      const j = jobList.find((x) => x.id === id);
+      if (!j || j.status !== "accepted") {
+        issues.push(`driverState.acceptedIds: ${id} status mismatch`);
+      }
+    }
+    for (const id of state.performedIds || []) {
+      const j = jobList.find((x) => x.id === id);
+      if (!j || j.status !== "performed") {
+        issues.push(`driverState.performedIds: ${id} status mismatch`);
+      }
+    }
+    for (const id of state.specialCaseIds || []) {
+      const j = jobList.find((x) => x.id === id);
+      if (!j || j.status !== "special_case") {
+        issues.push(`driverState.specialCaseIds: ${id} status mismatch`);
+      }
+    }
+    for (const id of state.cancelledIds || []) {
+      const j = jobList.find((x) => x.id === id);
+      if (!j || j.status !== "cancelled") {
+        issues.push(`driverState.cancelledIds: ${id} status mismatch`);
+      }
+    }
+
+    const performedWithDocs = jobList.filter((j) => j.status === "performed");
+    for (const j of performedWithDocs) {
+      if (!docList.some((d) => d.jobId === j.id)) {
+        issues.push(`${j.id}: performed tour has no seed documents`);
+      }
+    }
+    for (const d of docList) {
+      const j = jobList.find((x) => x.id === d.jobId);
+      if (j && j.status !== "performed") {
+        issues.push(`${d.id}: document on non-performed job ${j.id} (${j.status})`);
+      }
+    }
+
+    if (issues.length && typeof console !== "undefined") {
+      console.warn("[AUTHEON] Seed data issues:\n", issues.join("\n"));
+    }
+    return issues;
+  }
+
   let drivers = seedDrivers();
   let admins = seedAdmins();
   let auditLog = seedAudit();
   let driverState = seedDriverState();
-  let tourDocuments = [];
-  let adminEmailQueue = [];
+  let tourDocuments = seedTourDocuments();
+  let adminEmailQueue = seedAdminEmailQueue();
+
+  for (const j of jobs) {
+    reconcileDocumentReviewSummary(j.id);
+    reconcileJobInvoiceFromTourDocuments(j.id);
+  }
+
+  validateSeedData(jobs, orderingParties, tourDocuments, driverState);
   let nextTourSeq = 849;
 
   const legacyFlagDefaults = window.AUTHEON_FLAG_DEFAULTS || {};
@@ -2004,6 +2340,54 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
+    replaceTourDocument(id, file, opts = {}) {
+      if (!file) return { ok: false, reason: "no_file" };
+      if (!isAllowedTourDocumentFile(file))
+        return { ok: false, reason: "invalid_type" };
+      const doc = tourDocuments.find((x) => x.id === id);
+      if (!doc) return { ok: false, reason: "not_found" };
+      const jobId = doc.jobId;
+      const j = api.getJob(jobId);
+      if (!j || j.status !== "performed")
+        return { ok: false, reason: "job_not_performed" };
+      const actor = opts.actor || "driver";
+      if (actor === "driver") {
+        if (!api.isCurrentDriverActive())
+          return { ok: false, reason: "driver_restricted" };
+        const d = api.getCurrentDriver();
+        if (!d) return { ok: false, reason: "no_driver" };
+        if (j.driver && j.driver !== d.name)
+          return { ok: false, reason: "not_assigned_driver" };
+        if (doc.driverId && doc.driverId !== d.id)
+          return { ok: false, reason: "not_owner" };
+      }
+      const replaceable = ["rejected", "uploaded", "correction_required"];
+      if (!replaceable.includes(doc.reviewStatus))
+        return { ok: false, reason: "not_replaceable" };
+      doc.fileName = file.name;
+      doc.mimeType =
+        (file.type || guessMimeFromName(file.name) || "").trim() ||
+        "application/octet-stream";
+      doc.sizeBytes = typeof file.size === "number" ? file.size : 0;
+      doc.uploadedAt = new Date().toISOString();
+      doc.reviewStatus = "uploaded";
+      doc.rejectionReason = "";
+      doc.processed = false;
+      if (opts.documentType) doc.documentType = opts.documentType;
+      reconcileDocumentReviewSummary(jobId);
+      reconcileJobInvoiceFromTourDocuments(jobId);
+      const who = actor === "driver" ? api.getCurrentDriver()?.name || DEMO_DRIVER : DEMO_ADMIN;
+      log(
+        "tour_document_replaced",
+        who,
+        doc.fileName,
+        `${jobId} · ${doc.documentType}`,
+      );
+      queueAdminEmailAlert("tour_document_uploaded", jobId, "replacement upload");
+      emit();
+      return { ok: true, id: doc.id };
+    },
+
     getTourDocuments: () => tourDocuments.slice(),
 
     getTourDocumentsForJob(jobId) {
@@ -2278,8 +2662,13 @@ window.AuthStore = (() => {
       admins = seedAdmins();
       auditLog = seedAudit();
       driverState = seedDriverState();
-      tourDocuments = [];
-      adminEmailQueue = [];
+      tourDocuments = seedTourDocuments();
+      adminEmailQueue = seedAdminEmailQueue();
+      for (const j of jobs) {
+        reconcileDocumentReviewSummary(j.id);
+        reconcileJobInvoiceFromTourDocuments(j.id);
+      }
+      validateSeedData(jobs, orderingParties, tourDocuments, driverState);
       nextTourSeq = 849;
       branding.appDisplayName =
         window.AUTHEON_BRANDING_DEFAULTS?.appDisplayName || "Transport Portal";

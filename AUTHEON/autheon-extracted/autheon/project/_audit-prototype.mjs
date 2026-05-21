@@ -145,3 +145,31 @@ for (const f of copyFiles) {
   }
 }
 if (!process.exitCode) out("Stale v1.4 user-facing copy: none");
+
+const seedBlock = store.slice(
+  store.indexOf("function seedJobs"),
+  store.indexOf("function seedDriverState"),
+);
+const emptySeedContacts = (seedBlock.match(/contactPerson:\s*""/g) || [])
+  .length;
+out("");
+if (emptySeedContacts) {
+  out(`Seed jobs with empty contactPerson: ${emptySeedContacts}`);
+  process.exitCode = 1;
+} else out("Seed pickup/delivery contacts: all populated");
+
+const seedChecks = [
+  ["function seedTourDocuments", "seedTourDocuments()"],
+  ["function seedAdminEmailQueue", "seedAdminEmailQueue()"],
+  ["function validateSeedData", "validateSeedData()"],
+  ["id: \"OP-005\"", "ordering party OP-005"],
+  ["TD-SEED-001", "seed tour document rows"],
+  ["let tourDocuments = seedTourDocuments()", "tour documents initialized from seed"],
+];
+out("");
+for (const [needle, label] of seedChecks) {
+  if (!store.includes(needle)) {
+    out(`Seed structure missing ${label}`);
+    process.exitCode = 1;
+  } else out(`Seed structure ${label}: present`);
+}

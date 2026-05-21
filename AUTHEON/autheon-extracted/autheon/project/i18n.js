@@ -145,6 +145,10 @@ window.I18n = (() => {
       tourDocRequiresPerformed:
         "Upload documents only after the tour is marked performed.",
       tourDocUploadEmpty: "No documents uploaded yet.",
+      tourDocRejectionReason: "Rejection: {reason}",
+      tourDocReplaceButton: "Replace file",
+      tourDocReplaceNotAllowed: "Accepted documents cannot be replaced. Contact dispatch if needed.",
+      tourDocReplaceNotOwner: "You can only replace your own uploads for this tour.",
       tourDocChooseCategory: "Choose document type",
       tourDocInvoice: "Invoice",
       tourDocPartnerInvoice: "Partner invoice",
@@ -839,6 +843,12 @@ window.I18n = (() => {
       tourDocRequiresPerformed:
         "Dokumente erst nach „durchgeführt“ hochladbar.",
       tourDocUploadEmpty: "Noch keine Dokumente.",
+      tourDocRejectionReason: "Ablehnung: {reason}",
+      tourDocReplaceButton: "Datei ersetzen",
+      tourDocReplaceNotAllowed:
+        "Angenommene Dokumente können nicht ersetzt werden. Bei Bedarf Disposition kontaktieren.",
+      tourDocReplaceNotOwner:
+        "Sie können nur eigene Uploads für diese Tour ersetzen.",
       tourDocChooseCategory: "Dokumenttyp wählen",
       tourDocInvoice: "Rechnung",
       tourDocPartnerInvoice: "Partnerrechnung",
