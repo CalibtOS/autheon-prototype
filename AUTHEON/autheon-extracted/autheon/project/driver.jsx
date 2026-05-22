@@ -583,10 +583,9 @@ const JobCard = ({ job, onOpen }) => {
       <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
         <span className="chip mono">
           <Ic.Calendar />
-          <span style={{ marginLeft: 4 }}>{job.date}</span>
-        </span>
-        <span className="chip mono">
-          {job.windowFlex ? t("flexible") : `${job.windowFrom}–${job.windowTo}`}
+          <span style={{ marginLeft: 4 }}>
+            {AuthStore.formatJobScheduleShort(job, t("flexible"))}
+          </span>
         </span>
       </div>
       <hr className="dash" style={{ margin: "14px 0 10px" }} />
@@ -1130,19 +1129,23 @@ const JobLocked = ({ job, onBack, onAccept }) => {
         </div>
 
         <div className="card" style={{ padding: 0, marginTop: 12 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              borderBottom: "1px solid var(--line)",
+            }}
+          >
             <div style={{ padding: 16, borderRight: "1px solid var(--line)" }}>
-              <Lbl>{t("date")}</Lbl>
-              <div style={{ fontWeight: 600, marginTop: 6 }}>
-                {job.dateLong}
+              <Lbl>{t("pickup")}</Lbl>
+              <div style={{ fontWeight: 600, marginTop: 6, fontSize: 13 }}>
+                {AuthStore.formatLocationSchedule(job.pickup, t("flexible"))}
               </div>
             </div>
             <div style={{ padding: 16 }}>
-              <Lbl>{t("timeWindow")}</Lbl>
-              <div style={{ fontWeight: 600, marginTop: 6 }} className="mono">
-                {job.windowFlex
-                  ? t("flexible")
-                  : `${job.windowFrom} – ${job.windowTo}`}
+              <Lbl>{t("delivery")}</Lbl>
+              <div style={{ fontWeight: 600, marginTop: 6, fontSize: 13 }}>
+                {AuthStore.formatLocationSchedule(job.delivery, t("flexible"))}
               </div>
             </div>
           </div>
@@ -1345,11 +1348,8 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
             className="mono"
             style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}
           >
-            {job.dateLong} ·{" "}
-            {job.windowFlex
-              ? t("flexible")
-              : `${job.windowFrom}–${job.windowTo}`}{" "}
-            · {job.vehicle} · {job.axle}
+            {AuthStore.formatJobScheduleShort(job, t("flexible"))} · {job.vehicle}{" "}
+            · {job.axle}
           </div>
           <div
             style={{ fontSize: 18, fontWeight: 700, marginTop: 10 }}
@@ -2185,11 +2185,8 @@ const MyJobs = ({ onOpen }) => {
               className="mono"
               style={{ fontSize: 11, color: "var(--muted)" }}
             >
-              {job.date} ·{" "}
-              {job.windowFlex
-                ? t("flexible")
-                : `${job.windowFrom}–${job.windowTo}`}{" "}
-              · {displayVehicle(job.vehicle, t)}
+              {AuthStore.formatJobScheduleShort(job, t("flexible"))} ·{" "}
+              {displayVehicle(job.vehicle, t)}
             </div>
           </div>
         ))}

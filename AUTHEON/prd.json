@@ -63,7 +63,8 @@
       "2026-05-21: New job form ordering party is a required select from customer master data; tour documents only after Performed; driver/admin document replace on performed tours; correction badge only on performed My Jobs.",
       "2026-05-21: Direct assign from Draft and reassign on Assigned/Accepted/Special case via service-partner picker (active partners only); partner invoices table uses status pills without persistent row green background.",
       "2026-05-21: Special case Continue restores statusBeforeSpecialCase (e.g. Accepted) instead of always Assigned; driverState.acceptedIds resynced on continue.",
-      "2026-05-21: Ordering party and address master data CRUD in prototype (create/edit/delete/deactivate, usage guards, job form integration)."
+      "2026-05-21: Ordering party and address master data CRUD in prototype (create/edit/delete/deactivate, usage guards, job form integration).",
+      "2026-05-21: New job form and displays use separate pickup and delivery dates/time windows (multi-day tours supported)."
     ]
   },
   "domain_model_summary": {
@@ -1071,6 +1072,7 @@
     "cancel_slide": "Slide-to-cancel locked until explanation >= 10 chars with disabled track styling in prototype.",
     "special_case_continue": "reportProblemNotPerformable stores statusBeforeSpecialCase on specialCaseReport; Continue restores that status and driverState.acceptedIds when prior was accepted.",
     "master_data_crud": "Ordering parties and addresses: full create/read/update/delete in admin UI; inactive flag; delete blocked when tours reference record; new job uses selects; optional save manual address to master on draft save.",
+    "schedule_multi_day": "Pickup and delivery each have date + window from/to; prototype new job form, job detail, overview, and driver views show both legs; delivery before pickup shows admin warning only.",
     "seed_mock_data": "17 addresses, 5 ordering parties, 3 service partners, 10 jobs (full locations + contacts), 6 tour documents (performed tours only), 2 admin email alerts, 5 audit entries; validateSeedData() runs on load and after reloadDemo().",
     "assign_driver_picker": "AssignDriverDialog modal; assignJob/reassignJob by driver id; getAssignableDrivers() returns Active only.",
     "ordering_party_select": "New job section 01 uses select populated from getOrderingParties(); sets orderingPartyId + customer name."

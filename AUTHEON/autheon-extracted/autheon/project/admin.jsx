@@ -343,10 +343,7 @@ const Overview = ({ onOpen, freshId }) => {
                 <td className="mono num">{j.startPlz}</td>
                 <td className="mono num">{j.endPlz}</td>
                 <td className="mono date" style={{ fontSize: 12 }}>
-                  {j.date} ·{" "}
-                  {j.windowFlex
-                    ? t("adminWindowFlex")
-                    : `${j.windowFrom?.slice(0, 2)}-${j.windowTo?.slice(0, 2)}`}
+                  {AuthStore.formatJobScheduleShort(j, t("adminWindowFlex"))}
                 </td>
                 <td>{j.vehicle === "Transporter" ? t("adminVehicleTrp") : j.vehicle}</td>
                 <td>{j.driver || "—"}</td>
@@ -1001,10 +998,10 @@ const AdminDetail = ({
             }}
           >
             {job.startPlz} {job.startCity} → {job.endPlz} {job.endCity} ·{" "}
-            {job.distanceKm} km · {job.dateLong} ·{" "}
-            {job.windowFlex
-              ? t("flexible")
-              : `${job.windowFrom}–${job.windowTo}`}
+            {job.distanceKm} km ·{" "}
+            {AuthStore.schedulesOnDifferentDays(job)
+              ? `${AuthStore.formatLocationSchedule(job.pickup, t("flexible"))} → ${AuthStore.formatLocationSchedule(job.delivery, t("flexible"))}`
+              : AuthStore.formatLocationSchedule(job.pickup, t("flexible"))}
           </div>
         </div>
         <div
@@ -1139,16 +1136,27 @@ const AdminDetail = ({
                 <div className="label" style={{ marginTop: 24 }}>
                   {t("schedule")}
                 </div>
-                <div style={{ fontWeight: 600, marginTop: 6 }}>
-                  {job.dateLong}
+                <div style={{ marginTop: 8, fontSize: 13 }}>
+                  <div className="label" style={{ fontSize: 9.5 }}>
+                    {t("pickup")}
+                  </div>
+                  <div style={{ fontWeight: 600, marginTop: 4 }}>
+                    {AuthStore.formatLocationSchedule(
+                      job.pickup,
+                      t("flexible"),
+                    )}
+                  </div>
                 </div>
-                <div
-                  className="mono"
-                  style={{ fontSize: 12, color: "var(--muted)" }}
-                >
-                  {job.windowFlex
-                    ? t("flexible")
-                    : `${job.windowFrom} – ${job.windowTo}`}
+                <div style={{ marginTop: 10, fontSize: 13 }}>
+                  <div className="label" style={{ fontSize: 9.5 }}>
+                    {t("delivery")}
+                  </div>
+                  <div style={{ fontWeight: 600, marginTop: 4 }}>
+                    {AuthStore.formatLocationSchedule(
+                      job.delivery,
+                      t("flexible"),
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1673,9 +1681,14 @@ const NewOrder = ({ onCancel, onFormChange }) => {
     endPlz: "",
     endStreet: "",
     distance: "",
-    date: "",
-    from: "",
-    to: "",
+    pickupDate: "",
+    pickupFrom: "",
+    pickupTo: "",
+    pickupFlex: false,
+    deliveryDate: "",
+    deliveryFrom: "",
+    deliveryTo: "",
+    deliveryFlex: false,
     vehicleType: "",
     brand: "",
     model: "",
@@ -1766,11 +1779,16 @@ const NewOrder = ({ onCancel, onFormChange }) => {
     "endCity",
     "endPlz",
     "endStreet",
-    "date",
+    "pickupDate",
+    "deliveryDate",
     "vehicleType",
     "plate",
     "driverCompensation",
   ];
+  const scheduleDateWarning =
+    form.pickupDate &&
+    form.deliveryDate &&
+    AuthStore.compareDottedDates(form.pickupDate, form.deliveryDate) > 0;
   const filled = required.filter(
     (k) => form[k] && String(form[k]).trim(),
   ).length;
@@ -2101,40 +2119,140 @@ const NewOrder = ({ onCancel, onFormChange }) => {
                 <span className="num">03</span> {t("newOrderSecScheduleTitle")}
               </h3>
             </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
-                gap: 14,
-                marginTop: 14,
-              }}
+            <p
+              className="label"
+              style={{ margin: "10px 0 0", fontSize: 12, lineHeight: 1.5 }}
             >
-              <div>
-                <label className="field-label">{t("date")} *</label>
-                <input
-                  className="input mono"
-                  placeholder={t("newOrderDatePh")}
-                  value={form.date}
-                  onChange={(e) => set("date", e.target.value)}
-                />
+              {t("newOrderScheduleHint")}
+            </p>
+            {scheduleDateWarning ? (
+              <div
+                className="dash-area"
+                style={{
+                  marginTop: 12,
+                  padding: 12,
+                  fontSize: 12.5,
+                  color: "var(--st-warn)",
+                  borderLeft: "3px solid var(--st-warn)",
+                }}
+              >
+                {t("newOrderScheduleDateWarning")}
               </div>
-              <div>
-                <label className="field-label">{t("newOrderWindowFrom")}</label>
-                <input
-                  className="input mono"
-                  placeholder={t("newOrderTimePh")}
-                  value={form.from}
-                  onChange={(e) => set("from", e.target.value)}
-                />
+            ) : null}
+            <div style={{ marginTop: 16 }}>
+              <div className="label" style={{ marginBottom: 10 }}>
+                {t("newOrderPickupSchedule")}
               </div>
-              <div>
-                <label className="field-label">{t("newOrderWindowTo")}</label>
-                <input
-                  className="input mono"
-                  placeholder={t("newOrderTimePh")}
-                  value={form.to}
-                  onChange={(e) => set("to", e.target.value)}
-                />
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr auto",
+                  gap: 14,
+                  alignItems: "end",
+                }}
+              >
+                <div>
+                  <label className="field-label">{t("newOrderPickupDate")} *</label>
+                  <input
+                    className="input mono"
+                    placeholder={t("newOrderDatePh")}
+                    value={form.pickupDate}
+                    onChange={(e) => set("pickupDate", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="field-label">{t("newOrderWindowFrom")}</label>
+                  <input
+                    className="input mono"
+                    placeholder={t("newOrderTimePh")}
+                    value={form.pickupFrom}
+                    onChange={(e) => set("pickupFrom", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="field-label">{t("newOrderWindowTo")}</label>
+                  <input
+                    className="input mono"
+                    placeholder={t("newOrderTimePh")}
+                    value={form.pickupTo}
+                    onChange={(e) => set("pickupTo", e.target.value)}
+                  />
+                </div>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    paddingBottom: 10,
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!form.pickupFlex}
+                    onChange={(e) => set("pickupFlex", e.target.checked)}
+                  />
+                  {t("flexible")}
+                </label>
+              </div>
+            </div>
+            <div style={{ marginTop: 18 }}>
+              <div className="label" style={{ marginBottom: 10 }}>
+                {t("newOrderDeliverySchedule")}
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr auto",
+                  gap: 14,
+                  alignItems: "end",
+                }}
+              >
+                <div>
+                  <label className="field-label">{t("newOrderDeliveryDate")} *</label>
+                  <input
+                    className="input mono"
+                    placeholder={t("newOrderDatePh")}
+                    value={form.deliveryDate}
+                    onChange={(e) => set("deliveryDate", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="field-label">{t("newOrderWindowFrom")}</label>
+                  <input
+                    className="input mono"
+                    placeholder={t("newOrderTimePh")}
+                    value={form.deliveryFrom}
+                    onChange={(e) => set("deliveryFrom", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="field-label">{t("newOrderWindowTo")}</label>
+                  <input
+                    className="input mono"
+                    placeholder={t("newOrderTimePh")}
+                    value={form.deliveryTo}
+                    onChange={(e) => set("deliveryTo", e.target.value)}
+                  />
+                </div>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    paddingBottom: 10,
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!form.deliveryFlex}
+                    onChange={(e) => set("deliveryFlex", e.target.checked)}
+                  />
+                  {t("flexible")}
+                </label>
               </div>
             </div>
           </section>
@@ -2387,13 +2505,22 @@ const NewOrder = ({ onCancel, onFormChange }) => {
                   <div
                     className="mono"
                     style={{
-                      fontSize: 13,
+                      fontSize: 12,
                       marginTop: 2,
-                      color: form.date ? "var(--text)" : "var(--muted)",
+                      color:
+                        form.pickupDate || form.deliveryDate
+                          ? "var(--text)"
+                          : "var(--muted)",
+                      lineHeight: 1.45,
                     }}
                   >
-                    {form.date || t("newOrderDatePreview")} ·{" "}
-                    {form.from || t("newOrderTimePh")}
+                    {form.pickupDate
+                      ? `${t("pickup")}: ${form.pickupDate}${form.pickupFrom ? ` ${form.pickupFrom}–${form.pickupTo || ""}` : ""}`
+                      : "—"}
+                    <br />
+                    {form.deliveryDate
+                      ? `${t("delivery")}: ${form.deliveryDate}${form.deliveryFrom ? ` ${form.deliveryFrom}–${form.deliveryTo || ""}` : ""}`
+                      : "—"}
                   </div>
                 </div>
                 <div>

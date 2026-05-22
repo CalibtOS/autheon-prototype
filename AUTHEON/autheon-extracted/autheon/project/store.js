@@ -161,11 +161,16 @@ window.AuthStore = (() => {
     job.endPlz = del.postalCode || "";
     job.endStreet = formatStreet(del) || del.street || "";
     job.endCompany = del.name || "";
-    job.date = pu.date || del.date || job.date || "";
-    job.dateLong = pu.dateLong || del.dateLong || job.dateLong || "";
+    job.date = pu.date || job.date || "";
+    job.dateLong = pu.dateLong || job.dateLong || "";
     job.windowFrom = pu.windowFrom || "";
     job.windowTo = pu.windowTo || "";
-    job.windowFlex = !!(pu.windowFlex || del.windowFlex);
+    job.windowFlex = !!pu.windowFlex;
+    job.deliveryDate = del.date || "";
+    job.deliveryDateLong = del.dateLong || "";
+    job.deliveryWindowFrom = del.windowFrom || "";
+    job.deliveryWindowTo = del.windowTo || "";
+    job.deliveryWindowFlex = !!del.windowFlex;
     job.contactPickup = {
       name: pu.contactPerson || "",
       phone: pu.phone || "",
@@ -1356,6 +1361,8 @@ window.AuthStore = (() => {
         issues.push(`${j.id}: driverCompensation`);
       }
       if (!j.history?.length) issues.push(`${j.id}: history`);
+      if (!j.pickup?.date) issues.push(`${j.id}: pickup.date`);
+      if (!j.delivery?.date) issues.push(`${j.id}: delivery.date`);
       if (j.status !== "draft" && !(j.pdfVersion > 0) && j.status !== "published") {
         /* published may have pdf 0 until accept */
       }
@@ -1620,21 +1627,96 @@ window.AuthStore = (() => {
         form[`${p}Phone`] ||
         form[`cPhone${p === "pickup" ? "1" : "2"}`] ||
         "",
-      date: form[cap("date")] || form.date || "",
-      dateLong: form[cap("dateLong")] || form.dateLong || form.date || "",
+      date:
+        form[cap("date")] ||
+        (p === "pickup" ? form.pickupDate : form.deliveryDate) ||
+        form.date ||
+        "",
+      dateLong:
+        form[cap("dateLong")] ||
+        (p === "pickup" ? form.pickupDateLong : form.deliveryDateLong) ||
+        form.dateLong ||
+        "",
       windowFrom:
         form[cap("windowFrom")] ||
-        form[`${p}From`] ||
-        (p === "pickup" ? form.from : form.to) ||
+        (p === "pickup" ? form.pickupFrom : form.deliveryFrom) ||
+        (p === "pickup" ? form.from : "") ||
         form.windowFrom ||
         "",
       windowTo:
         form[cap("windowTo")] ||
-        form[`${p}To`] ||
+        (p === "pickup" ? form.pickupTo : form.deliveryTo) ||
         form.windowTo ||
         "",
-      windowFlex: !!(form[cap("windowFlex")] || form.windowFlex),
+      windowFlex: !!(
+        form[cap("windowFlex")] ||
+        (p === "pickup" ? form.pickupFlex : form.deliveryFlex)
+      ),
     });
+  }
+
+  function parseDottedDate(s) {
+    const m = String(s || "")
+      .trim()
+      .match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);
+    if (!m) return null;
+    let y = parseInt(m[3], 10);
+    if (y < 100) y += 2000;
+    return {
+      y,
+      mo: parseInt(m[2], 10),
+      d: parseInt(m[1], 10),
+    };
+  }
+
+  function compareDottedDates(a, b) {
+    const pa = parseDottedDate(a);
+    const pb = parseDottedDate(b);
+    if (!pa || !pb) return 0;
+    if (pa.y !== pb.y) return pa.y - pb.y;
+    if (pa.mo !== pb.mo) return pa.mo - pb.mo;
+    return pa.d - pb.d;
+  }
+
+  function formatLocTimeWindow(loc, flexLabel) {
+    if (!loc) return "";
+    if (loc.windowFlex) return flexLabel || "Flexible";
+    if (loc.windowFrom && loc.windowTo)
+      return `${loc.windowFrom}–${loc.windowTo}`;
+    return loc.windowFrom || loc.windowTo || "";
+  }
+
+  function formatLocationSchedule(loc, flexLabel) {
+    if (!loc) return "—";
+    const date = loc.dateLong || loc.date || "";
+    const win = formatLocTimeWindow(loc, flexLabel);
+    if (date && win) return `${date} · ${win}`;
+    return date || win || "—";
+  }
+
+  function schedulesOnDifferentDays(job) {
+    const pu = job?.pickup;
+    const del = job?.delivery;
+    if (!pu?.date || !del?.date) return false;
+    return pu.date !== del.date;
+  }
+
+  function formatJobScheduleShort(job, flexLabel) {
+    const pu = job?.pickup || mkLocation();
+    const del = job?.delivery || mkLocation();
+    if (schedulesOnDifferentDays(job)) {
+      const pd = pu.date || "";
+      const dd = del.date || "";
+      return `${pd} → ${dd}`;
+    }
+    const date = pu.date || del.date || "";
+    const puWin = formatLocTimeWindow(pu, flexLabel);
+    const delWin = formatLocTimeWindow(del, flexLabel);
+    if (date && puWin && delWin && puWin !== delWin)
+      return `${date} · P ${puWin} / D ${delWin}`;
+    const win = puWin || delWin;
+    if (date && win) return `${date} · ${win}`;
+    return date || win || "—";
   }
 
   const api = {
@@ -1642,6 +1724,12 @@ window.AuthStore = (() => {
     DOC_REVIEW,
     SETTLEMENT_STATES,
     DEMO_DRIVER,
+    parseDottedDate,
+    compareDottedDates,
+    formatLocTimeWindow,
+    formatLocationSchedule,
+    formatJobScheduleShort,
+    schedulesOnDifferentDays,
     DEMO_ADMIN,
     AXLE_OWN,
     AXLE_THIRD,

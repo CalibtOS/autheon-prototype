@@ -635,7 +635,15 @@ window.I18n = (() => {
       newOrderPlzPh: "Postcode",
       newOrderCityPh: "City / town",
       newOrderDistanceKm: "Distance (km)",
-      newOrderSecScheduleTitle: "Schedule / time window",
+      newOrderSecScheduleTitle: "Schedule / time windows",
+      newOrderScheduleHint:
+        "Pickup and delivery can be on different days — each has its own date and time window.",
+      newOrderPickupSchedule: "Pickup schedule",
+      newOrderDeliverySchedule: "Delivery schedule",
+      newOrderPickupDate: "Pickup date",
+      newOrderDeliveryDate: "Delivery date",
+      newOrderScheduleDateWarning:
+        "Delivery date is before pickup date. You can still save if this is intentional.",
       newOrderDatePh: "DD.MM.YYYY",
       newOrderWindowFrom: "Window from",
       newOrderWindowTo: "Window until",
@@ -1418,6 +1426,14 @@ window.I18n = (() => {
       newOrderCityPh: "Stadt / Ort",
       newOrderDistanceKm: "Distanz (km)",
       newOrderSecScheduleTitle: "Termin / Zeitfenster",
+      newOrderScheduleHint:
+        "Abholung und Lieferung können an unterschiedlichen Tagen liegen — jeweils mit eigenem Datum und Zeitfenster.",
+      newOrderPickupSchedule: "Abholtermin",
+      newOrderDeliverySchedule: "Liefertermin",
+      newOrderPickupDate: "Abholdatum",
+      newOrderDeliveryDate: "Lieferdatum",
+      newOrderScheduleDateWarning:
+        "Lieferdatum liegt vor dem Abholdatum. Speichern ist dennoch möglich, wenn beabsichtigt.",
       newOrderDatePh: "TT.MM.JJJJ",
       newOrderWindowFrom: "Zeitfenster von",
       newOrderWindowTo: "Zeitfenster bis",
