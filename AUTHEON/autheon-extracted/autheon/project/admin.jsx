@@ -31,6 +31,23 @@ const displayTourDocType = (type, t) => {
   );
 };
 
+const tourDocSupplierInvoiceId = (doc) => {
+  if (!AuthStore.isTourBillingInvoiceType(doc?.documentType)) return "";
+  return String(doc.supplierInvoiceNumber || "").trim();
+};
+
+const uniqueTourDocTypeLabels = (docs, t) => {
+  const seen = new Set();
+  const labels = [];
+  for (const d of docs) {
+    const code = AuthStore.normalizeTourDocumentType(d.documentType);
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    labels.push(displayTourDocType(code, t));
+  }
+  return labels;
+};
+
 // =========================================================================
 // ADMIN — NAV
 // =========================================================================
@@ -521,6 +538,18 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
   const showPendingBanner =
     linkedInvoices.length > 0 &&
     linkedInvoices.some((u) => u.reviewStatus === "uploaded");
+  const snapshotDocTypes = uniqueTourDocTypeLabels(linkedInvoices, t);
+  const displayDocReviewStatus = (st) => {
+    const code = AuthStore.normalizeTourDocumentReviewStatus(st);
+    return (
+      {
+        uploaded: t("docReviewUploaded"),
+        accepted: t("docReviewAccepted"),
+        rejected: t("docReviewRejected"),
+        correction_required: t("docReviewCorrectionRequired"),
+      }[code] || code || "—"
+    );
+  };
   return (
     <section className="card" style={{ padding: 22 }}>
       <div className="sec-head">
@@ -597,6 +626,14 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
           <div className="mono" style={{ marginTop: 8, fontWeight: 600 }}>
             {job.invoiceNumber || "—"}
           </div>
+          {snapshotDocTypes.length > 0 && (
+            <div
+              className="label"
+              style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}
+            >
+              {snapshotDocTypes.join(" · ")}
+            </div>
+          )}
         </div>
       </div>
 
@@ -610,10 +647,20 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
             </tr>
           </thead>
           <tbody>
-            {linkedInvoices.map((u) => (
+            {linkedInvoices.map((u) => {
+              const invId = tourDocSupplierInvoiceId(u);
+              return (
               <tr key={u.id}>
-                <td style={{ fontSize: 12 }}>
-                  {displayTourDocType(u.documentType, t)}
+                <td style={{ fontSize: 12, minWidth: 140 }}>
+                  <div className="mono" style={{ fontWeight: 600 }}>
+                    {invId || "—"}
+                  </div>
+                  <div
+                    className="label"
+                    style={{ fontSize: 11, marginTop: 4, lineHeight: 1.35 }}
+                  >
+                    {displayTourDocType(u.documentType, t)}
+                  </div>
                 </td>
                 <td style={{ fontSize: 13 }}>{u.fileName}</td>
                 <td>
@@ -627,11 +674,12 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
                           : "assigned"
                     }
                   >
-                    {u.reviewStatus || "—"}
+                    {displayDocReviewStatus(u.reviewStatus)}
                   </Pill>
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       )}
