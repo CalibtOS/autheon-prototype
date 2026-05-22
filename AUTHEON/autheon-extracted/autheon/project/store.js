@@ -205,6 +205,7 @@ window.AuthStore = (() => {
         email: "logistics@muller-auto.example",
         billingNotes: "Net 14 days; PO required on invoice.",
         instructions: "Keys at reception; logistics yard requires safety vest.",
+        active: true,
       },
       {
         id: "OP-002",
@@ -216,6 +217,7 @@ window.AuthStore = (() => {
         billingNotes: "Historic vehicle surcharge may apply.",
         instructions:
           "Historic vehicles require enclosed transport confirmation.",
+        active: true,
       },
       {
         id: "OP-003",
@@ -226,6 +228,7 @@ window.AuthStore = (() => {
         email: "ops@nordflotte.example",
         billingNotes: "",
         instructions: "Report pickup delays to dispatch immediately.",
+        active: true,
       },
       {
         id: "OP-004",
@@ -236,6 +239,7 @@ window.AuthStore = (() => {
         email: "hub@autologistik.example",
         billingNotes: "Hub-to-hub transfers.",
         instructions: "",
+        active: true,
       },
       {
         id: "OP-005",
@@ -246,6 +250,7 @@ window.AuthStore = (() => {
         email: "berlin.branch@muller-auto.example",
         billingNotes: "Branch billing under parent group PO.",
         instructions: "Berlin–Leipzig corridor; flexible windows common.",
+        active: true,
       },
     ];
   }
@@ -1289,6 +1294,16 @@ window.AuthStore = (() => {
   let newsItems = seedNews();
   let jobs = seedJobs();
 
+  function nextMasterId(prefix, list) {
+    let max = 0;
+    const re = new RegExp(`^${prefix}-(\\d+)$`);
+    for (const row of list) {
+      const m = String(row.id || "").match(re);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
+    return `${prefix}-${String(max + 1).padStart(3, "0")}`;
+  }
+
   /** Restore target when admin continues a special case (fallback for legacy rows). */
   function inferStatusBeforeSpecialCase(job) {
     const fromReport = job?.specialCaseReport?.statusBeforeSpecialCase;
@@ -1660,8 +1675,14 @@ window.AuthStore = (() => {
     partnerOfferAmount,
     getDrivers: () => drivers,
     getAdmins: () => admins,
-    getOrderingParties: () => orderingParties,
-    getAddresses: () => addresses,
+    getOrderingParties: (opts = {}) => {
+      const all = orderingParties.slice();
+      return opts.activeOnly ? all.filter((x) => x.active !== false) : all;
+    },
+    getAddresses: (opts = {}) => {
+      const all = addresses.slice();
+      return opts.activeOnly ? all.filter((x) => x.active !== false) : all;
+    },
     getDocuments: () => documents,
     getNews: () => newsItems.filter((n) => n.visible !== false),
     getAuditLog: () => auditLog,
@@ -1734,40 +1755,143 @@ window.AuthStore = (() => {
     isPerformed: (id) => driverState.performedIds.has(id),
     isSpecialCase: (id) => driverState.specialCaseIds.has(id),
 
+    getOrderingParty: (id) => orderingParties.find((x) => x.id === id) || null,
+
+    getAddress: (id) => addresses.find((x) => x.id === id) || null,
+
+    countJobsUsingOrderingParty(opId) {
+      return jobs.filter((j) => j.orderingPartyId === opId).length;
+    },
+
+    countJobsUsingAddress(addrId) {
+      return jobs.filter(
+        (j) =>
+          j.pickup?.locationId === addrId || j.delivery?.locationId === addrId,
+      ).length;
+    },
+
     addOrderingParty(data) {
+      const name = String(data?.name || "").trim();
+      if (!name) return { ok: false, reason: "name_required" };
       const op = {
-        id: `OP-${String(orderingParties.length + 1).padStart(3, "0")}`,
-        name: data.name || "New ordering party",
-        type: data.type || "",
-        contact: data.contact || "",
-        phone: data.phone || "",
-        email: data.email || "",
-        billingNotes: data.billingNotes || "",
-        instructions: data.instructions || "",
+        id: nextMasterId("OP", orderingParties),
+        name,
+        type: String(data?.type || "").trim(),
+        contact: String(data?.contact || "").trim(),
+        phone: String(data?.phone || "").trim(),
+        email: String(data?.email || "").trim(),
+        billingNotes: String(data?.billingNotes || "").trim(),
+        instructions: String(data?.instructions || "").trim(),
+        active: data?.active !== false,
       };
       orderingParties.unshift(op);
       log("ordering_party_created", DEMO_ADMIN, op.name, op.id);
       emit();
-      return op;
+      return { ok: true, party: op };
+    },
+
+    updateOrderingParty(id, data) {
+      const op = orderingParties.find((x) => x.id === id);
+      if (!op) return { ok: false, reason: "not_found" };
+      const name = data?.name != null ? String(data.name).trim() : op.name;
+      if (!name) return { ok: false, reason: "name_required" };
+      if (data?.name != null) op.name = name;
+      if (data?.type != null) op.type = String(data.type).trim();
+      if (data?.contact != null) op.contact = String(data.contact).trim();
+      if (data?.phone != null) op.phone = String(data.phone).trim();
+      if (data?.email != null) op.email = String(data.email).trim();
+      if (data?.billingNotes != null)
+        op.billingNotes = String(data.billingNotes).trim();
+      if (data?.instructions != null)
+        op.instructions = String(data.instructions).trim();
+      if (data?.active != null) op.active = !!data.active;
+      log("ordering_party_updated", DEMO_ADMIN, op.name, op.id);
+      emit();
+      return { ok: true, party: op };
+    },
+
+    deleteOrderingParty(id) {
+      const op = orderingParties.find((x) => x.id === id);
+      if (!op) return { ok: false, reason: "not_found" };
+      const used = api.countJobsUsingOrderingParty(id);
+      if (used > 0) return { ok: false, reason: "in_use", count: used };
+      const idx = orderingParties.findIndex((x) => x.id === id);
+      orderingParties.splice(idx, 1);
+      log("ordering_party_deleted", DEMO_ADMIN, op.name, op.id);
+      emit();
+      return { ok: true };
     },
 
     addAddress(data) {
+      const label = String(data?.label || data?.name || "").trim();
+      if (!label) return { ok: false, reason: "label_required" };
+      const street = String(data?.street || "").trim();
+      const postalCode = String(data?.postalCode || "").trim();
+      const city = String(data?.city || "").trim();
+      if (!street || !postalCode || !city)
+        return { ok: false, reason: "address_incomplete" };
       const addr = {
-        id: `ADDR-${String(addresses.length + 1).padStart(3, "0")}`,
-        label: data.label || data.name || "New address",
-        street: data.street || "",
-        houseNumber: data.houseNumber || "",
-        postalCode: data.postalCode || "",
-        city: data.city || "",
-        country: data.country || "DE",
-        contactPerson: data.contactPerson || "",
-        phone: data.phone || "",
-        notes: data.notes || "",
+        id: nextMasterId("ADDR", addresses),
+        label,
+        street,
+        houseNumber: String(data?.houseNumber || "").trim(),
+        postalCode,
+        city,
+        country: String(data?.country || "DE").trim() || "DE",
+        contactPerson: String(data?.contactPerson || "").trim(),
+        phone: String(data?.phone || "").trim(),
+        secondPhone: String(data?.secondPhone || "").trim(),
+        email: String(data?.email || "").trim(),
+        notes: String(data?.notes || "").trim(),
+        active: data?.active !== false,
       };
       addresses.unshift(addr);
       log("address_created", DEMO_ADMIN, addr.label, addr.id);
       emit();
-      return addr;
+      return { ok: true, address: addr };
+    },
+
+    updateAddress(id, data) {
+      const addr = addresses.find((x) => x.id === id);
+      if (!addr) return { ok: false, reason: "not_found" };
+      if (data?.label != null) {
+        const label = String(data.label).trim();
+        if (!label) return { ok: false, reason: "label_required" };
+        addr.label = label;
+      }
+      if (data?.street != null) addr.street = String(data.street).trim();
+      if (data?.houseNumber != null)
+        addr.houseNumber = String(data.houseNumber).trim();
+      if (data?.postalCode != null)
+        addr.postalCode = String(data.postalCode).trim();
+      if (data?.city != null) addr.city = String(data.city).trim();
+      if (data?.country != null)
+        addr.country = String(data.country).trim() || "DE";
+      if (data?.contactPerson != null)
+        addr.contactPerson = String(data.contactPerson).trim();
+      if (data?.phone != null) addr.phone = String(data.phone).trim();
+      if (data?.secondPhone != null)
+        addr.secondPhone = String(data.secondPhone).trim();
+      if (data?.email != null) addr.email = String(data.email).trim();
+      if (data?.notes != null) addr.notes = String(data.notes).trim();
+      if (data?.active != null) addr.active = !!data.active;
+      if (!addr.street || !addr.postalCode || !addr.city)
+        return { ok: false, reason: "address_incomplete" };
+      log("address_updated", DEMO_ADMIN, addr.label, addr.id);
+      emit();
+      return { ok: true, address: addr };
+    },
+
+    deleteAddress(id) {
+      const addr = addresses.find((x) => x.id === id);
+      if (!addr) return { ok: false, reason: "not_found" };
+      const used = api.countJobsUsingAddress(id);
+      if (used > 0) return { ok: false, reason: "in_use", count: used };
+      const idx = addresses.findIndex((x) => x.id === id);
+      addresses.splice(idx, 1);
+      log("address_deleted", DEMO_ADMIN, addr.label, addr.id);
+      emit();
+      return { ok: true };
     },
 
     markNewsRead(newsId, readerId) {
@@ -2232,12 +2356,40 @@ window.AuthStore = (() => {
           name: form.startCompany || form.customer,
         });
       }
+      if (form.pickupLocationId) pickup.locationId = form.pickupLocationId;
       if (!delivery.city && form.endCity) {
         Object.assign(delivery, {
           city: form.endCity,
           postalCode: form.endPlz,
           street: form.endStreet,
           name: form.endCompany,
+        });
+      }
+      if (form.deliveryLocationId) delivery.locationId = form.deliveryLocationId;
+      if (form.savePickupToMaster && form.startStreet?.trim()) {
+        api.addAddress({
+          label:
+            form.pickupLocationLabel ||
+            form.startCompany ||
+            `${form.startStreet}, ${form.startCity}`.trim(),
+          street: form.startStreet,
+          postalCode: form.startPlz,
+          city: form.startCity,
+          contactPerson: form.cName1,
+          phone: form.cPhone1,
+        });
+      }
+      if (form.saveDeliveryToMaster && form.endStreet?.trim()) {
+        api.addAddress({
+          label:
+            form.deliveryLocationLabel ||
+            form.endCompany ||
+            `${form.endStreet}, ${form.endCity}`.trim(),
+          street: form.endStreet,
+          postalCode: form.endPlz,
+          city: form.endCity,
+          contactPerson: form.cName2,
+          phone: form.cPhone2,
         });
       }
       const newJob = mk({

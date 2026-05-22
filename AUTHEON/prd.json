@@ -41,7 +41,7 @@
   },
   "prototype_coverage_notes": [
     "Driver PWA (demo): marketplace with pull-to-refresh, My Jobs (Active, Performed, Cancelled, Special case), locked preview, slide accept, map handoff, Mark as performed, Report Problem (cancel + not performable), tour-linked document upload only after Performed (categories, rejection reason, replace file), correction badge on Performed tab only, Infopoint (documents + news), profile and push preferences (no driver workflow email).",
-    "Admin (demo): job overview with special case and performed filters, primary New job CTA on Jobs overview (no separate New job sidebar item), job detail with draft delete and special case resolution (Continue, Republish, administrative close, cancel order), distance estimate/recalculate, ordering parties and addresses master data, new order form with ordering party select (dropdown from customer master data, not free-text search), direct assign and reassign via service-partner picker (active partners only), partner invoices and documents with review/reject/replace/bulk download (status via pill only, no full-row green highlight), Infopoint management, service partners, audit log, admin email alert demo, CSV export. Finance dashboard removed.",
+    "Admin (demo): job overview with special case and performed filters, primary New job CTA on Jobs overview (no separate New job sidebar item), job detail with draft delete and special case resolution (Continue, Republish, administrative close, cancel order), distance estimate/recalculate, full CRUD for ordering parties (all PRD fields, active flag, delete blocked when referenced by tours) and addresses (full location/contact fields, active flag, usage count), new order form with ordering party select plus pickup/delivery selects from address master data and optional save-to-master checkboxes for manual entry, direct assign and reassign via service-partner picker (active partners only), partner invoices and documents with review/reject/replace/bulk download (status via pill only, no full-row green highlight), Infopoint management, service partners, audit log, admin email alert demo, CSV export. Finance dashboard removed.",
     "Driver Report Problem (demo): Cancel Order uses slide-to-confirm locked until explanation has at least 10 characters, with clear disabled visual state; Not Performable uses Submit.",
     "Publishing (demo): admin revert Published to Draft; publish and direct assign from Draft only (assign opens modal to pick active service partner); admin can reassign driver on Assigned, Accepted, or Special case tours; admin can delete Draft jobs from job detail.",
     "Status model (demo): operational statuses draft, published, accepted, assigned, performed, cancelled, special_case only — no return_requested or completed.",
@@ -62,7 +62,8 @@
       "2026-05-21: Prototype seed jobs and address master data completed with pickup/delivery contacts (person, phone, email, second phone) on every tour.",
       "2026-05-21: New job form ordering party is a required select from customer master data; tour documents only after Performed; driver/admin document replace on performed tours; correction badge only on performed My Jobs.",
       "2026-05-21: Direct assign from Draft and reassign on Assigned/Accepted/Special case via service-partner picker (active partners only); partner invoices table uses status pills without persistent row green background.",
-      "2026-05-21: Special case Continue restores statusBeforeSpecialCase (e.g. Accepted) instead of always Assigned; driverState.acceptedIds resynced on continue."
+      "2026-05-21: Special case Continue restores statusBeforeSpecialCase (e.g. Accepted) instead of always Assigned; driverState.acceptedIds resynced on continue.",
+      "2026-05-21: Ordering party and address master data CRUD in prototype (create/edit/delete/deactivate, usage guards, job form integration)."
     ]
   },
   "domain_model_summary": {
@@ -1069,6 +1070,7 @@
     "admin_nav": "Jobs overview hosts primary New job button; no New job sidebar nav item.",
     "cancel_slide": "Slide-to-cancel locked until explanation >= 10 chars with disabled track styling in prototype.",
     "special_case_continue": "reportProblemNotPerformable stores statusBeforeSpecialCase on specialCaseReport; Continue restores that status and driverState.acceptedIds when prior was accepted.",
+    "master_data_crud": "Ordering parties and addresses: full create/read/update/delete in admin UI; inactive flag; delete blocked when tours reference record; new job uses selects; optional save manual address to master on draft save.",
     "seed_mock_data": "17 addresses, 5 ordering parties, 3 service partners, 10 jobs (full locations + contacts), 6 tour documents (performed tours only), 2 admin email alerts, 5 audit entries; validateSeedData() runs on load and after reloadDemo().",
     "assign_driver_picker": "AssignDriverDialog modal; assignJob/reassignJob by driver id; getAssignableDrivers() returns Active only.",
     "ordering_party_select": "New job section 01 uses select populated from getOrderingParties(); sets orderingPartyId + customer name."

@@ -1689,10 +1689,51 @@ const NewOrder = ({ onCancel, onFormChange }) => {
     notes: "",
     notesDriver: "",
     axle: "Eigenachse",
+    pickupLocationId: "",
+    deliveryLocationId: "",
+    savePickupToMaster: false,
+    saveDeliveryToMaster: false,
   });
   const [activeSec, setActiveSec] = useStateA("01");
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const orderingParties = store.getOrderingParties();
+  const applyMasterAddress = (side, addrId) => {
+    if (!addrId) {
+      if (side === "pickup") {
+        setForm((f) => ({ ...f, pickupLocationId: "" }));
+      } else {
+        setForm((f) => ({ ...f, deliveryLocationId: "" }));
+      }
+      return;
+    }
+    const a = store.getAddress(addrId);
+    if (!a) return;
+    const line1 = [a.street, a.houseNumber].filter(Boolean).join(" ");
+    if (side === "pickup") {
+      setForm((f) => ({
+        ...f,
+        pickupLocationId: a.id,
+        startStreet: line1,
+        startPlz: a.postalCode,
+        startCity: a.city,
+        cName1: a.contactPerson || f.cName1,
+        cPhone1: a.phone || f.cPhone1,
+        savePickupToMaster: false,
+      }));
+    } else {
+      setForm((f) => ({
+        ...f,
+        deliveryLocationId: a.id,
+        endStreet: line1,
+        endPlz: a.postalCode,
+        endCity: a.city,
+        cName2: a.contactPerson || f.cName2,
+        cPhone2: a.phone || f.cPhone2,
+        saveDeliveryToMaster: false,
+      }));
+    }
+  };
+  const orderingParties = store.getOrderingParties({ activeOnly: true });
+  const masterAddresses = store.getAddresses({ activeOnly: true });
   const applyOrderingParty = (party) => {
     if (!party) return;
     setForm((f) => ({
@@ -1890,12 +1931,33 @@ const NewOrder = ({ onCancel, onFormChange }) => {
               }}
             >
               <div>
-                <label className="field-label">{t("newOrderStartAddress")}</label>
+                <label className="field-label" htmlFor="new-pickup-addr">
+                  {t("newOrderPickupFromMaster")}
+                </label>
+                <select
+                  id="new-pickup-addr"
+                  className="input"
+                  value={form.pickupLocationId || ""}
+                  onChange={(e) => applyMasterAddress("pickup", e.target.value)}
+                >
+                  <option value="">{t("newOrderAddressManual")}</option>
+                  {masterAddresses.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.label} · {a.postalCode} {a.city}
+                    </option>
+                  ))}
+                </select>
+                <label className="field-label" style={{ marginTop: 10 }}>
+                  {t("newOrderStartAddress")}
+                </label>
                 <input
                   className="input"
                   placeholder={t("newOrderStreetPh")}
                   value={form.startStreet}
-                  onChange={(e) => set("startStreet", e.target.value)}
+                  onChange={(e) => {
+                    set("startStreet", e.target.value);
+                    set("pickupLocationId", "");
+                  }}
                 />
                 <div
                   style={{
@@ -1915,17 +1977,64 @@ const NewOrder = ({ onCancel, onFormChange }) => {
                     className="input"
                     placeholder={t("newOrderCityPh")}
                     value={form.startCity}
-                    onChange={(e) => set("startCity", e.target.value)}
+                    onChange={(e) => {
+                      set("startCity", e.target.value);
+                      set("pickupLocationId", "");
+                    }}
                   />
                 </div>
+                {!form.pickupLocationId ? (
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginTop: 10,
+                      fontSize: 12.5,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!form.savePickupToMaster}
+                      onChange={(e) =>
+                        set("savePickupToMaster", e.target.checked)
+                      }
+                    />
+                    {t("newOrderSavePickupToMaster")}
+                  </label>
+                ) : null}
               </div>
               <div>
-                <label className="field-label">{t("newOrderEndAddress")}</label>
+                <label className="field-label" htmlFor="new-delivery-addr">
+                  {t("newOrderDeliveryFromMaster")}
+                </label>
+                <select
+                  id="new-delivery-addr"
+                  className="input"
+                  value={form.deliveryLocationId || ""}
+                  onChange={(e) =>
+                    applyMasterAddress("delivery", e.target.value)
+                  }
+                >
+                  <option value="">{t("newOrderAddressManual")}</option>
+                  {masterAddresses.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.label} · {a.postalCode} {a.city}
+                    </option>
+                  ))}
+                </select>
+                <label className="field-label" style={{ marginTop: 10 }}>
+                  {t("newOrderEndAddress")}
+                </label>
                 <input
                   className="input"
                   placeholder={t("newOrderStreetPh")}
                   value={form.endStreet}
-                  onChange={(e) => set("endStreet", e.target.value)}
+                  onChange={(e) => {
+                    set("endStreet", e.target.value);
+                    set("deliveryLocationId", "");
+                  }}
                 />
                 <div
                   style={{
@@ -1945,9 +2054,33 @@ const NewOrder = ({ onCancel, onFormChange }) => {
                     className="input"
                     placeholder={t("newOrderCityPh")}
                     value={form.endCity}
-                    onChange={(e) => set("endCity", e.target.value)}
+                    onChange={(e) => {
+                      set("endCity", e.target.value);
+                      set("deliveryLocationId", "");
+                    }}
                   />
                 </div>
+                {!form.deliveryLocationId ? (
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginTop: 10,
+                      fontSize: 12.5,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!form.saveDeliveryToMaster}
+                      onChange={(e) =>
+                        set("saveDeliveryToMaster", e.target.checked)
+                      }
+                    />
+                    {t("newOrderSaveDeliveryToMaster")}
+                  </label>
+                ) : null}
               </div>
             </div>
             <div style={{ marginTop: 14 }}>
@@ -2544,84 +2677,334 @@ const UsersPane = ({ showToast }) => {
   );
 };
 
+const emptyOrderingPartyForm = () => ({
+  name: "",
+  type: "",
+  contact: "",
+  phone: "",
+  email: "",
+  billingNotes: "",
+  instructions: "",
+  active: true,
+});
+
+const emptyAddressForm = () => ({
+  label: "",
+  street: "",
+  houseNumber: "",
+  postalCode: "",
+  city: "",
+  country: "DE",
+  contactPerson: "",
+  phone: "",
+  secondPhone: "",
+  email: "",
+  notes: "",
+  active: true,
+});
+
+const MasterDataModal = ({ open, title, onClose, children, footer }) => {
+  if (!open) return null;
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.45)",
+        zIndex: 104,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="card elev"
+        style={{
+          maxWidth: 560,
+          width: "100%",
+          padding: 22,
+          maxHeight: "90vh",
+          overflow: "auto",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 style={{ margin: "0 0 16px", fontSize: 18 }}>{title}</h2>
+        {children}
+        {footer}
+      </div>
+    </div>
+  );
+};
+
+const masterDataErr = (r, t, kind) => {
+  if (!r || r.ok) return "";
+  const reason = r.reason;
+  if (reason === "name_required" || reason === "label_required")
+    return t("adminMasterDataNameRequired");
+  if (reason === "address_incomplete")
+    return t("adminMasterDataAddressIncomplete");
+  if (reason === "in_use")
+    return t(
+      kind === "party"
+        ? "adminMasterDataPartyInUse"
+        : "adminMasterDataAddressInUse",
+      { count: r.count || 0 },
+    );
+  return t("adminInvoiceErrGeneric");
+};
+
 const OrderingPartiesPane = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
-  const [name, setName] = useStateA("");
+  const parties = store.getOrderingParties();
+  const [modal, setModal] = useStateA(null);
+  const [form, setForm] = useStateA(emptyOrderingPartyForm());
+  const setF = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  const openNew = () => {
+    setForm(emptyOrderingPartyForm());
+    setModal("new");
+  };
+  const openEdit = (op) => {
+    setForm({
+      name: op.name || "",
+      type: op.type || "",
+      contact: op.contact || "",
+      phone: op.phone || "",
+      email: op.email || "",
+      billingNotes: op.billingNotes || "",
+      instructions: op.instructions || "",
+      active: op.active !== false,
+    });
+    setModal(op.id);
+  };
+  const closeModal = () => setModal(null);
+
+  const save = () => {
+    const payload = { ...form };
+    const r =
+      modal === "new"
+        ? store.addOrderingParty(payload)
+        : store.updateOrderingParty(modal, payload);
+    if (!r.ok) {
+      showToast?.(t("adminMasterDataSaveFailed"), masterDataErr(r, t, "party"));
+      return;
+    }
+    showToast?.(
+      modal === "new" ? t("adminCustomersCreated") : t("adminMasterDataUpdated"),
+      r.party?.name || form.name,
+    );
+    closeModal();
+  };
+
+  const remove = (op) => {
+    const used = store.countJobsUsingOrderingParty(op.id);
+    if (used > 0) {
+      showToast?.(
+        t("adminMasterDataDeleteFailed"),
+        t("adminMasterDataPartyInUse", { count: used }),
+      );
+      return;
+    }
+    if (!window.confirm(t("adminMasterDataDeleteConfirm"))) return;
+    const r = store.deleteOrderingParty(op.id);
+    if (!r.ok)
+      showToast?.(t("adminMasterDataDeleteFailed"), masterDataErr(r, t, "party"));
+    else showToast?.(t("adminMasterDataDeleted"), op.name);
+  };
+
   return (
     <div id="orderingparties">
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
-        {t("navOrderingParties") || "Ordering parties"}
-      </h1>
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 300px",
-          gap: 18,
-          marginTop: 22,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
         }}
       >
-        <section className="card" style={{ padding: 18 }}>
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>{t("adminCustomersColCust")}</th>
-                <th>{t("adminCustomersColContact")}</th>
-                <th>ID</th>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+            {t("navOrderingParties") || "Ordering parties"}
+          </h1>
+          <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
+            {t("adminOrderingPartiesDesc")}
+          </p>
+        </div>
+        <button type="button" className="btn primary" onClick={openNew}>
+          <Ic.Plus /> {t("adminCustomerAddTitle")}
+        </button>
+      </div>
+      <section className="card" style={{ padding: 18, marginTop: 22 }}>
+        <table className="tbl">
+          <thead>
+            <tr>
+              <th>{t("adminCustomersColCust")}</th>
+              <th>{t("adminCustomersColContact")}</th>
+              <th>{t("adminMasterDataStatus")}</th>
+              <th>{t("adminMasterDataJobs")}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {parties.map((op) => (
+              <tr key={op.id}>
+                <td>
+                  <strong>{op.name}</strong>
+                  <div className="label" style={{ fontSize: 9.5 }}>
+                    {op.type || "—"} · <span className="mono">{op.id}</span>
+                  </div>
+                </td>
+                <td>
+                  {op.contact || "—"}
+                  <div
+                    className="mono"
+                    style={{ fontSize: 11, color: "var(--muted)" }}
+                  >
+                    {op.phone || op.email || ""}
+                  </div>
+                </td>
+                <td>
+                  <Pill status={op.active !== false ? "accepted" : "cancelled"}>
+                    {op.active !== false
+                      ? t("adminMasterDataActive")
+                      : t("adminMasterDataInactive")}
+                  </Pill>
+                </td>
+                <td className="mono" style={{ fontSize: 12 }}>
+                  {store.countJobsUsingOrderingParty(op.id)}
+                </td>
+                <td style={{ whiteSpace: "nowrap" }}>
+                  <button
+                    type="button"
+                    className="btn xs"
+                    onClick={() => openEdit(op)}
+                  >
+                    {t("adminMasterDataEdit")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn xs danger"
+                    style={{ marginLeft: 6 }}
+                    onClick={() => remove(op)}
+                  >
+                    {t("adminMasterDataDelete")}
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {store.getOrderingParties().map((op) => (
-                <tr key={op.id}>
-                  <td>
-                    <strong>{op.name}</strong>
-                    <div className="label" style={{ fontSize: 9.5 }}>
-                      {op.type || "—"}
-                    </div>
-                  </td>
-                  <td>
-                    {op.contact || "—"}
-                    <div
-                      className="mono"
-                      style={{ fontSize: 11, color: "var(--muted)" }}
-                    >
-                      {op.phone || op.email || ""}
-                    </div>
-                  </td>
-                  <td className="mono" style={{ fontSize: 12 }}>
-                    {op.id}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-        <section className="card" style={{ padding: 18 }}>
-          <h3 style={{ margin: "0 0 12px" }}>{t("adminCustomerAddTitle")}</h3>
-          <label className="field-label">{t("adminUsersColName")}</label>
-          <input
-            className="input"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("adminPlaceholderCustName")}
-          />
-          <button
-            className="btn primary block"
-            style={{ marginTop: 12 }}
-            disabled={!name.trim()}
-            onClick={() => {
-              store.addOrderingParty({ name: name.trim() });
-              setName("");
-              showToast?.(
-                t("adminCustomersCreated"),
-                t("adminCustomersCreatedSub"),
-              );
+            ))}
+          </tbody>
+        </table>
+      </section>
+      <MasterDataModal
+        open={!!modal}
+        title={
+          modal === "new"
+            ? t("adminCustomerAddTitle")
+            : t("adminMasterDataEditParty")
+        }
+        onClose={closeModal}
+        footer={
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              marginTop: 18,
+              justifyContent: "flex-end",
             }}
           >
-            {t("adminCustomerCreate")}
-          </button>
-        </section>
-      </div>
+            <button type="button" className="btn" onClick={closeModal}>
+              {t("adminInvoiceCancel")}
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              disabled={!form.name.trim()}
+              onClick={save}
+            >
+              {t("adminMasterDataSave")}
+            </button>
+          </div>
+        }
+      >
+        <div style={{ display: "grid", gap: 12 }}>
+          <div>
+            <label className="field-label">{t("adminUsersColName")} *</label>
+            <input
+              className="input"
+              value={form.name}
+              onChange={(e) => setF("name", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="field-label">{t("adminMasterDataType")}</label>
+            <input
+              className="input"
+              value={form.type}
+              onChange={(e) => setF("type", e.target.value)}
+              placeholder={t("adminMasterDataTypePh")}
+            />
+          </div>
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
+          >
+            <div>
+              <label className="field-label">{t("adminMasterDataContact")}</label>
+              <input
+                className="input"
+                value={form.contact}
+                onChange={(e) => setF("contact", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="field-label">{t("phone")}</label>
+              <input
+                className="input"
+                value={form.phone}
+                onChange={(e) => setF("phone", e.target.value)}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="field-label">{t("adminMasterDataEmail")}</label>
+            <input
+              className="input"
+              value={form.email}
+              onChange={(e) => setF("email", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="field-label">{t("adminMasterDataBillingNotes")}</label>
+            <textarea
+              className="input"
+              rows={2}
+              value={form.billingNotes}
+              onChange={(e) => setF("billingNotes", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="field-label">{t("adminMasterDataInstructions")}</label>
+            <textarea
+              className="input"
+              rows={2}
+              value={form.instructions}
+              onChange={(e) => setF("instructions", e.target.value)}
+            />
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={!!form.active}
+              onChange={(e) => setF("active", e.target.checked)}
+            />
+            {t("adminMasterDataActive")}
+          </label>
+        </div>
+      </MasterDataModal>
     </div>
   );
 };
@@ -2629,94 +3012,313 @@ const OrderingPartiesPane = ({ showToast }) => {
 const AddressesPane = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
-  const [label, setLabel] = useStateA("");
-  const [city, setCity] = useStateA("");
+  const list = store.getAddresses();
+  const [modal, setModal] = useStateA(null);
+  const [form, setForm] = useStateA(emptyAddressForm());
+  const setF = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  const openNew = () => {
+    setForm(emptyAddressForm());
+    setModal("new");
+  };
+  const openEdit = (a) => {
+    setForm({
+      label: a.label || "",
+      street: a.street || "",
+      houseNumber: a.houseNumber || "",
+      postalCode: a.postalCode || "",
+      city: a.city || "",
+      country: a.country || "DE",
+      contactPerson: a.contactPerson || "",
+      phone: a.phone || "",
+      secondPhone: a.secondPhone || "",
+      email: a.email || "",
+      notes: a.notes || "",
+      active: a.active !== false,
+    });
+    setModal(a.id);
+  };
+  const closeModal = () => setModal(null);
+
+  const save = () => {
+    const r =
+      modal === "new"
+        ? store.addAddress(form)
+        : store.updateAddress(modal, form);
+    if (!r.ok) {
+      showToast?.(
+        t("adminMasterDataSaveFailed"),
+        masterDataErr(r, t, "address"),
+      );
+      return;
+    }
+    showToast?.(
+      modal === "new" ? t("adminAddressCreated") : t("adminMasterDataUpdated"),
+      r.address?.label || form.label,
+    );
+    closeModal();
+  };
+
+  const remove = (a) => {
+    const used = store.countJobsUsingAddress(a.id);
+    if (used > 0) {
+      showToast?.(
+        t("adminMasterDataDeleteFailed"),
+        t("adminMasterDataAddressInUse", { count: used }),
+      );
+      return;
+    }
+    if (!window.confirm(t("adminMasterDataDeleteConfirm"))) return;
+    const r = store.deleteAddress(a.id);
+    if (!r.ok)
+      showToast?.(
+        t("adminMasterDataDeleteFailed"),
+        masterDataErr(r, t, "address"),
+      );
+    else showToast?.(t("adminMasterDataDeleted"), a.label);
+  };
+
   return (
     <div id="addresses">
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
-        {t("navAddresses") || "Addresses"}
-      </h1>
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 300px",
-          gap: 18,
-          marginTop: 22,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
         }}
       >
-        <section className="card" style={{ padding: 18 }}>
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>{t("address")}</th>
-                <th>{t("adminColOrigin")}</th>
-                <th>{t("adminCustomersColContact")}</th>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+            {t("navAddresses") || "Addresses"}
+          </h1>
+          <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
+            {t("adminAddressesDesc")}
+          </p>
+        </div>
+        <button type="button" className="btn primary" onClick={openNew}>
+          <Ic.Plus /> {t("adminAddressAddTitle")}
+        </button>
+      </div>
+      <section className="card" style={{ padding: 18, marginTop: 22 }}>
+        <table className="tbl">
+          <thead>
+            <tr>
+              <th>{t("address")}</th>
+              <th>{t("adminColOrigin")}</th>
+              <th>{t("adminCustomersColContact")}</th>
+              <th>{t("adminMasterDataStatus")}</th>
+              <th>{t("adminMasterDataJobs")}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((a) => (
+              <tr key={a.id}>
+                <td>
+                  <strong>{a.label}</strong>
+                  <div className="label mono" style={{ fontSize: 9.5 }}>
+                    {a.id}
+                  </div>
+                </td>
+                <td className="mono" style={{ fontSize: 12 }}>
+                  {[a.street, a.houseNumber].filter(Boolean).join(" ")}
+                  <br />
+                  {[a.postalCode, a.city, a.country].filter(Boolean).join(" ")}
+                </td>
+                <td>
+                  <div style={{ fontWeight: 600 }}>{a.contactPerson || "—"}</div>
+                  <div className="mono" style={{ fontSize: 11.5, marginTop: 2 }}>
+                    {a.phone || "—"}
+                  </div>
+                  {a.email ? (
+                    <div
+                      style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}
+                    >
+                      {a.email}
+                    </div>
+                  ) : null}
+                </td>
+                <td>
+                  <Pill status={a.active !== false ? "accepted" : "cancelled"}>
+                    {a.active !== false
+                      ? t("adminMasterDataActive")
+                      : t("adminMasterDataInactive")}
+                  </Pill>
+                </td>
+                <td className="mono" style={{ fontSize: 12 }}>
+                  {store.countJobsUsingAddress(a.id)}
+                </td>
+                <td style={{ whiteSpace: "nowrap" }}>
+                  <button
+                    type="button"
+                    className="btn xs"
+                    onClick={() => openEdit(a)}
+                  >
+                    {t("adminMasterDataEdit")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn xs danger"
+                    style={{ marginLeft: 6 }}
+                    onClick={() => remove(a)}
+                  >
+                    {t("adminMasterDataDelete")}
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {store.getAddresses().map((a) => (
-                <tr key={a.id}>
-                  <td>
-                    <strong>{a.label}</strong>
-                    <div className="label" style={{ fontSize: 9.5 }}>
-                      {a.id}
-                    </div>
-                  </td>
-                  <td className="mono" style={{ fontSize: 12 }}>
-                    {[a.street, a.houseNumber].filter(Boolean).join(" ")}
-                    <br />
-                    {[a.postalCode, a.city].filter(Boolean).join(" ")}
-                  </td>
-                  <td>
-                    <div style={{ fontWeight: 600 }}>{a.contactPerson || "—"}</div>
-                    <div className="mono" style={{ fontSize: 11.5, marginTop: 2 }}>
-                      {a.phone || "—"}
-                    </div>
-                    {a.email ? (
-                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                        {a.email}
-                      </div>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-        <section className="card" style={{ padding: 18 }}>
-          <h3 style={{ margin: "0 0 12px" }}>
-            {t("adminAddressAddTitle") || "Add address"}
-          </h3>
-          <label className="field-label">{t("address")}</label>
-          <input
-            className="input"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-          />
-          <label className="field-label" style={{ marginTop: 10 }}>
-            City
-          </label>
-          <input
-            className="input"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-          />
-          <button
-            type="button"
-            className="btn primary block"
-            style={{ marginTop: 12 }}
-            disabled={!label.trim()}
-            onClick={() => {
-              store.addAddress({ label: label.trim(), city: city.trim() });
-              setLabel("");
-              setCity("");
-              showToast?.(t("adminAddressCreated") || "Address created");
+            ))}
+          </tbody>
+        </table>
+      </section>
+      <MasterDataModal
+        open={!!modal}
+        title={
+          modal === "new"
+            ? t("adminAddressAddTitle")
+            : t("adminMasterDataEditAddress")
+        }
+        onClose={closeModal}
+        footer={
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              marginTop: 18,
+              justifyContent: "flex-end",
             }}
           >
-            {t("adminCustomerCreate")}
-          </button>
-        </section>
-      </div>
+            <button type="button" className="btn" onClick={closeModal}>
+              {t("adminInvoiceCancel")}
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              disabled={
+                !form.label.trim() ||
+                !form.street.trim() ||
+                !form.postalCode.trim() ||
+                !form.city.trim()
+              }
+              onClick={save}
+            >
+              {t("adminMasterDataSave")}
+            </button>
+          </div>
+        }
+      >
+        <div style={{ display: "grid", gap: 12 }}>
+          <div>
+            <label className="field-label">{t("adminMasterDataLocationName")} *</label>
+            <input
+              className="input"
+              value={form.label}
+              onChange={(e) => setF("label", e.target.value)}
+            />
+          </div>
+          <div
+            style={{ display: "grid", gridTemplateColumns: "2fr 80px", gap: 10 }}
+          >
+            <div>
+              <label className="field-label">{t("adminMasterDataStreet")} *</label>
+              <input
+                className="input"
+                value={form.street}
+                onChange={(e) => setF("street", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="field-label">{t("adminMasterDataHouseNo")}</label>
+              <input
+                className="input"
+                value={form.houseNumber}
+                onChange={(e) => setF("houseNumber", e.target.value)}
+              />
+            </div>
+          </div>
+          <div
+            style={{ display: "grid", gridTemplateColumns: "100px 1fr 72px", gap: 10 }}
+          >
+            <div>
+              <label className="field-label">{t("newOrderPlzPh")} *</label>
+              <input
+                className="input mono"
+                value={form.postalCode}
+                onChange={(e) => setF("postalCode", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="field-label">{t("newOrderCityPh")} *</label>
+              <input
+                className="input"
+                value={form.city}
+                onChange={(e) => setF("city", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="field-label">{t("adminMasterDataCountry")}</label>
+              <input
+                className="input mono"
+                value={form.country}
+                onChange={(e) => setF("country", e.target.value)}
+              />
+            </div>
+          </div>
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
+          >
+            <div>
+              <label className="field-label">{t("adminMasterDataContact")}</label>
+              <input
+                className="input"
+                value={form.contactPerson}
+                onChange={(e) => setF("contactPerson", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="field-label">{t("phone")}</label>
+              <input
+                className="input"
+                value={form.phone}
+                onChange={(e) => setF("phone", e.target.value)}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="field-label">{t("adminMasterDataSecondPhone")}</label>
+            <input
+              className="input"
+              value={form.secondPhone}
+              onChange={(e) => setF("secondPhone", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="field-label">{t("adminMasterDataEmail")}</label>
+            <input
+              className="input"
+              value={form.email}
+              onChange={(e) => setF("email", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="field-label">{t("adminMasterDataNotes")}</label>
+            <textarea
+              className="input"
+              rows={2}
+              value={form.notes}
+              onChange={(e) => setF("notes", e.target.value)}
+            />
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={!!form.active}
+              onChange={(e) => setF("active", e.target.checked)}
+            />
+            {t("adminMasterDataActive")}
+          </label>
+        </div>
+      </MasterDataModal>
     </div>
   );
 };
