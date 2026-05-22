@@ -6,6 +6,31 @@ const {
   useRef: useRefA,
 } = React;
 
+const ADMIN_TOUR_DOC_TYPES = [
+  "invoice",
+  "fuel_receipt",
+  "toll_receipt",
+  "delivery_note",
+  "waiting_time_evidence",
+  "other_proof",
+  "other_receipt",
+];
+
+const displayTourDocType = (type, t) => {
+  const code = AuthStore.normalizeTourDocumentType(type);
+  return (
+    {
+      invoice: t("tourDocInvoice"),
+      fuel_receipt: t("tourDocFuelReceipt"),
+      toll_receipt: t("tourDocTollReceipt"),
+      delivery_note: t("tourDocDeliveryNote"),
+      waiting_time_evidence: t("tourDocWaitingTimeEvidence"),
+      other_proof: t("tourDocOtherProof"),
+      other_receipt: t("tourDocOtherReceipt"),
+    }[code] || code || "—"
+  );
+};
+
 // =========================================================================
 // ADMIN — NAV
 // =========================================================================
@@ -33,7 +58,7 @@ const AdminNav = ({ section, setSection }) => {
     { id: "documents", label: t("navDocuments"), count: null, I: Ic.N.Doc },
     {
       id: "invoices",
-      label: t("navPartnerInvoices"),
+      label: t("navTourBilling"),
       count: invCount,
       I: Ic.N.Doc,
     },
@@ -488,18 +513,14 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
     const m = {
       "Invoice Missing": "adminPaymentOptMissing",
       "Invoice Received": "adminPaymentOptReceived",
-      Unpaid: "adminPaymentOptUnpaid",
       Paid: "adminPaymentOptPaid",
     };
-    const key = m[code];
-    return key ? t(key) : code || t("adminPaymentOptUnpaid");
+    const key = m[AuthStore.normalizePaymentStatus(code)];
+    return key ? t(key) : code || t("adminPaymentOptMissing");
   };
   const showPendingBanner =
     linkedInvoices.length > 0 &&
-    linkedInvoices.some(
-      (u) =>
-        u.reviewStatus === "uploaded" || u.reviewStatus === "under_review",
-    );
+    linkedInvoices.some((u) => u.reviewStatus === "uploaded");
   return (
     <section className="card" style={{ padding: 22 }}>
       <div className="sec-head">
@@ -591,8 +612,8 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
           <tbody>
             {linkedInvoices.map((u) => (
               <tr key={u.id}>
-                <td className="mono" style={{ fontSize: 12 }}>
-                  {u.documentType || "—"}
+                <td style={{ fontSize: 12 }}>
+                  {displayTourDocType(u.documentType, t)}
                 </td>
                 <td style={{ fontSize: 13 }}>{u.fileName}</td>
                 <td>
@@ -600,7 +621,8 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
                     status={
                       u.reviewStatus === "accepted"
                         ? "accepted"
-                        : u.reviewStatus === "rejected"
+                        : u.reviewStatus === "rejected" ||
+                            u.reviewStatus === "correction_required"
                           ? "cancelled"
                           : "assigned"
                     }
@@ -626,7 +648,7 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
               style={{ marginTop: 10 }}
               onClick={onOpenPartnerInvoices}
             >
-              {t("adminFinanceReviewInvoices")}
+              {t("adminFinanceReviewDocuments")}
             </button>
           )}
         </div>
@@ -647,7 +669,7 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
         )}
         {onOpenPartnerInvoices && (
           <button type="button" className="btn" onClick={onOpenPartnerInvoices}>
-            {t("adminOpenPartnerInvoicesBtn")}
+            {t("adminOpenTourBillingBtn")}
           </button>
         )}
       </div>
@@ -1418,7 +1440,7 @@ const AdminDetail = ({
                 <div className="sec-head">
                   <h3>
                     <span className="num">06</span>
-                    {t("navPartnerInvoices")}
+                    {t("navTourBilling")}
                   </h3>
                 </div>
                 <p
@@ -1429,7 +1451,7 @@ const AdminDetail = ({
                     lineHeight: 1.55,
                   }}
                 >
-                  {t("partnerInvoicesDesc")}
+                  {t("tourBillingDesc")}
                 </p>
                 <button
                   type="button"
@@ -1437,7 +1459,7 @@ const AdminDetail = ({
                   style={{ marginTop: 14 }}
                   onClick={onOpenPartnerInvoices}
                 >
-                  {t("adminOpenPartnerInvoicesBtn")}
+                  {t("adminOpenTourBillingBtn")}
                 </button>
               </section>
             )
@@ -3518,7 +3540,7 @@ const DocumentsPane = ({ showToast }) => {
   );
 };
 
-const PartnerInvoicesPane = ({
+const TourBillingPane = ({
   showToast,
   filterJobId,
   onClearFilter,
@@ -3535,11 +3557,18 @@ const PartnerInvoicesPane = ({
   const [regDriverId, setRegDriverId] = useStateA(
     () => store.getDrivers()[0]?.id ?? "",
   );
+  const [regDocType, setRegDocType] = useStateA("invoice");
   const [regFile, setRegFile] = useStateA(null);
   const regFileRef = useRefA(null);
   const editFileRef = useRefA(null);
   const [regNotes, setRegNotes] = useStateA("");
   const [registerOpen, setRegisterOpen] = useStateA(false);
+  const [filterType, setFilterType] = useStateA("");
+  const [filterReview, setFilterReview] = useStateA("");
+  const [filterSource, setFilterSource] = useStateA("");
+  const [acceptId, setAcceptId] = useStateA(null);
+  const [acceptInvNum, setAcceptInvNum] = useStateA("");
+  const [acceptInvDate, setAcceptInvDate] = useStateA("");
   const invoiceFileAccept =
     "application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif";
   const [selected, setSelected] = useStateA(() => new Set());
@@ -3547,10 +3576,26 @@ const PartnerInvoicesPane = ({
   const jobs = store.getJobs();
   const drivers = store.getDrivers();
   const filterJob = filterJobId ? jobs.find((j) => j.id === filterJobId) : null;
-  const visibleUploads = filterJobId
+  const scopedUploads = filterJobId
     ? uploads.filter((u) => u.jobId === filterJobId)
     : uploads;
+  const visibleUploads = useMemoA(() => {
+    let list = scopedUploads;
+    if (filterType)
+      list = list.filter((u) => u.documentType === filterType);
+    if (filterReview)
+      list = list.filter((u) => u.reviewStatus === filterReview);
+    if (filterSource) list = list.filter((u) => u.source === filterSource);
+    return list;
+  }, [scopedUploads, filterType, filterReview, filterSource]);
+  const filtersActive = !!(filterType || filterReview || filterSource);
+  const resetFilters = () => {
+    setFilterType("");
+    setFilterReview("");
+    setFilterSource("");
+  };
   const viewing = viewId ? uploads.find((u) => u.id === viewId) : null;
+  const accepting = acceptId ? uploads.find((u) => u.id === acceptId) : null;
   const fmtIso = (iso) => {
     if (iso == null || iso === "") return "—";
     try {
@@ -3574,21 +3619,23 @@ const PartnerInvoicesPane = ({
     });
   };
 
-  const displayDocReviewStatus = (st) =>
-    ({
-      missing: t("docReviewMissing"),
-      uploaded: t("docReviewUploaded"),
-      under_review: t("docReviewUnderReview"),
-      accepted: t("docReviewAccepted"),
-      rejected: t("docReviewRejected"),
-      correction_required: t("docReviewCorrectionRequired"),
-    })[st] || st || "—";
+  const displayDocReviewStatus = (st) => {
+    const code = AuthStore.normalizeTourDocumentReviewStatus(st);
+    return (
+      {
+        uploaded: t("docReviewUploaded"),
+        accepted: t("docReviewAccepted"),
+        rejected: t("docReviewRejected"),
+        correction_required: t("docReviewCorrectionRequired"),
+      }[code] || code || "—"
+    );
+  };
 
   const reviewPillStatus = (st) => {
-    if (st === "accepted") return "accepted";
-    if (st === "rejected" || st === "correction_required") return "cancelled";
-    if (st === "under_review") return "published";
-    if (st === "uploaded") return "warn";
+    const code = AuthStore.normalizeTourDocumentReviewStatus(st);
+    if (code === "accepted") return "accepted";
+    if (code === "rejected" || code === "correction_required") return "cancelled";
+    if (code === "uploaded") return "warn";
     return "draft";
   };
 
@@ -3602,7 +3649,38 @@ const PartnerInvoicesPane = ({
     if (reason === "invalid_type") return t("invoiceUploadInvalidType");
     if (reason === "job_required") return t("adminInvoiceErrJobRequired");
     if (reason === "no_invoice_id") return t("adminInvoiceErrInvoiceIdRequired");
+    if (reason === "already_accepted")
+      return t("adminDocErrAlreadyAccepted");
+    if (reason === "not_pending") return t("adminDocErrNotPending");
+    if (reason === "not_rejected") return t("adminDocErrNotRejected");
+    if (reason === "invoice_number_required")
+      return t("adminInvoiceErrNumberRequired");
     return t("adminInvoiceErrGeneric");
+  };
+
+  const closeAccept = () => {
+    setAcceptId(null);
+    setAcceptInvNum("");
+    setAcceptInvDate("");
+  };
+
+  const submitAccept = (doc, opts = {}) => {
+    const r = store.acceptTourDocument(doc.id, opts);
+    if (r.ok) {
+      showToast?.(t("adminDocAccepted"), doc.fileName);
+      closeAccept();
+    } else showToast?.(invoiceActionErr(r));
+    return r;
+  };
+
+  const onAcceptClick = (u) => {
+    if (AuthStore.isTourBillingInvoiceType(u.documentType)) {
+      setAcceptId(u.id);
+      setAcceptInvNum("");
+      setAcceptInvDate("");
+      return;
+    }
+    submitAccept(u);
   };
 
   const closeRegister = () => {
@@ -3634,13 +3712,23 @@ const PartnerInvoicesPane = ({
     return () => window.removeEventListener("keydown", onKey);
   }, [viewId]);
 
+  useEffectA(() => {
+    if (!acceptId) return undefined;
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      closeAccept();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [acceptId]);
+
   return (
     <div>
       <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
-        {t("navPartnerInvoices")}
+        {t("navTourBilling")}
       </h1>
-      <p style={{ color: "var(--muted)", marginTop: 8 }}>
-        {t("partnerInvoicesDesc")}
+      <p style={{ color: "var(--muted)", marginTop: 8, maxWidth: 720 }}>
+        {t("tourBillingDesc")}
       </p>
 
       {filterJobId && filterJob && (
@@ -3661,8 +3749,89 @@ const PartnerInvoicesPane = ({
       )}
 
       <div
+        className="card"
         style={{
-          marginTop: 18,
+          marginTop: 16,
+          padding: 16,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+          gap: 12,
+          alignItems: "end",
+        }}
+      >
+        <div>
+          <label className="field-label" htmlFor="bill-filter-type">
+            {t("billingFilterType")}
+          </label>
+          <select
+            id="bill-filter-type"
+            className="input"
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            style={{ marginTop: 6 }}
+          >
+            <option value="">{t("billingFilterAll")}</option>
+            {ADMIN_TOUR_DOC_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {displayTourDocType(type, t)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="field-label" htmlFor="bill-filter-review">
+            {t("billingFilterReview")}
+          </label>
+          <select
+            id="bill-filter-review"
+            className="input"
+            value={filterReview}
+            onChange={(e) => setFilterReview(e.target.value)}
+            style={{ marginTop: 6 }}
+          >
+            <option value="">{t("billingFilterAll")}</option>
+            <option value="uploaded">{t("docReviewUploaded")}</option>
+            <option value="accepted">{t("docReviewAccepted")}</option>
+            <option value="rejected">{t("docReviewRejected")}</option>
+            <option value="correction_required">
+              {t("docReviewCorrectionRequired")}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label className="field-label" htmlFor="bill-filter-source">
+            {t("billingFilterSource")}
+          </label>
+          <select
+            id="bill-filter-source"
+            className="input"
+            value={filterSource}
+            onChange={(e) => setFilterSource(e.target.value)}
+            style={{ marginTop: 6 }}
+          >
+            <option value="">{t("billingFilterAll")}</option>
+            <option value="driver">{t("adminInvoiceSourceDriver")}</option>
+            <option value="admin">{t("adminInvoiceSourceAdmin")}</option>
+          </select>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {filtersActive ? (
+            <button type="button" className="btn" onClick={resetFilters}>
+              {t("billingFilterReset")}
+            </button>
+          ) : null}
+        </div>
+      </div>
+      <p className="label" style={{ margin: "10px 0 0", fontSize: 12.5 }}>
+        {t("billingShowingCount", {
+          shown: visibleUploads.length,
+          total: scopedUploads.length,
+        })}
+      </p>
+
+      <div
+        style={{
+          marginTop: 14,
           display: "flex",
           gap: 10,
           flexWrap: "wrap",
@@ -3674,7 +3843,7 @@ const PartnerInvoicesPane = ({
           className="btn"
           disabled={selected.size === 0}
           onClick={() => {
-            const names = uploads
+            const names = visibleUploads
               .filter((u) => selected.has(u.id))
               .map((u) => u.fileName)
               .join(", ");
@@ -3688,7 +3857,7 @@ const PartnerInvoicesPane = ({
           className="btn primary"
           onClick={() => setRegisterOpen(true)}
         >
-          <Ic.Plus /> {t("adminInvoiceRegisterTitle")}
+          <Ic.Plus /> {t("adminTourDocRegisterTitle")}
         </button>
       </div>
 
@@ -3715,15 +3884,32 @@ const PartnerInvoicesPane = ({
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="reg-invoice-title" style={{ margin: "0 0 8px", fontSize: 17 }}>
-              {t("adminInvoiceRegisterTitle")}
+              {t("adminTourDocRegisterTitle")}
             </h2>
             <p
               className="label"
               style={{ margin: "0 0 16px", fontSize: 12.5, lineHeight: 1.55 }}
             >
-              {t("adminInvoiceRegisterHint")}
+              {t("adminTourDocRegisterHint")}
             </p>
             <div style={{ display: "grid", gap: 12 }}>
+              <div>
+                <label className="field-label" htmlFor="reg-doctype">
+                  {t("billingFilterType")}
+                </label>
+                <select
+                  id="reg-doctype"
+                  className="input"
+                  value={regDocType}
+                  onChange={(e) => setRegDocType(e.target.value)}
+                >
+                  {ADMIN_TOUR_DOC_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {displayTourDocType(type, t)}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="field-label" htmlFor="reg-job">
                   {t("adminInvoiceSelectJob")}
@@ -3822,7 +4008,7 @@ const PartnerInvoicesPane = ({
                     driverId: regDriverId,
                     file: regFile,
                     notes: regNotes.trim(),
-                    documentType: "partner_invoice",
+                    documentType: regDocType,
                   });
                   if (r.ok) {
                     showToast?.(t("adminInvoiceRegistered"), r.id);
@@ -3843,11 +4029,12 @@ const PartnerInvoicesPane = ({
           <tr>
             <th></th>
             <th>{t("invoiceColFile")}</th>
+            <th>{t("billingColType")}</th>
             <th>{t("invoiceColPartner")}</th>
             <th>{t("invoiceColJob")}</th>
             <th>{t("invoiceColUploaded")}</th>
             <th>{t("adminInvoiceColSource")}</th>
-            <th>{t("invoiceColProcessed")}</th>
+            <th>{t("billingColReview")}</th>
             <th></th>
           </tr>
         </thead>
@@ -3855,15 +4042,19 @@ const PartnerInvoicesPane = ({
           {visibleUploads.length === 0 ? (
             <tr>
               <td
-                colSpan={9}
+                colSpan={10}
                 className="label"
                 style={{ padding: "22px 12px" }}
               >
-                {t("invoiceUploadEmpty")}
+                {filtersActive
+                  ? t("billingFilterEmpty")
+                  : t("invoiceUploadEmpty")}
               </td>
             </tr>
           ) : (
-            visibleUploads.map((u) => (
+            visibleUploads.map((u) => {
+              const actions = AuthStore.tourDocumentReviewActions(u.reviewStatus);
+              return (
               <tr key={u.id}>
                 <td>
                   <input
@@ -3880,6 +4071,9 @@ const PartnerInvoicesPane = ({
                   <div className="label" style={{ fontSize: 10.5 }}>
                     {u.mimeType}
                   </div>
+                </td>
+                <td style={{ fontSize: 12.5, minWidth: 120 }}>
+                  {displayTourDocType(u.documentType, t)}
                 </td>
                 <td>{u.driverName}</td>
                 <td style={{ minWidth: 220 }}>
@@ -3931,46 +4125,70 @@ const PartnerInvoicesPane = ({
                   >
                     {t("invoiceView")}
                   </button>
-                  <button
-                    type="button"
-                    className="btn xs primary"
-                    style={{ marginLeft: 6 }}
-                    onClick={() => {
-                      store.updateTourDocument(u.id, { reviewStatus: "accepted" });
-                      showToast?.(t("adminDocAccepted") || "Accepted", u.fileName);
-                    }}
-                  >
-                    {t("adminDocAccept") || "Accept"}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn xs danger"
-                    style={{ marginLeft: 6 }}
-                    onClick={() => {
-                      const reason = window.prompt(
-                        t("adminRejectNotePlaceholder"),
-                        "",
-                      );
-                      if (reason == null) return;
-                      store.rejectTourDocument(u.id, reason);
-                      showToast?.(t("adminDocRejected") || "Rejected", u.fileName);
-                    }}
-                  >
-                    {t("adminDocReject") || "Reject"}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn xs"
-                    style={{ marginLeft: 6 }}
-                    onClick={() =>
-                      showToast?.(t("invoiceDownload"), u.fileName)
-                    }
-                  >
-                    {t("invoiceDownload")}
-                  </button>
-                  {["rejected", "uploaded", "correction_required"].includes(
-                    u.reviewStatus,
-                  ) && (
+                  {actions.canAccept ? (
+                    <button
+                      type="button"
+                      className="btn xs primary"
+                      style={{ marginLeft: 6 }}
+                      onClick={() => onAcceptClick(u)}
+                    >
+                      {t("adminDocAccept")}
+                    </button>
+                  ) : null}
+                  {actions.canReject ? (
+                    <button
+                      type="button"
+                      className="btn xs danger"
+                      style={{ marginLeft: 6 }}
+                      onClick={() => {
+                        const reason = window.prompt(
+                          t("adminRejectNotePlaceholder"),
+                          "",
+                        );
+                        if (reason == null) return;
+                        const r = store.rejectTourDocument(u.id, reason);
+                        if (r.ok)
+                          showToast?.(
+                            t("adminDocRejected") || "Rejected",
+                            u.fileName,
+                          );
+                        else showToast?.(invoiceActionErr(r));
+                      }}
+                    >
+                      {t("adminDocReject") || "Reject"}
+                    </button>
+                  ) : null}
+                  {actions.canRequireCorrection ? (
+                    <button
+                      type="button"
+                      className="btn xs warn"
+                      style={{ marginLeft: 6 }}
+                      onClick={() => {
+                        const r = store.requireTourDocumentCorrection(u.id);
+                        if (r.ok)
+                          showToast?.(
+                            t("adminDocCorrectionRequired"),
+                            u.fileName,
+                          );
+                        else showToast?.(invoiceActionErr(r));
+                      }}
+                    >
+                      {t("adminDocRequireCorrection")}
+                    </button>
+                  ) : null}
+                  {actions.canDownload ? (
+                    <button
+                      type="button"
+                      className="btn xs"
+                      style={{ marginLeft: 6 }}
+                      onClick={() =>
+                        showToast?.(t("invoiceDownload"), u.fileName)
+                      }
+                    >
+                      {t("invoiceDownload")}
+                    </button>
+                  ) : null}
+                  {actions.canReplace && (
                     <label
                       className="btn xs"
                       style={{ marginLeft: 6, cursor: "pointer" }}
@@ -3998,7 +4216,8 @@ const PartnerInvoicesPane = ({
                   )}
                 </td>
               </tr>
-            ))
+            );
+            })
           )}
         </tbody>
       </table>
@@ -4161,6 +4380,96 @@ const PartnerInvoicesPane = ({
         </div>
       )}
 
+      {accepting && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            zIndex: 102,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+          onClick={closeAccept}
+        >
+          <div
+            className="card elev"
+            style={{ maxWidth: 440, width: "100%", padding: 22 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>
+              {t("adminAcceptInvoiceTitle")}
+            </h2>
+            <p
+              className="label"
+              style={{ margin: "0 0 16px", fontSize: 13, lineHeight: 1.45 }}
+            >
+              {accepting.fileName}
+            </p>
+            <div style={{ display: "grid", gap: 12 }}>
+              <div>
+                <label className="field-label" htmlFor="accept-inv-num">
+                  {t("adminSupplierInvoiceNumberLabel")}
+                </label>
+                <input
+                  id="accept-inv-num"
+                  className="input"
+                  type="text"
+                  autoFocus
+                  value={acceptInvNum}
+                  onChange={(e) => setAcceptInvNum(e.target.value)}
+                  placeholder={t("adminSupplierInvoiceNumberPlaceholder")}
+                  style={{ marginTop: 6 }}
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="accept-inv-date">
+                  {t("adminSupplierInvoiceDateLabel")}
+                </label>
+                <input
+                  id="accept-inv-date"
+                  className="input"
+                  type="text"
+                  value={acceptInvDate}
+                  onChange={(e) => setAcceptInvDate(e.target.value)}
+                  placeholder={t("adminSupplierInvoiceDatePlaceholder")}
+                  style={{ marginTop: 6 }}
+                />
+              </div>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginTop: 18,
+                justifyContent: "flex-end",
+              }}
+            >
+              <button type="button" className="btn" onClick={closeAccept}>
+                {t("adminInvoiceCancel")}
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                disabled={!acceptInvNum.trim()}
+                onClick={() =>
+                  submitAccept(accepting, {
+                    supplierInvoiceNumber: acceptInvNum.trim(),
+                    supplierInvoiceDate: acceptInvDate.trim(),
+                  })
+                }
+              >
+                {t("adminDocAccept")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {viewing && (
         <div
           role="dialog"
@@ -4223,6 +4532,19 @@ const PartnerInvoicesPane = ({
                 viewing.rejectionReason
                   ? `Rejection: ${viewing.rejectionReason}`
                   : null,
+                AuthStore.isTourBillingInvoiceType(viewing.documentType) &&
+                (viewing.supplierInvoiceNumber || viewing.supplierInvoiceDate)
+                  ? [
+                      viewing.supplierInvoiceNumber
+                        ? `${t("adminInvoiceMetaSupplierNumber")} ${viewing.supplierInvoiceNumber}`
+                        : null,
+                      viewing.supplierInvoiceDate
+                        ? `${t("adminInvoiceMetaSupplierDate")} ${viewing.supplierInvoiceDate}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join("\n")
+                  : null,
                 `${t("adminInvoiceMetaSize")} ${viewing.sizeBytes ?? 0} ${t(
                   "adminInvoiceBytesUnit",
                 )}`,
@@ -4262,11 +4584,10 @@ const FinancePane = ({
     const m = {
       "Invoice Missing": "adminPaymentOptMissing",
       "Invoice Received": "adminPaymentOptReceived",
-      Unpaid: "adminPaymentOptUnpaid",
       Paid: "adminPaymentOptPaid",
     };
-    const key = m[code];
-    return key ? t(key) : code || t("adminPaymentOptUnpaid");
+    const key = m[AuthStore.normalizePaymentStatus(code)];
+    return key ? t(key) : code || t("adminPaymentOptMissing");
   };
   const toN = (v) => {
     if (v === "" || v == null) return null;
@@ -4282,7 +4603,7 @@ const FinancePane = ({
       netAmount: j.netAmount ?? "",
       grossAmount: j.grossAmount ?? "",
       vatRate: j.vatRate ?? 19,
-      paymentStatus: j.paymentStatus || "Unpaid",
+      paymentStatus: j.paymentStatus || "Invoice Missing",
     });
   };
   const closeFinEdit = () => {
@@ -4531,7 +4852,6 @@ const FinancePane = ({
                   {[
                     ["Invoice Missing", "adminPaymentOptMissing"],
                     ["Invoice Received", "adminPaymentOptReceived"],
-                    ["Unpaid", "adminPaymentOptUnpaid"],
                     ["Paid", "adminPaymentOptPaid"],
                   ].map(([val, key]) => (
                     <option key={val} value={val}>
@@ -4551,7 +4871,7 @@ const FinancePane = ({
                   onOpenPartnerInvoices(finEditId);
                 }}
               >
-                {t("adminFinanceOpenPartnerInvoicesLink")}
+                {t("adminFinanceOpenTourBillingLink")}
               </button>
             )}
             <p
@@ -4843,7 +5163,8 @@ Object.assign(window, {
   OrderingPartiesPane,
   AddressesPane,
   DocumentsPane,
-  PartnerInvoicesPane,
+  TourBillingPane,
+  PartnerInvoicesPane: TourBillingPane,
   FinancePane,
   AuditPane,
   FeaturesPane,

@@ -27,13 +27,50 @@ window.AuthStore = (() => {
   };
 
   const DOC_REVIEW = [
-    "missing",
     "uploaded",
-    "under_review",
     "accepted",
     "rejected",
     "correction_required",
   ];
+
+  function normalizeTourDocumentReviewStatus(st) {
+    const s = String(st || "").trim();
+    if (s === "under_review" || s === "missing") return "uploaded";
+    if (DOC_REVIEW.includes(s)) return s;
+    return "uploaded";
+  }
+
+  function tourDocumentNeedsPartnerCorrection(reviewStatus) {
+    return normalizeTourDocumentReviewStatus(reviewStatus) === "correction_required";
+  }
+
+  /** Canonical billing invoice type (legacy `partner_invoice` is normalized on write/load). */
+  const TOUR_DOC_TYPE_INVOICE = "invoice";
+
+  function normalizeTourDocumentType(type) {
+    const t = String(type || "").trim();
+    if (t === "partner_invoice") return TOUR_DOC_TYPE_INVOICE;
+    return t || TOUR_DOC_TYPE_INVOICE;
+  }
+
+  function isTourBillingInvoiceType(type) {
+    return normalizeTourDocumentType(type) === TOUR_DOC_TYPE_INVOICE;
+  }
+
+  /** Which admin review actions apply for a per-file reviewStatus (V1 — same for all document types). */
+  function tourDocumentReviewActions(reviewStatus) {
+    const st = normalizeTourDocumentReviewStatus(reviewStatus);
+    const pending = st === "uploaded";
+    return {
+      canView: true,
+      canDownload: true,
+      canAccept: pending,
+      canReject: pending,
+      canRequireCorrection: st === "rejected",
+      canReplace:
+        st === "uploaded" || st === "rejected" || st === "correction_required",
+    };
+  }
 
   const SETTLEMENT_STATES = [
     "Not Started",
@@ -43,6 +80,15 @@ window.AuthStore = (() => {
     "Needs Clarification",
     "Closed",
   ];
+
+  const PAYMENT_STATUSES = ["Invoice Missing", "Invoice Received", "Paid"];
+
+  function normalizePaymentStatus(st) {
+    const s = String(st || "").trim();
+    if (s === "Unpaid") return "Invoice Missing";
+    if (PAYMENT_STATUSES.includes(s)) return s;
+    return "Invoice Missing";
+  }
 
   function mkLocation(over = {}) {
     return {
@@ -123,7 +169,7 @@ window.AuthStore = (() => {
       invoiceReceived: false,
       invoiceType: "",
       invoiceNumber: "",
-      paymentStatus: "Unpaid",
+      paymentStatus: "Invoice Missing",
       financialNotes: "",
       adminInvoiceOverride: null,
       ...over,
@@ -1145,6 +1191,12 @@ window.AuthStore = (() => {
     ];
   }
 
+  function ensureTourDocumentShape(doc) {
+    if (!doc) return;
+    if (doc.supplierInvoiceNumber === undefined) doc.supplierInvoiceNumber = "";
+    if (doc.supplierInvoiceDate === undefined) doc.supplierInvoiceDate = "";
+  }
+
   function seedTourDocuments() {
     return [
       {
@@ -1156,12 +1208,14 @@ window.AuthStore = (() => {
         mimeType: "application/pdf",
         sizeBytes: 248120,
         uploadedAt: "2026-04-21T12:52:00.000Z",
-        documentType: "partner_invoice",
+        documentType: "invoice",
         reviewStatus: "accepted",
         rejectionReason: "",
         processed: true,
         source: "driver",
         notes: "",
+        supplierInvoiceNumber: "INV-0842-2026",
+        supplierInvoiceDate: "21.04.2026",
       },
       {
         id: "TD-SEED-002",
@@ -1178,6 +1232,8 @@ window.AuthStore = (() => {
         processed: true,
         source: "driver",
         notes: "Signed at Bremen hub.",
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
       },
       {
         id: "TD-SEED-003",
@@ -1189,11 +1245,13 @@ window.AuthStore = (() => {
         sizeBytes: 890400,
         uploadedAt: "2026-04-23T08:38:00.000Z",
         documentType: "other_proof",
-        reviewStatus: "under_review",
+        reviewStatus: "uploaded",
         rejectionReason: "",
         processed: false,
         source: "driver",
         notes: "Gate closed — special case evidence.",
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
       },
       {
         id: "TD-SEED-004",
@@ -1210,6 +1268,8 @@ window.AuthStore = (() => {
         processed: false,
         source: "driver",
         notes: "",
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
       },
       {
         id: "TD-SEED-005",
@@ -1220,12 +1280,32 @@ window.AuthStore = (() => {
         mimeType: "application/pdf",
         sizeBytes: 201000,
         uploadedAt: "2026-04-21T13:05:00.000Z",
-        documentType: "partner_invoice",
-        reviewStatus: "rejected",
+        documentType: "invoice",
+        reviewStatus: "correction_required",
         rejectionReason: "Wrong VAT line — resubmit with net amount only.",
         processed: false,
         source: "driver",
         notes: "",
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
+      },
+      {
+        id: "TD-SEED-006",
+        jobId: "A-2026-00845",
+        driverId: "DRV-0228",
+        driverName: DEMO_DRIVER,
+        fileName: "toll-receipt-0845-rejected.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 156000,
+        uploadedAt: "2026-04-21T16:00:00.000Z",
+        documentType: "toll_receipt",
+        reviewStatus: "rejected",
+        rejectionReason: "Amount illegible — awaiting dispatch to request correction.",
+        processed: false,
+        source: "driver",
+        notes: "",
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
       },
     ];
   }
@@ -1288,7 +1368,7 @@ window.AuthStore = (() => {
         actor: DEMO_DRIVER,
         entity: "partner-invoice-0842.pdf",
         at: "21.04. 12:52",
-        meta: "A-2026-00842 · partner_invoice",
+        meta: "A-2026-00842 · invoice",
       },
     ];
   }
@@ -1411,6 +1491,13 @@ window.AuthStore = (() => {
       if (j && j.status !== "performed") {
         issues.push(`${d.id}: document on non-performed job ${j.id} (${j.status})`);
       }
+      if (
+        isTourBillingInvoiceType(d.documentType) &&
+        normalizeTourDocumentReviewStatus(d.reviewStatus) === "accepted" &&
+        !String(d.supplierInvoiceNumber || "").trim()
+      ) {
+        issues.push(`${d.id}: accepted invoice missing supplierInvoiceNumber`);
+      }
     }
 
     if (issues.length && typeof console !== "undefined") {
@@ -1424,9 +1511,15 @@ window.AuthStore = (() => {
   let auditLog = seedAudit();
   let driverState = seedDriverState();
   let tourDocuments = seedTourDocuments();
+  for (const doc of tourDocuments) {
+    doc.documentType = normalizeTourDocumentType(doc.documentType);
+    doc.reviewStatus = normalizeTourDocumentReviewStatus(doc.reviewStatus);
+    ensureTourDocumentShape(doc);
+  }
   let adminEmailQueue = seedAdminEmailQueue();
 
   for (const j of jobs) {
+    j.paymentStatus = normalizePaymentStatus(j.paymentStatus);
     reconcileDocumentReviewSummary(j.id);
     reconcileJobInvoiceFromTourDocuments(j.id);
   }
@@ -1566,16 +1659,10 @@ window.AuthStore = (() => {
       j.documentReviewSummary = "Not Started";
       return;
     }
-    if (
-      docs.some(
-        (d) =>
-          d.reviewStatus === "rejected" ||
-          d.reviewStatus === "correction_required",
-      )
-    )
+    if (docs.some((d) => d.reviewStatus === "correction_required"))
       j.documentReviewSummary = "Correction Required";
-    else if (docs.some((d) => d.reviewStatus === "under_review"))
-      j.documentReviewSummary = "Under Review";
+    else if (docs.some((d) => d.reviewStatus === "rejected"))
+      j.documentReviewSummary = "Rejected";
     else if (docs.every((d) => d.reviewStatus === "accepted"))
       j.documentReviewSummary = "Accepted";
     else if (docs.some((d) => d.reviewStatus === "uploaded"))
@@ -1589,20 +1676,25 @@ window.AuthStore = (() => {
     const invoices = tourDocuments.filter(
       (d) =>
         d.jobId === jobId &&
-        (d.documentType === "partner_invoice" || d.documentType === "invoice"),
+        isTourBillingInvoiceType(d.documentType),
     );
     const accepted = invoices.filter(
       (d) => d.reviewStatus === "accepted" || d.processed,
     );
-    if (!accepted.length) return;
-    j.invoiceReceived = true;
-    const primary = accepted[accepted.length - 1];
-    if (!j.invoiceNumber && primary.fileName) {
-      j.invoiceNumber = String(primary.fileName).replace(/\.[^.]+$/i, "");
+    const paymentLocked = j.paymentStatus === "Paid";
+
+    if (accepted.length) {
+      j.invoiceReceived = true;
+      const primary = accepted[accepted.length - 1];
+      const invNum = String(primary.supplierInvoiceNumber || "").trim();
+      j.invoiceNumber = invNum;
+      if (!paymentLocked) j.paymentStatus = "Invoice Received";
+      return;
     }
-    if (j.paymentStatus === "Invoice Missing") {
-      j.paymentStatus = "Invoice Received";
-    }
+
+    j.invoiceReceived = false;
+    j.invoiceNumber = "";
+    if (!paymentLocked) j.paymentStatus = "Invoice Missing";
   }
 
   function locationFromForm(prefix, form) {
@@ -1722,6 +1814,14 @@ window.AuthStore = (() => {
   const api = {
     STATUSES,
     DOC_REVIEW,
+    TOUR_DOC_TYPE_INVOICE,
+    normalizeTourDocumentType,
+    normalizeTourDocumentReviewStatus,
+    normalizePaymentStatus,
+    PAYMENT_STATUSES,
+    tourDocumentNeedsPartnerCorrection,
+    isTourBillingInvoiceType,
+    tourDocumentReviewActions,
     SETTLEMENT_STATES,
     DEMO_DRIVER,
     parseDottedDate,
@@ -2627,13 +2727,16 @@ window.AuthStore = (() => {
         mimeType: mime || "application/octet-stream",
         sizeBytes: typeof file.size === "number" ? file.size : 0,
         uploadedAt: new Date().toISOString(),
-        documentType: opts.documentType || "partner_invoice",
+        documentType: normalizeTourDocumentType(opts.documentType),
         reviewStatus: "uploaded",
         rejectionReason: "",
         processed: false,
         source: opts.source || "driver",
         notes: opts.notes || "",
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
       };
+      ensureTourDocumentShape(row);
       tourDocuments.unshift(row);
       reconcileDocumentReviewSummary(jobId);
       log(
@@ -2647,20 +2750,52 @@ window.AuthStore = (() => {
       return { ok: true, id: row.id };
     },
 
+    acceptTourDocument(id, opts = {}) {
+      const doc = tourDocuments.find((x) => x.id === id);
+      if (!doc) return { ok: false, reason: "not_found" };
+      if (normalizeTourDocumentReviewStatus(doc.reviewStatus) === "accepted")
+        return { ok: true };
+      const st = normalizeTourDocumentReviewStatus(doc.reviewStatus);
+      if (st !== "uploaded") return { ok: false, reason: "not_pending" };
+      const invNum = String(opts.supplierInvoiceNumber ?? "").trim();
+      const invDate = String(opts.supplierInvoiceDate ?? "").trim();
+      if (isTourBillingInvoiceType(doc.documentType) && !invNum)
+        return { ok: false, reason: "invoice_number_required" };
+      doc.reviewStatus = "accepted";
+      doc.processed = true;
+      doc.rejectionReason = "";
+      if (isTourBillingInvoiceType(doc.documentType)) {
+        doc.supplierInvoiceNumber = invNum;
+        doc.supplierInvoiceDate = invDate;
+      }
+      reconcileDocumentReviewSummary(doc.jobId);
+      reconcileJobInvoiceFromTourDocuments(doc.jobId);
+      log(
+        "tour_document_accepted",
+        DEMO_ADMIN,
+        doc.fileName,
+        isTourBillingInvoiceType(doc.documentType) ? invNum : doc.documentType,
+      );
+      emit();
+      return { ok: true };
+    },
+
     updateTourDocument(id, patch) {
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false };
       const jobId = doc.jobId;
       if (patch.reviewStatus !== undefined) {
-        const st = String(patch.reviewStatus);
-        if (!DOC_REVIEW.includes(st)) return { ok: false, reason: "bad_status" };
-        doc.reviewStatus = st;
-        if (st === "accepted") doc.processed = true;
-        if (st !== "rejected") doc.rejectionReason = "";
+        const next = normalizeTourDocumentReviewStatus(patch.reviewStatus);
+        if (next === "accepted")
+          return { ok: false, reason: "use_accept_tour_document" };
+        if (!DOC_REVIEW.includes(next)) return { ok: false, reason: "bad_status" };
+        doc.reviewStatus = next;
+        if (next !== "rejected" && next !== "correction_required")
+          doc.rejectionReason = "";
       }
       if (patch.processed !== undefined) doc.processed = !!patch.processed;
       if (patch.documentType !== undefined)
-        doc.documentType = patch.documentType;
+        doc.documentType = normalizeTourDocumentType(patch.documentType);
       if (patch.notes !== undefined) doc.notes = String(patch.notes ?? "");
       if (patch.file !== undefined) {
         const file = patch.file;
@@ -2673,8 +2808,15 @@ window.AuthStore = (() => {
           "application/octet-stream";
         doc.sizeBytes = typeof file.size === "number" ? file.size : 0;
         doc.reviewStatus = "uploaded";
+        doc.rejectionReason = "";
         doc.processed = false;
+        doc.supplierInvoiceNumber = "";
+        doc.supplierInvoiceDate = "";
       }
+      if (patch.supplierInvoiceNumber !== undefined)
+        doc.supplierInvoiceNumber = String(patch.supplierInvoiceNumber ?? "").trim();
+      if (patch.supplierInvoiceDate !== undefined)
+        doc.supplierInvoiceDate = String(patch.supplierInvoiceDate ?? "").trim();
       reconcileDocumentReviewSummary(jobId);
       reconcileJobInvoiceFromTourDocuments(jobId);
       log("tour_document_updated", DEMO_ADMIN, doc.fileName, doc.reviewStatus);
@@ -2685,6 +2827,10 @@ window.AuthStore = (() => {
     rejectTourDocument(id, reason) {
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false };
+      if (doc.reviewStatus === "accepted")
+        return { ok: false, reason: "already_accepted" };
+      const st = normalizeTourDocumentReviewStatus(doc.reviewStatus);
+      if (st !== "uploaded") return { ok: false, reason: "not_pending" };
       doc.reviewStatus = "rejected";
       doc.rejectionReason = reason || "";
       doc.processed = false;
@@ -2692,6 +2838,30 @@ window.AuthStore = (() => {
       reconcileJobInvoiceFromTourDocuments(doc.jobId);
       log(
         "tour_document_rejected",
+        DEMO_ADMIN,
+        doc.fileName,
+        doc.rejectionReason,
+      );
+      queueAdminEmailAlert(
+        "tour_document_rejected",
+        doc.jobId,
+        doc.rejectionReason,
+      );
+      emit();
+      return { ok: true };
+    },
+
+    requireTourDocumentCorrection(id) {
+      const doc = tourDocuments.find((x) => x.id === id);
+      if (!doc) return { ok: false };
+      const st = normalizeTourDocumentReviewStatus(doc.reviewStatus);
+      if (st !== "rejected") return { ok: false, reason: "not_rejected" };
+      doc.reviewStatus = "correction_required";
+      doc.processed = false;
+      reconcileDocumentReviewSummary(doc.jobId);
+      reconcileJobInvoiceFromTourDocuments(doc.jobId);
+      log(
+        "tour_document_correction_required",
         DEMO_ADMIN,
         doc.fileName,
         doc.rejectionReason,
@@ -2726,8 +2896,9 @@ window.AuthStore = (() => {
         if (doc.driverId && doc.driverId !== d.id)
           return { ok: false, reason: "not_owner" };
       }
-      const replaceable = ["rejected", "uploaded", "correction_required"];
-      if (!replaceable.includes(doc.reviewStatus))
+      const st = normalizeTourDocumentReviewStatus(doc.reviewStatus);
+      const replaceable = ["rejected", "correction_required", "uploaded"];
+      if (!replaceable.includes(st))
         return { ok: false, reason: "not_replaceable" };
       doc.fileName = file.name;
       doc.mimeType =
@@ -2738,7 +2909,10 @@ window.AuthStore = (() => {
       doc.reviewStatus = "uploaded";
       doc.rejectionReason = "";
       doc.processed = false;
-      if (opts.documentType) doc.documentType = opts.documentType;
+      doc.supplierInvoiceNumber = "";
+      doc.supplierInvoiceDate = "";
+      if (opts.documentType)
+        doc.documentType = normalizeTourDocumentType(opts.documentType);
       reconcileDocumentReviewSummary(jobId);
       reconcileJobInvoiceFromTourDocuments(jobId);
       const who = actor === "driver" ? api.getCurrentDriver()?.name || DEMO_DRIVER : DEMO_ADMIN;
@@ -2789,13 +2963,16 @@ window.AuthStore = (() => {
         mimeType: mime,
         sizeBytes: typeof file.size === "number" ? file.size : 0,
         uploadedAt: new Date().toISOString(),
-        documentType: opts.documentType || "partner_invoice",
+        documentType: normalizeTourDocumentType(opts.documentType),
         reviewStatus: "uploaded",
         rejectionReason: "",
         processed: false,
         source: "admin",
         notes: String(opts.notes || "").trim(),
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
       };
+      ensureTourDocumentShape(row);
       tourDocuments.unshift(row);
       reconcileDocumentReviewSummary(jobRaw);
       reconcileJobInvoiceFromTourDocuments(jobRaw);
@@ -2865,7 +3042,12 @@ window.AuthStore = (() => {
         "paymentStatus",
       ];
       for (const key of allowed) {
-        if (patch[key] !== undefined) j[key] = patch[key];
+        if (patch[key] === undefined) continue;
+        if (key === "paymentStatus") {
+          j.paymentStatus = normalizePaymentStatus(patch.paymentStatus);
+        } else {
+          j[key] = patch[key];
+        }
       }
       syncDisplayFields(j);
       log(
@@ -3028,8 +3210,13 @@ window.AuthStore = (() => {
       auditLog = seedAudit();
       driverState = seedDriverState();
       tourDocuments = seedTourDocuments();
+      for (const doc of tourDocuments) {
+        doc.documentType = normalizeTourDocumentType(doc.documentType);
+        doc.reviewStatus = normalizeTourDocumentReviewStatus(doc.reviewStatus);
+      }
       adminEmailQueue = seedAdminEmailQueue();
       for (const j of jobs) {
+        j.paymentStatus = normalizePaymentStatus(j.paymentStatus);
         reconcileDocumentReviewSummary(j.id);
         reconcileJobInvoiceFromTourDocuments(j.id);
       }

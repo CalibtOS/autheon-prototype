@@ -318,7 +318,7 @@
               </>
             );
           if (section === "invoices")
-            return <strong>{t("navPartnerInvoices")}</strong>;
+            return <strong>{t("navTourBilling")}</strong>;
           return <strong>{t("navJobs")}</strong>;
         })();
 
@@ -421,7 +421,7 @@
           body = <DocumentsPane showToast={showToast} />;
         } else if (section === "invoices") {
           body = (
-            <PartnerInvoicesPane
+            <TourBillingPane
               showToast={showToast}
               filterJobId={billingNav?.invoiceFilter ? billingNav.jobId : null}
               onClearFilter={clearBillingNav}
@@ -462,7 +462,7 @@
             ],
             addresses: [t("navAddresses") || "Addresses", t("fullAddresses")],
             documents: [t("navDocuments"), t("documentsDesc")],
-            invoices: [t("navPartnerInvoices"), t("partnerInvoicesDesc")],
+            invoices: [t("navTourBilling"), t("tourBillingDesc")],
             finance: [t("navFinance"), t("financeDesc")],
             audit: [t("navAuditLog"), t("auditDesc")],
           };

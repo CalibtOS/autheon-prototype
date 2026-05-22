@@ -75,36 +75,41 @@ const googleMapsSearchUrl = (street, plz, city) => {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 };
 
-const displayTourDocType = (type, t) =>
-  ({
-    invoice: t("tourDocInvoice"),
-    partner_invoice: t("tourDocPartnerInvoice"),
-    fuel_receipt: t("tourDocFuelReceipt"),
-    toll_receipt: t("tourDocTollReceipt"),
-    delivery_note: t("tourDocDeliveryNote"),
-    waiting_time_evidence: t("tourDocWaitingTimeEvidence"),
-    other_proof: t("tourDocOtherProof"),
-    other_receipt: t("tourDocOtherReceipt"),
-  })[type] || type;
+const displayTourDocType = (type, t) => {
+  const code = AuthStore.normalizeTourDocumentType(type);
+  return (
+    {
+      invoice: t("tourDocInvoice"),
+      fuel_receipt: t("tourDocFuelReceipt"),
+      toll_receipt: t("tourDocTollReceipt"),
+      delivery_note: t("tourDocDeliveryNote"),
+      waiting_time_evidence: t("tourDocWaitingTimeEvidence"),
+      other_proof: t("tourDocOtherProof"),
+      other_receipt: t("tourDocOtherReceipt"),
+    }[code] || code
+  );
+};
 
-const displayDocReviewStatus = (st, t) =>
-  ({
-    missing: t("docReviewMissing"),
-    uploaded: t("docReviewUploaded"),
-    under_review: t("docReviewUnderReview"),
-    accepted: t("docReviewAccepted"),
-    rejected: t("docReviewRejected"),
-    correction_required: t("docReviewCorrectionRequired"),
-  })[st] || st;
+const displayDocReviewStatus = (st, t) => {
+  const code = AuthStore.normalizeTourDocumentReviewStatus(st);
+  return (
+    {
+      uploaded: t("docReviewUploaded"),
+      accepted: t("docReviewAccepted"),
+      rejected: t("docReviewRejected"),
+      correction_required: t("docReviewCorrectionRequired"),
+    }[code] || code
+  );
+};
 
 const jobNeedsDocCorrection = (job, store) =>
   job.status === "performed" &&
   (/correction/i.test(String(job.documentReviewSummary || "")) ||
-    store.getTourDocumentsForJob(job.id).some(
-      (d) =>
-        d.reviewStatus === "correction_required" ||
-        d.reviewStatus === "rejected",
-    ));
+    store
+      .getTourDocumentsForJob(job.id)
+      .some((d) =>
+        AuthStore.tourDocumentNeedsPartnerCorrection(d.reviewStatus),
+      ));
 
 const Ic = {
   Filter: () => (
@@ -1479,9 +1484,13 @@ const JobTourDocuments = ({ job }) => {
     setCategoryModal(false);
     replaceInputRef.current?.click();
   };
-  const canReplaceDoc = (u) =>
-    tourPerformed &&
-    ["rejected", "uploaded", "correction_required"].includes(u.reviewStatus);
+  const canReplaceDoc = (u) => {
+    const st = AuthStore.normalizeTourDocumentReviewStatus(u.reviewStatus);
+    return (
+      tourPerformed &&
+      ["uploaded", "rejected", "correction_required"].includes(st)
+    );
+  };
   if (!active) return null;
   return (
     <div
@@ -1587,7 +1596,9 @@ const JobTourDocuments = ({ job }) => {
                   {displayDocReviewStatus(u.reviewStatus, t)}
                 </Pill>
               </div>
-              {u.reviewStatus === "rejected" && u.rejectionReason ? (
+              {(u.reviewStatus === "rejected" ||
+                u.reviewStatus === "correction_required") &&
+              u.rejectionReason ? (
                 <p
                   style={{
                     margin: "8px 0 0",

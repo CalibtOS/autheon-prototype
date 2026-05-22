@@ -73,6 +73,7 @@ const critical = [
   "resolveSpecialCase",
   "markPerformed",
   "getTourDocuments",
+  "acceptTourDocument",
   "registerTourDocumentAdmin",
   "getOrderingParties",
   "getAddresses",

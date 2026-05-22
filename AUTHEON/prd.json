@@ -64,7 +64,11 @@
       "2026-05-21: Direct assign from Draft and reassign on Assigned/Accepted/Special case via service-partner picker (active partners only); partner invoices table uses status pills without persistent row green background.",
       "2026-05-21: Special case Continue restores statusBeforeSpecialCase (e.g. Accepted) instead of always Assigned; driverState.acceptedIds resynced on continue.",
       "2026-05-21: Ordering party and address master data CRUD in prototype (create/edit/delete/deactivate, usage guards, job form integration).",
-      "2026-05-21: New job form and displays use separate pickup and delivery dates/time windows (multi-day tours supported)."
+      "2026-05-21: New job form and displays use separate pickup and delivery dates/time windows (multi-day tours supported).",
+      "2026-05-21: Admin Partner invoices nav renamed Tour documents with type/review/source filters and document-type column; off-channel register supports all tour document types.",
+      "2026-05-21: Canonical tour billing invoice document type is `invoice` only; `partner_invoice` removed and normalized in prototype store.",
+      "2026-05-21: Tour document review uses uploaded, accepted, rejected, and correction_required; admin Require correction promotes rejected → correction_required for partner workflow.",
+      "2026-05-21: paymentStatus defaults to Invoice Missing; accepting tour invoice sets Invoice Received; Paid only via Finance manual edit."
     ]
   },
   "domain_model_summary": {
@@ -1073,6 +1077,11 @@
     "special_case_continue": "reportProblemNotPerformable stores statusBeforeSpecialCase on specialCaseReport; Continue restores that status and driverState.acceptedIds when prior was accepted.",
     "master_data_crud": "Ordering parties and addresses: full create/read/update/delete in admin UI; inactive flag; delete blocked when tours reference record; new job uses selects; optional save manual address to master on draft save.",
     "schedule_multi_day": "Pickup and delivery each have date + window from/to; prototype new job form, job detail, overview, and driver views show both legs; delivery before pickup shows admin warning only.",
+    "tour_billing_workspace": "Admin nav labeled Tour documents lists all tourDocuments with filters (document type, review status, source) and type column; section id remains invoices in prototype HTML routing.",
+    "tour_invoice_document_type": "Single canonical code `invoice` for partner billing uploads; legacy `partner_invoice` normalized on load/write in store.",
+    "document_review_statuses_prototype": "Per-file review: uploaded, accepted, rejected, correction_required. Admin reject → rejected; Require correction → correction_required (driver badge + job Correction Required). Legacy missing/under_review → uploaded on load.",
+    "payment_status_prototype": "paymentStatus values: Invoice Missing (default), Invoice Received (auto on invoice accept), Paid (manual Finance only). Unpaid removed; legacy Unpaid normalized to Invoice Missing.",
+    "supplier_invoice_number_prototype": "Each tour document may store supplierInvoiceNumber and optional supplierInvoiceDate. Admin Accept on invoice type requires supplierInvoiceNumber (modal); acceptTourDocument() is the only path to accepted. job.invoiceNumber copies from the latest accepted invoice document, not from fileName. Replace/upload resets supplier fields until re-accepted.",
     "seed_mock_data": "17 addresses, 5 ordering parties, 3 service partners, 10 jobs (full locations + contacts), 6 tour documents (performed tours only), 2 admin email alerts, 5 audit entries; validateSeedData() runs on load and after reloadDemo().",
     "assign_driver_picker": "AssignDriverDialog modal; assignJob/reassignJob by driver id; getAssignableDrivers() returns Active only.",
     "ordering_party_select": "New job section 01 uses select populated from getOrderingParties(); sets orderingPartyId + customer name."

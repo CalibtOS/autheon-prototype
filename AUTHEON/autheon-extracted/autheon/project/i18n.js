@@ -150,7 +150,7 @@ window.I18n = (() => {
       tourDocReplaceNotAllowed: "Accepted documents cannot be replaced. Contact dispatch if needed.",
       tourDocReplaceNotOwner: "You can only replace your own uploads for this tour.",
       tourDocChooseCategory: "Choose document type",
-      tourDocInvoice: "Invoice",
+      tourDocInvoice: "Partner invoice",
       tourDocPartnerInvoice: "Partner invoice",
       tourDocFuelReceipt: "Fuel receipt",
       tourDocTollReceipt: "Toll receipt",
@@ -241,6 +241,24 @@ window.I18n = (() => {
       financeDesc: "Settlement and invoice tracking.",
       auditDesc: "Immutable timeline of critical actions.",
       navPartnerInvoices: "Partner invoices",
+      navTourBilling: "Tour documents",
+      tourBillingDesc:
+        "All tour-linked uploads: partner invoices, fuel and toll receipts, delivery notes, waiting-time evidence, and other proof. Filter by document type, review status, and source. Prototype: file names and metadata only — no binary storage.",
+      billingFilterType: "Document type",
+      billingFilterReview: "Review status",
+      billingFilterSource: "Source",
+      billingFilterAll: "All",
+      billingFilterReset: "Clear filters",
+      billingFilterEmpty: "No documents match the current filters.",
+      billingShowingCount: "Showing {shown} of {total}",
+      billingColType: "Type",
+      billingColReview: "Review",
+      adminTourDocRegisterTitle: "Register off-channel document",
+      adminTourDocRegisterHint:
+        "Use when a partner sends a document outside the PWA (e.g. email). Choose document type, tour, and partner. PDF or images (JPEG, PNG, WebP, GIF).",
+      adminOpenTourBillingBtn: "Tour documents",
+      adminFinanceReviewDocuments: "Review tour documents",
+      adminFinanceOpenTourBillingLink: "Open tour documents for this tour",
       partnerInvoicesDesc:
         "Driver-submitted invoice references (PDF or images). Which tour an upload belongs to is set only by the driver when uploading from that tour; dispatch cannot reassign it here. Prototype: file names and metadata only — no binary upload.",
       navInvoices: "Invoices",
@@ -334,8 +352,24 @@ window.I18n = (() => {
       adminSpecialCaseResolveFailed: "Could not resolve special case.",
       adminDocAccept: "Accept",
       adminDocReject: "Reject",
+      adminDocErrAlreadyAccepted:
+        "This document is already accepted. Use replace only after rejection, or contact dispatch.",
+      adminDocErrNotPending: "Only uploaded documents can be accepted or rejected.",
+      adminDocErrNotRejected:
+        "Only rejected documents can be sent for partner correction.",
+      adminDocRequireCorrection: "Require correction",
+      adminDocCorrectionRequired: "Partner correction required",
       adminDocAccepted: "Document accepted.",
       adminDocRejected: "Document rejected.",
+      adminAcceptInvoiceTitle: "Accept invoice — enter supplier number",
+      adminSupplierInvoiceNumberLabel: "Supplier invoice number",
+      adminSupplierInvoiceNumberPlaceholder: "e.g. INV-0842-2026",
+      adminSupplierInvoiceDateLabel: "Supplier invoice date (optional)",
+      adminSupplierInvoiceDatePlaceholder: "e.g. 21.04.2026",
+      adminInvoiceErrNumberRequired:
+        "Enter the supplier invoice number from the document before accepting.",
+      adminInvoiceMetaSupplierNumber: "Supplier invoice no.:",
+      adminInvoiceMetaSupplierDate: "Supplier invoice date:",
       adminAddressAddTitle: "Add address",
       adminAddressCreated: "Address saved to master data.",
       adminOrderingPartiesDesc:
@@ -387,7 +421,7 @@ window.I18n = (() => {
         "Save entered delivery to address master data",
       phone: "Phone",
       adminFilterStatusPrefix: "Status:",
-      adminFinanceStatUnpaidRow: "Unpaid / missing",
+      adminFinanceStatUnpaidRow: "Not paid yet",
       adminFinanceTrackedPill: "Tracked",
       adminFinanceManualPill: "Manual",
       adminFinanceRecvShort: "Received",
@@ -425,7 +459,6 @@ window.I18n = (() => {
       adminRejectNotePlaceholder: "Reason shown in internal history…",
       adminPaymentOptMissing: "Invoice Missing",
       adminPaymentOptReceived: "Invoice Received",
-      adminPaymentOptUnpaid: "Unpaid",
       adminPaymentOptPaid: "Paid",
       adminInvoiceMetaFile: "File:",
       adminInvoiceMetaMime: "MIME:",
@@ -471,7 +504,7 @@ window.I18n = (() => {
       adminUsersDescLong:
         "Client-side management demo for service partners, admin users, account status, and password resets.",
       adminFinanceCompletedInvoiceNote:
-        "Completed jobs: submit single or consolidated invoice within 7 calendar days to the inbox referenced on the transport-order PDF (legal wording subject to client sign-off).",
+        "Payment status starts as Invoice missing, moves to Invoice received when an invoice is accepted in Tour documents, and Paid is set manually here. Invoice file review is done in Tour documents.",
       adminFinanceSnapshotTitle: "Financial snapshot",
       adminViewOnlyBadge: "View only",
       adminEditFinancesBtn: "Edit finances",
@@ -497,7 +530,7 @@ window.I18n = (() => {
       adminFinanceUploadColStatus: "Status",
       adminInvoicePendingBadge: "Pending",
       adminFinancePendingBanner:
-        "Partner invoice(s) uploaded but none marked processed yet.",
+        "Tour document(s) uploaded and still awaiting review.",
       adminFinanceReviewInvoices: "Review in Partner invoices",
       adminFinanceErrUsePartnerInvoices:
         "Invoice number and received status are managed in Partner invoices (or override in Finance).",
@@ -935,7 +968,7 @@ window.I18n = (() => {
       tourDocReplaceNotOwner:
         "Sie können nur eigene Uploads für diese Tour ersetzen.",
       tourDocChooseCategory: "Dokumenttyp wählen",
-      tourDocInvoice: "Rechnung",
+      tourDocInvoice: "Partnerrechnung",
       tourDocPartnerInvoice: "Partnerrechnung",
       tourDocFuelReceipt: "Tankbeleg",
       tourDocTollReceipt: "Mautbeleg",
@@ -1025,6 +1058,24 @@ window.I18n = (() => {
       financeDesc: "Abrechnung und Zahlungsstatus.",
       auditDesc: "Unveränderliche Zeitleiste kritischer Aktionen.",
       navPartnerInvoices: "Partner-Rechnungen",
+      navTourBilling: "Tour-Dokumente",
+      tourBillingDesc:
+        "Alle tourbezogenen Uploads: Partnerrechnungen, Tank- und Mautbelege, Lieferscheine, Wartezeitnachweise und sonstige Belege. Filter nach Dokumenttyp, Prüfstatus und Quelle. Prototyp: nur Dateiname und Metadaten — keine Binärspeicherung.",
+      billingFilterType: "Dokumenttyp",
+      billingFilterReview: "Prüfstatus",
+      billingFilterSource: "Quelle",
+      billingFilterAll: "Alle",
+      billingFilterReset: "Filter zurücksetzen",
+      billingFilterEmpty: "Keine Dokumente für die aktuellen Filter.",
+      billingShowingCount: "{shown} von {total} angezeigt",
+      billingColType: "Typ",
+      billingColReview: "Prüfung",
+      adminTourDocRegisterTitle: "Dokument außerhalb der PWA erfassen",
+      adminTourDocRegisterHint:
+        "Wenn ein Partner ein Dokument per E-Mail o. Ä. sendet. Dokumenttyp, Tour und Partner wählen. PDF oder Bilder (JPEG, PNG, WebP, GIF).",
+      adminOpenTourBillingBtn: "Tour-Dokumente",
+      adminFinanceReviewDocuments: "Tour-Dokumente prüfen",
+      adminFinanceOpenTourBillingLink: "Tour-Dokumente für diese Tour öffnen",
       partnerInvoicesDesc:
         "Vom Fahrer gemeldete Rechnungsreferenzen (PDF oder Bilder). Die Zuordnung zur Tour erfolgt nur beim Upload durch den Fahrer auf dieser Tour; die Disposition kann sie hier nicht ändern. Prototyp: nur Dateiname und Metadaten — kein Dateiinhalt.",
       navInvoices: "Rechnungen",
@@ -1120,8 +1171,25 @@ window.I18n = (() => {
       adminSpecialCaseResolveFailed: "Sonderfall konnte nicht aufgelöst werden.",
       adminDocAccept: "Akzeptieren",
       adminDocReject: "Ablehnen",
+      adminDocErrAlreadyAccepted:
+        "Dieses Dokument ist bereits akzeptiert. Ersetzen nur nach Ablehnung oder über Dispatch.",
+      adminDocErrNotPending:
+        "Nur hochgeladene Dokumente können akzeptiert oder abgelehnt werden.",
+      adminDocErrNotRejected:
+        "Korrektur kann nur für abgelehnte Dokumente angefordert werden.",
+      adminDocRequireCorrection: "Korrektur anfordern",
+      adminDocCorrectionRequired: "Partner-Korrektur erforderlich",
       adminDocAccepted: "Dokument akzeptiert.",
       adminDocRejected: "Dokument abgelehnt.",
+      adminAcceptInvoiceTitle: "Rechnung akzeptieren — Lieferantennummer",
+      adminSupplierInvoiceNumberLabel: "Lieferanten-Rechnungsnummer",
+      adminSupplierInvoiceNumberPlaceholder: "z. B. INV-0842-2026",
+      adminSupplierInvoiceDateLabel: "Rechnungsdatum Lieferant (optional)",
+      adminSupplierInvoiceDatePlaceholder: "z. B. 21.04.2026",
+      adminInvoiceErrNumberRequired:
+        "Bitte die Rechnungsnummer vom Beleg eintragen, bevor Sie akzeptieren.",
+      adminInvoiceMetaSupplierNumber: "Lieferanten-Rechnungsnr.:",
+      adminInvoiceMetaSupplierDate: "Rechnungsdatum Lieferant:",
       adminAddressAddTitle: "Adresse hinzufügen",
       adminAddressCreated: "Adresse in Stammdaten gespeichert.",
       adminOrderingPartiesDesc:
@@ -1174,7 +1242,7 @@ window.I18n = (() => {
         "Eingegebene Lieferadresse in Stammdaten speichern",
       phone: "Telefon",
       adminFilterStatusPrefix: "Status:",
-      adminFinanceStatUnpaidRow: "Unbezahlt / offen",
+      adminFinanceStatUnpaidRow: "Noch nicht bezahlt",
       adminFinanceTrackedPill: "Erfasst",
       adminFinanceManualPill: "Manuell",
       adminFinanceRecvShort: "Erhalten",
@@ -1212,7 +1280,6 @@ window.I18n = (() => {
       adminRejectNotePlaceholder: "Grund für interne Historie…",
       adminPaymentOptMissing: "Rechnung fehlt",
       adminPaymentOptReceived: "Rechnung erhalten",
-      adminPaymentOptUnpaid: "Unbezahlt",
       adminPaymentOptPaid: "Bezahlt",
       adminInvoiceMetaFile: "Datei:",
       adminInvoiceMetaMime: "MIME:",
@@ -1258,7 +1325,7 @@ window.I18n = (() => {
       adminUsersDescLong:
         "Clientseitige Verwaltungsdemo für Servicepartner, Admin-Konten, Kontostatus und Passwort-Resets.",
       adminFinanceCompletedInvoiceNote:
-        "Abgeschlossene Aufträge: Einzel- oder Sammelrechnung innerhalb von 7 Kalendertagen an das im Transportauftrag genannte Postfach (rechtlicher Text nach Freigabe durch den Auftraggeber).",
+        "Zahlungsstatus startet mit Rechnung fehlt, wechselt zu Rechnung eingegangen nach Akzeptanz in Tour-Dokumente; Bezahlt nur manuell hier. Dateiprüfung in Tour-Dokumente.",
       adminFinanceSnapshotTitle: "Finanzübersicht",
       adminViewOnlyBadge: "Nur Ansicht",
       adminEditFinancesBtn: "Finanzen bearbeiten",
@@ -1285,7 +1352,7 @@ window.I18n = (() => {
       adminFinanceUploadColStatus: "Status",
       adminInvoicePendingBadge: "Ausstehend",
       adminFinancePendingBanner:
-        "Partnerrechnung(en) hochgeladen, aber noch keine als verarbeitet markiert.",
+        "Tour-Dokument(e) hochgeladen und warten noch auf Prüfung.",
       adminFinanceReviewInvoices: "In Partnerrechnungen prüfen",
       adminFinanceErrUsePartnerInvoices:
         "Rechnungsnummer und Eingangsstatus werden in Partnerrechnungen (oder per Override in Finanzen) verwaltet.",
