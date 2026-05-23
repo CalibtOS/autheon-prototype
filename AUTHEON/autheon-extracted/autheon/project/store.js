@@ -1,4 +1,5 @@
-// AUTHEON — Shared store (PRD v1.5 prototype). Single source of truth for Driver + Admin views.
+// AUTHEON — Shared store (PRD v1.6 prototype). Target spec: AUTHEON/prd_updated_v2.json
+// Single source of truth for Driver + Admin views.
 // Operational statuses: draft, published, assigned, accepted, performed, cancelled, special_case.
 // Ordering party, pickup, and delivery are separate; legacy flat fields are derived for tables.
 
@@ -66,6 +67,7 @@ window.AuthStore = (() => {
       canDownload: true,
       canAccept: pending,
       canReject: pending,
+      canMarkChecked: pending,
       canRequireCorrection: st === "rejected",
       canReplace:
         st === "uploaded" || st === "rejected" || st === "correction_required",
@@ -100,6 +102,7 @@ window.AuthStore = (() => {
       city: over.city || "",
       country: over.country || "DE",
       contactPerson: over.contactPerson || "",
+      alternateContactPerson: over.alternateContactPerson || "",
       phone: over.phone || "",
       secondPhone: over.secondPhone || "",
       email: over.email || "",
@@ -146,6 +149,9 @@ window.AuthStore = (() => {
       documentReviewSummary: "Not Started",
       settlementState: "Not Started",
       specialCaseReport: null,
+      cancellationActor: null,
+      cancellationReason: "",
+      cancellationReasonText: "",
       // Legacy flat fields (syncDisplayFields)
       customer: "",
       startCity: "",
@@ -202,7 +208,7 @@ window.AuthStore = (() => {
     job.startCity = pu.city || "";
     job.startPlz = pu.postalCode || "";
     job.startStreet = formatStreet(pu) || pu.street || "";
-    job.startCompany = pu.name || job.orderingPartyName || "";
+    job.startCompany = pu.name || "";
     job.endCity = del.city || "";
     job.endPlz = del.postalCode || "";
     job.endStreet = formatStreet(del) || del.street || "";
@@ -387,6 +393,7 @@ window.AuthStore = (() => {
         city: "Hamburg",
         country: "DE",
         contactPerson: "M. Linke",
+        alternateContactPerson: "S. Kruger (night shift)",
         phone: "+49 40 556677",
         secondPhone: "+49 40 556678",
         email: "yard.hamburg@nordflotte.example",
@@ -974,9 +981,7 @@ window.AuthStore = (() => {
         notes: "Completed Hamburg depot → Bremen hub.",
         paymentStatus: "Paid",
         settlementState: "Paid",
-        documentReviewSummary: "Accepted",
-        invoiceReceived: true,
-        invoiceNumber: "INV-0842-2026",
+        invoiceReceived: false,
         status: "performed",
         driver: DEMO_DRIVER,
         performedAt: "21.04. 12:48",
@@ -1013,6 +1018,8 @@ window.AuthStore = (() => {
         revenue: 240,
         notes: "Cancelled after driver Report Problem — customer withdrew slot.",
         status: "cancelled",
+        cancellationActor: "ordering_party",
+        cancellationReasonText: "Customer withdrew delivery slot.",
         driver: DEMO_DRIVER,
         pdfVersion: 1,
         history: [
@@ -1195,6 +1202,8 @@ window.AuthStore = (() => {
     if (!doc) return;
     if (doc.supplierInvoiceNumber === undefined) doc.supplierInvoiceNumber = "";
     if (doc.supplierInvoiceDate === undefined) doc.supplierInvoiceDate = "";
+    if (doc.checkedAt === undefined) doc.checkedAt = "";
+    if (doc.checkedBy === undefined) doc.checkedBy = "";
   }
 
   function seedTourDocuments() {
@@ -1209,13 +1218,13 @@ window.AuthStore = (() => {
         sizeBytes: 248120,
         uploadedAt: "2026-04-21T12:52:00.000Z",
         documentType: "invoice",
-        reviewStatus: "accepted",
+        reviewStatus: "uploaded",
         rejectionReason: "",
-        processed: true,
+        processed: false,
         source: "driver",
         notes: "",
-        supplierInvoiceNumber: "INV-0842-2026",
-        supplierInvoiceDate: "21.04.2026",
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
       },
       {
         id: "TD-SEED-002",
@@ -1227,9 +1236,9 @@ window.AuthStore = (() => {
         sizeBytes: 412800,
         uploadedAt: "2026-04-21T12:53:00.000Z",
         documentType: "delivery_note",
-        reviewStatus: "accepted",
+        reviewStatus: "uploaded",
         rejectionReason: "",
-        processed: true,
+        processed: false,
         source: "driver",
         notes: "Signed at Bremen hub.",
         supplierInvoiceNumber: "",
@@ -1272,24 +1281,6 @@ window.AuthStore = (() => {
         supplierInvoiceDate: "",
       },
       {
-        id: "TD-SEED-005",
-        jobId: "A-2026-00842",
-        driverId: "DRV-0228",
-        driverName: DEMO_DRIVER,
-        fileName: "partner-invoice-0842-v1.pdf",
-        mimeType: "application/pdf",
-        sizeBytes: 201000,
-        uploadedAt: "2026-04-21T13:05:00.000Z",
-        documentType: "invoice",
-        reviewStatus: "correction_required",
-        rejectionReason: "Wrong VAT line — resubmit with net amount only.",
-        processed: false,
-        source: "driver",
-        notes: "",
-        supplierInvoiceNumber: "",
-        supplierInvoiceDate: "",
-      },
-      {
         id: "TD-SEED-006",
         jobId: "A-2026-00845",
         driverId: "DRV-0228",
@@ -1306,6 +1297,21 @@ window.AuthStore = (() => {
         notes: "",
         supplierInvoiceNumber: "",
         supplierInvoiceDate: "",
+      },
+    ];
+  }
+
+  function seedDriverNotifications() {
+    return [
+      {
+        id: "DN-SEED-001",
+        type: "document_rejected",
+        jobId: "A-2026-00842",
+        tour: "0842-26",
+        title: "Document rejected",
+        body: "Registration number missing on fuel receipt.",
+        read: false,
+        createdAt: "21.04. 14:10",
       },
     ];
   }
@@ -1340,7 +1346,7 @@ window.AuthStore = (() => {
         actor: "System",
         entity: "Transport Portal demo",
         at: "05.05. 15:49",
-        meta: "PRD v1.5 client-side prototype",
+        meta: "PRD v1.6 client-side prototype",
       },
       {
         action: "job_published",
@@ -1506,7 +1512,10 @@ window.AuthStore = (() => {
     return issues;
   }
 
-  let drivers = seedDrivers();
+  let drivers = seedDrivers().map((d) => ({
+    ...d,
+    prefs: normalizeDriverPrefs(d.prefs),
+  }));
   let admins = seedAdmins();
   let auditLog = seedAudit();
   let driverState = seedDriverState();
@@ -1516,6 +1525,7 @@ window.AuthStore = (() => {
     doc.reviewStatus = normalizeTourDocumentReviewStatus(doc.reviewStatus);
     ensureTourDocumentShape(doc);
   }
+  let driverNotifications = seedDriverNotifications();
   let adminEmailQueue = seedAdminEmailQueue();
 
   for (const j of jobs) {
@@ -1621,18 +1631,95 @@ window.AuthStore = (() => {
     return Math.max(40, Math.min(720, Math.round(base / 8)));
   }
 
+  function normalizeDriverPrefs(prefs = {}) {
+    const p = prefs || {};
+    const legacyPush = p.push === true || p.pushEnabled === true;
+    return {
+      startPlz: p.startPlz || "",
+      endPlz: p.endPlz || "",
+      vehicle: p.vehicle || "All",
+      axle: p.axle || "All",
+      pushEnabled: p.pushEnabled != null ? !!p.pushEnabled : legacyPush,
+      notifyNewPublished:
+        p.notifyNewPublished != null ? !!p.notifyNewPublished : legacyPush,
+      notifyPostalPrefix: String(p.notifyPostalPrefix || p.startPlz || "").trim(),
+      push: legacyPush,
+    };
+  }
+
+  function postalPrefixMatches(job, prefix) {
+    const p = String(prefix || "").replace(/\D/g, "");
+    if (!p.length) return true;
+    const plz = String(job.pickup?.postalCode || job.startPlz || "");
+    return plz.startsWith(p.length >= 2 ? p.slice(0, 2) : p.slice(0, 1));
+  }
+
+  function maybeNotifyPublishedJob(job) {
+    if (!job || job.status !== "published") return;
+    const notified = [];
+    for (const d of drivers) {
+      if (d.status !== "Active") continue;
+      const prefs = normalizeDriverPrefs(d.prefs);
+      if (!prefs.pushEnabled || !prefs.notifyNewPublished) continue;
+      if (
+        prefs.notifyPostalPrefix &&
+        !postalPrefixMatches(job, prefs.notifyPostalPrefix)
+      )
+        continue;
+      notified.push(d.name);
+      log(
+        "push_notification_simulated",
+        "System",
+        job.tour,
+        `new published → ${d.name}`,
+      );
+    }
+    if (!notified.length) {
+      log(
+        "push_notification_simulated",
+        "System",
+        job.tour || "",
+        "no matching subscribers",
+      );
+    }
+  }
+
   function queuePushNotification(job, context) {
-    const notified = drivers
-      .filter((d) => d.status === "Active" && d.prefs?.push)
-      .map((d) => d.name);
-    log(
-      "notification_queued",
-      "System",
-      job.tour,
-      notified.length
-        ? `${context}: ${notified.join(", ")}`
-        : `${context}: no active push subscribers`,
-    );
+    maybeNotifyPublishedJob(job);
+    log("notification_queued", "System", job?.tour || "", context || "legacy");
+  }
+
+  function pushDriverNotification(payload) {
+    const d = api.getCurrentDriver();
+    const row = {
+      id: `DN-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      type: payload.type || "general",
+      jobId: payload.jobId || "",
+      tour: payload.tour || "",
+      title: payload.title || "Notification",
+      body: payload.body || "",
+      read: false,
+      createdAt: nowStamp(),
+    };
+    if (payload.driverId) {
+      row.driverId = payload.driverId;
+    } else if (d) {
+      row.driverId = d.id;
+    }
+    driverNotifications.unshift(row);
+    log("driver_notification_created", "System", row.title, row.type);
+    return row;
+  }
+
+  function getJobDisplayStatus(job) {
+    if (!job) return "";
+    if (
+      job.settlementState === "Closed" &&
+      job.documentReviewSummary === "Accepted"
+    )
+      return "Completed";
+    if (job.documentReviewSummary === "Under Review") return "Under Review";
+    return job.documentReviewSummary || job.status || "";
   }
 
   function queueAdminEmailAlert(event, jobId, meta) {
@@ -1665,9 +1752,10 @@ window.AuthStore = (() => {
       j.documentReviewSummary = "Rejected";
     else if (docs.every((d) => d.reviewStatus === "accepted"))
       j.documentReviewSummary = "Accepted";
-    else if (docs.some((d) => d.reviewStatus === "uploaded"))
-      j.documentReviewSummary = "Uploaded";
-    else j.documentReviewSummary = "Pending";
+    else if (docs.some((d) => d.reviewStatus === "uploaded")) {
+      j.documentReviewSummary =
+        j.status === "performed" ? "Under Review" : "Uploaded";
+    } else j.documentReviewSummary = "Pending";
   }
 
   function reconcileJobInvoiceFromTourDocuments(jobId) {
@@ -1713,6 +1801,17 @@ window.AuthStore = (() => {
         form[cap("contactPerson")] ||
         form[`${p}Contact`] ||
         form[`cName${p === "pickup" ? "1" : "2"}`] ||
+        "",
+      alternateContactPerson:
+        form[cap("alternateContactPerson")] ||
+        form[`${p}AlternateContact`] ||
+        "",
+      secondPhone: form[cap("secondPhone")] || form[`${p}SecondPhone`] || "",
+      email: form[cap("email")] || form[`${p}Email`] || "",
+      notes:
+        form[cap("notes")] ||
+        form[`${p}ContactNotes`] ||
+        form[`${p}Notes`] ||
         "",
       phone:
         form[cap("phone")] ||
@@ -1875,6 +1974,30 @@ window.AuthStore = (() => {
     getNews: () => newsItems.filter((n) => n.visible !== false),
     getAuditLog: () => auditLog,
     getAdminEmailQueue: () => adminEmailQueue.slice(),
+    getDriverNotifications: (driverId) => {
+      const id =
+        driverId ||
+        api.getCurrentDriver()?.id ||
+        drivers.find((d) => d.name === DEMO_DRIVER)?.id;
+      return driverNotifications.filter((n) => !n.driverId || n.driverId === id);
+    },
+    getDriverNotificationUnreadCount: (driverId) =>
+      api.getDriverNotifications(driverId).filter((n) => !n.read).length,
+    markDriverNotificationsRead: (ids) => {
+      const set = new Set(Array.isArray(ids) ? ids : []);
+      let n = 0;
+      for (const row of driverNotifications) {
+        if (set.size && !set.has(row.id)) continue;
+        if (!row.read) {
+          row.read = true;
+          n++;
+        }
+      }
+      if (n) emit();
+      return { ok: true, count: n };
+    },
+    pushDriverNotification,
+    getJobDisplayStatus,
 
     getCurrentDriver: () =>
       drivers.find((d) => d.name === DEMO_DRIVER) || drivers[0],
@@ -2102,6 +2225,14 @@ window.AuthStore = (() => {
       };
       newsItems.unshift(item);
       log("news_item_created", DEMO_ADMIN, item.title, item.id);
+      for (const dr of drivers.filter((x) => x.status === "Active")) {
+        pushDriverNotification({
+          type: "infopoint_news",
+          title: item.title,
+          body: (item.body || "").slice(0, 120),
+          driverId: dr.id,
+        });
+      }
       emit();
       return item;
     },
@@ -2190,6 +2321,9 @@ window.AuthStore = (() => {
       if (j.driver && j.driver !== DEMO_DRIVER)
         return { ok: false, reason: "not_assigned_driver" };
       j.status = "cancelled";
+      j.cancellationActor = "service_partner";
+      j.cancellationReason = reason || "";
+      j.cancellationReasonText = message || "";
       j.history = [
         ...(j.history || []),
         {
@@ -2268,6 +2402,14 @@ window.AuthStore = (() => {
           },
         ];
         log("special_case_resolved", DEMO_ADMIN, j.tour, "Cancelled");
+        pushDriverNotification({
+          type: "order_cancelled",
+          jobId: id,
+          tour: j.tour,
+          title: "Tour cancelled",
+          body: note || "",
+          driverId: j.driverId,
+        });
       } else if (d === "republish") {
         j.status = "published";
         j.driver = null;
@@ -2330,6 +2472,14 @@ window.AuthStore = (() => {
           j.tour,
           `Continued as ${restored}`,
         );
+        pushDriverNotification({
+          type: "special_case_processed",
+          jobId: id,
+          tour: j.tour,
+          title: "Problem case updated",
+          body: note || "Dispatch continued the tour.",
+          driverId: j.driverId,
+        });
       } else if (d === "close") {
         j.status = "performed";
         j.performedAt = j.performedAt || nowStamp();
@@ -2486,6 +2636,9 @@ window.AuthStore = (() => {
         return { ok: false, reason: "not_cancellable" };
       j.status = "cancelled";
       j.specialCaseReport = null;
+      j.cancellationActor = opts.actor || "admin";
+      j.cancellationReason = opts.reason || "";
+      j.cancellationReasonText = opts.note || "";
       j.history = [
         ...(j.history || []),
         {
@@ -2501,6 +2654,16 @@ window.AuthStore = (() => {
       driverState.cancelledIds.add(id);
       log("job_cancelled", opts.by || DEMO_ADMIN, j.tour, opts.note || "");
       queueAdminEmailAlert("job_cancelled", id, opts.note || "");
+      if (j.driverId) {
+        pushDriverNotification({
+          type: "order_cancelled",
+          jobId: id,
+          tour: j.tour,
+          title: "Tour cancelled",
+          body: opts.note || "",
+          driverId: j.driverId,
+        });
+      }
       emit();
       return { ok: true };
     },
@@ -2554,6 +2717,40 @@ window.AuthStore = (() => {
         });
       }
       if (form.deliveryLocationId) delivery.locationId = form.deliveryLocationId;
+      if (form.updateOrderingPartyMaster && op?.id) {
+        api.updateOrderingParty(op.id, {
+          name: form.customer || op.name,
+          contact: form.cName1 || op.contact,
+          phone: form.cPhone1 || op.phone,
+          instructions: form.notesDriver || op.instructions,
+        });
+      }
+      if (form.updatePickupMaster && form.pickupLocationId) {
+        api.updateAddress(form.pickupLocationId, {
+          street: form.startStreet,
+          postalCode: form.startPlz,
+          city: form.startCity,
+          contactPerson: form.cName1,
+          phone: form.cPhone1,
+          alternateContactPerson: form.pickupAlternateContact || "",
+          secondPhone: form.pickupSecondPhone || "",
+          email: form.pickupEmail || "",
+          notes: form.pickupContactNotes || "",
+        });
+      }
+      if (form.updateDeliveryMaster && form.deliveryLocationId) {
+        api.updateAddress(form.deliveryLocationId, {
+          street: form.endStreet,
+          postalCode: form.endPlz,
+          city: form.endCity,
+          contactPerson: form.cName2,
+          phone: form.cPhone2,
+          alternateContactPerson: form.deliveryAlternateContact || "",
+          secondPhone: form.deliverySecondPhone || "",
+          email: form.deliveryEmail || "",
+          notes: form.deliveryContactNotes || "",
+        });
+      }
       if (form.savePickupToMaster && form.startStreet?.trim()) {
         api.addAddress({
           label:
@@ -2737,15 +2934,18 @@ window.AuthStore = (() => {
         supplierInvoiceDate: "",
       };
       ensureTourDocumentShape(row);
+      const priorCount = tourDocuments.filter((x) => x.jobId === jobId).length;
       tourDocuments.unshift(row);
       reconcileDocumentReviewSummary(jobId);
+      const alertEvent =
+        priorCount > 0 ? "tour_document_reuploaded" : "tour_document_uploaded";
       log(
         "tour_document_uploaded",
         d.name,
         row.fileName,
         `${jobId} · ${row.documentType}`,
       );
-      queueAdminEmailAlert("tour_document_uploaded", jobId, row.documentType);
+      queueAdminEmailAlert(alertEvent, jobId, row.documentType);
       emit();
       return { ok: true, id: row.id };
     },
@@ -2824,6 +3024,18 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
+    markTourDocumentChecked(id) {
+      const doc = tourDocuments.find((x) => x.id === id);
+      if (!doc) return { ok: false };
+      const st = normalizeTourDocumentReviewStatus(doc.reviewStatus);
+      if (st !== "uploaded") return { ok: false, reason: "not_pending" };
+      doc.checkedAt = nowStamp();
+      doc.checkedBy = DEMO_ADMIN;
+      log("tour_document_checked", DEMO_ADMIN, doc.fileName, doc.documentType);
+      emit();
+      return { ok: true };
+    },
+
     rejectTourDocument(id, reason) {
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false };
@@ -2847,6 +3059,15 @@ window.AuthStore = (() => {
         doc.jobId,
         doc.rejectionReason,
       );
+      const jn = api.getJob(doc.jobId);
+      pushDriverNotification({
+        type: "document_rejected",
+        jobId: doc.jobId,
+        tour: jn?.tour || "",
+        title: "Document rejected",
+        body: doc.rejectionReason || "",
+        driverId: doc.driverId,
+      });
       emit();
       return { ok: true };
     },
@@ -3205,7 +3426,10 @@ window.AuthStore = (() => {
       documents = seedDocuments();
       newsItems = seedNews();
       jobs = seedJobs();
-      drivers = seedDrivers();
+      drivers = seedDrivers().map((d) => ({
+        ...d,
+        prefs: normalizeDriverPrefs(d.prefs),
+      }));
       admins = seedAdmins();
       auditLog = seedAudit();
       driverState = seedDriverState();
@@ -3213,7 +3437,9 @@ window.AuthStore = (() => {
       for (const doc of tourDocuments) {
         doc.documentType = normalizeTourDocumentType(doc.documentType);
         doc.reviewStatus = normalizeTourDocumentReviewStatus(doc.reviewStatus);
+        ensureTourDocumentShape(doc);
       }
+      driverNotifications = seedDriverNotifications();
       adminEmailQueue = seedAdminEmailQueue();
       for (const j of jobs) {
         j.paymentStatus = normalizePaymentStatus(j.paymentStatus);
@@ -3232,7 +3458,7 @@ window.AuthStore = (() => {
         notificationPreferences: true,
         ...reloadOnlyFlags,
       });
-      log("demo_reloaded", "System", "Transport Portal", "PRD v1.5 seed");
+      log("demo_reloaded", "System", "Transport Portal", "PRD v1.6 seed");
       emit();
       return { ok: true };
     },

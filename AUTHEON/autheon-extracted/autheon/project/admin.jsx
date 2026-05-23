@@ -56,9 +56,16 @@ const AdminNav = ({ section, setSection }) => {
   const store = useAuthStore();
   const total = store.getJobs().length;
   const invCount = store.getTourDocuments().length;
+  const alertCount = store.getAdminEmailQueue().length;
   const financeOn = store.getFeatureFlag("financeModule");
   const items = [
     { id: "overview", label: t("navJobs"), count: total, I: Ic.N.Tour },
+    {
+      id: "notifications",
+      label: t("adminNotificationFeed"),
+      count: alertCount,
+      I: Ic.N.Audit,
+    },
     { id: "users", label: t("navUsers"), count: null, I: Ic.N.Users },
     {
       id: "orderingparties",
@@ -393,9 +400,9 @@ const Overview = ({ onOpen, freshId }) => {
                   <Pill status={j.status} />
                 </td>
                 <td>
-                  {j.documentReviewSummary ? (
+                  {store.getJobDisplayStatus(j) ? (
                     <span className="label" style={{ fontSize: 11 }}>
-                      {j.documentReviewSummary}
+                      {store.getJobDisplayStatus(j)}
                     </span>
                   ) : (
                     <span style={{ color: "var(--muted-2)" }}>—</span>
@@ -1105,6 +1112,23 @@ const AdminDetail = ({
         </div>
       </div>
 
+      {job.status === "cancelled" && job.cancellationActor ? (
+        <div
+          className="banner banner-warn"
+          style={{ marginBottom: 18, fontSize: 13, lineHeight: 1.55 }}
+        >
+          {t("cancellationActor")}:{" "}
+          {job.cancellationActor === "service_partner"
+            ? t("cancellationActorServicePartner")
+            : job.cancellationActor === "ordering_party"
+              ? t("cancellationActorOrderingParty")
+              : t("cancellationActorAdmin")}
+          {job.cancellationReasonText
+            ? ` — ${job.cancellationReasonText}`
+            : ""}
+        </div>
+      ) : null}
+
       <div className="grid-main-aside">
         <div className="stack-18">
           {/* Route */}
@@ -1114,6 +1138,12 @@ const AdminDetail = ({
                 <span className="num">01</span>
                 {t("route")}
               </h3>
+            </div>
+            <div style={{ marginTop: 10, fontSize: 13.5 }}>
+              <span className="label">{t("orderingPartyLabel")}</span>
+              <div style={{ fontWeight: 600, marginTop: 4 }}>
+                {job.orderingPartyName || job.customer || "—"}
+              </div>
             </div>
             <div
               style={{
@@ -1768,6 +1798,19 @@ const NewOrder = ({ onCancel, onFormChange }) => {
     cPhone1: "",
     cName2: "",
     cPhone2: "",
+    pickupAlternateContact: "",
+    pickupSecondPhone: "",
+    pickupEmail: "",
+    pickupContactNotes: "",
+    deliveryAlternateContact: "",
+    deliverySecondPhone: "",
+    deliveryEmail: "",
+    deliveryContactNotes: "",
+    showPickupExtraContact: false,
+    showDeliveryExtraContact: false,
+    updatePickupMaster: false,
+    updateDeliveryMaster: false,
+    updateOrderingPartyMaster: false,
     driverCompensation: "",
     notes: "",
     notesDriver: "",
@@ -1800,7 +1843,10 @@ const NewOrder = ({ onCancel, onFormChange }) => {
         startCity: a.city,
         cName1: a.contactPerson || f.cName1,
         cPhone1: a.phone || f.cPhone1,
+        pickupAlternateContact: a.alternateContactPerson || "",
+        pickupSecondPhone: a.secondPhone || "",
         savePickupToMaster: false,
+        updatePickupMaster: false,
       }));
     } else {
       setForm((f) => ({
@@ -1811,7 +1857,10 @@ const NewOrder = ({ onCancel, onFormChange }) => {
         endCity: a.city,
         cName2: a.contactPerson || f.cName2,
         cPhone2: a.phone || f.cPhone2,
+        deliveryAlternateContact: a.alternateContactPerson || "",
+        deliverySecondPhone: a.secondPhone || "",
         saveDeliveryToMaster: false,
+        updateDeliveryMaster: false,
       }));
     }
   };
@@ -2002,6 +2051,27 @@ const NewOrder = ({ onCancel, onFormChange }) => {
                 {t("newOrderNoCustomerHint")}
               </div>
             )}
+            {form.orderingPartyId ? (
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginTop: 12,
+                  fontSize: 12.5,
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={!!form.updateOrderingPartyMaster}
+                  onChange={(e) =>
+                    set("updateOrderingPartyMaster", e.target.checked)
+                  }
+                />
+                {t("updateMasterDataFromEntry")}
+              </label>
+            ) : null}
           </section>
 
           <section id="sec-02" className="card" style={{ padding: 22 }}>
@@ -2091,7 +2161,27 @@ const NewOrder = ({ onCancel, onFormChange }) => {
                     />
                     {t("newOrderSavePickupToMaster")}
                   </label>
-                ) : null}
+                ) : (
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginTop: 10,
+                      fontSize: 12.5,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!form.updatePickupMaster}
+                      onChange={(e) =>
+                        set("updatePickupMaster", e.target.checked)
+                      }
+                    />
+                    {t("updateMasterDataFromEntry")}
+                  </label>
+                )}
               </div>
               <div>
                 <label className="field-label" htmlFor="new-delivery-addr">
@@ -2168,7 +2258,27 @@ const NewOrder = ({ onCancel, onFormChange }) => {
                     />
                     {t("newOrderSaveDeliveryToMaster")}
                   </label>
-                ) : null}
+                ) : (
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginTop: 10,
+                      fontSize: 12.5,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!form.updateDeliveryMaster}
+                      onChange={(e) =>
+                        set("updateDeliveryMaster", e.target.checked)
+                      }
+                    />
+                    {t("updateMasterDataFromEntry")}
+                  </label>
+                )}
               </div>
             </div>
             <div style={{ marginTop: 14 }}>
@@ -2445,6 +2555,48 @@ const NewOrder = ({ onCancel, onFormChange }) => {
                   value={form.cPhone1}
                   onChange={(e) => set("cPhone1", e.target.value)}
                 />
+                <button
+                  type="button"
+                  className="btn ghost xs"
+                  style={{ marginTop: 10 }}
+                  onClick={() =>
+                    set("showPickupExtraContact", !form.showPickupExtraContact)
+                  }
+                >
+                  {t("addAnotherContact")}
+                </button>
+                {form.showPickupExtraContact ? (
+                  <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                    <input
+                      className="input"
+                      placeholder={t("alternateContact")}
+                      value={form.pickupAlternateContact}
+                      onChange={(e) =>
+                        set("pickupAlternateContact", e.target.value)
+                      }
+                    />
+                    <input
+                      className="input mono"
+                      placeholder={t("secondPhone")}
+                      value={form.pickupSecondPhone}
+                      onChange={(e) => set("pickupSecondPhone", e.target.value)}
+                    />
+                    <input
+                      className="input"
+                      placeholder={t("email")}
+                      value={form.pickupEmail}
+                      onChange={(e) => set("pickupEmail", e.target.value)}
+                    />
+                    <input
+                      className="input"
+                      placeholder={t("contactInfoNotes")}
+                      value={form.pickupContactNotes}
+                      onChange={(e) =>
+                        set("pickupContactNotes", e.target.value)
+                      }
+                    />
+                  </div>
+                ) : null}
               </div>
               <div>
                 <label className="field-label">{t("newOrderContactDelivery")}</label>
@@ -2461,6 +2613,53 @@ const NewOrder = ({ onCancel, onFormChange }) => {
                   value={form.cPhone2}
                   onChange={(e) => set("cPhone2", e.target.value)}
                 />
+                <button
+                  type="button"
+                  className="btn ghost xs"
+                  style={{ marginTop: 10 }}
+                  onClick={() =>
+                    set(
+                      "showDeliveryExtraContact",
+                      !form.showDeliveryExtraContact,
+                    )
+                  }
+                >
+                  {t("addAnotherContact")}
+                </button>
+                {form.showDeliveryExtraContact ? (
+                  <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                    <input
+                      className="input"
+                      placeholder={t("alternateContact")}
+                      value={form.deliveryAlternateContact}
+                      onChange={(e) =>
+                        set("deliveryAlternateContact", e.target.value)
+                      }
+                    />
+                    <input
+                      className="input mono"
+                      placeholder={t("secondPhone")}
+                      value={form.deliverySecondPhone}
+                      onChange={(e) =>
+                        set("deliverySecondPhone", e.target.value)
+                      }
+                    />
+                    <input
+                      className="input"
+                      placeholder={t("email")}
+                      value={form.deliveryEmail}
+                      onChange={(e) => set("deliveryEmail", e.target.value)}
+                    />
+                    <input
+                      className="input"
+                      placeholder={t("contactInfoNotes")}
+                      value={form.deliveryContactNotes}
+                      onChange={(e) =>
+                        set("deliveryContactNotes", e.target.value)
+                      }
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
           </section>
@@ -4173,6 +4372,19 @@ const TourBillingPane = ({
                   >
                     {t("invoiceView")}
                   </button>
+                  {actions.canMarkChecked ? (
+                    <button
+                      type="button"
+                      className="btn xs"
+                      style={{ marginLeft: 6 }}
+                      onClick={() => {
+                        const r = store.markTourDocumentChecked(u.id);
+                        if (r.ok) showToast?.(t("markDocumentChecked"), u.fileName);
+                      }}
+                    >
+                      {t("markDocumentChecked")}
+                    </button>
+                  ) : null}
                   {actions.canAccept ? (
                     <button
                       type="button"
@@ -4189,11 +4401,13 @@ const TourBillingPane = ({
                       className="btn xs danger"
                       style={{ marginLeft: 6 }}
                       onClick={() => {
-                        const reason = window.prompt(
-                          t("adminRejectNotePlaceholder"),
-                          "",
+                        const preset = window.prompt(
+                          `${t("adminRejectNotePlaceholder")}\n${t("rejectionPresetLegible")} / ${t("rejectionPresetRegistration")} / ${t("rejectionPresetWaiting")}`,
+                          t("rejectionPresetLegible"),
                         );
-                        if (reason == null) return;
+                        if (preset == null) return;
+                        const reason = preset.trim();
+                        if (!reason) return;
                         const r = store.rejectTourDocument(u.id, reason);
                         if (r.ok)
                           showToast?.(
@@ -5062,6 +5276,77 @@ const FLAG_I18N = {
   },
 };
 
+const CRITICAL_ALERT_EVENTS = new Set([
+  "report_problem_cancel",
+  "special_case_created",
+  "job_cancelled",
+  "tour_document_reuploaded",
+]);
+
+const NotificationFeedPane = ({ showToast, onOpenJob }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const rows = store.getAdminEmailQueue();
+  return (
+    <div style={{ maxWidth: 900 }}>
+      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+        {t("adminNotificationFeed")}
+      </h1>
+      <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
+        {t("adminNotificationFeedSub")}
+      </p>
+      <section className="card" style={{ padding: 0, marginTop: 22 }}>
+        {rows.length === 0 ? (
+          <div style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>
+            {t("adminNotificationEmpty")}
+          </div>
+        ) : (
+          rows.map((row) => (
+            <div
+              key={row.id}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 16,
+                padding: "14px 18px",
+                borderBottom: "1px solid var(--line)",
+                background: CRITICAL_ALERT_EVENTS.has(row.event)
+                  ? "rgba(220, 38, 38, 0.04)"
+                  : "transparent",
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{row.event}</div>
+                <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
+                  {row.tour ? `${t("adminColTour")} ${row.tour}` : "—"}
+                  {row.meta ? ` · ${row.meta}` : ""}
+                </div>
+                <div className="mono" style={{ fontSize: 11, color: "var(--muted-2)", marginTop: 4 }}>
+                  {row.at}
+                </div>
+              </div>
+              {row.jobId ? (
+                <button
+                  type="button"
+                  className="btn xs"
+                  onClick={() => {
+                    const j = store.getJob(row.jobId);
+                    if (j) onOpenJob?.(j);
+                    else showToast?.(t("adminNotificationOpenJob"), row.tour);
+                  }}
+                >
+                  {t("adminNotificationOpenJob")}
+                </button>
+              ) : null}
+            </div>
+          ))
+        )}
+      </section>
+    </div>
+  );
+};
+
 const FeaturesPane = () => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -5215,5 +5500,6 @@ Object.assign(window, {
   PartnerInvoicesPane: TourBillingPane,
   FinancePane,
   AuditPane,
+  NotificationFeedPane,
   FeaturesPane,
 });

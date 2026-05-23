@@ -512,11 +512,17 @@ const TabBar = ({ tab, setTab }) => {
   const unreadNews = store
     .getNews()
     .filter((n) => !n.readBy.includes(readerId)).length;
+  const unreadNotif = store.getDriverNotifications().filter((n) => !n.read).length;
   const items = [
     { id: "portal", label: t("marketplace"), I: Ic.Tab },
     { id: "mine", label: t("myJobs"), I: Ic.TabList },
     { id: "info", label: t("infopoint"), I: Ic.TabInfo, badge: unreadNews },
-    { id: "profile", label: t("profile"), I: Ic.TabUser },
+    {
+      id: "profile",
+      label: t("profile"),
+      I: Ic.TabUser,
+      badge: unreadNotif,
+    },
   ];
   return (
     <div className="tabbar">
@@ -1519,12 +1525,13 @@ const JobTourDocuments = ({ job }) => {
           className="btn xs"
           onClick={() => setCategoryModal(true)}
         >
-          <Ic.Plus /> {t("tourDocUploadButton")}
+          <Ic.Plus /> {t("tourDocUploadReceiptButton")}
         </button>
       ) : null}
       <input
         ref={inputRef}
         type="file"
+        capture="environment"
         accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
         style={{ display: "none" }}
         onChange={onPick}
@@ -1645,14 +1652,39 @@ const JobTourDocuments = ({ job }) => {
               }}
             >
               {TOUR_DOC_TYPES.map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  className="btn block"
-                  onClick={() => startUpload(type)}
-                >
-                  {displayTourDocType(type, t)}
-                </button>
+                <div key={type}>
+                  <button
+                    type="button"
+                    className="btn block"
+                    onClick={() => startUpload(type)}
+                  >
+                    {displayTourDocType(type, t)}
+                  </button>
+                  {type === "fuel_receipt" ? (
+                    <p
+                      style={{
+                        margin: "6px 0 0",
+                        fontSize: 11.5,
+                        color: "var(--muted)",
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {t("tourDocHelperFuel")}
+                    </p>
+                  ) : null}
+                  {type === "waiting_time_evidence" ? (
+                    <p
+                      style={{
+                        margin: "6px 0 0",
+                        fontSize: 11.5,
+                        color: "var(--muted)",
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {t("tourDocHelperWaiting")}
+                    </p>
+                  ) : null}
+                </div>
               ))}
             </div>
             <button
@@ -1684,6 +1716,7 @@ const JobUnlocked = ({
   onPerform,
 }) => {
   const { t } = useI18n();
+  const store = useAuthStore();
   const onReport = onReportProblem || onReturn;
   const onMarkPerformed = onPerform || onComplete;
   const isPerformed = job.status === "performed";
@@ -1759,6 +1792,27 @@ const JobUnlocked = ({
           )}
           <span className="label mono">{job.id}</span>
         </div>
+
+        <div
+          style={{
+            marginTop: 14,
+            padding: 12,
+            borderRadius: 10,
+            border: "1px solid var(--line)",
+            background: "var(--paper-2)",
+          }}
+        >
+          <Lbl>{t("orderingPartyLabel")}</Lbl>
+          <div style={{ fontWeight: 600, fontSize: 14, marginTop: 6 }}>
+            {job.orderingPartyName || job.customer || "—"}
+          </div>
+        </div>
+
+        {job.status === "performed" && store.getJobDisplayStatus(job) ? (
+          <div style={{ marginTop: 10 }}>
+            <Pill status="assigned">{store.getJobDisplayStatus(job)}</Pill>
+          </div>
+        ) : null}
 
         <div style={{ marginTop: 18 }}>
           <Lbl>{t("pickup")}</Lbl>
@@ -2648,6 +2702,55 @@ const InfoPane = () => {
   );
 };
 
+const DriverNotificationsList = () => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const rows = store.getDriverNotifications();
+  useEffectA(() => {
+    if (rows.some((r) => !r.read)) store.markDriverNotificationsRead();
+  }, []);
+  if (!rows.length) {
+    return (
+      <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--muted)" }}>
+        {t("driverNotificationsEmpty")}
+      </p>
+    );
+  }
+  return (
+    <ul
+      style={{
+        margin: "12px 0 0",
+        padding: 0,
+        listStyle: "none",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}
+    >
+      {rows.map((row) => (
+        <li
+          key={row.id}
+          style={{
+            padding: 10,
+            border: "1px solid var(--line)",
+            borderRadius: 8,
+            background: row.read ? "var(--paper)" : "var(--paper-2)",
+          }}
+        >
+          <div style={{ fontWeight: 600, fontSize: 13 }}>{row.title}</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+            {row.body}
+          </div>
+          <div className="mono" style={{ fontSize: 10, color: "var(--muted-2)", marginTop: 4 }}>
+            {row.createdAt}
+            {row.tour ? ` · ${row.tour}` : ""}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
 const ProfilePaneFull = () => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -2770,11 +2873,38 @@ const ProfilePaneFull = () => {
           >
             <input
               type="checkbox"
-              checked={!!prefs.push}
-              onChange={(e) => setPref({ push: e.target.checked })}
+              checked={prefs.pushEnabled !== false}
+              onChange={(e) => setPref({ pushEnabled: e.target.checked })}
             />
-            {t("pushNotificationsEnabled")}
+            {t("pushEnabledMaster")}
           </label>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginTop: 10,
+              fontSize: 13,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={prefs.notifyNewPublished !== false}
+              onChange={(e) =>
+                setPref({ notifyNewPublished: e.target.checked })
+              }
+            />
+            {t("pushNotifyNewPublished")}
+          </label>
+          <label className="field-label" style={{ marginTop: 12 }}>
+            {t("pushNotifyPostalPrefix")}
+          </label>
+          <input
+            className="input mono"
+            value={prefs.notifyPostalPrefix || ""}
+            onChange={(e) => setPref({ notifyPostalPrefix: e.target.value })}
+            placeholder={t("pushPostalPrefixHint")}
+          />
           <div
             className="dash-area"
             style={{
@@ -2789,6 +2919,10 @@ const ProfilePaneFull = () => {
           </div>
         </div>
       )}
+      <div className="card" style={{ padding: 14, marginTop: 14 }}>
+        <Lbl>{t("driverNotifications")}</Lbl>
+        <DriverNotificationsList />
+      </div>
       <button
         type="button"
         className="btn block"
@@ -2826,7 +2960,7 @@ const Infopoint = () => {
       </div>
       <div className="tabs" style={{ marginTop: 16 }}>
         {[
-          ["documents", t("documentsTitle")],
+          ["documents", t("infopointDocsTab")],
           ["news", t("infopointNewsTab"), unreadCount],
         ].map(([id, lbl, n]) => (
           <button
@@ -2987,6 +3121,7 @@ Object.assign(window, {
   AcceptanceModal,
   JobUnlocked,
   JobTourDocuments,
+  DriverNotificationsList,
   JobInvoiceUpload,
   MyJobs,
   ReportProblemSheet,

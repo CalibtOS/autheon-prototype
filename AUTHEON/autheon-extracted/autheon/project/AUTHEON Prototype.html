@@ -450,6 +450,16 @@
           );
         } else if (section === "audit") {
           body = <AuditPane showToast={showToast} />;
+        } else if (section === "notifications") {
+          body = (
+            <NotificationFeedPane
+              showToast={showToast}
+              onOpenJob={(j) => {
+                setActiveJob(j);
+                setSection("detail");
+              }}
+            />
+          );
         } else if (section === "features") {
           body = <FeaturesPane />;
         } else {

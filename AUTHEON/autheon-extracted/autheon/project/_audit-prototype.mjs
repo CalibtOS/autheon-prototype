@@ -1,5 +1,5 @@
 /**
- * Prototype audit: i18n parity, t() keys, PRD v1.5 forbidden legacy strings.
+ * Prototype audit: i18n parity, t() keys, PRD v1.5/v1.6 APIs, forbidden legacy strings.
  */
 import fs from "fs";
 import path from "path";
@@ -88,12 +88,36 @@ const critical = [
   "getBranding",
   "reloadDemo",
   "updateFinancial",
+  "getAdminEmailQueue",
+  "getDriverNotifications",
+  "markDriverNotificationsRead",
+  "pushDriverNotification",
+  "getJobDisplayStatus",
+  "markTourDocumentChecked",
 ];
 const miss = critical.filter((c) => !store.includes(c));
 if (miss.length) {
   out(`store.js missing APIs: ${miss.join(", ")}`);
   process.exitCode = 1;
-} else out("store.js PRD v1.5 APIs: present");
+} else out("store.js PRD v1.5+v1.6 APIs: present");
+
+const v16Needles = [
+  ["alternateContactPerson", "alternate contact on location"],
+  ['"Under Review"', "Under Review job summary"],
+  ["pushEnabled", "pushEnabled pref"],
+  ["notifyNewPublished", "notifyNewPublished pref"],
+  ["notifyPostalPrefix", "notifyPostalPrefix pref"],
+  ["cancellationActor", "cancellationActor field"],
+  ["function seedDriverNotifications", "seedDriverNotifications()"],
+  ["maybeNotifyPublishedJob", "maybeNotifyPublishedJob"],
+];
+out("");
+for (const [needle, label] of v16Needles) {
+  if (!store.includes(needle)) {
+    out(`PRD v1.6 store missing ${label}`);
+    process.exitCode = 1;
+  } else out(`PRD v1.6 store ${label}: present`);
+}
 
 const forbidden = [
   "return_requested",
@@ -168,6 +192,7 @@ if (emptySeedContacts) {
 const seedChecks = [
   ["function seedTourDocuments", "seedTourDocuments()"],
   ["function seedAdminEmailQueue", "seedAdminEmailQueue()"],
+  ["function seedDriverNotifications", "seedDriverNotifications()"],
   ["function validateSeedData", "validateSeedData()"],
   ["id: \"OP-005\"", "ordering party OP-005"],
   ["TD-SEED-001", "seed tour document rows"],
@@ -180,3 +205,19 @@ for (const [needle, label] of seedChecks) {
     process.exitCode = 1;
   } else out(`Seed structure ${label}: present`);
 }
+
+const admin = file("admin.jsx");
+if (!admin.includes("getAdminEmailQueue")) {
+  out("admin.jsx missing admin notification feed UI hook");
+  process.exitCode = 1;
+} else out("admin.jsx notification feed UI: present");
+
+if (!driver.includes("getDriverNotifications")) {
+  out("driver.jsx missing driver in-app notifications UI hook");
+  process.exitCode = 1;
+} else out("driver.jsx in-app notifications UI: present");
+
+if (!driver.includes("notifyNewPublished")) {
+  out("driver.jsx missing three push toggles");
+  process.exitCode = 1;
+} else out("driver.jsx three push toggles: present");
