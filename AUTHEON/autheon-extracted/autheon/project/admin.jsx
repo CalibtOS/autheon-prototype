@@ -2141,6 +2141,15 @@ const NewOrder = ({ onCancel, onFormChange }) => {
                     }}
                   />
                 </div>
+                <label className="field-label" style={{ marginTop: 10 }}>
+                  {t("newOrderContactPickup")}
+                </label>
+                <input
+                  className="input"
+                  placeholder={t("newOrderContactPersonPh")}
+                  value={form.cName1}
+                  onChange={(e) => set("cName1", e.target.value)}
+                />
                 {!form.pickupLocationId ? (
                   <label
                     style={{
@@ -2238,6 +2247,15 @@ const NewOrder = ({ onCancel, onFormChange }) => {
                     }}
                   />
                 </div>
+                <label className="field-label" style={{ marginTop: 10 }}>
+                  {t("newOrderContactDelivery")}
+                </label>
+                <input
+                  className="input"
+                  placeholder={t("newOrderContactPersonPh")}
+                  value={form.cName2}
+                  onChange={(e) => set("cName2", e.target.value)}
+                />
                 {!form.deliveryLocationId ? (
                   <label
                     style={{
