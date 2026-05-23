@@ -329,6 +329,22 @@ const Ic = {
       />
     </svg>
   ),
+  Bell: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M18 8a6 6 0 1 0-12 0c0 7-2 9-2 9h16s-2-2-2-9Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.5 19a2.5 2.5 0 0 0 5 0"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
   Refresh: () => (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
       <path
@@ -512,17 +528,11 @@ const TabBar = ({ tab, setTab }) => {
   const unreadNews = store
     .getNews()
     .filter((n) => !n.readBy.includes(readerId)).length;
-  const unreadNotif = store.getDriverNotifications().filter((n) => !n.read).length;
   const items = [
     { id: "portal", label: t("marketplace"), I: Ic.Tab },
     { id: "mine", label: t("myJobs"), I: Ic.TabList },
     { id: "info", label: t("infopoint"), I: Ic.TabInfo, badge: unreadNews },
-    {
-      id: "profile",
-      label: t("profile"),
-      I: Ic.TabUser,
-      badge: unreadNotif,
-    },
+    { id: "profile", label: t("profile"), I: Ic.TabUser },
   ];
   return (
     <div className="tabbar">
@@ -610,7 +620,7 @@ const JobCard = ({ job, onOpen }) => {
   );
 };
 
-const Portal = ({ filters, setFilters, openFilter, onOpenJob }) => {
+const Portal = ({ filters, setFilters, openFilter, onOpenJob, onOpenNotifications }) => {
   const { t, locale } = useI18n();
   const store = useAuthStore();
   const [sortDir, setSortDir] = useState("asc");
@@ -689,6 +699,9 @@ const Portal = ({ filters, setFilters, openFilter, onOpenJob }) => {
       </div>
     );
   }
+  const unreadNotif = store
+    .getDriverNotifications()
+    .filter((n) => !n.read).length;
   const all = store.getJobs().filter((j) => j.status === "published");
   const filtered = all.filter((j) => {
     const jobDate = parseDdMm(j.date);
@@ -775,16 +788,58 @@ const Portal = ({ filters, setFilters, openFilter, onOpenJob }) => {
         >
           {t("marketplace")}
         </h1>
-        <button
-          type="button"
-          className="btn icon sm"
-          style={{ position: "absolute", top: 8, right: 22 }}
-          title={t("refreshDemo")}
-          disabled={refreshing}
-          onClick={onRefresh}
+        <div
+          style={{
+            position: "absolute",
+            top: 8,
+            right: 22,
+            display: "flex",
+            gap: 8,
+          }}
         >
-          <Ic.Refresh />
-        </button>
+          <button
+            type="button"
+            className="btn icon sm"
+            style={{ position: "relative" }}
+            title={t("driverNotifications")}
+            aria-label={t("driverNotifications")}
+            onClick={() => onOpenNotifications?.()}
+          >
+            <Ic.Bell />
+            {unreadNotif > 0 ? (
+              <span
+                className="mono"
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  right: -4,
+                  minWidth: 16,
+                  height: 16,
+                  padding: "0 4px",
+                  borderRadius: 8,
+                  background: "var(--primary)",
+                  color: "#fff",
+                  fontSize: 9,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {unreadNotif > 9 ? "9+" : unreadNotif}
+              </span>
+            ) : null}
+          </button>
+          <button
+            type="button"
+            className="btn icon sm"
+            title={t("refreshDemo")}
+            disabled={refreshing}
+            onClick={onRefresh}
+          >
+            <Ic.Refresh />
+          </button>
+        </div>
         <div className="label" style={{ marginTop: 4 }}>
           {store.getAppDisplayName()} · {all.length} {t("openTours")} ·{" "}
           {new Date().toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", {
@@ -2727,13 +2782,15 @@ const InfoPane = () => {
   );
 };
 
-const DriverNotificationsList = () => {
+const DriverNotificationsList = ({ markReadOnMount = false }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const rows = store.getDriverNotifications();
   useEffectA(() => {
-    if (rows.some((r) => !r.read)) store.markDriverNotificationsRead();
-  }, []);
+    if (markReadOnMount && rows.some((r) => !r.read)) {
+      store.markDriverNotificationsRead();
+    }
+  }, [markReadOnMount]);
   if (!rows.length) {
     return (
       <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--muted)" }}>
@@ -2773,6 +2830,37 @@ const DriverNotificationsList = () => {
         </li>
       ))}
     </ul>
+  );
+};
+
+const DriverNotificationsPane = ({ onBack }) => {
+  const { t } = useI18n();
+  return (
+    <>
+      <div
+        style={{
+          padding: "0 18px 14px",
+          borderBottom: "1px solid var(--line)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button type="button" className="btn icon sm" onClick={onBack}>
+            <Ic.Back />
+          </button>
+          <div style={{ flex: 1 }}>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
+              {t("driverNotifications")}
+            </h2>
+            <div className="label" style={{ marginTop: 2 }}>
+              {t("driverNotificationsSub")}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="scroll" style={{ padding: "12px 18px 24px" }}>
+        <DriverNotificationsList markReadOnMount />
+      </div>
+    </>
   );
 };
 
@@ -2932,10 +3020,6 @@ const ProfilePaneFull = () => {
           >
             {t("pushSupportNotice")}
           </div>
-      </div>
-      <div className="card" style={{ padding: 14, marginTop: 14 }}>
-        <Lbl>{t("driverNotifications")}</Lbl>
-        <DriverNotificationsList />
       </div>
       <button
         type="button"
@@ -3136,6 +3220,7 @@ Object.assign(window, {
   JobUnlocked,
   JobTourDocuments,
   DriverNotificationsList,
+  DriverNotificationsPane,
   JobInvoiceUpload,
   MyJobs,
   ReportProblemSheet,

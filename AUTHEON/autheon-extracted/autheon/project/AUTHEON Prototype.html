@@ -63,6 +63,7 @@
         const [returnSheet, setReturnSheet] = useState(null);
         const [pendingNotice, setPendingNotice] = useState(null);
         const [banner, setBanner] = useState(null);
+        const [showNotifications, setShowNotifications] = useState(false);
 
         const handleOpenJob = (j) => {
           const portalLocked =
@@ -77,7 +78,13 @@
         const job = activeJob ? store.getJob(activeJob.id) : null;
 
         let body;
-        if (activeJob && job) {
+        if (showNotifications) {
+          body = (
+            <DriverNotificationsPane
+              onBack={() => setShowNotifications(false)}
+            />
+          );
+        } else if (activeJob && job) {
           if (activeJob.mode === "locked") {
             body = (
               <JobLocked
@@ -107,6 +114,7 @@
               setFilters={setFilters}
               openFilter={() => setShowFilter(true)}
               onOpenJob={handleOpenJob}
+              onOpenNotifications={() => setShowNotifications(true)}
             />
           );
         } else if (tab === "mine") {
@@ -151,7 +159,9 @@
                   )}
                   {body}
                 </div>
-                {!activeJob && <TabBar tab={tab} setTab={setTab} />}
+                {!activeJob && !showNotifications && (
+                  <TabBar tab={tab} setTab={setTab} />
+                )}
                 {showFilter && (
                   <FilterSheet
                     filters={filters}
