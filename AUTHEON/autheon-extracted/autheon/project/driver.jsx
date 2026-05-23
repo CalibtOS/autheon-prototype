@@ -1498,6 +1498,33 @@ const JobTourDocuments = ({ job }) => {
     );
   };
   if (!active) return null;
+
+  if (!tourPerformed) {
+    return (
+      <div
+        style={{
+          marginTop: 16,
+          padding: 14,
+          borderRadius: 12,
+          border: "1px solid var(--line)",
+          background: "var(--paper-2)",
+        }}
+      >
+        <Lbl>{t("tourDocumentsSection")}</Lbl>
+        <p
+          style={{
+            fontSize: 12,
+            color: "var(--muted)",
+            margin: "8px 0 0",
+            lineHeight: 1.55,
+          }}
+        >
+          {t("tourDocAfterPerformedHint")}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -1517,17 +1544,15 @@ const JobTourDocuments = ({ job }) => {
           lineHeight: 1.55,
         }}
       >
-        {tourPerformed ? t("tourDocUploadHint") : t("tourDocAfterPerformedHint")}
+        {t("tourDocUploadHint")}
       </p>
-      {tourPerformed ? (
-        <button
-          type="button"
-          className="btn xs"
-          onClick={() => setCategoryModal(true)}
-        >
-          <Ic.Plus /> {t("tourDocUploadReceiptButton")}
-        </button>
-      ) : null}
+      <button
+        type="button"
+        className="btn xs"
+        onClick={() => setCategoryModal(true)}
+      >
+        <Ic.Plus /> {t("tourDocUploadReceiptButton")}
+      </button>
       <input
         ref={inputRef}
         type="file"
@@ -2821,9 +2846,8 @@ const ProfilePaneFull = () => {
           {t("masterDataChangeNotice")}
         </p>
       </div>
-      {store.getFeatureFlag("notificationPreferences") && (
-        <div className="card" style={{ padding: 14, marginTop: 14 }}>
-          <Lbl>{t("notificationPreferences")}</Lbl>
+      <div className="card" style={{ padding: 14, marginTop: 14 }}>
+        <Lbl>{t("notificationPreferences")}</Lbl>
           <label className="field-label" style={{ marginTop: 14 }}>
             {t("pickupPostalArea")}
           </label>
@@ -2917,8 +2941,7 @@ const ProfilePaneFull = () => {
           >
             {t("pushSupportNotice")}
           </div>
-        </div>
-      )}
+      </div>
       <div className="card" style={{ padding: 14, marginTop: 14 }}>
         <Lbl>{t("driverNotifications")}</Lbl>
         <DriverNotificationsList />

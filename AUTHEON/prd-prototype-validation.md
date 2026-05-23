@@ -35,7 +35,7 @@ Production implementation (database, auth, real PDF template, file storage, map 
 | 7 | Update master data from order entry | Done (checkboxes + `updateAddress` / `updateOrderingParty`) |
 | 8 | `driver_visibility_matrix` | Done (ordering party in `JobUnlocked` only) |
 | 9 | Display labels Under review / Completed | Done (`getJobDisplayStatus` in admin overview) |
-| 10 | Admin mark document checked | Done (`markTourDocumentChecked` in tour billing) |
+| 10 | Admin document review | Done (Accept / Reject only; Mark checked removed as duplicate of Accept) |
 | 11 | Upload document / receipt CTA | Done (`tourDocUploadReceiptButton`) |
 | 12 | Document type helper notices | Done (fuel + waiting in upload modal) |
 | 13 | Re-upload admin alert | Done (`tour_document_reuploaded`) |

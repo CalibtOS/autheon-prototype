@@ -4372,19 +4372,6 @@ const TourBillingPane = ({
                   >
                     {t("invoiceView")}
                   </button>
-                  {actions.canMarkChecked ? (
-                    <button
-                      type="button"
-                      className="btn xs"
-                      style={{ marginLeft: 6 }}
-                      onClick={() => {
-                        const r = store.markTourDocumentChecked(u.id);
-                        if (r.ok) showToast?.(t("markDocumentChecked"), u.fileName);
-                      }}
-                    >
-                      {t("markDocumentChecked")}
-                    </button>
-                  ) : null}
                   {actions.canAccept ? (
                     <button
                       type="button"
@@ -5270,10 +5257,6 @@ const FLAG_I18N = {
     label: "adminFeatureFinanceLabel",
     desc: "adminFeatureFinanceDesc",
   },
-  notificationPreferences: {
-    label: "adminFeatureNotifLabel",
-    desc: "adminFeatureNotifDesc",
-  },
 };
 
 const CRITICAL_ALERT_EVENTS = new Set([
@@ -5426,7 +5409,8 @@ const FeaturesPane = () => {
         {t("adminFeatureFlagsBlurb")}
       </p>
       <section className="card" style={{ padding: "0 18px", marginTop: 14 }}>
-        {Object.entries(flags).map(([key, enabled]) => {
+        {Object.keys(FLAG_I18N).map((key) => {
+          const enabled = !!flags[key];
           const meta = FLAG_I18N[key];
           return (
             <div

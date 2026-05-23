@@ -67,7 +67,6 @@ window.AuthStore = (() => {
       canDownload: true,
       canAccept: pending,
       canReject: pending,
-      canMarkChecked: pending,
       canRequireCorrection: st === "rejected",
       canReplace:
         st === "uploaded" || st === "rejected" || st === "correction_required",
@@ -1548,7 +1547,6 @@ window.AuthStore = (() => {
   const featureFlags = {
     documentsModule: true,
     financeModule: false,
-    notificationPreferences: true,
     ...flagDefaults,
   };
 
@@ -3455,7 +3453,6 @@ window.AuthStore = (() => {
       Object.assign(featureFlags, {
         documentsModule: true,
         financeModule: false,
-        notificationPreferences: true,
         ...reloadOnlyFlags,
       });
       log("demo_reloaded", "System", "Transport Portal", "PRD v1.6 seed");
