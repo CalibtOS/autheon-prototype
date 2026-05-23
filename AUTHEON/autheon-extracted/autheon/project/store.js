@@ -1545,7 +1545,6 @@ window.AuthStore = (() => {
   };
   const { appDisplayName: _legacyName, ...flagDefaults } = legacyFlagDefaults;
   const featureFlags = {
-    documentsModule: true,
     financeModule: false,
     ...flagDefaults,
   };
@@ -3453,7 +3452,6 @@ window.AuthStore = (() => {
       const reloadFlags = window.AUTHEON_FLAG_DEFAULTS || {};
       const { appDisplayName: _n, ...reloadOnlyFlags } = reloadFlags;
       Object.assign(featureFlags, {
-        documentsModule: true,
         financeModule: false,
         ...reloadOnlyFlags,
       });

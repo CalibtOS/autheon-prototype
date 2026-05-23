@@ -5249,10 +5249,6 @@ const AuditPane = ({ showToast }) => {
 };
 
 const FLAG_I18N = {
-  documentsModule: {
-    label: "adminFeatureDocumentsLabel",
-    desc: "adminFeatureDocumentsDesc",
-  },
   financeModule: {
     label: "adminFeatureFinanceLabel",
     desc: "adminFeatureFinanceDesc",
