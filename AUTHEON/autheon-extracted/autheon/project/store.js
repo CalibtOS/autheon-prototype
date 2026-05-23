@@ -1134,11 +1134,11 @@ window.AuthStore = (() => {
         phone: "+49 170 4400228",
         status: "Active",
         prefs: {
-          startPlz: "80",
-          endPlz: "",
+          notifyPostalPrefix: "80",
           vehicle: "PKW",
           axle: "All",
-          push: true,
+          pushEnabled: true,
+          notifyNewPublished: true,
         },
       },
       {
@@ -1151,11 +1151,11 @@ window.AuthStore = (() => {
         phone: "+49 172 3300301",
         status: "Active",
         prefs: {
-          startPlz: "60",
-          endPlz: "",
+          notifyPostalPrefix: "60",
           vehicle: "Transporter",
           axle: AXLE_THIRD,
-          push: true,
+          pushEnabled: true,
+          notifyNewPublished: true,
         },
       },
       {
@@ -1168,11 +1168,11 @@ window.AuthStore = (() => {
         phone: "+49 171 991177",
         status: "Blocked",
         prefs: {
-          startPlz: "10",
-          endPlz: "",
+          notifyPostalPrefix: "10",
           vehicle: "SUV",
           axle: AXLE_OWN,
-          push: false,
+          pushEnabled: false,
+          notifyNewPublished: false,
         },
       },
     ];
@@ -1640,7 +1640,9 @@ window.AuthStore = (() => {
       pushEnabled: p.pushEnabled != null ? !!p.pushEnabled : legacyPush,
       notifyNewPublished:
         p.notifyNewPublished != null ? !!p.notifyNewPublished : legacyPush,
-      notifyPostalPrefix: String(p.notifyPostalPrefix || p.startPlz || "").trim(),
+      notifyPostalPrefix: String(
+        p.notifyPostalPrefix || p.startPlz || "",
+      ).trim(),
       push: legacyPush,
     };
   }

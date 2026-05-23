@@ -2849,15 +2849,6 @@ const ProfilePaneFull = () => {
       <div className="card" style={{ padding: 14, marginTop: 14 }}>
         <Lbl>{t("notificationPreferences")}</Lbl>
           <label className="field-label" style={{ marginTop: 14 }}>
-            {t("pickupPostalArea")}
-          </label>
-          <input
-            className="input mono"
-            value={prefs.startPlz || ""}
-            onChange={(e) => setPref({ startPlz: e.target.value })}
-            placeholder="e.g. 80"
-          />
-          <label className="field-label" style={{ marginTop: 12 }}>
             {t("vehicleType")}
           </label>
           <select
