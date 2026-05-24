@@ -2607,8 +2607,6 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   );
 };
 
-const ReturnSheet = ReportProblemSheet;
-
 const PendingNotice = ({ onClose, kind }) => {
   const { t } = useI18n();
   const isCancel = kind === "cancel";
@@ -2756,7 +2754,7 @@ const InfoPane = () => {
       {[
         [t("autheonWorkflow"), t("autheonWorkflowSub")],
         [t("bindingAcceptanceInfo"), t("bindingAcceptanceInfoSub")],
-        [t("returnsIncidents"), t("returnsIncidentsSub")],
+        [t("reportProblemGuide"), t("reportProblemGuideSub")],
         [t("settlementRhythm"), t("settlementRhythmSub")],
         [t("dispatcherHotline"), t("dispatcherHotlineSub")],
       ].map(([label, sub]) => (
@@ -3224,7 +3222,6 @@ Object.assign(window, {
   JobInvoiceUpload,
   MyJobs,
   ReportProblemSheet,
-  ReturnSheet,
   PendingNotice,
   ProfilePane,
   InfoPane,

@@ -1,7 +1,8 @@
 # AUTHEON — Sitemap (Driver PWA + Admin Backend)
 
 > Product: **AUTHEON — Vehicle Transport Platform**  
-> Version analyzed: **v1.0 · Client preview (MOCK DATA)**  
+> Version analyzed: **PRD v1.6 prototype · Client preview (MOCK DATA)**  
+> Domain glossary: `AUTHEON/autheon-extracted/autheon/project/DOMAIN.md`  
 > Two distinct surfaces share one design system, one auth domain, and one shell:
 >
 > - **Driver PWA** (mobile-first, for company-employed drivers / service partners)
@@ -22,7 +23,7 @@
   - Surface switch: `Driver PWA` ↔ `Admin Backend`
   - Language switch: `EN` ↔ `DE` (full bilingual copy; mobile nav becomes `MARKTPLATZ / MEINE TOUREN / INFO / PROFIL`; admin "New job" form is fully German "Neuer Auftrag")
   - Theme switch: `Light` ↔ `Dark`
-  - Build info: `v1.0 · Client preview`
+  - Build info: `v1.6 · Client preview`
   - Data badge: `MOCK DATA`
 - Sub-bar caption (mode-dependent)
   - Driver PWA: `DRIVER PWA · RESPONSIVE PREVIEW · TAP TO INTERACT`
@@ -180,16 +181,15 @@ Phone status bar mock (9:41 · 5G · battery) is part of every screen.
 - `**▶ What do statuses mean?`** expandable explainer with full legend:
   - Phase 1 rules paragraph
   - Side note: "Driver account Active/Blocked and finance payment labels are separate from tour lifecycle status."
-  - One row per status (badge + description): Draft, Published, Assigned, Accepted, Return requested, Completed, Cancelled
+  - One row per status (badge + description): Draft, Published, Assigned, Accepted, Performed, Special case, Cancelled (display labels **Under review** / **Completed** come from document review + settlement, not extra operational statuses)
 - **Toolbar**
   - Search: `Search tour, customer, driver, …`
   - `▼ Filters` (toggles the quick-filter row)
   - `Status: all`
-  - `Return requested` shortcut
   - Density switch: `Comfort` / `Dense`
   - Sort: `↕ TOUR NO. ↓`
-- **Quick filters row** (expanded): `Draft` `Published` `Assigned` `Accepted` `Return requested` `Completed` `Cancelled` · `Reset`
-- **Jobs table** — columns: `Tour`, `Customer`, `Origin` (postcode), `Destination` (postcode), `Appointment` (`DD.MM. · HH-HH` or `· flex`), `Vehicle`, `Driver` (name or `—`), `Status` (badge), `Return` (`OPEN` / `—`)
+- **Quick filters row** (expanded): `Draft` `Published` `Assigned` `Accepted` `Performed` `Special case` `Cancelled` · `Reset`
+- **Jobs table** — columns: `Tour`, `Ordering party`, `Origin` (postcode), `Destination` (postcode), `Appointment` (`DD.MM. · HH-HH` or `· flex`), `Vehicle`, `Driver` (name or `—`), `Status` (badge + optional display summary), `Docs`
 - **Pagination**: `Showing 1–12 of 12 · Page 1 / 1` · `Rows per page` (25 / 50 / 100) · `‹ 1 2 3 … 1 ›`
 
 ### 2.3 Jobs — Detail (`/admin/jobs/:tour`)
@@ -272,9 +272,9 @@ Bottom action bar (state-dependent)
   - Per admin: name, role + email, status badge, `Trigger password reset` button
   - Example users: Anna Bauer (Dispatcher), Lukas Reimann (Operations Lead), driver list incl. Jordan Blake (Active) and Mira Vogt (Blocked)
 
-### 2.6 Customers (`/admin/customers`)
+### 2.6 Ordering parties (`/admin/orderingparties`)
 
-- Title `Customer master data`
+- Title `Ordering parties` (master data for shippers who commission tours)
 - Table: Customer (name + tag e.g. `DEALER GROUP` / `FLEET CUSTOMER`), Reusable pickup, Reusable delivery, Contact (name + phone)
 - Right side **Add customer** card: Name input + `Create` button + footnote "Historical PDFs are not changed unless a job PDF is explicitly regenerated."
 

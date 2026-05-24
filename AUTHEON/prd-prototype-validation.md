@@ -61,7 +61,13 @@ Same task IDs as v1.5; v1.6 strengthens Tasks 4, 5, 7, 8, 10, 18–20, 22, 26, 2
 node AUTHEON/autheon-extracted/autheon/project/_audit-prototype.mjs
 ```
 
-Expect: i18n EN/DE parity, PRD v1.5+v1.6 store APIs, v1.6 document summary string `Under Review`, three push pref keys, `alternateContactPerson`, no forbidden v1.4 strings.
+Expect: i18n EN/DE parity, PRD v1.5+v1.6 store APIs, v1.6 document summary string `Under Review`, three push pref keys, `alternateContactPerson`, no forbidden v1.4 strings, `DOMAIN.md` present, no legacy identifiers (`ReturnSheet`, `partner_invoice`, `use_partner_invoices`).
+
+## Clarity pass (2026-05)
+
+- Terminology: **Tour documents** + **Billing invoice** (type `invoice`); **Report Problem** (not return request).
+- Code: `reportProblemJob` state, `onOpenTourBilling`, `use_tour_documents` financial guard.
+- Removed v1.4 i18n and unused partner-invoice copy; see `DOMAIN.md` for operational vs display statuses.
 
 ## Remaining production work
 

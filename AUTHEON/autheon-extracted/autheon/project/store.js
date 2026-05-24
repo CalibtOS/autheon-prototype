@@ -1,7 +1,8 @@
 // AUTHEON — Shared store (PRD v1.6 prototype). Target spec: AUTHEON/prd_updated_v2.json
+// Domain glossary: DOMAIN.md
 // Single source of truth for Driver + Admin views.
 // Operational statuses: draft, published, assigned, accepted, performed, cancelled, special_case.
-// Ordering party, pickup, and delivery are separate; legacy flat fields are derived for tables.
+// pickup/delivery/orderingPartyName are canonical; syncDisplayFields() denormalizes flat fields for tables/CSV.
 
 window.AuthStore = (() => {
   const listeners = new Set();
@@ -36,7 +37,6 @@ window.AuthStore = (() => {
 
   function normalizeTourDocumentReviewStatus(st) {
     const s = String(st || "").trim();
-    if (s === "under_review" || s === "missing") return "uploaded";
     if (DOC_REVIEW.includes(s)) return s;
     return "uploaded";
   }
@@ -45,12 +45,11 @@ window.AuthStore = (() => {
     return normalizeTourDocumentReviewStatus(reviewStatus) === "correction_required";
   }
 
-  /** Canonical billing invoice type (legacy `partner_invoice` is normalized on write/load). */
+  /** Canonical billing invoice document type for tour uploads. */
   const TOUR_DOC_TYPE_INVOICE = "invoice";
 
   function normalizeTourDocumentType(type) {
     const t = String(type || "").trim();
-    if (t === "partner_invoice") return TOUR_DOC_TYPE_INVOICE;
     return t || TOUR_DOC_TYPE_INVOICE;
   }
 
@@ -86,7 +85,6 @@ window.AuthStore = (() => {
 
   function normalizePaymentStatus(st) {
     const s = String(st || "").trim();
-    if (s === "Unpaid") return "Invoice Missing";
     if (PAYMENT_STATUSES.includes(s)) return s;
     return "Invoice Missing";
   }
@@ -151,7 +149,7 @@ window.AuthStore = (() => {
       cancellationActor: null,
       cancellationReason: "",
       cancellationReasonText: "",
-      // Legacy flat fields (syncDisplayFields)
+      // Denormalized display fields (syncDisplayFields)
       customer: "",
       startCity: "",
       startPlz: "",
@@ -199,6 +197,7 @@ window.AuthStore = (() => {
     return Number.isFinite(v) ? v : 0;
   }
 
+  /** Copy structured pickup/delivery/ordering party into flat fields for tables and CSV. */
   function syncDisplayFields(job) {
     if (!job) return job;
     const pu = job.pickup || mkLocation();
@@ -610,7 +609,7 @@ window.AuthStore = (() => {
       {
         id: "NEWS-001",
         title: "New document upload flow",
-        body: "After marking a tour performed, upload partner invoice and delivery proof from the tour detail screen.",
+        body: "After marking a tour performed, upload your billing invoice and delivery proof from the tour detail screen.",
         publishedAt: "05.05. 08:00",
         visible: true,
         readBy: [],
@@ -1394,7 +1393,7 @@ window.AuthStore = (() => {
     return `${prefix}-${String(max + 1).padStart(3, "0")}`;
   }
 
-  /** Restore target when admin continues a special case (fallback for legacy rows). */
+  /** Restore target when admin continues a special case (fallback if statusBeforeSpecialCase missing). */
   function inferStatusBeforeSpecialCase(job) {
     const fromReport = job?.specialCaseReport?.statusBeforeSpecialCase;
     if (fromReport && ["assigned", "accepted"].includes(fromReport))
@@ -1685,7 +1684,7 @@ window.AuthStore = (() => {
 
   function queuePushNotification(job, context) {
     maybeNotifyPublishedJob(job);
-    log("notification_queued", "System", job?.tour || "", context || "legacy");
+    log("notification_queued", "System", job?.tour || "", context || "system");
   }
 
   function pushDriverNotification(payload) {
@@ -1845,6 +1844,151 @@ window.AuthStore = (() => {
     });
   }
 
+  function draftAxleToForm(axle) {
+    return axle === AXLE_THIRD ? "Fremdachse" : "Eigenachse";
+  }
+
+  /** Map a draft job to the admin new-order form shape (includes jobId for updates). */
+  function jobToDraftForm(job) {
+    if (!job) return null;
+    const pu = job.pickup || mkLocation();
+    const del = job.delivery || mkLocation();
+    return {
+      jobId: job.id,
+      orderingPartyId: job.orderingPartyId || "",
+      customer: job.orderingPartyName || job.customer || "",
+      startCity: pu.city || job.startCity || "",
+      startPlz: pu.postalCode || job.startPlz || "",
+      startStreet: formatStreet(pu) || job.startStreet || pu.street || "",
+      startCompany: pu.name || job.startCompany || "",
+      endCity: del.city || job.endCity || "",
+      endPlz: del.postalCode || job.endPlz || "",
+      endStreet: formatStreet(del) || job.endStreet || del.street || "",
+      endCompany: del.name || job.endCompany || "",
+      distance:
+        job.distanceKm != null && job.distanceKm !== ""
+          ? String(job.distanceKm)
+          : job.distanceManualOverride != null
+            ? String(job.distanceManualOverride)
+            : "",
+      distanceKm: job.distanceKm,
+      distanceManualOverride: job.distanceManualOverride,
+      pickupDate: pu.date || "",
+      pickupFrom: pu.windowFrom || "",
+      pickupTo: pu.windowTo || "",
+      pickupFlex: !!pu.windowFlex,
+      deliveryDate: del.date || "",
+      deliveryFrom: del.windowFrom || "",
+      deliveryTo: del.windowTo || "",
+      deliveryFlex: !!del.windowFlex,
+      vehicleType: job.vehicle || "",
+      brand: job.vehicleModel || "",
+      model: "",
+      plate: job.plate || "",
+      vin: job.vin || "",
+      cName1: pu.contactPerson || "",
+      cPhone1: pu.phone || "",
+      cName2: del.contactPerson || "",
+      cPhone2: del.phone || "",
+      pickupAlternateContact: pu.alternateContactPerson || "",
+      pickupSecondPhone: pu.secondPhone || "",
+      pickupEmail: pu.email || "",
+      pickupContactNotes: pu.notes || "",
+      deliveryAlternateContact: del.alternateContactPerson || "",
+      deliverySecondPhone: del.secondPhone || "",
+      deliveryEmail: del.email || "",
+      deliveryContactNotes: del.notes || "",
+      showPickupExtraContact: !!(
+        pu.alternateContactPerson ||
+        pu.secondPhone ||
+        pu.email ||
+        pu.notes
+      ),
+      showDeliveryExtraContact: !!(
+        del.alternateContactPerson ||
+        del.secondPhone ||
+        del.email ||
+        del.notes
+      ),
+      pickupLocationId: pu.locationId || "",
+      deliveryLocationId: del.locationId || "",
+      driverCompensation:
+        job.driverCompensation != null ? String(job.driverCompensation) : "",
+      expenses: job.expenses != null ? String(job.expenses) : "",
+      notes: job.notes || "",
+      notesDriver: job.notesDriver || "",
+      axle: draftAxleToForm(job.axle),
+      category: job.category || "Standard",
+      updatePickupMaster: false,
+      updateDeliveryMaster: false,
+      updateOrderingPartyMaster: false,
+      savePickupToMaster: false,
+      saveDeliveryToMaster: false,
+    };
+  }
+
+  function composeDraftFieldsFromForm(form) {
+    const opId = form.orderingPartyId || "";
+    const op =
+      orderingParties.find((x) => x.id === opId) ||
+      orderingParties.find((x) => x.name === form.customer);
+    const partnerOffer =
+      parseFloat(String(form.driverCompensation || "0").replace(",", ".")) ||
+      0;
+    const distRaw =
+      form.distanceKm ?? form.distance ?? form.distanceManualOverride;
+    const dist = parseInt(distRaw, 10) || 0;
+    const pickup =
+      form.pickup && typeof form.pickup === "object"
+        ? mkLocation(form.pickup)
+        : locationFromForm("pickup", form);
+    const delivery =
+      form.delivery && typeof form.delivery === "object"
+        ? mkLocation(form.delivery)
+        : locationFromForm("delivery", form);
+    if (!pickup.city && form.startCity) {
+      Object.assign(pickup, {
+        city: form.startCity,
+        postalCode: form.startPlz,
+        street: form.startStreet,
+        name: form.startCompany || form.customer,
+      });
+    }
+    if (form.pickupLocationId) pickup.locationId = form.pickupLocationId;
+    if (!delivery.city && form.endCity) {
+      Object.assign(delivery, {
+        city: form.endCity,
+        postalCode: form.endPlz,
+        street: form.endStreet,
+        name: form.endCompany,
+      });
+    }
+    if (form.deliveryLocationId) delivery.locationId = form.deliveryLocationId;
+    return {
+      orderingPartyId: op?.id || opId,
+      orderingPartyName: op?.name || form.customer || "New ordering party",
+      pickup,
+      delivery,
+      distanceKm: dist,
+      distanceManualOverride:
+        form.distanceManualOverride != null
+          ? form.distanceManualOverride
+          : null,
+      category: form.category || "Standard",
+      vehicle: form.vehicleType || form.vehicle || "PKW",
+      vehicleModel:
+        [form.brand, form.model].filter(Boolean).join(" ").trim() || "—",
+      plate: form.plate,
+      vin: form.vin,
+      axle: normalizeAxle(form.axle),
+      driverCompensation: partnerOffer,
+      expenses:
+        parseFloat(String(form.expenses || "").replace(",", ".")) || null,
+      notes: form.notes,
+      notesDriver: form.notesDriver || "",
+    };
+  }
+
   function parseDottedDate(s) {
     const m = String(s || "")
       .trim()
@@ -1932,6 +2076,7 @@ window.AuthStore = (() => {
     AXLE_OWN,
     AXLE_THIRD,
     syncDisplayFields,
+    jobToDraftForm,
 
     statusLabel: (s) => {
       const key = STATUSES[s]?.i18n;
@@ -2677,45 +2822,11 @@ window.AuthStore = (() => {
     },
 
     saveDraft(form) {
-      const seq = nextTourSeq++;
-      const tour = `${String(seq).padStart(4, "0")}-26`;
-      const id = `A-2026-${String(seq).padStart(5, "0")}`;
+      const editId = String(form.jobId || form.id || "").trim();
       const opId = form.orderingPartyId || "";
       const op =
         orderingParties.find((x) => x.id === opId) ||
         orderingParties.find((x) => x.name === form.customer);
-      const partnerOffer =
-        parseFloat(String(form.driverCompensation || "0").replace(",", ".")) ||
-        0;
-      const distRaw =
-        form.distanceKm ?? form.distance ?? form.distanceManualOverride;
-      const dist = parseInt(distRaw, 10) || 0;
-      const pickup =
-        form.pickup && typeof form.pickup === "object"
-          ? mkLocation(form.pickup)
-          : locationFromForm("pickup", form);
-      const delivery =
-        form.delivery && typeof form.delivery === "object"
-          ? mkLocation(form.delivery)
-          : locationFromForm("delivery", form);
-      if (!pickup.city && form.startCity) {
-        Object.assign(pickup, {
-          city: form.startCity,
-          postalCode: form.startPlz,
-          street: form.startStreet,
-          name: form.startCompany || form.customer,
-        });
-      }
-      if (form.pickupLocationId) pickup.locationId = form.pickupLocationId;
-      if (!delivery.city && form.endCity) {
-        Object.assign(delivery, {
-          city: form.endCity,
-          postalCode: form.endPlz,
-          street: form.endStreet,
-          name: form.endCompany,
-        });
-      }
-      if (form.deliveryLocationId) delivery.locationId = form.deliveryLocationId;
       if (form.updateOrderingPartyMaster && op?.id) {
         api.updateOrderingParty(op.id, {
           name: form.customer || op.name,
@@ -2776,34 +2887,40 @@ window.AuthStore = (() => {
           phone: form.cPhone2,
         });
       }
+
+      const fields = composeDraftFieldsFromForm(form);
+
+      if (editId) {
+        const j = jobs.find((x) => x.id === editId);
+        if (!j || j.status !== "draft") return null;
+        Object.assign(j, fields);
+        j.isNew = false;
+        if (!j.distanceKm) {
+          j.distanceKm = estimateDistanceKm(j);
+          j.distanceEstimateSource = "estimate";
+        }
+        syncDisplayFields(j);
+        log(
+          "job_draft_updated",
+          DEMO_ADMIN,
+          j.tour,
+          "Draft updated from admin form",
+        );
+        emit();
+        return j;
+      }
+
+      const seq = nextTourSeq++;
+      const tour = `${String(seq).padStart(4, "0")}-26`;
+      const id = `A-2026-${String(seq).padStart(5, "0")}`;
       const newJob = mk({
         id,
         tour,
-        orderingPartyId: op?.id || opId,
-        orderingPartyName: op?.name || form.customer || "New ordering party",
-        pickup,
-        delivery,
-        distanceKm: dist,
-        distanceManualOverride:
-          form.distanceManualOverride != null
-            ? form.distanceManualOverride
-            : null,
-        category: form.category || "Standard",
-        vehicle: form.vehicleType || form.vehicle || "PKW",
-        vehicleModel:
-          [form.brand, form.model].filter(Boolean).join(" ").trim() || "—",
-        plate: form.plate,
-        vin: form.vin,
-        axle: normalizeAxle(form.axle),
-        driverCompensation: partnerOffer,
+        ...fields,
         revenue: null,
         netAmount: null,
         vatRate: 19,
         grossAmount: null,
-        expenses:
-          parseFloat(String(form.expenses || "").replace(",", ".")) || null,
-        notes: form.notes,
-        notesDriver: form.notesDriver || "",
         status: "draft",
         isNew: true,
         createdAt: nowStamp(),
@@ -3250,7 +3367,7 @@ window.AuthStore = (() => {
         patch.invoiceReceived !== undefined ||
         patch.invoiceNumber !== undefined
       ) {
-        return { ok: false, reason: "use_partner_invoices" };
+        return { ok: false, reason: "use_tour_documents" };
       }
       const allowed = [
         "revenue",
@@ -3274,7 +3391,7 @@ window.AuthStore = (() => {
         "financial_updated",
         DEMO_ADMIN,
         j.tour,
-        "Ledger fields updated (invoice via partner invoices)",
+        "Ledger fields updated (invoice via tour documents)",
       );
       emit();
       return { ok: true };

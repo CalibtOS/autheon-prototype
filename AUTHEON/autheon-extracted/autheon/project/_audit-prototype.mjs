@@ -126,6 +126,12 @@ const forbidden = [
   "completeJob",
   "getCustomers",
   "getInvoiceUploads",
+  "ReturnSheet",
+  "returnSheet",
+  "use_partner_invoices",
+  "partner_invoice",
+  "onOpenPartnerInvoices",
+  "openPartnerInvoicesForJob",
 ];
 const scanFiles = ["store.js", "driver.jsx", "admin.jsx", "AUTHEON Prototype.html"];
 for (const f of scanFiles) {
@@ -160,10 +166,14 @@ if (missingDocTypes.length) {
 const staleCopy = [
   "Request return",
   "Return requested",
+  "Return-requested",
+  "rückgabeangefragte",
   "return window",
   "return deadline",
   "return rules",
   "Mark completed",
+  "Partner invoices",
+  "Partnerrechnungen",
 ];
 const copyFiles = ["i18n.js", "driver.jsx", "admin.jsx", "AUTHEON Prototype.html"];
 for (const f of copyFiles) {
@@ -176,6 +186,11 @@ for (const f of copyFiles) {
   }
 }
 if (!process.exitCode) out("Stale v1.4 user-facing copy: none");
+
+if (!fs.existsSync(path.join(root, "DOMAIN.md"))) {
+  out("DOMAIN.md glossary: missing");
+  process.exitCode = 1;
+} else out("DOMAIN.md glossary: present");
 
 const seedBlock = store.slice(
   store.indexOf("function seedJobs"),

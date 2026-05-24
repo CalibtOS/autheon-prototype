@@ -60,7 +60,7 @@
         const [showFilter, setShowFilter] = useState(false);
         const [activeJob, setActiveJob] = useState(null); // {id, mode}
         const [acceptModal, setAcceptModal] = useState(null);
-        const [returnSheet, setReturnSheet] = useState(null);
+        const [reportProblemJob, setReportProblemJob] = useState(null);
         const [pendingNotice, setPendingNotice] = useState(null);
         const [banner, setBanner] = useState(null);
         const [showNotifications, setShowNotifications] = useState(false);
@@ -98,7 +98,7 @@
               <JobUnlocked
                 job={job}
                 onBack={back}
-                onReportProblem={() => setReturnSheet(job)}
+                onReportProblem={() => setReportProblemJob(job)}
                 onPerform={() => {
                   const r = store.markPerformed(job.id);
                   if (!r.ok) setBanner(t("completionBlocked"));
@@ -190,27 +190,27 @@
                     }}
                   />
                 )}
-                {returnSheet && (
+                {reportProblemJob && (
                   <ReportProblemSheet
-                    job={returnSheet}
-                    onClose={() => setReturnSheet(null)}
+                    job={reportProblemJob}
+                    onClose={() => setReportProblemJob(null)}
                     onSubmit={(path, reason, msg) => {
                       const r =
                         path === "cancel"
                           ? store.reportProblemCancel(
-                              returnSheet.id,
+                              reportProblemJob.id,
                               reason,
                               msg,
                             )
                           : store.reportProblemNotPerformable(
-                              returnSheet.id,
+                              reportProblemJob.id,
                               reason,
                               msg,
                             );
-                      setReturnSheet(null);
+                      setReportProblemJob(null);
                       if (!r.ok) return;
                       setPendingNotice(path);
-                      setActiveJob({ id: returnSheet.id, mode: "unlocked" });
+                      setActiveJob({ id: reportProblemJob.id, mode: "unlocked" });
                     }}
                   />
                 )}
@@ -238,6 +238,7 @@
         const [freshId, setFreshId] = useState(null);
         const [newOrderForm, setNewOrderForm] = useState({});
         const [newOrderValid, setNewOrderValid] = useState(false);
+        const [editingJobId, setEditingJobId] = useState(null);
         const [billingNav, setBillingNav] = useState(null);
         const [assignDialog, setAssignDialog] = useState(null);
 
@@ -285,7 +286,7 @@
           setBillingNav({ jobId, openFinEdit: true });
           setSection("finance");
         };
-        const openPartnerInvoicesForJob = (jobId) => {
+        const openTourBillingForJob = (jobId) => {
           setBillingNav({ jobId, invoiceFilter: true });
           setSection("invoices");
         };
@@ -303,18 +304,56 @@
         const onBack = () => {
           setSection("overview");
           setActiveJob(null);
+          setEditingJobId(null);
+        };
+
+        const openNewJob = () => {
+          setEditingJobId(null);
+          setNewOrderForm({});
+          setNewOrderValid(false);
+          setSection("new");
+        };
+
+        const openEditDraft = (jobId) => {
+          setEditingJobId(jobId);
+          setNewOrderForm({});
+          setNewOrderValid(false);
+          setSection("new");
+        };
+
+        const cancelNewOrder = () => {
+          if (editingJobId) {
+            const j = store.getJob(editingJobId);
+            setEditingJobId(null);
+            if (j) {
+              setActiveJob(j);
+              setSection("detail");
+              return;
+            }
+          }
+          onBack();
         };
 
         // crumbs
         const crumbs = (() => {
-          if (section === "new")
+          if (section === "new") {
+            const editTour = editingJobId
+              ? store.getJob(editingJobId)?.tour
+              : null;
             return (
               <>
-                <span>{t("navJobs")}</span>
+                <span style={{ cursor: "pointer" }} onClick={cancelNewOrder}>
+                  {t("navJobs")}
+                </span>
                 <span className="sep">/</span>
-                <strong>{t("navNewJob")}</strong>
+                <strong>
+                  {editTour
+                    ? `${t("adminEditDraft")} · ${editTour}`
+                    : t("navNewJob")}
+                </strong>
               </>
             );
+          }
           if (section === "detail" && activeJob)
             return (
               <>
@@ -359,7 +398,7 @@
                 <button
                   type="button"
                   className="btn primary"
-                  onClick={() => setSection("new")}
+                  onClick={openNewJob}
                 >
                   <Ic.Plus /> {t("navNewJob")}
                 </button>
@@ -405,16 +444,17 @@
                     t("cancelledSub"),
                   );
               }}
-              onEdit={() => setSection("new")}
+              onEdit={() => openEditDraft(fresh.id)}
               onEditFinances={() => openFinancesForJob(fresh.id)}
-              onOpenPartnerInvoices={() => openPartnerInvoicesForJob(fresh.id)}
+              onOpenTourBilling={() => openTourBillingForJob(fresh.id)}
               showToast={showToast}
             />
           );
         } else if (section === "new") {
           body = (
             <NewOrder
-              onCancel={onBack}
+              editJobId={editingJobId}
+              onCancel={cancelNewOrder}
               onFormChange={(f, v) => {
                 setNewOrderForm(f);
                 setNewOrderValid(v);
@@ -423,7 +463,7 @@
           );
         } else if (section === "users") {
           body = <UsersPane showToast={showToast} />;
-        } else if (section === "orderingparties" || section === "customers") {
+        } else if (section === "orderingparties") {
           body = <OrderingPartiesPane showToast={showToast} />;
         } else if (section === "addresses") {
           body = <AddressesPane showToast={showToast} />;
@@ -455,7 +495,7 @@
               initialJobId={billingNav?.openFinEdit ? billingNav.jobId : null}
               initialOpenEdit={!!billingNav?.openFinEdit}
               onNavConsumed={clearBillingNav}
-              onOpenPartnerInvoices={openPartnerInvoicesForJob}
+              onOpenTourBilling={openTourBillingForJob}
             />
           );
         } else if (section === "audit") {
@@ -475,10 +515,9 @@
         } else {
           const stubTitles = {
             users: [t("navUsers"), t("usersDesc")],
-            customers: [t("navCustomers"), t("customersDesc")],
             orderingparties: [
               t("navOrderingParties") || "Ordering parties",
-              t("customersDesc"),
+              t("adminOrderingPartiesDesc"),
             ],
             addresses: [t("navAddresses") || "Addresses", t("fullAddresses")],
             documents: [t("navDocuments"), t("documentsDesc")],
@@ -521,7 +560,7 @@
               onRequestReassign={() =>
                 setAssignDialog({ jobId: fresh.id, mode: "reassign" })
               }
-              onEdit={() => setSection("new")}
+              onEdit={() => openEditDraft(fresh.id)}
               onRevertToDraft={() => {
                 const r = store.revertJobToDraft(fresh.id);
                 if (!r.ok)
@@ -568,41 +607,66 @@
             <NewOrderFooter
               form={newOrderForm}
               valid={newOrderValid}
-              onCancel={onBack}
+              onCancel={cancelNewOrder}
               onSaveDraft={() => {
-                const newJob = store.saveDraft(newOrderForm || {});
-                setFreshId(newJob.id);
+                const saved = store.saveDraft(newOrderForm || {});
+                if (!saved) {
+                  showToast(
+                    t("adminToastUpdateFailed"),
+                    t("adminMasterDataSaveFailed"),
+                  );
+                  return;
+                }
+                setFreshId(saved.id);
+                setEditingJobId(null);
                 showToast(
-                  t("draftSavedTour", { tour: newJob.tour }),
-                  (newJob.customer || "—") +
+                  t("draftSavedTour", { tour: saved.tour }),
+                  (saved.customer || "—") +
                     " · " +
-                    (newJob.startPlz || "—") +
+                    (saved.startPlz || "—") +
                     " → " +
-                    (newJob.endPlz || "—"),
-                  { label: t("open"), run: () => onOpenJob(newJob) },
+                    (saved.endPlz || "—"),
+                  { label: t("open"), run: () => onOpenJob(saved) },
                 );
-                onBack();
+                setActiveJob(saved);
+                setSection("detail");
               }}
               onPublish={() => {
                 if (!newOrderValid) return;
-                const newJob = store.saveDraft(newOrderForm || {});
-                const r = store.publishJob(newJob.id);
-                setFreshId(newJob.id);
+                const saved = store.saveDraft(newOrderForm || {});
+                if (!saved) {
+                  showToast(
+                    t("adminToastUpdateFailed"),
+                    t("adminMasterDataSaveFailed"),
+                  );
+                  return;
+                }
+                const r = store.publishJob(saved.id);
+                setFreshId(saved.id);
+                setEditingJobId(null);
                 if (!r.ok)
                   showToast(t("couldNotPublish"), t("publishBlockedDraftOnly"));
                 else
                   showToast(
-                    t("publishedTour", { tour: newJob.tour }),
+                    t("publishedTour", { tour: saved.tour }),
                     t("driversNowSeePreview"),
                   );
                 onBack();
               }}
               onAssign={() => {
                 if (!newOrderValid) return;
-                const newJob = store.saveDraft(newOrderForm || {});
-                setFreshId(newJob.id);
+                const saved = store.saveDraft(newOrderForm || {});
+                if (!saved) {
+                  showToast(
+                    t("adminToastUpdateFailed"),
+                    t("adminMasterDataSaveFailed"),
+                  );
+                  return;
+                }
+                setFreshId(saved.id);
+                setEditingJobId(null);
                 setAssignDialog({
-                  jobId: newJob.id,
+                  jobId: saved.id,
                   mode: "assign",
                   afterAssign: "back",
                 });

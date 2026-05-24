@@ -527,7 +527,7 @@ const OverviewFooter = ({ filteredCount, totalCount }) => {
   );
 };
 
-const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
+const JobFinancePanel = ({ job, onEditFinances, onOpenTourBilling }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const linkedInvoices = store.getTourDocumentsForJob(job.id);
@@ -696,12 +696,12 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
           <div style={{ fontSize: 13.5, lineHeight: 1.5 }}>
             {t("adminFinancePendingBanner")}
           </div>
-          {onOpenPartnerInvoices && (
+          {onOpenTourBilling && (
             <button
               type="button"
               className="btn xs"
               style={{ marginTop: 10 }}
-              onClick={onOpenPartnerInvoices}
+              onClick={onOpenTourBilling}
             >
               {t("adminFinanceReviewDocuments")}
             </button>
@@ -722,8 +722,8 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenPartnerInvoices }) => {
             {t("adminEditFinancesBtn")}
           </button>
         )}
-        {onOpenPartnerInvoices && (
-          <button type="button" className="btn" onClick={onOpenPartnerInvoices}>
+        {onOpenTourBilling && (
+          <button type="button" className="btn" onClick={onOpenTourBilling}>
             {t("adminOpenTourBillingBtn")}
           </button>
         )}
@@ -1017,7 +1017,7 @@ const AdminDetail = ({
   onCancel,
   onEdit,
   onEditFinances,
-  onOpenPartnerInvoices,
+  onOpenTourBilling,
   showToast,
 }) => {
   const { t } = useI18n();
@@ -1510,10 +1510,10 @@ const AdminDetail = ({
             <JobFinancePanel
               job={job}
               onEditFinances={onEditFinances}
-              onOpenPartnerInvoices={onOpenPartnerInvoices}
+              onOpenTourBilling={onOpenTourBilling}
             />
           ) : (
-            onOpenPartnerInvoices && (
+            onOpenTourBilling && (
               <section className="card" style={{ padding: 22 }}>
                 <div className="sec-head">
                   <h3>
@@ -1535,7 +1535,7 @@ const AdminDetail = ({
                   type="button"
                   className="btn primary"
                   style={{ marginTop: 14 }}
-                  onClick={onOpenPartnerInvoices}
+                  onClick={onOpenTourBilling}
                 >
                   {t("adminOpenTourBillingBtn")}
                 </button>
@@ -1757,9 +1757,72 @@ const AdminDetailFooter = ({
 // =========================================================================
 // ADMIN — NEUER AUFTRAG
 // =========================================================================
-const NewOrder = ({ onCancel, onFormChange }) => {
+const EMPTY_NEW_ORDER_FORM = {
+  orderingPartyId: "",
+  customer: "",
+  startCity: "",
+  startPlz: "",
+  startStreet: "",
+  endCity: "",
+  endPlz: "",
+  endStreet: "",
+  distance: "",
+  pickupDate: "",
+  pickupFrom: "",
+  pickupTo: "",
+  pickupFlex: false,
+  deliveryDate: "",
+  deliveryFrom: "",
+  deliveryTo: "",
+  deliveryFlex: false,
+  vehicleType: "",
+  brand: "",
+  model: "",
+  plate: "",
+  vin: "",
+  cName1: "",
+  cPhone1: "",
+  cName2: "",
+  cPhone2: "",
+  pickupAlternateContact: "",
+  pickupSecondPhone: "",
+  pickupEmail: "",
+  pickupContactNotes: "",
+  deliveryAlternateContact: "",
+  deliverySecondPhone: "",
+  deliveryEmail: "",
+  deliveryContactNotes: "",
+  showPickupExtraContact: false,
+  showDeliveryExtraContact: false,
+  updatePickupMaster: false,
+  updateDeliveryMaster: false,
+  updateOrderingPartyMaster: false,
+  driverCompensation: "",
+  notes: "",
+  notesDriver: "",
+  axle: "Eigenachse",
+  pickupLocationId: "",
+  deliveryLocationId: "",
+  savePickupToMaster: false,
+  saveDeliveryToMaster: false,
+};
+
+const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
   const store = useAuthStore();
   const { t } = useI18n();
+  const editingJob = editJobId ? store.getJob(editJobId) : null;
+
+  const buildFormState = () => {
+    if (editJobId) {
+      const j = store.getJob(editJobId);
+      if (j?.status === "draft") {
+        const mapped = store.jobToDraftForm(j);
+        if (mapped) return { ...EMPTY_NEW_ORDER_FORM, ...mapped };
+      }
+    }
+    return { ...EMPTY_NEW_ORDER_FORM };
+  };
+
   const vehicleTypes = [
     { value: "SUV", label: t("newOrderVtSuv") },
     { value: "PKW", label: t("newOrderVtPkw") },
@@ -1771,56 +1834,13 @@ const NewOrder = ({ onCancel, onFormChange }) => {
     { value: "Eigenachse", label: t("ownAxle") },
     { value: "Fremdachse", label: t("thirdPartyAxle") },
   ];
-  const [form, setForm] = useStateA({
-    orderingPartyId: "",
-    customer: "",
-    startCity: "",
-    startPlz: "",
-    startStreet: "",
-    endCity: "",
-    endPlz: "",
-    endStreet: "",
-    distance: "",
-    pickupDate: "",
-    pickupFrom: "",
-    pickupTo: "",
-    pickupFlex: false,
-    deliveryDate: "",
-    deliveryFrom: "",
-    deliveryTo: "",
-    deliveryFlex: false,
-    vehicleType: "",
-    brand: "",
-    model: "",
-    plate: "",
-    vin: "",
-    cName1: "",
-    cPhone1: "",
-    cName2: "",
-    cPhone2: "",
-    pickupAlternateContact: "",
-    pickupSecondPhone: "",
-    pickupEmail: "",
-    pickupContactNotes: "",
-    deliveryAlternateContact: "",
-    deliverySecondPhone: "",
-    deliveryEmail: "",
-    deliveryContactNotes: "",
-    showPickupExtraContact: false,
-    showDeliveryExtraContact: false,
-    updatePickupMaster: false,
-    updateDeliveryMaster: false,
-    updateOrderingPartyMaster: false,
-    driverCompensation: "",
-    notes: "",
-    notesDriver: "",
-    axle: "Eigenachse",
-    pickupLocationId: "",
-    deliveryLocationId: "",
-    savePickupToMaster: false,
-    saveDeliveryToMaster: false,
-  });
+  const [form, setForm] = useStateA(buildFormState);
   const [activeSec, setActiveSec] = useStateA("01");
+
+  useEffectA(() => {
+    setForm(buildFormState());
+    setActiveSec("01");
+  }, [editJobId]);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const applyMasterAddress = (side, addrId) => {
     if (!addrId) {
@@ -1948,7 +1968,7 @@ const NewOrder = ({ onCancel, onFormChange }) => {
               letterSpacing: "-0.02em",
             }}
           >
-            {t("navNewJob")}
+            {editJobId ? t("adminEditDraft") : t("navNewJob")}
           </h1>
         </div>
         <div
@@ -1960,7 +1980,7 @@ const NewOrder = ({ onCancel, onFormChange }) => {
             className="mono"
             style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}
           >
-            0848-26
+            {editingJob?.tour || "—"}
           </div>
         </div>
       </div>
@@ -2752,7 +2772,7 @@ const NewOrder = ({ onCancel, onFormChange }) => {
               }}
             >
               <div className="label">
-                {t("newOrderTourLabel", { tour: "0848-26" })}
+                {t("newOrderTourLabel", { tour: editingJob?.tour || "—" })}
               </div>
               <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                 <div>
@@ -4839,7 +4859,7 @@ const FinancePane = ({
   initialJobId,
   initialOpenEdit,
   onNavConsumed,
-  onOpenPartnerInvoices,
+  onOpenTourBilling,
 }) => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -5128,14 +5148,14 @@ const FinancePane = ({
                 </select>
               </div>
             </div>
-            {onOpenPartnerInvoices && (
+            {onOpenTourBilling && (
               <button
                 type="button"
                 className="btn xs"
                 style={{ marginTop: 14 }}
                 onClick={() => {
                   closeFinEdit();
-                  onOpenPartnerInvoices(finEditId);
+                  onOpenTourBilling(finEditId);
                 }}
               >
                 {t("adminFinanceOpenTourBillingLink")}
@@ -5186,8 +5206,8 @@ const FinancePane = ({
                       j ? `${j.tour} · ${j.customer}` : "",
                     );
                     closeFinEdit();
-                  } else if (r.reason === "use_partner_invoices") {
-                    showToast?.(t("adminFinanceErrUsePartnerInvoices"));
+                  } else if (r.reason === "use_tour_documents") {
+                    showToast?.(t("adminFinanceErrUseTourDocuments"));
                   } else showToast?.(t("adminFinanceErrSave"));
                 }}
               >
