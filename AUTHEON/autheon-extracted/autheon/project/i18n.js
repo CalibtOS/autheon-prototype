@@ -409,6 +409,8 @@ window.I18n = (() => {
       newOrderSavePickupToMaster: "Save entered pickup to address master data",
       newOrderSaveDeliveryToMaster:
         "Save entered delivery to address master data",
+      newOrderAlternateContactHint:
+        "Optional second on-site contact for this tour leg (stored on the job, not in address master).",
       phone: "Phone",
       adminFilterStatusPrefix: "Status:",
       adminFinanceStatUnpaidRow: "Not paid yet",
@@ -1242,6 +1244,8 @@ window.I18n = (() => {
         "Eingegebene Abholadresse in Stammdaten speichern",
       newOrderSaveDeliveryToMaster:
         "Eingegebene Lieferadresse in Stammdaten speichern",
+      newOrderAlternateContactHint:
+        "Optionaler zweiter Vor-Ort-Kontakt für diese Tourstrecke (am Auftrag, nicht in Adress-Stammdaten).",
       phone: "Telefon",
       adminFilterStatusPrefix: "Status:",
       adminFinanceStatUnpaidRow: "Noch nicht bezahlt",

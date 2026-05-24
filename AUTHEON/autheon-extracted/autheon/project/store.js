@@ -1786,15 +1786,43 @@ window.AuthStore = (() => {
   function locationFromForm(prefix, form) {
     const p = prefix || "";
     const cap = (k) => p + k.charAt(0).toUpperCase() + k.slice(1);
+    const isPickup = p === "pickup";
+    const flat = isPickup
+      ? {
+          locationId: form.pickupLocationId || null,
+          name: form.startCompany || "",
+          street: form.startStreet || "",
+          houseNumber: form.startHouseNo || "",
+          postalCode: form.startPlz || "",
+          city: form.startCity || "",
+          country: form.startCountry || "DE",
+        }
+      : {
+          locationId: form.deliveryLocationId || null,
+          name: form.endCompany || "",
+          street: form.endStreet || "",
+          houseNumber: form.endHouseNo || "",
+          postalCode: form.endPlz || "",
+          city: form.endCity || "",
+          country: form.endCountry || "DE",
+        };
     return mkLocation({
-      locationId: form[cap("locationId")] || form[`${p}LocationId`] || null,
-      name: form[cap("name")] || form[`${p}Name`] || "",
-      street: form[cap("street")] || form[`${p}Street`] || "",
+      locationId: flat.locationId || form[cap("locationId")] || form[`${p}LocationId`] || null,
+      name: flat.name || form[cap("name")] || form[`${p}Name`] || "",
+      street: flat.street || form[cap("street")] || form[`${p}Street`] || "",
       houseNumber:
-        form[cap("houseNumber")] || form[`${p}HouseNumber`] || "",
-      postalCode: form[cap("postalCode")] || form[`${p}Plz`] || form[`${p}PostalCode`] || "",
-      city: form[cap("city")] || form[`${p}City`] || "",
-      country: form[cap("country")] || form[`${p}Country`] || "DE",
+        flat.houseNumber ||
+        form[cap("houseNumber")] ||
+        form[`${p}HouseNumber`] ||
+        "",
+      postalCode:
+        flat.postalCode ||
+        form[cap("postalCode")] ||
+        form[`${p}Plz`] ||
+        form[`${p}PostalCode`] ||
+        "",
+      city: flat.city || form[cap("city")] || form[`${p}City`] || "",
+      country: flat.country || form[cap("country")] || form[`${p}Country`] || "DE",
       contactPerson:
         form[cap("contactPerson")] ||
         form[`${p}Contact`] ||
@@ -1859,11 +1887,15 @@ window.AuthStore = (() => {
       customer: job.orderingPartyName || job.customer || "",
       startCity: pu.city || job.startCity || "",
       startPlz: pu.postalCode || job.startPlz || "",
-      startStreet: formatStreet(pu) || job.startStreet || pu.street || "",
+      startStreet: pu.street || job.startStreet || "",
+      startHouseNo: pu.houseNumber || "",
+      startCountry: pu.country || "DE",
       startCompany: pu.name || job.startCompany || "",
       endCity: del.city || job.endCity || "",
       endPlz: del.postalCode || job.endPlz || "",
-      endStreet: formatStreet(del) || job.endStreet || del.street || "",
+      endStreet: del.street || job.endStreet || "",
+      endHouseNo: del.houseNumber || "",
+      endCountry: del.country || "DE",
       endCompany: del.name || job.endCompany || "",
       distance:
         job.distanceKm != null && job.distanceKm !== ""
@@ -1946,21 +1978,39 @@ window.AuthStore = (() => {
       form.delivery && typeof form.delivery === "object"
         ? mkLocation(form.delivery)
         : locationFromForm("delivery", form);
-    if (!pickup.city && form.startCity) {
+    if (form.startCity || form.startStreet) {
       Object.assign(pickup, {
-        city: form.startCity,
-        postalCode: form.startPlz,
-        street: form.startStreet,
-        name: form.startCompany || form.customer,
+        city: form.startCity || pickup.city,
+        postalCode: form.startPlz || pickup.postalCode,
+        street: form.startStreet || pickup.street,
+        houseNumber: form.startHouseNo || pickup.houseNumber,
+        country: form.startCountry || pickup.country || "DE",
+        name: form.startCompany || form.customer || pickup.name,
+        contactPerson: form.cName1 || pickup.contactPerson,
+        phone: form.cPhone1 || pickup.phone,
+        alternateContactPerson:
+          form.pickupAlternateContact || pickup.alternateContactPerson,
+        secondPhone: form.pickupSecondPhone || pickup.secondPhone,
+        email: form.pickupEmail || pickup.email,
+        notes: form.pickupContactNotes || pickup.notes,
       });
     }
     if (form.pickupLocationId) pickup.locationId = form.pickupLocationId;
-    if (!delivery.city && form.endCity) {
+    if (form.endCity || form.endStreet) {
       Object.assign(delivery, {
-        city: form.endCity,
-        postalCode: form.endPlz,
-        street: form.endStreet,
-        name: form.endCompany,
+        city: form.endCity || delivery.city,
+        postalCode: form.endPlz || delivery.postalCode,
+        street: form.endStreet || delivery.street,
+        houseNumber: form.endHouseNo || delivery.houseNumber,
+        country: form.endCountry || delivery.country || "DE",
+        name: form.endCompany || delivery.name,
+        contactPerson: form.cName2 || delivery.contactPerson,
+        phone: form.cPhone2 || delivery.phone,
+        alternateContactPerson:
+          form.deliveryAlternateContact || delivery.alternateContactPerson,
+        secondPhone: form.deliverySecondPhone || delivery.secondPhone,
+        email: form.deliveryEmail || delivery.email,
+        notes: form.deliveryContactNotes || delivery.notes,
       });
     }
     if (form.deliveryLocationId) delivery.locationId = form.deliveryLocationId;
@@ -2837,54 +2887,66 @@ window.AuthStore = (() => {
       }
       if (form.updatePickupMaster && form.pickupLocationId) {
         api.updateAddress(form.pickupLocationId, {
+          label: form.startCompany || undefined,
           street: form.startStreet,
+          houseNumber: form.startHouseNo,
           postalCode: form.startPlz,
           city: form.startCity,
+          country: form.startCountry,
           contactPerson: form.cName1,
           phone: form.cPhone1,
-          alternateContactPerson: form.pickupAlternateContact || "",
-          secondPhone: form.pickupSecondPhone || "",
-          email: form.pickupEmail || "",
-          notes: form.pickupContactNotes || "",
+          secondPhone: form.pickupSecondPhone,
+          email: form.pickupEmail,
+          notes: form.pickupContactNotes,
         });
       }
       if (form.updateDeliveryMaster && form.deliveryLocationId) {
         api.updateAddress(form.deliveryLocationId, {
+          label: form.endCompany || undefined,
           street: form.endStreet,
+          houseNumber: form.endHouseNo,
           postalCode: form.endPlz,
           city: form.endCity,
+          country: form.endCountry,
           contactPerson: form.cName2,
           phone: form.cPhone2,
-          alternateContactPerson: form.deliveryAlternateContact || "",
-          secondPhone: form.deliverySecondPhone || "",
-          email: form.deliveryEmail || "",
-          notes: form.deliveryContactNotes || "",
+          secondPhone: form.deliverySecondPhone,
+          email: form.deliveryEmail,
+          notes: form.deliveryContactNotes,
         });
       }
       if (form.savePickupToMaster && form.startStreet?.trim()) {
         api.addAddress({
           label:
-            form.pickupLocationLabel ||
             form.startCompany ||
-            `${form.startStreet}, ${form.startCity}`.trim(),
+            `${form.startStreet}${form.startHouseNo ? " " + form.startHouseNo : ""}, ${form.startCity}`.trim(),
           street: form.startStreet,
+          houseNumber: form.startHouseNo,
           postalCode: form.startPlz,
           city: form.startCity,
+          country: form.startCountry || "DE",
           contactPerson: form.cName1,
           phone: form.cPhone1,
+          secondPhone: form.pickupSecondPhone,
+          email: form.pickupEmail,
+          notes: form.pickupContactNotes,
         });
       }
       if (form.saveDeliveryToMaster && form.endStreet?.trim()) {
         api.addAddress({
           label:
-            form.deliveryLocationLabel ||
             form.endCompany ||
-            `${form.endStreet}, ${form.endCity}`.trim(),
+            `${form.endStreet}${form.endHouseNo ? " " + form.endHouseNo : ""}, ${form.endCity}`.trim(),
           street: form.endStreet,
+          houseNumber: form.endHouseNo,
           postalCode: form.endPlz,
           city: form.endCity,
+          country: form.endCountry || "DE",
           contactPerson: form.cName2,
           phone: form.cPhone2,
+          secondPhone: form.deliverySecondPhone,
+          email: form.deliveryEmail,
+          notes: form.deliveryContactNotes,
         });
       }
 

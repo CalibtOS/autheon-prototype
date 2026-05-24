@@ -1760,12 +1760,18 @@ const AdminDetailFooter = ({
 const EMPTY_NEW_ORDER_FORM = {
   orderingPartyId: "",
   customer: "",
-  startCity: "",
-  startPlz: "",
+  startCompany: "",
   startStreet: "",
-  endCity: "",
-  endPlz: "",
+  startHouseNo: "",
+  startPlz: "",
+  startCity: "",
+  startCountry: "DE",
+  endCompany: "",
   endStreet: "",
+  endHouseNo: "",
+  endPlz: "",
+  endCity: "",
+  endCountry: "DE",
   distance: "",
   pickupDate: "",
   pickupFrom: "",
@@ -1858,13 +1864,17 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
       setForm((f) => ({
         ...f,
         pickupLocationId: a.id,
-        startStreet: line1,
-        startPlz: a.postalCode,
-        startCity: a.city,
-        cName1: a.contactPerson || f.cName1,
-        cPhone1: a.phone || f.cPhone1,
-        pickupAlternateContact: a.alternateContactPerson || "",
+        startCompany: a.label || "",
+        startStreet: a.street || "",
+        startHouseNo: a.houseNumber || "",
+        startPlz: a.postalCode || "",
+        startCity: a.city || "",
+        startCountry: a.country || "DE",
+        cName1: a.contactPerson || "",
+        cPhone1: a.phone || "",
         pickupSecondPhone: a.secondPhone || "",
+        pickupEmail: a.email || "",
+        pickupContactNotes: a.notes || "",
         savePickupToMaster: false,
         updatePickupMaster: false,
       }));
@@ -1872,13 +1882,17 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
       setForm((f) => ({
         ...f,
         deliveryLocationId: a.id,
-        endStreet: line1,
-        endPlz: a.postalCode,
-        endCity: a.city,
-        cName2: a.contactPerson || f.cName2,
-        cPhone2: a.phone || f.cPhone2,
-        deliveryAlternateContact: a.alternateContactPerson || "",
+        endCompany: a.label || "",
+        endStreet: a.street || "",
+        endHouseNo: a.houseNumber || "",
+        endPlz: a.postalCode || "",
+        endCity: a.city || "",
+        endCountry: a.country || "DE",
+        cName2: a.contactPerson || "",
+        cPhone2: a.phone || "",
         deliverySecondPhone: a.secondPhone || "",
+        deliveryEmail: a.email || "",
+        deliveryContactNotes: a.notes || "",
         saveDeliveryToMaster: false,
         updateDeliveryMaster: false,
       }));
@@ -1943,9 +1957,8 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
     ["02", t("newOrderSecRoute")],
     ["03", t("newOrderSecSchedule")],
     ["04", t("newOrderSecVehicle")],
-    ["05", t("newOrderSecContacts")],
-    ["06", t("newOrderSecPartnerOffer")],
-    ["07", t("newOrderSecNotes")],
+    ["05", t("newOrderSecPartnerOffer")],
+    ["06", t("newOrderSecNotes")],
   ];
 
   return (
@@ -2108,216 +2121,22 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 marginTop: 14,
               }}
             >
-              <div>
-                <label className="field-label" htmlFor="new-pickup-addr">
-                  {t("newOrderPickupFromMaster")}
-                </label>
-                <select
-                  id="new-pickup-addr"
-                  className="input"
-                  value={form.pickupLocationId || ""}
-                  onChange={(e) => applyMasterAddress("pickup", e.target.value)}
-                >
-                  <option value="">{t("newOrderAddressManual")}</option>
-                  {masterAddresses.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.label} · {a.postalCode} {a.city}
-                    </option>
-                  ))}
-                </select>
-                <label className="field-label" style={{ marginTop: 10 }}>
-                  {t("newOrderStartAddress")}
-                </label>
-                <input
-                  className="input"
-                  placeholder={t("newOrderStreetPh")}
-                  value={form.startStreet}
-                  onChange={(e) => {
-                    set("startStreet", e.target.value);
-                    set("pickupLocationId", "");
-                  }}
-                />
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "100px 1fr",
-                    gap: 10,
-                    marginTop: 10,
-                  }}
-                >
-                  <input
-                    className="input mono"
-                    placeholder={t("newOrderPlzPh")}
-                    value={form.startPlz}
-                    onChange={(e) => set("startPlz", e.target.value)}
-                  />
-                  <input
-                    className="input"
-                    placeholder={t("newOrderCityPh")}
-                    value={form.startCity}
-                    onChange={(e) => {
-                      set("startCity", e.target.value);
-                      set("pickupLocationId", "");
-                    }}
-                  />
-                </div>
-                <label className="field-label" style={{ marginTop: 10 }}>
-                  {t("newOrderContactPickup")}
-                </label>
-                <input
-                  className="input"
-                  placeholder={t("newOrderContactPersonPh")}
-                  value={form.cName1}
-                  onChange={(e) => set("cName1", e.target.value)}
-                />
-                {!form.pickupLocationId ? (
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      marginTop: 10,
-                      fontSize: 12.5,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!form.savePickupToMaster}
-                      onChange={(e) =>
-                        set("savePickupToMaster", e.target.checked)
-                      }
-                    />
-                    {t("newOrderSavePickupToMaster")}
-                  </label>
-                ) : (
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      marginTop: 10,
-                      fontSize: 12.5,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!form.updatePickupMaster}
-                      onChange={(e) =>
-                        set("updatePickupMaster", e.target.checked)
-                      }
-                    />
-                    {t("updateMasterDataFromEntry")}
-                  </label>
-                )}
-              </div>
-              <div>
-                <label className="field-label" htmlFor="new-delivery-addr">
-                  {t("newOrderDeliveryFromMaster")}
-                </label>
-                <select
-                  id="new-delivery-addr"
-                  className="input"
-                  value={form.deliveryLocationId || ""}
-                  onChange={(e) =>
-                    applyMasterAddress("delivery", e.target.value)
-                  }
-                >
-                  <option value="">{t("newOrderAddressManual")}</option>
-                  {masterAddresses.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.label} · {a.postalCode} {a.city}
-                    </option>
-                  ))}
-                </select>
-                <label className="field-label" style={{ marginTop: 10 }}>
-                  {t("newOrderEndAddress")}
-                </label>
-                <input
-                  className="input"
-                  placeholder={t("newOrderStreetPh")}
-                  value={form.endStreet}
-                  onChange={(e) => {
-                    set("endStreet", e.target.value);
-                    set("deliveryLocationId", "");
-                  }}
-                />
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "100px 1fr",
-                    gap: 10,
-                    marginTop: 10,
-                  }}
-                >
-                  <input
-                    className="input mono"
-                    placeholder={t("newOrderPlzPh")}
-                    value={form.endPlz}
-                    onChange={(e) => set("endPlz", e.target.value)}
-                  />
-                  <input
-                    className="input"
-                    placeholder={t("newOrderCityPh")}
-                    value={form.endCity}
-                    onChange={(e) => {
-                      set("endCity", e.target.value);
-                      set("deliveryLocationId", "");
-                    }}
-                  />
-                </div>
-                <label className="field-label" style={{ marginTop: 10 }}>
-                  {t("newOrderContactDelivery")}
-                </label>
-                <input
-                  className="input"
-                  placeholder={t("newOrderContactPersonPh")}
-                  value={form.cName2}
-                  onChange={(e) => set("cName2", e.target.value)}
-                />
-                {!form.deliveryLocationId ? (
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      marginTop: 10,
-                      fontSize: 12.5,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!form.saveDeliveryToMaster}
-                      onChange={(e) =>
-                        set("saveDeliveryToMaster", e.target.checked)
-                      }
-                    />
-                    {t("newOrderSaveDeliveryToMaster")}
-                  </label>
-                ) : (
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      marginTop: 10,
-                      fontSize: 12.5,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!form.updateDeliveryMaster}
-                      onChange={(e) =>
-                        set("updateDeliveryMaster", e.target.checked)
-                      }
-                    />
-                    {t("updateMasterDataFromEntry")}
-                  </label>
-                )}
-              </div>
+              <NewOrderAddressFields
+                side="pickup"
+                title={t("pickup")}
+                form={form}
+                setForm={setForm}
+                masterAddresses={masterAddresses}
+                onMasterSelect={(id) => applyMasterAddress("pickup", id)}
+              />
+              <NewOrderAddressFields
+                side="delivery"
+                title={t("delivery")}
+                form={form}
+                setForm={setForm}
+                masterAddresses={masterAddresses}
+                onMasterSelect={(id) => applyMasterAddress("delivery", id)}
+              />
             </div>
             <div style={{ marginTop: 14 }}>
               <label className="field-label">{t("newOrderDistanceKm")}</label>
@@ -2567,145 +2386,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
           <section id="sec-05" className="card" style={{ padding: 22 }}>
             <div className="sec-head">
               <h3>
-                <span className="num">05</span> {t("newOrderSecContacts")}
-              </h3>
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 14,
-                marginTop: 14,
-              }}
-            >
-              <div>
-                <label className="field-label">{t("newOrderContactPickup")}</label>
-                <input
-                  className="input"
-                  placeholder={t("newOrderContactPersonPh")}
-                  value={form.cName1}
-                  onChange={(e) => set("cName1", e.target.value)}
-                />
-                <input
-                  className="input mono"
-                  style={{ marginTop: 10 }}
-                  placeholder={t("newOrderPhonePh")}
-                  value={form.cPhone1}
-                  onChange={(e) => set("cPhone1", e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="btn ghost xs"
-                  style={{ marginTop: 10 }}
-                  onClick={() =>
-                    set("showPickupExtraContact", !form.showPickupExtraContact)
-                  }
-                >
-                  {t("addAnotherContact")}
-                </button>
-                {form.showPickupExtraContact ? (
-                  <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                    <input
-                      className="input"
-                      placeholder={t("alternateContact")}
-                      value={form.pickupAlternateContact}
-                      onChange={(e) =>
-                        set("pickupAlternateContact", e.target.value)
-                      }
-                    />
-                    <input
-                      className="input mono"
-                      placeholder={t("secondPhone")}
-                      value={form.pickupSecondPhone}
-                      onChange={(e) => set("pickupSecondPhone", e.target.value)}
-                    />
-                    <input
-                      className="input"
-                      placeholder={t("email")}
-                      value={form.pickupEmail}
-                      onChange={(e) => set("pickupEmail", e.target.value)}
-                    />
-                    <input
-                      className="input"
-                      placeholder={t("contactInfoNotes")}
-                      value={form.pickupContactNotes}
-                      onChange={(e) =>
-                        set("pickupContactNotes", e.target.value)
-                      }
-                    />
-                  </div>
-                ) : null}
-              </div>
-              <div>
-                <label className="field-label">{t("newOrderContactDelivery")}</label>
-                <input
-                  className="input"
-                  placeholder={t("newOrderContactPersonPh")}
-                  value={form.cName2}
-                  onChange={(e) => set("cName2", e.target.value)}
-                />
-                <input
-                  className="input mono"
-                  style={{ marginTop: 10 }}
-                  placeholder={t("newOrderPhonePh")}
-                  value={form.cPhone2}
-                  onChange={(e) => set("cPhone2", e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="btn ghost xs"
-                  style={{ marginTop: 10 }}
-                  onClick={() =>
-                    set(
-                      "showDeliveryExtraContact",
-                      !form.showDeliveryExtraContact,
-                    )
-                  }
-                >
-                  {t("addAnotherContact")}
-                </button>
-                {form.showDeliveryExtraContact ? (
-                  <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                    <input
-                      className="input"
-                      placeholder={t("alternateContact")}
-                      value={form.deliveryAlternateContact}
-                      onChange={(e) =>
-                        set("deliveryAlternateContact", e.target.value)
-                      }
-                    />
-                    <input
-                      className="input mono"
-                      placeholder={t("secondPhone")}
-                      value={form.deliverySecondPhone}
-                      onChange={(e) =>
-                        set("deliverySecondPhone", e.target.value)
-                      }
-                    />
-                    <input
-                      className="input"
-                      placeholder={t("email")}
-                      value={form.deliveryEmail}
-                      onChange={(e) => set("deliveryEmail", e.target.value)}
-                    />
-                    <input
-                      className="input"
-                      placeholder={t("contactInfoNotes")}
-                      value={form.deliveryContactNotes}
-                      onChange={(e) =>
-                        set("deliveryContactNotes", e.target.value)
-                      }
-                    />
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </section>
-
-          <section id="sec-06" className="card" style={{ padding: 22 }}>
-            <div className="sec-head">
-              <h3>
-                <span className="num">06</span> {t("newOrderSecPartnerOffer")}
+                <span className="num">05</span> {t("newOrderSecPartnerOffer")}
               </h3>
             </div>
             <div style={{ marginTop: 14 }}>
@@ -2720,13 +2401,13 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
             </div>
           </section>
 
-          <section id="sec-07" className="card" style={{ padding: 22 }}>
+          <section id="sec-06" className="card" style={{ padding: 22 }}>
             <div
               className="sec-head"
               style={{ justifyContent: "space-between" }}
             >
               <h3>
-                <span className="num">07</span> {t("newOrderSecNotes")}
+                <span className="num">06</span> {t("newOrderSecNotes")}
               </h3>
               <button
                 type="button"
@@ -3136,6 +2817,282 @@ const emptyAddressForm = () => ({
   notes: "",
   active: true,
 });
+
+/** Shared address fields (same as Addresses master create/update). */
+const AddressMasterFields = ({ form, setF }) => {
+  const { t } = useI18n();
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <div>
+        <label className="field-label">{t("adminMasterDataLocationName")} *</label>
+        <input
+          className="input"
+          value={form.label}
+          onChange={(e) => setF("label", e.target.value)}
+        />
+      </div>
+      <div
+        style={{ display: "grid", gridTemplateColumns: "2fr 80px", gap: 10 }}
+      >
+        <div>
+          <label className="field-label">{t("adminMasterDataStreet")} *</label>
+          <input
+            className="input"
+            value={form.street}
+            onChange={(e) => setF("street", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="field-label">{t("adminMasterDataHouseNo")}</label>
+          <input
+            className="input"
+            value={form.houseNumber}
+            onChange={(e) => setF("houseNumber", e.target.value)}
+          />
+        </div>
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "100px 1fr 72px",
+          gap: 10,
+        }}
+      >
+        <div>
+          <label className="field-label">{t("newOrderPlzPh")} *</label>
+          <input
+            className="input mono"
+            value={form.postalCode}
+            onChange={(e) => setF("postalCode", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="field-label">{t("newOrderCityPh")} *</label>
+          <input
+            className="input"
+            value={form.city}
+            onChange={(e) => setF("city", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="field-label">{t("adminMasterDataCountry")}</label>
+          <input
+            className="input mono"
+            value={form.country}
+            onChange={(e) => setF("country", e.target.value)}
+          />
+        </div>
+      </div>
+      <div
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
+      >
+        <div>
+          <label className="field-label">{t("adminMasterDataContact")}</label>
+          <input
+            className="input"
+            value={form.contactPerson}
+            onChange={(e) => setF("contactPerson", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="field-label">{t("phone")}</label>
+          <input
+            className="input"
+            value={form.phone}
+            onChange={(e) => setF("phone", e.target.value)}
+          />
+        </div>
+      </div>
+      <div>
+        <label className="field-label">{t("adminMasterDataSecondPhone")}</label>
+        <input
+          className="input"
+          value={form.secondPhone}
+          onChange={(e) => setF("secondPhone", e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="field-label">{t("adminMasterDataEmail")}</label>
+        <input
+          className="input"
+          value={form.email}
+          onChange={(e) => setF("email", e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="field-label">{t("adminMasterDataNotes")}</label>
+        <textarea
+          className="input"
+          rows={2}
+          value={form.notes}
+          onChange={(e) => setF("notes", e.target.value)}
+        />
+      </div>
+    </div>
+  );
+};
+
+const NEW_ORDER_ADDR_KEY_MAP = {
+  pickup: {
+    label: "startCompany",
+    street: "startStreet",
+    houseNumber: "startHouseNo",
+    postalCode: "startPlz",
+    city: "startCity",
+    country: "startCountry",
+    contactPerson: "cName1",
+    phone: "cPhone1",
+    secondPhone: "pickupSecondPhone",
+    email: "pickupEmail",
+    notes: "pickupContactNotes",
+    alternateContact: "pickupAlternateContact",
+    locationId: "pickupLocationId",
+    saveToMaster: "savePickupToMaster",
+    updateMaster: "updatePickupMaster",
+    showExtra: "showPickupExtraContact",
+  },
+  delivery: {
+    label: "endCompany",
+    street: "endStreet",
+    houseNumber: "endHouseNo",
+    postalCode: "endPlz",
+    city: "endCity",
+    country: "endCountry",
+    contactPerson: "cName2",
+    phone: "cPhone2",
+    secondPhone: "deliverySecondPhone",
+    email: "deliveryEmail",
+    notes: "deliveryContactNotes",
+    alternateContact: "deliveryAlternateContact",
+    locationId: "deliveryLocationId",
+    saveToMaster: "saveDeliveryToMaster",
+    updateMaster: "updateDeliveryMaster",
+    showExtra: "showDeliveryExtraContact",
+  },
+};
+
+const NewOrderAddressFields = ({
+  side,
+  form,
+  setForm,
+  masterAddresses,
+  onMasterSelect,
+  title,
+}) => {
+  const { t } = useI18n();
+  const keys = NEW_ORDER_ADDR_KEY_MAP[side];
+  const addrView = {
+    label: form[keys.label] || "",
+    street: form[keys.street] || "",
+    houseNumber: form[keys.houseNumber] || "",
+    postalCode: form[keys.postalCode] || "",
+    city: form[keys.city] || "",
+    country: form[keys.country] || "DE",
+    contactPerson: form[keys.contactPerson] || "",
+    phone: form[keys.phone] || "",
+    secondPhone: form[keys.secondPhone] || "",
+    email: form[keys.email] || "",
+    notes: form[keys.notes] || "",
+  };
+  const setAddr = (k, v) => setForm((f) => ({ ...f, [keys[k]]: v }));
+
+  return (
+    <div>
+      <div className="label" style={{ marginBottom: 8, fontWeight: 600 }}>
+        {title}
+      </div>
+      <label className="field-label" htmlFor={`new-${side}-addr`}>
+        {side === "pickup"
+          ? t("newOrderPickupFromMaster")
+          : t("newOrderDeliveryFromMaster")}
+      </label>
+      <select
+        id={`new-${side}-addr`}
+        className="input"
+        value={form[keys.locationId] || ""}
+        onChange={(e) => onMasterSelect(e.target.value)}
+      >
+        <option value="">{t("newOrderAddressManual")}</option>
+        {masterAddresses.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.label} · {a.postalCode} {a.city}
+          </option>
+        ))}
+      </select>
+      <div style={{ marginTop: 12 }}>
+        <AddressMasterFields form={addrView} setF={setAddr} />
+      </div>
+      <div style={{ marginTop: 10 }}>
+        <label className="field-label">{t("alternateContact")}</label>
+        <input
+          className="input"
+          placeholder={t("alternateContact")}
+          value={form[keys.alternateContact] || ""}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, [keys.alternateContact]: e.target.value }))
+          }
+        />
+        <p
+          style={{
+            margin: "6px 0 0",
+            fontSize: 12,
+            color: "var(--muted)",
+            lineHeight: 1.45,
+          }}
+        >
+          {t("newOrderAlternateContactHint")}
+        </p>
+      </div>
+      {!form[keys.locationId] ? (
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginTop: 12,
+            fontSize: 12.5,
+            cursor: "pointer",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={!!form[keys.saveToMaster]}
+            onChange={(e) => {
+              setForm((f) => ({
+                ...f,
+                [keys.saveToMaster]: e.target.checked,
+                [keys.locationId]: "",
+              }));
+            }}
+          />
+          {side === "pickup"
+            ? t("newOrderSavePickupToMaster")
+            : t("newOrderSaveDeliveryToMaster")}
+        </label>
+      ) : (
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginTop: 12,
+            fontSize: 12.5,
+            cursor: "pointer",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={!!form[keys.updateMaster]}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, [keys.updateMaster]: e.target.checked }))
+            }
+          />
+          {t("updateMasterDataFromEntry")}
+        </label>
+      )}
+    </div>
+  );
+};
 
 const MasterDataModal = ({ open, title, onClose, children, footer }) => {
   if (!open) return null;
@@ -3641,117 +3598,15 @@ const AddressesPane = ({ showToast }) => {
           </div>
         }
       >
-        <div style={{ display: "grid", gap: 12 }}>
-          <div>
-            <label className="field-label">{t("adminMasterDataLocationName")} *</label>
-            <input
-              className="input"
-              value={form.label}
-              onChange={(e) => setF("label", e.target.value)}
-            />
-          </div>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "2fr 80px", gap: 10 }}
-          >
-            <div>
-              <label className="field-label">{t("adminMasterDataStreet")} *</label>
-              <input
-                className="input"
-                value={form.street}
-                onChange={(e) => setF("street", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="field-label">{t("adminMasterDataHouseNo")}</label>
-              <input
-                className="input"
-                value={form.houseNumber}
-                onChange={(e) => setF("houseNumber", e.target.value)}
-              />
-            </div>
-          </div>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "100px 1fr 72px", gap: 10 }}
-          >
-            <div>
-              <label className="field-label">{t("newOrderPlzPh")} *</label>
-              <input
-                className="input mono"
-                value={form.postalCode}
-                onChange={(e) => setF("postalCode", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="field-label">{t("newOrderCityPh")} *</label>
-              <input
-                className="input"
-                value={form.city}
-                onChange={(e) => setF("city", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="field-label">{t("adminMasterDataCountry")}</label>
-              <input
-                className="input mono"
-                value={form.country}
-                onChange={(e) => setF("country", e.target.value)}
-              />
-            </div>
-          </div>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
-          >
-            <div>
-              <label className="field-label">{t("adminMasterDataContact")}</label>
-              <input
-                className="input"
-                value={form.contactPerson}
-                onChange={(e) => setF("contactPerson", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="field-label">{t("phone")}</label>
-              <input
-                className="input"
-                value={form.phone}
-                onChange={(e) => setF("phone", e.target.value)}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="field-label">{t("adminMasterDataSecondPhone")}</label>
-            <input
-              className="input"
-              value={form.secondPhone}
-              onChange={(e) => setF("secondPhone", e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="field-label">{t("adminMasterDataEmail")}</label>
-            <input
-              className="input"
-              value={form.email}
-              onChange={(e) => setF("email", e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="field-label">{t("adminMasterDataNotes")}</label>
-            <textarea
-              className="input"
-              rows={2}
-              value={form.notes}
-              onChange={(e) => setF("notes", e.target.value)}
-            />
-          </div>
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input
-              type="checkbox"
-              checked={!!form.active}
-              onChange={(e) => setF("active", e.target.checked)}
-            />
-            {t("adminMasterDataActive")}
-          </label>
-        </div>
+        <AddressMasterFields form={form} setF={setF} />
+        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={!!form.active}
+            onChange={(e) => setF("active", e.target.checked)}
+          />
+          {t("adminMasterDataActive")}
+        </label>
       </MasterDataModal>
     </div>
   );
