@@ -4,7 +4,10 @@
 **Written feedback reference:** `AUTHEON/autheon_aw_written_feedback_en.md` (from Feedback.pdf)  
 **Prototype:** `AUTHEON/autheon-extracted/autheon/project/`  
 **Period covered:** 2026-05-20 (Tuesday) → 2026-05-25  
+**PRD diff detail:** `AUTHEON/prd-changelog-since-2026-05-20.md` (baseline `bd55711` → HEAD `5af4b75`)  
 **Automated check:** `_audit-prototype.mjs` — **PASS** (2026-05-25)
+
+**Git note:** Working tree, index, and HEAD all match — PRD v1.6 is fully committed; no unstaged `prd.json` delta.
 
 ---
 
