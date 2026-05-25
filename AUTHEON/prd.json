@@ -16,7 +16,8 @@
       "Draft transport-order Word/PDF template (repository asset)",
       "Vehicle / operational CSV list (legacy column glossary)",
       "Translated written client feedback PDF, May 2026",
-      "Internal PRD update report from client meeting and feedback, May 2026",
+      "AUTHEON/meetings/autheon_aw_meeting_transcript_en_with_index.md (meeting 2026-05-18)",
+      "AUTHEON/meetings/autheon_aw_written_feedback_en.md (Feedback.pdf translation, May 2026)",
       "Client Feedback.pdf (May 2026, repository root d:/Feedback.pdf)"
     ],
     "important_notes": [
@@ -1248,7 +1249,8 @@
   "client_feedback_source": {
     "document": "Feedback.pdf",
     "document_path": "d:/Feedback.pdf",
-    "translated_reference": "AUTHEON/autheon_aw_written_feedback_en.md",
+    "translated_reference": "AUTHEON/meetings/autheon_aw_written_feedback_en.md",
+    "meeting_reference": "AUTHEON/meetings/autheon_aw_meeting_transcript_en_with_index.md",
     "integration_version": "PRD v1.6",
     "integrated_into": "AUTHEON/prd.json",
     "canonical_spec": "AUTHEON/prd.json"

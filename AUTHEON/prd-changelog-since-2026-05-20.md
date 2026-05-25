@@ -104,7 +104,9 @@ Notification feed, driver in-app notifications, `driver_visibility_matrix`, `mar
 
 ## PRD vs latest client feedback (Feedback.pdf)
 
-Source text: `AUTHEON/autheon_aw_written_feedback_en.md`  
+Source text: `AUTHEON/meetings/autheon_aw_written_feedback_en.md`  
+Meeting: `AUTHEON/meetings/autheon_aw_meeting_transcript_en_with_index.md`  
+Validation: `AUTHEON/prd-client-source-validation.md`  
 Machine traceability: `client_feedback_traceability` in `prd.json`
 
 | PDF | Topic | PRD status in v1.6 | PRD location |

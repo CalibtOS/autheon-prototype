@@ -1,7 +1,9 @@
 # Client feedback ↔ PRD ↔ prototype comparison
 
 **Canonical spec:** `AUTHEON/prd.json` (PRD v1.6)  
-**Written feedback reference:** `AUTHEON/autheon_aw_written_feedback_en.md` (from Feedback.pdf)  
+**Written feedback reference:** `AUTHEON/meetings/autheon_aw_written_feedback_en.md` (from Feedback.pdf)  
+**Meeting reference:** `AUTHEON/meetings/autheon_aw_meeting_transcript_en_with_index.md` (2026-05-18)  
+**Full validation report:** `AUTHEON/prd-client-source-validation.md`  
 **Prototype:** `AUTHEON/autheon-extracted/autheon/project/`  
 **Period covered:** 2026-05-20 (Tuesday) → 2026-05-25  
 **PRD diff detail:** `AUTHEON/prd-changelog-since-2026-05-20.md` (baseline `bd55711` → HEAD `5af4b75`)  
