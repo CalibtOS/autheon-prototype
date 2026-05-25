@@ -1,12 +1,12 @@
 # PRD v1.6 vs Static Prototype Audit
 
-> **v1.5 baseline:** `AUTHEON/prd.json` (unchanged). **Canonical spec for prototype work:** `AUTHEON/prd_updated_v2.json`.
+> **Canonical spec:** `AUTHEON/prd.json` (PRD v1.6, Feedback.pdf traceability, May 2026).
 
-Last PRD sync: **2026-05-23** (v1.6: notifications, Under Review summary, visibility matrix, three push toggles).
+Last PRD sync: **2026-05-25** (single-file consolidation; re-audit after 2026-05-24 prototype commits).
 
 Validated against:
 
-- `AUTHEON/prd_updated_v2.json` (`client_feedback_traceability`, `driver_visibility_matrix`, `notification_channels_matrix`, `resolved_defaults`)
+- `AUTHEON/prd.json` (`client_feedback_traceability`, `driver_visibility_matrix`, `notification_channels_matrix`, `resolved_defaults`)
 - `AUTHEON/autheon-extracted/autheon/project/AUTHEON Prototype.html`
 - `AUTHEON/autheon-extracted/autheon/project/store.js`
 - `AUTHEON/autheon-extracted/autheon/project/driver.jsx`
@@ -16,9 +16,9 @@ Validated against:
 
 ## Verdict
 
-**PASS (2026-05-23)** — `_audit-prototype.mjs` exits 0; all 16 v1.6 checklist items are implemented in the prototype.
+**PASS (2026-05-25)** — `_audit-prototype.mjs` exits 0; all 16 v1.6 checklist items implemented. Canonical spec consolidated to `AUTHEON/prd.json`.
 
-The static prototype targets **PRD v1.6** (`prd_updated_v2.json`) for client walkthroughs. Operational statuses remain seven (`draft` … `special_case`); client labels **Under review** and **Completed** are derived from `document_review_summary` and `settlementState`.
+Operational statuses remain seven (`draft` … `special_case`); client labels **Under review** and **Completed** are derived from `document_review_summary` and `settlementState`.
 
 Production implementation (database, auth, real PDF template, file storage, map API, SMTP, service worker) remains out of scope for the prototype.
 
@@ -41,11 +41,11 @@ Production implementation (database, auth, real PDF template, file storage, map 
 | 13 | Re-upload admin alert | Done (`tour_document_reuploaded`) |
 | 14 | Infopoint tab labels + nav badge | Done (`infopointDocsTab` / `infopointNewsTab`) |
 | 15 | `cancellationActor` on cancel | Done (seed + admin detail banner) |
-| 16 | Audit script v1.6 | Done (exit 0) |
+| 16 | Audit script v1.6 | Done (exit 0, 2026-05-25) |
 
 ## Coverage matrix (PRD v1.6 tasks)
 
-Same task IDs as v1.5; v1.6 strengthens Tasks 4, 5, 7, 8, 10, 18–20, 22, 26, 27 per `prd_updated_v2.json`.
+Same task IDs as v1.5; v1.6 strengthens Tasks 4, 5, 7, 8, 10, 18–20, 22, 26, 27 per `AUTHEON/prd.json`.
 
 ## Demo script (smoke test v1.6)
 
@@ -71,4 +71,8 @@ Expect: i18n EN/DE parity, PRD v1.5+v1.6 store APIs, v1.6 document summary strin
 
 ## Remaining production work
 
-See `production_open_questions` in `AUTHEON/prd_updated_v2.json`.
+See `production_open_questions` in `AUTHEON/prd.json`.
+
+## Client feedback comparison
+
+See `AUTHEON/client-feedback-comparison.md` for Feedback.pdf section ↔ prototype mapping (2026-05-20 onward).

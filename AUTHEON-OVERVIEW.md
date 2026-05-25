@@ -1,6 +1,6 @@
 # AUTHEON — Product Overview & Designer Onboarding Guide
 
-> **Version:** PRD v1.6 (prototype) — canonical spec: `AUTHEON/prd_updated_v2.json`  
+> **Version:** PRD v1.6 (prototype) — canonical spec: `AUTHEON/prd.json`  
 > **Audience:** UX/UI Designer onboarding  
 > **Companion files:** [Sitemap.md](Sitemap.md) · [DOMAIN.md](AUTHEON/autheon-extracted/autheon/project/DOMAIN.md) (status & terminology glossary)  
 > **Prototype:** `AUTHEON/autheon-extracted/autheon/project` (single-page HTML/React Babel demo)

@@ -1,4 +1,4 @@
-// AUTHEON — Shared store (PRD v1.6 prototype). Target spec: AUTHEON/prd_updated_v2.json
+// AUTHEON — Shared store (PRD v1.6 prototype). Target spec: AUTHEON/prd.json
 // Domain glossary: DOMAIN.md
 // Single source of truth for Driver + Admin views.
 // Operational statuses: draft, published, assigned, accepted, performed, cancelled, special_case.
