@@ -4,7 +4,5 @@ window.AUTHEON_BRANDING_DEFAULTS = {
 };
 
 window.AUTHEON_FLAG_DEFAULTS = {
-  documentsModule: true,
   financeModule: false,
-  notificationPreferences: true,
 };

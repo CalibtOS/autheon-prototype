@@ -329,6 +329,22 @@ const Ic = {
       />
     </svg>
   ),
+  Bell: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M18 8a6 6 0 1 0-12 0c0 7-2 9-2 9h16s-2-2-2-9Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.5 19a2.5 2.5 0 0 0 5 0"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
   Refresh: () => (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
       <path
@@ -604,7 +620,7 @@ const JobCard = ({ job, onOpen }) => {
   );
 };
 
-const Portal = ({ filters, setFilters, openFilter, onOpenJob }) => {
+const Portal = ({ filters, setFilters, openFilter, onOpenJob, onOpenNotifications }) => {
   const { t, locale } = useI18n();
   const store = useAuthStore();
   const [sortDir, setSortDir] = useState("asc");
@@ -683,6 +699,9 @@ const Portal = ({ filters, setFilters, openFilter, onOpenJob }) => {
       </div>
     );
   }
+  const unreadNotif = store
+    .getDriverNotifications()
+    .filter((n) => !n.read).length;
   const all = store.getJobs().filter((j) => j.status === "published");
   const filtered = all.filter((j) => {
     const jobDate = parseDdMm(j.date);
@@ -769,16 +788,58 @@ const Portal = ({ filters, setFilters, openFilter, onOpenJob }) => {
         >
           {t("marketplace")}
         </h1>
-        <button
-          type="button"
-          className="btn icon sm"
-          style={{ position: "absolute", top: 8, right: 22 }}
-          title={t("refreshDemo")}
-          disabled={refreshing}
-          onClick={onRefresh}
+        <div
+          style={{
+            position: "absolute",
+            top: 8,
+            right: 22,
+            display: "flex",
+            gap: 8,
+          }}
         >
-          <Ic.Refresh />
-        </button>
+          <button
+            type="button"
+            className="btn icon sm"
+            style={{ position: "relative" }}
+            title={t("driverNotifications")}
+            aria-label={t("driverNotifications")}
+            onClick={() => onOpenNotifications?.()}
+          >
+            <Ic.Bell />
+            {unreadNotif > 0 ? (
+              <span
+                className="mono"
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  right: -4,
+                  minWidth: 16,
+                  height: 16,
+                  padding: "0 4px",
+                  borderRadius: 8,
+                  background: "var(--primary)",
+                  color: "#fff",
+                  fontSize: 9,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {unreadNotif > 9 ? "9+" : unreadNotif}
+              </span>
+            ) : null}
+          </button>
+          <button
+            type="button"
+            className="btn icon sm"
+            title={t("refreshDemo")}
+            disabled={refreshing}
+            onClick={onRefresh}
+          >
+            <Ic.Refresh />
+          </button>
+        </div>
         <div className="label" style={{ marginTop: 4 }}>
           {store.getAppDisplayName()} · {all.length} {t("openTours")} ·{" "}
           {new Date().toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", {
@@ -1492,6 +1553,33 @@ const JobTourDocuments = ({ job }) => {
     );
   };
   if (!active) return null;
+
+  if (!tourPerformed) {
+    return (
+      <div
+        style={{
+          marginTop: 16,
+          padding: 14,
+          borderRadius: 12,
+          border: "1px solid var(--line)",
+          background: "var(--paper-2)",
+        }}
+      >
+        <Lbl>{t("tourDocumentsSection")}</Lbl>
+        <p
+          style={{
+            fontSize: 12,
+            color: "var(--muted)",
+            margin: "8px 0 0",
+            lineHeight: 1.55,
+          }}
+        >
+          {t("tourDocAfterPerformedHint")}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -1511,20 +1599,19 @@ const JobTourDocuments = ({ job }) => {
           lineHeight: 1.55,
         }}
       >
-        {tourPerformed ? t("tourDocUploadHint") : t("tourDocAfterPerformedHint")}
+        {t("tourDocUploadHint")}
       </p>
-      {tourPerformed ? (
-        <button
-          type="button"
-          className="btn xs"
-          onClick={() => setCategoryModal(true)}
-        >
-          <Ic.Plus /> {t("tourDocUploadButton")}
-        </button>
-      ) : null}
+      <button
+        type="button"
+        className="btn xs"
+        onClick={() => setCategoryModal(true)}
+      >
+        <Ic.Plus /> {t("tourDocUploadReceiptButton")}
+      </button>
       <input
         ref={inputRef}
         type="file"
+        capture="environment"
         accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
         style={{ display: "none" }}
         onChange={onPick}
@@ -1645,14 +1732,39 @@ const JobTourDocuments = ({ job }) => {
               }}
             >
               {TOUR_DOC_TYPES.map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  className="btn block"
-                  onClick={() => startUpload(type)}
-                >
-                  {displayTourDocType(type, t)}
-                </button>
+                <div key={type}>
+                  <button
+                    type="button"
+                    className="btn block"
+                    onClick={() => startUpload(type)}
+                  >
+                    {displayTourDocType(type, t)}
+                  </button>
+                  {type === "fuel_receipt" ? (
+                    <p
+                      style={{
+                        margin: "6px 0 0",
+                        fontSize: 11.5,
+                        color: "var(--muted)",
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {t("tourDocHelperFuel")}
+                    </p>
+                  ) : null}
+                  {type === "waiting_time_evidence" ? (
+                    <p
+                      style={{
+                        margin: "6px 0 0",
+                        fontSize: 11.5,
+                        color: "var(--muted)",
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {t("tourDocHelperWaiting")}
+                    </p>
+                  ) : null}
+                </div>
               ))}
             </div>
             <button
@@ -1684,6 +1796,7 @@ const JobUnlocked = ({
   onPerform,
 }) => {
   const { t } = useI18n();
+  const store = useAuthStore();
   const onReport = onReportProblem || onReturn;
   const onMarkPerformed = onPerform || onComplete;
   const isPerformed = job.status === "performed";
@@ -1759,6 +1872,27 @@ const JobUnlocked = ({
           )}
           <span className="label mono">{job.id}</span>
         </div>
+
+        <div
+          style={{
+            marginTop: 14,
+            padding: 12,
+            borderRadius: 10,
+            border: "1px solid var(--line)",
+            background: "var(--paper-2)",
+          }}
+        >
+          <Lbl>{t("orderingPartyLabel")}</Lbl>
+          <div style={{ fontWeight: 600, fontSize: 14, marginTop: 6 }}>
+            {job.orderingPartyName || job.customer || "—"}
+          </div>
+        </div>
+
+        {job.status === "performed" && store.getJobDisplayStatus(job) ? (
+          <div style={{ marginTop: 10 }}>
+            <Pill status="assigned">{store.getJobDisplayStatus(job)}</Pill>
+          </div>
+        ) : null}
 
         <div style={{ marginTop: 18 }}>
           <Lbl>{t("pickup")}</Lbl>
@@ -2473,8 +2607,6 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   );
 };
 
-const ReturnSheet = ReportProblemSheet;
-
 const PendingNotice = ({ onClose, kind }) => {
   const { t } = useI18n();
   const isCancel = kind === "cancel";
@@ -2622,7 +2754,7 @@ const InfoPane = () => {
       {[
         [t("autheonWorkflow"), t("autheonWorkflowSub")],
         [t("bindingAcceptanceInfo"), t("bindingAcceptanceInfoSub")],
-        [t("returnsIncidents"), t("returnsIncidentsSub")],
+        [t("reportProblemGuide"), t("reportProblemGuideSub")],
         [t("settlementRhythm"), t("settlementRhythmSub")],
         [t("dispatcherHotline"), t("dispatcherHotlineSub")],
       ].map(([label, sub]) => (
@@ -2645,6 +2777,88 @@ const InfoPane = () => {
         </div>
       ))}
     </div>
+  );
+};
+
+const DriverNotificationsList = ({ markReadOnMount = false }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const rows = store.getDriverNotifications();
+  useEffectA(() => {
+    if (markReadOnMount && rows.some((r) => !r.read)) {
+      store.markDriverNotificationsRead();
+    }
+  }, [markReadOnMount]);
+  if (!rows.length) {
+    return (
+      <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--muted)" }}>
+        {t("driverNotificationsEmpty")}
+      </p>
+    );
+  }
+  return (
+    <ul
+      style={{
+        margin: "12px 0 0",
+        padding: 0,
+        listStyle: "none",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}
+    >
+      {rows.map((row) => (
+        <li
+          key={row.id}
+          style={{
+            padding: 10,
+            border: "1px solid var(--line)",
+            borderRadius: 8,
+            background: row.read ? "var(--paper)" : "var(--paper-2)",
+          }}
+        >
+          <div style={{ fontWeight: 600, fontSize: 13 }}>{row.title}</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+            {row.body}
+          </div>
+          <div className="mono" style={{ fontSize: 10, color: "var(--muted-2)", marginTop: 4 }}>
+            {row.createdAt}
+            {row.tour ? ` · ${row.tour}` : ""}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+const DriverNotificationsPane = ({ onBack }) => {
+  const { t } = useI18n();
+  return (
+    <>
+      <div
+        style={{
+          padding: "0 18px 14px",
+          borderBottom: "1px solid var(--line)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button type="button" className="btn icon sm" onClick={onBack}>
+            <Ic.Back />
+          </button>
+          <div style={{ flex: 1 }}>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
+              {t("driverNotifications")}
+            </h2>
+            <div className="label" style={{ marginTop: 2 }}>
+              {t("driverNotificationsSub")}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="scroll" style={{ padding: "12px 18px 24px" }}>
+        <DriverNotificationsList markReadOnMount />
+      </div>
+    </>
   );
 };
 
@@ -2718,19 +2932,9 @@ const ProfilePaneFull = () => {
           {t("masterDataChangeNotice")}
         </p>
       </div>
-      {store.getFeatureFlag("notificationPreferences") && (
-        <div className="card" style={{ padding: 14, marginTop: 14 }}>
-          <Lbl>{t("notificationPreferences")}</Lbl>
+      <div className="card" style={{ padding: 14, marginTop: 14 }}>
+        <Lbl>{t("notificationPreferences")}</Lbl>
           <label className="field-label" style={{ marginTop: 14 }}>
-            {t("pickupPostalArea")}
-          </label>
-          <input
-            className="input mono"
-            value={prefs.startPlz || ""}
-            onChange={(e) => setPref({ startPlz: e.target.value })}
-            placeholder="e.g. 80"
-          />
-          <label className="field-label" style={{ marginTop: 12 }}>
             {t("vehicleType")}
           </label>
           <select
@@ -2770,11 +2974,38 @@ const ProfilePaneFull = () => {
           >
             <input
               type="checkbox"
-              checked={!!prefs.push}
-              onChange={(e) => setPref({ push: e.target.checked })}
+              checked={prefs.pushEnabled !== false}
+              onChange={(e) => setPref({ pushEnabled: e.target.checked })}
             />
-            {t("pushNotificationsEnabled")}
+            {t("pushEnabledMaster")}
           </label>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginTop: 10,
+              fontSize: 13,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={prefs.notifyNewPublished !== false}
+              onChange={(e) =>
+                setPref({ notifyNewPublished: e.target.checked })
+              }
+            />
+            {t("pushNotifyNewPublished")}
+          </label>
+          <label className="field-label" style={{ marginTop: 12 }}>
+            {t("pushNotifyPostalPrefix")}
+          </label>
+          <input
+            className="input mono"
+            value={prefs.notifyPostalPrefix || ""}
+            onChange={(e) => setPref({ notifyPostalPrefix: e.target.value })}
+            placeholder={t("pushPostalPrefixHint")}
+          />
           <div
             className="dash-area"
             style={{
@@ -2787,8 +3018,7 @@ const ProfilePaneFull = () => {
           >
             {t("pushSupportNotice")}
           </div>
-        </div>
-      )}
+      </div>
       <button
         type="button"
         className="btn block"
@@ -2826,7 +3056,7 @@ const Infopoint = () => {
       </div>
       <div className="tabs" style={{ marginTop: 16 }}>
         {[
-          ["documents", t("documentsTitle")],
+          ["documents", t("infopointDocsTab")],
           ["news", t("infopointNewsTab"), unreadCount],
         ].map(([id, lbl, n]) => (
           <button
@@ -2987,10 +3217,11 @@ Object.assign(window, {
   AcceptanceModal,
   JobUnlocked,
   JobTourDocuments,
+  DriverNotificationsList,
+  DriverNotificationsPane,
   JobInvoiceUpload,
   MyJobs,
   ReportProblemSheet,
-  ReturnSheet,
   PendingNotice,
   ProfilePane,
   InfoPane,

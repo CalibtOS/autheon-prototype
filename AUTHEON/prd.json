@@ -1,6 +1,6 @@
 {
   "feature": "Vehicle Transport Platform Phase 1 - working app name configurable",
-  "version": "PRD v1.5 - Client feedback integrated May 2026",
+  "version": "PRD v1.6 - Feedback.pdf traceability May 2026",
   "goal": "Replace manual vehicle transport dispatch with a contract-driven Version 1 platform focused on operational order creation, marketplace job distribution, direct assignment, binding service partner acceptance, clear Report Problem cancellation and special case flows, external map navigation, address master data, simple push notifications for drivers, admin email alerts for critical events, optional tour-linked document and partner invoice handling, auditability, and a controlled rollout from zero without historical Excel tour migration.",
   "product_context": {
     "platform_type": "Vehicle transport / vehicle relocation operations platform",
@@ -16,7 +16,9 @@
       "Draft transport-order Word/PDF template (repository asset)",
       "Vehicle / operational CSV list (legacy column glossary)",
       "Translated written client feedback PDF, May 2026",
-      "Internal PRD update report from client meeting and feedback, May 2026"
+      "AUTHEON/meetings/autheon_aw_meeting_transcript_en_with_index.md (meeting 2026-05-18)",
+      "AUTHEON/meetings/autheon_aw_written_feedback_en.md (Feedback.pdf translation, May 2026)",
+      "Client Feedback.pdf (May 2026, repository root d:/Feedback.pdf)"
     ],
     "important_notes": [
       "Drivers transport vehicles between clearly separated pickup and delivery locations.",
@@ -37,7 +39,7 @@
       "The final app display name should be configurable because the client does not want the program to be named AUTHEON in the UI.",
       "Draft jobs may be permanently deleted; they are not cancelled. Cancel Order in the driver PWA requires a minimum-length explanation before slide-to-confirm unlocks."
     ],
-    "prototype_reference": "AUTHEON/autheon-extracted/autheon/project (single-page HTML/React Babel demo: admin.jsx, driver.jsx, store.js, i18n.js — not production repo layout; maps conceptually to apps/* paths in tasks). Final production PRD v1.5 supersedes prototype-only return request and broad finance assumptions with client-validated Report Problem, Special Case, and finance de-scoping decisions."
+    "prototype_reference": "AUTHEON/autheon-extracted/autheon/project (single-page HTML/React Babel demo: admin.jsx, driver.jsx, store.js, i18n.js — not production repo layout; maps conceptually to apps/* paths in tasks). Final production PRD v1.6 supersedes prototype-only return request and broad finance assumptions with client-validated Report Problem, Special Case, and finance de-scoping decisions."
   },
   "prototype_coverage_notes": [
     "Driver PWA (demo): marketplace with pull-to-refresh, My Jobs (Active, Performed, Cancelled, Special case), locked preview, slide accept, map handoff, Mark as performed, Report Problem (cancel + not performable), tour-linked document upload only after Performed (categories, rejection reason, replace file), correction badge on Performed tab only, Infopoint (documents + news), profile and push preferences (no driver workflow email).",
@@ -50,9 +52,9 @@
     "Seed data: 10 jobs, 5 ordering parties, 17 addresses, 3 service partners (2 active, 1 blocked), 6 tour-linked seed documents (only on performed tours; rejected invoice on performed 0842, not on active tours), sample admin email alerts, expanded audit log; validateSeedData() on load checks contacts, addresses, schedules, vehicle IDs, driver compensation, history, driverState consistency, performed-tour documents, and no documents on non-performed jobs."
   ],
   "prototype_validation": {
-    "last_synced": "2026-05-21",
+    "last_synced": "2026-05-25",
     "audit_document": "AUTHEON/prd-prototype-validation.md",
-    "verdict": "Aligned — static prototype matches PRD v1.5 per prd-prototype-validation.md; prototype UX refinements synced 2026-05-21.",
+    "verdict": "PASS — prototype matches PRD v1.6 at AUTHEON/prd.json (_audit-prototype.mjs exit 0, 2026-05-25).",
     "sync_pass_notes": [
       "Integrated client feedback requiring ordering party, pickup location, and delivery location separation.",
       "Replaced return window logic with Report Problem, cancellation, and special case handling.",
@@ -68,8 +70,12 @@
       "2026-05-21: Admin Partner invoices nav renamed Tour documents with type/review/source filters and document-type column; off-channel register supports all tour document types.",
       "2026-05-21: Canonical tour billing invoice document type is `invoice` only; `partner_invoice` removed and normalized in prototype store.",
       "2026-05-21: Tour document review uses uploaded, accepted, rejected, and correction_required; admin Require correction promotes rejected → correction_required for partner workflow.",
-      "2026-05-21: paymentStatus defaults to Invoice Missing; accepting tour invoice sets Invoice Received; Paid only via Finance manual edit."
-    ]
+      "2026-05-21: paymentStatus defaults to Invoice Missing; accepting tour invoice sets Invoice Received; Paid only via Finance manual edit.",
+      "2026-05-23 v1.6 spec: Added client_feedback_traceability, driver_visibility_matrix, notification_channels_matrix, marketplace_sync_policy, client_status_mapping in prd.json.",
+      "2026-05-23 v1.6 spec: Alternate contact fields, admin notification feed, auto Under Review on first post-Performed upload, three push toggles, push_on_direct_assign false.",
+      "2026-05-25: Consolidated prd_updated_v2.json into prd.json; AUTHEON/prd.json is the only canonical spec file."
+    ],
+    "prd_spec_reference": "AUTHEON/prd.json"
   },
   "domain_model_summary": {
     "job_fields": [
@@ -85,6 +91,7 @@
       "pickupCity",
       "pickupCountry",
       "pickupContactPerson",
+      "pickupAlternateContactPerson optional",
       "pickupPhone",
       "pickupSecondPhone optional",
       "pickupEmail optional",
@@ -100,6 +107,7 @@
       "deliveryCity",
       "deliveryCountry",
       "deliveryContactPerson",
+      "deliveryAlternateContactPerson optional",
       "deliveryPhone",
       "deliverySecondPhone optional",
       "deliveryEmail optional",
@@ -229,6 +237,18 @@
       "missing documents",
       "vehicle data does not match",
       "other clarification required"
+    ],
+    "cancellation_fields": [
+      "cancellationActor: service_partner | admin | ordering_party",
+      "cancellationReasonCode",
+      "cancellationReasonText optional",
+      "cancelledAt",
+      "cancelledByUserId"
+    ],
+    "document_rejection_reason_examples": [
+      "Fuel receipt not legible",
+      "Registration number missing",
+      "Waiting time not documented comprehensibly"
     ]
   },
   "global_business_rules": [
@@ -267,7 +287,19 @@
     "The system must preserve manual admin control for edge cases and must not block operations merely because an exceptional workflow was not predicted.",
     "Version 1 supports simple A to B tours only. A to B to A and A to B to C tours are represented as separate orders for now.",
     "Rollout starts from zero. Historical Excel tours are not migrated into the new system.",
-    "Administrative Closed state means the order is fully checked, documented, and financially or administratively closed; it is separate from operational Performed status."
+    "Administrative Closed state means the order is fully checked, documented, and financially or administratively closed; it is separate from operational Performed status.",
+    "Driver visibility before and after acceptance follows driver_visibility_matrix; server-side authorization enforces the matrix.",
+    "On first tour-linked document upload after operational Performed, job document_review_summary transitions to Under Review and triggers admin notification per notification_channels_matrix.",
+    "Admin lightweight notification feed lists critical operational events in the admin UI; email alerts complement the feed for urgent events.",
+    "Driver in-app notifications inform service partners of tour changes, document review outcomes, special case resolution, and new Infopoint messages without workflow email.",
+    "Cancellation attribution records whether cancellation came from service partner, admin/dispatching, or ordering party (client).",
+    "Status history for every operational transition records previous status, new status, date/time, triggering user, optional comment, and uploaded evidence reference when applicable.",
+    "Pickup and delivery optional contact blocks use progressive disclosure (Add another contact / Show additional contact details) so the default form stays lean.",
+    "Admin may update linked ordering party or address master data from order entry when business allows; changes are audited and do not silently rewrite historical PDFs unless regenerated.",
+    "Marketplace synchronization in Version 1 uses load-on-open and pull-to-refresh per marketplace_sync_policy; continuous real-time list mutation is not required.",
+    "Push notifications for newly published jobs require driver opt-in via three toggles; admin pre-activation is not required. Direct assign does not trigger marketplace-style new-job push by default.",
+    "Admin may mark a document as checked before final accept/reject when document review workflow requires a distinct checked step.",
+    "UI may display client-friendly labels Under review and Completed derived from document_review_summary and settlement state without adding operational Completed status."
   ],
   "tasks": [
     {
@@ -337,8 +369,8 @@
         "Admin can reset, resend, or regenerate service partner access.",
         "Admin can create, edit, activate, and deactivate backend/admin accounts.",
         "Every activation, block, inactive/archive/soft-delete, access reset, or role change event is logged.",
-        "Exact service partner form fields remain an open question for client confirmation.",
-        "Admin can reset or resend access for backend/admin users as well as service partners, subject to role permissions and audit logging."
+        "Admin can reset or resend access for backend/admin users as well as service partners, subject to role permissions and audit logging.",
+        "Admin can edit all service partner master data fields including company name, person name, contact data, service partner ID, notes, status, and access state; changes to status, block, archive, or access reset are audited."
       ],
       "status": "pending",
       "files": [
@@ -362,7 +394,9 @@
         "Admin can choose whether to save a newly entered address as master data.",
         "One-time private addresses should not automatically pollute the address master data list.",
         "Master data changes do not unintentionally rewrite historical job PDFs unless explicitly regenerated.",
-        "Order entry must not be blocked if a saved address does not exist."
+        "Order entry must not be blocked if a saved address does not exist.",
+        "Admin can update an existing ordering party or address master data record from order entry when permitted, with audit logging.",
+        "Updating master data from order entry does not silently change text on already-generated historical PDFs unless admin explicitly regenerates the PDF."
       ],
       "status": "pending",
       "files": [
@@ -392,7 +426,9 @@
         "Job can be saved as Draft.",
         "System generates unique tour number using agreed format such as 0001-26, with yearly sequencing.",
         "Required fields are validated before Publish or Direct Assign.",
-        "Sensitive fields are persisted but not exposed to service partners before acceptance or assignment."
+        "Sensitive fields are persisted but not exposed to service partners before acceptance or assignment.",
+        "Pickup and delivery sections support optional alternate contact person distinct from primary contact person.",
+        "Optional contact fields (alternate contact, second phone, email, info notes) are hidden behind progressive disclosure such as Add another contact or Show additional contact details."
       ],
       "status": "pending",
       "files": [
@@ -446,7 +482,9 @@
         "Prototype auto reload behavior came from mocked backend behavior and must not be treated as final production logic.",
         "Marketplace supports empty state when no matching jobs exist.",
         "Blocked or inactive service partners cannot access marketplace active actions.",
-        "Data leakage tests verify hidden fields are not returned before acceptance."
+        "Data leakage tests verify hidden fields are not returned before acceptance.",
+        "Publishing a job makes it visible to authorized service partners on the next marketplace fetch (open screen or pull-to-refresh), not via mandatory real-time WebSocket sync in Version 1.",
+        "Behavior aligns with marketplace_sync_policy answers: newly published orders appear after fetch; pull-to-refresh is the manual refresh path."
       ],
       "status": "pending",
       "files": [
@@ -471,7 +509,9 @@
         "No internal map module is built in Version 1.",
         "Installed map apps and device default settings remain the service partner device responsibility.",
         "Address handoff is sufficient for V1 unless route handoff is easy and low risk.",
-        "Server-side authorization enforces visibility rules."
+        "Server-side authorization enforces visibility rules.",
+        "Visibility rules implement driver_visibility_matrix including ordering party hidden before acceptance and visible after acceptance or direct assignment.",
+        "Before acceptance, at least pickup and delivery dates relevant to the driver decision are visible in marketplace preview."
       ],
       "status": "pending",
       "files": [
@@ -514,7 +554,8 @@
         "Special Case jobs remain visible to the assigned service partner with clear status and next-step messaging until admin resolves them.",
         "Jobs requiring document correction show a correction indicator on Performed tours only, not on Active (assigned/accepted) tours.",
         "Each job card shows route summary, date/time, vehicle type, price/compensation where applicable, and status badge.",
-        "Service partner sees only own assigned, accepted, performed, cancelled, or special-case jobs."
+        "Service partner sees only own assigned, accepted, performed, cancelled, or special-case jobs.",
+        "Driver in-app notification or badge surfaces document rejection, admin cancellation, and special case resolution on affected tours in My Jobs."
       ],
       "status": "pending",
       "files": [
@@ -710,7 +751,9 @@
         "News supports subject, text, publication date, read/unread state, and badge indicators.",
         "News does not support replies, attachments, or rich newsletter formatting in Version 1.",
         "Important news may optionally trigger push notification if push is implemented.",
-        "The UI should use tabs or segmented controls instead of a cluttered slider if appropriate for mobile usability."
+        "The UI should use tabs or segmented controls instead of a cluttered slider if appropriate for mobile usability.",
+        "Driver navigation label uses Infopoint; tabs or segmented controls label General documents and New messages.",
+        "Unread Infopoint news shows a badge on the Infopoint menu item and New marking on unread messages; newest messages sort first."
       ],
       "status": "pending",
       "files": [
@@ -734,7 +777,9 @@
         "Postal code preferences support at least one-digit and two-digit German postal code prefixes such as 4, 40, or 41.",
         "Foreign or unknown postal codes must not crash filtering or incorrectly hide jobs.",
         "If no filters are configured, targeted notifications follow the agreed default rule.",
-        "Feature toggles may control optional driver UI visibility during rollout; toggles are auditable."
+        "Feature toggles may control optional driver UI visibility during rollout; toggles are auditable.",
+        "Push settings use three explicit toggle switches: master enable/disable push notifications, notification for newly published orders, and notification for new orders in desired pickup postal code prefix area (1- or 2-digit German prefix such as 4, 40, or 41).",
+        "Driver enables push without prior admin activation."
       ],
       "status": "pending",
       "files": [
@@ -762,7 +807,11 @@
         "Android support is validated.",
         "iOS support is documented as requiring compatible iOS version, home-screen installation, and user permission.",
         "Notification sending is logged or traceable.",
-        "Admin critical alerts may include master data change requested if a driver profile or master-data change request flow is implemented."
+        "Admin critical alerts may include master data change requested if a driver profile or master-data change request flow is implemented.",
+        "Version 1 includes a lightweight admin notification feed in the admin UI listing critical events from notification_channels_matrix; full backend notification center remains future scope.",
+        "Driver in-app notifications cover order cancelled by Autheon, document accepted or rejected with reason, special case processed, and new Infopoint message per notification_channels_matrix.",
+        "Admin alert when invoice, receipt, or evidence is uploaded again after initial upload (re-upload or replace).",
+        "Push notifications for newly published marketplace jobs follow driver toggles; push for direct assignment is off by default in Version 1."
       ],
       "status": "pending",
       "files": [
@@ -804,7 +853,9 @@
         "Status history records previous status, new status, date/time, triggering user, optional comment, and uploaded evidence if applicable.",
         "Admin can view audit log entries in the admin console.",
         "Admin can download or export the audit log for offline search, filtering, and archival; export is admin-only and is itself auditable.",
-        "Audit log is a traceability surface, not the only urgent notification mechanism."
+        "Audit log is a traceability surface, not the only urgent notification mechanism.",
+        "Every operational status change writes status history with previous status, new status, date and time, triggering user, optional comment, and reference to uploaded evidence when applicable.",
+        "Cancellation records cancellationActor as service partner, admin/dispatching, or ordering party with reason code and optional free text."
       ],
       "status": "pending",
       "files": [
@@ -906,7 +957,12 @@
         "Test: admin email alert is generated for critical events if alert module is included.",
         "Test: PDF generation includes required template fields.",
         "Test: audit logs are created for critical actions.",
-        "Test: admin can export audit log for download and export creates auditable event."
+        "Test: admin can export audit log for download and export creates auditable event.",
+        "Test: driver_visibility_matrix enforced — ordering party and full addresses hidden before acceptance, visible after.",
+        "Test: first document upload after Performed sets document_review_summary to Under Review and triggers admin notification.",
+        "Test: admin notification feed receives critical events from notification_channels_matrix.",
+        "Test: driver in-app notification shows document rejection reason and Infopoint unread badge.",
+        "Test: three push toggles independent; direct assign does not send new-job marketplace push by default."
       ],
       "status": "pending",
       "files": [
@@ -946,7 +1002,12 @@
         "Document and partner invoice module may be offered as base V1 or optional module according to final business decision.",
         "Where supported by device/browser capabilities, upload UX should allow camera capture or scan-like capture so receipts and evidence are clearly legible.",
         "Document type-specific helper notices can be shown, for example reminding drivers to include the vehicle registration number on fuel receipts or to document start, end, and reason for waiting time evidence.",
-        "If final legal/template rules require it, driver-facing copy should preserve the invoice submission SLA, for example single or consolidated invoice submission within seven calendar days."
+        "If final legal/template rules require it, driver-facing copy should preserve the invoice submission SLA, for example single or consolidated invoice submission within seven calendar days.",
+        "Tour detail provides separate Upload document / receipt action alongside invoice upload in driver UI.",
+        "On first tour-linked upload after operational Performed, job document_review_summary automatically becomes Under Review and admin is notified.",
+        "Admin can mark document as checked before accept/reject when review workflow requires it.",
+        "Example admin rejection reasons include fuel receipt not legible, registration number missing, and waiting time not documented comprehensibly.",
+        "Driver sees per-document status accepted, rejected, or under review with rejection reason when rejected."
       ],
       "status": "pending",
       "files": [
@@ -1026,18 +1087,41 @@
   ],
   "resolved_defaults": {
     "documents_module_production": "Optional/costed line item; prototype includes full module enabled.",
-    "min_document_types_v1": ["invoice", "fuel_receipt", "toll_receipt", "delivery_note", "waiting_time_evidence", "other_proof", "other_receipt"],
+    "min_document_types_v1": [
+      "invoice",
+      "fuel_receipt",
+      "toll_receipt",
+      "delivery_note",
+      "waiting_time_evidence",
+      "other_proof",
+      "other_receipt"
+    ],
     "document_rejection_ux": "Correction required badge on performed tours in My Jobs only; driver/admin can replace rejected or uploaded files on performed tours; no separate correction queue in V1.",
     "map_distance_production": "Technical spike required; prefer shortest drivable route by km when API supports route alternatives.",
-    "service_partner_fields_v1": ["companyName", "personName", "phone", "email", "address", "partnerId", "notes", "status", "accessState"],
+    "service_partner_fields_v1": [
+      "companyName",
+      "personName",
+      "phone",
+      "email",
+      "address",
+      "partnerId",
+      "notes",
+      "status",
+      "accessState"
+    ],
     "driver_auth_production": "Magic link or token-based access first; password fallback only if required.",
     "admin_email_alerts_v1": "Global dispatcher mailbox list; per-event configuration deferred.",
     "blocked_inactive_history": "Inactive and archived: read-only historical tours; blocked: no marketplace actions, read-only history.",
     "pdf_generation_timing": "On acceptance or direct assignment, not on publish.",
     "my_jobs_cancelled_ux": "Separate Cancelled tab.",
-    "push_on_direct_assign": true,
+    "push_on_direct_assign": false,
     "pdf_tax": "Amounts as entered; no automated VAT until legal confirms.",
-    "vehicle_categories_v1": ["PKW", "SUV", "Transporter", "Oldtimer"],
+    "vehicle_categories_v1": [
+      "PKW",
+      "SUV",
+      "Transporter",
+      "Oldtimer"
+    ],
     "vehicle_csv_role": "Glossary/reference only; not operational import data.",
     "app_display_name": "Configurable; default Transport Portal until client provides final name.",
     "tablet_ipad_v1": "Phone-first; iPad best-effort responsive.",
@@ -1056,7 +1140,15 @@
       "administrative_close": "Performed + settlement/administrative Closed",
       "cancel_order": "Cancelled"
     },
-    "special_case_resolution_label_guidance": "Avoid ambiguous Close for administrative close; prefer labels such as Mark performed and close case vs Cancel order."
+    "special_case_resolution_label_guidance": "Avoid ambiguous Close for administrative close; prefer labels such as Mark performed and close case vs Cancel order.",
+    "push_notification_toggles_v1": [
+      "push_enabled_master",
+      "notify_newly_published_orders",
+      "notify_postal_code_prefix_area"
+    ],
+    "admin_notification_feed_v1": "Lightweight in-admin event list for critical events; complements email alerts; not a full notification center.",
+    "document_review_checked_step": "Optional admin mark-as-checked before accept/reject when operations require it.",
+    "client_display_status_labels": "UI may show Under review and Completed from document_review_summary and settlement Closed without adding operational statuses."
   },
   "prototype_assumptions": {
     "purpose": "Client-facing UX validation for PRD v1.5; in-memory only.",
@@ -1126,7 +1218,11 @@
       "PDF generation from structured order data",
       "Rollout from zero with no historical tour migration",
       "Admin permanent delete for Draft jobs only",
-      "Admin Jobs overview primary New job entry without duplicate sidebar nav item"
+      "Admin Jobs overview primary New job entry without duplicate sidebar nav item",
+      "Admin lightweight notification feed for critical events",
+      "Driver in-app notifications for tour and document events",
+      "Explicit driver_visibility_matrix and marketplace_sync_policy",
+      "client_status_mapping for Under review and Completed display labels"
     ],
     "v1_optional_or_needs_decision": [
       "Tour-related document upload and review workflow",
@@ -1147,5 +1243,393 @@
       "Cross-border country-based filtering",
       "Rich newsletter/editor capabilities"
     ]
-  }
+  },
+  "derived_from": "AUTHEON/prd.json",
+  "baseline_version": "PRD v1.5 - Client feedback integrated May 2026",
+  "client_feedback_source": {
+    "document": "Feedback.pdf",
+    "document_path": "d:/Feedback.pdf",
+    "translated_reference": "AUTHEON/meetings/autheon_aw_written_feedback_en.md",
+    "meeting_reference": "AUTHEON/meetings/autheon_aw_meeting_transcript_en_with_index.md",
+    "integration_version": "PRD v1.6",
+    "integrated_into": "AUTHEON/prd.json",
+    "canonical_spec": "AUTHEON/prd.json"
+  },
+  "client_status_mapping": {
+    "rationale": "Client PDF lists Under review and Completed as operational statuses. PRD v1.6 keeps seven operational statuses and tracks document review and settlement separately so Performed stays atomic and billing closure does not collide with driver completion.",
+    "mappings": [
+      {
+        "client_pdf_status": "Draft",
+        "prd_operational_status": "Draft",
+        "prd_document_review": null,
+        "prd_settlement": null,
+        "ui_display_note": "Same"
+      },
+      {
+        "client_pdf_status": "Published",
+        "prd_operational_status": "Published",
+        "prd_document_review": null,
+        "prd_settlement": null,
+        "ui_display_note": "Same"
+      },
+      {
+        "client_pdf_status": "Accepted",
+        "prd_operational_status": "Accepted",
+        "prd_document_review": null,
+        "prd_settlement": null,
+        "ui_display_note": "Same"
+      },
+      {
+        "client_pdf_status": "Assigned",
+        "prd_operational_status": "Assigned",
+        "prd_document_review": null,
+        "prd_settlement": null,
+        "ui_display_note": "Same"
+      },
+      {
+        "client_pdf_status": "Performed",
+        "prd_operational_status": "Performed",
+        "prd_document_review": "Missing or Uploaded until first post-Performed upload",
+        "prd_settlement": "Not Started or Pending",
+        "ui_display_note": "Same operational label"
+      },
+      {
+        "client_pdf_status": "Under review",
+        "prd_operational_status": "Performed",
+        "prd_document_review": "Under Review",
+        "prd_settlement": "Pending",
+        "ui_display_note": "Admin/driver UI may show Under review when document_review_summary is Under Review"
+      },
+      {
+        "client_pdf_status": "Completed",
+        "prd_operational_status": "Performed",
+        "prd_document_review": "Accepted for required documents",
+        "prd_settlement": "Closed",
+        "ui_display_note": "Admin UI may show Completed when settlement is Closed and required documents are accepted"
+      },
+      {
+        "client_pdf_status": "Cancelled",
+        "prd_operational_status": "Cancelled",
+        "prd_document_review": null,
+        "prd_settlement": null,
+        "ui_display_note": "Same; cancellationActor records service partner, admin, or ordering party"
+      },
+      {
+        "client_pdf_status": "Special case",
+        "prd_operational_status": "Special Case",
+        "prd_document_review": null,
+        "prd_settlement": null,
+        "ui_display_note": "Same"
+      }
+    ],
+    "auto_transitions": [
+      "On first tour-linked document upload after operational Performed, set job document_review_summary to Under Review and trigger admin notification.",
+      "Admin sets settlement to Closed when order is fully checked and documented for billing; UI may display client term Completed."
+    ]
+  },
+  "marketplace_sync_policy": {
+    "publish_visibility": "When an admin publishes a Draft job, it becomes visible to authorized service partners on the next marketplace data fetch. There is no guaranteed sub-second real-time push to open marketplace screens in Version 1.",
+    "auto_sync": "Version 1 does not require continuous real-time list mutation while the driver watches the marketplace. Jobs load when the marketplace opens and when the driver uses pull-to-refresh.",
+    "manual_refresh": "Pull-to-refresh remains meaningful: drivers can check for newly published jobs and status changes without relying on live sync.",
+    "direct_assign": "Directly assigned jobs never appear in the marketplace; only Published jobs are listed.",
+    "answers_to_client_questions": {
+      "newly_published_visible_immediately": "Visible after publish on next fetch (open marketplace or pull-to-refresh), not via live WebSocket in V1.",
+      "list_updated_automatically": "On marketplace open and pull-to-refresh; not continuous background sync while screen is idle."
+    }
+  },
+  "driver_visibility_matrix": [
+    {
+      "field": "ordering_party",
+      "before_acceptance_marketplace": false,
+      "after_acceptance_or_assignment": true,
+      "notes": "Ordering party is Autheon contractual partner context for the service partner after commitment"
+    },
+    {
+      "field": "rough_pickup_region_postal_code",
+      "before_acceptance_marketplace": true,
+      "after_acceptance_or_assignment": true,
+      "notes": "At least postal code prefix for decision-making"
+    },
+    {
+      "field": "rough_delivery_region_postal_code",
+      "before_acceptance_marketplace": true,
+      "after_acceptance_or_assignment": true,
+      "notes": "At least postal code prefix for decision-making"
+    },
+    {
+      "field": "pickup_delivery_dates_and_time_windows",
+      "before_acceptance_marketplace": "limited",
+      "after_acceptance_or_assignment": true,
+      "notes": "Before acceptance at least dates relevant to driver decision; full windows in tour detail after commitment"
+    },
+    {
+      "field": "full_pickup_address",
+      "before_acceptance_marketplace": false,
+      "after_acceptance_or_assignment": true,
+      "notes": null
+    },
+    {
+      "field": "full_delivery_address",
+      "before_acceptance_marketplace": false,
+      "after_acceptance_or_assignment": true,
+      "notes": null
+    },
+    {
+      "field": "contact_person",
+      "before_acceptance_marketplace": false,
+      "after_acceptance_or_assignment": true,
+      "notes": "Includes alternate contact when provided"
+    },
+    {
+      "field": "telephone_number",
+      "before_acceptance_marketplace": false,
+      "after_acceptance_or_assignment": true,
+      "notes": "Primary and optional second phone"
+    },
+    {
+      "field": "driver_relevant_notes",
+      "before_acceptance_marketplace": "limited",
+      "after_acceptance_or_assignment": true,
+      "notes": "Limited preview may include axle type and self-drive hints; full notes after commitment"
+    },
+    {
+      "field": "vin_license_plate_internal_notes",
+      "before_acceptance_marketplace": false,
+      "after_acceptance_or_assignment": true,
+      "notes": "Enforced server-side"
+    }
+  ],
+  "notification_channels_matrix": [
+    {
+      "event": "order_accepted_by_service_partner",
+      "admin_feed": true,
+      "admin_email": true,
+      "driver_in_app": false,
+      "driver_push": false,
+      "notes": "Critical for dispatch"
+    },
+    {
+      "event": "order_cancelled_by_service_partner",
+      "admin_feed": true,
+      "admin_email": true,
+      "driver_in_app": false,
+      "driver_push": false,
+      "notes": "Highlight in admin feed"
+    },
+    {
+      "event": "order_reported_not_performable",
+      "admin_feed": true,
+      "admin_email": true,
+      "driver_in_app": false,
+      "driver_push": false,
+      "notes": "Special case created"
+    },
+    {
+      "event": "invoice_uploaded",
+      "admin_feed": true,
+      "admin_email": true,
+      "driver_in_app": false,
+      "driver_push": false,
+      "notes": null
+    },
+    {
+      "event": "receipt_or_evidence_uploaded",
+      "admin_feed": true,
+      "admin_email": true,
+      "driver_in_app": false,
+      "driver_push": false,
+      "notes": null
+    },
+    {
+      "event": "document_reuploaded",
+      "admin_feed": true,
+      "admin_email": true,
+      "driver_in_app": false,
+      "driver_push": false,
+      "notes": "Replacement or second upload on same tour"
+    },
+    {
+      "event": "tour_reported_performed",
+      "admin_feed": true,
+      "admin_email": true,
+      "driver_in_app": false,
+      "driver_push": false,
+      "notes": null
+    },
+    {
+      "event": "master_data_change_requested",
+      "admin_feed": true,
+      "admin_email": false,
+      "driver_in_app": false,
+      "driver_push": false,
+      "notes": "When driver requests profile/master-data change via operator"
+    },
+    {
+      "event": "order_cancelled_by_autheon",
+      "admin_feed": false,
+      "admin_email": false,
+      "driver_in_app": true,
+      "driver_push": true,
+      "notes": "Admin or ordering-party cancellation"
+    },
+    {
+      "event": "document_accepted",
+      "admin_feed": false,
+      "admin_email": false,
+      "driver_in_app": true,
+      "driver_push": false,
+      "notes": null
+    },
+    {
+      "event": "document_rejected",
+      "admin_feed": false,
+      "admin_email": false,
+      "driver_in_app": true,
+      "driver_push": true,
+      "notes": "Includes rejection reason in UI"
+    },
+    {
+      "event": "special_case_processed_by_admin",
+      "admin_feed": false,
+      "admin_email": false,
+      "driver_in_app": true,
+      "driver_push": true,
+      "notes": null
+    },
+    {
+      "event": "new_infopoint_message",
+      "admin_feed": false,
+      "admin_email": false,
+      "driver_in_app": true,
+      "driver_push": "optional",
+      "notes": "Badge on Infopoint nav; push optional for important news"
+    },
+    {
+      "event": "new_published_job_matching_preferences",
+      "admin_feed": false,
+      "admin_email": false,
+      "driver_in_app": false,
+      "driver_push": true,
+      "notes": "Only when driver enabled push and filters match; not for direct assign in V1 default"
+    }
+  ],
+  "client_feedback_resolved": [
+    {
+      "question": "Can service partner master data be changed by admins?",
+      "resolution": "Yes. Admins may create and edit all service partner fields; status, block, archive, and access reset are audited.",
+      "prd_reference": "Task 3, resolved_defaults.service_partner_master_edits"
+    },
+    {
+      "question": "Is the frontend compatible with tablets such as iPad?",
+      "resolution": "Phone-first PWA with best-effort responsive layout on tablets; not a separate tablet-optimized target for V1.",
+      "prd_reference": "Task 25, resolved_defaults.tablet_ipad_v1"
+    },
+    {
+      "question": "Is the audit log in German or English?",
+      "resolution": "Audit log action keys remain English for consistency; UI strings localized EN/DE.",
+      "prd_reference": "resolved_defaults.audit_log_language_v1"
+    },
+    {
+      "question": "Program name AUTHEON",
+      "resolution": "Final display name is configurable; AUTHEON must not appear as the product name in UI.",
+      "prd_reference": "resolved_defaults.app_display_name"
+    },
+    {
+      "question": "Icon for Report problem",
+      "resolution": "Report Problem uses clear label plus warning-style icon in tour detail footer.",
+      "prd_reference": "resolved_defaults.report_problem_ui"
+    }
+  ],
+  "client_feedback_traceability": [
+    {
+      "pdf_section": "A.1",
+      "summary": "Pull-to-refresh and marketplace sync clarification",
+      "prd_location": "marketplace_sync_policy, Task 7, Task 25",
+      "status": "gap_closed_in_v1_6"
+    },
+    {
+      "pdf_section": "A.2",
+      "summary": "Driver-controlled push with three toggles",
+      "prd_location": "Task 19, Task 20, resolved_defaults.push_notification_toggles_v1",
+      "status": "gap_closed_in_v1_6"
+    },
+    {
+      "pdf_section": "A.3",
+      "summary": "External navigation to pickup and delivery",
+      "prd_location": "Task 8, Task 28",
+      "status": "covered"
+    },
+    {
+      "pdf_section": "A.4",
+      "summary": "Tour document upload, types, review, rejection reasons",
+      "prd_location": "Task 27, domain_model_summary.document_fields",
+      "status": "gap_closed_in_v1_6"
+    },
+    {
+      "pdf_section": "B.1.1",
+      "summary": "Separate pickup/delivery dates and time windows with plausibility warnings",
+      "prd_location": "Task 5, domain_model_summary.job_fields",
+      "status": "covered"
+    },
+    {
+      "pdf_section": "B.1.2",
+      "summary": "Ordering party, pickup, delivery separation and contacts",
+      "prd_location": "Task 4, Task 5, driver_visibility_matrix",
+      "status": "gap_closed_in_v1_6"
+    },
+    {
+      "pdf_section": "B.1.3",
+      "summary": "Efficient date/time/VIN/plate input formatting",
+      "prd_location": "Task 5",
+      "status": "covered"
+    },
+    {
+      "pdf_section": "B.1.4",
+      "summary": "Drivable route distance with manual override",
+      "prd_location": "Task 28, Task 16",
+      "status": "covered"
+    },
+    {
+      "pdf_section": "B.1.5",
+      "summary": "Master data and driver visibility table",
+      "prd_location": "Task 4, driver_visibility_matrix",
+      "status": "gap_closed_in_v1_6"
+    },
+    {
+      "pdf_section": "B.2",
+      "summary": "Status management including Under review and Completed",
+      "prd_location": "client_status_mapping, operational_job_statuses",
+      "status": "design_decision"
+    },
+    {
+      "pdf_section": "B.2.2",
+      "summary": "Status history and notification triggers",
+      "prd_location": "Task 22, notification_channels_matrix",
+      "status": "gap_closed_in_v1_6"
+    },
+    {
+      "pdf_section": "C.1",
+      "summary": "Report Problem cancellation and not performable flows",
+      "prd_location": "Task 12, Task 13, Task 14",
+      "status": "covered"
+    },
+    {
+      "pdf_section": "C.2",
+      "summary": "Backend, frontend, and push notifications",
+      "prd_location": "notification_channels_matrix, Task 20",
+      "status": "gap_closed_in_v1_6"
+    },
+    {
+      "pdf_section": "C.3",
+      "summary": "Infopoint rename, tabs, documents, news, badge",
+      "prd_location": "Task 18",
+      "status": "gap_closed_in_v1_6"
+    },
+    {
+      "pdf_section": "D",
+      "summary": "Open questions from client",
+      "prd_location": "client_feedback_resolved",
+      "status": "gap_closed_in_v1_6"
+    }
+  ]
 }
