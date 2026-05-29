@@ -215,6 +215,22 @@ const Ic = {
       />
     </svg>
   ),
+  Alert: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 3 2 21h20L12 3Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 9v5M12 17h.01"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
   Sort: () => (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
       <path
@@ -2176,7 +2192,18 @@ const JobUnlocked = ({
             background: "var(--paper)",
           }}
         >
-          <button type="button" className="btn" onClick={onReport}>
+          <button
+            type="button"
+            className="btn"
+            onClick={onReport}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
+            <Ic.Alert />
             {t("reportProblem")}
           </button>
           <button
@@ -2347,11 +2374,13 @@ const MyJobs = ({ onOpen }) => {
 const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   const { t } = useI18n();
   const [path, setPath] = useState(null);
-  const [reason, setReason] = useState("other");
+  const [reason, setReason] = useState("partner_unavailable");
   const [text, setText] = useState("");
   const [slidePos, setSlidePos] = useState(0);
   const [slideDone, setSlideDone] = useState(false);
+  const [evidenceFiles, setEvidenceFiles] = useState([]);
   const trackRef = useRef(null);
+  const evidenceInputRef = useRef(null);
   const valid = text.trim().length >= 10;
 
   const pathOptions = [
@@ -2363,8 +2392,36 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
     ],
   ];
   const cancelReasons = [
-    ["customer_cancelled", t("reportCancelCustomer"), t("reportCancelCustomerSub")],
-    ["cannot_complete", t("reportCancelCannotComplete"), t("reportCancelCannotCompleteSub")],
+    [
+      "partner_unavailable",
+      t("reportCancelPartnerUnavailable"),
+      t("reportCancelPartnerUnavailableSub"),
+    ],
+    [
+      "vehicle_not_available",
+      t("reportCancelVehicleNotAvailable"),
+      t("reportCancelVehicleNotAvailableSub"),
+    ],
+    [
+      "ordering_party_cancelled",
+      t("reportCancelOrderingPartyCancelled"),
+      t("reportCancelOrderingPartyCancelledSub"),
+    ],
+    [
+      "appointment_not_possible",
+      t("reportCancelAppointmentNotPossible"),
+      t("reportCancelAppointmentNotPossibleSub"),
+    ],
+    [
+      "incorrect_order_data",
+      t("reportCancelIncorrectData"),
+      t("reportCancelIncorrectDataSub"),
+    ],
+    [
+      "vehicle_not_roadworthy",
+      t("reportCancelVehicleNotRoadworthy"),
+      t("reportCancelVehicleNotRoadworthySub"),
+    ],
     ["other", t("reportCancelOther"), t("reportCancelOtherSub")],
   ];
   const notPerformableReasons = [
@@ -2404,7 +2461,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
         completed = true;
         setSlideDone(true);
         cleanup();
-        setTimeout(() => onSubmit("cancel", reason, text.trim()), 380);
+        setTimeout(() => onSubmit("cancel", reason, text.trim(), []), 380);
       }
     };
     const up = (ev) => {
@@ -2432,7 +2489,19 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="grabber"></div>
         <div className="sheet-head">
-          <h2>{t("reportProblem")}</h2>
+          <h2
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              margin: 0,
+            }}
+          >
+            <span style={{ color: "var(--st-warn)" }}>
+              <Ic.Alert />
+            </span>
+            {t("reportProblem")}
+          </h2>
           <button type="button" onClick={onClose} className="btn icon sm">
             <Ic.X />
           </button>
@@ -2448,8 +2517,11 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                   className="radio-card"
                   onClick={() => {
                     setPath(id);
-                    setReason(id === "cancel" ? "customer_cancelled" : "other");
+                    setReason(
+                      id === "cancel" ? "partner_unavailable" : "other",
+                    );
                     setText("");
+                    setEvidenceFiles([]);
                     setSlidePos(0);
                     setSlideDone(false);
                   }}
@@ -2470,6 +2542,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                 style={{ marginBottom: 12, padding: 0 }}
                 onClick={() => {
                   setPath(null);
+                  setEvidenceFiles([]);
                   setSlidePos(0);
                   setSlideDone(false);
                 }}
@@ -2525,7 +2598,123 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                   {text.trim().length}/10
                 </span>
               </div>
+              {path === "not_performable" ? (
+                <div style={{ marginTop: 16 }}>
+                  <div className="field-label">{t("reportProblemEvidenceLabel")}</div>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "var(--muted)",
+                      margin: "6px 0 10px",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {t("reportProblemEvidenceHint")}
+                  </p>
+                  <input
+                    ref={evidenceInputRef}
+                    type="file"
+                    multiple
+                    accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const picked = Array.from(e.target.files || []);
+                      if (!picked.length) return;
+                      setEvidenceFiles((prev) => {
+                        const merged = [...prev, ...picked].slice(0, 5);
+                        if (prev.length + picked.length > 5) {
+                          window.alert(t("reportProblemEvidenceTooMany"));
+                        }
+                        return merged;
+                      });
+                      e.target.value = "";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn xs"
+                    onClick={() => evidenceInputRef.current?.click()}
+                    disabled={evidenceFiles.length >= 5}
+                  >
+                    <Ic.Plus /> {t("reportProblemEvidenceAdd")}
+                  </button>
+                  {evidenceFiles.length > 0 ? (
+                    <ul
+                      style={{
+                        margin: "12px 0 0",
+                        padding: 0,
+                        listStyle: "none",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 8,
+                      }}
+                    >
+                      {evidenceFiles.map((f, idx) => (
+                        <li
+                          key={`${f.name}-${idx}`}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: 8,
+                            fontSize: 12,
+                            padding: "8px 10px",
+                            border: "1px solid var(--line)",
+                            borderRadius: "var(--r-2)",
+                          }}
+                        >
+                          <span className="mono" style={{ wordBreak: "break-all" }}>
+                            {f.name}
+                          </span>
+                          <button
+                            type="button"
+                            className="btn ghost xs"
+                            onClick={() =>
+                              setEvidenceFiles((prev) =>
+                                prev.filter((_, i) => i !== idx),
+                              )
+                            }
+                          >
+                            {t("reportProblemEvidenceRemove")}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
               {path === "cancel" ? (
+                <>
+                  <div
+                    role="alert"
+                    style={{
+                      marginTop: 16,
+                      padding: "12px 14px",
+                      borderRadius: 10,
+                      border: "1px solid rgba(234, 179, 8, 0.45)",
+                      background: "rgba(234, 179, 8, 0.1)",
+                      fontSize: 12.5,
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    <p style={{ margin: 0 }}>{t("reportProblemCancelBindingWarning")}</p>
+                    <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--muted)" }}>
+                      {t("reportProblemCancelTermsIntro")}{" "}
+                      <button
+                        type="button"
+                        className="btn ghost xs"
+                        style={{
+                          color: "var(--primary)",
+                          padding: 0,
+                          textDecoration: "underline",
+                          textUnderlineOffset: 3,
+                        }}
+                        onClick={() => window.alert(t("partnerPolicyAlert"))}
+                      >
+                        {t("viewPartnerPolicy")}
+                      </button>
+                    </p>
+                  </div>
                 <div className="slide-confirm-wrap" style={{ marginTop: 16 }}>
                   <div
                     ref={trackRef}
@@ -2560,6 +2749,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                     </p>
                   )}
                 </div>
+                </>
               ) : (
                 <p
                   style={{
@@ -2584,7 +2774,9 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
               type="button"
               className="btn primary"
               disabled={!valid}
-              onClick={() => onSubmit("not_performable", reason, text.trim())}
+              onClick={() =>
+                onSubmit("not_performable", reason, text.trim(), evidenceFiles)
+              }
             >
               {t("submit")}
             </button>
@@ -2837,6 +3029,17 @@ const ProfilePaneFull = () => {
   const d = store.getCurrentDriver();
   const prefs = d?.prefs || {};
   const setPref = (patch) => store.updateDriverPrefs(patch);
+  const [mdNote, setMdNote] = useState("");
+  const [mdSent, setMdSent] = useState(false);
+  const submitMasterDataRequest = () => {
+    const r = store.requestMasterDataChange(mdNote);
+    if (r.ok) {
+      setMdSent(true);
+      setMdNote("");
+    } else {
+      window.alert(t("masterDataChangeTooShort"));
+    }
+  };
   return (
     <div className="scroll" style={{ padding: "10px 22px" }}>
       <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
@@ -2900,6 +3103,40 @@ const ProfilePaneFull = () => {
         >
           {t("masterDataChangeNotice")}
         </p>
+        <div className="field-label" style={{ marginTop: 14 }}>
+          {t("masterDataChangeRequest")}
+        </div>
+        <textarea
+          className="input"
+          style={{ marginTop: 8, minHeight: 72 }}
+          placeholder={t("masterDataChangePlaceholder")}
+          value={mdNote}
+          onChange={(e) => {
+            setMdNote(e.target.value);
+            if (mdSent) setMdSent(false);
+          }}
+        />
+        <button
+          type="button"
+          className="btn primary block"
+          style={{ marginTop: 10 }}
+          disabled={mdNote.trim().length < 10}
+          onClick={submitMasterDataRequest}
+        >
+          {t("masterDataChangeSubmit")}
+        </button>
+        {mdSent ? (
+          <p
+            style={{
+              margin: "10px 0 0",
+              fontSize: 12.5,
+              color: "var(--st-ok)",
+              lineHeight: 1.45,
+            }}
+          >
+            {t("masterDataChangeSent")}
+          </p>
+        ) : null}
       </div>
       <div className="card" style={{ padding: 14, marginTop: 14 }}>
         <Lbl>{t("notificationPreferences")}</Lbl>

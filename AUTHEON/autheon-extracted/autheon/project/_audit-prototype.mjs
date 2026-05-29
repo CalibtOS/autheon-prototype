@@ -94,6 +94,8 @@ const critical = [
   "pushDriverNotification",
   "getJobDisplayStatus",
   "markTourDocumentChecked",
+  "requestMasterDataChange",
+  "buildSpecialCaseEvidenceMeta",
 ];
 const miss = critical.filter((c) => !store.includes(c));
 if (miss.length) {
@@ -261,3 +263,43 @@ if (!driver.includes("infopointDocViewDownload")) {
   out("driver.jsx Infopoint doc view/download: missing");
   process.exitCode = 1;
 } else out("driver.jsx Infopoint doc view/download: present");
+
+const gapChecks = [
+  ["inputFormatters.js", "inputFormatters.js module"],
+  ["formatDateInput", "formatDateInput in store"],
+  ["requestMasterDataChange", "requestMasterDataChange API"],
+  ["buildSpecialCaseEvidenceMeta", "special case evidence builder"],
+  ["reportCancelPartnerUnavailable", "seven cancel reasons i18n"],
+  ["reportProblemCancelBindingWarning", "cancel binding warning i18n"],
+  ["reportProblemEvidenceLabel", "not-performable evidence i18n"],
+  ["master_data_change_requested", "master data alert event"],
+  ["specialCaseReport", "specialCaseReport on jobs"],
+];
+out("");
+for (const [needle, label] of gapChecks) {
+  const inStore = store.includes(needle);
+  const inDriver = driver.includes(needle);
+  const inAdmin = admin.includes(needle);
+  const inI18n = i18n.includes(needle);
+  const inFmt = fs.existsSync(path.join(root, "inputFormatters.js"))
+    ? file("inputFormatters.js").includes(needle)
+    : false;
+  const ok =
+    needle === "inputFormatters.js"
+      ? fs.existsSync(path.join(root, "inputFormatters.js"))
+      : inStore || inDriver || inAdmin || inI18n || inFmt;
+  if (!ok) {
+    out(`Gap closure missing ${label} (${needle})`);
+    process.exitCode = 1;
+  } else out(`Gap closure ${label}: present`);
+}
+
+if (!driver.includes("Ic.Alert") && !driver.includes("Alert:")) {
+  out("driver.jsx Report Problem warning icon: missing");
+  process.exitCode = 1;
+} else out("driver.jsx Report Problem warning icon: present");
+
+if (!admin.includes("formatDateInput") && !admin.includes("blurDate")) {
+  out("admin.jsx new-order input formatters wired: missing");
+  process.exitCode = 1;
+} else out("admin.jsx new-order input formatters wired: present");

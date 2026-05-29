@@ -101,6 +101,8 @@ Full detail: `AUTHEON/prd-prototype-validation.md`.
 - Real email SMTP, PDF generation, persistent storage, auth, service worker push — see `production_open_questions` in `prd.json`.
 - Finance dashboard, CSV mass import, historical Excel migration — explicitly de-scoped in PRD v1.6.
 
+**Closed in prototype (2026-05-25 gap pass):** cancel binding warning + terms; seven cancel reasons; not-performable evidence upload; master-data change request feed; Report Problem warning icon; admin order-entry formatters (`inputFormatters.js`).
+
 ---
 
 ## How to re-run verification

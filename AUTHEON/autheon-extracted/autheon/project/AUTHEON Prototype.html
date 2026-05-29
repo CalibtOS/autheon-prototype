@@ -41,6 +41,7 @@
 
     <script src="feature-flags.js"></script>
     <script src="i18n.js"></script>
+    <script src="inputFormatters.js"></script>
     <script src="store.js"></script>
     <script type="text/babel" src="driver.jsx"></script>
     <script type="text/babel" src="admin.jsx"></script>
@@ -194,7 +195,7 @@
                   <ReportProblemSheet
                     job={reportProblemJob}
                     onClose={() => setReportProblemJob(null)}
-                    onSubmit={(path, reason, msg) => {
+                    onSubmit={(path, reason, msg, evidence) => {
                       const r =
                         path === "cancel"
                           ? store.reportProblemCancel(
@@ -206,6 +207,7 @@
                               reportProblemJob.id,
                               reason,
                               msg,
+                              evidence,
                             );
                       setReportProblemJob(null);
                       if (!r.ok) return;

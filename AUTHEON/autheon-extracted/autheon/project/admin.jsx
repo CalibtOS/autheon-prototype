@@ -807,6 +807,50 @@ const SpecialCaseResolutionPanel = ({ job, showToast }) => {
       >
         {report.message || report.note || "—"}
       </div>
+      {(report.evidence || []).length > 0 ? (
+        <div style={{ marginTop: 14 }}>
+          <div className="label" style={{ marginBottom: 8 }}>
+            {t("adminSpecialCaseEvidence")}
+          </div>
+          <ul
+            style={{
+              margin: 0,
+              padding: 0,
+              listStyle: "none",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            {(report.evidence || []).map((ev) => (
+              <li
+                key={ev.id}
+                style={{
+                  fontSize: 12.5,
+                  padding: "8px 10px",
+                  border: "1px solid var(--line)",
+                  borderRadius: "var(--r-2)",
+                  background: "var(--paper)",
+                }}
+              >
+                <span className="mono" style={{ wordBreak: "break-all" }}>
+                  {ev.fileName}
+                </span>
+                <button
+                  type="button"
+                  className="btn ghost xs"
+                  style={{ marginTop: 6, padding: 0 }}
+                  onClick={() =>
+                    window.alert(`${t("adminSpecialCaseEvidenceDemo")}: ${ev.fileName}`)
+                  }
+                >
+                  {t("adminSpecialCaseEvidenceDemo")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <p
         className="label"
         style={{ marginTop: 10, fontSize: 11.5, lineHeight: 1.45 }}
@@ -1942,6 +1986,24 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
     form.pickupDate &&
     form.deliveryDate &&
     AuthStore.compareDottedDates(form.pickupDate, form.deliveryDate) > 0;
+  const pickupTimeWarning =
+    form.pickupFrom &&
+    form.pickupTo &&
+    AuthStore.compareTimeStrings(form.pickupFrom, form.pickupTo) > 0;
+  const deliveryTimeWarning =
+    form.deliveryFrom &&
+    form.deliveryTo &&
+    AuthStore.compareTimeStrings(form.deliveryFrom, form.deliveryTo) > 0;
+  const vinShortNotice =
+    form.vin && String(form.vin).trim().length > 0 && String(form.vin).length < 17;
+  const blurDate = (key) => (e) => {
+    const next = AuthStore.formatDateInput(e.target.value);
+    if (next !== form[key]) set(key, next);
+  };
+  const blurTime = (key) => (e) => {
+    const next = AuthStore.formatTimeInput(e.target.value);
+    if (next !== form[key]) set(key, next);
+  };
   const filled = required.filter(
     (k) => form[k] && String(form[k]).trim(),
   ).length;
@@ -2176,6 +2238,34 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 {t("newOrderScheduleDateWarning")}
               </div>
             ) : null}
+            {pickupTimeWarning ? (
+              <div
+                className="dash-area"
+                style={{
+                  marginTop: 10,
+                  padding: 12,
+                  fontSize: 12.5,
+                  color: "var(--st-warn)",
+                  borderLeft: "3px solid var(--st-warn)",
+                }}
+              >
+                {t("newOrderTimeWindowWarning")} ({t("newOrderPickupSchedule")})
+              </div>
+            ) : null}
+            {deliveryTimeWarning ? (
+              <div
+                className="dash-area"
+                style={{
+                  marginTop: 10,
+                  padding: 12,
+                  fontSize: 12.5,
+                  color: "var(--st-warn)",
+                  borderLeft: "3px solid var(--st-warn)",
+                }}
+              >
+                {t("newOrderTimeWindowWarning")} ({t("newOrderDeliverySchedule")})
+              </div>
+            ) : null}
             <div style={{ marginTop: 16 }}>
               <div className="label" style={{ marginBottom: 10 }}>
                 {t("newOrderPickupSchedule")}
@@ -2195,6 +2285,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                     placeholder={t("newOrderDatePh")}
                     value={form.pickupDate}
                     onChange={(e) => set("pickupDate", e.target.value)}
+                    onBlur={blurDate("pickupDate")}
                   />
                 </div>
                 <div>
@@ -2204,6 +2295,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                     placeholder={t("newOrderTimePh")}
                     value={form.pickupFrom}
                     onChange={(e) => set("pickupFrom", e.target.value)}
+                    onBlur={blurTime("pickupFrom")}
                   />
                 </div>
                 <div>
@@ -2213,6 +2305,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                     placeholder={t("newOrderTimePh")}
                     value={form.pickupTo}
                     onChange={(e) => set("pickupTo", e.target.value)}
+                    onBlur={blurTime("pickupTo")}
                   />
                 </div>
                 <label
@@ -2253,6 +2346,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                     placeholder={t("newOrderDatePh")}
                     value={form.deliveryDate}
                     onChange={(e) => set("deliveryDate", e.target.value)}
+                    onBlur={blurDate("deliveryDate")}
                   />
                 </div>
                 <div>
@@ -2262,6 +2356,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                     placeholder={t("newOrderTimePh")}
                     value={form.deliveryFrom}
                     onChange={(e) => set("deliveryFrom", e.target.value)}
+                    onBlur={blurTime("deliveryFrom")}
                   />
                 </div>
                 <div>
@@ -2271,6 +2366,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                     placeholder={t("newOrderTimePh")}
                     value={form.deliveryTo}
                     onChange={(e) => set("deliveryTo", e.target.value)}
+                    onBlur={blurTime("deliveryTo")}
                   />
                 </div>
                 <label
@@ -2328,10 +2424,16 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 <label className="field-label">{t("newOrderBrand")}</label>
                 <input
                   className="input"
+                  list="new-order-brand-suggestions"
                   placeholder={t("newOrderBrandPh")}
                   value={form.brand}
                   onChange={(e) => set("brand", e.target.value)}
                 />
+                <datalist id="new-order-brand-suggestions">
+                  {(AuthStore.MANUFACTURER_SUGGESTIONS || []).map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
               </div>
               <div>
                 <label className="field-label">{t("newOrderModel")}</label>
@@ -2349,6 +2451,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   placeholder={t("newOrderPlatePh")}
                   value={form.plate}
                   onChange={(e) => set("plate", e.target.value)}
+                  onBlur={(e) => set("plate", AuthStore.normalizePlate(e.target.value))}
                 />
               </div>
               <div>
@@ -2359,8 +2462,18 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   className="input mono"
                   placeholder={t("newOrderVinLen")}
                   value={form.vin}
-                  onChange={(e) => set("vin", e.target.value)}
+                  onChange={(e) =>
+                    set("vin", AuthStore.normalizeVin(e.target.value))
+                  }
                 />
+                {vinShortNotice ? (
+                  <p
+                    className="label"
+                    style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}
+                  >
+                    {t("newOrderVinShortNotice")}
+                  </p>
+                ) : null}
               </div>
             </div>
             <div style={{ marginTop: 14 }}>
@@ -5649,6 +5762,16 @@ const CRITICAL_ALERT_EVENTS = new Set([
   "tour_document_reuploaded",
 ]);
 
+const ADMIN_ALERT_EVENT_I18N = {
+  master_data_change_requested: "adminNotifMasterDataChange",
+  report_problem_cancel: "adminNotifReportProblemCancel",
+  special_case_created: "adminNotifSpecialCaseCreated",
+  job_accepted: "adminNotifJobAccepted",
+  job_performed: "adminNotifJobPerformed",
+  tour_document_uploaded: "adminNotifDocumentUploaded",
+  tour_document_reuploaded: "adminNotifDocumentReuploaded",
+};
+
 const NotificationFeedPane = ({ showToast, onOpenJob }) => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -5683,7 +5806,11 @@ const NotificationFeedPane = ({ showToast, onOpenJob }) => {
               }}
             >
               <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{row.event}</div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>
+                  {ADMIN_ALERT_EVENT_I18N[row.event]
+                    ? t(ADMIN_ALERT_EVENT_I18N[row.event])
+                    : row.event}
+                </div>
                 <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
                   {row.tour ? `${t("adminColTour")} ${row.tour}` : "—"}
                   {row.meta ? ` · ${row.meta}` : ""}

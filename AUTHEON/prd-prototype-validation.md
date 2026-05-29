@@ -16,7 +16,7 @@ Validated against:
 
 ## Verdict
 
-**PASS (2026-05-25)** — `_audit-prototype.mjs` exits 0; all 16 v1.6 checklist items implemented. Canonical spec consolidated to `AUTHEON/prd.json`.
+**PASS (2026-05-25)** — `_audit-prototype.mjs` exits 0; v1.6 checklist plus six client-feedback gap closures (cancel UX, seven cancel reasons, not-performable evidence, master-data request, Report Problem icon, order-entry formatters). Canonical spec: `AUTHEON/prd.json`.
 
 Operational statuses remain seven (`draft` … `special_case`); client labels **Under review** and **Completed** are derived from `document_review_summary` and `settlementState`.
 
@@ -44,6 +44,12 @@ Production implementation (database, auth, real PDF template, file storage, map 
 | 16 | Audit script v1.6 | Done (exit 0, 2026-05-25) |
 | 17 | Admin Infopoint: general documents + news publish | Done (`InfopointPane`, `addNewsItem`, upload stub) |
 | 18 | Driver Infopoint docs: description, date, view/download stub | Done (`infopointDocViewDownload`) |
+| 19 | Cancel binding warning + partner terms link on Report Problem cancel | Done |
+| 20 | Seven cancellation reason codes (Feedback.pdf C.1) | Done |
+| 21 | Not-performable evidence upload (max 5 files) + admin special-case list | Done |
+| 22 | Master-data change request → admin notification feed | Done (`requestMasterDataChange`) |
+| 23 | Report Problem warning icon (tour footer + sheet header) | Done (`Ic.Alert`) |
+| 24 | Order-entry date/time/VIN/plate formatters + manufacturer datalist | Done (`inputFormatters.js`) |
 
 ## Coverage matrix (PRD v1.6 tasks)
 

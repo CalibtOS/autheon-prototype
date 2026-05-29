@@ -2188,6 +2188,22 @@ window.AuthStore = (() => {
     DEMO_DRIVER,
     parseDottedDate,
     compareDottedDates,
+    formatDateInput:
+      window.InputFormatters?.formatDateInput ||
+      ((s) => String(s || "").trim()),
+    formatTimeInput:
+      window.InputFormatters?.formatTimeInput ||
+      ((s) => String(s || "").trim()),
+    normalizeVin:
+      window.InputFormatters?.normalizeVin ||
+      ((s) => String(s || "").toUpperCase()),
+    normalizePlate:
+      window.InputFormatters?.normalizePlate ||
+      ((s) => String(s || "").toUpperCase()),
+    compareTimeStrings:
+      window.InputFormatters?.compareTimeStrings || (() => 0),
+    MANUFACTURER_SUGGESTIONS:
+      window.InputFormatters?.MANUFACTURER_SUGGESTIONS || [],
     formatLocTimeWindow,
     formatLocationSchedule,
     formatJobScheduleShort,
@@ -2659,13 +2675,31 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
-    reportProblemNotPerformable(id, reason, message) {
+    buildSpecialCaseEvidenceMeta(files) {
+      const list = Array.isArray(files) ? files.slice(0, 5) : [];
+      const evidence = [];
+      for (const file of list) {
+        if (!file || !isAllowedTourDocumentFile(file)) continue;
+        const mime = (file.type || guessMimeFromName(file.name) || "").trim();
+        evidence.push({
+          id: `SCE-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          fileName: file.name,
+          mimeType: mime || "application/octet-stream",
+          sizeBytes: typeof file.size === "number" ? file.size : 0,
+          uploadedAt: new Date().toISOString(),
+        });
+      }
+      return evidence;
+    },
+
+    reportProblemNotPerformable(id, reason, message, evidenceFiles) {
       const j = api.getJob(id);
       if (!j || !["assigned", "accepted"].includes(j.status))
         return { ok: false, reason: "invalid_state" };
       if (j.driver && j.driver !== DEMO_DRIVER)
         return { ok: false, reason: "not_assigned_driver" };
       const statusBeforeSpecialCase = j.status;
+      const evidence = api.buildSpecialCaseEvidenceMeta(evidenceFiles);
       j.status = "special_case";
       j.specialCaseReport = {
         type: "not_performable",
@@ -2674,6 +2708,7 @@ window.AuthStore = (() => {
         reportedAt: nowStamp(),
         reportedBy: DEMO_DRIVER,
         statusBeforeSpecialCase,
+        evidence,
       };
       j.history = [
         ...(j.history || []),
@@ -2692,7 +2727,34 @@ window.AuthStore = (() => {
         j.tour,
         `${reason}: ${message}`,
       );
-      queueAdminEmailAlert("special_case_created", id, message);
+      const alertMeta =
+        evidence.length > 0
+          ? `${message || ""} · ${evidence.length} file(s)`.trim()
+          : message || "";
+      queueAdminEmailAlert("special_case_created", id, alertMeta);
+      emit();
+      return { ok: true };
+    },
+
+    requestMasterDataChange(note) {
+      const text = String(note || "").trim();
+      if (text.length < 10) return { ok: false, reason: "note_too_short" };
+      if (!api.isCurrentDriverActive())
+        return { ok: false, reason: "driver_restricted" };
+      const d = api.getCurrentDriver();
+      const who = d?.name || DEMO_DRIVER;
+      queueAdminEmailAlert(
+        "master_data_change_requested",
+        "",
+        `${who}: ${text}`,
+      );
+      log("master_data_change_requested", who, "profile", text.slice(0, 120));
+      pushDriverNotification({
+        type: "master_data_change_sent",
+        title: "Change request sent",
+        body: "Dispatch received your master-data change request.",
+        driverId: d?.id,
+      });
       emit();
       return { ok: true };
     },
