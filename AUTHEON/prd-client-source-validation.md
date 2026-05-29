@@ -163,7 +163,7 @@ These do **not** conflict with client feedback; they describe **how** to build w
 | 3 | `product_context.source_inputs` still says generic “Internal PRD update report” without file path | Low | Point to `meetings/autheon_aw_meeting_transcript_en_with_index.md` |
 | 4 | Meeting §6 “document V1 vs V2” pricing | Info | Already in `v1_optional_or_needs_decision` — confirm with client on contract |
 | 5 | REQ 019 auth method | Open | Remains intentional open question for production |
-| 6 | Prototype code since 5/24 (notification bell, route contacts) | Info | In demo + audit PASS; PRD `sync_pass_notes` could add one line if you want parity |
+| 6 | Admin Infopoint news publish UI | **Closed** — `InfopointPane`, publish form, audit checks #17–18 |
 
 ---
 

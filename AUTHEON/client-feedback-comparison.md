@@ -38,7 +38,7 @@ Production backend (DB, auth, SMTP, real file storage) remains **out of scope** 
 | B.2.2 | Status history & notifications | Task 22, channels matrix | gap_closed_in_v1_6 | Audit log; admin notification feed; driver inbox |
 | C.1 | Report Problem (cancel / not performable) | Task 12–14 | covered | Slide cancel (10+ chars); special case flow |
 | C.2 | Notification channels | Task 20, matrix | gap_closed_in_v1_6 | In-app feeds; push prefs; no push on direct assign |
-| C.3 | Infopoint tabs & badge | Task 18 | gap_closed_in_v1_6 | Docs/News tabs; nav badge |
+| C.3 | Infopoint tabs & badge | Task 18 | gap_closed_in_v1_6 | Admin **Infopoint** nav: General documents + New messages publish; driver tabs, badge, view/download stub |
 | D | Open questions | `client_feedback_resolved` | gap_closed_in_v1_6 | See PRD `client_feedback_resolved` entries |
 
 ---
@@ -52,6 +52,7 @@ Production backend (DB, auth, SMTP, real file storage) remains **out of scope** 
 | 2026-05-23 | Supplier invoice labels; PRD v1.6 matrices; audit script v1.6 |
 | 2026-05-24 | PRD/docs update; notification bell on marketplace; tour docs UX; feature flags; route contact address; address handling refactor |
 | 2026-05-25 | Single PRD file (`prd.json`); removed `prd_updated_v2.json`; re-audit PASS |
+| 2026-05-25 | Admin Infopoint pane: general documents CRUD/upload stub + news publish form; driver doc view/download |
 
 **Primary files touched:** `store.js`, `admin.jsx`, `driver.jsx`, `i18n.js`, `prd.json`, `_audit-prototype.mjs`.
 
@@ -77,6 +78,8 @@ Production backend (DB, auth, SMTP, real file storage) remains **out of scope** 
 | 14 | Infopoint tab labels + badge | Pass |
 | 15 | `cancellationActor` on cancel | Pass |
 | 16 | Audit script | Pass (exit 0) |
+| 17 | Admin Infopoint news publish | Pass |
+| 18 | Driver Infopoint doc view/download | Pass |
 
 Full detail: `AUTHEON/prd-prototype-validation.md`.
 
@@ -84,9 +87,9 @@ Full detail: `AUTHEON/prd-prototype-validation.md`.
 
 ## Demo paths (client walkthrough)
 
-**Driver:** Profile → three push toggles → Marketplace (pull refresh, notification bell) → accept job → tour detail (ordering party visible) → external map → Mark performed → upload document → notifications inbox → Infopoint.
+**Admin:** Infopoint → New messages (publish) → switch to Driver Infopoint (badge) → General documents (view/download).
 
-**Admin:** Jobs overview → New job (ordering party + pickup/delivery master data) → publish → notification feed → job detail / special case → Tour documents review → audit log.
+**Clarify:** Profile notifications = tour alerts; Infopoint news = admin broadcasts.
 
 **Languages:** Toggle EN/DE on new strings.
 

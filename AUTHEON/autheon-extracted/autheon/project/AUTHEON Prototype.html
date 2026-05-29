@@ -467,8 +467,8 @@
           body = <OrderingPartiesPane showToast={showToast} />;
         } else if (section === "addresses") {
           body = <AddressesPane showToast={showToast} />;
-        } else if (section === "documents") {
-          body = <DocumentsPane showToast={showToast} />;
+        } else if (section === "infopoint") {
+          body = <InfopointPane showToast={showToast} />;
         } else if (section === "invoices") {
           body = (
             <TourBillingPane
@@ -520,7 +520,7 @@
               t("adminOrderingPartiesDesc"),
             ],
             addresses: [t("navAddresses") || "Addresses", t("fullAddresses")],
-            documents: [t("navDocuments"), t("documentsDesc")],
+            infopoint: [t("navInfopoint"), t("adminInfopointDesc")],
             invoices: [t("navTourBilling"), t("tourBillingDesc")],
             finance: [t("navFinance"), t("financeDesc")],
             audit: [t("navAuditLog"), t("auditDesc")],

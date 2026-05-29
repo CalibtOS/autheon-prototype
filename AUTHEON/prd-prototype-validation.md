@@ -42,6 +42,8 @@ Production implementation (database, auth, real PDF template, file storage, map 
 | 14 | Infopoint tab labels + nav badge | Done (`infopointDocsTab` / `infopointNewsTab`) |
 | 15 | `cancellationActor` on cancel | Done (seed + admin detail banner) |
 | 16 | Audit script v1.6 | Done (exit 0, 2026-05-25) |
+| 17 | Admin Infopoint: general documents + news publish | Done (`InfopointPane`, `addNewsItem`, upload stub) |
+| 18 | Driver Infopoint docs: description, date, view/download stub | Done (`infopointDocViewDownload`) |
 
 ## Coverage matrix (PRD v1.6 tasks)
 
@@ -49,9 +51,9 @@ Same task IDs as v1.5; v1.6 strengthens Tasks 4, 5, 7, 8, 10, 18–20, 22, 26, 2
 
 ## Demo script (smoke test v1.6)
 
-**Driver:** Set three push toggles → marketplace pull-refresh → accept → ordering party visible in tour detail → perform → upload fuel receipt (see helper) → open notification inbox → Infopoint news badge.
+**Driver:** Set three push toggles → marketplace pull-refresh → accept → perform → **Infopoint → New messages** (badge, expand) → **General documents** (view/download stub) → notification inbox (tour alerts vs Infopoint hint).
 
-**Admin:** Publish job → **notification feed** event → open job → mark document checked → reject with preset reason → driver inbox shows rejection → special case resolve → cancel shows `cancellationActor`.
+**Admin:** **Infopoint → New messages** publish (subject, body, date) → **General documents** manage/upload stub → publish job → notification feed → tour document review → special case resolve.
 
 **Both:** EN/DE on new strings.
 
