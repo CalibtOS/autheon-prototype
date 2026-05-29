@@ -554,52 +554,113 @@ window.AuthStore = (() => {
     ];
   }
 
+  function nextNewsId(items) {
+    let max = 0;
+    for (const n of items) {
+      const m = /^NEWS-(\d+)$/.exec(n.id);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
+    return `NEWS-${String(max + 1).padStart(3, "0")}`;
+  }
+
+  function nextDocId(items) {
+    let max = 0;
+    for (const d of items) {
+      const m = /^DOC-(\d+)$/.exec(d.id);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
+    return `DOC-${String(max + 1).padStart(3, "0")}`;
+  }
+
   function seedDocuments() {
     return [
       {
         id: "DOC-001",
         title: "General work instructions",
+        description: "Day-to-day operational rules for service partners.",
         category: "Operations",
         visible: true,
         scope: "Global",
         version: "v1.3",
         updatedAt: "04.05. 09:10",
+        seed: true,
       },
       {
         id: "DOC-002",
         title: "Partner terms",
+        description: "Service partner terms and general conditions.",
         category: "Legal",
         visible: true,
         scope: "Global",
         version: "v3.0",
         updatedAt: "02.05. 14:45",
+        seed: true,
       },
       {
         id: "DOC-003",
         title: "Emergency contacts",
+        description: "Dispatch and emergency contact numbers.",
         category: "Safety",
         visible: true,
         scope: "Global",
         version: "v1.0",
         updatedAt: "01.05. 08:00",
+        seed: true,
       },
       {
         id: "DOC-004",
         title: "Privacy policy",
+        description: "Data protection information for service partners.",
         category: "Legal",
         visible: true,
         scope: "Global",
         version: "v2.1",
         updatedAt: "29.04. 11:30",
+        seed: true,
       },
       {
         id: "DOC-005",
         title: "Imprint",
+        description: "Legal imprint and operator details.",
         category: "Legal",
         visible: true,
         scope: "Global",
         version: "v1.0",
         updatedAt: "29.04. 11:31",
+        seed: true,
+      },
+      {
+        id: "DOC-006",
+        title: "Vehicle pickup instructions",
+        description: "Action instructions for vehicle pickup at customer sites.",
+        category: "Pickup",
+        visible: true,
+        scope: "Global",
+        version: "v1.0",
+        updatedAt: "20.05. 10:00",
+        seed: true,
+      },
+      {
+        id: "DOC-007",
+        title: "Fuel receipt and invoicing notes",
+        description: "How to submit fuel receipts and billing invoices after performed tours.",
+        category: "Invoicing",
+        visible: true,
+        scope: "Global",
+        version: "v1.1",
+        updatedAt: "20.05. 10:15",
+        seed: true,
+      },
+      {
+        id: "DOC-008",
+        title: "Cancellation and problem case process",
+        description: "When and how to use Report Problem; contact dispatch for special cases.",
+        category: "Process",
+        visible: true,
+        scope: "Global",
+        version: "v1.0",
+        updatedAt: "20.05. 10:30",
+        seed: true,
       },
     ];
   }
@@ -608,14 +669,23 @@ window.AuthStore = (() => {
     return [
       {
         id: "NEWS-001",
-        title: "New document upload flow",
-        body: "After marking a tour performed, upload your billing invoice and delivery proof from the tour detail screen.",
-        publishedAt: "05.05. 08:00",
+        title: "ATTENTION: public transport strike 01.01.2027",
+        body:
+          "Dear service partners,\n\nOn Monday, 01.01.2027, there may be isolated warning strikes in public transport. Please check in good time whether your area in Germany is affected.\n\nThank you for your attention and safe travels.",
+        publishedAt: "24.05. 09:00",
         visible: true,
         readBy: [],
       },
       {
         id: "NEWS-002",
+        title: "New document upload flow",
+        body: "After marking a tour performed, upload your billing invoice and delivery proof from the tour detail screen.",
+        publishedAt: "05.05. 08:00",
+        visible: true,
+        readBy: ["DRV-0228"],
+      },
+      {
+        id: "NEWS-003",
         title: "Report Problem replaces returns",
         body: "Use Report Problem to cancel or flag a tour as not performable. Not performable creates a special case for dispatch.",
         publishedAt: "03.05. 14:30",
@@ -2164,8 +2234,10 @@ window.AuthStore = (() => {
       const all = addresses.slice();
       return opts.activeOnly ? all.filter((x) => x.active !== false) : all;
     },
-    getDocuments: () => documents,
+    getDocuments: () => documents.filter((d) => d.visible !== false),
+    getDocumentsAdmin: () => documents.slice(),
     getNews: () => newsItems.filter((n) => n.visible !== false),
+    getNewsAdmin: () => newsItems.slice(),
     getAuditLog: () => auditLog,
     getAdminEmailQueue: () => adminEmailQueue.slice(),
     getDriverNotifications: (driverId) => {
@@ -2408,27 +2480,74 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
-    addNewsItem(data) {
+    addNewsItem(data = {}) {
+      const notifyInApp = data.notifyInApp !== false;
+      const notifyPush = !!data.notifyPush;
       const item = {
-        id: `NEWS-${String(newsItems.length + 1).padStart(3, "0")}`,
-        title: data.title || "Announcement",
-        body: data.body || "",
-        publishedAt: data.publishedAt || nowStamp(),
+        id: nextNewsId(newsItems),
+        title: (data.title || "").trim() || "Announcement",
+        body: (data.body || "").trim(),
+        publishedAt: (data.publishedAt || "").trim() || nowStamp(),
         visible: data.visible !== false,
         readBy: [],
       };
       newsItems.unshift(item);
       log("news_item_created", DEMO_ADMIN, item.title, item.id);
-      for (const dr of drivers.filter((x) => x.status === "Active")) {
-        pushDriverNotification({
-          type: "infopoint_news",
-          title: item.title,
-          body: (item.body || "").slice(0, 120),
-          driverId: dr.id,
-        });
+      if (notifyInApp) {
+        for (const dr of drivers.filter((x) => x.status === "Active")) {
+          pushDriverNotification({
+            type: "infopoint_news",
+            title: item.title,
+            body: (item.body || "").slice(0, 120),
+            driverId: dr.id,
+          });
+        }
+      }
+      if (notifyPush) {
+        for (const dr of drivers.filter((x) => x.status === "Active")) {
+          const prefs = normalizeDriverPrefs(dr.prefs);
+          if (prefs.pushEnabled) {
+            log(
+              "push_notification_queued",
+              "System",
+              item.title,
+              dr.partnerId || dr.id,
+            );
+          }
+        }
       }
       emit();
       return item;
+    },
+
+    hideNewsItem(id) {
+      const n = newsItems.find((x) => x.id === id);
+      if (!n) return { ok: false };
+      n.visible = false;
+      log("news_item_hidden", DEMO_ADMIN, n.title, n.id);
+      emit();
+      return { ok: true };
+    },
+
+    showNewsItem(id) {
+      const n = newsItems.find((x) => x.id === id);
+      if (!n) return { ok: false };
+      n.visible = true;
+      log("news_item_shown", DEMO_ADMIN, n.title, n.id);
+      emit();
+      return { ok: true };
+    },
+
+    updateNewsItem(id, patch = {}) {
+      const n = newsItems.find((x) => x.id === id);
+      if (!n) return { ok: false };
+      if (patch.title != null) n.title = String(patch.title).trim() || n.title;
+      if (patch.body != null) n.body = String(patch.body).trim();
+      if (patch.publishedAt != null)
+        n.publishedAt = String(patch.publishedAt).trim() || n.publishedAt;
+      log("news_item_updated", DEMO_ADMIN, n.title, n.id);
+      emit();
+      return { ok: true, item: n };
     },
 
     estimateDistance(jobOrId) {
@@ -3049,6 +3168,78 @@ window.AuthStore = (() => {
       d.version = `v${(parseFloat(String(d.version).replace("v", "")) + 0.1).toFixed(1)}`;
       d.updatedAt = nowStamp();
       log("document_replaced", DEMO_ADMIN, d.title, d.version);
+      emit();
+      return { ok: true };
+    },
+
+    addGeneralDocument(data = {}) {
+      const item = {
+        id: nextDocId(documents),
+        title: (data.title || "").trim() || "Document",
+        description: (data.description || "").trim(),
+        category: (data.category || "Operations").trim(),
+        visible: data.visible !== false,
+        scope: data.scope || "Global",
+        version: data.version || "v1.0",
+        updatedAt: data.updatedAt || nowStamp(),
+        seed: false,
+      };
+      documents.push(item);
+      log("document_created", DEMO_ADMIN, item.title, item.id);
+      emit();
+      return item;
+    },
+
+    uploadGeneralDocumentStub(file, meta = {}) {
+      const name = file?.name || "document.pdf";
+      const base = name.replace(/\.[^.]+$/, "") || "Document";
+      return api.addGeneralDocument({
+        title: meta.title || base,
+        description:
+          meta.description ||
+          `Uploaded PDF (demo): ${name}`,
+        category: meta.category || "Operations",
+      });
+    },
+
+    renameGeneralDocument(id, title) {
+      const d = documents.find((x) => x.id === id);
+      if (!d) return { ok: false };
+      const next = String(title || "").trim();
+      if (!next) return { ok: false, reason: "title_required" };
+      d.title = next;
+      d.updatedAt = nowStamp();
+      log("document_renamed", DEMO_ADMIN, d.title, d.id);
+      emit();
+      return { ok: true };
+    },
+
+    updateGeneralDocument(id, patch = {}) {
+      const d = documents.find((x) => x.id === id);
+      if (!d) return { ok: false };
+      if (patch.title != null) {
+        const next = String(patch.title).trim();
+        if (!next) return { ok: false, reason: "title_required" };
+        d.title = next;
+      }
+      if (patch.description != null)
+        d.description = String(patch.description).trim();
+      if (patch.category != null)
+        d.category = String(patch.category).trim() || d.category;
+      d.updatedAt = nowStamp();
+      log("document_updated", DEMO_ADMIN, d.title, d.id);
+      emit();
+      return { ok: true, item: d };
+    },
+
+    deleteGeneralDocument(id) {
+      const d = documents.find((x) => x.id === id);
+      if (!d) return { ok: false };
+      if (d.seed) return { ok: false, reason: "seed_protected" };
+      const idx = documents.findIndex((x) => x.id === id);
+      if (idx < 0) return { ok: false };
+      documents.splice(idx, 1);
+      log("document_deleted", DEMO_ADMIN, d.title, d.id);
       emit();
       return { ok: true };
     },
