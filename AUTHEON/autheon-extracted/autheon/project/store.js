@@ -1201,6 +1201,7 @@ window.AuthStore = (() => {
         address: "Landsberger Str. 22, 80339 Munchen",
         email: "jordan.blake@example.com",
         phone: "+49 170 4400228",
+        notes: "",
         status: "Active",
         prefs: {
           notifyPostalPrefix: "80",
@@ -1218,6 +1219,7 @@ window.AuthStore = (() => {
         address: "Hanauer Landstr. 12, 60314 Frankfurt",
         email: "k.neumann@example.com",
         phone: "+49 172 3300301",
+        notes: "",
         status: "Active",
         prefs: {
           notifyPostalPrefix: "60",
@@ -1235,6 +1237,7 @@ window.AuthStore = (() => {
         address: "Kantstr. 18, 10623 Berlin",
         email: "mira.vogt@example.com",
         phone: "+49 171 991177",
+        notes: "",
         status: "Blocked",
         prefs: {
           notifyPostalPrefix: "10",
@@ -2752,7 +2755,7 @@ window.AuthStore = (() => {
       pushDriverNotification({
         type: "master_data_change_sent",
         title: "Change request sent",
-        body: "Dispatch received your master-data change request.",
+        body: "The operations team received your profile change request.",
         driverId: d?.id,
       });
       emit();
@@ -3197,6 +3200,39 @@ window.AuthStore = (() => {
       if (!d || !allowed.includes(status)) return { ok: false };
       d.status = status;
       log("driver_status_changed", DEMO_ADMIN, d.name, status);
+      emit();
+      return { ok: true };
+    },
+
+    updateDriver(id, patch = {}) {
+      const d = drivers.find((x) => x.id === id);
+      if (!d) return { ok: false, reason: "not_found" };
+      const fields = [
+        "name",
+        "company",
+        "partnerId",
+        "address",
+        "email",
+        "phone",
+        "notes",
+      ];
+      for (const k of fields) {
+        if (patch[k] !== undefined) d[k] = String(patch[k] ?? "").trim();
+      }
+      if (!d.name || !d.company) return { ok: false, reason: "required" };
+      log("driver_updated", DEMO_ADMIN, d.name, d.partnerId || "");
+      emit();
+      return { ok: true };
+    },
+
+    updateAdmin(id, patch = {}) {
+      const a = admins.find((x) => x.id === id);
+      if (!a) return { ok: false, reason: "not_found" };
+      if (patch.name !== undefined) a.name = String(patch.name).trim();
+      if (patch.email !== undefined) a.email = String(patch.email).trim();
+      if (patch.role !== undefined) a.role = String(patch.role).trim();
+      if (!a.name || !a.email) return { ok: false, reason: "required" };
+      log("admin_updated", DEMO_ADMIN, a.name, a.role || "");
       emit();
       return { ok: true };
     },

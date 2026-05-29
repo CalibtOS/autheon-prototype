@@ -96,6 +96,8 @@ const critical = [
   "markTourDocumentChecked",
   "requestMasterDataChange",
   "buildSpecialCaseEvidenceMeta",
+  "updateDriver",
+  "updateAdmin",
 ];
 const miss = critical.filter((c) => !store.includes(c));
 if (miss.length) {
@@ -303,3 +305,20 @@ if (!admin.includes("formatDateInput") && !admin.includes("blurDate")) {
   out("admin.jsx new-order input formatters wired: missing");
   process.exitCode = 1;
 } else out("admin.jsx new-order input formatters wired: present");
+
+if (!admin.includes("updateDriver") || !admin.includes("openEditDriver")) {
+  out("admin.jsx user edit UI: missing");
+  process.exitCode = 1;
+} else out("admin.jsx user edit UI: present");
+
+const staleAutheonDispatch = [
+  "AUTHEON dispatch",
+  "AUTHEON Disposition",
+];
+for (const bad of staleAutheonDispatch) {
+  if (i18n.includes(bad)) {
+    out(`STALE copy "${bad}" found in i18n.js`);
+    process.exitCode = 1;
+  }
+}
+if (!process.exitCode) out('Stale "AUTHEON dispatch" copy: none');

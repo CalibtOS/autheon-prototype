@@ -2735,9 +2735,84 @@ const Stub = ({ title, desc }) => {
   );
 };
 
+const emptyDriverEditForm = () => ({
+  name: "",
+  company: "",
+  partnerId: "",
+  address: "",
+  email: "",
+  phone: "",
+  notes: "",
+});
+
+const emptyAdminEditForm = () => ({
+  name: "",
+  email: "",
+  role: "",
+});
+
 const UsersPane = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
+  const [editDriverId, setEditDriverId] = useStateA(null);
+  const [editAdminId, setEditAdminId] = useStateA(null);
+  const [driverForm, setDriverForm] = useStateA(emptyDriverEditForm());
+  const [adminForm, setAdminForm] = useStateA(emptyAdminEditForm());
+  const setDF = (k, v) => setDriverForm((p) => ({ ...p, [k]: v }));
+  const setAF = (k, v) => setAdminForm((p) => ({ ...p, [k]: v }));
+
+  const openEditDriver = (d) => {
+    setDriverForm({
+      name: d.name || "",
+      company: d.company || "",
+      partnerId: d.partnerId || "",
+      address: d.address || "",
+      email: d.email || "",
+      phone: d.phone || "",
+      notes: d.notes || "",
+    });
+    setEditDriverId(d.id);
+  };
+
+  const openEditAdmin = (a) => {
+    setAdminForm({
+      name: a.name || "",
+      email: a.email || "",
+      role: a.role || "",
+    });
+    setEditAdminId(a.id);
+  };
+
+  const saveDriverEdit = () => {
+    const r = store.updateDriver(editDriverId, driverForm);
+    if (!r.ok) {
+      showToast?.(
+        t("adminUsersSaveFailed"),
+        r.reason === "required"
+          ? t("adminUsersRequiredFields")
+          : t("adminInvoiceErrGeneric"),
+      );
+      return;
+    }
+    showToast?.(t("adminUsersSaved"), driverForm.name);
+    setEditDriverId(null);
+  };
+
+  const saveAdminEdit = () => {
+    const r = store.updateAdmin(editAdminId, adminForm);
+    if (!r.ok) {
+      showToast?.(
+        t("adminUsersSaveFailed"),
+        r.reason === "required"
+          ? t("adminUsersAdminRequiredFields")
+          : t("adminInvoiceErrGeneric"),
+      );
+      return;
+    }
+    showToast?.(t("adminUsersSaved"), adminForm.name);
+    setEditAdminId(null);
+  };
+
   return (
     <div>
       <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
@@ -2800,6 +2875,13 @@ const UsersPane = ({ showToast }) => {
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className="btn xs primary"
+                        onClick={() => openEditDriver(d)}
+                      >
+                        {t("adminUsersEdit")}
+                      </button>
                       <button
                         className="btn xs"
                         onClick={() => {
@@ -2887,20 +2969,203 @@ const UsersPane = ({ showToast }) => {
                 </div>
                 <Pill status="accepted">{a.status}</Pill>
               </div>
-              <button
-                className="btn xs"
-                style={{ marginTop: 10 }}
-                onClick={() => {
-                  store.resetPassword("admin", a.id);
-                  showToast?.(t("adminUsersToastPwAdmin"), a.name);
-                }}
-              >
-                {t("adminUsersTriggerPwReset")}
-              </button>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                <button
+                  type="button"
+                  className="btn xs primary"
+                  onClick={() => openEditAdmin(a)}
+                >
+                  {t("adminUsersEdit")}
+                </button>
+                <button
+                  type="button"
+                  className="btn xs"
+                  onClick={() => {
+                    store.resetPassword("admin", a.id);
+                    showToast?.(t("adminUsersToastPwAdmin"), a.name);
+                  }}
+                >
+                  {t("adminUsersTriggerPwReset")}
+                </button>
+              </div>
             </div>
           ))}
         </section>
       </div>
+
+      {editDriverId ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            zIndex: 104,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+          onClick={() => setEditDriverId(null)}
+        >
+          <div
+            className="card elev"
+            style={{
+              maxWidth: 520,
+              width: "100%",
+              padding: 22,
+              maxHeight: "90vh",
+              overflow: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ margin: "0 0 16px", fontSize: 18 }}>
+              {t("adminUsersEditDriverTitle")}
+            </h2>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 12,
+              }}
+            >
+              {[
+                ["name", t("adminUsersFieldName")],
+                ["company", t("adminUsersFieldCompany")],
+                ["partnerId", t("adminUsersFieldPartnerId")],
+                ["phone", t("adminUsersFieldPhone")],
+              ].map(([key, label]) => (
+                <div key={key}>
+                  <label className="field-label">{label}</label>
+                  <input
+                    className="input"
+                    value={driverForm[key]}
+                    onChange={(e) => setDF(key, e.target.value)}
+                  />
+                </div>
+              ))}
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label className="field-label">{t("adminUsersFieldEmail")}</label>
+                <input
+                  className="input"
+                  value={driverForm.email}
+                  onChange={(e) => setDF("email", e.target.value)}
+                />
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label className="field-label">{t("adminUsersFieldAddress")}</label>
+                <input
+                  className="input"
+                  value={driverForm.address}
+                  onChange={(e) => setDF("address", e.target.value)}
+                />
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label className="field-label">{t("adminUsersFieldNotes")}</label>
+                <textarea
+                  className="input"
+                  rows={2}
+                  value={driverForm.notes}
+                  onChange={(e) => setDF("notes", e.target.value)}
+                />
+              </div>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginTop: 18,
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setEditDriverId(null)}
+              >
+                {t("close")}
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={saveDriverEdit}
+              >
+                {t("adminUsersSave")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {editAdminId ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            zIndex: 104,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+          onClick={() => setEditAdminId(null)}
+        >
+          <div
+            className="card elev"
+            style={{
+              maxWidth: 440,
+              width: "100%",
+              padding: 22,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ margin: "0 0 16px", fontSize: 18 }}>
+              {t("adminUsersEditAdminTitle")}
+            </h2>
+            {[
+              ["name", t("adminUsersFieldName")],
+              ["email", t("adminUsersFieldEmail")],
+              ["role", t("adminUsersFieldRole")],
+            ].map(([key, label]) => (
+              <div key={key} style={{ marginBottom: 12 }}>
+                <label className="field-label">{label}</label>
+                <input
+                  className="input"
+                  value={adminForm[key]}
+                  onChange={(e) => setAF(key, e.target.value)}
+                />
+              </div>
+            ))}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginTop: 8,
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setEditAdminId(null)}
+              >
+                {t("close")}
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={saveAdminEdit}
+              >
+                {t("adminUsersSave")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
