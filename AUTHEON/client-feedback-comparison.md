@@ -39,7 +39,7 @@ Production backend (DB, auth, SMTP, real file storage) remains **out of scope** 
 | C.1 | Report Problem (cancel / not performable) | Task 12–14 | covered | Slide cancel (10+ chars); special case flow |
 | C.2 | Notification channels | Task 20, matrix | gap_closed_in_v1_6 | In-app feeds; push prefs; no push on direct assign |
 | C.3 | Infopoint tabs & badge | Task 18 | gap_closed_in_v1_6 | Admin **Infopoint** nav: General documents + New messages publish; driver tabs, badge, view/download stub |
-| D | Open questions | `client_feedback_resolved` | gap_closed_in_v1_6 | See PRD `client_feedback_resolved` entries |
+| D | Open questions / partner master data | `client_feedback_resolved`, Task 3 | gap_closed_in_v1_6 | Drivers submit change requests (not self-edit); admin **Profile change requests** queue with Approve & save / Reject |
 
 ---
 
@@ -80,6 +80,8 @@ Production backend (DB, auth, SMTP, real file storage) remains **out of scope** 
 | 16 | Audit script | Pass (exit 0) |
 | 17 | Admin Infopoint news publish | Pass |
 | 18 | Driver Infopoint doc view/download | Pass |
+| 19–24 | Client feedback gap pass (cancel UX, reasons, evidence, MDR feed, icon, formatters) | Pass |
+| 25–28 | Profile change request queue + one-open rule + feed deep-link + driver notify | Pass |
 
 Full detail: `AUTHEON/prd-prototype-validation.md`.
 
@@ -101,7 +103,9 @@ Full detail: `AUTHEON/prd-prototype-validation.md`.
 - Real email SMTP, PDF generation, persistent storage, auth, service worker push — see `production_open_questions` in `prd.json`.
 - Finance dashboard, CSV mass import, historical Excel migration — explicitly de-scoped in PRD v1.6.
 
-**Closed in prototype (2026-05-25 gap pass):** cancel binding warning + terms; seven cancel reasons; not-performable evidence upload; master-data change request feed; Report Problem warning icon; admin order-entry formatters (`inputFormatters.js`).
+**Closed in prototype (2026-05-25 gap pass):** cancel binding warning + terms; seven cancel reasons; not-performable evidence upload; Report Problem warning icon; admin order-entry formatters (`inputFormatters.js`).
+
+**Closed in prototype (2026-05-25 profile requests):** persistent `masterDataChangeRequests` queue; admin nav with open-count badge; inline partner edit on request detail; **Approve & save** (save then close) and **Reject**; driver pending state when one open request exists; notification feed **Review request** deep-link; driver in-app notifications on resolution.
 
 ---
 

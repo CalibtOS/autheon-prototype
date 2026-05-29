@@ -57,6 +57,7 @@ const AdminNav = ({ section, setSection }) => {
   const total = store.getJobs().length;
   const invCount = store.getTourDocuments().length;
   const alertCount = store.getAdminEmailQueue().length;
+  const mdrOpenCount = store.getOpenMasterDataChangeRequestCount();
   const financeOn = store.getFeatureFlag("financeModule");
   const items = [
     { id: "overview", label: t("navJobs"), count: total, I: Ic.N.Tour },
@@ -65,6 +66,12 @@ const AdminNav = ({ section, setSection }) => {
       label: t("adminNotificationFeed"),
       count: alertCount,
       I: Ic.N.Audit,
+    },
+    {
+      id: "masterdata",
+      label: t("navMasterDataRequests"),
+      count: mdrOpenCount || null,
+      I: Ic.N.Users,
     },
     { id: "users", label: t("navUsers"), count: null, I: Ic.N.Users },
     {
@@ -6037,7 +6044,353 @@ const ADMIN_ALERT_EVENT_I18N = {
   tour_document_reuploaded: "adminNotifDocumentReuploaded",
 };
 
-const NotificationFeedPane = ({ showToast, onOpenJob }) => {
+const parseMasterDataRequestIdFromMeta = (meta) => {
+  const m = String(meta || "").match(/(MDR-[A-Za-z0-9-]+)/);
+  return m ? m[1] : "";
+};
+
+const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const [filter, setFilter] = useStateA("open");
+  const [selectedId, setSelectedId] = useStateA(initialRequestId || "");
+  const [adminNote, setAdminNote] = useStateA("");
+  const [driverForm, setDriverForm] = useStateA(emptyDriverEditForm());
+  const setDF = (k, v) => setDriverForm((p) => ({ ...p, [k]: v }));
+
+  useEffectA(() => {
+    if (initialRequestId) setSelectedId(initialRequestId);
+  }, [initialRequestId]);
+
+  const rows = store.listMasterDataChangeRequests(
+    filter === "all" ? {} : { status: filter },
+  );
+  const selected =
+    store.getMasterDataChangeRequest(selectedId) ||
+    rows.find((r) => r.id === selectedId) ||
+    null;
+  const driverNow = selected
+    ? store.getDrivers().find((d) => d.id === selected.driverId)
+    : null;
+
+  useEffectA(() => {
+    if (!driverNow) {
+      setDriverForm(emptyDriverEditForm());
+      return;
+    }
+    setDriverForm({
+      name: driverNow.name || "",
+      company: driverNow.company || "",
+      partnerId: driverNow.partnerId || "",
+      address: driverNow.address || "",
+      email: driverNow.email || "",
+      phone: driverNow.phone || "",
+      notes: driverNow.notes || "",
+    });
+  }, [selectedId, driverNow?.id, driverNow?.name, driverNow?.company]);
+
+  const saveDriverMasterData = (opts = {}) => {
+    if (!selected || !driverNow) return false;
+    const r = store.updateDriver(selected.driverId, driverForm);
+    if (!r.ok) {
+      showToast?.(
+        t("adminMdrSaveFailed"),
+        r.reason === "required"
+          ? t("adminUsersRequiredFields")
+          : t("adminInvoiceErrGeneric"),
+      );
+      return false;
+    }
+    if (!opts.silent) {
+      showToast?.(t("adminMdrSavedDriver"), driverForm.name);
+    }
+    return true;
+  };
+
+  const resolve = (decision) => {
+    if (!selected) return;
+    if (decision === "approve" && driverNow && !saveDriverMasterData({ silent: true }))
+      return;
+    const r = store.resolveMasterDataChangeRequest(
+      selected.id,
+      decision,
+      adminNote.trim(),
+    );
+    if (r.ok) {
+      showToast?.(
+        decision === "approve"
+          ? t("adminMdrApprovedToast")
+          : t("adminMdrRejectedToast"),
+        selected.driverName,
+      );
+      setAdminNote("");
+      setSelectedId("");
+    } else {
+      showToast?.(t("adminMdrResolveFailed"), r.reason || "");
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 1040 }}>
+      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+        {t("adminMdrTitle")}
+      </h1>
+      <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
+        {t("adminMdrSub")}
+      </p>
+      <div className="seg" style={{ marginTop: 18, display: "inline-flex" }}>
+        {[
+          ["open", t("adminMdrFilterOpen")],
+          ["approved", t("adminMdrFilterApproved")],
+          ["rejected", t("adminMdrFilterRejected")],
+          ["all", t("adminMdrFilterAll")],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className={filter === id ? "on" : ""}
+            onClick={() => {
+              setFilter(id);
+              setSelectedId("");
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: selected ? "1fr 1.1fr" : "1fr",
+          gap: 18,
+          marginTop: 18,
+          alignItems: "start",
+        }}
+      >
+        <section className="card" style={{ padding: 0 }}>
+          {rows.length === 0 ? (
+            <div style={{ padding: 28, textAlign: "center", color: "var(--muted)" }}>
+              {t("adminMdrEmpty")}
+            </div>
+          ) : (
+            rows.map((row) => (
+              <button
+                key={row.id}
+                type="button"
+                className="btn ghost"
+                style={{
+                  display: "block",
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "14px 18px",
+                  borderRadius: 0,
+                  borderBottom: "1px solid var(--line)",
+                  background:
+                    selectedId === row.id ? "rgba(30, 64, 175, 0.06)" : "transparent",
+                }}
+                onClick={() => {
+                  setSelectedId(row.id);
+                  setAdminNote("");
+                  setDriverForm(emptyDriverEditForm());
+                }}
+              >
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{row.driverName}</div>
+                <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+                  {row.partnerId || "—"} · {row.createdAt}
+                </div>
+                <div
+                  style={{
+                    fontSize: 12.5,
+                    color: "var(--muted)",
+                    marginTop: 6,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {row.note.length > 100 ? `${row.note.slice(0, 100)}…` : row.note}
+                </div>
+                <Pill
+                  status={
+                    row.status === "open"
+                      ? "assigned"
+                      : row.status === "approved"
+                        ? "performed"
+                        : "cancelled"
+                  }
+                >
+                  {row.status === "open"
+                    ? t("adminMdrStatusOpen")
+                    : row.status === "approved"
+                      ? t("adminMdrStatusApproved")
+                      : t("adminMdrStatusRejected")}
+                </Pill>
+              </button>
+            ))
+          )}
+        </section>
+        {selected ? (
+          <section className="card" style={{ padding: 22 }}>
+            <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>{selected.driverName}</h2>
+            <p className="mono" style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
+              {t("partnerId")}: {selected.partnerId || "—"} · {selected.createdAt}
+            </p>
+            <div className="field-label" style={{ marginTop: 16 }}>
+              {t("adminMdrDriverNote")}
+            </div>
+            <div
+              className="dash-area"
+              style={{
+                marginTop: 8,
+                fontSize: 13,
+                lineHeight: 1.55,
+                textTransform: "none",
+                letterSpacing: 0,
+              }}
+            >
+              {selected.note}
+            </div>
+            {selected.snapshot ? (
+              <div style={{ marginTop: 16 }}>
+                <div className="label" style={{ marginBottom: 8 }}>
+                  {t("adminMdrSnapshot")}
+                </div>
+                {[
+                  [t("company"), selected.snapshot.company],
+                  [t("address"), selected.snapshot.address],
+                  [t("email"), selected.snapshot.email],
+                  [t("phone"), selected.snapshot.phone],
+                ].map(([k, v]) => (
+                  <div
+                    key={k}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      fontSize: 12.5,
+                      padding: "6px 0",
+                      borderBottom: "1px solid var(--line)",
+                    }}
+                  >
+                    <span className="label">{k}</span>
+                    <span style={{ textAlign: "right" }}>{v || "—"}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {driverNow ? (
+              <div style={{ marginTop: 18 }}>
+                <div className="field-label">{t("adminMdrEditSection")}</div>
+                <p
+                  className="label"
+                  style={{ margin: "6px 0 12px", fontSize: 11.5, lineHeight: 1.45 }}
+                >
+                  {selected.status === "open"
+                    ? t("adminMdrEditSectionHint")
+                    : t("adminMdrEditSectionReadonly")}
+                </p>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 12,
+                  }}
+                >
+                  {[
+                    ["name", t("adminUsersFieldName")],
+                    ["company", t("adminUsersFieldCompany")],
+                    ["partnerId", t("adminUsersFieldPartnerId")],
+                    ["phone", t("adminUsersFieldPhone")],
+                  ].map(([key, label]) => (
+                    <div key={key}>
+                      <label className="field-label">{label}</label>
+                      <input
+                        className="input"
+                        value={driverForm[key]}
+                        disabled={selected.status !== "open"}
+                        onChange={(e) => setDF(key, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label className="field-label">{t("adminUsersFieldEmail")}</label>
+                    <input
+                      className="input"
+                      value={driverForm.email}
+                      disabled={selected.status !== "open"}
+                      onChange={(e) => setDF("email", e.target.value)}
+                    />
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label className="field-label">{t("adminUsersFieldAddress")}</label>
+                    <input
+                      className="input"
+                      value={driverForm.address}
+                      disabled={selected.status !== "open"}
+                      onChange={(e) => setDF("address", e.target.value)}
+                    />
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label className="field-label">{t("adminUsersFieldNotes")}</label>
+                    <textarea
+                      className="input"
+                      rows={2}
+                      value={driverForm.notes}
+                      disabled={selected.status !== "open"}
+                      onChange={(e) => setDF("notes", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {selected.status === "open" ? (
+              <>
+                <label className="field-label" style={{ marginTop: 16 }}>
+                  {t("adminMdrAdminNote")}
+                </label>
+                <textarea
+                  className="input"
+                  style={{ marginTop: 8, minHeight: 72 }}
+                  value={adminNote}
+                  onChange={(e) => setAdminNote(e.target.value)}
+                  placeholder={t("adminMdrAdminNotePh")}
+                />
+                <p className="label" style={{ marginTop: 10, fontSize: 11.5, lineHeight: 1.45 }}>
+                  {t("adminMdrApproveHint")}
+                </p>
+                <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={() => resolve("approve")}
+                  >
+                    {t("adminMdrApprove")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => resolve("reject")}
+                  >
+                    {t("adminMdrReject")}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={{ marginTop: 16, fontSize: 13, color: "var(--muted)" }}>
+                <div>
+                  {t("adminMdrResolvedAt")}: {selected.resolvedAt || "—"}
+                </div>
+                {selected.adminNote ? (
+                  <div style={{ marginTop: 8 }}>{selected.adminNote}</div>
+                ) : null}
+              </div>
+            )}
+          </section>
+        ) : null}
+      </div>
+    </div>
+  );
+};
+
+const NotificationFeedPane = ({ showToast, onOpenJob, onReviewMasterDataRequest }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const rows = store.getAdminEmailQueue();
@@ -6084,19 +6437,34 @@ const NotificationFeedPane = ({ showToast, onOpenJob }) => {
                   {row.at}
                 </div>
               </div>
-              {row.jobId ? (
-                <button
-                  type="button"
-                  className="btn xs"
-                  onClick={() => {
-                    const j = store.getJob(row.jobId);
-                    if (j) onOpenJob?.(j);
-                    else showToast?.(t("adminNotificationOpenJob"), row.tour);
-                  }}
-                >
-                  {t("adminNotificationOpenJob")}
-                </button>
-              ) : null}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {row.event === "master_data_change_requested" &&
+                onReviewMasterDataRequest ? (
+                  <button
+                    type="button"
+                    className="btn xs primary"
+                    onClick={() => {
+                      const reqId = parseMasterDataRequestIdFromMeta(row.meta);
+                      onReviewMasterDataRequest(reqId);
+                    }}
+                  >
+                    {t("adminMdrReviewFromFeed")}
+                  </button>
+                ) : null}
+                {row.jobId ? (
+                  <button
+                    type="button"
+                    className="btn xs"
+                    onClick={() => {
+                      const j = store.getJob(row.jobId);
+                      if (j) onOpenJob?.(j);
+                      else showToast?.(t("adminNotificationOpenJob"), row.tour);
+                    }}
+                  >
+                    {t("adminNotificationOpenJob")}
+                  </button>
+                ) : null}
+              </div>
             </div>
           ))
         )}
@@ -6261,5 +6629,6 @@ Object.assign(window, {
   FinancePane,
   AuditPane,
   NotificationFeedPane,
+  MasterDataRequestsPane,
   FeaturesPane,
 });

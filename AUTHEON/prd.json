@@ -1,6 +1,6 @@
 {
   "feature": "Vehicle Transport Platform Phase 1 - working app name configurable",
-  "version": "PRD v1.6 - Feedback.pdf traceability May 2026",
+  "version": "PRD v1.6 - Feedback.pdf traceability May 2026 (prototype sync 2026-05-25)",
   "goal": "Replace manual vehicle transport dispatch with a contract-driven Version 1 platform focused on operational order creation, marketplace job distribution, direct assignment, binding service partner acceptance, clear Report Problem cancellation and special case flows, external map navigation, address master data, simple push notifications for drivers, admin email alerts for critical events, optional tour-linked document and partner invoice handling, auditability, and a controlled rollout from zero without historical Excel tour migration.",
   "product_context": {
     "platform_type": "Vehicle transport / vehicle relocation operations platform",
@@ -37,14 +37,16 @@
       "Admins can receive system email alerts with deep links for critical events in Version 1; a full backend notification center is future scope unless trivial in the chosen platform.",
       "Full finance dashboards, accounting integration, vehicle condition documentation, historical Excel tour migration, CSV mass import, and complex tour chains are out of Version 1 unless separately approved.",
       "The final app display name should be configurable because the client does not want the program to be named AUTHEON in the UI.",
-      "Draft jobs may be permanently deleted; they are not cancelled. Cancel Order in the driver PWA requires a minimum-length explanation before slide-to-confirm unlocks."
+      "Draft jobs may be permanently deleted; they are not cancelled. Cancel Order in the driver PWA requires a minimum-length explanation before slide-to-confirm unlocks.",
+      "Service partner profile master data (company, address, email, phone, partner ID) is maintained by admin/dispatching. Drivers do not self-edit those fields in V1; they submit change requests. At most one open request per partner until admin approves or rejects.",
+      "Cancel Order shows binding-cost warning and link to partner terms before slide-to-confirm. Not Performable may attach evidence files (photos/PDF) visible to admin on the special-case panel."
     ],
-    "prototype_reference": "AUTHEON/autheon-extracted/autheon/project (single-page HTML/React Babel demo: admin.jsx, driver.jsx, store.js, i18n.js — not production repo layout; maps conceptually to apps/* paths in tasks). Final production PRD v1.6 supersedes prototype-only return request and broad finance assumptions with client-validated Report Problem, Special Case, and finance de-scoping decisions."
+    "prototype_reference": "AUTHEON/autheon-extracted/autheon/project (single-page HTML/React Babel demo: admin.jsx, driver.jsx, store.js, i18n.js, inputFormatters.js — not production repo layout; maps conceptually to apps/* paths in tasks). Final production PRD v1.6 supersedes prototype-only return request and broad finance assumptions with client-validated Report Problem, Special Case, and finance de-scoping decisions."
   },
   "prototype_coverage_notes": [
-    "Driver PWA (demo): marketplace with pull-to-refresh, My Jobs (Active, Performed, Cancelled, Special case), locked preview, slide accept, map handoff, Mark as performed, Report Problem (cancel + not performable), tour-linked document upload only after Performed (categories, rejection reason, replace file), correction badge on Performed tab only, Infopoint (General documents with description, date, view/download stub; New messages with read/unread badge), profile and push preferences (no driver workflow email).",
-    "Admin (demo): job overview with special case and performed filters, primary New job CTA on Jobs overview (no separate New job sidebar item), job detail with draft delete and special case resolution (Continue, Republish, administrative close, cancel order), distance estimate/recalculate, full CRUD for ordering parties (all PRD fields, active flag, delete blocked when referenced by tours) and addresses (full location/contact fields, active flag, usage count), new order form with ordering party select plus pickup/delivery selects from address master data and optional save-to-master checkboxes for manual entry, direct assign and reassign via service-partner picker (active partners only), partner invoices and documents with review/reject/replace/bulk download (status via pill only, no full-row green highlight), Infopoint admin (General documents: upload stub, add/rename/replace/hide; New messages: publish form with subject, body, date, optional in-app/push notify), service partners, audit log, admin email alert demo, CSV export. Finance dashboard removed.",
-    "Driver Report Problem (demo): Cancel Order uses slide-to-confirm locked until explanation has at least 10 characters, with clear disabled visual state; Not Performable uses Submit.",
+    "Driver PWA (demo): marketplace with pull-to-refresh, My Jobs (Active, Performed, Cancelled, Special case), locked preview, slide accept, map handoff, Mark as performed, Report Problem (seven cancel reasons; cancel path with binding warning + partner terms link; warning icon on tour footer and sheet header; not performable with optional evidence upload up to 5 files), tour-linked document upload only after Performed (categories, rejection reason, replace file), correction badge on Performed tab only, Infopoint (General documents with description, date, view/download stub; New messages with read/unread badge), profile with read-only master data, change-request form (blocked while open request pending), push preferences (no driver workflow email).",
+    "Admin (demo): job overview with special case and performed filters, primary New job CTA on Jobs overview (no separate New job sidebar item), job detail with draft delete and special case resolution (Continue, Republish, administrative close, cancel order) including not-performable evidence file list, distance estimate/recalculate, new order input formatters (date/time blur, VIN/plate normalize, manufacturer datalist, schedule/time-window warnings via inputFormatters.js), full CRUD for ordering parties (all PRD fields, active flag, delete blocked when referenced by tours) and addresses (full location/contact fields, active flag, usage count), new order form with ordering party select plus pickup/delivery selects from address master data and optional save-to-master checkboxes for manual entry, direct assign and reassign via service-partner picker (active partners only), partner invoices and documents with review/reject/replace/bulk download (status via pill only, no full-row green highlight), Infopoint admin (General documents: upload stub, add/rename/replace/hide; New messages: publish form with subject, body, date, optional in-app/push notify), Profile change requests nav (open/approved/rejected filters, inline partner edit, Approve & save applies updateDriver then closes request; Reject closes without save), Users pane partner edit, audit log, admin notification feed with Review request deep-link, admin email alert demo, CSV export. Finance dashboard removed.",
+    "Driver Report Problem (demo): Cancel Order uses slide-to-confirm locked until explanation has at least 10 characters, with clear disabled visual state; Not Performable uses Submit with optional file attachments stored on specialCaseReport.evidence.",
     "Publishing (demo): admin revert Published to Draft; publish and direct assign from Draft only (assign opens modal to pick active service partner); admin can reassign driver on Assigned, Accepted, or Special case tours; admin can delete Draft jobs from job detail.",
     "Status model (demo): operational statuses draft, published, accepted, assigned, performed, cancelled, special_case only — no return_requested or completed.",
     "Branding (demo): configurable display name default Transport Portal; AUTHEON not shown in UI chrome.",
@@ -54,7 +56,7 @@
   "prototype_validation": {
     "last_synced": "2026-05-25",
     "audit_document": "AUTHEON/prd-prototype-validation.md",
-    "verdict": "PASS — prototype matches PRD v1.6 at AUTHEON/prd.json (_audit-prototype.mjs exit 0, 2026-05-25).",
+    "verdict": "PASS — prototype matches PRD v1.6 at AUTHEON/prd.json (_audit-prototype.mjs exit 0; checklist items 1–28 in prd-prototype-validation.md).",
     "sync_pass_notes": [
       "Integrated client feedback requiring ordering party, pickup location, and delivery location separation.",
       "Replaced return window logic with Report Problem, cancellation, and special case handling.",
@@ -74,7 +76,9 @@
       "2026-05-23 v1.6 spec: Added client_feedback_traceability, driver_visibility_matrix, notification_channels_matrix, marketplace_sync_policy, client_status_mapping in prd.json.",
       "2026-05-23 v1.6 spec: Alternate contact fields, admin notification feed, auto Under Review on first post-Performed upload, three push toggles, push_on_direct_assign false.",
       "2026-05-25: Consolidated prd_updated_v2.json into prd.json; AUTHEON/prd.json is the only canonical spec file.",
-      "2026-05-25: Admin Infopoint pane (general documents + news publish); driver Infopoint doc view/download stub; clarifies Infopoint news vs tour notifications."
+      "2026-05-25: Admin Infopoint pane (general documents + news publish); driver Infopoint doc view/download stub; clarifies Infopoint news vs tour notifications.",
+      "2026-05-25: Client feedback gap pass — Report Problem cancel binding warning + terms; seven cancellation reason codes; not-performable evidence on specialCaseReport; Report Problem warning icon; order-entry formatters (inputFormatters.js).",
+      "2026-05-25: Service partner profile change requests — persistent masterDataChangeRequests queue; one open request per driver; admin Profile change requests pane with inline edit and Approve & save; driver pending state; notification feed Review request link; driver notifications on approve/reject."
     ],
     "prd_spec_reference": "AUTHEON/prd.json"
   },
@@ -250,6 +254,36 @@
       "Fuel receipt not legible",
       "Registration number missing",
       "Waiting time not documented comprehensibly"
+    ],
+    "master_data_change_request_fields": [
+      "request id",
+      "driverId / service partner id",
+      "driver display name",
+      "partnerId snapshot",
+      "driver note (min length in prototype: 10)",
+      "status: open | approved | rejected",
+      "createdAt",
+      "resolvedAt optional",
+      "resolvedBy optional",
+      "adminNote optional",
+      "snapshot at submit: company, address, email, phone"
+    ],
+    "special_case_evidence_fields": [
+      "evidence id",
+      "fileName",
+      "mimeType",
+      "sizeBytes",
+      "uploadedAt",
+      "stored on specialCaseReport.evidence for not-performable (prototype: metadata only, no blob storage)"
+    ],
+    "cancellation_reason_codes_v1": [
+      "partner_unavailable",
+      "vehicle_not_available",
+      "ordering_party_cancelled",
+      "appointment_not_possible",
+      "incorrect_order_data",
+      "vehicle_not_roadworthy",
+      "other"
     ]
   },
   "global_business_rules": [
@@ -371,12 +405,19 @@
         "Admin can create, edit, activate, and deactivate backend/admin accounts.",
         "Every activation, block, inactive/archive/soft-delete, access reset, or role change event is logged.",
         "Admin can reset or resend access for backend/admin users as well as service partners, subject to role permissions and audit logging.",
-        "Admin can edit all service partner master data fields including company name, person name, contact data, service partner ID, notes, status, and access state; changes to status, block, archive, or access reset are audited."
+        "Admin can edit all service partner master data fields including company name, person name, contact data, service partner ID, notes, status, and access state; changes to status, block, archive, or access reset are audited.",
+        "Drivers may submit a master-data change request with a minimum-length note when profile fields must change; they cannot edit master data fields directly in the driver PWA.",
+        "At most one open master-data change request per service partner; additional submissions are blocked until admin approves or rejects the open request.",
+        "Admin has a dedicated queue to list and filter requests (open, approved, rejected) with driver note and snapshot of profile data at request time.",
+        "Admin resolves requests by Approve & save (apply partner field edits from the resolution form, then close as approved) or Reject (close without applying edits).",
+        "master_data_change_requested appears in the admin notification feed; admin can navigate to the request queue from the feed."
       ],
       "status": "pending",
       "files": [
         "apps/admin/src/users/",
-        "services/users/"
+        "apps/admin/src/profile-change-requests/",
+        "services/users/",
+        "services/profile-change-requests/"
       ]
     },
     {
@@ -623,7 +664,7 @@
       "priority": 13,
       "story": "As an admin, I want to review cancellations and special cases with notes and evidence so operations stay controlled.",
       "acceptance": [
-        "Admin can view Report Problem submissions including job, service partner, selected path, reason, free text, evidence, timestamp, and current status.",
+        "Admin can view Report Problem submissions including job, service partner, selected path, reason, free text, evidence file metadata (photos, receipts, PDFs), timestamp, and current status.",
         "Admin can accept or finalize a service partner cancellation.",
         "Admin can republish a cancelled or special-case tour where business rules allow it.",
         "Admin can adjust job data and continue the tour where business rules allow it.",
@@ -1149,7 +1190,10 @@
     ],
     "admin_notification_feed_v1": "Lightweight in-admin event list for critical events; complements email alerts; not a full notification center.",
     "document_review_checked_step": "Optional admin mark-as-checked before accept/reject when operations require it.",
-    "client_display_status_labels": "UI may show Under review and Completed from document_review_summary and settlement Closed without adding operational statuses."
+    "client_display_status_labels": "UI may show Under review and Completed from document_review_summary and settlement Closed without adding operational statuses.",
+    "master_data_change_request_v1": "Driver request queue; one open per partner; admin Approve & save applies updateDriver; Reject without save; audit master_data_change_requested|approved|rejected; driver in-app notify on resolution.",
+    "report_problem_cancel_ux_v1": "Binding warning + partner terms link before slide; seven cancellation reason codes per Feedback.pdf C.1; warning icon on tour detail and sheet header.",
+    "report_problem_not_performable_evidence_v1": "Optional file upload on not performable (PDF/images, capped in prototype); listed on admin special-case panel; metadata only in demo."
   },
   "prototype_assumptions": {
     "purpose": "Client-facing UX validation for PRD v1.5; in-memory only.",
@@ -1177,7 +1221,9 @@
     "supplier_invoice_number_prototype": "Each tour document may store supplierInvoiceNumber and optional supplierInvoiceDate. Admin Accept on invoice type requires supplierInvoiceNumber (modal); acceptTourDocument() is the only path to accepted. job.invoiceNumber copies from the latest accepted invoice document, not from fileName. Replace/upload resets supplier fields until re-accepted.",
     "seed_mock_data": "17 addresses, 5 ordering parties, 3 service partners, 10 jobs (full locations + contacts), 6 tour documents (performed tours only), 2 admin email alerts, 5 audit entries; validateSeedData() runs on load and after reloadDemo().",
     "assign_driver_picker": "AssignDriverDialog modal; assignJob/reassignJob by driver id; getAssignableDrivers() returns Active only.",
-    "ordering_party_select": "New job section 01 uses select populated from getOrderingParties(); sets orderingPartyId + customer name."
+    "ordering_party_select": "New job section 01 uses select populated from getOrderingParties(); sets orderingPartyId + customer name.",
+    "order_entry_formatters_prototype": "inputFormatters.js: formatDateInput, formatTimeInput, normalizeVin, normalizePlate, compareTimeStrings; wired on admin new-order blur; MANUFACTURER_SUGGESTIONS datalist on brand field.",
+    "master_data_change_requests_prototype": "store.masterDataChangeRequests[]; requestMasterDataChange, listMasterDataChangeRequests, getOpenMasterDataChangeRequestForDriver, resolveMasterDataChangeRequest, getOpenMasterDataChangeRequestCount; MasterDataRequestsPane in admin.jsx; metadata-only evidence on specialCaseReport.evidence."
   },
   "production_open_questions": [
     "Confirm which map or distance API vendor to use and acceptable ongoing usage budget.",
@@ -1223,7 +1269,9 @@
       "Admin lightweight notification feed for critical events",
       "Driver in-app notifications for tour and document events",
       "Explicit driver_visibility_matrix and marketplace_sync_policy",
-      "client_status_mapping for Under review and Completed display labels"
+      "client_status_mapping for Under review and Completed display labels",
+      "Service partner profile change request workflow with admin queue and one-open-request rule",
+      "Admin inline partner master-data edit on approve from change-request detail (production may use same fields as Users module)"
     ],
     "v1_optional_or_needs_decision": [
       "Tour-related document upload and review workflow",
@@ -1463,7 +1511,23 @@
       "admin_email": false,
       "driver_in_app": false,
       "driver_push": false,
-      "notes": "When driver requests profile/master-data change via operator"
+      "notes": "When driver requests profile/master-data change; production also uses dedicated request queue"
+    },
+    {
+      "event": "master_data_change_approved",
+      "admin_feed": false,
+      "admin_email": false,
+      "driver_in_app": true,
+      "driver_push": false,
+      "notes": "After admin approves request and applies partner data"
+    },
+    {
+      "event": "master_data_change_rejected",
+      "admin_feed": false,
+      "admin_email": false,
+      "driver_in_app": true,
+      "driver_push": false,
+      "notes": "After admin rejects request; includes admin note when provided"
     },
     {
       "event": "order_cancelled_by_autheon",
@@ -1517,8 +1581,8 @@
   "client_feedback_resolved": [
     {
       "question": "Can service partner master data be changed by admins?",
-      "resolution": "Yes. Admins may create and edit all service partner fields; status, block, archive, and access reset are audited.",
-      "prd_reference": "Task 3, resolved_defaults.service_partner_master_edits"
+      "resolution": "Yes. Admins may create and edit all service partner fields; status, block, archive, and access reset are audited. Drivers submit change requests (not self-service edit); admins resolve via dedicated queue with Approve & save or Reject.",
+      "prd_reference": "Task 3, resolved_defaults.service_partner_master_edits, resolved_defaults.master_data_change_request_v1"
     },
     {
       "question": "Is the frontend compatible with tablets such as iPad?",

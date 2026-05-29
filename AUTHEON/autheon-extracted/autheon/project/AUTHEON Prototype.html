@@ -243,8 +243,18 @@
         const [editingJobId, setEditingJobId] = useState(null);
         const [billingNav, setBillingNav] = useState(null);
         const [assignDialog, setAssignDialog] = useState(null);
+        const [selectedMdrId, setSelectedMdrId] = useState(null);
 
         const clearBillingNav = () => setBillingNav(null);
+        const openMasterDataRequest = (requestId) => {
+          setSelectedMdrId(requestId || "");
+          setSection("masterdata");
+        };
+        const clearBillingNav = () => setBillingNav(null);
+        const openMasterDataRequest = (requestId) => {
+          setSelectedMdrId(requestId || "");
+          setSection("masterdata");
+        };
         const closeAssignDialog = () => setAssignDialog(null);
 
         const confirmAssignDriver = (driverId) => {
@@ -505,6 +515,14 @@
         } else if (section === "notifications") {
           body = (
             <NotificationFeedPane
+              onReviewMasterDataRequest={openMasterDataRequest}
+            />
+          );
+        } else if (section === "masterdata") {
+          body = (
+            <MasterDataRequestsPane
+              showToast={showToast}
+              initialRequestId={selectedMdrId}
               showToast={showToast}
               onOpenJob={(j) => {
                 setActiveJob(j);

@@ -1598,6 +1598,7 @@ window.AuthStore = (() => {
   }
   let driverNotifications = seedDriverNotifications();
   let adminEmailQueue = seedAdminEmailQueue();
+  let masterDataChangeRequests = [];
 
   for (const j of jobs) {
     j.paymentStatus = normalizePaymentStatus(j.paymentStatus);
@@ -2739,27 +2740,126 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
+    getMasterDataChangeRequest(id) {
+      return masterDataChangeRequests.find((r) => r.id === id) || null;
+    },
+
+    getOpenMasterDataChangeRequestForDriver(driverId) {
+      const id =
+        driverId ||
+        api.getCurrentDriver()?.id ||
+        drivers.find((x) => x.name === DEMO_DRIVER)?.id;
+      if (!id) return null;
+      return (
+        masterDataChangeRequests.find(
+          (r) => r.driverId === id && r.status === "open",
+        ) || null
+      );
+    },
+
+    listMasterDataChangeRequests(opts = {}) {
+      let rows = masterDataChangeRequests.slice();
+      if (opts.status) {
+        rows = rows.filter((r) => r.status === opts.status);
+      }
+      if (opts.driverId) {
+        rows = rows.filter((r) => r.driverId === opts.driverId);
+      }
+      rows.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      return rows;
+    },
+
+    getOpenMasterDataChangeRequestCount() {
+      return masterDataChangeRequests.filter((r) => r.status === "open").length;
+    },
+
     requestMasterDataChange(note) {
       const text = String(note || "").trim();
       if (text.length < 10) return { ok: false, reason: "note_too_short" };
       if (!api.isCurrentDriverActive())
         return { ok: false, reason: "driver_restricted" };
       const d = api.getCurrentDriver();
-      const who = d?.name || DEMO_DRIVER;
+      if (!d) return { ok: false, reason: "no_driver" };
+      if (api.getOpenMasterDataChangeRequestForDriver(d.id)) {
+        return { ok: false, reason: "open_request_exists" };
+      }
+      const who = d.name || DEMO_DRIVER;
+      const reqId = `MDR-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const row = {
+        id: reqId,
+        driverId: d.id,
+        driverName: who,
+        partnerId: d.partnerId || "",
+        note: text,
+        status: "open",
+        createdAt: nowStamp(),
+        resolvedAt: null,
+        resolvedBy: null,
+        adminNote: "",
+        snapshot: {
+          company: d.company || "",
+          address: d.address || "",
+          email: d.email || "",
+          phone: d.phone || "",
+        },
+      };
+      masterDataChangeRequests.unshift(row);
       queueAdminEmailAlert(
         "master_data_change_requested",
         "",
-        `${who}: ${text}`,
+        `${who}: ${text.slice(0, 80)} · ${reqId}`,
       );
-      log("master_data_change_requested", who, "profile", text.slice(0, 120));
+      log(
+        "master_data_change_requested",
+        who,
+        "profile",
+        `${reqId} · ${text.slice(0, 100)}`,
+      );
       pushDriverNotification({
         type: "master_data_change_sent",
         title: "Change request sent",
         body: "The operations team received your profile change request.",
-        driverId: d?.id,
+        driverId: d.id,
       });
       emit();
-      return { ok: true };
+      return { ok: true, id: reqId, request: row };
+    },
+
+    resolveMasterDataChangeRequest(id, decision, adminNote) {
+      const row = masterDataChangeRequests.find((r) => r.id === id);
+      if (!row) return { ok: false, reason: "not_found" };
+      if (row.status !== "open") return { ok: false, reason: "not_open" };
+      const d = String(decision || "").toLowerCase();
+      const approved = d === "approve" || d === "approved";
+      const rejected = d === "reject" || d === "rejected";
+      if (!approved && !rejected) return { ok: false, reason: "bad_decision" };
+      row.status = approved ? "approved" : "rejected";
+      row.resolvedAt = nowStamp();
+      row.resolvedBy = DEMO_ADMIN;
+      row.adminNote = String(adminNote || "").trim();
+      const action = approved
+        ? "master_data_change_approved"
+        : "master_data_change_rejected";
+      log(
+        action,
+        DEMO_ADMIN,
+        row.driverName,
+        `${row.id} · ${row.adminNote || "—"}`,
+      );
+      pushDriverNotification({
+        type: approved
+          ? "master_data_change_approved"
+          : "master_data_change_rejected",
+        title: approved ? "Profile change approved" : "Profile change declined",
+        body: row.adminNote
+          ? row.adminNote
+          : approved
+            ? "Your master-data change request was approved."
+            : "Your master-data change request was declined.",
+        driverId: row.driverId,
+      });
+      emit();
+      return { ok: true, request: row };
     },
 
     resolveSpecialCase(id, decision, note) {
@@ -3908,6 +4008,7 @@ window.AuthStore = (() => {
       }
       driverNotifications = seedDriverNotifications();
       adminEmailQueue = seedAdminEmailQueue();
+      masterDataChangeRequests = [];
       for (const j of jobs) {
         j.paymentStatus = normalizePaymentStatus(j.paymentStatus);
         reconcileDocumentReviewSummary(j.id);

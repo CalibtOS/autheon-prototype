@@ -96,6 +96,10 @@ const critical = [
   "markTourDocumentChecked",
   "requestMasterDataChange",
   "buildSpecialCaseEvidenceMeta",
+  "listMasterDataChangeRequests",
+  "getOpenMasterDataChangeRequestForDriver",
+  "resolveMasterDataChangeRequest",
+  "getOpenMasterDataChangeRequestCount",
   "updateDriver",
   "updateAdmin",
 ];
@@ -240,6 +244,16 @@ if (!driver.includes("notifyNewPublished")) {
   out("driver.jsx missing three push toggles");
   process.exitCode = 1;
 } else out("driver.jsx three push toggles: present");
+
+if (!admin.includes("MasterDataRequestsPane")) {
+  out("admin.jsx Master data requests pane: missing");
+  process.exitCode = 1;
+} else out("admin.jsx Master data requests pane: present");
+
+if (!driver.includes("getOpenMasterDataChangeRequestForDriver")) {
+  out("driver.jsx open master-data request guard: missing");
+  process.exitCode = 1;
+} else out("driver.jsx open master-data request guard: present");
 
 if (!admin.includes("InfopointPane") || !admin.includes("addNewsItem")) {
   out("admin.jsx Infopoint news publish UI: missing");

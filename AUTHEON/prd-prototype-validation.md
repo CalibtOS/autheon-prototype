@@ -16,7 +16,7 @@ Validated against:
 
 ## Verdict
 
-**PASS (2026-05-25)** — `_audit-prototype.mjs` exits 0; v1.6 checklist plus six client-feedback gap closures (cancel UX, seven cancel reasons, not-performable evidence, master-data request, Report Problem icon, order-entry formatters). Canonical spec: `AUTHEON/prd.json`.
+**PASS (2026-05-25)** — `_audit-prototype.mjs` exits 0; v1.6 checklist (items 1–25) plus six client-feedback gap closures and profile change-request queue. Canonical spec: `AUTHEON/prd.json`.
 
 Operational statuses remain seven (`draft` … `special_case`); client labels **Under review** and **Completed** are derived from `document_review_summary` and `settlementState`.
 
@@ -50,6 +50,10 @@ Production implementation (database, auth, real PDF template, file storage, map 
 | 22 | Master-data change request → admin notification feed | Done (`requestMasterDataChange`) |
 | 23 | Report Problem warning icon (tour footer + sheet header) | Done (`Ic.Alert`) |
 | 24 | Order-entry date/time/VIN/plate formatters + manufacturer datalist | Done (`inputFormatters.js`) |
+| 25 | Profile change requests admin pane (list/filter, inline edit, Approve & save, Reject) | Done (`MasterDataRequestsPane`, `masterDataChangeRequests[]`) |
+| 26 | One open master-data request per driver; pending UI blocks new submit | Done (`open_request_exists`, `ProfilePaneFull` banner) |
+| 27 | Notification feed Review request → masterdata pane with request id | Done (`onReviewMasterDataRequest`, `MDR-*` meta) |
+| 28 | Driver in-app notify on master-data approve/reject | Done (`master_data_change_approved` / `rejected`) |
 
 ## Coverage matrix (PRD v1.6 tasks)
 

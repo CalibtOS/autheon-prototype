@@ -3030,14 +3030,17 @@ const ProfilePaneFull = () => {
   const prefs = d?.prefs || {};
   const setPref = (patch) => store.updateDriverPrefs(patch);
   const [mdNote, setMdNote] = useState("");
-  const [mdSent, setMdSent] = useState(false);
+  const openMdr = store.getOpenMasterDataChangeRequestForDriver(d?.id);
   const submitMasterDataRequest = () => {
     const r = store.requestMasterDataChange(mdNote);
     if (r.ok) {
-      setMdSent(true);
       setMdNote("");
-    } else {
+    } else if (r.reason === "open_request_exists") {
+      window.alert(t("masterDataChangeOpenExists"));
+    } else if (r.reason === "note_too_short") {
       window.alert(t("masterDataChangeTooShort"));
+    } else {
+      window.alert(t("masterDataChangeSubmitFailed"));
     }
   };
   return (
@@ -3103,40 +3106,66 @@ const ProfilePaneFull = () => {
         >
           {t("masterDataChangeNotice")}
         </p>
-        <div className="field-label" style={{ marginTop: 14 }}>
-          {t("masterDataChangeRequest")}
-        </div>
-        <textarea
-          className="input"
-          style={{ marginTop: 8, minHeight: 72 }}
-          placeholder={t("masterDataChangePlaceholder")}
-          value={mdNote}
-          onChange={(e) => {
-            setMdNote(e.target.value);
-            if (mdSent) setMdSent(false);
-          }}
-        />
-        <button
-          type="button"
-          className="btn primary block"
-          style={{ marginTop: 10 }}
-          disabled={mdNote.trim().length < 10}
-          onClick={submitMasterDataRequest}
-        >
-          {t("masterDataChangeSubmit")}
-        </button>
-        {mdSent ? (
-          <p
+        {openMdr ? (
+          <div
+            role="status"
             style={{
-              margin: "10px 0 0",
-              fontSize: 12.5,
-              color: "var(--st-ok)",
-              lineHeight: 1.45,
+              marginTop: 14,
+              padding: "12px 14px",
+              borderRadius: 10,
+              border: "1px solid rgba(30, 64, 175, 0.35)",
+              background: "rgba(30, 64, 175, 0.06)",
             }}
           >
-            {t("masterDataChangeSent")}
-          </p>
-        ) : null}
+            <div style={{ fontWeight: 600, fontSize: 13.5 }}>
+              {t("masterDataChangePendingTitle")}
+            </div>
+            <p
+              style={{
+                margin: "8px 0 0",
+                fontSize: 12.5,
+                color: "var(--muted)",
+                lineHeight: 1.5,
+              }}
+            >
+              {t("masterDataChangePendingBody", { date: openMdr.createdAt })}
+            </p>
+            <p
+              style={{
+                margin: "8px 0 0",
+                fontSize: 12,
+                lineHeight: 1.45,
+                fontStyle: "italic",
+              }}
+            >
+              {openMdr.note.length > 120
+                ? `${openMdr.note.slice(0, 120)}…`
+                : openMdr.note}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="field-label" style={{ marginTop: 14 }}>
+              {t("masterDataChangeRequest")}
+            </div>
+            <textarea
+              className="input"
+              style={{ marginTop: 8, minHeight: 72 }}
+              placeholder={t("masterDataChangePlaceholder")}
+              value={mdNote}
+              onChange={(e) => setMdNote(e.target.value)}
+            />
+            <button
+              type="button"
+              className="btn primary block"
+              style={{ marginTop: 10 }}
+              disabled={mdNote.trim().length < 10}
+              onClick={submitMasterDataRequest}
+            >
+              {t("masterDataChangeSubmit")}
+            </button>
+          </>
+        )}
       </div>
       <div className="card" style={{ padding: 14, marginTop: 14 }}>
         <Lbl>{t("notificationPreferences")}</Lbl>
