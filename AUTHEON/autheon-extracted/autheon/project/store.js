@@ -1257,14 +1257,12 @@ window.AuthStore = (() => {
         name: DEMO_ADMIN,
         email: "anna.bauer@autheon.example",
         status: "Active",
-        role: "Dispatcher",
       },
       {
         id: "ADM-002",
         name: "Lukas Reimann",
         email: "lukas.reimann@autheon.example",
         status: "Active",
-        role: "Operations lead",
       },
     ];
   }
@@ -1464,6 +1462,42 @@ window.AuthStore = (() => {
       if (m) max = Math.max(max, parseInt(m[1], 10));
     }
     return `${prefix}-${String(max + 1).padStart(3, "0")}`;
+  }
+
+  function generatePartnerId(driverId) {
+    const num = String(driverId || "").replace(/^DRV-/, "");
+    return `AU-41-${num}`;
+  }
+
+  function isValidEmail(value) {
+    const email = String(value || "").trim();
+    if (!email) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function generateTemporaryPassword() {
+    const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const lower = "abcdefghijkmnopqrstuvwxyz";
+    const digits = "23456789";
+    const all = upper + lower + digits;
+    const pick = (chars) => chars[Math.floor(Math.random() * chars.length)];
+    let pw = pick(upper) + pick(lower) + pick(digits);
+    for (let i = 0; i < 9; i++) pw += pick(all);
+    return pw
+      .split("")
+      .sort(() => Math.random() - 0.5)
+      .join("");
+  }
+
+  function applyGeneratedPassword(user) {
+    const password = generateTemporaryPassword();
+    user.tempPassword = password;
+    user.mustChangePassword = true;
+    user.passwordGeneratedAt = new Date()
+      .toISOString()
+      .slice(0, 19)
+      .replace("T", " ");
+    return password;
   }
 
   /** Restore target when admin continues a special case (fallback if statusBeforeSpecialCase missing). */
@@ -2217,6 +2251,7 @@ window.AuthStore = (() => {
     AXLE_THIRD,
     syncDisplayFields,
     jobToDraftForm,
+    isValidEmail,
 
     statusLabel: (s) => {
       const key = STATUSES[s]?.i18n;
@@ -3307,19 +3342,15 @@ window.AuthStore = (() => {
     updateDriver(id, patch = {}) {
       const d = drivers.find((x) => x.id === id);
       if (!d) return { ok: false, reason: "not_found" };
-      const fields = [
-        "name",
-        "company",
-        "partnerId",
-        "address",
-        "email",
-        "phone",
-        "notes",
-      ];
+      const fields = ["name", "company", "address", "email", "phone", "notes"];
       for (const k of fields) {
         if (patch[k] !== undefined) d[k] = String(patch[k] ?? "").trim();
       }
       if (!d.name || !d.company) return { ok: false, reason: "required" };
+      if (!d.email) return { ok: false, reason: "email_required" };
+      if (!isValidEmail(d.email)) return { ok: false, reason: "invalid_email" };
+      if (drivers.some((x) => x.id !== id && x.email === d.email))
+        return { ok: false, reason: "duplicate_email" };
       log("driver_updated", DEMO_ADMIN, d.name, d.partnerId || "");
       emit();
       return { ok: true };
@@ -3330,20 +3361,81 @@ window.AuthStore = (() => {
       if (!a) return { ok: false, reason: "not_found" };
       if (patch.name !== undefined) a.name = String(patch.name).trim();
       if (patch.email !== undefined) a.email = String(patch.email).trim();
-      if (patch.role !== undefined) a.role = String(patch.role).trim();
       if (!a.name || !a.email) return { ok: false, reason: "required" };
-      log("admin_updated", DEMO_ADMIN, a.name, a.role || "");
+      if (!isValidEmail(a.email)) return { ok: false, reason: "invalid_email" };
+      if (admins.some((x) => x.id !== id && x.email === a.email))
+        return { ok: false, reason: "duplicate_email" };
+      log("admin_updated", DEMO_ADMIN, a.name, a.email);
       emit();
       return { ok: true };
+    },
+
+    addDriver(data = {}) {
+      const name = String(data.name || "").trim();
+      const company = String(data.company || "").trim();
+      const email = String(data.email || "").trim();
+      if (!name || !company) return { ok: false, reason: "required" };
+      if (!email) return { ok: false, reason: "email_required" };
+      if (!isValidEmail(email)) return { ok: false, reason: "invalid_email" };
+      if (drivers.some((d) => d.email === email))
+        return { ok: false, reason: "duplicate_email" };
+      const id = nextMasterId("DRV", drivers);
+      const driver = {
+        id,
+        name,
+        company,
+        partnerId: generatePartnerId(id),
+        address: String(data.address || "").trim(),
+        email,
+        phone: String(data.phone || "").trim(),
+        notes: String(data.notes || "").trim(),
+        status: "Active",
+        prefs: {
+          notifyPostalPrefix: "",
+          vehicle: "PKW",
+          axle: "All",
+          pushEnabled: true,
+          notifyNewPublished: true,
+        },
+      };
+      const password = applyGeneratedPassword(driver);
+      drivers.unshift(driver);
+      log("driver_created", DEMO_ADMIN, driver.name, driver.id);
+      log("temporary_password_generated", DEMO_ADMIN, driver.name, "driver");
+      emit();
+      return { ok: true, driver, password };
+    },
+
+    addAdmin(data = {}) {
+      const name = String(data.name || "").trim();
+      const email = String(data.email || "").trim();
+      if (!name || !email) return { ok: false, reason: "required" };
+      if (!isValidEmail(email)) return { ok: false, reason: "invalid_email" };
+      if (admins.some((a) => a.email === email))
+        return { ok: false, reason: "duplicate_email" };
+      const admin = {
+        id: nextMasterId("ADM", admins),
+        name,
+        email,
+        status: "Active",
+      };
+      const password = applyGeneratedPassword(admin);
+      admins.unshift(admin);
+      log("admin_created", DEMO_ADMIN, admin.name, admin.id);
+      log("temporary_password_generated", DEMO_ADMIN, admin.name, "admin");
+      emit();
+      return { ok: true, admin, password };
     },
 
     resetPassword(kind, id) {
       const pool = kind === "admin" ? admins : drivers;
       const u = pool.find((x) => x.id === id);
       if (!u) return { ok: false };
+      const password = applyGeneratedPassword(u);
       log("password_reset_triggered", DEMO_ADMIN, u.name, kind);
+      log("temporary_password_generated", DEMO_ADMIN, u.name, kind);
       emit();
-      return { ok: true };
+      return { ok: true, password, user: u };
     },
 
     toggleDocument(id) {

@@ -2745,7 +2745,6 @@ const Stub = ({ title, desc }) => {
 const emptyDriverEditForm = () => ({
   name: "",
   company: "",
-  partnerId: "",
   address: "",
   email: "",
   phone: "",
@@ -2755,69 +2754,381 @@ const emptyDriverEditForm = () => ({
 const emptyAdminEditForm = () => ({
   name: "",
   email: "",
-  role: "",
 });
+
+const userInputErrStyle = { borderColor: "#dc2626" };
+
+const UserFormError = ({ message }) =>
+  message ? (
+    <div
+      className="label"
+      role="alert"
+      style={{ color: "#dc2626", fontSize: 11.5, marginTop: 4 }}
+    >
+      {message}
+    </div>
+  ) : null;
+
+const validateDriverFormLocal = (form, t) => {
+  const errors = {};
+  if (!String(form.name || "").trim())
+    errors.name = t("adminUsersErrNameRequired");
+  if (!String(form.company || "").trim())
+    errors.company = t("adminUsersErrCompanyRequired");
+  if (!String(form.email || "").trim())
+    errors.email = t("adminUsersErrEmailRequired");
+  else if (!AuthStore.isValidEmail(form.email))
+    errors.email = t("adminUsersErrEmailInvalid");
+  return errors;
+};
+
+const validateAdminFormLocal = (form, t) => {
+  const errors = {};
+  if (!String(form.name || "").trim())
+    errors.name = t("adminUsersErrNameRequired");
+  if (!String(form.email || "").trim())
+    errors.email = t("adminUsersErrEmailRequired");
+  else if (!AuthStore.isValidEmail(form.email))
+    errors.email = t("adminUsersErrEmailInvalid");
+  return errors;
+};
+
+const DriverUserFormFields = ({ form, setF, errors = {}, t }) => (
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 12,
+    }}
+  >
+    <div>
+      <label className="field-label">{t("adminUsersFieldName")} *</label>
+      <input
+        className="input"
+        style={errors.name ? userInputErrStyle : undefined}
+        value={form.name}
+        onChange={(e) => setF("name", e.target.value)}
+        autoComplete="name"
+      />
+      <UserFormError message={errors.name} />
+    </div>
+    <div>
+      <label className="field-label">{t("adminUsersFieldCompany")} *</label>
+      <input
+        className="input"
+        style={errors.company ? userInputErrStyle : undefined}
+        value={form.company}
+        onChange={(e) => setF("company", e.target.value)}
+        autoComplete="organization"
+      />
+      <UserFormError message={errors.company} />
+    </div>
+    <div style={{ gridColumn: "1 / -1" }}>
+      <label className="field-label">{t("adminUsersFieldPhone")}</label>
+      <input
+        className="input"
+        type="tel"
+        value={form.phone}
+        onChange={(e) => setF("phone", e.target.value)}
+        autoComplete="tel"
+      />
+    </div>
+    <div style={{ gridColumn: "1 / -1" }}>
+      <label className="field-label">{t("adminUsersFieldEmail")} *</label>
+      <input
+        className="input"
+        type="email"
+        style={errors.email ? userInputErrStyle : undefined}
+        value={form.email}
+        onChange={(e) => setF("email", e.target.value)}
+        autoComplete="email"
+        placeholder="name@company.example"
+      />
+      <UserFormError message={errors.email} />
+    </div>
+    <div style={{ gridColumn: "1 / -1" }}>
+      <label className="field-label">{t("adminUsersFieldAddress")}</label>
+      <input
+        className="input"
+        value={form.address}
+        onChange={(e) => setF("address", e.target.value)}
+        autoComplete="street-address"
+      />
+    </div>
+    <div style={{ gridColumn: "1 / -1" }}>
+      <label className="field-label">{t("adminUsersFieldNotes")}</label>
+      <textarea
+        className="input"
+        rows={2}
+        value={form.notes}
+        onChange={(e) => setF("notes", e.target.value)}
+      />
+    </div>
+  </div>
+);
+
+const AdminUserFormFields = ({ form, setF, errors = {}, t }) => (
+  <div style={{ display: "grid", gap: 12 }}>
+    <div>
+      <label className="field-label">{t("adminUsersFieldName")} *</label>
+      <input
+        className="input"
+        style={errors.name ? userInputErrStyle : undefined}
+        value={form.name}
+        onChange={(e) => setF("name", e.target.value)}
+        autoComplete="name"
+      />
+      <UserFormError message={errors.name} />
+    </div>
+    <div>
+      <label className="field-label">{t("adminUsersFieldEmail")} *</label>
+      <input
+        className="input"
+        type="email"
+        style={errors.email ? userInputErrStyle : undefined}
+        value={form.email}
+        onChange={(e) => setF("email", e.target.value)}
+        autoComplete="email"
+        placeholder="name@autheon.example"
+      />
+      <UserFormError message={errors.email} />
+    </div>
+  </div>
+);
+
+const userSaveErr = (r, kind, t) => {
+  if (!r || r.ok) return "";
+  const reason = r.reason;
+  if (reason === "required")
+    return kind === "admin"
+      ? t("adminUsersAdminRequiredFields")
+      : t("adminUsersRequiredFields");
+  if (reason === "email_required") return t("adminUsersErrEmailRequired");
+  if (reason === "invalid_email") return t("adminUsersErrEmailInvalid");
+  if (reason === "duplicate_email") return t("adminUsersEmailDuplicate");
+  return t("adminInvoiceErrGeneric");
+};
+
+const UserCredentialsDialog = ({ open, data, onClose, showToast }) => {
+  const { t } = useI18n();
+  if (!open || !data) return null;
+
+  const copyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(data.password);
+      showToast?.(t("adminUsersCredentialsCopied"), data.name);
+    } catch {
+      window.prompt(t("adminUsersCredentialsCopyFallback"), data.password);
+    }
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.45)",
+        zIndex: 105,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="card elev"
+        style={{ maxWidth: 460, width: "100%", padding: 22 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>
+          {t("adminUsersCredentialsTitle")}
+        </h2>
+        <p style={{ color: "var(--muted)", margin: "0 0 16px", fontSize: 13 }}>
+          {t("adminUsersCredentialsHint")}
+        </p>
+        <div style={{ display: "grid", gap: 12 }}>
+          <div>
+            <div className="label">{t("adminUsersFieldName")}</div>
+            <strong>{data.name}</strong>
+          </div>
+          <div>
+            <div className="label">{t("adminUsersCredentialsLoginLabel")}</div>
+            <span className="mono">{data.email || "—"}</span>
+          </div>
+          <div>
+            <div className="label">{t("adminUsersCredentialsPasswordLabel")}</div>
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <code
+                className="mono"
+                style={{
+                  fontSize: 15,
+                  padding: "8px 12px",
+                  background: "var(--surface-2, #f1f5f9)",
+                  borderRadius: 8,
+                  letterSpacing: "0.04em",
+                }}
+              >
+                {data.password}
+              </code>
+              <button type="button" className="btn xs" onClick={copyPassword}>
+                {t("adminUsersCredentialsCopy")}
+              </button>
+            </div>
+          </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginTop: 18,
+          }}
+        >
+          <button type="button" className="btn primary" onClick={onClose}>
+            {t("close")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const UsersPane = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
-  const [editDriverId, setEditDriverId] = useStateA(null);
-  const [editAdminId, setEditAdminId] = useStateA(null);
+  const [driverModal, setDriverModal] = useStateA(null);
+  const [adminModal, setAdminModal] = useStateA(null);
   const [driverForm, setDriverForm] = useStateA(emptyDriverEditForm());
   const [adminForm, setAdminForm] = useStateA(emptyAdminEditForm());
-  const setDF = (k, v) => setDriverForm((p) => ({ ...p, [k]: v }));
-  const setAF = (k, v) => setAdminForm((p) => ({ ...p, [k]: v }));
+  const [credentials, setCredentials] = useStateA(null);
+  const [driverErrors, setDriverErrors] = useStateA({});
+  const [adminErrors, setAdminErrors] = useStateA({});
+  const setDF = (k, v) => {
+    setDriverForm((p) => ({ ...p, [k]: v }));
+    setDriverErrors((e) => ({ ...e, [k]: undefined }));
+  };
+  const setAF = (k, v) => {
+    setAdminForm((p) => ({ ...p, [k]: v }));
+    setAdminErrors((e) => ({ ...e, [k]: undefined }));
+  };
+
+  const showUserCredentials = (user, password) => {
+    setCredentials({
+      name: user.name,
+      email: user.email || "",
+      password,
+    });
+  };
+
+  const openNewDriver = () => {
+    setDriverForm(emptyDriverEditForm());
+    setDriverErrors({});
+    setDriverModal("new");
+  };
 
   const openEditDriver = (d) => {
     setDriverForm({
       name: d.name || "",
       company: d.company || "",
-      partnerId: d.partnerId || "",
       address: d.address || "",
       email: d.email || "",
       phone: d.phone || "",
       notes: d.notes || "",
     });
-    setEditDriverId(d.id);
+    setDriverErrors({});
+    setDriverModal(d.id);
+  };
+
+  const openNewAdmin = () => {
+    setAdminForm(emptyAdminEditForm());
+    setAdminErrors({});
+    setAdminModal("new");
   };
 
   const openEditAdmin = (a) => {
     setAdminForm({
       name: a.name || "",
       email: a.email || "",
-      role: a.role || "",
     });
-    setEditAdminId(a.id);
+    setAdminErrors({});
+    setAdminModal(a.id);
   };
 
-  const saveDriverEdit = () => {
-    const r = store.updateDriver(editDriverId, driverForm);
-    if (!r.ok) {
-      showToast?.(
-        t("adminUsersSaveFailed"),
-        r.reason === "required"
-          ? t("adminUsersRequiredFields")
-          : t("adminInvoiceErrGeneric"),
-      );
+  const driverFormValid =
+    Object.keys(validateDriverFormLocal(driverForm, t)).length === 0;
+  const adminFormValid =
+    Object.keys(validateAdminFormLocal(adminForm, t)).length === 0;
+
+  const saveDriver = () => {
+    const localErrors = validateDriverFormLocal(driverForm, t);
+    if (Object.keys(localErrors).length) {
+      setDriverErrors(localErrors);
       return;
     }
-    showToast?.(t("adminUsersSaved"), driverForm.name);
-    setEditDriverId(null);
+    const r =
+      driverModal === "new"
+        ? store.addDriver(driverForm)
+        : store.updateDriver(driverModal, driverForm);
+    if (!r.ok) {
+      showToast?.(t("adminUsersSaveFailed"), userSaveErr(r, "driver", t));
+      return;
+    }
+    setDriverModal(null);
+    setDriverErrors({});
+    if (driverModal === "new" && r.password) {
+      showUserCredentials(r.driver, r.password);
+      showToast?.(t("adminUsersDriverCreated"), driverForm.name);
+    } else {
+      showToast?.(t("adminUsersSaved"), driverForm.name);
+    }
   };
 
-  const saveAdminEdit = () => {
-    const r = store.updateAdmin(editAdminId, adminForm);
-    if (!r.ok) {
-      showToast?.(
-        t("adminUsersSaveFailed"),
-        r.reason === "required"
-          ? t("adminUsersAdminRequiredFields")
-          : t("adminInvoiceErrGeneric"),
-      );
+  const saveAdmin = () => {
+    const localErrors = validateAdminFormLocal(adminForm, t);
+    if (Object.keys(localErrors).length) {
+      setAdminErrors(localErrors);
       return;
     }
-    showToast?.(t("adminUsersSaved"), adminForm.name);
-    setEditAdminId(null);
+    const r =
+      adminModal === "new"
+        ? store.addAdmin(adminForm)
+        : store.updateAdmin(adminModal, adminForm);
+    if (!r.ok) {
+      showToast?.(t("adminUsersSaveFailed"), userSaveErr(r, "admin", t));
+      return;
+    }
+    setAdminModal(null);
+    setAdminErrors({});
+    if (adminModal === "new" && r.password) {
+      showUserCredentials(r.admin, r.password);
+      showToast?.(t("adminUsersAdminCreated"), adminForm.name);
+    } else {
+      showToast?.(t("adminUsersSaved"), adminForm.name);
+    }
+  };
+
+  const triggerPasswordReset = (kind, user) => {
+    const r = store.resetPassword(kind, user.id);
+    if (!r.ok) {
+      showToast?.(t("adminUsersSaveFailed"), t("adminInvoiceErrGeneric"));
+      return;
+    }
+    showUserCredentials(r.user, r.password);
+    showToast?.(
+      kind === "admin"
+        ? t("adminUsersToastPwAdmin")
+        : t("adminUsersToastPwDriver"),
+      user.name,
+    );
   };
 
   return (
@@ -2841,12 +3152,7 @@ const UsersPane = ({ showToast }) => {
             <h3>{t("adminUsersSectionPartners")}</h3>
             <button
               className="btn xs primary"
-              onClick={() =>
-                showToast?.(
-                  t("adminUsersToastNewDriverTitle"),
-                  t("adminUsersToastNewDriverSub"),
-                )
-              }
+              onClick={openNewDriver}
             >
               <Ic.Plus /> {t("adminUsersNewDriver")}
             </button>
@@ -2921,10 +3227,7 @@ const UsersPane = ({ showToast }) => {
                       ))}
                       <button
                         className="btn xs"
-                        onClick={() => {
-                          store.resetPassword("driver", d.id);
-                          showToast?.(t("adminUsersToastPwDriver"), d.name);
-                        }}
+                        onClick={() => triggerPasswordReset("driver", d)}
                       >
                         {t("adminUsersResetPw")}
                       </button>
@@ -2940,12 +3243,7 @@ const UsersPane = ({ showToast }) => {
             <h3>{t("adminUsersSectionAdmins")}</h3>
             <button
               className="btn xs primary"
-              onClick={() =>
-                showToast?.(
-                  t("adminUsersToastNewAdminTitle"),
-                  t("adminUsersToastNewAdminSub"),
-                )
-              }
+              onClick={openNewAdmin}
             >
               <Ic.Plus /> {t("adminUsersNewAdmin")}
             </button>
@@ -2971,7 +3269,7 @@ const UsersPane = ({ showToast }) => {
                     className="label"
                     style={{ fontSize: 9.5, marginTop: 3 }}
                   >
-                    {a.role} · {a.email}
+                    {a.email}
                   </div>
                 </div>
                 <Pill status="accepted">{a.status}</Pill>
@@ -2987,10 +3285,7 @@ const UsersPane = ({ showToast }) => {
                 <button
                   type="button"
                   className="btn xs"
-                  onClick={() => {
-                    store.resetPassword("admin", a.id);
-                    showToast?.(t("adminUsersToastPwAdmin"), a.name);
-                  }}
+                  onClick={() => triggerPasswordReset("admin", a)}
                 >
                   {t("adminUsersTriggerPwReset")}
                 </button>
@@ -3000,7 +3295,7 @@ const UsersPane = ({ showToast }) => {
         </section>
       </div>
 
-      {editDriverId ? (
+      {driverModal ? (
         <div
           role="dialog"
           aria-modal="true"
@@ -3014,7 +3309,7 @@ const UsersPane = ({ showToast }) => {
             justifyContent: "center",
             padding: 24,
           }}
-          onClick={() => setEditDriverId(null)}
+          onClick={() => setDriverModal(null)}
         >
           <div
             className="card elev"
@@ -3028,56 +3323,16 @@ const UsersPane = ({ showToast }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 style={{ margin: "0 0 16px", fontSize: 18 }}>
-              {t("adminUsersEditDriverTitle")}
+              {driverModal === "new"
+                ? t("adminUsersNewDriverTitle")
+                : t("adminUsersEditDriverTitle")}
             </h2>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 12,
-              }}
-            >
-              {[
-                ["name", t("adminUsersFieldName")],
-                ["company", t("adminUsersFieldCompany")],
-                ["partnerId", t("adminUsersFieldPartnerId")],
-                ["phone", t("adminUsersFieldPhone")],
-              ].map(([key, label]) => (
-                <div key={key}>
-                  <label className="field-label">{label}</label>
-                  <input
-                    className="input"
-                    value={driverForm[key]}
-                    onChange={(e) => setDF(key, e.target.value)}
-                  />
-                </div>
-              ))}
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label className="field-label">{t("adminUsersFieldEmail")}</label>
-                <input
-                  className="input"
-                  value={driverForm.email}
-                  onChange={(e) => setDF("email", e.target.value)}
-                />
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label className="field-label">{t("adminUsersFieldAddress")}</label>
-                <input
-                  className="input"
-                  value={driverForm.address}
-                  onChange={(e) => setDF("address", e.target.value)}
-                />
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label className="field-label">{t("adminUsersFieldNotes")}</label>
-                <textarea
-                  className="input"
-                  rows={2}
-                  value={driverForm.notes}
-                  onChange={(e) => setDF("notes", e.target.value)}
-                />
-              </div>
-            </div>
+            <DriverUserFormFields
+              form={driverForm}
+              setF={setDF}
+              errors={driverErrors}
+              t={t}
+            />
             <div
               style={{
                 display: "flex",
@@ -3089,14 +3344,15 @@ const UsersPane = ({ showToast }) => {
               <button
                 type="button"
                 className="btn"
-                onClick={() => setEditDriverId(null)}
+                onClick={() => setDriverModal(null)}
               >
                 {t("close")}
               </button>
               <button
                 type="button"
                 className="btn primary"
-                onClick={saveDriverEdit}
+                disabled={!driverFormValid}
+                onClick={saveDriver}
               >
                 {t("adminUsersSave")}
               </button>
@@ -3105,7 +3361,7 @@ const UsersPane = ({ showToast }) => {
         </div>
       ) : null}
 
-      {editAdminId ? (
+      {adminModal ? (
         <div
           role="dialog"
           aria-modal="true"
@@ -3119,7 +3375,7 @@ const UsersPane = ({ showToast }) => {
             justifyContent: "center",
             padding: 24,
           }}
-          onClick={() => setEditAdminId(null)}
+          onClick={() => setAdminModal(null)}
         >
           <div
             className="card elev"
@@ -3131,22 +3387,16 @@ const UsersPane = ({ showToast }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 style={{ margin: "0 0 16px", fontSize: 18 }}>
-              {t("adminUsersEditAdminTitle")}
+              {adminModal === "new"
+                ? t("adminUsersNewAdminTitle")
+                : t("adminUsersEditAdminTitle")}
             </h2>
-            {[
-              ["name", t("adminUsersFieldName")],
-              ["email", t("adminUsersFieldEmail")],
-              ["role", t("adminUsersFieldRole")],
-            ].map(([key, label]) => (
-              <div key={key} style={{ marginBottom: 12 }}>
-                <label className="field-label">{label}</label>
-                <input
-                  className="input"
-                  value={adminForm[key]}
-                  onChange={(e) => setAF(key, e.target.value)}
-                />
-              </div>
-            ))}
+            <AdminUserFormFields
+              form={adminForm}
+              setF={setAF}
+              errors={adminErrors}
+              t={t}
+            />
             <div
               style={{
                 display: "flex",
@@ -3158,14 +3408,15 @@ const UsersPane = ({ showToast }) => {
               <button
                 type="button"
                 className="btn"
-                onClick={() => setEditAdminId(null)}
+                onClick={() => setAdminModal(null)}
               >
                 {t("close")}
               </button>
               <button
                 type="button"
                 className="btn primary"
-                onClick={saveAdminEdit}
+                disabled={!adminFormValid}
+                onClick={saveAdmin}
               >
                 {t("adminUsersSave")}
               </button>
@@ -3173,6 +3424,13 @@ const UsersPane = ({ showToast }) => {
           </div>
         </div>
       ) : null}
+
+      <UserCredentialsDialog
+        open={!!credentials}
+        data={credentials}
+        onClose={() => setCredentials(null)}
+        showToast={showToast}
+      />
     </div>
   );
 };
@@ -6081,7 +6339,6 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
     setDriverForm({
       name: driverNow.name || "",
       company: driverNow.company || "",
-      partnerId: driverNow.partnerId || "",
       address: driverNow.address || "",
       email: driverNow.email || "",
       phone: driverNow.phone || "",
@@ -6091,13 +6348,22 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
 
   const saveDriverMasterData = (opts = {}) => {
     if (!selected || !driverNow) return false;
+    const localErrors = validateDriverFormLocal(driverForm, t);
+    if (Object.keys(localErrors).length) {
+      showToast?.(
+        t("adminMdrSaveFailed"),
+        localErrors.email ||
+          localErrors.name ||
+          localErrors.company ||
+          t("adminUsersRequiredFields"),
+      );
+      return false;
+    }
     const r = store.updateDriver(selected.driverId, driverForm);
     if (!r.ok) {
       showToast?.(
         t("adminMdrSaveFailed"),
-        r.reason === "required"
-          ? t("adminUsersRequiredFields")
-          : t("adminInvoiceErrGeneric"),
+        userSaveErr(r, "driver", t),
       );
       return false;
     }
@@ -6297,11 +6563,13 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                   {[
                     ["name", t("adminUsersFieldName")],
                     ["company", t("adminUsersFieldCompany")],
-                    ["partnerId", t("adminUsersFieldPartnerId")],
                     ["phone", t("adminUsersFieldPhone")],
                   ].map(([key, label]) => (
                     <div key={key}>
-                      <label className="field-label">{label}</label>
+                      <label className="field-label">
+                        {label}
+                        {key === "name" || key === "company" ? " *" : ""}
+                      </label>
                       <input
                         className="input"
                         value={driverForm[key]}
@@ -6311,9 +6579,10 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                     </div>
                   ))}
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <label className="field-label">{t("adminUsersFieldEmail")}</label>
+                    <label className="field-label">{t("adminUsersFieldEmail")} *</label>
                     <input
                       className="input"
+                      type="email"
                       value={driverForm.email}
                       disabled={selected.status !== "open"}
                       onChange={(e) => setDF("email", e.target.value)}
