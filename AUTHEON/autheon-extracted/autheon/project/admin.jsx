@@ -79,7 +79,7 @@ const AdminNav = ({ section, setSection }) => {
       count: null,
       I: Ic.N.Building,
     },
-    { id: "documents", label: t("navDocuments"), count: null, I: Ic.N.Doc },
+    { id: "infopoint", label: t("navInfopoint"), count: null, I: Ic.N.Doc },
     {
       id: "invoices",
       label: t("navTourBilling"),
@@ -3612,73 +3612,567 @@ const AddressesPane = ({ showToast }) => {
   );
 };
 
-const DocumentsPane = ({ showToast }) => {
+const INFOPOINT_DOC_CATEGORIES = [
+  "Operations",
+  "Legal",
+  "Safety",
+  "Process",
+  "Pickup",
+  "Delivery",
+  "Invoicing",
+];
+
+const InfopointPane = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
+  const [subTab, setSubTab] = useStateA("documents");
+  const [newsForm, setNewsForm] = useStateA({
+    title: "",
+    body: "",
+    publishedAt: "",
+    notifyInApp: true,
+    notifyPush: false,
+  });
+  const [editNews, setEditNews] = useStateA(null);
+  const [editNewsForm, setEditNewsForm] = useStateA({
+    title: "",
+    body: "",
+    publishedAt: "",
+  });
+  const [docModal, setDocModal] = useStateA(null);
+  const [docForm, setDocForm] = useStateA({
+    title: "",
+    description: "",
+    category: "Operations",
+  });
+  const [renameDoc, setRenameDoc] = useStateA(null);
+  const [renameTitle, setRenameTitle] = useStateA("");
+  const uploadInputRef = useRefA(null);
+  const [uploadMeta, setUploadMeta] = useStateA(null);
+
+  const docs = store.getDocumentsAdmin();
+  const news = store.getNewsAdmin();
+
+  const publishNews = () => {
+    if (!newsForm.title.trim() || !newsForm.body.trim()) {
+      showToast?.(t("adminInfopointPublishRequired"));
+      return;
+    }
+    const item = store.addNewsItem({
+      title: newsForm.title,
+      body: newsForm.body,
+      publishedAt: newsForm.publishedAt,
+      notifyInApp: newsForm.notifyInApp,
+      notifyPush: newsForm.notifyPush,
+    });
+    showToast?.(t("adminInfopointPublishedToast"), item.title);
+    setNewsForm({
+      title: "",
+      body: "",
+      publishedAt: "",
+      notifyInApp: true,
+      notifyPush: false,
+    });
+  };
+
+  const openEditNews = (item) => {
+    setEditNews(item.id);
+    setEditNewsForm({
+      title: item.title,
+      body: item.body,
+      publishedAt: item.publishedAt,
+    });
+  };
+
+  const saveEditNews = () => {
+    const r = store.updateNewsItem(editNews, editNewsForm);
+    if (!r.ok) return;
+    showToast?.(t("adminInfopointNewsUpdated"), editNewsForm.title);
+    setEditNews(null);
+  };
+
+  const openNewDoc = () => {
+    setDocForm({ title: "", description: "", category: "Operations" });
+    setDocModal("new");
+  };
+
+  const saveDoc = () => {
+    if (!docForm.title.trim()) return;
+    const item = store.addGeneralDocument(docForm);
+    showToast?.(t("adminInfopointDocAdded"), item.title);
+    setDocModal(null);
+  };
+
+  const saveRename = () => {
+    const r = store.renameGeneralDocument(renameDoc, renameTitle);
+    if (!r.ok) return;
+    showToast?.(t("adminInfopointDocRenamed"), renameTitle);
+    setRenameDoc(null);
+  };
+
+  const onUploadPick = (doc) => {
+    setUploadMeta(doc || null);
+    uploadInputRef.current?.click();
+  };
+
+  const onUploadFile = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (uploadMeta?.id) {
+      store.replaceDocument(uploadMeta.id);
+      showToast?.(t("adminDocumentsReplaced"), uploadMeta.title);
+    } else {
+      const item = store.uploadGeneralDocumentStub(file, {});
+      showToast?.(t("adminInfopointDocUploadedDemo"), item.title);
+    }
+    setUploadMeta(null);
+  };
+
   return (
-    <div>
+    <div id="infopoint">
       <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
-        {t("navDocuments")}
+        {t("navInfopoint")}
       </h1>
-      <p style={{ color: "var(--muted)", marginTop: 8 }}>
-        {t("adminDocumentsPaneDesc")}
+      <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14, maxWidth: 720 }}>
+        {t("adminInfopointDesc")}
       </p>
-      <table className="tbl" style={{ marginTop: 18 }}>
-        <thead>
-          <tr>
-            <th>{t("adminDocumentsColDoc")}</th>
-            <th>{t("adminDocumentsColCat")}</th>
-            <th>{t("adminDocumentsColScope")}</th>
-            <th>{t("adminDocumentsColVer")}</th>
-            <th>{t("adminDocumentsColVis")}</th>
-            <th>{t("adminDocumentsColAct")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {store.getDocuments().map((d) => (
-            <tr key={d.id}>
-              <td>
-                <strong>{d.title}</strong>
-                <div className="label" style={{ fontSize: 9.5 }}>
-                  {t("adminDocumentUpdated", { at: d.updatedAt })}
-                </div>
-              </td>
-              <td>{d.category}</td>
-              <td>{d.scope}</td>
-              <td className="mono">{d.version}</td>
-              <td>
-                <Pill status={d.visible ? "accepted" : "cancelled"}>
-                  {d.visible ? t("adminDocsShown") : t("adminDocsHidden")}
-                </Pill>
-              </td>
-              <td>
-                <button
-                  className="btn xs"
-                  onClick={() => {
-                    store.replaceDocument(d.id);
-                    showToast?.(t("adminDocumentsReplaced"), d.title);
-                  }}
-                >
-                  {t("adminDocReplace")}
+      <div className="tabs" style={{ marginTop: 18 }}>
+        {[
+          ["documents", t("adminInfopointDocsTab")],
+          ["news", t("adminInfopointNewsTab")],
+        ].map(([id, lbl]) => (
+          <button
+            key={id}
+            type="button"
+            className={subTab === id ? "on" : ""}
+            style={{ cursor: "pointer" }}
+            onClick={() => setSubTab(id)}
+          >
+            {lbl}
+          </button>
+        ))}
+      </div>
+
+      <input
+        ref={uploadInputRef}
+        type="file"
+        accept=".pdf,application/pdf"
+        style={{ display: "none" }}
+        onChange={onUploadFile}
+      />
+
+      {subTab === "documents" ? (
+        <>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginTop: 16,
+              gap: 8,
+            }}
+          >
+            <button type="button" className="btn" onClick={() => onUploadPick(null)}>
+              {t("adminInfopointUploadPdf")}
+            </button>
+            <button type="button" className="btn primary" onClick={openNewDoc}>
+              <Ic.Plus /> {t("adminInfopointAddDoc")}
+            </button>
+          </div>
+          <table className="tbl" style={{ marginTop: 12 }}>
+            <thead>
+              <tr>
+                <th>{t("adminDocumentsColDoc")}</th>
+                <th>{t("adminInfopointColDescription")}</th>
+                <th>{t("adminDocumentsColCat")}</th>
+                <th>{t("adminInfopointColUpdated")}</th>
+                <th>{t("adminDocumentsColVis")}</th>
+                <th>{t("adminDocumentsColAct")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {docs.map((d) => (
+                <tr key={d.id}>
+                  <td>
+                    <strong>{d.title}</strong>
+                    <div className="label" style={{ fontSize: 9.5 }}>
+                      {d.scope} · <span className="mono">{d.version}</span>
+                    </div>
+                  </td>
+                  <td style={{ fontSize: 12.5, color: "var(--muted)", maxWidth: 220 }}>
+                    {d.description || "—"}
+                  </td>
+                  <td>{d.category}</td>
+                  <td className="mono" style={{ fontSize: 11 }}>
+                    {d.updatedAt}
+                  </td>
+                  <td>
+                    <Pill status={d.visible ? "accepted" : "cancelled"}>
+                      {d.visible ? t("adminDocsShown") : t("adminDocsHidden")}
+                    </Pill>
+                  </td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    <button
+                      type="button"
+                      className="btn xs"
+                      onClick={() => onUploadPick(d)}
+                    >
+                      {t("adminInfopointUploadPdf")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn xs"
+                      style={{ marginLeft: 6 }}
+                      onClick={() => {
+                        store.replaceDocument(d.id);
+                        showToast?.(t("adminDocumentsReplaced"), d.title);
+                      }}
+                    >
+                      {t("adminDocReplace")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn xs"
+                      style={{ marginLeft: 6 }}
+                      onClick={() => {
+                        setRenameDoc(d.id);
+                        setRenameTitle(d.title);
+                      }}
+                    >
+                      {t("adminInfopointRenameDoc")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn xs"
+                      style={{ marginLeft: 6 }}
+                      onClick={() => {
+                        store.toggleDocument(d.id);
+                        showToast?.(t("adminDocumentsVisUp"), d.title);
+                      }}
+                    >
+                      {d.visible ? t("adminDocHide") : t("adminDocShow")}
+                    </button>
+                    {!d.seed ? (
+                      <button
+                        type="button"
+                        className="btn xs danger"
+                        style={{ marginLeft: 6 }}
+                        onClick={() => {
+                          const r = store.deleteGeneralDocument(d.id);
+                          if (!r.ok) return;
+                          showToast?.(t("adminMasterDataDeleted"), d.title);
+                        }}
+                      >
+                        {t("adminMasterDataDelete")}
+                      </button>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      ) : (
+        <>
+          <section className="card" style={{ padding: 22, marginTop: 16 }}>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>
+              {t("adminInfopointPublishTitle")}
+            </h2>
+            <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
+              <div>
+                <label className="field-label">{t("adminInfopointSubject")} *</label>
+                <input
+                  className="input"
+                  value={newsForm.title}
+                  onChange={(e) =>
+                    setNewsForm((f) => ({ ...f, title: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="field-label">{t("adminInfopointMessage")} *</label>
+                <textarea
+                  className="input"
+                  rows={5}
+                  value={newsForm.body}
+                  onChange={(e) =>
+                    setNewsForm((f) => ({ ...f, body: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="field-label">{t("adminInfopointPublishDate")}</label>
+                <input
+                  className="input mono"
+                  placeholder=""
+                  value={newsForm.publishedAt}
+                  onChange={(e) =>
+                    setNewsForm((f) => ({ ...f, publishedAt: e.target.value }))
+                  }
+                />
+              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={newsForm.notifyInApp}
+                  onChange={(e) =>
+                    setNewsForm((f) => ({ ...f, notifyInApp: e.target.checked }))
+                  }
+                />
+                {t("adminInfopointNotifyInApp")}
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={newsForm.notifyPush}
+                  onChange={(e) =>
+                    setNewsForm((f) => ({ ...f, notifyPush: e.target.checked }))
+                  }
+                />
+                {t("adminInfopointNotifyPush")}
+              </label>
+              <div>
+                <button type="button" className="btn primary" onClick={publishNews}>
+                  {t("adminInfopointPublishButton")}
                 </button>
-                <button
-                  className="btn xs"
-                  style={{ marginLeft: 8 }}
-                  onClick={() => {
-                    store.toggleDocument(d.id);
-                    showToast?.(t("adminDocumentsVisUp"), d.title);
-                  }}
-                >
-                  {d.visible ? t("adminDocHide") : t("adminDocShow")}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              </div>
+            </div>
+          </section>
+
+          <h2 style={{ margin: "24px 0 0", fontSize: 17, fontWeight: 700 }}>
+            {t("adminInfopointNewsListTitle")}
+          </h2>
+          <table className="tbl" style={{ marginTop: 12 }}>
+            <thead>
+              <tr>
+                <th>{t("adminInfopointSubject")}</th>
+                <th>{t("adminInfopointPublishDate")}</th>
+                <th>{t("adminInfopointColRead")}</th>
+                <th>{t("adminDocumentsColVis")}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {news.map((n) => (
+                <tr key={n.id}>
+                  <td>
+                    <strong>{n.title}</strong>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "var(--muted)",
+                        marginTop: 4,
+                        maxWidth: 360,
+                      }}
+                    >
+                      {(n.body || "").slice(0, 80)}
+                      {(n.body || "").length > 80 ? "…" : ""}
+                    </div>
+                  </td>
+                  <td className="mono" style={{ fontSize: 11 }}>
+                    {n.publishedAt}
+                  </td>
+                  <td className="mono" style={{ fontSize: 12 }}>
+                    {t("adminInfopointReadCount", { count: n.readBy?.length || 0 })}
+                  </td>
+                  <td>
+                    <Pill status={n.visible ? "accepted" : "cancelled"}>
+                      {n.visible ? t("adminDocsShown") : t("adminDocsHidden")}
+                    </Pill>
+                  </td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    <button
+                      type="button"
+                      className="btn xs"
+                      onClick={() => openEditNews(n)}
+                    >
+                      {t("adminInfopointEditNews")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn xs"
+                      style={{ marginLeft: 6 }}
+                      onClick={() => {
+                        if (n.visible) store.hideNewsItem(n.id);
+                        else store.showNewsItem(n.id);
+                        showToast?.(t("adminDocumentsVisUp"), n.title);
+                      }}
+                    >
+                      {n.visible
+                        ? t("adminInfopointHideNews")
+                        : t("adminInfopointShowNews")}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      <MasterDataModal
+        open={!!docModal}
+        title={t("adminInfopointAddDoc")}
+        onClose={() => setDocModal(null)}
+        footer={
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              marginTop: 18,
+              justifyContent: "flex-end",
+            }}
+          >
+            <button type="button" className="btn" onClick={() => setDocModal(null)}>
+              {t("adminInvoiceCancel")}
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              disabled={!docForm.title.trim()}
+              onClick={saveDoc}
+            >
+              {t("adminMasterDataSave")}
+            </button>
+          </div>
+        }
+      >
+        <div style={{ display: "grid", gap: 12 }}>
+          <div>
+            <label className="field-label">{t("adminDocumentsColDoc")} *</label>
+            <input
+              className="input"
+              value={docForm.title}
+              onChange={(e) =>
+                setDocForm((f) => ({ ...f, title: e.target.value }))
+              }
+            />
+          </div>
+          <div>
+            <label className="field-label">{t("adminInfopointDocDescription")}</label>
+            <input
+              className="input"
+              value={docForm.description}
+              onChange={(e) =>
+                setDocForm((f) => ({ ...f, description: e.target.value }))
+              }
+            />
+          </div>
+          <div>
+            <label className="field-label">{t("adminInfopointDocCategory")}</label>
+            <select
+              className="input"
+              value={docForm.category}
+              onChange={(e) =>
+                setDocForm((f) => ({ ...f, category: e.target.value }))
+              }
+            >
+              {INFOPOINT_DOC_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </MasterDataModal>
+
+      <MasterDataModal
+        open={!!renameDoc}
+        title={t("adminInfopointRenameDoc")}
+        onClose={() => setRenameDoc(null)}
+        footer={
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              marginTop: 18,
+              justifyContent: "flex-end",
+            }}
+          >
+            <button type="button" className="btn" onClick={() => setRenameDoc(null)}>
+              {t("adminInvoiceCancel")}
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              disabled={!renameTitle.trim()}
+              onClick={saveRename}
+            >
+              {t("adminMasterDataSave")}
+            </button>
+          </div>
+        }
+      >
+        <label className="field-label">{t("adminDocumentsColDoc")}</label>
+        <input
+          className="input"
+          value={renameTitle}
+          onChange={(e) => setRenameTitle(e.target.value)}
+        />
+      </MasterDataModal>
+
+      <MasterDataModal
+        open={!!editNews}
+        title={t("adminInfopointEditNewsTitle")}
+        onClose={() => setEditNews(null)}
+        footer={
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              marginTop: 18,
+              justifyContent: "flex-end",
+            }}
+          >
+            <button type="button" className="btn" onClick={() => setEditNews(null)}>
+              {t("adminInvoiceCancel")}
+            </button>
+            <button type="button" className="btn primary" onClick={saveEditNews}>
+              {t("adminMasterDataSave")}
+            </button>
+          </div>
+        }
+      >
+        <div style={{ display: "grid", gap: 12 }}>
+          <div>
+            <label className="field-label">{t("adminInfopointSubject")}</label>
+            <input
+              className="input"
+              value={editNewsForm.title}
+              onChange={(e) =>
+                setEditNewsForm((f) => ({ ...f, title: e.target.value }))
+              }
+            />
+          </div>
+          <div>
+            <label className="field-label">{t("adminInfopointMessage")}</label>
+            <textarea
+              className="input"
+              rows={5}
+              value={editNewsForm.body}
+              onChange={(e) =>
+                setEditNewsForm((f) => ({ ...f, body: e.target.value }))
+              }
+            />
+          </div>
+          <div>
+            <label className="field-label">{t("adminInfopointPublishDate")}</label>
+            <input
+              className="input mono"
+              value={editNewsForm.publishedAt}
+              onChange={(e) =>
+                setEditNewsForm((f) => ({ ...f, publishedAt: e.target.value }))
+              }
+            />
+          </div>
+        </div>
+      </MasterDataModal>
     </div>
   );
 };
+
+const DocumentsPane = InfopointPane;
 
 const TourBillingPane = ({
   showToast,
@@ -5369,6 +5863,7 @@ Object.assign(window, {
   OrderingPartiesPane,
   AddressesPane,
   DocumentsPane,
+  InfopointPane,
   TourBillingPane,
   PartnerInvoicesPane: TourBillingPane,
   FinancePane,

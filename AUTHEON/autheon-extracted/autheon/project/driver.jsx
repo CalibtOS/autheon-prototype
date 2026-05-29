@@ -2744,42 +2744,6 @@ const ProfilePane = () => {
   );
 };
 
-const InfoPane = () => {
-  const { t } = useI18n();
-  return (
-    <div className="scroll" style={{ padding: "10px 22px" }}>
-      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
-        {t("knowledgeBase")}
-      </h1>
-      {[
-        [t("autheonWorkflow"), t("autheonWorkflowSub")],
-        [t("bindingAcceptanceInfo"), t("bindingAcceptanceInfoSub")],
-        [t("reportProblemGuide"), t("reportProblemGuideSub")],
-        [t("settlementRhythm"), t("settlementRhythmSub")],
-        [t("dispatcherHotline"), t("dispatcherHotlineSub")],
-      ].map(([label, sub]) => (
-        <div
-          key={label}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "16px 0",
-            borderBottom: "1px solid var(--line)",
-            cursor: "pointer",
-          }}
-        >
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{label}</div>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>{sub}</div>
-          </div>
-          <Ic.Chev />
-        </div>
-      ))}
-    </div>
-  );
-};
-
 const DriverNotificationsList = ({ markReadOnMount = false }) => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -2821,6 +2785,11 @@ const DriverNotificationsList = ({ markReadOnMount = false }) => {
           <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
             {row.body}
           </div>
+          {row.type === "infopoint_news" ? (
+            <div style={{ fontSize: 11, color: "var(--primary)", marginTop: 6 }}>
+              {t("driverNotifInfopointHint")}
+            </div>
+          ) : null}
           <div className="mono" style={{ fontSize: 10, color: "var(--muted-2)", marginTop: 4 }}>
             {row.createdAt}
             {row.tour ? ` · ${row.tour}` : ""}
@@ -3079,24 +3048,59 @@ const Infopoint = () => {
             <div
               key={d.id}
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
                 padding: "16px 0",
                 borderBottom: "1px solid var(--line)",
-                cursor: "pointer",
               }}
             >
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>
-                  {displayDocTitle(d, t)}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>
+                    {displayDocTitle(d, t)}
+                  </div>
+                  {d.description ? (
+                    <div
+                      style={{
+                        fontSize: 12.5,
+                        color: "var(--muted)",
+                        marginTop: 6,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {d.description}
+                    </div>
+                  ) : null}
+                  <div
+                    style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}
+                  >
+                    {displayDocCategory(d.category, t)} · {displayDocScope(d.scope, t)} ·{" "}
+                    {d.version}
+                  </div>
+                  <div
+                    className="mono"
+                    style={{ fontSize: 11, color: "var(--muted-2)", marginTop: 4 }}
+                  >
+                    {t("adminInfopointColUpdated")}: {d.updatedAt}
+                  </div>
                 </div>
-                <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                  {displayDocCategory(d.category, t)} ·{" "}
-                  {displayDocScope(d.scope, t)} · {d.version}
-                </div>
+                <button
+                  type="button"
+                  className="btn xs"
+                  onClick={() =>
+                    window.alert(
+                      `${t("infopointDocPreviewDemo")}\n\n${d.title}`,
+                    )
+                  }
+                >
+                  {t("infopointDocViewDownload")}
+                </button>
               </div>
-              <Ic.Chev />
             </div>
           ))}
           <div
@@ -3119,7 +3123,17 @@ const Infopoint = () => {
               className="dash-area"
               style={{ marginTop: 16, padding: 20, textAlign: "center" }}
             >
-              {t("infopointNewsEmpty")}
+              <div>{t("infopointNewsEmpty")}</div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--muted)",
+                  marginTop: 10,
+                  lineHeight: 1.5,
+                }}
+              >
+                {t("infopointNewsAdminHint")}
+              </div>
             </div>
           ) : (
             news.map((n) => {
@@ -3224,7 +3238,6 @@ Object.assign(window, {
   ReportProblemSheet,
   PendingNotice,
   ProfilePane,
-  InfoPane,
   ProfilePaneFull,
   Infopoint,
   InfoPaneFull,

@@ -236,3 +236,28 @@ if (!driver.includes("notifyNewPublished")) {
   out("driver.jsx missing three push toggles");
   process.exitCode = 1;
 } else out("driver.jsx three push toggles: present");
+
+if (!admin.includes("InfopointPane") || !admin.includes("addNewsItem")) {
+  out("admin.jsx Infopoint news publish UI: missing");
+  process.exitCode = 1;
+} else out("admin.jsx Infopoint news publish UI: present");
+
+if (!admin.includes("navInfopoint") && !admin.includes("adminInfopointPublish")) {
+  out("admin.jsx Infopoint labels: missing");
+  process.exitCode = 1;
+} else out("admin.jsx Infopoint labels: present");
+
+if (!driver.includes("infopointDocsTab") || !driver.includes("infopointNewsTab")) {
+  out("driver.jsx Infopoint tabs: missing");
+  process.exitCode = 1;
+} else out("driver.jsx Infopoint tabs: present");
+
+if (!store.includes("addGeneralDocument")) {
+  out("store.js addGeneralDocument API: missing");
+  process.exitCode = 1;
+} else out("store.js addGeneralDocument API: present");
+
+if (!driver.includes("infopointDocViewDownload")) {
+  out("driver.jsx Infopoint doc view/download: missing");
+  process.exitCode = 1;
+} else out("driver.jsx Infopoint doc view/download: present");
