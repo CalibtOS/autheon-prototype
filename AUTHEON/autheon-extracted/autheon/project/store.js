@@ -2807,9 +2807,7 @@ window.AuthStore = (() => {
       return masterDataChangeRequests.filter((r) => r.status === "open").length;
     },
 
-    requestMasterDataChange(note) {
-      const text = String(note || "").trim();
-      if (text.length < 10) return { ok: false, reason: "note_too_short" };
+    requestMasterDataChange(proposed) {
       if (!api.isCurrentDriverActive())
         return { ok: false, reason: "driver_restricted" };
       const d = api.getCurrentDriver();
@@ -2817,6 +2815,28 @@ window.AuthStore = (() => {
       if (api.getOpenMasterDataChangeRequestForDriver(d.id)) {
         return { ok: false, reason: "open_request_exists" };
       }
+      const p = {
+        company: String(proposed?.company ?? "").trim(),
+        address: String(proposed?.address ?? "").trim(),
+        email: String(proposed?.email ?? "").trim(),
+        phone: String(proposed?.phone ?? "").trim(),
+      };
+      if (!p.company) return { ok: false, reason: "company_required" };
+      if (!p.email) return { ok: false, reason: "email_required" };
+      if (!isValidEmail(p.email)) return { ok: false, reason: "invalid_email" };
+      if (drivers.some((x) => x.id !== d.id && x.email === p.email)) {
+        return { ok: false, reason: "duplicate_email" };
+      }
+      const snapshot = {
+        company: d.company || "",
+        address: d.address || "",
+        email: d.email || "",
+        phone: d.phone || "",
+      };
+      const changedFields = ["company", "address", "email", "phone"].filter(
+        (k) => p[k] !== snapshot[k],
+      );
+      if (!changedFields.length) return { ok: false, reason: "no_changes" };
       const who = d.name || DEMO_DRIVER;
       const reqId = `MDR-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const row = {
@@ -2824,30 +2844,26 @@ window.AuthStore = (() => {
         driverId: d.id,
         driverName: who,
         partnerId: d.partnerId || "",
-        note: text,
+        note: "",
+        proposed: p,
         status: "open",
         createdAt: nowStamp(),
         resolvedAt: null,
         resolvedBy: null,
         adminNote: "",
-        snapshot: {
-          company: d.company || "",
-          address: d.address || "",
-          email: d.email || "",
-          phone: d.phone || "",
-        },
+        snapshot,
       };
       masterDataChangeRequests.unshift(row);
       queueAdminEmailAlert(
         "master_data_change_requested",
         "",
-        `${who}: ${text.slice(0, 80)} · ${reqId}`,
+        `${who}: ${changedFields.join(", ")} · ${reqId}`,
       );
       log(
         "master_data_change_requested",
         who,
         "profile",
-        `${reqId} · ${text.slice(0, 100)}`,
+        `${reqId} · ${changedFields.join(", ")}`,
       );
       pushDriverNotification({
         type: "master_data_change_sent",
@@ -2867,6 +2883,17 @@ window.AuthStore = (() => {
       const approved = d === "approve" || d === "approved";
       const rejected = d === "reject" || d === "rejected";
       if (!approved && !rejected) return { ok: false, reason: "bad_decision" };
+      if (approved) {
+        const p = row.proposed;
+        if (!p) return { ok: false, reason: "no_proposed_data" };
+        const upd = api.updateDriver(row.driverId, {
+          company: p.company,
+          address: p.address,
+          email: p.email,
+          phone: p.phone,
+        });
+        if (!upd.ok) return { ok: false, reason: upd.reason || "update_failed" };
+      }
       row.status = approved ? "approved" : "rejected";
       row.resolvedAt = nowStamp();
       row.resolvedBy = DEMO_ADMIN;

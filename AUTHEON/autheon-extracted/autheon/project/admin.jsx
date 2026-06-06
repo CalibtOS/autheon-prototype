@@ -6280,14 +6280,86 @@ const parseMasterDataRequestIdFromMeta = (meta) => {
   return m ? m[1] : "";
 };
 
+const MASTER_DATA_CHANGE_FIELDS = [
+  ["company", "company"],
+  ["address", "address"],
+  ["email", "email"],
+  ["phone", "phone"],
+];
+
+const mdrChangedFields = (row) =>
+  MASTER_DATA_CHANGE_FIELDS.filter(
+    ([key]) =>
+      String(row.snapshot?.[key] || "").trim() !==
+      String(row.proposed?.[key] || "").trim(),
+  );
+
+const MasterDataChangeListChips = ({ row, t }) => {
+  if (!row.proposed) {
+    const legacy = String(row.note || "").trim();
+    return (
+      <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.45 }}>
+        {legacy.length > 100 ? `${legacy.slice(0, 100)}…` : legacy || "—"}
+      </div>
+    );
+  }
+  const changed = mdrChangedFields(row);
+  if (!changed.length) {
+    return (
+      <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
+        {t("adminMdrNoFieldChanges")}
+      </div>
+    );
+  }
+  return (
+    <div className="mdr-list-changes">
+      {changed.map(([key, labelKey]) => (
+        <span key={key} className="mdr-list-chip on">
+          {t(labelKey)}
+        </span>
+      ))}
+    </div>
+  );
+};
+
+const MasterDataCompareTable = ({ snapshot, proposed, t, onlyChanged }) => {
+  const rows = MASTER_DATA_CHANGE_FIELDS.map(([key, labelKey]) => {
+    const before = snapshot?.[key] || "";
+    const after = proposed?.[key] ?? before;
+    const changed = String(before).trim() !== String(after).trim();
+    if (onlyChanged && !changed) return null;
+    return (
+      <div
+        key={key}
+        className={`mdr-compare-row${changed ? " is-changed" : ""}`}
+      >
+        <div className="mdr-compare-cell label">{t(labelKey)}</div>
+        <div className="mdr-compare-cell before">{before || "—"}</div>
+        <div className="mdr-compare-cell after">{after || "—"}</div>
+      </div>
+    );
+  }).filter(Boolean);
+  if (!rows.length) {
+    return <div style={{ color: "var(--muted)", fontSize: 13 }}>—</div>;
+  }
+  return (
+    <div className="mdr-compare">
+      <div className="mdr-compare-header">
+        <span>{t("adminMdrCompareField")}</span>
+        <span>{t("adminMdrCompareBefore")}</span>
+        <span>{t("adminMdrCompareAfter")}</span>
+      </div>
+      {rows}
+    </div>
+  );
+};
+
 const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [filter, setFilter] = useStateA("open");
   const [selectedId, setSelectedId] = useStateA(initialRequestId || "");
   const [adminNote, setAdminNote] = useStateA("");
-  const [driverForm, setDriverForm] = useStateA(emptyDriverEditForm());
-  const setDF = (k, v) => setDriverForm((p) => ({ ...p, [k]: v }));
 
   useEffectA(() => {
     if (initialRequestId) setSelectedId(initialRequestId);
@@ -6300,56 +6372,9 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
     store.getMasterDataChangeRequest(selectedId) ||
     rows.find((r) => r.id === selectedId) ||
     null;
-  const driverNow = selected
-    ? store.getDrivers().find((d) => d.id === selected.driverId)
-    : null;
-
-  useEffectA(() => {
-    if (!driverNow) {
-      setDriverForm(emptyDriverEditForm());
-      return;
-    }
-    setDriverForm({
-      name: driverNow.name || "",
-      company: driverNow.company || "",
-      address: driverNow.address || "",
-      email: driverNow.email || "",
-      phone: driverNow.phone || "",
-      notes: driverNow.notes || "",
-    });
-  }, [selectedId, driverNow?.id, driverNow?.name, driverNow?.company]);
-
-  const saveDriverMasterData = (opts = {}) => {
-    if (!selected || !driverNow) return false;
-    const localErrors = validateDriverFormLocal(driverForm, t);
-    if (Object.keys(localErrors).length) {
-      showToast?.(
-        t("adminMdrSaveFailed"),
-        localErrors.email ||
-          localErrors.name ||
-          localErrors.company ||
-          t("adminUsersRequiredFields"),
-      );
-      return false;
-    }
-    const r = store.updateDriver(selected.driverId, driverForm);
-    if (!r.ok) {
-      showToast?.(
-        t("adminMdrSaveFailed"),
-        userSaveErr(r, "driver", t),
-      );
-      return false;
-    }
-    if (!opts.silent) {
-      showToast?.(t("adminMdrSavedDriver"), driverForm.name);
-    }
-    return true;
-  };
 
   const resolve = (decision) => {
     if (!selected) return;
-    if (decision === "approve" && driverNow && !saveDriverMasterData({ silent: true }))
-      return;
     const r = store.resolveMasterDataChangeRequest(
       selected.id,
       decision,
@@ -6365,7 +6390,10 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
       setAdminNote("");
       setSelectedId("");
     } else {
-      showToast?.(t("adminMdrResolveFailed"), r.reason || "");
+      showToast?.(
+        t("adminMdrResolveFailed"),
+        userSaveErr({ reason: r.reason }, "driver", t) || r.reason || "",
+      );
     }
   };
 
@@ -6430,23 +6458,13 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                 onClick={() => {
                   setSelectedId(row.id);
                   setAdminNote("");
-                  setDriverForm(emptyDriverEditForm());
                 }}
               >
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{row.driverName}</div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
                   {row.partnerId || "—"} · {row.createdAt}
                 </div>
-                <div
-                  style={{
-                    fontSize: 12.5,
-                    color: "var(--muted)",
-                    marginTop: 6,
-                    lineHeight: 1.45,
-                  }}
-                >
-                  {row.note.length > 100 ? `${row.note.slice(0, 100)}…` : row.note}
-                </div>
+                <MasterDataChangeListChips row={row} t={t} />
                 <Pill
                   status={
                     row.status === "open"
@@ -6472,122 +6490,46 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
             <p className="mono" style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
               {t("partnerId")}: {selected.partnerId || "—"} · {selected.createdAt}
             </p>
-            <div className="field-label" style={{ marginTop: 16 }}>
-              {t("adminMdrDriverNote")}
-            </div>
-            <div
-              className="dash-area"
-              style={{
-                marginTop: 8,
-                fontSize: 13,
-                lineHeight: 1.55,
-                textTransform: "none",
-                letterSpacing: 0,
-              }}
-            >
-              {selected.note}
-            </div>
-            {selected.snapshot ? (
+            {selected.proposed ? (
               <div style={{ marginTop: 16 }}>
-                <div className="label" style={{ marginBottom: 8 }}>
-                  {t("adminMdrSnapshot")}
-                </div>
-                {[
-                  [t("company"), selected.snapshot.company],
-                  [t("address"), selected.snapshot.address],
-                  [t("email"), selected.snapshot.email],
-                  [t("phone"), selected.snapshot.phone],
-                ].map(([k, v]) => (
-                  <div
-                    key={k}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 10,
-                      fontSize: 12.5,
-                      padding: "6px 0",
-                      borderBottom: "1px solid var(--line)",
-                    }}
-                  >
-                    <span className="label">{k}</span>
-                    <span style={{ textAlign: "right" }}>{v || "—"}</span>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            {driverNow ? (
-              <div style={{ marginTop: 18 }}>
-                <div className="field-label">{t("adminMdrEditSection")}</div>
+                <div className="field-label">{t("adminMdrProposedChanges")}</div>
                 <p
                   className="label"
-                  style={{ margin: "6px 0 12px", fontSize: 11.5, lineHeight: 1.45 }}
+                  style={{ margin: "6px 0 0", fontSize: 11.5, lineHeight: 1.45 }}
                 >
                   {selected.status === "open"
-                    ? t("adminMdrEditSectionHint")
-                    : t("adminMdrEditSectionReadonly")}
+                    ? t("adminMdrProposedChangesHint")
+                    : t("adminMdrProposedChangesResolved")}
                 </p>
+                <MasterDataCompareTable
+                  snapshot={selected.snapshot}
+                  proposed={selected.proposed}
+                  t={t}
+                  onlyChanged
+                />
+              </div>
+            ) : selected.note ? (
+              <>
+                <div className="field-label" style={{ marginTop: 16 }}>
+                  {t("adminMdrLegacyNote")}
+                </div>
                 <div
+                  className="dash-area"
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 12,
+                    marginTop: 8,
+                    fontSize: 13,
+                    lineHeight: 1.55,
+                    textTransform: "none",
+                    letterSpacing: 0,
                   }}
                 >
-                  {[
-                    ["name", t("adminUsersFieldName")],
-                    ["company", t("adminUsersFieldCompany")],
-                    ["phone", t("adminUsersFieldPhone")],
-                  ].map(([key, label]) => (
-                    <div key={key}>
-                      <label className="field-label">
-                        {label}
-                        {key === "name" || key === "company" ? " *" : ""}
-                      </label>
-                      <input
-                        className="input"
-                        value={driverForm[key]}
-                        disabled={selected.status !== "open"}
-                        onChange={(e) => setDF(key, e.target.value)}
-                      />
-                    </div>
-                  ))}
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <label className="field-label">{t("adminUsersFieldEmail")} *</label>
-                    <input
-                      className="input"
-                      type="email"
-                      value={driverForm.email}
-                      disabled={selected.status !== "open"}
-                      onChange={(e) => setDF("email", e.target.value)}
-                    />
-                  </div>
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <label className="field-label">{t("adminUsersFieldAddress")}</label>
-                    <input
-                      className="input"
-                      value={driverForm.address}
-                      disabled={selected.status !== "open"}
-                      onChange={(e) => setDF("address", e.target.value)}
-                    />
-                  </div>
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <label className="field-label">{t("adminUsersFieldNotes")}</label>
-                    <textarea
-                      className="input"
-                      rows={2}
-                      value={driverForm.notes}
-                      disabled={selected.status !== "open"}
-                      onChange={(e) => setDF("notes", e.target.value)}
-                    />
-                  </div>
+                  {selected.note}
                 </div>
-              </div>
+              </>
             ) : null}
             {selected.status === "open" ? (
-              <>
-                <label className="field-label" style={{ marginTop: 16 }}>
-                  {t("adminMdrAdminNote")}
-                </label>
+              <div className="mdr-detail-actions">
+                <label className="field-label">{t("adminMdrAdminNote")}</label>
                 <textarea
                   className="input"
                   style={{ marginTop: 8, minHeight: 72 }}
@@ -6595,17 +6537,31 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                   onChange={(e) => setAdminNote(e.target.value)}
                   placeholder={t("adminMdrAdminNotePh")}
                 />
-                <p className="label" style={{ marginTop: 10, fontSize: 11.5, lineHeight: 1.45 }}>
-                  {t("adminMdrApproveHint")}
-                </p>
-                <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    className="btn primary"
-                    onClick={() => resolve("approve")}
+                {selected.proposed ? (
+                  <p
+                    className="label"
+                    style={{ marginTop: 10, fontSize: 11.5, lineHeight: 1.45 }}
                   >
-                    {t("adminMdrApprove")}
-                  </button>
+                    {t("adminMdrApproveHint")}
+                  </p>
+                ) : (
+                  <p
+                    className="label"
+                    style={{ marginTop: 10, fontSize: 11.5, lineHeight: 1.45 }}
+                  >
+                    {t("adminMdrLegacyApproveBlocked")}
+                  </p>
+                )}
+                <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                  {selected.proposed ? (
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={() => resolve("approve")}
+                    >
+                      {t("adminMdrApprove")}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="btn"
@@ -6614,7 +6570,7 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                     {t("adminMdrReject")}
                   </button>
                 </div>
-              </>
+              </div>
             ) : (
               <div style={{ marginTop: 16, fontSize: 13, color: "var(--muted)" }}>
                 <div>

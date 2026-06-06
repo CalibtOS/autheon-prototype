@@ -3023,22 +3023,63 @@ const DriverNotificationsPane = ({ onBack }) => {
   );
 };
 
+const PROFILE_MDR_FIELDS = [
+  { key: "company", required: true },
+  { key: "address" },
+  { key: "email", required: true, type: "email" },
+  { key: "phone" },
+];
+
+const emptyMasterDataChangeForm = (driver) => ({
+  company: driver?.company || "",
+  address: driver?.address || "",
+  email: driver?.email || "",
+  phone: driver?.phone || "",
+});
+
+const fieldChanged = (before, after) =>
+  String(before || "").trim() !== String(after || "").trim();
+
 const ProfilePaneFull = () => {
   const { t } = useI18n();
   const store = useAuthStore();
   const d = store.getCurrentDriver();
   const prefs = d?.prefs || {};
   const setPref = (patch) => store.updateDriverPrefs(patch);
-  const [mdNote, setMdNote] = useState("");
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [mdForm, setMdForm] = useState(() => emptyMasterDataChangeForm(d));
+  const setMdField = (key, value) =>
+    setMdForm((prev) => ({ ...prev, [key]: value }));
   const openMdr = store.getOpenMasterDataChangeRequestForDriver(d?.id);
+  const profileMode = openMdr ? "pending" : editingProfile ? "edit" : "view";
+
+  const startProfileEdit = () => {
+    setMdForm(emptyMasterDataChangeForm(d));
+    setEditingProfile(true);
+  };
+
+  const cancelProfileEdit = () => {
+    setMdForm(emptyMasterDataChangeForm(d));
+    setEditingProfile(false);
+  };
   const submitMasterDataRequest = () => {
-    const r = store.requestMasterDataChange(mdNote);
+    const r = store.requestMasterDataChange(mdForm);
     if (r.ok) {
-      setMdNote("");
+      setMdForm(emptyMasterDataChangeForm(d));
+      setEditingProfile(false);
+      window.alert(t("masterDataChangeSent"));
     } else if (r.reason === "open_request_exists") {
       window.alert(t("masterDataChangeOpenExists"));
-    } else if (r.reason === "note_too_short") {
-      window.alert(t("masterDataChangeTooShort"));
+    } else if (r.reason === "no_changes") {
+      window.alert(t("masterDataChangeNoChanges"));
+    } else if (r.reason === "company_required") {
+      window.alert(t("masterDataChangeCompanyRequired"));
+    } else if (r.reason === "email_required") {
+      window.alert(t("masterDataChangeEmailRequired"));
+    } else if (r.reason === "invalid_email") {
+      window.alert(t("masterDataChangeInvalidEmail"));
+    } else if (r.reason === "duplicate_email") {
+      window.alert(t("masterDataChangeDuplicateEmail"));
     } else {
       window.alert(t("masterDataChangeSubmitFailed"));
     }
@@ -3071,101 +3112,129 @@ const ProfilePaneFull = () => {
           </div>
         </div>
       </div>
-      <div className="card" style={{ padding: 14, marginTop: 16 }}>
-        <Lbl>{t("profileMasterData")}</Lbl>
-        {[
-          [t("company"), d?.company],
-          [t("address"), d?.address],
-          [t("email"), d?.email],
-          [t("phone"), d?.phone],
-          [t("accountStatus"), displayDriverStatus(d?.status, t)],
-        ].map(([k, v]) => (
-          <div
-            key={k}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 10,
-              padding: "10px 0",
-              borderBottom: "1px solid var(--line)",
-            }}
-          >
-            <span className="label" style={{ fontSize: 9.5 }}>
-              {k}
-            </span>
-            <span style={{ fontSize: 12.5, textAlign: "right" }}>{v}</span>
-          </div>
-        ))}
-        <p
-          style={{
-            margin: "12px 0 0",
-            fontSize: 12.5,
-            color: "var(--muted)",
-            lineHeight: 1.5,
-          }}
-        >
-          {t("masterDataChangeNotice")}
-        </p>
-        {openMdr ? (
-          <div
-            role="status"
-            style={{
-              marginTop: 14,
-              padding: "12px 14px",
-              borderRadius: 10,
-              border: "1px solid rgba(30, 64, 175, 0.35)",
-              background: "rgba(30, 64, 175, 0.06)",
-            }}
-          >
-            <div style={{ fontWeight: 600, fontSize: 13.5 }}>
-              {t("masterDataChangePendingTitle")}
-            </div>
-            <p
-              style={{
-                margin: "8px 0 0",
-                fontSize: 12.5,
-                color: "var(--muted)",
-                lineHeight: 1.5,
-              }}
-            >
-              {t("masterDataChangePendingBody", { date: openMdr.createdAt })}
-            </p>
-            <p
-              style={{
-                margin: "8px 0 0",
-                fontSize: 12,
-                lineHeight: 1.45,
-                fontStyle: "italic",
-              }}
-            >
-              {openMdr.note.length > 120
-                ? `${openMdr.note.slice(0, 120)}…`
-                : openMdr.note}
-            </p>
+      <div className="card mdr-card" style={{ padding: 14, marginTop: 16 }}>
+        <div className="mdr-card-head">
+          <Lbl>{t("profileMasterData")}</Lbl>
+          {profileMode === "pending" ? (
+            <span className="pill assigned">{t("masterDataChangePendingBadge")}</span>
+          ) : null}
+        </div>
+        {profileMode === "pending" ? (
+          <div className="mdr-status-banner" role="status">
+            <strong>{t("masterDataChangePendingTitle")}</strong>
+            {t("masterDataChangePendingBody", { date: openMdr.createdAt })}
           </div>
         ) : (
-          <>
-            <div className="field-label" style={{ marginTop: 14 }}>
-              {t("masterDataChangeRequest")}
+          <p
+            style={{
+              margin: "8px 0 0",
+              fontSize: 12.5,
+              color: "var(--muted)",
+              lineHeight: 1.5,
+            }}
+          >
+            {profileMode === "edit"
+              ? t("masterDataChangeFormHint")
+              : t("masterDataChangeNotice")}
+          </p>
+        )}
+        <div className="mdr-field-list">
+          {PROFILE_MDR_FIELDS.map(({ key, required, type }) => {
+            const label = t(key);
+            const current = d?.[key] || "";
+            const pendingBefore = openMdr?.snapshot?.[key] || "";
+            const pendingAfter = openMdr?.proposed?.[key] || "";
+            const changed =
+              profileMode === "pending" &&
+              fieldChanged(pendingBefore, pendingAfter);
+            const inputId = `profile-mdr-${key}`;
+            return (
+              <div
+                key={key}
+                className={`mdr-field-row${changed ? " is-changed" : ""}`}
+              >
+                <div className="mdr-field-label">
+                  {label}
+                  {required ? " *" : ""}
+                </div>
+                <div className="mdr-field-body">
+                  {profileMode === "edit" ? (
+                    <input
+                      id={inputId}
+                      className="input"
+                      type={type || "text"}
+                      value={mdForm[key]}
+                      onChange={(e) => setMdField(key, e.target.value)}
+                    />
+                  ) : profileMode === "pending" ? (
+                    <>
+                      <div
+                        className={`mdr-field-value${changed ? " is-new" : ""}`}
+                      >
+                        {pendingAfter || "—"}
+                        {changed ? (
+                          <span className="mdr-field-badge">
+                            {t("masterDataChangeUpdatedBadge")}
+                          </span>
+                        ) : null}
+                      </div>
+                      {changed ? (
+                        <div className="mdr-field-old">{pendingBefore || "—"}</div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="mdr-field-value">{current || "—"}</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          <div className="mdr-field-row">
+            <div className="mdr-field-label">{t("accountStatus")}</div>
+            <div className="mdr-field-body">
+              <div className="mdr-field-value">
+                {displayDriverStatus(d?.status, t)}
+              </div>
             </div>
-            <textarea
-              className="input"
-              style={{ marginTop: 8, minHeight: 72 }}
-              placeholder={t("masterDataChangePlaceholder")}
-              value={mdNote}
-              onChange={(e) => setMdNote(e.target.value)}
-            />
+          </div>
+        </div>
+        {profileMode === "view" ? (
+          <button
+            type="button"
+            className="btn block"
+            style={{ marginTop: 14 }}
+            onClick={startProfileEdit}
+          >
+            {t("masterDataChangeEditBtn")}
+          </button>
+        ) : null}
+        {profileMode === "edit" ? (
+          <div className="mdr-actions">
+            <button type="button" className="btn" onClick={cancelProfileEdit}>
+              {t("masterDataChangeCancel")}
+            </button>
             <button
               type="button"
-              className="btn primary block"
-              style={{ marginTop: 10 }}
-              disabled={mdNote.trim().length < 10}
+              className="btn primary"
               onClick={submitMasterDataRequest}
             >
               {t("masterDataChangeSubmit")}
             </button>
-          </>
-        )}
+          </div>
+        ) : null}
+        {profileMode === "pending" && openMdr?.note && !openMdr?.proposed ? (
+          <p
+            style={{
+              margin: "12px 0 0",
+              fontSize: 12,
+              lineHeight: 1.45,
+              fontStyle: "italic",
+              color: "var(--muted)",
+            }}
+          >
+            {openMdr.note}
+          </p>
+        ) : null}
       </div>
       <div className="card" style={{ padding: 14, marginTop: 14 }}>
         <Lbl>{t("notificationPreferences")}</Lbl>
