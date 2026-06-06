@@ -2061,7 +2061,6 @@ window.AuthStore = (() => {
       category: job.category || "Standard",
       updatePickupMaster: false,
       updateDeliveryMaster: false,
-      updateOrderingPartyMaster: false,
       savePickupToMaster: false,
       saveDeliveryToMaster: false,
     };
@@ -2124,7 +2123,7 @@ window.AuthStore = (() => {
     if (form.deliveryLocationId) delivery.locationId = form.deliveryLocationId;
     return {
       orderingPartyId: op?.id || opId,
-      orderingPartyName: op?.name || form.customer || "New ordering party",
+      orderingPartyName: op?.name || form.customer || "New customer",
       pickup,
       delivery,
       distanceKm: dist,
@@ -3196,14 +3195,6 @@ window.AuthStore = (() => {
       const op =
         orderingParties.find((x) => x.id === opId) ||
         orderingParties.find((x) => x.name === form.customer);
-      if (form.updateOrderingPartyMaster && op?.id) {
-        api.updateOrderingParty(op.id, {
-          name: form.customer || op.name,
-          contact: form.cName1 || op.contact,
-          phone: form.cPhone1 || op.phone,
-          instructions: form.notesDriver || op.instructions,
-        });
-      }
       if (form.updatePickupMaster && form.pickupLocationId) {
         api.updateAddress(form.pickupLocationId, {
           label: form.startCompany || undefined,
@@ -4014,7 +4005,7 @@ window.AuthStore = (() => {
         `Category: ${j.category}`,
         `Issued: ${nowStamp()}`,
         `Driver: ${j.driver || "To be assigned"}`,
-        `Ordering party: ${j.orderingPartyName}`,
+        `Customer: ${j.orderingPartyName}`,
         `Pickup: ${pu.name}, ${formatStreet(pu)}, ${pu.postalCode} ${pu.city}`,
         `Pickup contact: ${pu.contactPerson} ${pu.phone}`,
         `Pickup schedule: ${pu.date} ${pu.windowFrom}-${pu.windowTo}`,

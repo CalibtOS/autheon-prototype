@@ -39,6 +39,8 @@ Canonical type code: **`invoice`**. UI label: **Billing invoice**. Module nav: *
 
 ## Ordering party vs display fields
 
+Wireframe and admin UI label this entity **Customer** (DE: **Kunde**). The data model keeps `orderingPartyId` / `orderingPartyName` for billing and reporting separation from pickup/delivery addresses.
+
 - **Source of truth:** `orderingPartyId`, `orderingPartyName`, `pickup`, `delivery`.
 - **Denormalized fields** (`customer`, `startCity`, …): computed by `syncDisplayFields()` for tables, search, and CSV export.
 

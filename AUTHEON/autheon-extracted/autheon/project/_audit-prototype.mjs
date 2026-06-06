@@ -336,3 +336,42 @@ for (const bad of staleAutheonDispatch) {
   }
 }
 if (!process.exitCode) out('Stale "AUTHEON dispatch" copy: none');
+
+out("");
+const adminNav = file("admin.jsx");
+if (!adminNav.includes('t("navCustomers")')) {
+  out("admin.jsx Customers nav must use t(\"navCustomers\")");
+  process.exitCode = 1;
+} else out("admin.jsx Customers nav label: navCustomers");
+
+if (adminNav.includes('t("navOrderingParties")')) {
+  out("admin.jsx must not use navOrderingParties for nav/title");
+  process.exitCode = 1;
+} else out("admin.jsx navOrderingParties usage: none");
+
+const customerUiNeedles = [
+  ['searchJobsPlaceholder: "Search tour, ordering party', "EN search placeholder"],
+  ['"Ordering parties"', "user-facing Ordering parties string in i18n en"],
+  ['orderingPartyLabel: "Ordering party"', "EN orderingPartyLabel"],
+  ['newOrderSecCustomerTitle: "Customer / client"', "EN new order section title"],
+  ['adminMasterDataPartyInUseConfirm:\n        "This ordering party', "EN delete confirm copy"],
+];
+for (const [needle, label] of customerUiNeedles) {
+  if (i18n.includes(needle)) {
+    out(`Customer UI inconsistency ${label}`);
+    process.exitCode = 1;
+  } else out(`Customer UI consistency ${label}: ok`);
+}
+
+if (store.includes("Ordering party:")) {
+  out("store.js transport PDF must label customer, not ordering party");
+  process.exitCode = 1;
+} else out("store.js transport PDF customer label: ok");
+
+if (!process.exitCode) {
+  out("");
+  out("AUDIT PASS");
+} else {
+  out("");
+  out("AUDIT FAIL");
+}

@@ -76,7 +76,7 @@ const AdminNav = ({ section, setSection }) => {
     { id: "users", label: t("navUsers"), count: null, I: Ic.N.Users },
     {
       id: "orderingparties",
-      label: t("navOrderingParties") || "Ordering parties",
+      label: t("navCustomers") || "Customers",
       count: null,
       I: Ic.N.Building,
     },
@@ -1853,7 +1853,6 @@ const EMPTY_NEW_ORDER_FORM = {
   showDeliveryExtraContact: false,
   updatePickupMaster: false,
   updateDeliveryMaster: false,
-  updateOrderingPartyMaster: false,
   driverCompensation: "",
   notes: "",
   notesDriver: "",
@@ -1951,17 +1950,6 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
   };
   const orderingParties = store.getOrderingParties({ activeOnly: true });
   const masterAddresses = store.getAddresses({ activeOnly: true });
-  const applyOrderingParty = (party) => {
-    if (!party) return;
-    setForm((f) => ({
-      ...f,
-      orderingPartyId: party.id,
-      customer: party.name,
-      cName1: party.contact || f.cName1,
-      cPhone1: party.phone || f.cPhone1,
-      notesDriver: party.instructions || f.notesDriver,
-    }));
-  };
   const onCustomerSelect = (partyId) => {
     if (!partyId) {
       setForm((f) => ({
@@ -1972,7 +1960,13 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
       return;
     }
     const party = orderingParties.find((x) => x.id === partyId);
-    if (party) applyOrderingParty(party);
+    if (party) {
+      setForm((f) => ({
+        ...f,
+        orderingPartyId: party.id,
+        customer: party.name,
+      }));
+    }
   };
 
   const required = [
@@ -2153,27 +2147,6 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 {t("newOrderNoCustomerHint")}
               </div>
             )}
-            {form.orderingPartyId ? (
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  marginTop: 12,
-                  fontSize: 12.5,
-                  cursor: "pointer",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={!!form.updateOrderingPartyMaster}
-                  onChange={(e) =>
-                    set("updateOrderingPartyMaster", e.target.checked)
-                  }
-                />
-                {t("updateMasterDataFromEntry")}
-              </label>
-            ) : null}
           </section>
 
           <section id="sec-02" className="card" style={{ padding: 22 }}>
@@ -3863,10 +3836,10 @@ const OrderingPartiesPane = ({ showToast }) => {
       >
         <div>
           <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
-            {t("navOrderingParties") || "Ordering parties"}
+            {t("navCustomers") || "Customers"}
           </h1>
           <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
-            {t("adminOrderingPartiesDesc")}
+            {t("adminCustomersDesc")}
           </p>
         </div>
         <button type="button" className="btn primary" onClick={openNew}>

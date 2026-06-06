@@ -16,7 +16,7 @@ window.I18n = (() => {
       navNewJob: "New job",
       navUsers: "Users",
       navCustomers: "Customers",
-      navOrderingParties: "Ordering parties",
+      navOrderingParties: "Customers",
       navAddresses: "Addresses",
       navDocuments: "Documents",
       navFinance: "Finance",
@@ -32,7 +32,7 @@ window.I18n = (() => {
       profile: "Profile",
       filters: "Filters",
       statusAll: "Status: all",
-      searchJobsPlaceholder: "Search tour, ordering party, driver, VIN…",
+      searchJobsPlaceholder: "Search tour, customer, driver, VIN…",
       publishBlocked: "Publish blocked",
       publishBlockedSub: "Only Draft tours can be published (PRD Phase 1).",
       assignBlocked: "Assignment blocked",
@@ -205,7 +205,7 @@ window.I18n = (() => {
       reportCancelPartnerUnavailableSub: "You cannot execute this tour in time",
       reportCancelVehicleNotAvailable: "Vehicle not available",
       reportCancelVehicleNotAvailableSub: "Vehicle cannot be handed over",
-      reportCancelOrderingPartyCancelled: "Ordering party cancelled",
+      reportCancelOrderingPartyCancelled: "Customer cancelled order",
       reportCancelOrderingPartyCancelledSub: "Customer or dispatch withdrew the order",
       reportCancelAppointmentNotPossible: "Appointment no longer possible",
       reportCancelAppointmentNotPossibleSub: "Pickup or delivery slot is no longer feasible",
@@ -334,7 +334,10 @@ window.I18n = (() => {
       driverTourCancelledNotice:
         "Dispatch cancelled this tour. You can view details here; no further actions are required.",
       usersDesc: "Manage dispatcher accounts and partner profiles.",
-      customersDesc: "Reusable master data for shippers, sites, and contacts.",
+      customersDesc:
+        "Customers for billing and reporting. Edits do not change existing tour snapshots.",
+      adminCustomersDesc:
+        "Customers for billing and reporting. Edits do not change existing tour snapshots.",
       documentsDesc: "Policies, templates, and downloadable PDFs.",
       financeDesc: "Settlement and invoice tracking.",
       auditDesc: "Immutable timeline of critical actions.",
@@ -467,7 +470,7 @@ window.I18n = (() => {
       adminAddressAddTitle: "Add address",
       adminAddressCreated: "Address saved to master data.",
       adminOrderingPartiesDesc:
-        "Customers / ordering parties for billing and reporting. Edits do not change existing tour snapshots.",
+        "Customers for billing and reporting. Edits do not change existing tour snapshots.",
       adminAddressesDesc:
         "Shared pickup and delivery locations. The same address can be used on different tours. Edits do not change existing tour snapshots.",
       adminMasterDataEdit: "Edit",
@@ -488,7 +491,7 @@ window.I18n = (() => {
       adminMasterDataEmail: "Email",
       adminMasterDataBillingNotes: "Billing notes",
       adminMasterDataInstructions: "Driver / dispatch instructions",
-      adminMasterDataEditParty: "Edit ordering party",
+      adminMasterDataEditParty: "Edit customer",
       adminMasterDataEditAddress: "Edit address",
       adminMasterDataLocationName: "Location name",
       adminMasterDataStreet: "Street",
@@ -504,7 +507,7 @@ window.I18n = (() => {
       adminMasterDataAddressInUse:
         "Cannot delete — linked on {count} tour(s). Deactivate instead.",
       adminMasterDataPartyInUseConfirm:
-        "This ordering party is on {count} tour(s). Delete anyway? (Not recommended.)",
+        "This customer is on {count} tour(s). Delete anyway? (Not recommended.)",
       adminMasterDataAddressInUseConfirm:
         "This address is linked on {count} tour(s). Delete anyway? (Not recommended.)",
       newOrderPickupFromMaster: "Pickup from master data",
@@ -765,7 +768,7 @@ window.I18n = (() => {
       newOrderSecContacts: "Contacts",
       newOrderSecPartnerOffer: "Partner offer",
       newOrderSecNotes: "Notes",
-      newOrderSecCustomerTitle: "Customer / client",
+      newOrderSecCustomerTitle: "Customer",
       newOrderPrefillMaster: "Pre-fill from master data",
       newOrderCustomerMasterLabel: "Customer master data",
       newOrderSelectCustomer: "Select customer *",
@@ -777,7 +780,7 @@ window.I18n = (() => {
       newOrderFromMasterData: "From master data",
       newOrderNoCustomerTitle: "No customer selected yet.",
       newOrderNoCustomerHint:
-        "Addresses, contacts, and notes are filled automatically after you select a customer.",
+        "Select the ordering party for billing and reporting. Pickup and delivery addresses can be filled from address master data in section 02.",
       newOrderStartAddress: "Pickup address *",
       newOrderEndAddress: "Delivery address *",
       newOrderStreetPh: "Street + no.",
@@ -939,11 +942,11 @@ window.I18n = (() => {
       tourDocHelperWaiting:
         "Please upload comprehensible proof of the start, end, and reason for the waiting time.",
       jobDisplayCompleted: "Completed",
-      orderingPartyLabel: "Ordering party",
+      orderingPartyLabel: "Customer",
       cancellationActor: "Cancelled by",
       cancellationActorServicePartner: "Service partner",
       cancellationActorAdmin: "Admin / dispatching",
-      cancellationActorOrderingParty: "Ordering party (client)",
+      cancellationActorOrderingParty: "Customer (client)",
       rejectionPresetLegible: "Fuel receipt not legible",
       rejectionPresetRegistration: "Registration number missing",
       rejectionPresetWaiting: "Waiting time not documented comprehensibly",
@@ -997,7 +1000,7 @@ window.I18n = (() => {
       navNewJob: "Neuer Auftrag",
       navUsers: "Benutzer",
       navCustomers: "Kunden",
-      navOrderingParties: "Auftraggeber",
+      navOrderingParties: "Kunden",
       navAddresses: "Adressen",
       navDocuments: "Dokumente",
       navFinance: "Finanzen",
@@ -1013,7 +1016,7 @@ window.I18n = (() => {
       profile: "Profil",
       filters: "Filter",
       statusAll: "Status: alle",
-      searchJobsPlaceholder: "Tour, Auftraggeber, Fahrer, FIN suchen…",
+      searchJobsPlaceholder: "Tour, Kunde, Fahrer, FIN suchen…",
       publishBlocked: "Veröffentlichen blockiert",
       publishBlockedSub: "Nur Entwürfe können veröffentlicht werden (PRD Phase 1).",
       assignBlocked: "Zuweisung blockiert",
@@ -1188,7 +1191,7 @@ window.I18n = (() => {
       reportCancelPartnerUnavailableSub: "Tour kann zeitlich nicht ausgeführt werden",
       reportCancelVehicleNotAvailable: "Fahrzeug nicht verfügbar",
       reportCancelVehicleNotAvailableSub: "Fahrzeug kann nicht übergeben werden",
-      reportCancelOrderingPartyCancelled: "Auftraggeber hat storniert",
+      reportCancelOrderingPartyCancelled: "Kunde hat Auftrag storniert",
       reportCancelOrderingPartyCancelledSub: "Kunde oder Disposition hat zurückgezogen",
       reportCancelAppointmentNotPossible: "Termin nicht mehr möglich",
       reportCancelAppointmentNotPossibleSub: "Abhol- oder Lieferfenster nicht mehr machbar",
@@ -1316,7 +1319,10 @@ window.I18n = (() => {
       driverTourCancelledNotice:
         "Die Disposition hat diese Tour storniert. Details sind einsehbar; es sind keine weiteren Schritte nötig.",
       usersDesc: "Verwalte Dispatcher-Konten und Partnerprofile.",
-      customersDesc: "Wiederverwendbare Stammdaten für Auftraggeber, Standorte und Kontakte.",
+      customersDesc:
+        "Kunden für Abrechnung und Reporting. Änderungen ändern keine bestehenden Tour-Snapshots.",
+      adminCustomersDesc:
+        "Kunden für Abrechnung und Reporting. Änderungen ändern keine bestehenden Tour-Snapshots.",
       documentsDesc: "Richtlinien, Vorlagen und herunterladbare PDFs.",
       financeDesc: "Abrechnung und Zahlungsstatus.",
       auditDesc: "Unveränderliche Zeitleiste kritischer Aktionen.",
@@ -1452,7 +1458,7 @@ window.I18n = (() => {
       adminAddressAddTitle: "Adresse hinzufügen",
       adminAddressCreated: "Adresse in Stammdaten gespeichert.",
       adminOrderingPartiesDesc:
-        "Kunden / Auftraggeber für Abrechnung und Reporting. Änderungen ändern keine bestehenden Tour-Snapshots.",
+        "Kunden für Abrechnung und Reporting. Änderungen ändern keine bestehenden Tour-Snapshots.",
       adminAddressesDesc:
         "Gemeinsame Abhol- und Lieferadressen. Dieselbe Adresse kann in verschiedenen Touren genutzt werden. Änderungen ändern keine Tour-Snapshots.",
       adminMasterDataEdit: "Bearbeiten",
@@ -1473,7 +1479,7 @@ window.I18n = (() => {
       adminMasterDataEmail: "E-Mail",
       adminMasterDataBillingNotes: "Abrechnungshinweise",
       adminMasterDataInstructions: "Fahrer- / Dispositionshinweise",
-      adminMasterDataEditParty: "Auftraggeber bearbeiten",
+      adminMasterDataEditParty: "Kunde bearbeiten",
       adminMasterDataEditAddress: "Adresse bearbeiten",
       adminMasterDataLocationName: "Standortname",
       adminMasterDataStreet: "Straße",
@@ -1489,7 +1495,7 @@ window.I18n = (() => {
       adminMasterDataAddressInUse:
         "Löschen nicht möglich — mit {count} Tour(en) verknüpft. Stattdessen deaktivieren.",
       adminMasterDataPartyInUseConfirm:
-        "Auftraggeber in {count} Tour(en). Trotzdem löschen? (Nicht empfohlen.)",
+        "Dieser Kunde ist in {count} Tour(en). Trotzdem löschen? (Nicht empfohlen.)",
       adminMasterDataAddressInUseConfirm:
         "Adresse in {count} Tour(en). Trotzdem löschen? (Nicht empfohlen.)",
       newOrderPickupFromMaster: "Abholung aus Stammdaten",
@@ -1753,7 +1759,7 @@ window.I18n = (() => {
       newOrderSecContacts: "Kontakte",
       newOrderSecPartnerOffer: "Partnerangebot",
       newOrderSecNotes: "Notizen",
-      newOrderSecCustomerTitle: "Kunde / Auftraggeber",
+      newOrderSecCustomerTitle: "Kunde",
       newOrderPrefillMaster: "Pre-fill aus Master-Daten",
       newOrderCustomerMasterLabel: "Kundenstammdaten",
       newOrderSelectCustomer: "Kunde auswählen *",
@@ -1765,7 +1771,7 @@ window.I18n = (() => {
       newOrderFromMasterData: "Aus Master-Daten",
       newOrderNoCustomerTitle: "Noch kein Kunde gewählt.",
       newOrderNoCustomerHint:
-        "Adressen, Kontakte und Notizen werden nach Auswahl automatisch vorausgefüllt.",
+        "Auftraggeber für Abrechnung und Auswertung wählen. Abhol- und Lieferadressen können in Abschnitt 02 aus Adress-Stammdaten übernommen werden.",
       newOrderStartAddress: "Startadresse *",
       newOrderEndAddress: "Zieladresse *",
       newOrderStreetPh: "Straße + Nr",
@@ -1927,11 +1933,11 @@ window.I18n = (() => {
       tourDocHelperWaiting:
         "Bitte einen nachvollziehbaren Nachweis über Beginn, Ende und Grund der Wartezeit hochladen.",
       jobDisplayCompleted: "Abgeschlossen",
-      orderingPartyLabel: "Auftraggeber",
+      orderingPartyLabel: "Kunde",
       cancellationActor: "Storniert durch",
       cancellationActorServicePartner: "Servicepartner",
       cancellationActorAdmin: "Admin / Disposition",
-      cancellationActorOrderingParty: "Auftraggeber (Kunde)",
+      cancellationActorOrderingParty: "Kunde (Auftraggeber)",
       rejectionPresetLegible: "Tankbeleg nicht lesbar",
       rejectionPresetRegistration: "Kennzeichen fehlt",
       rejectionPresetWaiting: "Wartezeit nicht nachvollziehbar dokumentiert",
