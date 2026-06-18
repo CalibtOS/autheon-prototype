@@ -20,3 +20,7 @@ docs/design/**/*.gif
 # Optional visual-regression baselines (see docs/design/screenshots/README.md)
 docs/design/screenshots/*
 !docs/design/screenshots/README.md
+node_modules/
+test-results/
+playwright-report/
+npm-debug.log*
