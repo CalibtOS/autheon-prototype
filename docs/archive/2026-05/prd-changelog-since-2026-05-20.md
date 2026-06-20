@@ -1,15 +1,16 @@
-# PRD changelog: before 2026-05-20 → today
+# Historical PRD changelog: before 2026-05-20 → 2026-05-25
 
-**Canonical file:** `AUTHEON/prd.json`  
+> Historical snapshot retained for PRD decision traceability. It is not a current delivery tracker; use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
+
+**Canonical file at the time of this snapshot:** `docs/requirements/prd.json`
 **Baseline (last change before Tuesday 2026-05-20):** git `bd55711` — *PRD v1.5 - Client feedback integrated May 2026*  
-**Current committed HEAD:** git `5af4b75` (2026-05-25) — *PRD v1.6 - Feedback.pdf traceability May 2026*  
-**Working tree vs staged vs HEAD:** no difference — all PRD edits are committed; nothing pending in the index.
+**Snapshot commit:** git `5af4b75` (2026-05-25) — *PRD v1.6 - Feedback.pdf traceability May 2026*
 
 **Diff size (baseline → HEAD):** +608 / −64 lines in `prd.json` (7 commits touching the file).
 
 ---
 
-## Git timeline (`AUTHEON/prd.json` only)
+## Git timeline (`docs/requirements/prd.json` only)
 
 | Date | Commit | What changed in the PRD |
 |------|--------|-------------------------|
@@ -64,7 +65,7 @@ These commits kept the version string at v1.5 but expanded prototype documentati
 - `version`: **v1.5 → v1.6** (*Feedback.pdf traceability May 2026*)
 - `prototype_validation.last_synced`: 2026-05-21 → **2026-05-25**
 - `prototype_validation.verdict`: aligned v1.5 → **PASS v1.6** (audit script)
-- `prototype_validation.prd_spec_reference`: **`AUTHEON/prd.json`** (single file)
+- `prototype_validation.prd_spec_reference`: **`docs/requirements/prd.json`** (single file)
 - +3 sync notes (v1.6 matrices, consolidation of former `prd_updated_v2.json`)
 
 ### Nine new top-level PRD sections
@@ -104,9 +105,9 @@ Notification feed, driver in-app notifications, `driver_visibility_matrix`, `mar
 
 ## PRD vs latest client feedback (Feedback.pdf)
 
-Source text: `AUTHEON/meetings/autheon_aw_written_feedback_en.md`  
-Meeting: `AUTHEON/meetings/autheon_aw_meeting_transcript_en_with_index.md`  
-Validation: `AUTHEON/prd-client-source-validation.md`  
+Source text: `meetings/source/autheon_aw_written_feedback_en.md`
+Meeting: `meetings/source/autheon_aw_meeting_transcript_en_with_index.md`
+Validation: `docs/requirements/prd-client-source-validation.md`
 Machine traceability: `client_feedback_traceability` in `prd.json`
 
 | PDF | Topic | PRD status in v1.6 | PRD location |
@@ -146,6 +147,6 @@ Machine traceability: `client_feedback_traceability` in `prd.json`
 
 ## Related documents
 
-- **Prototype vs PRD:** `AUTHEON/prd-prototype-validation.md` (audit PASS 2026-05-25)  
-- **Client walkthrough alignment:** `AUTHEON/client-feedback-comparison.md`  
-- **Reproduce diff:** `git diff bd55711..HEAD -- AUTHEON/prd.json`
+- **Prototype vs PRD:** `docs/requirements/prd-prototype-validation.md` (audit PASS 2026-05-25)
+- **Client walkthrough alignment:** `docs/research/client-feedback-comparison.md`
+- **Reproduce snapshot diff:** `git diff bd55711..5af4b75 -- docs/requirements/prd.json`

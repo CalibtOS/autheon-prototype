@@ -1,6 +1,6 @@
 # AUTHEON prototype — domain glossary (PRD v1.6)
 
-Canonical spec: `AUTHEON/prd.json`. This file explains terms used in the static prototype (`store.js`, admin, driver).
+Canonical spec: [`../../docs/requirements/prd.json`](../../docs/requirements/prd.json). This file explains terms used in the static prototype (`store.js`, admin, driver).
 
 ## Operational tour status (stored on `job.status`)
 

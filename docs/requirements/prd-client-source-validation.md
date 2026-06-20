@@ -1,15 +1,15 @@
 # PRD client-source validation report
 
 **Date:** 2026-05-25  
-**PRD:** `AUTHEON/prd.json` (v1.6)  
+**PRD:** [`prd.json`](prd.json) (v1.6)
 **Baseline for “since last Tuesday”:** git `bd55711` (last PRD touch before 2026-05-20)  
 **Current PRD:** git `5af4b75` + working tree (identical)  
 **Client sources:**
 
 | Source | Path | Role |
 |--------|------|------|
-| Written feedback (Feedback.pdf) | `AUTHEON/meetings/autheon_aw_written_feedback_en.md` | Sections A–D |
-| Meeting (2026-05-18) | `AUTHEON/meetings/autheon_aw_meeting_transcript_en_with_index.md` | REQ 001–023, scope de-scoping |
+| Written feedback (Feedback.pdf) | [`../../meetings/source/autheon_aw_written_feedback_en.md`](../../meetings/source/autheon_aw_written_feedback_en.md) | Sections A–D |
+| Meeting (2026-05-18) | [`../../meetings/source/autheon_aw_meeting_transcript_en_with_index.md`](../../meetings/source/autheon_aw_meeting_transcript_en_with_index.md) | REQ 001–023, scope de-scoping |
 | Original scope / wireframes | Listed in `product_context.source_inputs` | Pre-feedback baseline |
 
 **Prototype check:** `_audit-prototype.mjs` — **PASS** (exit 0)
@@ -24,7 +24,7 @@
 | **Meeting (REQ 001–023) → PRD** | **PASS** — all 23 meeting requirements present in PRD text (keywords + scope sections) |
 | **PRD changes since 2026-05-20 → client sources** | **PASS** — Phase A/B changes trace to meeting and/or written feedback (see below) |
 | **PRD → prototype** | **PASS** — automated audit + `prd-prototype-validation.md` |
-| **Documentation hygiene** | **MINOR GAP** — `client_feedback_source.translated_reference` path stale (see gaps) |
+| **Documentation hygiene** | **PASS** — canonical paths updated during repository consolidation |
 
 **Conclusion:** The current PRD is **substantively grounded** in the client’s written feedback and the 2026-05-18 meeting. Changes since last Tuesday are **documenting and formalizing** work the client already asked for—not introducing unrelated scope.
 
@@ -158,7 +158,7 @@ These do **not** conflict with client feedback; they describe **how** to build w
 
 | # | Gap | Severity | Action |
 |---|-----|----------|--------|
-| 1 | `client_feedback_source.translated_reference` = `AUTHEON/autheon_aw_written_feedback_en.md` but canonical copy is under `AUTHEON/meetings/` | Low | Update path in `prd.json` (done in this pass if applied) |
+| 1 | Historical repository paths existed before consolidation. | Resolved | Paths were updated during repository consolidation. |
 | 2 | Meeting transcript not listed in `client_feedback_source` | Low | Add `meeting_reference` path |
 | 3 | `product_context.source_inputs` still says generic “Internal PRD update report” without file path | Low | Point to `meetings/autheon_aw_meeting_transcript_en_with_index.md` |
 | 4 | Meeting §6 “document V1 vs V2” pricing | Info | Already in `v1_optional_or_needs_decision` — confirm with client on contract |
@@ -169,12 +169,12 @@ These do **not** conflict with client feedback; they describe **how** to build w
 
 ## 6. Related artifacts
 
-- `AUTHEON/prd-changelog-since-2026-05-20.md` — git-level PRD diff
-- `AUTHEON/client-feedback-comparison.md` — PRD + prototype vs feedback
-- `AUTHEON/prd-prototype-validation.md` — 16-item checklist
+- `../archive/2026-05/prd-changelog-since-2026-05-20.md` — git-level PRD diff
+- `../research/client-feedback-comparison.md` — PRD + prototype vs feedback
+- `prd-prototype-validation.md` — prototype checklist
 
 ---
 
 ## Sign-off summary (for client/internal)
 
-> **The PRD v1.6 at `AUTHEON/prd.json` reflects the client’s written Feedback.pdf (sections A–D) and the 2026-05-18 meeting conclusions. All PRD edits since 2026-05-20 document client-driven prototype alignment (Phase A) and formal traceability matrices (Phase B). Remaining open items are production decisions (auth, map API, final app name), not missing client requirements.**
+> **The PRD v1.6 at `prd.json` reflects the client’s written Feedback.pdf (sections A–D) and the 2026-05-18 meeting conclusions. All PRD edits since 2026-05-20 document client-driven prototype alignment (Phase A) and formal traceability matrices (Phase B). Remaining open items are production decisions (auth, map API, final app name), not missing client requirements.**

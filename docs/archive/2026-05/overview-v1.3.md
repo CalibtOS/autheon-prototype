@@ -1,9 +1,9 @@
 # AUTHEON — Product Overview & Designer Onboarding Guide
 
-> **Version:** PRD v1.6 (prototype) — canonical spec: `AUTHEON/prd.json`  
+> **Version:** PRD v1.6 (prototype) — canonical spec: [`../requirements/prd.json`](../requirements/prd.json)
 > **Audience:** UX/UI Designer onboarding  
-> **Companion files:** [Sitemap.md](Sitemap.md) · [DOMAIN.md](AUTHEON/autheon-extracted/autheon/project/DOMAIN.md) (status & terminology glossary)  
-> **Prototype:** `AUTHEON/autheon-extracted/autheon/project` (single-page HTML/React Babel demo)
+> **Companion files:** [Sitemap](sitemap.md) · [DOMAIN](../../prototype/project/DOMAIN.md) (status & terminology glossary)
+> **Prototype:** `../../prototype/project` (single-page HTML/React Babel demo)
 
 ---
 
@@ -566,4 +566,4 @@ These affect UX decisions — flag them when designing:
 
 ---
 
-*This document is a designer onboarding reference synthesised from PRD v1.3. For screen-level navigation detail, see [Sitemap.md](Sitemap.md). For the prototype, open `AUTHEON/autheon-extracted/autheon/project`.*
+*This document is a designer onboarding reference synthesised from PRD v1.3. For screen-level navigation detail, see [Sitemap](sitemap.md). For the prototype, open `../../prototype/project`.*

@@ -16,8 +16,8 @@
       "Draft transport-order Word/PDF template (repository asset)",
       "Vehicle / operational CSV list (legacy column glossary)",
       "Translated written client feedback PDF, May 2026",
-      "AUTHEON/meetings/autheon_aw_meeting_transcript_en_with_index.md (meeting 2026-05-18)",
-      "AUTHEON/meetings/autheon_aw_written_feedback_en.md (Feedback.pdf translation, May 2026)",
+      "meetings/source/autheon_aw_meeting_transcript_en_with_index.md (meeting 2026-05-18)",
+      "meetings/source/autheon_aw_written_feedback_en.md (Feedback.pdf translation, May 2026)",
       "Client Feedback.pdf (May 2026, repository root d:/Feedback.pdf)"
     ],
     "important_notes": [
@@ -41,7 +41,7 @@
       "Service partner profile master data (company, address, email, phone, partner ID) is maintained by admin/dispatching. Drivers do not self-edit those fields in V1; they submit change requests. At most one open request per partner until admin approves or rejects.",
       "Cancel Order shows binding-cost warning and link to partner terms before slide-to-confirm. Not Performable may attach evidence files (photos/PDF) visible to admin on the special-case panel."
     ],
-    "prototype_reference": "AUTHEON/autheon-extracted/autheon/project (single-page HTML/React Babel demo: admin.jsx, driver.jsx, store.js, i18n.js, inputFormatters.js — not production repo layout; maps conceptually to apps/* paths in tasks). Final production PRD v1.6 supersedes prototype-only return request and broad finance assumptions with client-validated Report Problem, Special Case, and finance de-scoping decisions."
+    "prototype_reference": "prototype/project (single-page HTML/React Babel demo: admin.jsx, driver.jsx, store.js, i18n.js, inputFormatters.js — not production repo layout; maps conceptually to apps/* paths in tasks). Final production PRD v1.6 supersedes prototype-only return request and broad finance assumptions with client-validated Report Problem, Special Case, and finance de-scoping decisions."
   },
   "prototype_coverage_notes": [
     "Driver PWA (demo): marketplace with pull-to-refresh, My Jobs (Active, Performed, Cancelled, Special case), locked preview, slide accept, map handoff, Mark as performed, Report Problem (seven cancel reasons; cancel path with binding warning + partner terms link; warning icon on tour footer and sheet header; not performable with optional evidence upload up to 5 files), tour-linked document upload only after Performed (categories, rejection reason, replace file), correction badge on Performed tab only, Infopoint (General documents with description, date, view/download stub; New messages with read/unread badge), profile with read-only master data, change-request form (blocked while open request pending), push preferences (no driver workflow email).",
@@ -55,8 +55,8 @@
   ],
   "prototype_validation": {
     "last_synced": "2026-05-25",
-    "audit_document": "AUTHEON/prd-prototype-validation.md",
-    "verdict": "PASS — prototype matches PRD v1.6 at AUTHEON/prd.json (_audit-prototype.mjs exit 0; checklist items 1–28 in prd-prototype-validation.md).",
+    "audit_document": "docs/requirements/prd-prototype-validation.md",
+    "verdict": "PASS — prototype matches PRD v1.6 at docs/requirements/prd.json (_audit-prototype.mjs exit 0; checklist items 1–28 in prd-prototype-validation.md).",
     "sync_pass_notes": [
       "Integrated client feedback requiring ordering party, pickup location, and delivery location separation.",
       "Replaced return window logic with Report Problem, cancellation, and special case handling.",
@@ -80,7 +80,7 @@
       "2026-05-25: Client feedback gap pass — Report Problem cancel binding warning + terms; seven cancellation reason codes; not-performable evidence on specialCaseReport; Report Problem warning icon; order-entry formatters (inputFormatters.js).",
       "2026-05-25: Service partner profile change requests — persistent masterDataChangeRequests queue; one open request per driver; admin Profile change requests pane with inline edit and Approve & save; driver pending state; notification feed Review request link; driver notifications on approve/reject."
     ],
-    "prd_spec_reference": "AUTHEON/prd.json"
+    "prd_spec_reference": "docs/requirements/prd.json"
   },
   "domain_model_summary": {
     "job_fields": [
@@ -1293,16 +1293,16 @@
       "Rich newsletter/editor capabilities"
     ]
   },
-  "derived_from": "AUTHEON/prd.json",
+  "derived_from": "docs/requirements/prd.json",
   "baseline_version": "PRD v1.5 - Client feedback integrated May 2026",
   "client_feedback_source": {
     "document": "Feedback.pdf",
     "document_path": "d:/Feedback.pdf",
-    "translated_reference": "AUTHEON/meetings/autheon_aw_written_feedback_en.md",
-    "meeting_reference": "AUTHEON/meetings/autheon_aw_meeting_transcript_en_with_index.md",
+    "translated_reference": "meetings/source/autheon_aw_written_feedback_en.md",
+    "meeting_reference": "meetings/source/autheon_aw_meeting_transcript_en_with_index.md",
     "integration_version": "PRD v1.6",
-    "integrated_into": "AUTHEON/prd.json",
-    "canonical_spec": "AUTHEON/prd.json"
+    "integrated_into": "docs/requirements/prd.json",
+    "canonical_spec": "docs/requirements/prd.json"
   },
   "client_status_mapping": {
     "rationale": "Client PDF lists Under review and Completed as operational statuses. PRD v1.6 keeps seven operational statuses and tracks document review and settlement separately so Performed stays atomic and billing closure does not collide with driver completion.",

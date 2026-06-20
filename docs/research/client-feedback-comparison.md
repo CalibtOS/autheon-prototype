@@ -1,12 +1,12 @@
 # Client feedback ↔ PRD ↔ prototype comparison
 
-**Canonical spec:** `AUTHEON/prd.json` (PRD v1.6)  
-**Written feedback reference:** `AUTHEON/meetings/autheon_aw_written_feedback_en.md` (from Feedback.pdf)  
-**Meeting reference:** `AUTHEON/meetings/autheon_aw_meeting_transcript_en_with_index.md` (2026-05-18)  
-**Full validation report:** `AUTHEON/prd-client-source-validation.md`  
-**Prototype:** `AUTHEON/autheon-extracted/autheon/project/`  
+**Canonical spec:** [`../requirements/prd.json`](../requirements/prd.json) (PRD v1.6)
+**Written feedback reference:** [`../../meetings/source/autheon_aw_written_feedback_en.md`](../../meetings/source/autheon_aw_written_feedback_en.md) (from Feedback.pdf)
+**Meeting reference:** [`../../meetings/source/autheon_aw_meeting_transcript_en_with_index.md`](../../meetings/source/autheon_aw_meeting_transcript_en_with_index.md) (2026-05-18)
+**Full validation report:** [`../requirements/prd-client-source-validation.md`](../requirements/prd-client-source-validation.md)
+**Prototype:** [`../../prototype/project/`](../../prototype/project/)
 **Period covered:** 2026-05-20 (Tuesday) → 2026-05-25  
-**PRD diff detail:** `AUTHEON/prd-changelog-since-2026-05-20.md` (baseline `bd55711` → HEAD `5af4b75`)  
+**PRD diff detail:** [`../archive/2026-05/prd-changelog-since-2026-05-20.md`](../archive/2026-05/prd-changelog-since-2026-05-20.md) (baseline `bd55711` → HEAD `5af4b75`)
 **Automated check:** `_audit-prototype.mjs` — **PASS** (2026-05-25)
 
 **Git note:** Working tree, index, and HEAD all match — PRD v1.6 is fully committed; no unstaged `prd.json` delta.
@@ -83,7 +83,7 @@ Production backend (DB, auth, SMTP, real file storage) remains **out of scope** 
 | 19–24 | Client feedback gap pass (cancel UX, reasons, evidence, MDR feed, icon, formatters) | Pass |
 | 25–28 | Profile change request queue + one-open rule + feed deep-link + driver notify | Pass |
 
-Full detail: `AUTHEON/prd-prototype-validation.md`.
+Full detail: [`../requirements/prd-prototype-validation.md`](../requirements/prd-prototype-validation.md).
 
 ---
 
@@ -112,7 +112,7 @@ Full detail: `AUTHEON/prd-prototype-validation.md`.
 ## How to re-run verification
 
 ```bash
-node AUTHEON/autheon-extracted/autheon/project/_audit-prototype.mjs
+node prototype/project/_audit-prototype.mjs
 ```
 
-Open `AUTHEON/autheon-extracted/autheon/project/AUTHEON Prototype.html` in a browser for manual smoke test (see `prd-prototype-validation.md`).
+Open `prototype/project/AUTHEON Prototype.html` in a browser for manual smoke test (see `prd-prototype-validation.md`).
