@@ -8,6 +8,7 @@ This repository is the shared home for AUTHEON documentation, research, meeting 
 | --- | --- |
 | [`docs/product/`](docs/product/) | Current product brief. |
 | [`docs/design-system.md`](docs/design-system.md) | Current visual and interaction system. |
+| [`docs/database/`](docs/database/) | Production database design draft. |
 | [`docs/requirements/`](docs/requirements/) | Canonical PRD, validation records, and change history. |
 | [`docs/research/`](docs/research/) | Client-feedback analysis and supporting research. |
 | [`meetings/source/`](meetings/source/) | Source meeting notes and transcripts. |
@@ -18,6 +19,7 @@ This repository is the shared home for AUTHEON documentation, research, meeting 
 - [Current product brief](docs/product/current-product-brief.md)
 - [Current sitemap](docs/product/sitemap.md)
 - [Design system guide](docs/design-system.md)
+- [Database design](docs/database/README.md)
 - [Canonical PRD](docs/requirements/prd.json)
 - [Prototype validation](docs/requirements/prd-prototype-validation.md)
 - [Client-feedback comparison](docs/research/client-feedback-comparison.md)

@@ -1,0 +1,549 @@
+// AUTHEON Version 1 database draft — PostgreSQL target.
+// See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
+
+Enum user_role {
+  admin
+  service_partner
+}
+
+Enum user_status {
+  active
+  blocked
+  inactive
+  archived
+}
+
+Enum job_status {
+  draft
+  published
+  assigned
+  accepted
+  performed
+  cancelled
+  special_case
+}
+
+Enum assignment_type {
+  direct_assignment
+  marketplace_acceptance
+  reassignment
+}
+
+Enum location_role {
+  pickup
+  delivery
+}
+
+Enum problem_type {
+  cancel_order
+  not_performable
+}
+
+Enum problem_status {
+  submitted
+  resolved
+  withdrawn
+}
+
+Enum document_type {
+  invoice
+  fuel_receipt
+  toll_receipt
+  delivery_note
+  waiting_time_evidence
+  other_proof
+  other_receipt
+  transport_order
+}
+
+Enum document_review_status {
+  missing
+  uploaded
+  under_review
+  accepted
+  rejected
+  correction_required
+}
+
+Enum settlement_status {
+  not_started
+  pending
+  processed
+  paid
+  needs_clarification
+  closed
+}
+
+Enum notification_channel {
+  in_app
+  push
+  email
+}
+
+Enum delivery_status {
+  pending
+  processing
+  delivered
+  failed
+  cancelled
+}
+
+Table app_users {
+  id uuid [pk]
+  email citext [not null, unique]
+  display_name varchar(200) [not null]
+  status user_status [not null, default: 'active']
+  locale varchar(10) [not null, default: 'de']
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  archived_at timestamptz
+}
+
+Table user_roles {
+  user_id uuid [not null]
+  role user_role [not null]
+  granted_at timestamptz [not null]
+  granted_by_user_id uuid
+
+  indexes {
+    (user_id, role) [pk]
+  }
+}
+
+Table authentication_identities {
+  id uuid [pk]
+  user_id uuid [not null]
+  provider varchar(80) [not null]
+  provider_subject varchar(255) [not null]
+  created_at timestamptz [not null]
+  last_authenticated_at timestamptz
+
+  indexes {
+    (provider, provider_subject) [unique]
+  }
+}
+
+Table service_partners {
+  id uuid [pk]
+  user_id uuid [not null, unique]
+  partner_code varchar(64) [not null, unique]
+  company_name varchar(255) [not null]
+  contact_name varchar(255)
+  street varchar(255)
+  house_number varchar(32)
+  postal_code varchar(32)
+  city varchar(128)
+  country_code char(2) [not null, default: 'DE']
+  phone varchar(64)
+  notes text
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table ordering_parties {
+  id uuid [pk]
+  name varchar(255) [not null]
+  billing_reference varchar(255)
+  contact_name varchar(255)
+  contact_email citext
+  contact_phone varchar(64)
+  notes text
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  archived_at timestamptz
+}
+
+Table locations {
+  id uuid [pk]
+  name varchar(255) [not null]
+  street varchar(255) [not null]
+  house_number varchar(32)
+  postal_code varchar(32) [not null]
+  city varchar(128) [not null]
+  country_code char(2) [not null, default: 'DE']
+  contact_name varchar(255)
+  alternate_contact_name varchar(255)
+  phone varchar(64)
+  second_phone varchar(64)
+  email citext
+  notes text
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  archived_at timestamptz
+}
+
+Table jobs {
+  id uuid [pk]
+  tour_number varchar(32) [not null, unique]
+  category varchar(100) [not null]
+  ordering_party_id uuid [not null]
+  ordering_party_name_snapshot varchar(255) [not null]
+  ordering_party_billing_reference_snapshot varchar(255)
+  operational_status job_status [not null, default: 'draft']
+  current_service_partner_id uuid
+  distance_km numeric(10,2)
+  distance_manual_override_km numeric(10,2)
+  distance_estimate_source varchar(100)
+  vehicle_manufacturer varchar(128)
+  vehicle_model varchar(255) [not null]
+  vehicle_type varchar(100) [not null]
+  license_plate varchar(32)
+  vin varchar(17)
+  axle_type varchar(32) [not null]
+  internal_notes text
+  driver_visible_notes text
+  document_review_summary document_review_status [not null, default: 'missing']
+  settlement_state settlement_status [not null, default: 'not_started']
+  created_at timestamptz [not null]
+  created_by_user_id uuid [not null]
+  updated_at timestamptz [not null]
+  performed_at timestamptz
+  cancelled_at timestamptz
+  cancelled_by_user_id uuid
+}
+
+Table job_locations {
+  id uuid [pk]
+  job_id uuid [not null]
+  location_role location_role [not null]
+  master_location_id uuid
+  name_snapshot varchar(255) [not null]
+  street_snapshot varchar(255) [not null]
+  house_number_snapshot varchar(32)
+  postal_code_snapshot varchar(32) [not null]
+  city_snapshot varchar(128) [not null]
+  country_code_snapshot char(2) [not null]
+  contact_name_snapshot varchar(255) [not null]
+  alternate_contact_name_snapshot varchar(255)
+  phone_snapshot varchar(64) [not null]
+  second_phone_snapshot varchar(64)
+  email_snapshot citext
+  notes_snapshot text
+  scheduled_date date [not null]
+  window_start time
+  window_end time
+  window_is_flexible boolean [not null, default: false]
+
+  indexes {
+    (job_id, location_role) [unique]
+    (postal_code_snapshot, scheduled_date)
+  }
+}
+
+Table job_assignments {
+  id uuid [pk]
+  job_id uuid [not null]
+  service_partner_id uuid [not null]
+  assignment_type assignment_type [not null]
+  assigned_by_user_id uuid
+  started_at timestamptz [not null]
+  ended_at timestamptz
+  end_reason varchar(100)
+  notes text
+}
+
+Table job_status_history {
+  id uuid [pk]
+  job_id uuid [not null]
+  previous_status job_status
+  next_status job_status [not null]
+  occurred_at timestamptz [not null]
+  actor_user_id uuid
+  comment text
+  metadata jsonb
+
+  indexes {
+    (job_id, occurred_at)
+  }
+}
+
+Table job_distance_estimates {
+  id uuid [pk]
+  job_id uuid [not null]
+  provider varchar(100)
+  routing_profile varchar(100)
+  distance_km numeric(10,2) [not null]
+  raw_response jsonb
+  calculated_at timestamptz [not null]
+  calculated_by_user_id uuid
+  is_manual_override boolean [not null, default: false]
+  override_reason text
+}
+
+Table job_financials {
+  job_id uuid [pk]
+  revenue_amount numeric(12,2)
+  driver_compensation_amount numeric(12,2)
+  expenses_amount numeric(12,2)
+  currency_code char(3) [not null, default: 'EUR']
+  tax_rate numeric(5,2)
+  notes text
+  updated_at timestamptz [not null]
+  updated_by_user_id uuid
+}
+
+Table job_problem_reports {
+  id uuid [pk]
+  job_id uuid [not null]
+  reported_by_user_id uuid [not null]
+  problem_type problem_type [not null]
+  reason_code varchar(100) [not null]
+  reason_text text
+  status_before_problem job_status [not null]
+  report_status problem_status [not null, default: 'submitted']
+  submitted_at timestamptz [not null]
+  resolved_at timestamptz
+  resolved_by_user_id uuid
+  resolution_action varchar(100)
+  resolution_note text
+}
+
+Table problem_report_evidence {
+  id uuid [pk]
+  problem_report_id uuid [not null]
+  document_file_id uuid [not null]
+  created_at timestamptz [not null]
+}
+
+Table job_documents {
+  id uuid [pk]
+  job_id uuid [not null]
+  document_type document_type [not null]
+  source varchar(32) [not null] // driver_pwa | admin_off_channel | generated
+  uploaded_by_user_id uuid
+  review_status document_review_status [not null, default: 'uploaded']
+  processed_at timestamptz
+  processed_by_user_id uuid
+  rejection_reason text
+  supplier_invoice_number varchar(100)
+  supplier_invoice_date date
+  notes text
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table document_files {
+  id uuid [pk]
+  job_document_id uuid
+  original_filename varchar(500) [not null]
+  mime_type varchar(255) [not null]
+  size_bytes bigint [not null]
+  sha256 char(64)
+  storage_key varchar(1024) [not null, unique]
+  scan_status varchar(32) [not null, default: 'pending']
+  scanned_at timestamptz
+  created_at timestamptz [not null]
+  superseded_at timestamptz
+}
+
+Table job_document_reviews {
+  id uuid [pk]
+  job_document_id uuid [not null]
+  review_status document_review_status [not null]
+  reviewer_user_id uuid [not null]
+  reason text
+  occurred_at timestamptz [not null]
+}
+
+Table generated_job_documents {
+  id uuid [pk]
+  job_id uuid [not null]
+  document_file_id uuid [not null]
+  document_kind varchar(64) [not null] // transport_order
+  version_number int [not null]
+  generated_at timestamptz [not null]
+  generated_by_user_id uuid
+  is_current boolean [not null, default: true]
+
+  indexes {
+    (job_id, document_kind, version_number) [unique]
+  }
+}
+
+Table master_data_change_requests {
+  id uuid [pk]
+  service_partner_id uuid [not null]
+  requested_by_user_id uuid [not null]
+  status varchar(32) [not null, default: 'open'] // open | approved | rejected
+  requester_note text [not null]
+  current_snapshot jsonb [not null]
+  proposed_changes jsonb [not null]
+  created_at timestamptz [not null]
+  resolved_at timestamptz
+  resolved_by_user_id uuid
+  admin_note text
+}
+
+Table infopoint_documents {
+  id uuid [pk]
+  title varchar(255) [not null]
+  description text
+  category varchar(100)
+  document_file_id uuid
+  is_visible boolean [not null, default: true]
+  published_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  updated_by_user_id uuid
+}
+
+Table infopoint_news {
+  id uuid [pk]
+  subject varchar(255) [not null]
+  body text [not null]
+  published_at timestamptz [not null]
+  is_visible boolean [not null, default: true]
+  notify_in_app boolean [not null, default: true]
+  notify_push boolean [not null, default: false]
+  created_by_user_id uuid [not null]
+  updated_at timestamptz [not null]
+}
+
+Table infopoint_news_reads {
+  news_id uuid [not null]
+  user_id uuid [not null]
+  read_at timestamptz [not null]
+
+  indexes {
+    (news_id, user_id) [pk]
+  }
+}
+
+Table notification_preferences {
+  user_id uuid [pk]
+  push_enabled boolean [not null, default: false]
+  notify_published_jobs boolean [not null, default: false]
+  notify_postal_area boolean [not null, default: false]
+  pickup_postal_prefix varchar(16)
+  vehicle_type varchar(100)
+  axle_type varchar(32)
+  updated_at timestamptz [not null]
+}
+
+Table push_subscriptions {
+  id uuid [pk]
+  user_id uuid [not null]
+  endpoint text [not null, unique]
+  p256dh_key text [not null]
+  auth_key text [not null]
+  user_agent text
+  created_at timestamptz [not null]
+  last_seen_at timestamptz
+  revoked_at timestamptz
+}
+
+Table user_notifications {
+  id uuid [pk]
+  user_id uuid [not null]
+  notification_type varchar(100) [not null]
+  job_id uuid
+  title varchar(255) [not null]
+  body text
+  deep_link varchar(1024)
+  created_at timestamptz [not null]
+  read_at timestamptz
+}
+
+Table outbox_events {
+  id uuid [pk]
+  event_type varchar(100) [not null]
+  aggregate_type varchar(100) [not null]
+  aggregate_id uuid [not null]
+  payload jsonb [not null]
+  occurred_at timestamptz [not null]
+  available_at timestamptz [not null]
+  status delivery_status [not null, default: 'pending']
+  deduplication_key varchar(255) [unique]
+}
+
+Table notification_deliveries {
+  id uuid [pk]
+  outbox_event_id uuid [not null]
+  channel notification_channel [not null]
+  recipient_user_id uuid
+  recipient_address varchar(500)
+  status delivery_status [not null, default: 'pending']
+  provider_message_id varchar(255)
+  attempted_at timestamptz
+  delivered_at timestamptz
+  failure_reason text
+}
+
+Table feature_flags {
+  key varchar(100) [pk]
+  is_enabled boolean [not null, default: false]
+  description text
+  updated_at timestamptz [not null]
+  updated_by_user_id uuid
+}
+
+Table audit_events {
+  id uuid [pk]
+  occurred_at timestamptz [not null]
+  actor_user_id uuid
+  action_key varchar(100) [not null]
+  entity_type varchar(100) [not null]
+  entity_id uuid
+  job_id uuid
+  metadata jsonb
+
+  indexes {
+    (job_id, occurred_at)
+    (entity_type, entity_id, occurred_at)
+  }
+}
+
+Ref: user_roles.user_id > app_users.id
+Ref: user_roles.granted_by_user_id > app_users.id
+Ref: authentication_identities.user_id > app_users.id
+Ref: service_partners.user_id > app_users.id
+
+Ref: jobs.ordering_party_id > ordering_parties.id
+Ref: jobs.current_service_partner_id > service_partners.id
+Ref: jobs.created_by_user_id > app_users.id
+Ref: jobs.cancelled_by_user_id > app_users.id
+Ref: job_locations.job_id > jobs.id
+Ref: job_locations.master_location_id > locations.id
+Ref: job_assignments.job_id > jobs.id
+Ref: job_assignments.service_partner_id > service_partners.id
+Ref: job_assignments.assigned_by_user_id > app_users.id
+Ref: job_status_history.job_id > jobs.id
+Ref: job_status_history.actor_user_id > app_users.id
+Ref: job_distance_estimates.job_id > jobs.id
+Ref: job_distance_estimates.calculated_by_user_id > app_users.id
+Ref: job_financials.job_id > jobs.id
+
+Ref: job_problem_reports.job_id > jobs.id
+Ref: job_problem_reports.reported_by_user_id > app_users.id
+Ref: job_problem_reports.resolved_by_user_id > app_users.id
+Ref: problem_report_evidence.problem_report_id > job_problem_reports.id
+Ref: problem_report_evidence.document_file_id > document_files.id
+
+Ref: job_documents.job_id > jobs.id
+Ref: job_documents.uploaded_by_user_id > app_users.id
+Ref: job_documents.processed_by_user_id > app_users.id
+Ref: document_files.job_document_id > job_documents.id
+Ref: job_document_reviews.job_document_id > job_documents.id
+Ref: job_document_reviews.reviewer_user_id > app_users.id
+Ref: generated_job_documents.job_id > jobs.id
+Ref: generated_job_documents.document_file_id > document_files.id
+
+Ref: master_data_change_requests.service_partner_id > service_partners.id
+Ref: master_data_change_requests.requested_by_user_id > app_users.id
+Ref: master_data_change_requests.resolved_by_user_id > app_users.id
+Ref: infopoint_documents.document_file_id > document_files.id
+Ref: infopoint_documents.updated_by_user_id > app_users.id
+Ref: infopoint_news.created_by_user_id > app_users.id
+Ref: infopoint_news_reads.news_id > infopoint_news.id
+Ref: infopoint_news_reads.user_id > app_users.id
+
+Ref: notification_preferences.user_id > app_users.id
+Ref: push_subscriptions.user_id > app_users.id
+Ref: user_notifications.user_id > app_users.id
+Ref: user_notifications.job_id > jobs.id
+Ref: notification_deliveries.outbox_event_id > outbox_events.id
+Ref: notification_deliveries.recipient_user_id > app_users.id
+Ref: feature_flags.updated_by_user_id > app_users.id
+Ref: audit_events.actor_user_id > app_users.id
+Ref: audit_events.job_id > jobs.id
