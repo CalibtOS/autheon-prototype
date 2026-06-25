@@ -32,8 +32,8 @@ Production implementation (database, auth, real PDF template, file storage, map 
 | 4 | Three push toggles | Done (`pushEnabled`, `notifyNewPublished`, `notifyPostalPrefix`) |
 | 5 | No push on direct assign | Done (`maybeNotifyPublishedJob`) |
 | 6 | Alternate contact + progressive disclosure | Done (New order sec-05 + `mkLocation`) |
-| 7 | Update master data from order entry | Done (checkboxes + `updateAddress` / `updateOrderingParty`) |
-| 8 | `driver_visibility_matrix` | Done (ordering party in `JobUnlocked` only) |
+| 7 | Update master data from order entry | Done (checkboxes + customer/address update flow) |
+| 8 | `driver_visibility_matrix` | Done (customer in `JobUnlocked` only) |
 | 9 | Display labels Under review / Completed | Done (`getJobDisplayStatus` in admin overview) |
 | 10 | Admin document review | Done (Accept / Reject only; Mark checked removed as duplicate of Accept) |
 | 11 | Upload document / receipt CTA | Done (`tourDocUploadReceiptButton`) |
@@ -44,7 +44,7 @@ Production implementation (database, auth, real PDF template, file storage, map 
 | 16 | Audit script v1.6 | Done (exit 0, 2026-05-25) |
 | 17 | Admin Infopoint: general documents + news publish | Done (`InfopointPane`, `addNewsItem`, upload stub) |
 | 18 | Driver Infopoint docs: description, date, view/download stub | Done (`infopointDocViewDownload`) |
-| 19 | Cancel binding warning + partner terms link on Report Problem cancel | Done |
+| 19 | Cancel binding warning + driver terms link on Report Problem cancel | Done |
 | 20 | Seven cancellation reason codes (Feedback.pdf C.1) | Done |
 | 21 | Not-performable evidence upload (max 5 files) + admin special-case list | Done |
 | 22 | Master-data change request → admin notification feed | Done (`requestMasterDataChange`) |
@@ -79,7 +79,7 @@ Expect: i18n EN/DE parity, PRD v1.5+v1.6 store APIs, v1.6 document summary strin
 
 - Terminology: **Tour documents** + **Billing invoice** (type `invoice`); **Report Problem** (not return request).
 - Code: `reportProblemJob` state, `onOpenTourBilling`, `use_tour_documents` financial guard.
-- Removed v1.4 i18n and unused partner-invoice copy; see `DOMAIN.md` for operational vs display statuses.
+- Removed v1.4 i18n and unused driver-invoice copy; see `DOMAIN.md` for operational vs display statuses.
 
 ## Remaining production work
 

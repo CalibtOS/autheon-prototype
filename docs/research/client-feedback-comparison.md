@@ -15,7 +15,7 @@
 
 ## Executive summary
 
-Since 2026-05-20 the static prototype and PRD were aligned to **client Feedback.pdf (May 2026)**: separate ordering party / pickup / delivery, Report Problem flows, tour documents after Performed, master data CRUD, notifications (three push toggles, in-app feeds), and v1.6 traceability matrices. **All 15 Feedback.pdf sections in `client_feedback_traceability` are marked covered or gap-closed in the PRD; the prototype audit script passes.**
+Since 2026-05-20 the static prototype and PRD were aligned to **client Feedback.pdf (May 2026)**: separate customer / pickup / delivery, Report Problem flows, tour documents after Performed, master data CRUD, notifications (three push toggles, in-app feeds), and v1.6 traceability matrices. **All 15 Feedback.pdf sections in `client_feedback_traceability` are marked covered or gap-closed in the PRD; the prototype audit script passes.**
 
 Production backend (DB, auth, SMTP, real file storage) remains **out of scope** for the HTML demo — PRD tasks stay `pending` for implementation tracking.
 
@@ -33,13 +33,13 @@ Production backend (DB, auth, SMTP, real file storage) remains **out of scope** 
 | B.1.2 | Party vs pickup vs delivery + contacts | Task 4–5, visibility matrix | gap_closed_in_v1_6 | New order form; `driver_visibility_matrix`; route contacts (5/24) |
 | B.1.3 | Input formatting (date, VIN, plate) | Task 5 | covered | New order field masks / validation in admin |
 | B.1.4 | Distance estimate + override | Task 16, 28 | covered | Distance estimate/recalculate in admin |
-| B.1.5 | Master data + visibility | Task 4, matrix | gap_closed_in_v1_6 | Ordering party & address CRUD; ordering party hidden until unlock |
+| B.1.5 | Master data + visibility | Task 4, matrix | gap_closed_in_v1_6 | Customer & address CRUD; customer hidden until unlock |
 | B.2 | Under review / Completed labels | `client_status_mapping` | design_decision | Display status derived from docs + settlement (not extra operational statuses) |
 | B.2.2 | Status history & notifications | Task 22, channels matrix | gap_closed_in_v1_6 | Audit log; admin notification feed; driver inbox |
 | C.1 | Report Problem (cancel / not performable) | Task 12–14 | covered | Slide cancel (10+ chars); special case flow |
 | C.2 | Notification channels | Task 20, matrix | gap_closed_in_v1_6 | In-app feeds; push prefs; no push on direct assign |
 | C.3 | Infopoint tabs & badge | Task 18 | gap_closed_in_v1_6 | Admin **Infopoint** nav: General documents + New messages publish; driver tabs, badge, view/download stub |
-| D | Open questions / partner master data | `client_feedback_resolved`, Task 3 | gap_closed_in_v1_6 | Drivers submit change requests (not self-edit); admin **Profile change requests** queue with Approve & save / Reject |
+| D | Open questions / driver master data | `client_feedback_resolved`, Task 3 | gap_closed_in_v1_6 | Drivers submit change requests (not self-edit); admin **Profile change requests** queue with Approve & save / Reject |
 
 ---
 
@@ -105,7 +105,7 @@ Full detail: [`../requirements/prd-prototype-validation.md`](../requirements/prd
 
 **Closed in prototype (2026-05-25 gap pass):** cancel binding warning + terms; seven cancel reasons; not-performable evidence upload; Report Problem warning icon; admin order-entry formatters (`inputFormatters.js`).
 
-**Closed in prototype (2026-05-25 profile requests):** persistent `masterDataChangeRequests` queue; admin nav with open-count badge; inline partner edit on request detail; **Approve & save** (save then close) and **Reject**; driver pending state when one open request exists; notification feed **Review request** deep-link; driver in-app notifications on resolution.
+**Closed in prototype (2026-05-25 profile requests):** persistent `masterDataChangeRequests` queue; admin nav with open-count badge; inline driver edit on request detail; **Approve & save** (save then close) and **Reject**; driver pending state when one open request exists; notification feed **Review request** deep-link; driver in-app notifications on resolution.
 
 ---
 

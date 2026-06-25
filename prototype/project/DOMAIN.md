@@ -11,8 +11,8 @@ Seven values only — no `return_requested`, no operational `completed`:
 | `draft` | Internal preparation |
 | `published` | On driver marketplace |
 | `assigned` | Direct dispatch from draft |
-| `accepted` | Partner accepted from marketplace |
-| `performed` | Partner finished the transfer |
+| `accepted` | Driver accepted from marketplace |
+| `performed` | Driver finished the transfer |
 | `cancelled` | Ended (admin or Report Problem cancel) |
 | `special_case` | Not performable; dispatch decides next step |
 
@@ -37,11 +37,11 @@ Examples: `Not Started`, `Uploaded`, `Under Review`, `Correction Required`, `Acc
 
 Canonical type code: **`invoice`**. UI label: **Billing invoice**. Module nav: **Tour documents** (route id `invoices` in HTML shell).
 
-## Ordering party vs display fields
+## Customer vs display fields
 
-Wireframe and admin UI label this entity **Customer** (DE: **Kunde**). The data model keeps `orderingPartyId` / `orderingPartyName` for billing and reporting separation from pickup/delivery addresses.
+Wireframe and admin UI label this entity **Customer** (DE: **Kunde**). The prototype keeps older internal field names for billing and reporting separation from pickup/delivery addresses; production data design uses `customer` terminology.
 
-- **Source of truth:** `orderingPartyId`, `orderingPartyName`, `pickup`, `delivery`.
+- **Source of truth:** customer context, `pickup`, and `delivery`.
 - **Denormalized fields** (`customer`, `startCity`, …): computed by `syncDisplayFields()` for tables, search, and CSV export.
 
 ## Report Problem

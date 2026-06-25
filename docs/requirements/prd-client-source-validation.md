@@ -56,7 +56,7 @@ From `client_feedback_traceability` in `prd.json`:
 
 | Client question | PRD resolution |
 |-----------------|----------------|
-| Service partner master data editable? | Yes — Task 3, `client_feedback_resolved` |
+| Driver master data editable? | Yes — Task 3, `client_feedback_resolved` |
 | iPad / tablet? | Phone-first, best-effort — Task 25 |
 | Audit log language? | English keys, localized UI |
 | Program name AUTHEON? | Configurable display name |
@@ -68,18 +68,18 @@ From `client_feedback_traceability` in `prd.json`:
 
 | REQ | Meeting topic | PRD evidence |
 |-----|---------------|--------------|
-| 001–003 | Order model / ordering party | `important_notes`, Tasks 4–5, `driver_visibility_matrix`, domain fields |
+| 001–003 | Order model / customer | `important_notes`, Tasks 4–5, `driver_visibility_matrix`, domain fields |
 | 004–006 | Address master, optional save, country | Task 4, `scope_alignment`, `pickupCountry`, save-to-master in prototype notes |
 | 007 | External navigation | Task 8, 28, `global_business_rules` |
 | 008 | Marketplace + pull refresh | `marketplace_sync_policy`, Task 7 |
 | 009–010 | Driver push, admin email | `notification_channels_matrix`, Tasks 19–20 |
 | 011–012 | Documents + review | Task 27, rejection examples, correction flow |
-| 013 | Partner invoices | Task 27 / optional scope, tour documents |
+| 013 | Driver invoices | Task 27 / optional scope, tour documents |
 | 014 | No finance dashboard | `scope_alignment.future_scope`, `important_notes` |
 | 015 | Ops vs document status | `client_status_mapping` |
 | 016 | Special cases | Tasks 12–14, Report Problem |
 | 017 | Infopoint | Task 18 |
-| 018 | Service partner lifecycle | Task 3, blocked/archive |
+| 018 | Driver lifecycle | Task 3, blocked/archive |
 | 019 | Auth | `v1_optional_or_needs_decision`, Task 2 — **open for production** |
 | 020 | Vehicle condition | `future_scope` |
 | 021 | No Excel migration | Rollout from zero, `important_notes` |
@@ -98,7 +98,7 @@ From `client_feedback_traceability` in `prd.json`:
 | Document rejection / correction | `global_business_rules`, `correction_required` |
 | Final app name | `production_open_questions`, `client_feedback_resolved` |
 | Documents in V1 vs V2? | `v1_optional_or_needs_decision` (tour documents) |
-| Service partner extra fields | Risks / Task 3 (flexible) |
+| Driver extra fields | Risks / Task 3 (flexible) |
 
 ---
 
@@ -113,7 +113,7 @@ Documented in `prd-changelog-since-2026-05-20.md`. Each cluster traces to client
 | Draft permanent delete | B.2 Draft — admin may delete | — |
 | New job on Jobs overview (no sidebar duplicate) | B.1 order creation UX | 3.1 Order creation |
 | Cancel slide min. 10 characters | C.1 cancellation explanation | 3.12 Cancellation |
-| Ordering party select (not free text only) | B.1.2a ordering party | 3.2, REQ 003 |
+| Customer select (not free text only) | B.1.2a customer | 3.2, REQ 003 |
 | Pickup/delivery master data + CRUD | B.1.5, B.1.2b/c | 3.3–3.4, REQ 004–005 |
 | Separate pickup/delivery schedules | B.1.1 | 3.1, REQ 002 |
 | Direct assign / reassign picker | Implied assigned vs published | 3.11 / binding acceptance |

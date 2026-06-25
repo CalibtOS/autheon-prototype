@@ -20,7 +20,7 @@
 
 ### Driver visibility and transitions
 
-Before acceptance, marketplace users see only decision-safe information: rough route, relevant dates, vehicle type, axle type, and payout. Ordering party, full locations, contacts, vehicle identifiers, and operational notes remain hidden.
+Before acceptance, marketplace users see only decision-safe information: rough route, relevant dates, vehicle type, axle type, and payout. Customer, full locations, contacts, vehicle identifiers, and operational notes remain hidden.
 
 ```text
 Draft ──publish──> Published ──binding acceptance──> Accepted ──mark performed──> Performed
@@ -39,9 +39,9 @@ The former return-request and return-window flow is not part of the current prod
 | --- | --- |
 | Jobs | Daily operational overview, filters, New Job primary action, job detail, publish, direct assignment, reassignment, draft deletion, cancellation, and special-case resolution. |
 | Notifications | Critical-event feed with deep links to the related tour or master-data request. |
-| Profile change requests | Review, edit, approve, or reject service-partner master-data changes. |
-| Users | Service-partner and admin account management. |
-| Ordering parties | Reusable reporting and billing entities. |
+| Profile change requests | Review, edit, approve, or reject driver master-data changes. |
+| Users | Driver and admin account management. |
+| Customers | Reusable reporting and billing entities. |
 | Addresses | Reusable pickup and delivery locations and contacts. |
 | Infopoint | General documents and news publishing. |
 | Tour documents | Per-tour document review, document type/review/source filters, and billing-invoice handling. |

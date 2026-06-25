@@ -3,7 +3,7 @@
 
 Enum user_role {
   admin
-  service_partner
+  driver
 }
 
 Enum user_status {
@@ -74,6 +74,19 @@ Enum settlement_status {
   closed
 }
 
+Enum invoice_payment_status {
+  invoice_missing
+  invoice_received
+  paid
+  needs_clarification
+}
+
+Enum cancellation_actor {
+  driver
+  admin
+  customer
+}
+
 Enum notification_channel {
   in_app
   push
@@ -123,7 +136,7 @@ Table authentication_identities {
   }
 }
 
-Table service_partners {
+Table drivers {
   id uuid [pk]
   user_id uuid [not null, unique]
   partner_code varchar(64) [not null, unique]
@@ -140,13 +153,16 @@ Table service_partners {
   updated_at timestamptz [not null]
 }
 
-Table ordering_parties {
+Table customers {
   id uuid [pk]
   name varchar(255) [not null]
+  party_type varchar(100)
   billing_reference varchar(255)
   contact_name varchar(255)
   contact_email citext
   contact_phone varchar(64)
+  billing_notes text
+  operational_instructions text
   notes text
   is_active boolean [not null, default: true]
   created_at timestamptz [not null]
@@ -178,11 +194,14 @@ Table jobs {
   id uuid [pk]
   tour_number varchar(32) [not null, unique]
   category varchar(100) [not null]
-  ordering_party_id uuid [not null]
-  ordering_party_name_snapshot varchar(255) [not null]
-  ordering_party_billing_reference_snapshot varchar(255)
+  customer_id uuid [not null]
+  customer_name_snapshot varchar(255) [not null]
+  customer_type_snapshot varchar(100)
+  customer_billing_reference_snapshot varchar(255)
+  customer_billing_notes_snapshot text
+  customer_instructions_snapshot text
   operational_status job_status [not null, default: 'draft']
-  current_service_partner_id uuid
+  current_driver_id uuid
   distance_km numeric(10,2)
   distance_manual_override_km numeric(10,2)
   distance_estimate_source varchar(100)
@@ -202,6 +221,9 @@ Table jobs {
   performed_at timestamptz
   cancelled_at timestamptz
   cancelled_by_user_id uuid
+  cancellation_actor cancellation_actor
+  cancellation_reason_code varchar(100)
+  cancellation_reason_text text
 }
 
 Table job_locations {
@@ -235,7 +257,7 @@ Table job_locations {
 Table job_assignments {
   id uuid [pk]
   job_id uuid [not null]
-  service_partner_id uuid [not null]
+  driver_id uuid [not null]
   assignment_type assignment_type [not null]
   assigned_by_user_id uuid
   started_at timestamptz [not null]
@@ -251,6 +273,7 @@ Table job_status_history {
   next_status job_status [not null]
   occurred_at timestamptz [not null]
   actor_user_id uuid
+  evidence_document_file_id uuid
   comment text
   metadata jsonb
 
@@ -279,6 +302,9 @@ Table job_financials {
   expenses_amount numeric(12,2)
   currency_code char(3) [not null, default: 'EUR']
   tax_rate numeric(5,2)
+  invoice_received boolean [not null, default: false]
+  admin_invoice_override boolean
+  payment_status invoice_payment_status [not null, default: 'invoice_missing']
   notes text
   updated_at timestamptz [not null]
   updated_by_user_id uuid
@@ -287,7 +313,9 @@ Table job_financials {
 Table job_problem_reports {
   id uuid [pk]
   job_id uuid [not null]
-  reported_by_user_id uuid [not null]
+  reported_by_user_id uuid
+  reported_by_actor cancellation_actor [not null]
+  reported_by_customer_id uuid
   problem_type problem_type [not null]
   reason_code varchar(100) [not null]
   reason_text text
@@ -320,6 +348,7 @@ Table job_documents {
   supplier_invoice_number varchar(100)
   supplier_invoice_date date
   notes text
+  current_file_id uuid
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
 }
@@ -335,6 +364,7 @@ Table document_files {
   scan_status varchar(32) [not null, default: 'pending']
   scanned_at timestamptz
   created_at timestamptz [not null]
+  supersedes_file_id uuid
   superseded_at timestamptz
 }
 
@@ -364,7 +394,7 @@ Table generated_job_documents {
 
 Table master_data_change_requests {
   id uuid [pk]
-  service_partner_id uuid [not null]
+  driver_id uuid [not null]
   requested_by_user_id uuid [not null]
   status varchar(32) [not null, default: 'open'] // open | approved | rejected
   requester_note text [not null]
@@ -381,7 +411,9 @@ Table infopoint_documents {
   title varchar(255) [not null]
   description text
   category varchar(100)
-  document_file_id uuid
+  scope varchar(100) [not null, default: 'global']
+  version_label varchar(64)
+  current_file_id uuid
   is_visible boolean [not null, default: true]
   published_at timestamptz [not null]
   updated_at timestamptz [not null]
@@ -478,6 +510,13 @@ Table feature_flags {
   updated_by_user_id uuid
 }
 
+Table app_settings {
+  key varchar(100) [pk]
+  value jsonb [not null]
+  updated_at timestamptz [not null]
+  updated_by_user_id uuid
+}
+
 Table audit_events {
   id uuid [pk]
   occurred_at timestamptz [not null]
@@ -497,25 +536,27 @@ Table audit_events {
 Ref: user_roles.user_id > app_users.id
 Ref: user_roles.granted_by_user_id > app_users.id
 Ref: authentication_identities.user_id > app_users.id
-Ref: service_partners.user_id > app_users.id
+Ref: drivers.user_id > app_users.id
 
-Ref: jobs.ordering_party_id > ordering_parties.id
-Ref: jobs.current_service_partner_id > service_partners.id
+Ref: jobs.customer_id > customers.id
+Ref: jobs.current_driver_id > drivers.id
 Ref: jobs.created_by_user_id > app_users.id
 Ref: jobs.cancelled_by_user_id > app_users.id
 Ref: job_locations.job_id > jobs.id
 Ref: job_locations.master_location_id > locations.id
 Ref: job_assignments.job_id > jobs.id
-Ref: job_assignments.service_partner_id > service_partners.id
+Ref: job_assignments.driver_id > drivers.id
 Ref: job_assignments.assigned_by_user_id > app_users.id
 Ref: job_status_history.job_id > jobs.id
 Ref: job_status_history.actor_user_id > app_users.id
+Ref: job_status_history.evidence_document_file_id > document_files.id
 Ref: job_distance_estimates.job_id > jobs.id
 Ref: job_distance_estimates.calculated_by_user_id > app_users.id
 Ref: job_financials.job_id > jobs.id
 
 Ref: job_problem_reports.job_id > jobs.id
 Ref: job_problem_reports.reported_by_user_id > app_users.id
+Ref: job_problem_reports.reported_by_customer_id > customers.id
 Ref: job_problem_reports.resolved_by_user_id > app_users.id
 Ref: problem_report_evidence.problem_report_id > job_problem_reports.id
 Ref: problem_report_evidence.document_file_id > document_files.id
@@ -524,15 +565,17 @@ Ref: job_documents.job_id > jobs.id
 Ref: job_documents.uploaded_by_user_id > app_users.id
 Ref: job_documents.processed_by_user_id > app_users.id
 Ref: document_files.job_document_id > job_documents.id
+Ref: document_files.supersedes_file_id > document_files.id
+Ref: job_documents.current_file_id > document_files.id
 Ref: job_document_reviews.job_document_id > job_documents.id
 Ref: job_document_reviews.reviewer_user_id > app_users.id
 Ref: generated_job_documents.job_id > jobs.id
 Ref: generated_job_documents.document_file_id > document_files.id
 
-Ref: master_data_change_requests.service_partner_id > service_partners.id
+Ref: master_data_change_requests.driver_id > drivers.id
 Ref: master_data_change_requests.requested_by_user_id > app_users.id
 Ref: master_data_change_requests.resolved_by_user_id > app_users.id
-Ref: infopoint_documents.document_file_id > document_files.id
+Ref: infopoint_documents.current_file_id > document_files.id
 Ref: infopoint_documents.updated_by_user_id > app_users.id
 Ref: infopoint_news.created_by_user_id > app_users.id
 Ref: infopoint_news_reads.news_id > infopoint_news.id
@@ -545,5 +588,6 @@ Ref: user_notifications.job_id > jobs.id
 Ref: notification_deliveries.outbox_event_id > outbox_events.id
 Ref: notification_deliveries.recipient_user_id > app_users.id
 Ref: feature_flags.updated_by_user_id > app_users.id
+Ref: app_settings.updated_by_user_id > app_users.id
 Ref: audit_events.actor_user_id > app_users.id
 Ref: audit_events.job_id > jobs.id

@@ -4,13 +4,13 @@
 
 ## Product and users
 
-AUTHEON is a vehicle-transport operations platform with two surfaces: a mobile-first driver PWA for service partners and an admin console for dispatch. The first release supports simple A-to-B vehicle tours only.
+AUTHEON is a vehicle-transport operations platform with two surfaces: a mobile-first driver PWA for drivers and an admin console for dispatch. The first release supports simple A-to-B vehicle tours only.
 
 ## Version 1 workflow
 
-1. Dispatch creates a draft with an ordering party, separate pickup and delivery locations, schedules, vehicle data, and operational notes.
-2. Dispatch either publishes the tour to the marketplace or directly assigns an active service partner. These paths are mutually exclusive.
-3. A service partner accepts a published tour through a binding confirmation; the driver receives full tour data only after acceptance or direct assignment.
+1. Dispatch creates a draft with a customer, separate pickup and delivery locations, schedules, vehicle data, and operational notes.
+2. Dispatch either publishes the tour to the marketplace or directly assigns an active driver. These paths are mutually exclusive.
+3. A driver accepts a published tour through a binding confirmation; the driver receives full tour data only after acceptance or direct assignment.
 4. The driver marks the tour as performed, uploads any required tour documents, or uses **Report Problem** to cancel with a reason or report the tour as not performable.
 5. Dispatch resolves special cases, reviews tour documents, and manages settlement separately from operational status.
 

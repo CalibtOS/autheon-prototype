@@ -20,7 +20,7 @@ This directory is the proposed production data design for AUTHEON Version 1.
 
 - Relational source of truth; no document database or spreadsheet-style job record.
 - UUID primary keys, `timestamptz` timestamps, `numeric(12,2)` monetary values, and ISO country codes.
-- Job addresses and ordering-party details are snapshotted at order creation; later master-data edits do not rewrite historical tours.
+- Job addresses and customer details are snapshotted at order creation; later master-data edits do not rewrite historical tours.
 - Operational status, document-review status, and settlement status are independent.
 - Job status, assignment, document review, and audit history are append-only records; current values are stored on the primary row for query efficiency.
 - File bytes stay in object storage; PostgreSQL stores metadata, version references, review state, and access/audit information only.
