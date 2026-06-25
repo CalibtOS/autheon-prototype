@@ -20,7 +20,7 @@
 
 ### Driver visibility and transitions
 
-Before acceptance, marketplace users see only decision-safe information: rough route, relevant dates, vehicle type, axle type, and payout. Customer, full locations, contacts, vehicle identifiers, and operational notes remain hidden.
+Before acceptance, marketplace users see only decision-safe information: rough route, relevant dates, vehicle type, axle type, and driver offer. Customer, full locations, contacts, vehicle identifiers, and operational notes remain hidden.
 
 ```text
 Draft ──publish──> Published ──binding acceptance──> Accepted ──mark performed──> Performed

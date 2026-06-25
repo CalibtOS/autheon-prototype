@@ -470,8 +470,8 @@
           );
         } else if (section === "users") {
           body = <UsersPane showToast={showToast} />;
-        } else if (section === "orderingparties") {
-          body = <OrderingPartiesPane showToast={showToast} />;
+        } else if (section === "customers") {
+          body = <CustomersPane showToast={showToast} />;
         } else if (section === "addresses") {
           body = <AddressesPane showToast={showToast} />;
         } else if (section === "infopoint") {
@@ -530,7 +530,7 @@
         } else {
           const stubTitles = {
             users: [t("navUsers"), t("usersDesc")],
-            orderingparties: [
+            customers: [
               t("navCustomers") || "Customers",
               t("adminCustomersDesc"),
             ],

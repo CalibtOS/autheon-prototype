@@ -37,7 +37,7 @@ const displayDriverStatus = (value, t) =>
 const displayDocTitle = (doc, t) =>
   ({
     "DOC-001": t("docGeneralWorkInstructions"),
-    "DOC-002": t("docPartnerTerms"),
+    "DOC-002": t("docDriverTerms"),
     "DOC-003": t("docEmergencyContacts"),
     "DOC-004": t("docPrivacyPolicy"),
     "DOC-005": t("docImprint"),
@@ -63,8 +63,8 @@ const displayDriverNote = (note, t) =>
     ),
   })[note] || note;
 
-const fmtPartnerOffer = (job) => {
-  const n = job?.driverCompensation;
+const fmtDriverOffer = (job) => {
+  const n = job?.driverOffer;
   if (n == null || n === "") return 0;
   const v = Number(n);
   return Number.isFinite(v) ? v : 0;
@@ -108,7 +108,7 @@ const jobNeedsDocCorrection = (job, store) =>
     store
       .getTourDocumentsForJob(job.id)
       .some((d) =>
-        AuthStore.tourDocumentNeedsPartnerCorrection(d.reviewStatus),
+        AuthStore.tourDocumentNeedsDriverCorrection(d.reviewStatus),
       ));
 
 const Ic = {
@@ -608,7 +608,7 @@ const JobCard = ({ job, onOpen }) => {
       >
         <RouteStack job={job} />
         <div style={{ textAlign: "right" }}>
-          <div className="partner-offer">€ {fmtPartnerOffer(job).toFixed(2)}</div>
+          <div className="driver-offer">€ {fmtDriverOffer(job).toFixed(2)}</div>
           <Lbl
             className="label"
             style={{ marginTop: 6, display: "inline-block" }}
@@ -1265,12 +1265,12 @@ const JobLocked = ({ job, onBack, onAccept }) => {
             alignItems: "center",
           }}
         >
-          <Lbl>{t("partnerOffer")}</Lbl>
+          <Lbl>{t("driverOffer")}</Lbl>
           <div
             style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em" }}
             className="tnum"
           >
-            € {fmtPartnerOffer(job).toFixed(2)}
+            € {fmtDriverOffer(job).toFixed(2)}
           </div>
         </div>
 
@@ -1437,7 +1437,7 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
             style={{ fontSize: 18, fontWeight: 700, marginTop: 10 }}
             className="tnum"
           >
-            € {fmtPartnerOffer(job).toFixed(2)}
+            € {fmtDriverOffer(job).toFixed(2)}
           </div>
         </div>
 
@@ -1457,7 +1457,7 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
             }}
             onClick={() => window.alert(t("partnerPolicyAlert"))}
           >
-            {t("viewPartnerPolicy")}
+            {t("viewDriverPolicy")}
           </button>
         </div>
 
@@ -1898,9 +1898,9 @@ const JobUnlocked = ({
             background: "var(--paper-2)",
           }}
         >
-          <Lbl>{t("orderingPartyLabel")}</Lbl>
+          <Lbl>{t("customerLabel")}</Lbl>
           <div style={{ fontWeight: 600, fontSize: 14, marginTop: 6 }}>
-            {job.orderingPartyName || job.customer || "—"}
+            {job.customerName || job.customer || "—"}
           </div>
         </div>
 
@@ -2164,7 +2164,7 @@ const JobUnlocked = ({
           }}
         >
           <div>
-            <Lbl>{t("partnerOffer")}</Lbl>
+            <Lbl>{t("driverOffer")}</Lbl>
             <div
               className="mono"
               style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}
@@ -2176,7 +2176,7 @@ const JobUnlocked = ({
             style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em" }}
             className="tnum"
           >
-            € {fmtPartnerOffer(job).toFixed(2)}
+            € {fmtDriverOffer(job).toFixed(2)}
           </div>
         </div>
 
@@ -2349,7 +2349,7 @@ const MyJobs = ({ onOpen }) => {
                 style={{ textAlign: "right", fontSize: 19, fontWeight: 700 }}
                 className="tnum"
               >
-                € {fmtPartnerOffer(job).toFixed(2)}
+                € {fmtDriverOffer(job).toFixed(2)}
               </div>
             </div>
             <hr className="dash" style={{ margin: "12px 0 8px" }} />
@@ -2374,7 +2374,7 @@ const MyJobs = ({ onOpen }) => {
 const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   const { t } = useI18n();
   const [path, setPath] = useState(null);
-  const [reason, setReason] = useState("partner_unavailable");
+  const [reason, setReason] = useState("driver_unavailable");
   const [text, setText] = useState("");
   const [slidePos, setSlidePos] = useState(0);
   const [slideDone, setSlideDone] = useState(false);
@@ -2393,9 +2393,9 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   ];
   const cancelReasons = [
     [
-      "partner_unavailable",
-      t("reportCancelPartnerUnavailable"),
-      t("reportCancelPartnerUnavailableSub"),
+      "driver_unavailable",
+      t("reportCancelDriverUnavailable"),
+      t("reportCancelDriverUnavailableSub"),
     ],
     [
       "vehicle_not_available",
@@ -2403,9 +2403,9 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
       t("reportCancelVehicleNotAvailableSub"),
     ],
     [
-      "ordering_party_cancelled",
-      t("reportCancelOrderingPartyCancelled"),
-      t("reportCancelOrderingPartyCancelledSub"),
+      "customer_cancelled",
+      t("reportCancelCustomerCancelled"),
+      t("reportCancelCustomerCancelledSub"),
     ],
     [
       "appointment_not_possible",
@@ -2518,7 +2518,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                   onClick={() => {
                     setPath(id);
                     setReason(
-                      id === "cancel" ? "partner_unavailable" : "other",
+                      id === "cancel" ? "driver_unavailable" : "other",
                     );
                     setText("");
                     setEvidenceFiles([]);
@@ -2711,7 +2711,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                         }}
                         onClick={() => window.alert(t("partnerPolicyAlert"))}
                       >
-                        {t("viewPartnerPolicy")}
+                        {t("viewDriverPolicy")}
                       </button>
                     </p>
                   </div>
@@ -2895,7 +2895,7 @@ const ProfilePane = () => {
             {AuthStore.DEMO_DRIVER}
           </div>
           <div className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>
-            {t("partnerId")}: AU-41-0228 · {t("driverStatusActive")}
+            {t("driverCode")}: AU-41-0228 · {t("driverStatusActive")}
           </div>
         </div>
       </div>
@@ -3107,7 +3107,7 @@ const ProfilePaneFull = () => {
         <div>
           <div style={{ fontWeight: 700, fontSize: 16 }}>{d?.name}</div>
           <div className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>
-            {t("partnerId")}: {d?.partnerId} ·{" "}
+            {t("driverCode")}: {d?.driverCode} ·{" "}
             {displayDriverStatus(d?.status, t)}
           </div>
         </div>

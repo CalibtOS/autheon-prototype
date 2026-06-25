@@ -1,10 +1,5 @@
-// AUTHEON Version 1 database draft — PostgreSQL target.
+﻿// AUTHEON Version 1 database draft — PostgreSQL target.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
-
-Enum user_role {
-  admin
-  driver
-}
 
 Enum user_status {
   active
@@ -93,7 +88,7 @@ Enum notification_channel {
   email
 }
 
-Enum delivery_status {
+Enum message_delivery_status {
   pending
   processing
   delivered
@@ -103,6 +98,7 @@ Enum delivery_status {
 
 Table app_users {
   id uuid [pk]
+  keycloak_subject varchar(255) [not null, unique]
   email citext [not null, unique]
   display_name varchar(200) [not null]
   status user_status [not null, default: 'active']
@@ -112,34 +108,10 @@ Table app_users {
   archived_at timestamptz
 }
 
-Table user_roles {
-  user_id uuid [not null]
-  role user_role [not null]
-  granted_at timestamptz [not null]
-  granted_by_user_id uuid
-
-  indexes {
-    (user_id, role) [pk]
-  }
-}
-
-Table authentication_identities {
-  id uuid [pk]
-  user_id uuid [not null]
-  provider varchar(80) [not null]
-  provider_subject varchar(255) [not null]
-  created_at timestamptz [not null]
-  last_authenticated_at timestamptz
-
-  indexes {
-    (provider, provider_subject) [unique]
-  }
-}
-
 Table drivers {
   id uuid [pk]
   user_id uuid [not null, unique]
-  partner_code varchar(64) [not null, unique]
+  driver_code varchar(64) [not null, unique]
   company_name varchar(255) [not null]
   contact_name varchar(255)
   street varchar(255)
@@ -156,7 +128,7 @@ Table drivers {
 Table customers {
   id uuid [pk]
   name varchar(255) [not null]
-  party_type varchar(100)
+  customer_type varchar(100)
   billing_reference varchar(255)
   contact_name varchar(255)
   contact_email citext
@@ -298,7 +270,7 @@ Table job_distance_estimates {
 Table job_financials {
   job_id uuid [pk]
   revenue_amount numeric(12,2)
-  driver_compensation_amount numeric(12,2)
+  driver_offer_amount numeric(12,2)
   expenses_amount numeric(12,2)
   currency_code char(3) [not null, default: 'EUR']
   tax_rate numeric(5,2)
@@ -485,7 +457,7 @@ Table outbox_events {
   payload jsonb [not null]
   occurred_at timestamptz [not null]
   available_at timestamptz [not null]
-  status delivery_status [not null, default: 'pending']
+  status message_delivery_status [not null, default: 'pending']
   deduplication_key varchar(255) [unique]
 }
 
@@ -495,7 +467,7 @@ Table notification_deliveries {
   channel notification_channel [not null]
   recipient_user_id uuid
   recipient_address varchar(500)
-  status delivery_status [not null, default: 'pending']
+  status message_delivery_status [not null, default: 'pending']
   provider_message_id varchar(255)
   attempted_at timestamptz
   delivered_at timestamptz
@@ -533,9 +505,6 @@ Table audit_events {
   }
 }
 
-Ref: user_roles.user_id > app_users.id
-Ref: user_roles.granted_by_user_id > app_users.id
-Ref: authentication_identities.user_id > app_users.id
 Ref: drivers.user_id > app_users.id
 
 Ref: jobs.customer_id > customers.id

@@ -51,7 +51,7 @@
     "Status model (demo): operational statuses draft, published, accepted, assigned, performed, cancelled, special_case only — no return_requested or completed.",
     "Branding (demo): configurable display name default Transport Portal; AUTHEON not shown in UI chrome.",
     "i18n: EN/DE for UI strings; audit log action keys in English.",
-    "Seed data: 10 jobs, 5 customers, 17 addresses, 3 drivers (2 active, 1 blocked), 6 tour-linked seed documents (only on performed tours; rejected invoice on performed 0842, not on active tours), sample admin email alerts, expanded audit log; validateSeedData() on load checks contacts, addresses, schedules, vehicle IDs, driver compensation, history, driverState consistency, performed-tour documents, and no documents on non-performed jobs."
+    "Seed data: 10 jobs, 5 customers, 17 addresses, 3 drivers (2 active, 1 blocked), 6 tour-linked seed documents (only on performed tours; rejected invoice on performed 0842, not on active tours), sample admin email alerts, expanded audit log; validateSeedData() on load checks contacts, addresses, schedules, vehicle IDs, driver offer, history, driverState consistency, performed-tour documents, and no documents on non-performed jobs."
   ],
   "prototype_validation": {
     "last_synced": "2026-05-25",
@@ -70,7 +70,7 @@
       "2026-05-21: Customer and address master data CRUD in prototype (create/edit/delete/deactivate, usage guards, job form integration).",
       "2026-05-21: New job form and displays use separate pickup and delivery dates/time windows (multi-day tours supported).",
       "2026-05-21: Admin Driver invoices nav renamed Tour documents with type/review/source filters and document-type column; off-channel register supports all tour document types.",
-      "2026-05-21: Canonical tour billing invoice document type is `invoice` only; `partner_invoice` removed and normalized in prototype store.",
+      "2026-05-21: Canonical tour billing invoice document type is `invoice` only; the legacy billing-invoice code was removed and normalized in prototype store.",
       "2026-05-21: Tour document review uses uploaded, accepted, rejected, and correction_required; admin Require correction promotes rejected → correction_required for driver workflow.",
       "2026-05-21: paymentStatus defaults to Invoice Missing; accepting tour invoice sets Invoice Received; Paid only via Finance manual edit.",
       "2026-05-23 v1.6 spec: Added client_feedback_traceability, driver_visibility_matrix, notification_channels_matrix, marketplace_sync_policy, client_status_mapping in prd.json.",
@@ -130,7 +130,7 @@
       "VIN",
       "axle type: driven on own wheels / third-party axle",
       "price/revenue if operationally needed",
-      "driver compensation if operationally needed",
+      "driver offer if operationally needed",
       "expenses if operationally needed",
       "internal notes",
       "driver-visible notes",
@@ -214,7 +214,7 @@
       "rejection reason optional",
       "storage reference"
     ],
-    "partner_invoice_document_fields": [
+    "billing_invoice_document_fields": [
       "document id",
       "job id",
       "driver id and display name",
@@ -259,7 +259,7 @@
       "request id",
       "driverId / driver id",
       "driver display name",
-      "partnerId snapshot",
+      "driverCode snapshot",
       "driver note (min length in prototype: 10)",
       "status: open | approved | rejected",
       "createdAt",
@@ -277,7 +277,7 @@
       "stored on specialCaseReport.evidence for not-performable (prototype: metadata only, no blob storage)"
     ],
     "cancellation_reason_codes_v1": [
-      "partner_unavailable",
+      "driver_unavailable",
       "vehicle_not_available",
       "customer_cancelled",
       "appointment_not_possible",
@@ -295,7 +295,7 @@
     "Admin may permanently delete Draft jobs that were created in error or are no longer needed. Deletion is allowed only while status is Draft; published or committed jobs use cancel, revert, or special-case flows instead.",
     "Driver acceptance must be atomic. Only one driver can successfully accept a Published job.",
     "After acceptance or direct assignment, sensitive job details become visible only to the assigned or accepting driver.",
-    "Before acceptance, marketplace previews show only reduced data such as rough pickup/delivery region, distance, relevant dates/time windows, vehicle type, axle type, and compensation/price where applicable.",
+    "Before acceptance, marketplace previews show only reduced data such as rough pickup/delivery region, distance, relevant dates/time windows, vehicle type, axle type, and driver offer and customer price where applicable.",
     "Directly assigned jobs appear in the assigned driver's My Jobs area and do not appear in the marketplace.",
     "Admin may reassign a different active driver on tours in Assigned, Accepted, or Special Case without changing operational status; reassignment is audited and notifies the tour context.",
     "Published tours cannot be directly reassigned without returning to Draft first.",
@@ -371,10 +371,10 @@
       "priority": 2,
       "story": "As an admin or driver, I want secure role-based access so every user only sees and changes allowed data while driver access stays simple.",
       "acceptance": [
-        "Roles supported: Admin/Dispatcher and Driver/Driver; optional backend user roles may be added for invoice reviewers or finance users if needed.",
+        "Keycloak is the identity provider and source of truth for application roles/groups.",
         "Each driver has protected individual access because invoices and documents may be uploaded.",
-        "Preferred driver authentication direction is magic link, one-time access link, account key, or token-based account connection if technically appropriate.",
-        "Password-based login remains a fallback only if required; avoid unnecessary password reset complexity where possible.",
+        "AUTHEON stores a local app user profile linked to the Keycloak subject; it does not store passwords or duplicate role-assignment tables.",
+        "Exact driver login ceremony is configured in Keycloak and should avoid unnecessary password reset complexity where possible.",
         "Admin can resend or reset driver access.",
         "Admin can manage orders, customers, addresses, drivers, documents, driver invoices, Infopoint content, audit logs, and status decisions according to permissions.",
         "Driver can access only Published jobs in the marketplace, own Assigned/Accepted/Performed/Cancelled/Special Case jobs where allowed, profile, Information Center/Infopoint, and permitted PDFs/documents.",
@@ -403,7 +403,7 @@
         "Hard delete is avoided except for test records or records with no historical activity, subject to compliance rules.",
         "Admin can reset, resend, or regenerate driver access.",
         "Admin can create, edit, activate, and deactivate backend/admin accounts.",
-        "Every activation, block, inactive/archive/soft-delete, access reset, or role change event is logged.",
+        "Every activation, block, inactive/archive/soft-delete, access reset, or Keycloak role/group change consumed by AUTHEON is logged where available.",
         "Admin can reset or resend access for backend/admin users as well as drivers, subject to role permissions and audit logging.",
         "Admin can edit all driver master data fields including company name, person name, contact data, driver ID, notes, status, and access state; changes to status, block, archive, or access reset are audited.",
         "Drivers may submit a master-data change request with a minimum-length note when profile fields must change; they cannot edit master data fields directly in the driver PWA.",
@@ -453,7 +453,7 @@
       "priority": 5,
       "story": "As an admin, I want to create and save orders as drafts with structured sections for customer, pickup, delivery, time windows, vehicle data, distance, and notes.",
       "acceptance": [
-        "Creation form includes clear sections: Customer, Pickup Location, Delivery Location, Pickup Time Window, Delivery Time Window, Vehicle, Distance, Compensation/Price inputs if in scope, Driver Notes, and Internal Notes.",
+        "Creation form includes clear sections: Customer, Pickup Location, Delivery Location, Pickup Time Window, Delivery Time Window, Vehicle, Distance, Driver offer and customer price inputs if in scope, Driver Notes, and Internal Notes.",
         "Customer is required for reporting and billing context and must be chosen from customer master data via select control (not unstructured free-text entry).",
         "Selecting a customer sets customerId and display name and may prefill default contact fields where master data provides them.",
         "Pickup and delivery locations are independent sections and can be selected from shared address master data or entered freely.",
@@ -512,7 +512,7 @@
       "story": "As a driver, I want to browse available published jobs with filters and refresh behavior so I can find relevant transports.",
       "acceptance": [
         "Marketplace displays only jobs with status Published.",
-        "Job cards show reduced data: rough pickup region/postal code, rough delivery region/postal code, distance, relevant date/time window, vehicle type, axle type, and price/compensation where applicable.",
+        "Job cards show reduced data: rough pickup region/postal code, rough delivery region/postal code, distance, relevant date/time window, vehicle type, axle type, and driver offer and customer price where applicable.",
         "Before acceptance, full addresses, contact persons, phone numbers, VIN, license plate, internal notes, and sensitive instructions are not returned to the driver client.",
         "Filters include postal code or location, date or date range, vehicle type, and driven on own wheels versus third-party axle where applicable.",
         "German postal code prefix filtering supports at least one-digit and two-digit prefix filters such as 4, 40, or 41.",
@@ -541,7 +541,7 @@
       "priority": 8,
       "story": "As a driver, I want job details to show safe information before acceptance and full operational information plus navigation after commitment.",
       "acceptance": [
-        "Before acceptance, visible fields are limited to route summary, distance, relevant time windows, vehicle type, axle type, and price/compensation where applicable.",
+        "Before acceptance, visible fields are limited to route summary, distance, relevant time windows, vehicle type, axle type, and driver offer and customer price where applicable.",
         "Before acceptance, customer, full addresses, contacts, phone numbers, VIN, license plate, internal notes, and sensitive instructions are hidden.",
         "Locked section clearly explains that details unlock after acceptance.",
         "After acceptance or direct assignment, assigned driver can see full pickup and delivery addresses, contacts, phone numbers, vehicle identifiers, notes, customer context, and permitted PDF.",
@@ -595,7 +595,7 @@
         "Cancelled jobs are either shown in a separate tab or clearly labelled historical section if required by final UX.",
         "Special Case jobs remain visible to the assigned driver with clear status and next-step messaging until admin resolves them.",
         "Jobs requiring document correction show a correction indicator on Performed tours only, not on Active (assigned/accepted) tours.",
-        "Each job card shows route summary, date/time, vehicle type, price/compensation where applicable, and status badge.",
+        "Each job card shows route summary, date/time, vehicle type, driver offer and customer price where applicable, and status badge.",
         "Driver sees only own assigned, accepted, performed, cancelled, or special-case jobs.",
         "Driver in-app notification or badge surfaces document rejection, admin cancellation, and special case resolution on affected tours in My Jobs."
       ],
@@ -868,7 +868,7 @@
       "priority": 21,
       "story": "As an admin, I want only the basic operational financial fields needed for dispatch and driver invoice handling while full finance dashboards remain out of Version 1 unless confirmed.",
       "acceptance": [
-        "Basic job financial fields may include revenue/price, driver compensation, expenses, invoice received marker, invoice type, invoice number, payment status, and notes only where operationally useful.",
+        "Basic job financial fields may include revenue/price, driver offer, expenses, invoice received marker, invoice type, invoice number, payment status, and notes only where operationally useful.",
         "Full Finance dashboard and advanced finance analytics are not validated for base Version 1 and should be future scope or needs clarification.",
         "Driver invoice workflow remains separate from a full Finance dashboard.",
         "Job detail may show a read-only financial snapshot if useful, but primary document/invoice actions belong to Driver Invoices/Documents if included.",
@@ -1146,12 +1146,12 @@
       "phone",
       "email",
       "address",
-      "partnerId",
+      "driverCode",
       "notes",
       "status",
       "accessState"
     ],
-    "driver_auth_production": "Magic link or token-based access first; password fallback only if required.",
+    "driver_auth_production": "Keycloak selected for authentication. AUTHEON links app_users to the Keycloak subject; exact realm/client setup and driver login ceremony remain implementation configuration.",
     "admin_email_alerts_v1": "Global dispatcher mailbox list; per-event configuration deferred.",
     "blocked_inactive_history": "Inactive and archived: read-only historical tours; blocked: no marketplace actions, read-only history.",
     "pdf_generation_timing": "On acceptance or direct assignment, not on publish.",
@@ -1215,7 +1215,7 @@
     "master_data_crud": "Customers and addresses: full create/read/update/delete in admin UI; inactive flag; delete blocked when tours reference record; new job uses selects; optional save manual address to master on draft save.",
     "schedule_multi_day": "Pickup and delivery each have date + window from/to; prototype new job form, job detail, overview, and driver views show both legs; delivery before pickup shows admin warning only.",
     "tour_billing_workspace": "Admin nav labeled Tour documents lists all tourDocuments with filters (document type, review status, source) and type column; section id remains invoices in prototype HTML routing.",
-    "tour_invoice_document_type": "Single canonical code `invoice` for driver billing uploads; legacy `partner_invoice` normalized on load/write in store.",
+    "tour_invoice_document_type": "Single canonical code `invoice` for driver billing uploads; legacy billing-invoice codes are normalized on load/write in store.",
     "document_review_statuses_prototype": "Per-file review: uploaded, accepted, rejected, correction_required. Admin reject → rejected; Require correction → correction_required (driver badge + job Correction Required). Legacy missing/under_review → uploaded on load.",
     "payment_status_prototype": "paymentStatus values: Invoice Missing (default), Invoice Received (auto on invoice accept), Paid (manual Finance only). Unpaid removed; legacy Unpaid normalized to Invoice Missing.",
     "supplier_invoice_number_prototype": "Each tour document may store supplierInvoiceNumber and optional supplierInvoiceDate. Admin Accept on invoice type requires supplierInvoiceNumber (modal); acceptTourDocument() is the only path to accepted. job.invoiceNumber copies from the latest accepted invoice document, not from fileName. Replace/upload resets supplier fields until re-accepted.",
@@ -1276,7 +1276,7 @@
     "v1_optional_or_needs_decision": [
       "Tour-related document upload and review workflow",
       "Driver invoice review with bulk download",
-      "Exact driver authentication method",
+      "Keycloak realm/client configuration and exact driver login ceremony",
       "Admin email alert recipient configuration",
       "Tablet/iPad support target",
       "Audit log localization"

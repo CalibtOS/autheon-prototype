@@ -73,7 +73,7 @@ Same task IDs as v1.5; v1.6 strengthens Tasks 4, 5, 7, 8, 10, 18–20, 22, 26, 2
 node ../../prototype/project/_audit-prototype.mjs
 ```
 
-Expect: i18n EN/DE parity, PRD v1.5+v1.6 store APIs, v1.6 document summary string `Under Review`, three push pref keys, `alternateContactPerson`, no forbidden v1.4 strings, `DOMAIN.md` present, no legacy identifiers (`ReturnSheet`, `partner_invoice`, `use_partner_invoices`).
+Expect: i18n EN/DE parity, PRD v1.5+v1.6 store APIs, v1.6 document summary string `Under Review`, three push pref keys, `alternateContactPerson`, no forbidden v1.4 strings, `DOMAIN.md` present, and no legacy billing-invoice route identifiers.
 
 ## Clarity pass (2026-05)
 

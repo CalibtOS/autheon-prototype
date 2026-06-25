@@ -30,7 +30,7 @@ Production backend (DB, auth, SMTP, real file storage) remains **out of scope** 
 | A.3 | External map navigation | Task 8, 28 | covered | Map handoff buttons in tour detail |
 | A.4 | Tour documents upload/review | Task 27, document fields | gap_closed_in_v1_6 | Post-Performed upload; admin Tour documents; Under Review summary |
 | B.1.1 | Separate pickup/delivery schedule | Task 5 | covered | New job + job detail date/time windows |
-| B.1.2 | Party vs pickup vs delivery + contacts | Task 4–5, visibility matrix | gap_closed_in_v1_6 | New order form; `driver_visibility_matrix`; route contacts (5/24) |
+| B.1.2 | Customer vs pickup vs delivery + contacts | Task 4–5, visibility matrix | gap_closed_in_v1_6 | New order form; `driver_visibility_matrix`; route contacts (5/24) |
 | B.1.3 | Input formatting (date, VIN, plate) | Task 5 | covered | New order field masks / validation in admin |
 | B.1.4 | Distance estimate + override | Task 16, 28 | covered | Distance estimate/recalculate in admin |
 | B.1.5 | Master data + visibility | Task 4, matrix | gap_closed_in_v1_6 | Customer & address CRUD; customer hidden until unlock |

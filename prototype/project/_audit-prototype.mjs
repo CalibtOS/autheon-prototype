@@ -75,13 +75,13 @@ const critical = [
   "getTourDocuments",
   "acceptTourDocument",
   "registerTourDocumentAdmin",
-  "getOrderingParties",
+  "getCustomers",
   "getAddresses",
-  "updateOrderingParty",
-  "deleteOrderingParty",
+  "updateCustomer",
+  "deleteCustomer",
   "updateAddress",
   "deleteAddress",
-  "countJobsUsingOrderingParty",
+  "countJobsUsingCustomer",
   "countJobsUsingAddress",
   "getAppDisplayName",
   "setAppDisplayName",
@@ -132,14 +132,13 @@ const forbidden = [
   "submitReturn",
   "approveReturn",
   "completeJob",
-  "getCustomers",
   "getInvoiceUploads",
   "ReturnSheet",
   "returnSheet",
-  "use_partner_invoices",
-  "partner_invoice",
-  "onOpenPartnerInvoices",
-  "openPartnerInvoicesForJob",
+  "use_" + "part" + "ner_invoices",
+  "part" + "ner_invoice",
+  "onOpen" + "Part" + "nerInvoices",
+  "open" + "Part" + "nerInvoicesForJob",
 ];
 const scanFiles = ["store.js", "driver.jsx", "admin.jsx", "AUTHEON Prototype.html"];
 for (const f of scanFiles) {
@@ -180,8 +179,8 @@ const staleCopy = [
   "return deadline",
   "return rules",
   "Mark completed",
-  "Partner invoices",
-  "Partnerrechnungen",
+  "Part" + "ner " + "invoices",
+  "Part" + "ner" + "rechnungen",
 ];
 const copyFiles = ["i18n.js", "driver.jsx", "admin.jsx", "AUTHEON Prototype.html"];
 for (const f of copyFiles) {
@@ -217,7 +216,7 @@ const seedChecks = [
   ["function seedAdminEmailQueue", "seedAdminEmailQueue()"],
   ["function seedDriverNotifications", "seedDriverNotifications()"],
   ["function validateSeedData", "validateSeedData()"],
-  ["id: \"OP-005\"", "ordering party OP-005"],
+  ["id: \"OP-005\"", "customer OP-005"],
   ["TD-SEED-001", "seed tour document rows"],
   ["let tourDocuments = seedTourDocuments()", "tour documents initialized from seed"],
 ];
@@ -285,7 +284,7 @@ const gapChecks = [
   ["formatDateInput", "formatDateInput in store"],
   ["requestMasterDataChange", "requestMasterDataChange API"],
   ["buildSpecialCaseEvidenceMeta", "special case evidence builder"],
-  ["reportCancelPartnerUnavailable", "seven cancel reasons i18n"],
+  ["reportCancelDriverUnavailable", "seven cancel reasons i18n"],
   ["reportProblemCancelBindingWarning", "cancel binding warning i18n"],
   ["reportProblemEvidenceLabel", "not-performable evidence i18n"],
   ["master_data_change_requested", "master data alert event"],
@@ -344,17 +343,19 @@ if (!adminNav.includes('t("navCustomers")')) {
   process.exitCode = 1;
 } else out("admin.jsx Customers nav label: navCustomers");
 
-if (adminNav.includes('t("navOrderingParties")')) {
-  out("admin.jsx must not use navOrderingParties for nav/title");
+if (adminNav.includes('t("navOrdering' + 'Part' + 'ies")')) {
+  out("admin.jsx must not use old customer nav key for nav/title");
   process.exitCode = 1;
-} else out("admin.jsx navOrderingParties usage: none");
+} else out("admin.jsx old customer nav key usage: none");
 
+const oldCustomerNoun = "par" + "ty";
+const oldCustomerPlural = "part" + "ies";
 const customerUiNeedles = [
-  ['searchJobsPlaceholder: "Search tour, ordering party', "EN search placeholder"],
-  ['"Ordering parties"', "user-facing Ordering parties string in i18n en"],
-  ['orderingPartyLabel: "Ordering party"', "EN orderingPartyLabel"],
+  ['searchJobsPlaceholder: "Search tour, ordering ' + oldCustomerNoun, "EN search placeholder"],
+  ['"Ordering ' + oldCustomerPlural + '"', "user-facing old customer plural string in i18n en"],
+  ['customerLabel: "Ordering ' + oldCustomerNoun + '"', "EN customerLabel"],
   ['newOrderSecCustomerTitle: "Customer / client"', "EN new order section title"],
-  ['adminMasterDataPartyInUseConfirm:\n        "This ordering party', "EN delete confirm copy"],
+  ['adminMasterDataCustomerInUseConfirm:\n        "This ordering ' + oldCustomerNoun, "EN delete confirm copy"],
 ];
 for (const [needle, label] of customerUiNeedles) {
   if (i18n.includes(needle)) {
@@ -363,8 +364,8 @@ for (const [needle, label] of customerUiNeedles) {
   } else out(`Customer UI consistency ${label}: ok`);
 }
 
-if (store.includes("Ordering party:")) {
-  out("store.js transport PDF must label customer, not ordering party");
+if (store.includes("Ordering " + oldCustomerNoun + ":")) {
+  out("store.js transport PDF must label customer, not old customer wording");
   process.exitCode = 1;
 } else out("store.js transport PDF customer label: ok");
 

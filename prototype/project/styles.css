@@ -631,7 +631,7 @@ textarea.input { min-height: 92px; resize: vertical; }
 }
 .jobcard:hover { box-shadow: var(--sh-2); border-color: var(--line-2); transform: translateY(-1px); }
 .jobcard:active { transform: translateY(0); }
-.jobcard .partner-offer {
+.jobcard .driver-offer {
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.015em;

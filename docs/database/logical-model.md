@@ -11,11 +11,11 @@ The production model separates master data, transactional tour data, immutable h
 ## Entity map
 
 ```text
-app_users ──1:0..1── drivers ──< job_assignments >── jobs
+app_users (Keycloak-linked) ──1:0..1── drivers ──< job_assignments >── jobs
     │                                                    │
     ├──< audit_events                                  ├──< job_locations
     ├──< user_notifications                             ├──< job_status_history
-    └──< authentication_identities                      ├──< job_problem_reports
+    └──< notification_preferences                       ├──< job_problem_reports
                                                         ├──< job_documents ──< document_files
 customers ───────────────────────────────────────┤
 locations (optional master-data reference) ──────────────┘
@@ -28,8 +28,8 @@ outbox_events ──< notification_deliveries
 
 | Area | Tables | Purpose |
 | --- | --- | --- |
-| Identity | `app_users`, `authentication_identities`, `drivers` | Separate application users from external authentication and the driver business profile. One user can have roles; a driver has a dedicated profile. |
-| Master data | `customers`, `locations` | Reusable reporting/billing parties and pickup/delivery locations, including party type, billing notes, and operational instructions. Deactivation replaces deletion where a record is referenced. |
+| Identity | `app_users`, `drivers` | Keycloak owns authentication and role/group assignment. AUTHEON stores a local user profile linked by Keycloak subject plus the driver business profile where applicable. |
+| Master data | `customers`, `locations` | Reusable reporting/billing customers and pickup/delivery locations, including customer type, billing notes, and operational instructions. Deactivation replaces deletion where a record is referenced. |
 | Tours | `jobs`, `job_locations`, `job_assignments`, `job_status_history`, `job_distance_estimates`, `job_financials` | Current operational state plus immutable historical context. |
 | Problems | `job_problem_reports`, `problem_report_evidence` | Cancellation and not-performable reports, reasons, evidence, and the pre-problem status needed for dispatch resolution. |
 | Documents | `job_documents`, `document_files`, `job_document_reviews`, `generated_job_documents` | Business document, immutable file versions, review history, and generated transport-order PDFs. |
@@ -48,7 +48,7 @@ The following maps every persisted prototype collection in `prototype/project/st
 | `documents` | `infopoint_documents`, `document_files` | Covered: title, description, category, scope, version, visibility, and optional private file. |
 | `newsItems` | `infopoint_news`, `infopoint_news_reads` | Covered: content, publication/visibility, notification flags, and per-user reads. |
 | `jobs` | `jobs`, `job_locations`, `job_financials`, `job_distance_estimates`, `generated_job_documents` | Covered: operational data, snapshot fields, vehicle, costs, documents, distance, PDF versions, and independent statuses. |
-| `drivers` and `admins` | `app_users`, `user_roles`, `drivers`, `notification_preferences` | Covered: shared identity, roles, driver profile/status, and all five prototype notification preferences. |
+| `drivers` and `admins` | `app_users`, `drivers`, `notification_preferences`; roles from Keycloak | Covered: shared local user profile, Keycloak role linkage by subject, driver profile/status, and all five prototype notification preferences. AUTHEON does not duplicate role assignment tables. |
 | `driverState` | Derived from jobs, assignments, documents, and notifications | Intentionally not persisted: it is a cacheable UI projection and must not become a second source of truth. |
 | `tourDocuments` | `job_documents`, `document_files`, `job_document_reviews` | Covered: metadata, source, file versions, review/processed state, rejection, correction, and invoice fields. |
 | `driverNotifications` | `user_notifications` | Covered: driver recipient, type, tour deep link, read state, title, body, and timestamp. |
@@ -89,6 +89,8 @@ This prevents two drivers from accepting the same published tour.
 
 Status transitions belong in a transaction/service layer, not an unconstrained client update. Every transition writes `job_status_history`, `audit_events`, and, where required, `outbox_events`.
 
+`message_delivery_status` is used only for outbox/email/push/in-app delivery attempts. It is not a vehicle pickup/delivery or tour lifecycle status.
+
 ## Documents and object storage
 
 Files are not stored in PostgreSQL blobs. `document_files.storage_key` points to private object storage and is immutable once committed. Replacing a file creates a new version; it does not overwrite the previous file record. This preserves review evidence and supports audit, retention, malware scan state, and later legal-hold rules.
@@ -99,7 +101,7 @@ Files are not stored in PostgreSQL blobs. `document_files.storage_key` points to
 
 The SQL implementation must include at least these controls:
 
-- Unique `jobs.tour_number` and `drivers.partner_code`.
+- Unique `jobs.tour_number` and `drivers.driver_code`.
 - Unique active assignment per job: partial unique index on `job_assignments(job_id) where ended_at is null`.
 - One `pickup` and one `delivery` row per job: unique `(job_id, location_role)`.
 - One open master-data change request per driver: partial unique index on `master_data_change_requests(driver_id) where status = 'open'`.
@@ -115,18 +117,20 @@ The SQL implementation must include at least these controls:
 
 Authorization is not a UI concern. The database/service policy must enforce that a driver can retrieve only its own assigned/accepted/performed/cancelled/special-case tours and permitted documents.
 
+Keycloak is the identity and role source of truth. Application services validate the Keycloak token, resolve `sub` to `app_users.keycloak_subject`, read Keycloak realm/client roles or groups for admin/driver authorization, and then apply AUTHEON domain rules. `app_users.status` remains an application-level access flag for active, blocked, inactive, and archived users; it does not replace Keycloak account state.
+
 Marketplace queries must project a deliberately reduced view. They must not return full locations, contacts, vehicle identifiers, customer details, internal notes, or PDFs before acceptance. The base `jobs` and `job_locations` tables are never exposed directly to an untrusted driver client.
 
 ## Open decisions that affect the physical schema
 
 | Decision | Current schema position | Approval needed |
 | --- | --- | --- |
-| Authentication | Provider-neutral `authentication_identities`; no password columns in application tables. | Identity provider, driver login method, admin MFA/SSO requirements. |
+| Authentication | Keycloak selected. `app_users.keycloak_subject` links AUTHEON records to Keycloak users. No password, role, or identity-provider-link tables are stored in AUTHEON. | Realm/client configuration, exact role names/groups, token claims, admin MFA policy, and user provisioning flow. |
 | Map/distance | `job_distance_estimates` records provider, raw result, and manual override. | Provider, routing profile, country coverage, pricing/retention requirements. |
 | Admin alerts | Durable outbox/delivery records, but no hard-coded recipient list. | Recipient groups, escalation rules, business hours, sender/reply policy. |
 | File retention/security | Versioned metadata supports deletion/hold policy; storage implementation remains open. | EU-region requirement, retention periods, malware scanner, size/type limits, deletion authority. |
 | Product display name | `system_settings`/branding configuration is intentionally deferred. | Final name, legal entity details, domain, sender identity, localization rules. |
-| Finance | `job_financials` holds only operational amounts and settlement state. | Whether advanced invoices/ledger/accounting integration become approved scope. |
+| Finance | `job_financials` holds only operational amounts and invoice/payment summary fields; `jobs.settlement_state` remains the tour closeout state. | Whether advanced invoices/ledger/accounting integration become approved scope. |
 
 ## Explicit non-goals
 

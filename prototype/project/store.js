@@ -2,7 +2,7 @@
 // Domain glossary: DOMAIN.md
 // Single source of truth for Driver + Admin views.
 // Operational statuses: draft, published, assigned, accepted, performed, cancelled, special_case.
-// pickup/delivery/orderingPartyName are canonical; syncDisplayFields() denormalizes flat fields for tables/CSV.
+// pickup/delivery/customerName are canonical; syncDisplayFields() denormalizes flat fields for tables/CSV.
 
 window.AuthStore = (() => {
   const listeners = new Set();
@@ -41,7 +41,7 @@ window.AuthStore = (() => {
     return "uploaded";
   }
 
-  function tourDocumentNeedsPartnerCorrection(reviewStatus) {
+  function tourDocumentNeedsDriverCorrection(reviewStatus) {
     return normalizeTourDocumentReviewStatus(reviewStatus) === "correction_required";
   }
 
@@ -117,8 +117,8 @@ window.AuthStore = (() => {
       id: "",
       tour: "",
       category: "Standard",
-      orderingPartyId: "",
-      orderingPartyName: "",
+      customerId: "",
+      customerName: "",
       pickup: mkLocation(),
       delivery: mkLocation(),
       distanceKm: 0,
@@ -131,7 +131,7 @@ window.AuthStore = (() => {
       axle: AXLE_OWN,
 
       revenue: null,
-      driverCompensation: null,
+      driverOffer: null,
       expenses: null,
       notes: "",
       notesDriver: "",
@@ -189,20 +189,20 @@ window.AuthStore = (() => {
     return s.trim();
   }
 
-  function partnerOfferAmount(job) {
+  function driverOfferAmount(job) {
     if (!job) return 0;
-    const n = job.driverCompensation;
+    const n = job.driverOffer;
     if (n == null || n === "") return 0;
     const v = Number(n);
     return Number.isFinite(v) ? v : 0;
   }
 
-  /** Copy structured pickup/delivery/ordering party into flat fields for tables and CSV. */
+  /** Copy structured pickup/delivery/customer data into flat fields for tables and CSV. */
   function syncDisplayFields(job) {
     if (!job) return job;
     const pu = job.pickup || mkLocation();
     const del = job.delivery || mkLocation();
-    job.customer = job.orderingPartyName || job.customer || "";
+    job.customer = job.customerName || job.customer || "";
     job.startCity = pu.city || "";
     job.startPlz = pu.postalCode || "";
     job.startStreet = formatStreet(pu) || pu.street || "";
@@ -249,7 +249,7 @@ window.AuthStore = (() => {
     return map[s] || AXLE_OWN;
   }
 
-  function seedOrderingParties() {
+  function seedCustomers() {
     return [
       {
         id: "OP-001",
@@ -587,8 +587,8 @@ window.AuthStore = (() => {
       },
       {
         id: "DOC-002",
-        title: "Partner terms",
-        description: "Service partner terms and general conditions.",
+        title: "Driver terms",
+        description: "Driver terms and general conditions.",
         category: "Legal",
         visible: true,
         scope: "Global",
@@ -767,8 +767,8 @@ window.AuthStore = (() => {
       mk({
         id: "A-2026-00847",
         tour: "0847-26",
-        orderingPartyId: "OP-001",
-        orderingPartyName: "Muller Automobile GmbH",
+        customerId: "OP-001",
+        customerName: "Muller Automobile GmbH",
         pickup: loc("ADDR-001", {
           date: "23.04.",
           dateLong: "Wed, 23.04.2026",
@@ -792,7 +792,7 @@ window.AuthStore = (() => {
         revenue: 340,
         netAmount: 285.71,
         grossAmount: 340,
-        driverCompensation: 260,
+        driverOffer: 260,
         expenses: 12,
         notes:
           "Key handover at reception. Vehicle prepared, fuel approx. 1/2 tank. Ref: KR-88213.",
@@ -808,8 +808,8 @@ window.AuthStore = (() => {
       mk({
         id: "A-2026-00848",
         tour: "0848-26",
-        orderingPartyId: "OP-003",
-        orderingPartyName: "Nord-Flotte GmbH",
+        customerId: "OP-003",
+        customerName: "Nord-Flotte GmbH",
         pickup: loc("ADDR-005", {
           date: "08.05.",
           dateLong: "Fri, 08.05.2026",
@@ -831,7 +831,7 @@ window.AuthStore = (() => {
         axle: AXLE_OWN,
 
         revenue: 185,
-        driverCompensation: 145,
+        driverOffer: 145,
         status: "assigned",
         driver: DEMO_DRIVER,
         pdfVersion: 1,
@@ -845,8 +845,8 @@ window.AuthStore = (() => {
       mk({
         id: "A-2026-00846",
         tour: "0846-26",
-        orderingPartyId: "OP-002",
-        orderingPartyName: "Classic Cars AG",
+        customerId: "OP-002",
+        customerName: "Classic Cars AG",
         pickup: loc("ADDR-003", {
           date: "23.04.",
           dateLong: "Wed, 23.04.2026",
@@ -868,7 +868,7 @@ window.AuthStore = (() => {
         axle: AXLE_THIRD,
 
         revenue: 220,
-        driverCompensation: 175,
+        driverOffer: 175,
         notes:
           "Historic vehicle on third-party axle; yard access issue reported by driver.",
         notesDriver: "Do not attempt pickup until dispatch confirms yard reopening.",
@@ -900,8 +900,8 @@ window.AuthStore = (() => {
       mk({
         id: "A-2026-00845",
         tour: "0845-26",
-        orderingPartyId: "OP-004",
-        orderingPartyName: "AutoLogistik KG",
+        customerId: "OP-004",
+        customerName: "AutoLogistik KG",
         pickup: loc("ADDR-015", {
           date: "24.04.",
           dateLong: "Thu, 24.04.2026",
@@ -923,7 +923,7 @@ window.AuthStore = (() => {
         axle: AXLE_THIRD,
 
         revenue: 145,
-        driverCompensation: 110,
+        driverOffer: 110,
         notes: "Hub-to-hub Cologne → Frankfurt.",
         notesDriver: "Gate code required at both hubs — see address notes.",
         status: "accepted",
@@ -939,8 +939,8 @@ window.AuthStore = (() => {
       mk({
         id: "A-2026-00844",
         tour: "0844-26",
-        orderingPartyId: "OP-001",
-        orderingPartyName: "Muller Automobile GmbH",
+        customerId: "OP-001",
+        customerName: "Muller Automobile GmbH",
         pickup: loc("ADDR-007", {
           date: "22.04.",
           dateLong: "Tue, 22.04.2026",
@@ -959,7 +959,7 @@ window.AuthStore = (() => {
         plate: "HH-MA 88",
         vin: "WVWZZZ6RZKY098765",
         axle: AXLE_THIRD,
-        driverCompensation: 165,
+        driverOffer: 165,
         revenue: 198,
         notes: "Marketplace preview tour Hamburg → Hannover.",
         status: "published",
@@ -973,8 +973,8 @@ window.AuthStore = (() => {
       mk({
         id: "A-2026-00843",
         tour: "0843-26",
-        orderingPartyId: "OP-002",
-        orderingPartyName: "Classic Cars AG",
+        customerId: "OP-002",
+        customerName: "Classic Cars AG",
         pickup: loc("ADDR-009", {
           date: "26.04.",
           dateLong: "Sat, 26.04.2026",
@@ -994,7 +994,7 @@ window.AuthStore = (() => {
         plate: "S-CC 130",
         vin: "WDB9067321V123987",
         axle: AXLE_OWN,
-        driverCompensation: 280,
+        driverOffer: 280,
         revenue: 310,
         notesDriver: "Sprinter — check height clearance at Marienplatz delivery.",
         status: "accepted",
@@ -1010,8 +1010,8 @@ window.AuthStore = (() => {
       mk({
         id: "A-2026-00842",
         tour: "0842-26",
-        orderingPartyId: "OP-003",
-        orderingPartyName: "Nord-Flotte GmbH",
+        customerId: "OP-003",
+        customerName: "Nord-Flotte GmbH",
         pickup: loc("ADDR-006", {
           name: "Hamburg depot",
           street: "Steinstr.",
@@ -1042,7 +1042,7 @@ window.AuthStore = (() => {
         plate: "HH-NF 42",
         vin: "TMBJG7NE7K0123456",
         axle: AXLE_THIRD,
-        driverCompensation: 110,
+        driverOffer: 110,
         revenue: 135,
         grossAmount: 135,
         expenses: 18,
@@ -1063,8 +1063,8 @@ window.AuthStore = (() => {
       mk({
         id: "A-2026-00841",
         tour: "0841-26",
-        orderingPartyId: "OP-005",
-        orderingPartyName: "Muller & Sohn KG",
+        customerId: "OP-005",
+        customerName: "Muller & Sohn KG",
         pickup: loc("ADDR-011", {
           date: "22.04.",
           dateLong: "Tue, 22.04.2026",
@@ -1082,11 +1082,11 @@ window.AuthStore = (() => {
         plate: "B-MS 200",
         vin: "WF0AXXTTGA000111",
         axle: AXLE_OWN,
-        driverCompensation: 195,
+        driverOffer: 195,
         revenue: 240,
         notes: "Cancelled after driver Report Problem — customer withdrew slot.",
         status: "cancelled",
-        cancellationActor: "ordering_party",
+        cancellationActor: "customer",
         cancellationReasonText: "Customer withdrew delivery slot.",
         driver: DEMO_DRIVER,
         pdfVersion: 1,
@@ -1106,8 +1106,8 @@ window.AuthStore = (() => {
       mk({
         id: "A-2026-00840",
         tour: "0840-26",
-        orderingPartyId: "OP-002",
-        orderingPartyName: "Classic Cars AG",
+        customerId: "OP-002",
+        customerName: "Classic Cars AG",
         pickup: loc("ADDR-013", {
           date: "25.04.",
           dateLong: "Fri, 25.04.2026",
@@ -1127,7 +1127,7 @@ window.AuthStore = (() => {
         plate: "D-CC 80",
         vin: "WAUZZZF38K1234567",
         axle: AXLE_OWN,
-        driverCompensation: 110,
+        driverOffer: 110,
         revenue: 138,
         notes: "Direct assign Dusseldorf showroom to Koln hub.",
         notesDriver: "Valet pickup at rear entrance per site notes.",
@@ -1143,8 +1143,8 @@ window.AuthStore = (() => {
       mk({
         id: "A-2026-00839",
         tour: "0839-26",
-        orderingPartyId: "OP-004",
-        orderingPartyName: "AutoLogistik KG",
+        customerId: "OP-004",
+        customerName: "AutoLogistik KG",
         pickup: loc("ADDR-017", {
           date: "27.04.",
           dateLong: "Sat, 27.04.2026",
@@ -1171,7 +1171,7 @@ window.AuthStore = (() => {
         plate: "B-AL 60",
         vin: "WAUZZZ4G9KN123456",
         axle: AXLE_OWN,
-        driverCompensation: 365,
+        driverOffer: 365,
         revenue: 420,
         notes: "Long-haul draft Berlin hub to Stuttgart; verify night gate access.",
         status: "draft",
@@ -1197,7 +1197,7 @@ window.AuthStore = (() => {
         id: "DRV-0228",
         name: DEMO_DRIVER,
         company: "Blake Transport Services",
-        partnerId: "AU-41-0228",
+        driverCode: "AU-41-0228",
         address: "Landsberger Str. 22, 80339 Munchen",
         email: "jordan.blake@example.com",
         phone: "+49 170 4400228",
@@ -1215,7 +1215,7 @@ window.AuthStore = (() => {
         id: "DRV-0301",
         name: "Klaus Neumann",
         company: "Neumann Logistik",
-        partnerId: "AU-41-0301",
+        driverCode: "AU-41-0301",
         address: "Hanauer Landstr. 12, 60314 Frankfurt",
         email: "k.neumann@example.com",
         phone: "+49 172 3300301",
@@ -1233,7 +1233,7 @@ window.AuthStore = (() => {
         id: "DRV-0177",
         name: "Mira Vogt",
         company: "Vogt Fahrservice",
-        partnerId: "AU-41-0177",
+        driverCode: "AU-41-0177",
         address: "Kantstr. 18, 10623 Berlin",
         email: "mira.vogt@example.com",
         phone: "+49 171 991177",
@@ -1282,7 +1282,7 @@ window.AuthStore = (() => {
         jobId: "A-2026-00842",
         driverId: "DRV-0228",
         driverName: DEMO_DRIVER,
-        fileName: "partner-invoice-0842.pdf",
+        fileName: "driver-invoice-0842.pdf",
         mimeType: "application/pdf",
         sizeBytes: 248120,
         uploadedAt: "2026-04-21T12:52:00.000Z",
@@ -1441,14 +1441,14 @@ window.AuthStore = (() => {
       {
         action: "tour_document_uploaded",
         actor: DEMO_DRIVER,
-        entity: "partner-invoice-0842.pdf",
+        entity: "driver-invoice-0842.pdf",
         at: "21.04. 12:52",
         meta: "A-2026-00842 · invoice",
       },
     ];
   }
 
-  let orderingParties = seedOrderingParties();
+  let customers = seedCustomers();
   let addresses = seedAddresses();
   let documents = seedDocuments();
   let newsItems = seedNews();
@@ -1464,7 +1464,7 @@ window.AuthStore = (() => {
     return `${prefix}-${String(max + 1).padStart(3, "0")}`;
   }
 
-  function generatePartnerId(driverId) {
+  function generateDriverCode(driverId) {
     const num = String(driverId || "").replace(/^DRV-/, "");
     return `AU-41-${num}`;
   }
@@ -1520,15 +1520,15 @@ window.AuthStore = (() => {
     const partyNames = Object.fromEntries(partyList.map((p) => [p.id, p.name]));
 
     for (const j of jobList) {
-      if (!j.orderingPartyId || !partyIds.has(j.orderingPartyId)) {
-        issues.push(`${j.id}: invalid orderingPartyId`);
+      if (!j.customerId || !partyIds.has(j.customerId)) {
+        issues.push(`${j.id}: invalid customerId`);
       } else if (
-        partyNames[j.orderingPartyId] &&
-        j.orderingPartyName &&
-        j.orderingPartyName !== partyNames[j.orderingPartyId]
+        partyNames[j.customerId] &&
+        j.customerName &&
+        j.customerName !== partyNames[j.customerId]
       ) {
         issues.push(
-          `${j.id}: orderingPartyName mismatch (${j.orderingPartyName} vs ${partyNames[j.orderingPartyId]})`,
+          `${j.id}: customerName mismatch (${j.customerName} vs ${partyNames[j.customerId]})`,
         );
       }
       for (const side of ["pickup", "delivery"]) {
@@ -1548,8 +1548,8 @@ window.AuthStore = (() => {
         issues.push(`${j.id}: vehicle`);
       }
       if (!(j.distanceKm > 0)) issues.push(`${j.id}: distanceKm`);
-      if (j.driverCompensation == null || j.driverCompensation === "") {
-        issues.push(`${j.id}: driverCompensation`);
+      if (j.driverOffer == null || j.driverOffer === "") {
+        issues.push(`${j.id}: driverOffer`);
       }
       if (!j.history?.length) issues.push(`${j.id}: history`);
       if (!j.pickup?.date) issues.push(`${j.id}: pickup.date`);
@@ -1640,7 +1640,7 @@ window.AuthStore = (() => {
     reconcileJobInvoiceFromTourDocuments(j.id);
   }
 
-  validateSeedData(jobs, orderingParties, tourDocuments, driverState);
+  validateSeedData(jobs, customers, tourDocuments, driverState);
   let nextTourSeq = 849;
 
   const legacyFlagDefaults = window.AUTHEON_FLAG_DEFAULTS || {};
@@ -1991,8 +1991,8 @@ window.AuthStore = (() => {
     const del = job.delivery || mkLocation();
     return {
       jobId: job.id,
-      orderingPartyId: job.orderingPartyId || "",
-      customer: job.orderingPartyName || job.customer || "",
+      customerId: job.customerId || "",
+      customer: job.customerName || job.customer || "",
       startCity: pu.city || job.startCity || "",
       startPlz: pu.postalCode || job.startPlz || "",
       startStreet: pu.street || job.startStreet || "",
@@ -2052,8 +2052,8 @@ window.AuthStore = (() => {
       ),
       pickupLocationId: pu.locationId || "",
       deliveryLocationId: del.locationId || "",
-      driverCompensation:
-        job.driverCompensation != null ? String(job.driverCompensation) : "",
+      driverOffer:
+        job.driverOffer != null ? String(job.driverOffer) : "",
       expenses: job.expenses != null ? String(job.expenses) : "",
       notes: job.notes || "",
       notesDriver: job.notesDriver || "",
@@ -2067,12 +2067,12 @@ window.AuthStore = (() => {
   }
 
   function composeDraftFieldsFromForm(form) {
-    const opId = form.orderingPartyId || "";
+    const opId = form.customerId || "";
     const op =
-      orderingParties.find((x) => x.id === opId) ||
-      orderingParties.find((x) => x.name === form.customer);
-    const partnerOffer =
-      parseFloat(String(form.driverCompensation || "0").replace(",", ".")) ||
+      customers.find((x) => x.id === opId) ||
+      customers.find((x) => x.name === form.customer);
+    const driverOffer =
+      parseFloat(String(form.driverOffer || "0").replace(",", ".")) ||
       0;
     const distRaw =
       form.distanceKm ?? form.distance ?? form.distanceManualOverride;
@@ -2122,8 +2122,8 @@ window.AuthStore = (() => {
     }
     if (form.deliveryLocationId) delivery.locationId = form.deliveryLocationId;
     return {
-      orderingPartyId: op?.id || opId,
-      orderingPartyName: op?.name || form.customer || "New customer",
+      customerId: op?.id || opId,
+      customerName: op?.name || form.customer || "New customer",
       pickup,
       delivery,
       distanceKm: dist,
@@ -2138,7 +2138,7 @@ window.AuthStore = (() => {
       plate: form.plate,
       vin: form.vin,
       axle: normalizeAxle(form.axle),
-      driverCompensation: partnerOffer,
+      driverOffer: driverOffer,
       expenses:
         parseFloat(String(form.expenses || "").replace(",", ".")) || null,
       notes: form.notes,
@@ -2218,7 +2218,7 @@ window.AuthStore = (() => {
     normalizeTourDocumentReviewStatus,
     normalizePaymentStatus,
     PAYMENT_STATUSES,
-    tourDocumentNeedsPartnerCorrection,
+    tourDocumentNeedsDriverCorrection,
     isTourBillingInvoiceType,
     tourDocumentReviewActions,
     SETTLEMENT_STATES,
@@ -2276,12 +2276,12 @@ window.AuthStore = (() => {
 
     getJobs: () => jobs,
     getJob: (id) => jobs.find((j) => j.id === id),
-    getPartnerOffer: (id) => partnerOfferAmount(api.getJob(id)),
-    partnerOfferAmount,
+    getDriverOffer: (id) => driverOfferAmount(api.getJob(id)),
+    driverOfferAmount,
     getDrivers: () => drivers,
     getAdmins: () => admins,
-    getOrderingParties: (opts = {}) => {
-      const all = orderingParties.slice();
+    getCustomers: (opts = {}) => {
+      const all = customers.slice();
       return opts.activeOnly ? all.filter((x) => x.active !== false) : all;
     },
     getAddresses: (opts = {}) => {
@@ -2386,12 +2386,12 @@ window.AuthStore = (() => {
     isPerformed: (id) => driverState.performedIds.has(id),
     isSpecialCase: (id) => driverState.specialCaseIds.has(id),
 
-    getOrderingParty: (id) => orderingParties.find((x) => x.id === id) || null,
+    getCustomer: (id) => customers.find((x) => x.id === id) || null,
 
     getAddress: (id) => addresses.find((x) => x.id === id) || null,
 
-    countJobsUsingOrderingParty(opId) {
-      return jobs.filter((j) => j.orderingPartyId === opId).length;
+    countJobsUsingCustomer(opId) {
+      return jobs.filter((j) => j.customerId === opId).length;
     },
 
     countJobsUsingAddress(addrId) {
@@ -2401,11 +2401,11 @@ window.AuthStore = (() => {
       ).length;
     },
 
-    addOrderingParty(data) {
+    addCustomer(data) {
       const name = String(data?.name || "").trim();
       if (!name) return { ok: false, reason: "name_required" };
       const op = {
-        id: nextMasterId("OP", orderingParties),
+        id: nextMasterId("OP", customers),
         name,
         type: String(data?.type || "").trim(),
         contact: String(data?.contact || "").trim(),
@@ -2415,14 +2415,14 @@ window.AuthStore = (() => {
         instructions: String(data?.instructions || "").trim(),
         active: data?.active !== false,
       };
-      orderingParties.unshift(op);
-      log("ordering_party_created", DEMO_ADMIN, op.name, op.id);
+      customers.unshift(op);
+      log("customer_created", DEMO_ADMIN, op.name, op.id);
       emit();
-      return { ok: true, party: op };
+      return { ok: true, customer: op };
     },
 
-    updateOrderingParty(id, data) {
-      const op = orderingParties.find((x) => x.id === id);
+    updateCustomer(id, data) {
+      const op = customers.find((x) => x.id === id);
       if (!op) return { ok: false, reason: "not_found" };
       const name = data?.name != null ? String(data.name).trim() : op.name;
       if (!name) return { ok: false, reason: "name_required" };
@@ -2436,19 +2436,19 @@ window.AuthStore = (() => {
       if (data?.instructions != null)
         op.instructions = String(data.instructions).trim();
       if (data?.active != null) op.active = !!data.active;
-      log("ordering_party_updated", DEMO_ADMIN, op.name, op.id);
+      log("customer_updated", DEMO_ADMIN, op.name, op.id);
       emit();
-      return { ok: true, party: op };
+      return { ok: true, customer: op };
     },
 
-    deleteOrderingParty(id) {
-      const op = orderingParties.find((x) => x.id === id);
+    deleteCustomer(id) {
+      const op = customers.find((x) => x.id === id);
       if (!op) return { ok: false, reason: "not_found" };
-      const used = api.countJobsUsingOrderingParty(id);
+      const used = api.countJobsUsingCustomer(id);
       if (used > 0) return { ok: false, reason: "in_use", count: used };
-      const idx = orderingParties.findIndex((x) => x.id === id);
-      orderingParties.splice(idx, 1);
-      log("ordering_party_deleted", DEMO_ADMIN, op.name, op.id);
+      const idx = customers.findIndex((x) => x.id === id);
+      customers.splice(idx, 1);
+      log("customer_deleted", DEMO_ADMIN, op.name, op.id);
       emit();
       return { ok: true };
     },
@@ -2565,7 +2565,7 @@ window.AuthStore = (() => {
               "push_notification_queued",
               "System",
               item.title,
-              dr.partnerId || dr.id,
+              dr.driverCode || dr.id,
             );
           }
         }
@@ -2688,7 +2688,7 @@ window.AuthStore = (() => {
       if (j.driver && j.driver !== DEMO_DRIVER)
         return { ok: false, reason: "not_assigned_driver" };
       j.status = "cancelled";
-      j.cancellationActor = "service_partner";
+      j.cancellationActor = "driver";
       j.cancellationReason = reason || "";
       j.cancellationReasonText = message || "";
       j.history = [
@@ -2843,7 +2843,7 @@ window.AuthStore = (() => {
         id: reqId,
         driverId: d.id,
         driverName: who,
-        partnerId: d.partnerId || "",
+        driverCode: d.driverCode || "",
         note: "",
         proposed: p,
         status: "open",
@@ -3218,10 +3218,10 @@ window.AuthStore = (() => {
 
     saveDraft(form) {
       const editId = String(form.jobId || form.id || "").trim();
-      const opId = form.orderingPartyId || "";
+      const opId = form.customerId || "";
       const op =
-        orderingParties.find((x) => x.id === opId) ||
-        orderingParties.find((x) => x.name === form.customer);
+        customers.find((x) => x.id === opId) ||
+        customers.find((x) => x.name === form.customer);
       if (form.updatePickupMaster && form.pickupLocationId) {
         api.updateAddress(form.pickupLocationId, {
           label: form.startCompany || undefined,
@@ -3369,7 +3369,7 @@ window.AuthStore = (() => {
       if (!isValidEmail(d.email)) return { ok: false, reason: "invalid_email" };
       if (drivers.some((x) => x.id !== id && x.email === d.email))
         return { ok: false, reason: "duplicate_email" };
-      log("driver_updated", DEMO_ADMIN, d.name, d.partnerId || "");
+      log("driver_updated", DEMO_ADMIN, d.name, d.driverCode || "");
       emit();
       return { ok: true };
     },
@@ -3402,7 +3402,7 @@ window.AuthStore = (() => {
         id,
         name,
         company,
-        partnerId: generatePartnerId(id),
+        driverCode: generateDriverCode(id),
         address: String(data.address || "").trim(),
         email,
         phone: String(data.phone || "").trim(),
@@ -3559,7 +3559,7 @@ window.AuthStore = (() => {
       log(
         "notification_preferences_updated",
         DEMO_DRIVER,
-        d.partnerId,
+        d.driverCode,
         Object.keys(patch).join(", "),
       );
       emit();
@@ -3932,7 +3932,7 @@ window.AuthStore = (() => {
       }
       const allowed = [
         "revenue",
-        "driverCompensation",
+        "driverOffer",
         "expenses",
         "netAmount",
         "grossAmount",
@@ -3961,7 +3961,7 @@ window.AuthStore = (() => {
     exportJobsCsv() {
       const cols = [
         { header: "tour", key: "tour" },
-        { header: "orderingPartyName", key: "orderingPartyName" },
+        { header: "customerName", key: "customerName" },
         { header: "startCompany", key: "startCompany" },
         { header: "startPlz", key: "startPlz" },
         { header: "startCity", key: "startCity" },
@@ -3982,7 +3982,7 @@ window.AuthStore = (() => {
         { header: "revenue", key: "revenue" },
         { header: "grossAmount", key: "grossAmount" },
         { header: "netAmount", key: "netAmount" },
-        { header: "partnerOffer", key: "driverCompensation" },
+        { header: "driverOffer", key: "driverOffer" },
         { header: "expenses", key: "expenses" },
         { header: "invoiceReceived", key: "invoiceReceived" },
         { header: "invoiceNumber", key: "invoiceNumber" },
@@ -4032,7 +4032,7 @@ window.AuthStore = (() => {
         `Category: ${j.category}`,
         `Issued: ${nowStamp()}`,
         `Driver: ${j.driver || "To be assigned"}`,
-        `Customer: ${j.orderingPartyName}`,
+        `Customer: ${j.customerName}`,
         `Pickup: ${pu.name}, ${formatStreet(pu)}, ${pu.postalCode} ${pu.city}`,
         `Pickup contact: ${pu.contactPerson} ${pu.phone}`,
         `Pickup schedule: ${pu.date} ${pu.windowFrom}-${pu.windowTo}`,
@@ -4044,7 +4044,7 @@ window.AuthStore = (() => {
         `VIN: ${j.vin}`,
         `Axle: ${j.axle}`,
         `Distance: ${j.distanceKm} km`,
-        `Partner offer: ${j.driverCompensation ?? "—"} | Customer gross: ${j.grossAmount ?? j.revenue ?? "—"} | Net: ${j.netAmount ?? "—"} VAT: ${j.vatRate ?? 19}%`,
+        `Driver offer: ${j.driverOffer ?? "—"} | Customer gross: ${j.grossAmount ?? j.revenue ?? "—"} | Net: ${j.netAmount ?? "—"} VAT: ${j.vatRate ?? 19}%`,
         `Document review: ${j.documentReviewSummary}`,
         `Settlement: ${j.settlementState}`,
         "Instructions: pre-trip inspection, direct route, incident reporting, digital proof submission, safety clothing on logistics yards.",
@@ -4098,7 +4098,7 @@ window.AuthStore = (() => {
     },
 
     reloadDemo() {
-      orderingParties = seedOrderingParties();
+      customers = seedCustomers();
       addresses = seedAddresses();
       documents = seedDocuments();
       newsItems = seedNews();
@@ -4124,7 +4124,7 @@ window.AuthStore = (() => {
         reconcileDocumentReviewSummary(j.id);
         reconcileJobInvoiceFromTourDocuments(j.id);
       }
-      validateSeedData(jobs, orderingParties, tourDocuments, driverState);
+      validateSeedData(jobs, customers, tourDocuments, driverState);
       nextTourSeq = 849;
       branding.appDisplayName =
         window.AUTHEON_BRANDING_DEFAULTS?.appDisplayName || "Transport Portal";

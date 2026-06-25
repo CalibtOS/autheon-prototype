@@ -41,7 +41,7 @@ From `client_feedback_traceability` in `prd.json`:
 | A.3 External navigation | covered | § A.3 — pickup/delivery map handoff |
 | A.4 Tour documents | gap_closed_in_v1_6 | § A.4 — types, review, rejection |
 | B.1.1 Schedules | covered | § B.1.1 — separate dates/windows |
-| B.1.2 Party / pickup / delivery | gap_closed_in_v1_6 | § B.1.2 — separation + contacts |
+| B.1.2 Customer / pickup / delivery | gap_closed_in_v1_6 | § B.1.2 — separation + contacts |
 | B.1.3 Input formatting | covered | § B.1.3 — date/time/VIN/plate |
 | B.1.4 Distance | covered | § B.1.4 — estimate + override |
 | B.1.5 Master data + visibility | gap_closed_in_v1_6 | § B.1.5 + visibility table |

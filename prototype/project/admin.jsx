@@ -75,7 +75,7 @@ const AdminNav = ({ section, setSection }) => {
     },
     { id: "users", label: t("navUsers"), count: null, I: Ic.N.Users },
     {
-      id: "orderingparties",
+      id: "customers",
       label: t("navCustomers") || "Customers",
       count: null,
       I: Ic.N.Building,
@@ -588,9 +588,9 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenTourBilling }) => {
           </div>
         </div>
         <div>
-          <div className="label">{t("partnerOffer")}</div>
+          <div className="label">{t("driverOffer")}</div>
           <div style={{ fontWeight: 600, marginTop: 6 }} className="tnum">
-            {fmt(job.driverCompensation)}
+            {fmt(job.driverOffer)}
           </div>
         </div>
         <div>
@@ -1013,7 +1013,7 @@ const AssignDriverDialog = ({
             >
               {drivers.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.name} · {d.partnerId}
+                  {d.name} · {d.driverCode}
                   {d.company ? ` · ${d.company}` : ""}
                 </option>
               ))}
@@ -1136,7 +1136,7 @@ const AdminDetail = ({
           className="card"
           style={{ padding: "14px 18px", textAlign: "right", minWidth: 220 }}
         >
-          <div className="label">{t("partnerOffer")}</div>
+          <div className="label">{t("driverOffer")}</div>
           <div
             style={{
               fontSize: 28,
@@ -1146,7 +1146,7 @@ const AdminDetail = ({
             }}
             className="tnum"
           >
-            € {(job.driverCompensation ?? 0).toFixed(2)}
+            € {(job.driverOffer ?? 0).toFixed(2)}
           </div>
           <div
             className="mono"
@@ -1158,7 +1158,7 @@ const AdminDetail = ({
               marginTop: 2,
             }}
           >
-            {job.axle} · {t("adminPayoutLumpSum")}
+            {job.axle} · {t("adminDriverOfferLumpSum")}
           </div>
         </div>
       </div>
@@ -1169,10 +1169,10 @@ const AdminDetail = ({
           style={{ marginBottom: 18, fontSize: 13, lineHeight: 1.55 }}
         >
           {t("cancellationActor")}:{" "}
-          {job.cancellationActor === "service_partner"
-            ? t("cancellationActorServicePartner")
-            : job.cancellationActor === "ordering_party"
-              ? t("cancellationActorOrderingParty")
+          {job.cancellationActor === "driver"
+            ? t("cancellationActorDriver")
+            : job.cancellationActor === "customer"
+              ? t("cancellationActorCustomer")
               : t("cancellationActorAdmin")}
           {job.cancellationReasonText
             ? ` — ${job.cancellationReasonText}`
@@ -1191,9 +1191,9 @@ const AdminDetail = ({
               </h3>
             </div>
             <div style={{ marginTop: 10, fontSize: 13.5 }}>
-              <span className="label">{t("orderingPartyLabel")}</span>
+              <span className="label">{t("customerLabel")}</span>
               <div style={{ fontWeight: 600, marginTop: 4 }}>
-                {job.orderingPartyName || job.customer || "—"}
+                {job.customerName || job.customer || "—"}
               </div>
             </div>
             <div
@@ -1809,7 +1809,7 @@ const AdminDetailFooter = ({
 // ADMIN — NEUER AUFTRAG
 // =========================================================================
 const EMPTY_NEW_ORDER_FORM = {
-  orderingPartyId: "",
+  customerId: "",
   customer: "",
   startCompany: "",
   startStreet: "",
@@ -1853,7 +1853,7 @@ const EMPTY_NEW_ORDER_FORM = {
   showDeliveryExtraContact: false,
   updatePickupMaster: false,
   updateDeliveryMaster: false,
-  driverCompensation: "",
+  driverOffer: "",
   notes: "",
   notesDriver: "",
   axle: "Eigenachse",
@@ -1948,23 +1948,23 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
       }));
     }
   };
-  const orderingParties = store.getOrderingParties({ activeOnly: true });
+  const customers = store.getCustomers({ activeOnly: true });
   const masterAddresses = store.getAddresses({ activeOnly: true });
-  const onCustomerSelect = (partyId) => {
-    if (!partyId) {
+  const onCustomerSelect = (customerId) => {
+    if (!customerId) {
       setForm((f) => ({
         ...f,
-        orderingPartyId: "",
+        customerId: "",
         customer: "",
       }));
       return;
     }
-    const party = orderingParties.find((x) => x.id === partyId);
-    if (party) {
+    const customer = customers.find((x) => x.id === customerId);
+    if (customer) {
       setForm((f) => ({
         ...f,
-        orderingPartyId: party.id,
-        customer: party.name,
+        customerId: customer.id,
+        customer: customer.name,
       }));
     }
   };
@@ -1981,7 +1981,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
     "deliveryDate",
     "vehicleType",
     "plate",
-    "driverCompensation",
+    "driverOffer",
   ];
   const scheduleDateWarning =
     form.pickupDate &&
@@ -2020,7 +2020,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
     ["02", t("newOrderSecRoute")],
     ["03", t("newOrderSecSchedule")],
     ["04", t("newOrderSecVehicle")],
-    ["05", t("newOrderSecPartnerOffer")],
+    ["05", t("newOrderSecDriverOffer")],
     ["06", t("newOrderSecNotes")],
   ];
 
@@ -2110,11 +2110,11 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
               <select
                 id="new-order-customer"
                 className="input"
-                value={form.orderingPartyId || ""}
+                value={form.customerId || ""}
                 onChange={(e) => onCustomerSelect(e.target.value)}
               >
                 <option value="">{t("newOrderCustomerPlaceholder")}</option>
-                {orderingParties.map((op) => (
+                {customers.map((op) => (
                   <option key={op.id} value={op.id}>
                     {op.name}
                     {op.type ? ` · ${op.type}` : ""}
@@ -2479,17 +2479,17 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
           <section id="sec-05" className="card" style={{ padding: 22 }}>
             <div className="sec-head">
               <h3>
-                <span className="num">05</span> {t("newOrderSecPartnerOffer")}
+                <span className="num">05</span> {t("newOrderSecDriverOffer")}
               </h3>
             </div>
             <div style={{ marginTop: 14 }}>
-              <label className="field-label">{t("newOrderPartnerOfferEur")}</label>
+              <label className="field-label">{t("newOrderDriverOfferEur")}</label>
               <input
                 className="input mono"
                 style={{ maxWidth: 200, fontSize: 18, fontWeight: 700 }}
-                placeholder={t("newOrderPartnerOfferPh")}
-                value={form.driverCompensation}
-                onChange={(e) => set("driverCompensation", e.target.value)}
+                placeholder={t("newOrderDriverOfferPh")}
+                value={form.driverOffer}
+                onChange={(e) => set("driverOffer", e.target.value)}
               />
             </div>
           </section>
@@ -2606,13 +2606,13 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 </div>
                 <div>
                   <div className="label" style={{ fontSize: 9.5 }}>
-                    {t("newOrderSecPartnerOffer")}
+                    {t("newOrderSecDriverOffer")}
                   </div>
                   <div
                     className="mono"
                     style={{ fontSize: 18, fontWeight: 700, marginTop: 2 }}
                   >
-                    € {form.driverCompensation || t("newOrderPartnerOfferZero")}
+                    € {form.driverOffer || t("newOrderDriverOfferZero")}
                   </div>
                 </div>
               </div>
@@ -3122,7 +3122,7 @@ const UsersPane = ({ showToast }) => {
       >
         <section className="card" style={{ padding: 18 }}>
           <div className="sec-head">
-            <h3>{t("adminUsersSectionPartners")}</h3>
+            <h3>{t("adminUsersSectionDrivers")}</h3>
             <button
               className="btn xs primary"
               onClick={openNewDriver}
@@ -3134,7 +3134,7 @@ const UsersPane = ({ showToast }) => {
             <thead>
               <tr>
                 <th>{t("adminUsersColName")}</th>
-                <th>{t("adminUsersColPartnerId")}</th>
+                <th>{t("adminUsersColDriverCode")}</th>
                 <th>{t("adminUsersColStatus")}</th>
                 <th>{t("adminUsersColActions")}</th>
               </tr>
@@ -3151,7 +3151,7 @@ const UsersPane = ({ showToast }) => {
                       {d.company} · {d.email}
                     </div>
                   </td>
-                  <td className="mono">{d.partnerId}</td>
+                  <td className="mono">{d.driverCode}</td>
                   <td>
                     <Pill
                       status={d.status === "Active" ? "accepted" : "cancelled"}
@@ -3408,7 +3408,7 @@ const UsersPane = ({ showToast }) => {
   );
 };
 
-const emptyOrderingPartyForm = () => ({
+const emptyCustomerForm = () => ({
   name: "",
   type: "",
   contact: "",
@@ -3756,24 +3756,24 @@ const masterDataErr = (r, t, kind) => {
     return t("adminMasterDataAddressIncomplete");
   if (reason === "in_use")
     return t(
-      kind === "party"
-        ? "adminMasterDataPartyInUse"
+      kind === "customer"
+        ? "adminMasterDataCustomerInUse"
         : "adminMasterDataAddressInUse",
       { count: r.count || 0 },
     );
   return t("adminInvoiceErrGeneric");
 };
 
-const OrderingPartiesPane = ({ showToast }) => {
+const CustomersPane = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
-  const parties = store.getOrderingParties();
+  const customers = store.getCustomers();
   const [modal, setModal] = useStateA(null);
-  const [form, setForm] = useStateA(emptyOrderingPartyForm());
+  const [form, setForm] = useStateA(emptyCustomerForm());
   const setF = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
   const openNew = () => {
-    setForm(emptyOrderingPartyForm());
+    setForm(emptyCustomerForm());
     setModal("new");
   };
   const openEdit = (op) => {
@@ -3795,37 +3795,37 @@ const OrderingPartiesPane = ({ showToast }) => {
     const payload = { ...form };
     const r =
       modal === "new"
-        ? store.addOrderingParty(payload)
-        : store.updateOrderingParty(modal, payload);
+        ? store.addCustomer(payload)
+        : store.updateCustomer(modal, payload);
     if (!r.ok) {
-      showToast?.(t("adminMasterDataSaveFailed"), masterDataErr(r, t, "party"));
+      showToast?.(t("adminMasterDataSaveFailed"), masterDataErr(r, t, "customer"));
       return;
     }
     showToast?.(
       modal === "new" ? t("adminCustomersCreated") : t("adminMasterDataUpdated"),
-      r.party?.name || form.name,
+      r.customer?.name || form.name,
     );
     closeModal();
   };
 
   const remove = (op) => {
-    const used = store.countJobsUsingOrderingParty(op.id);
+    const used = store.countJobsUsingCustomer(op.id);
     if (used > 0) {
       showToast?.(
         t("adminMasterDataDeleteFailed"),
-        t("adminMasterDataPartyInUse", { count: used }),
+        t("adminMasterDataCustomerInUse", { count: used }),
       );
       return;
     }
     if (!window.confirm(t("adminMasterDataDeleteConfirm"))) return;
-    const r = store.deleteOrderingParty(op.id);
+    const r = store.deleteCustomer(op.id);
     if (!r.ok)
-      showToast?.(t("adminMasterDataDeleteFailed"), masterDataErr(r, t, "party"));
+      showToast?.(t("adminMasterDataDeleteFailed"), masterDataErr(r, t, "customer"));
     else showToast?.(t("adminMasterDataDeleted"), op.name);
   };
 
   return (
-    <div id="orderingparties">
+    <div id="customers">
       <div
         style={{
           display: "flex",
@@ -3858,7 +3858,7 @@ const OrderingPartiesPane = ({ showToast }) => {
             </tr>
           </thead>
           <tbody>
-            {parties.map((op) => (
+            {customers.map((op) => (
               <tr key={op.id}>
                 <td>
                   <strong>{op.name}</strong>
@@ -3883,7 +3883,7 @@ const OrderingPartiesPane = ({ showToast }) => {
                   </Pill>
                 </td>
                 <td className="mono" style={{ fontSize: 12 }}>
-                  {store.countJobsUsingOrderingParty(op.id)}
+                  {store.countJobsUsingCustomer(op.id)}
                 </td>
                 <td style={{ whiteSpace: "nowrap" }}>
                   <button
@@ -3912,7 +3912,7 @@ const OrderingPartiesPane = ({ showToast }) => {
         title={
           modal === "new"
             ? t("adminCustomerAddTitle")
-            : t("adminMasterDataEditParty")
+            : t("adminMasterDataEditCustomer")
         }
         onClose={closeModal}
         footer={
@@ -5179,7 +5179,7 @@ const TourBillingPane = ({
               </div>
               <div>
                 <label className="field-label" htmlFor="reg-drv">
-                  {t("adminInvoiceSelectPartner")}
+                  {t("adminInvoiceSelectDriver")}
                 </label>
                 <select
                   id="reg-drv"
@@ -5280,7 +5280,7 @@ const TourBillingPane = ({
             <th></th>
             <th>{t("invoiceColFile")}</th>
             <th>{t("billingColType")}</th>
-            <th>{t("invoiceColPartner")}</th>
+            <th>{t("invoiceColDriver")}</th>
             <th>{t("invoiceColJob")}</th>
             <th>{t("invoiceColUploaded")}</th>
             <th>{t("adminInvoiceColSource")}</th>
@@ -5526,7 +5526,7 @@ const TourBillingPane = ({
               </div>
               <div>
                 <label className="field-label" htmlFor="ed-drv">
-                  {t("adminInvoiceSelectPartner")}
+                  {t("adminInvoiceSelectDriver")}
                 </label>
                 <select
                   id="ed-drv"
@@ -5773,7 +5773,7 @@ const TourBillingPane = ({
                 `Review: ${viewing.reviewStatus || "—"}`,
                 `${t("adminInvoiceMetaMime")} ${viewing.mimeType}`,
                 `${t("adminInvoiceMetaSource")} ${sourceLabel(viewing)}`,
-                `${t("adminInvoiceMetaPartner")} ${viewing.driverName}`,
+                `${t("adminInvoiceMetaDriver")} ${viewing.driverName}`,
                 `${t("adminInvoiceMetaJob")} ${
                   viewing.jobId || t("adminInvoiceJobNone")
                 }`,
@@ -5850,7 +5850,7 @@ const FinancePane = ({
     setFinEditId(j.id);
     setFinDraft({
       revenue: j.revenue ?? "",
-      driverCompensation: j.driverCompensation ?? "",
+      driverOffer: j.driverOffer ?? "",
       expenses: j.expenses ?? "",
       netAmount: j.netAmount ?? "",
       grossAmount: j.grossAmount ?? "",
@@ -5916,7 +5916,7 @@ const FinancePane = ({
             <th>{t("adminColTour")}</th>
             <th>{t("adminColCustomer")}</th>
             <th>{t("adminFinanceColRev")}</th>
-            <th>{t("adminFinanceColPartnerOffer")}</th>
+            <th>{t("adminFinanceColDriverOffer")}</th>
             <th>{t("financeExpenses")}</th>
             <th>{t("adminFinanceColInv")}</th>
             <th>{t("adminFinanceColPay")}</th>
@@ -5933,7 +5933,7 @@ const FinancePane = ({
                 <td className="mono">{j.tour}</td>
                 <td>{j.customer}</td>
                 <td>€ {Number(j.revenue || 0).toFixed(2)}</td>
-                <td>€ {Number(j.driverCompensation || 0).toFixed(2)}</td>
+                <td>€ {Number(j.driverOffer || 0).toFixed(2)}</td>
                 <td>€ {Number(j.expenses || 0).toFixed(2)}</td>
                 <td className="mono" style={{ fontSize: 12 }}>
                   {j.invoiceNumber || t("adminFinanceNoInvNum")}
@@ -6013,16 +6013,16 @@ const FinancePane = ({
               </div>
               <div>
                 <label className="field-label" htmlFor="fe-dc">
-                  {t("partnerOffer")} (€)
+                  {t("driverOffer")} (€)
                 </label>
                 <input
                   id="fe-dc"
                   className="input tnum"
-                  value={finDraft.driverCompensation}
+                  value={finDraft.driverOffer}
                   onChange={(e) =>
                     setFinDraft((p) => ({
                       ...p,
-                      driverCompensation: e.target.value,
+                      driverOffer: e.target.value,
                     }))
                   }
                 />
@@ -6153,7 +6153,7 @@ const FinancePane = ({
                 onClick={() => {
                   const rev = toN(finDraft.revenue);
                   const patch = {
-                    driverCompensation: toN(finDraft.driverCompensation),
+                    driverOffer: toN(finDraft.driverOffer),
                     expenses: toN(finDraft.expenses),
                     netAmount: toN(finDraft.netAmount),
                     grossAmount: toN(finDraft.grossAmount),
@@ -6462,7 +6462,7 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
               >
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{row.driverName}</div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
-                  {row.partnerId || "—"} · {row.createdAt}
+                  {row.driverCode || "—"} · {row.createdAt}
                 </div>
                 <MasterDataChangeListChips row={row} t={t} />
                 <Pill
@@ -6488,7 +6488,7 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
           <section className="card" style={{ padding: 22 }}>
             <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>{selected.driverName}</h2>
             <p className="mono" style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
-              {t("partnerId")}: {selected.partnerId || "—"} · {selected.createdAt}
+              {t("driverCode")}: {selected.driverCode || "—"} · {selected.createdAt}
             </p>
             {selected.proposed ? (
               <div style={{ marginTop: 16 }}>
@@ -6818,12 +6818,12 @@ Object.assign(window, {
   NewOrderFooter,
   Stub,
   UsersPane,
-  OrderingPartiesPane,
+  CustomersPane,
   AddressesPane,
   DocumentsPane,
   InfopointPane,
   TourBillingPane,
-  PartnerInvoicesPane: TourBillingPane,
+  
   FinancePane,
   AuditPane,
   NotificationFeedPane,

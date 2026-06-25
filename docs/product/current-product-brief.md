@@ -34,4 +34,4 @@ AUTHEON is a vehicle-transport operations platform with two surfaces: a mobile-f
 
 ## Open production decisions
 
-Authentication method, map/distance provider, admin-alert recipients, file retention/security, and the final application display name require a production decision before implementation.
+Keycloak is selected for authentication and role management. Map/distance provider, admin-alert recipients, file retention/security, exact Keycloak realm/client setup, and the final application display name still require production decisions before implementation.

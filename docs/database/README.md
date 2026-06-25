@@ -7,7 +7,7 @@ This directory is the proposed production data design for AUTHEON Version 1.
 
 ## Status
 
-**Draft for architecture review.** The model targets PostgreSQL 16+ and deliberately does not select an authentication provider, object-storage provider, map/distance provider, or email provider. Those decisions change integrations and security configuration, not the core operational entities.
+**Draft for architecture review.** The model targets PostgreSQL 16+. Keycloak is selected for authentication and role management; AUTHEON stores only the local application user/profile linked to the Keycloak subject. Object-storage provider, map/distance provider, and email provider remain open integration decisions.
 
 ## Sources analysed
 
@@ -19,6 +19,7 @@ This directory is the proposed production data design for AUTHEON Version 1.
 ## Design decisions already made
 
 - Relational source of truth; no document database or spreadsheet-style job record.
+- Keycloak owns authentication and roles; `app_users` stores the AUTHEON profile and stable Keycloak subject link only.
 - UUID primary keys, `timestamptz` timestamps, `numeric(12,2)` monetary values, and ISO country codes.
 - Job addresses and customer details are snapshotted at order creation; later master-data edits do not rewrite historical tours.
 - Operational status, document-review status, and settlement status are independent.
