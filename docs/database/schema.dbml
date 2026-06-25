@@ -1,5 +1,6 @@
 ﻿// AUTHEON Version 1 database draft — PostgreSQL target.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
+// Last updated: 2026-06-25 — resolved schema gaps identified against prd.json Phase 1 requirements.
 
 Enum user_status {
   active
@@ -16,6 +17,11 @@ Enum job_status {
   performed
   cancelled
   special_case
+}
+
+Enum assignment_mode {
+  marketplace  // job published to marketplace; any eligible driver may accept
+  direct       // job assigned directly to a specific driver
 }
 
 Enum assignment_type {
@@ -80,6 +86,14 @@ Enum cancellation_actor {
   driver
   admin
   customer
+}
+
+Enum master_data_change_type {
+  bank_details
+  address
+  vehicle_info
+  license
+  contact
 }
 
 Enum notification_channel {
@@ -185,11 +199,19 @@ Table jobs {
   axle_type varchar(32) [not null]
   internal_notes text
   driver_visible_notes text
+  // Determines publish flow and notification strategy
+  assignment_mode assignment_mode [not null, default: 'marketplace']
+  // Marketplace filter dimensions — matched against notification_preferences.postal_areas / vehicle_type / axle_type
+  required_vehicle_type varchar(100)
+  required_axle_type varchar(32)
+  pickup_postal_area varchar(16)
   document_review_summary document_review_status [not null, default: 'missing']
   settlement_state settlement_status [not null, default: 'not_started']
   created_at timestamptz [not null]
   created_by_user_id uuid [not null]
   updated_at timestamptz [not null]
+  // Denormalized for fast SLA/settlement queries — authoritative source is job_status_history
+  accepted_at timestamptz
   performed_at timestamptz
   cancelled_at timestamptz
   cancelled_by_user_id uuid
@@ -280,6 +302,9 @@ Table job_financials {
   notes text
   updated_at timestamptz [not null]
   updated_by_user_id uuid
+  // Settlement audit — who triggered settlement and when (compliance requirement)
+  settlement_initiated_by uuid
+  settlement_initiated_at timestamptz
 }
 
 Table job_problem_reports {
@@ -369,12 +394,16 @@ Table master_data_change_requests {
   driver_id uuid [not null]
   requested_by_user_id uuid [not null]
   status varchar(32) [not null, default: 'open'] // open | approved | rejected
+  change_type master_data_change_type [not null]  // discriminator for admin queue filtering and per-type validation
   requester_note text [not null]
   current_snapshot jsonb [not null]
   proposed_changes jsonb [not null]
   created_at timestamptz [not null]
   resolved_at timestamptz
   resolved_by_user_id uuid
+  // Review audit — who reviewed and when
+  reviewed_by_user_id uuid
+  reviewed_at timestamptz
   admin_note text
 }
 
@@ -419,7 +448,8 @@ Table notification_preferences {
   push_enabled boolean [not null, default: false]
   notify_published_jobs boolean [not null, default: false]
   notify_postal_area boolean [not null, default: false]
-  pickup_postal_prefix varchar(16)
+  // Array of postal area codes — replaces single pickup_postal_prefix to support multi-area subscriptions
+  postal_areas text[] [not null, default: '{}']
   vehicle_type varchar(100)
   axle_type varchar(32)
   updated_at timestamptz [not null]
@@ -435,6 +465,8 @@ Table push_subscriptions {
   created_at timestamptz [not null]
   last_seen_at timestamptz
   revoked_at timestamptz
+  // Set to false on HTTP 410 Gone from push service — prevents retrying expired subscriptions
+  is_active boolean [not null, default: true]
 }
 
 Table user_notifications {
@@ -541,9 +573,12 @@ Ref: job_document_reviews.reviewer_user_id > app_users.id
 Ref: generated_job_documents.job_id > jobs.id
 Ref: generated_job_documents.document_file_id > document_files.id
 
+Ref: job_financials.settlement_initiated_by > app_users.id
+
 Ref: master_data_change_requests.driver_id > drivers.id
 Ref: master_data_change_requests.requested_by_user_id > app_users.id
 Ref: master_data_change_requests.resolved_by_user_id > app_users.id
+Ref: master_data_change_requests.reviewed_by_user_id > app_users.id
 Ref: infopoint_documents.current_file_id > document_files.id
 Ref: infopoint_documents.updated_by_user_id > app_users.id
 Ref: infopoint_news.created_by_user_id > app_users.id

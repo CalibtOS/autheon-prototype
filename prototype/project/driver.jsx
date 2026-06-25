@@ -636,7 +636,13 @@ const JobCard = ({ job, onOpen }) => {
   );
 };
 
-const Portal = ({ filters, setFilters, openFilter, onOpenJob, onOpenNotifications }) => {
+const Portal = ({
+  filters,
+  setFilters,
+  openFilter,
+  onOpenJob,
+  onOpenNotifications,
+}) => {
   const { t, locale } = useI18n();
   const store = useAuthStore();
   const [sortDir, setSortDir] = useState("asc");
@@ -1430,8 +1436,8 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
             className="mono"
             style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}
           >
-            {AuthStore.formatJobScheduleShort(job, t("flexible"))} · {job.vehicle}{" "}
-            · {job.axle}
+            {AuthStore.formatJobScheduleShort(job, t("flexible"))} ·{" "}
+            {job.vehicle} · {job.axle}
           </div>
           <div
             style={{ fontSize: 18, fontWeight: 700, marginTop: 10 }}
@@ -1524,8 +1530,7 @@ const JobTourDocuments = ({ job }) => {
       window.alert(t("invoiceUploadTourRequired"));
     else if (reason === "not_replaceable")
       window.alert(t("tourDocReplaceNotAllowed"));
-    else if (reason === "not_owner")
-      window.alert(t("tourDocReplaceNotOwner"));
+    else if (reason === "not_owner") window.alert(t("tourDocReplaceNotOwner"));
   };
   const startUpload = (documentType) => {
     const gate = store.canDriverUploadTourDocument(jobId);
@@ -2082,7 +2087,9 @@ const JobUnlocked = ({
                 </div>
               ) : null}
               {c.email ? (
-                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+                <div
+                  style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}
+                >
                   {t("email")}: {c.email}
                 </div>
               ) : null}
@@ -2179,7 +2186,6 @@ const JobUnlocked = ({
             € {fmtDriverOffer(job).toFixed(2)}
           </div>
         </div>
-
       </div>
       {!isPerformed && !isCancelled && !isSpecialCase && (
         <div
@@ -2425,10 +2431,26 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
     ["other", t("reportCancelOther"), t("reportCancelOtherSub")],
   ];
   const notPerformableReasons = [
-    ["vehicle_not_on_site", t("problemReasonNotOnSite"), t("problemReasonNotOnSiteSub")],
-    ["vehicle_not_roadworthy", t("problemReasonNotRoadworthy"), t("problemReasonNotRoadworthySub")],
-    ["contact_unreachable", t("problemReasonNoContact"), t("problemReasonNoContactSub")],
-    ["wrong_address", t("problemReasonWrongAddress"), t("problemReasonWrongAddressSub")],
+    [
+      "vehicle_not_on_site",
+      t("problemReasonNotOnSite"),
+      t("problemReasonNotOnSiteSub"),
+    ],
+    [
+      "vehicle_not_roadworthy",
+      t("problemReasonNotRoadworthy"),
+      t("problemReasonNotRoadworthySub"),
+    ],
+    [
+      "contact_unreachable",
+      t("problemReasonNoContact"),
+      t("problemReasonNoContactSub"),
+    ],
+    [
+      "wrong_address",
+      t("problemReasonWrongAddress"),
+      t("problemReasonWrongAddressSub"),
+    ],
     ["other", t("problemReasonOther"), t("problemReasonOtherSub")],
   ];
   const reasonList = path === "cancel" ? cancelReasons : notPerformableReasons;
@@ -2517,9 +2539,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                   className="radio-card"
                   onClick={() => {
                     setPath(id);
-                    setReason(
-                      id === "cancel" ? "driver_unavailable" : "other",
-                    );
+                    setReason(id === "cancel" ? "driver_unavailable" : "other");
                     setText("");
                     setEvidenceFiles([]);
                     setSlidePos(0);
@@ -2591,16 +2611,16 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
               <div className="label" style={{ marginTop: 6 }}>
                 {t("charsRequired")}{" "}
                 <span
-                  className={
-                    "slide-char-count " + (valid ? "ok" : "need-more")
-                  }
+                  className={"slide-char-count " + (valid ? "ok" : "need-more")}
                 >
                   {text.trim().length}/10
                 </span>
               </div>
               {path === "not_performable" ? (
                 <div style={{ marginTop: 16 }}>
-                  <div className="field-label">{t("reportProblemEvidenceLabel")}</div>
+                  <div className="field-label">
+                    {t("reportProblemEvidenceLabel")}
+                  </div>
                   <p
                     style={{
                       fontSize: 12,
@@ -2663,7 +2683,10 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                             borderRadius: "var(--r-2)",
                           }}
                         >
-                          <span className="mono" style={{ wordBreak: "break-all" }}>
+                          <span
+                            className="mono"
+                            style={{ wordBreak: "break-all" }}
+                          >
                             {f.name}
                           </span>
                           <button
@@ -2697,8 +2720,16 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                       lineHeight: 1.55,
                     }}
                   >
-                    <p style={{ margin: 0 }}>{t("reportProblemCancelBindingWarning")}</p>
-                    <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--muted)" }}>
+                    <p style={{ margin: 0 }}>
+                      {t("reportProblemCancelBindingWarning")}
+                    </p>
+                    <p
+                      style={{
+                        margin: "10px 0 0",
+                        fontSize: 12,
+                        color: "var(--muted)",
+                      }}
+                    >
                       {t("reportProblemCancelTermsIntro")}{" "}
                       <button
                         type="button"
@@ -2715,40 +2746,44 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                       </button>
                     </p>
                   </div>
-                <div className="slide-confirm-wrap" style={{ marginTop: 16 }}>
-                  <div
-                    ref={trackRef}
-                    className={
-                      "slide-confirm" +
-                      (slideDone ? " done" : "") +
-                      (!slideEnabled ? " disabled" : "")
-                    }
-                    aria-disabled={!slideEnabled}
-                  >
-                    <div className="track-text">
-                      {slideDone
-                        ? t("reportProblemCancelConfirmed")
-                        : valid
-                          ? t("slideToCancelOrder")
-                          : t("slideToCancelOrderLocked")}
-                    </div>
+                  <div className="slide-confirm-wrap" style={{ marginTop: 16 }}>
                     <div
-                      className="thumb"
-                      style={{
-                        width: slideDone ? "100%" : valid ? 92 + slidePos : 92,
-                      }}
-                      onPointerDown={slideEnabled ? onSlideStart : undefined}
-                      tabIndex={slideEnabled ? 0 : -1}
+                      ref={trackRef}
+                      className={
+                        "slide-confirm" +
+                        (slideDone ? " done" : "") +
+                        (!slideEnabled ? " disabled" : "")
+                      }
+                      aria-disabled={!slideEnabled}
                     >
-                      {!slideDone && (valid ? "›››" : "LOCK")}
+                      <div className="track-text">
+                        {slideDone
+                          ? t("reportProblemCancelConfirmed")
+                          : valid
+                            ? t("slideToCancelOrder")
+                            : t("slideToCancelOrderLocked")}
+                      </div>
+                      <div
+                        className="thumb"
+                        style={{
+                          width: slideDone
+                            ? "100%"
+                            : valid
+                              ? 92 + slidePos
+                              : 92,
+                        }}
+                        onPointerDown={slideEnabled ? onSlideStart : undefined}
+                        tabIndex={slideEnabled ? 0 : -1}
+                      >
+                        {!slideDone && (valid ? "›››" : "LOCK")}
+                      </div>
                     </div>
+                    {!valid && !slideDone && (
+                      <p className="slide-confirm-hint">
+                        {t("slideToCancelOrderHint")}
+                      </p>
+                    )}
                   </div>
-                  {!valid && !slideDone && (
-                    <p className="slide-confirm-hint">
-                      {t("slideToCancelOrderHint")}
-                    </p>
-                  )}
-                </div>
                 </>
               ) : (
                 <p
@@ -2978,11 +3013,16 @@ const DriverNotificationsList = ({ markReadOnMount = false }) => {
             {row.body}
           </div>
           {row.type === "infopoint_news" ? (
-            <div style={{ fontSize: 11, color: "var(--primary)", marginTop: 6 }}>
+            <div
+              style={{ fontSize: 11, color: "var(--primary)", marginTop: 6 }}
+            >
               {t("driverNotifInfopointHint")}
             </div>
           ) : null}
-          <div className="mono" style={{ fontSize: 10, color: "var(--muted-2)", marginTop: 4 }}>
+          <div
+            className="mono"
+            style={{ fontSize: 10, color: "var(--muted-2)", marginTop: 4 }}
+          >
             {row.createdAt}
             {row.tour ? ` · ${row.tour}` : ""}
           </div>
@@ -3116,7 +3156,9 @@ const ProfilePaneFull = () => {
         <div className="mdr-card-head">
           <Lbl>{t("profileMasterData")}</Lbl>
           {profileMode === "pending" ? (
-            <span className="pill assigned">{t("masterDataChangePendingBadge")}</span>
+            <span className="pill assigned">
+              {t("masterDataChangePendingBadge")}
+            </span>
           ) : null}
         </div>
         {profileMode === "pending" ? (
@@ -3179,7 +3221,9 @@ const ProfilePaneFull = () => {
                         ) : null}
                       </div>
                       {changed ? (
-                        <div className="mdr-field-old">{pendingBefore || "—"}</div>
+                        <div className="mdr-field-old">
+                          {pendingBefore || "—"}
+                        </div>
                       ) : null}
                     </>
                   ) : (
@@ -3238,90 +3282,95 @@ const ProfilePaneFull = () => {
       </div>
       <div className="card" style={{ padding: 14, marginTop: 14 }}>
         <Lbl>{t("notificationPreferences")}</Lbl>
-          <label className="field-label" style={{ marginTop: 14 }}>
-            {t("vehicleType")}
-          </label>
-          <select
-            className="input"
-            value={prefs.vehicle || "All"}
-            onChange={(e) => setPref({ vehicle: e.target.value })}
-          >
-            {["All", "PKW", "SUV", "Van", "Light truck <3.5t"].map((x) => (
-              <option key={x} value={x}>
-                {displayVehicle(x, t)}
-              </option>
-            ))}
-          </select>
-          <label className="field-label" style={{ marginTop: 12 }}>
-            {t("axle")}
-          </label>
-          <div className="seg full">
-            {["All", "Own axle", "Third-party axle"].map((x) => (
-              <button
-                key={x}
-                type="button"
-                className={(prefs.axle || "All") === x ? "on" : ""}
-                onClick={() => setPref({ axle: x })}
-              >
-                {displayAxle(x, t)}
-              </button>
-            ))}
-          </div>
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginTop: 14,
-              fontSize: 13,
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={prefs.pushEnabled !== false}
-              onChange={(e) => setPref({ pushEnabled: e.target.checked })}
-            />
-            {t("pushEnabledMaster")}
-          </label>
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginTop: 10,
-              fontSize: 13,
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={prefs.notifyNewPublished !== false}
-              onChange={(e) =>
-                setPref({ notifyNewPublished: e.target.checked })
-              }
-            />
-            {t("pushNotifyNewPublished")}
-          </label>
-          <label className="field-label" style={{ marginTop: 12 }}>
-            {t("pushNotifyPostalPrefix")}
-          </label>
+        <label className="field-label" style={{ marginTop: 14 }}>
+          {t("vehicleType")}
+        </label>
+        <select
+          className="input"
+          value={prefs.vehicle || "All"}
+          onChange={(e) => setPref({ vehicle: e.target.value })}
+        >
+          {["All", "PKW", "SUV", "Van", "Light truck <3.5t"].map((x) => (
+            <option key={x} value={x}>
+              {displayVehicle(x, t)}
+            </option>
+          ))}
+        </select>
+        <label className="field-label" style={{ marginTop: 12 }}>
+          {t("axle")}
+        </label>
+        <div className="seg full">
+          {["All", "Own axle", "Third-party axle"].map((x) => (
+            <button
+              key={x}
+              type="button"
+              className={(prefs.axle || "All") === x ? "on" : ""}
+              onClick={() => setPref({ axle: x })}
+            >
+              {displayAxle(x, t)}
+            </button>
+          ))}
+        </div>
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            marginTop: 14,
+            fontSize: 13,
+          }}
+        >
           <input
-            className="input mono"
-            value={prefs.notifyPostalPrefix || ""}
-            onChange={(e) => setPref({ notifyPostalPrefix: e.target.value })}
-            placeholder={t("pushPostalPrefixHint")}
+            type="checkbox"
+            checked={prefs.pushEnabled !== false}
+            onChange={(e) => setPref({ pushEnabled: e.target.checked })}
           />
-          <div
-            className="dash-area"
-            style={{
-              marginTop: 12,
-              fontFamily: "var(--font-sans)",
-              fontSize: 12,
-              letterSpacing: 0,
-              textTransform: "none",
-            }}
-          >
-            {t("pushSupportNotice")}
-          </div>
+          {t("pushEnabledMaster")}
+        </label>
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            marginTop: 10,
+            fontSize: 13,
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={prefs.notifyNewPublished !== false}
+            onChange={(e) => setPref({ notifyNewPublished: e.target.checked })}
+          />
+          {t("pushNotifyNewPublished")}
+        </label>
+        <label className="field-label" style={{ marginTop: 12 }}>
+          {t("pushNotifyPostalPrefix")}
+        </label>
+        <input
+          className="input mono"
+          value={(prefs.postalAreas || []).join(", ")}
+          onChange={(e) =>
+            setPref({
+              postalAreas: e.target.value
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean),
+            })
+          }
+          placeholder={t("pushPostalPrefixHint")}
+        />
+        <div
+          className="dash-area"
+          style={{
+            marginTop: 12,
+            fontFamily: "var(--font-sans)",
+            fontSize: 12,
+            letterSpacing: 0,
+            textTransform: "none",
+          }}
+        >
+          {t("pushSupportNotice")}
+        </div>
       </div>
       <button
         type="button"
@@ -3412,14 +3461,22 @@ const Infopoint = () => {
                     </div>
                   ) : null}
                   <div
-                    style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}
+                    style={{
+                      fontSize: 12,
+                      color: "var(--muted)",
+                      marginTop: 6,
+                    }}
                   >
-                    {displayDocCategory(d.category, t)} · {displayDocScope(d.scope, t)} ·{" "}
-                    {d.version}
+                    {displayDocCategory(d.category, t)} ·{" "}
+                    {displayDocScope(d.scope, t)} · {d.version}
                   </div>
                   <div
                     className="mono"
-                    style={{ fontSize: 11, color: "var(--muted-2)", marginTop: 4 }}
+                    style={{
+                      fontSize: 11,
+                      color: "var(--muted-2)",
+                      marginTop: 4,
+                    }}
                   >
                     {t("adminInfopointColUpdated")}: {d.updatedAt}
                   </div>
@@ -3500,7 +3557,9 @@ const Infopoint = () => {
                       alignItems: "flex-start",
                     }}
                   >
-                    <div style={{ fontWeight: unread ? 700 : 600, fontSize: 14 }}>
+                    <div
+                      style={{ fontWeight: unread ? 700 : 600, fontSize: 14 }}
+                    >
                       {n.title}
                     </div>
                     {unread ? (

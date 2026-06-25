@@ -42,7 +42,9 @@ window.AuthStore = (() => {
   }
 
   function tourDocumentNeedsDriverCorrection(reviewStatus) {
-    return normalizeTourDocumentReviewStatus(reviewStatus) === "correction_required";
+    return (
+      normalizeTourDocumentReviewStatus(reviewStatus) === "correction_required"
+    );
   }
 
   /** Canonical billing invoice document type for tour uploads. */
@@ -632,7 +634,8 @@ window.AuthStore = (() => {
       {
         id: "DOC-006",
         title: "Vehicle pickup instructions",
-        description: "Action instructions for vehicle pickup at customer sites.",
+        description:
+          "Action instructions for vehicle pickup at customer sites.",
         category: "Pickup",
         visible: true,
         scope: "Global",
@@ -643,7 +646,8 @@ window.AuthStore = (() => {
       {
         id: "DOC-007",
         title: "Fuel receipt and invoicing notes",
-        description: "How to submit fuel receipts and billing invoices after performed tours.",
+        description:
+          "How to submit fuel receipts and billing invoices after performed tours.",
         category: "Invoicing",
         visible: true,
         scope: "Global",
@@ -654,7 +658,8 @@ window.AuthStore = (() => {
       {
         id: "DOC-008",
         title: "Cancellation and problem case process",
-        description: "When and how to use Report Problem; contact dispatch for special cases.",
+        description:
+          "When and how to use Report Problem; contact dispatch for special cases.",
         category: "Process",
         visible: true,
         scope: "Global",
@@ -670,8 +675,7 @@ window.AuthStore = (() => {
       {
         id: "NEWS-001",
         title: "ATTENTION: public transport strike 01.01.2027",
-        body:
-          "Dear service partners,\n\nOn Monday, 01.01.2027, there may be isolated warning strikes in public transport. Please check in good time whether your area in Germany is affected.\n\nThank you for your attention and safe travels.",
+        body: "Dear service partners,\n\nOn Monday, 01.01.2027, there may be isolated warning strikes in public transport. Please check in good time whether your area in Germany is affected.\n\nThank you for your attention and safe travels.",
         publishedAt: "24.05. 09:00",
         visible: true,
         readBy: [],
@@ -758,9 +762,7 @@ window.AuthStore = (() => {
   }
 
   function seedJobs() {
-    const byAddr = Object.fromEntries(
-      seedAddresses().map((a) => [a.id, a]),
-    );
+    const byAddr = Object.fromEntries(seedAddresses().map((a) => [a.id, a]));
     const loc = (id, schedule) => locationFromAddress(byAddr[id], schedule);
 
     return [
@@ -871,7 +873,8 @@ window.AuthStore = (() => {
         driverOffer: 175,
         notes:
           "Historic vehicle on third-party axle; yard access issue reported by driver.",
-        notesDriver: "Do not attempt pickup until dispatch confirms yard reopening.",
+        notesDriver:
+          "Do not attempt pickup until dispatch confirms yard reopening.",
         status: "special_case",
         driver: DEMO_DRIVER,
         pdfVersion: 1,
@@ -996,7 +999,8 @@ window.AuthStore = (() => {
         axle: AXLE_OWN,
         driverOffer: 280,
         revenue: 310,
-        notesDriver: "Sprinter — check height clearance at Marienplatz delivery.",
+        notesDriver:
+          "Sprinter — check height clearance at Marienplatz delivery.",
         status: "accepted",
         driver: DEMO_DRIVER,
         pdfVersion: 1,
@@ -1084,7 +1088,8 @@ window.AuthStore = (() => {
         axle: AXLE_OWN,
         driverOffer: 195,
         revenue: 240,
-        notes: "Cancelled after driver Report Problem — customer withdrew slot.",
+        notes:
+          "Cancelled after driver Report Problem — customer withdrew slot.",
         status: "cancelled",
         cancellationActor: "customer",
         cancellationReasonText: "Customer withdrew delivery slot.",
@@ -1173,7 +1178,8 @@ window.AuthStore = (() => {
         axle: AXLE_OWN,
         driverOffer: 365,
         revenue: 420,
-        notes: "Long-haul draft Berlin hub to Stuttgart; verify night gate access.",
+        notes:
+          "Long-haul draft Berlin hub to Stuttgart; verify night gate access.",
         status: "draft",
         pdfVersion: 0,
         createdAt: "20.04. 17:00",
@@ -1204,7 +1210,7 @@ window.AuthStore = (() => {
         notes: "",
         status: "Active",
         prefs: {
-          notifyPostalPrefix: "80",
+          postalAreas: ["80"],
           vehicle: "PKW",
           axle: "All",
           pushEnabled: true,
@@ -1222,7 +1228,7 @@ window.AuthStore = (() => {
         notes: "",
         status: "Active",
         prefs: {
-          notifyPostalPrefix: "60",
+          postalAreas: ["60"],
           vehicle: "Transporter",
           axle: AXLE_THIRD,
           pushEnabled: true,
@@ -1240,7 +1246,7 @@ window.AuthStore = (() => {
         notes: "",
         status: "Blocked",
         prefs: {
-          notifyPostalPrefix: "10",
+          postalAreas: ["10"],
           vehicle: "SUV",
           axle: AXLE_OWN,
           pushEnabled: false,
@@ -1360,7 +1366,8 @@ window.AuthStore = (() => {
         uploadedAt: "2026-04-21T16:00:00.000Z",
         documentType: "toll_receipt",
         reviewStatus: "rejected",
-        rejectionReason: "Amount illegible — awaiting dispatch to request correction.",
+        rejectionReason:
+          "Amount illegible — awaiting dispatch to request correction.",
         processed: false,
         source: "driver",
         notes: "",
@@ -1536,14 +1543,19 @@ window.AuthStore = (() => {
         if (!loc?.contactPerson?.trim() || !loc?.phone?.trim()) {
           issues.push(`${j.id}:${side}: contact`);
         }
-        if (!loc?.street?.trim() || !loc?.city?.trim() || !loc?.postalCode?.trim()) {
+        if (
+          !loc?.street?.trim() ||
+          !loc?.city?.trim() ||
+          !loc?.postalCode?.trim()
+        ) {
           issues.push(`${j.id}:${side}: address`);
         }
         if (!loc?.date?.trim() && !loc?.windowFlex) {
           issues.push(`${j.id}:${side}: schedule`);
         }
       }
-      if (!j.plate?.trim() || !j.vin?.trim()) issues.push(`${j.id}: vehicle ids`);
+      if (!j.plate?.trim() || !j.vin?.trim())
+        issues.push(`${j.id}: vehicle ids`);
       if (!j.vehicle?.trim() || !j.vehicleModel?.trim()) {
         issues.push(`${j.id}: vehicle`);
       }
@@ -1554,7 +1566,11 @@ window.AuthStore = (() => {
       if (!j.history?.length) issues.push(`${j.id}: history`);
       if (!j.pickup?.date) issues.push(`${j.id}: pickup.date`);
       if (!j.delivery?.date) issues.push(`${j.id}: delivery.date`);
-      if (j.status !== "draft" && !(j.pdfVersion > 0) && j.status !== "published") {
+      if (
+        j.status !== "draft" &&
+        !(j.pdfVersion > 0) &&
+        j.status !== "published"
+      ) {
         /* published may have pdf 0 until accept */
       }
     }
@@ -1600,7 +1616,9 @@ window.AuthStore = (() => {
     for (const d of docList) {
       const j = jobList.find((x) => x.id === d.jobId);
       if (j && j.status !== "performed") {
-        issues.push(`${d.id}: document on non-performed job ${j.id} (${j.status})`);
+        issues.push(
+          `${d.id}: document on non-performed job ${j.id} (${j.status})`,
+        );
       }
       if (
         isTourBillingInvoiceType(d.documentType) &&
@@ -1746,18 +1764,24 @@ window.AuthStore = (() => {
       pushEnabled: p.pushEnabled != null ? !!p.pushEnabled : legacyPush,
       notifyNewPublished:
         p.notifyNewPublished != null ? !!p.notifyNewPublished : legacyPush,
-      notifyPostalPrefix: String(
-        p.notifyPostalPrefix || p.startPlz || "",
-      ).trim(),
+      // postalAreas replaces single notifyPostalPrefix — supports multi-area subscriptions
+      postalAreas: Array.isArray(p.postalAreas)
+        ? p.postalAreas.map(String).filter(Boolean)
+        : String(p.notifyPostalPrefix || p.startPlz || "").trim()
+          ? [String(p.notifyPostalPrefix || p.startPlz || "").trim()]
+          : [],
       push: legacyPush,
     };
   }
 
-  function postalPrefixMatches(job, prefix) {
-    const p = String(prefix || "").replace(/\D/g, "");
-    if (!p.length) return true;
+  function postalAreaMatches(job, areas) {
+    if (!areas || !areas.length) return true;
     const plz = String(job.pickup?.postalCode || job.startPlz || "");
-    return plz.startsWith(p.length >= 2 ? p.slice(0, 2) : p.slice(0, 1));
+    return areas.some((area) => {
+      const p = String(area || "").replace(/\D/g, "");
+      if (!p.length) return true;
+      return plz.startsWith(p.length >= 2 ? p.slice(0, 2) : p.slice(0, 1));
+    });
   }
 
   function maybeNotifyPublishedJob(job) {
@@ -1768,8 +1792,8 @@ window.AuthStore = (() => {
       const prefs = normalizeDriverPrefs(d.prefs);
       if (!prefs.pushEnabled || !prefs.notifyNewPublished) continue;
       if (
-        prefs.notifyPostalPrefix &&
-        !postalPrefixMatches(job, prefs.notifyPostalPrefix)
+        prefs.postalAreas.length &&
+        !postalAreaMatches(job, prefs.postalAreas)
       )
         continue;
       notified.push(d.name);
@@ -1868,9 +1892,7 @@ window.AuthStore = (() => {
     const j = jobs.find((x) => x.id === jobId);
     if (!j) return;
     const invoices = tourDocuments.filter(
-      (d) =>
-        d.jobId === jobId &&
-        isTourBillingInvoiceType(d.documentType),
+      (d) => d.jobId === jobId && isTourBillingInvoiceType(d.documentType),
     );
     const accepted = invoices.filter(
       (d) => d.reviewStatus === "accepted" || d.processed,
@@ -1915,7 +1937,11 @@ window.AuthStore = (() => {
           country: form.endCountry || "DE",
         };
     return mkLocation({
-      locationId: flat.locationId || form[cap("locationId")] || form[`${p}LocationId`] || null,
+      locationId:
+        flat.locationId ||
+        form[cap("locationId")] ||
+        form[`${p}LocationId`] ||
+        null,
       name: flat.name || form[cap("name")] || form[`${p}Name`] || "",
       street: flat.street || form[cap("street")] || form[`${p}Street`] || "",
       houseNumber:
@@ -1930,7 +1956,8 @@ window.AuthStore = (() => {
         form[`${p}PostalCode`] ||
         "",
       city: flat.city || form[cap("city")] || form[`${p}City`] || "",
-      country: flat.country || form[cap("country")] || form[`${p}Country`] || "DE",
+      country:
+        flat.country || form[cap("country")] || form[`${p}Country`] || "DE",
       contactPerson:
         form[cap("contactPerson")] ||
         form[`${p}Contact`] ||
@@ -2052,8 +2079,7 @@ window.AuthStore = (() => {
       ),
       pickupLocationId: pu.locationId || "",
       deliveryLocationId: del.locationId || "",
-      driverOffer:
-        job.driverOffer != null ? String(job.driverOffer) : "",
+      driverOffer: job.driverOffer != null ? String(job.driverOffer) : "",
       expenses: job.expenses != null ? String(job.expenses) : "",
       notes: job.notes || "",
       notesDriver: job.notesDriver || "",
@@ -2072,8 +2098,7 @@ window.AuthStore = (() => {
       customers.find((x) => x.id === opId) ||
       customers.find((x) => x.name === form.customer);
     const driverOffer =
-      parseFloat(String(form.driverOffer || "0").replace(",", ".")) ||
-      0;
+      parseFloat(String(form.driverOffer || "0").replace(",", ".")) || 0;
     const distRaw =
       form.distanceKm ?? form.distance ?? form.distanceManualOverride;
     const dist = parseInt(distRaw, 10) || 0;
@@ -2237,8 +2262,7 @@ window.AuthStore = (() => {
     normalizePlate:
       window.InputFormatters?.normalizePlate ||
       ((s) => String(s || "").toUpperCase()),
-    compareTimeStrings:
-      window.InputFormatters?.compareTimeStrings || (() => 0),
+    compareTimeStrings: window.InputFormatters?.compareTimeStrings || (() => 0),
     MANUFACTURER_SUGGESTIONS:
       window.InputFormatters?.MANUFACTURER_SUGGESTIONS || [],
     formatLocTimeWindow,
@@ -2299,7 +2323,9 @@ window.AuthStore = (() => {
         driverId ||
         api.getCurrentDriver()?.id ||
         drivers.find((d) => d.name === DEMO_DRIVER)?.id;
-      return driverNotifications.filter((n) => !n.driverId || n.driverId === id);
+      return driverNotifications.filter(
+        (n) => !n.driverId || n.driverId === id,
+      );
     },
     getDriverNotificationUnreadCount: (driverId) =>
       api.getDriverNotifications(driverId).filter((n) => !n.read).length,
@@ -2759,12 +2785,7 @@ window.AuthStore = (() => {
       ];
       driverState.specialCaseIds.add(id);
       driverState.acceptedIds.delete(id);
-      log(
-        "special_case_created",
-        DEMO_DRIVER,
-        j.tour,
-        `${reason}: ${message}`,
-      );
+      log("special_case_created", DEMO_DRIVER, j.tour, `${reason}: ${message}`);
       const alertMeta =
         evidence.length > 0
           ? `${message || ""} · ${evidence.length} file(s)`.trim()
@@ -2799,7 +2820,9 @@ window.AuthStore = (() => {
       if (opts.driverId) {
         rows = rows.filter((r) => r.driverId === opts.driverId);
       }
-      rows.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      rows.sort((a, b) =>
+        String(b.createdAt).localeCompare(String(a.createdAt)),
+      );
       return rows;
     },
 
@@ -2839,17 +2862,24 @@ window.AuthStore = (() => {
       if (!changedFields.length) return { ok: false, reason: "no_changes" };
       const who = d.name || DEMO_DRIVER;
       const reqId = `MDR-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      // Derive changeType from which fields changed — matches master_data_change_type enum
+      const changeType = changedFields.includes("address")
+        ? "address"
+        : "contact";
       const row = {
         id: reqId,
         driverId: d.id,
         driverName: who,
         driverCode: d.driverCode || "",
+        changeType,
         note: "",
         proposed: p,
         status: "open",
         createdAt: nowStamp(),
         resolvedAt: null,
         resolvedBy: null,
+        reviewedBy: null,
+        reviewedAt: null,
         adminNote: "",
         snapshot,
       };
@@ -2892,11 +2922,14 @@ window.AuthStore = (() => {
           email: p.email,
           phone: p.phone,
         });
-        if (!upd.ok) return { ok: false, reason: upd.reason || "update_failed" };
+        if (!upd.ok)
+          return { ok: false, reason: upd.reason || "update_failed" };
       }
       row.status = approved ? "approved" : "rejected";
       row.resolvedAt = nowStamp();
       row.resolvedBy = DEMO_ADMIN;
+      row.reviewedBy = DEMO_ADMIN;
+      row.reviewedAt = nowStamp();
       row.adminNote = String(adminNote || "").trim();
       const action = approved
         ? "master_data_change_approved"
@@ -2981,11 +3014,7 @@ window.AuthStore = (() => {
           },
         ];
         log("special_case_resolved", DEMO_ADMIN, j.tour, "Returned to draft");
-      } else if (
-        d === "assign" ||
-        d === "assigned" ||
-        d === "continue"
-      ) {
+      } else if (d === "assign" || d === "assigned" || d === "continue") {
         const restored =
           j.specialCaseReport?.statusBeforeSpecialCase ||
           inferStatusBeforeSpecialCase(j);
@@ -3000,9 +3029,7 @@ window.AuthStore = (() => {
             st: restored,
             at: nowStamp(),
             by: DEMO_ADMIN,
-            meta:
-              note ||
-              `Special case resolved → continued as ${restored}`,
+            meta: note || `Special case resolved → continued as ${restored}`,
           },
         ];
         log(
@@ -3106,8 +3133,7 @@ window.AuthStore = (() => {
 
     assignJob(id, driverRef) {
       const j = api.getJob(id);
-      if (!j || j.status !== "draft")
-        return { ok: false, reason: "not_draft" };
+      if (!j || j.status !== "draft") return { ok: false, reason: "not_draft" };
       const dr = api.resolveAssignableDriver(driverRef);
       if (!dr.ok) return dr;
       j.status = "assigned";
@@ -3150,12 +3176,7 @@ window.AuthStore = (() => {
           meta: `Reassigned: ${prev || "—"} → ${j.driver}`,
         },
       ];
-      log(
-        "job_reassigned",
-        DEMO_ADMIN,
-        j.tour,
-        `${prev || "—"} → ${j.driver}`,
-      );
+      log("job_reassigned", DEMO_ADMIN, j.tour, `${prev || "—"} → ${j.driver}`);
       queuePushNotification(j, "assign");
       queueAdminEmailAlert("job_reassigned", id, `${prev} → ${j.driver}`);
       emit();
@@ -3409,7 +3430,7 @@ window.AuthStore = (() => {
         notes: String(data.notes || "").trim(),
         status: "Active",
         prefs: {
-          notifyPostalPrefix: "",
+          postalAreas: [],
           vehicle: "PKW",
           axle: "All",
           pushEnabled: true,
@@ -3503,9 +3524,7 @@ window.AuthStore = (() => {
       const base = name.replace(/\.[^.]+$/, "") || "Document";
       return api.addGeneralDocument({
         title: meta.title || base,
-        description:
-          meta.description ||
-          `Uploaded PDF (demo): ${name}`,
+        description: meta.description || `Uploaded PDF (demo): ${name}`,
         category: meta.category || "Operations",
       });
     },
@@ -3665,7 +3684,8 @@ window.AuthStore = (() => {
         const next = normalizeTourDocumentReviewStatus(patch.reviewStatus);
         if (next === "accepted")
           return { ok: false, reason: "use_accept_tour_document" };
-        if (!DOC_REVIEW.includes(next)) return { ok: false, reason: "bad_status" };
+        if (!DOC_REVIEW.includes(next))
+          return { ok: false, reason: "bad_status" };
         doc.reviewStatus = next;
         if (next !== "rejected" && next !== "correction_required")
           doc.rejectionReason = "";
@@ -3691,9 +3711,13 @@ window.AuthStore = (() => {
         doc.supplierInvoiceDate = "";
       }
       if (patch.supplierInvoiceNumber !== undefined)
-        doc.supplierInvoiceNumber = String(patch.supplierInvoiceNumber ?? "").trim();
+        doc.supplierInvoiceNumber = String(
+          patch.supplierInvoiceNumber ?? "",
+        ).trim();
       if (patch.supplierInvoiceDate !== undefined)
-        doc.supplierInvoiceDate = String(patch.supplierInvoiceDate ?? "").trim();
+        doc.supplierInvoiceDate = String(
+          patch.supplierInvoiceDate ?? "",
+        ).trim();
       reconcileDocumentReviewSummary(jobId);
       reconcileJobInvoiceFromTourDocuments(jobId);
       log("tour_document_updated", DEMO_ADMIN, doc.fileName, doc.reviewStatus);
@@ -3813,14 +3837,21 @@ window.AuthStore = (() => {
         doc.documentType = normalizeTourDocumentType(opts.documentType);
       reconcileDocumentReviewSummary(jobId);
       reconcileJobInvoiceFromTourDocuments(jobId);
-      const who = actor === "driver" ? api.getCurrentDriver()?.name || DEMO_DRIVER : DEMO_ADMIN;
+      const who =
+        actor === "driver"
+          ? api.getCurrentDriver()?.name || DEMO_DRIVER
+          : DEMO_ADMIN;
       log(
         "tour_document_replaced",
         who,
         doc.fileName,
         `${jobId} · ${doc.documentType}`,
       );
-      queueAdminEmailAlert("tour_document_uploaded", jobId, "replacement upload");
+      queueAdminEmailAlert(
+        "tour_document_uploaded",
+        jobId,
+        "replacement upload",
+      );
       emit();
       return { ok: true, id: doc.id };
     },
@@ -3993,12 +4024,7 @@ window.AuthStore = (() => {
       const rows = [cols.map((c) => c.header).join(",")].concat(
         jobs.map((j) => cols.map((c) => esc(j[c.key])).join(",")),
       );
-      log(
-        "jobs_exported",
-        DEMO_ADMIN,
-        "CSV export",
-        `${jobs.length} rows`,
-      );
+      log("jobs_exported", DEMO_ADMIN, "CSV export", `${jobs.length} rows`);
       emit();
       return rows.join("\n");
     },
@@ -4010,12 +4036,7 @@ window.AuthStore = (() => {
       const rows = [cols.join(",")].concat(
         list.map((a) => cols.map((c) => esc(a[c])).join(",")),
       );
-      log(
-        "audit_log_exported",
-        DEMO_ADMIN,
-        "CSV",
-        `${list.length} rows`,
-      );
+      log("audit_log_exported", DEMO_ADMIN, "CSV", `${list.length} rows`);
       emit();
       return rows.join("\n");
     },

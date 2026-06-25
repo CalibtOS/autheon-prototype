@@ -1,6 +1,6 @@
 # AUTHEON database logical model
 
-> **Status:** Draft for architecture review. [`schema.dbml`](schema.dbml) is the accompanying relational schema. [`../requirements/prd.json`](../requirements/prd.json) remains the functional source of truth.
+> **Status:** Updated 2026-06-25 — schema gaps resolved against prd.json Phase 1 requirements. [`schema.dbml`](schema.dbml) is the accompanying relational schema. [`../requirements/prd.json`](../requirements/prd.json) remains the functional source of truth.
 
 ## Scope and modelling approach
 
@@ -26,37 +26,37 @@ outbox_events ──< notification_deliveries
 
 ## Core entities
 
-| Area | Tables | Purpose |
-| --- | --- | --- |
-| Identity | `app_users`, `drivers` | Keycloak owns authentication and role/group assignment. AUTHEON stores a local user profile linked by Keycloak subject plus the driver business profile where applicable. |
-| Master data | `customers`, `locations` | Reusable reporting/billing customers and pickup/delivery locations, including customer type, billing notes, and operational instructions. Deactivation replaces deletion where a record is referenced. |
-| Tours | `jobs`, `job_locations`, `job_assignments`, `job_status_history`, `job_distance_estimates`, `job_financials` | Current operational state plus immutable historical context. |
-| Problems | `job_problem_reports`, `problem_report_evidence` | Cancellation and not-performable reports, reasons, evidence, and the pre-problem status needed for dispatch resolution. |
-| Documents | `job_documents`, `document_files`, `job_document_reviews`, `generated_job_documents` | Business document, immutable file versions, review history, and generated transport-order PDFs. |
-| Content | `infopoint_documents`, `infopoint_news`, `infopoint_news_reads` | Driver-facing general documents and one-way news. |
-| Notifications | `notification_preferences`, `push_subscriptions`, `user_notifications`, `outbox_events`, `notification_deliveries` | In-app notifications, driver preferences, push endpoints, and reliable external delivery. |
-| Control and traceability | `feature_flags`, `audit_events`, `master_data_change_requests` | Optional rollout flags, append-only audit, and the one-open-request driver profile-change workflow. |
+| Area                     | Tables                                                                                                             | Purpose                                                                                                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Identity                 | `app_users`, `drivers`                                                                                             | Keycloak owns authentication and role/group assignment. AUTHEON stores a local user profile linked by Keycloak subject plus the driver business profile where applicable.                              |
+| Master data              | `customers`, `locations`                                                                                           | Reusable reporting/billing customers and pickup/delivery locations, including customer type, billing notes, and operational instructions. Deactivation replaces deletion where a record is referenced. |
+| Tours                    | `jobs`, `job_locations`, `job_assignments`, `job_status_history`, `job_distance_estimates`, `job_financials`       | Current operational state plus immutable historical context.                                                                                                                                           |
+| Problems                 | `job_problem_reports`, `problem_report_evidence`                                                                   | Cancellation and not-performable reports, reasons, evidence, and the pre-problem status needed for dispatch resolution.                                                                                |
+| Documents                | `job_documents`, `document_files`, `job_document_reviews`, `generated_job_documents`                               | Business document, immutable file versions, review history, and generated transport-order PDFs.                                                                                                        |
+| Content                  | `infopoint_documents`, `infopoint_news`, `infopoint_news_reads`                                                    | Driver-facing general documents and one-way news.                                                                                                                                                      |
+| Notifications            | `notification_preferences`, `push_subscriptions`, `user_notifications`, `outbox_events`, `notification_deliveries` | In-app notifications, driver preferences, push endpoints, and reliable external delivery.                                                                                                              |
+| Control and traceability | `feature_flags`, `audit_events`, `master_data_change_requests`                                                     | Optional rollout flags, append-only audit, and the one-open-request driver profile-change workflow.                                                                                                    |
 
 ## Prototype coverage review
 
 The following maps every persisted prototype collection in `prototype/project/store.js` to the production design. Display-only fields and derived arrays are intentionally not copied as mutable database state.
 
-| Prototype collection | Production table(s) | Review result |
-| --- | --- | --- |
-| Customer master data | `customers`, job customer snapshot columns | Covered: type, contact, billing notes, and operational instructions are retained. |
-| `addresses` | `locations`, `job_locations` | Covered: reusable location plus immutable pickup/delivery snapshot and schedule. |
-| `documents` | `infopoint_documents`, `document_files` | Covered: title, description, category, scope, version, visibility, and optional private file. |
-| `newsItems` | `infopoint_news`, `infopoint_news_reads` | Covered: content, publication/visibility, notification flags, and per-user reads. |
-| `jobs` | `jobs`, `job_locations`, `job_financials`, `job_distance_estimates`, `generated_job_documents` | Covered: operational data, snapshot fields, vehicle, costs, documents, distance, PDF versions, and independent statuses. |
-| `drivers` and `admins` | `app_users`, `drivers`, `notification_preferences`; roles from Keycloak | Covered: shared local user profile, Keycloak role linkage by subject, driver profile/status, and all five prototype notification preferences. AUTHEON does not duplicate role assignment tables. |
-| `driverState` | Derived from jobs, assignments, documents, and notifications | Intentionally not persisted: it is a cacheable UI projection and must not become a second source of truth. |
-| `tourDocuments` | `job_documents`, `document_files`, `job_document_reviews` | Covered: metadata, source, file versions, review/processed state, rejection, correction, and invoice fields. |
-| `driverNotifications` | `user_notifications` | Covered: driver recipient, type, tour deep link, read state, title, body, and timestamp. |
-| `adminEmailQueue` | `outbox_events`, `notification_deliveries`, `user_notifications` | Covered: durable event, per-channel delivery attempt/status, recipient, and admin in-app feed. |
-| `masterDataChangeRequests` | `master_data_change_requests` | Covered: submit snapshot, proposed changes, open/approved/rejected status, resolver, and notes. |
-| `featureFlags` | `feature_flags` | Covered: auditable rollout configuration. |
-| `branding` | `app_settings` | Covered: configurable display name and future legal/branding settings without hard-coding product copy. |
-| `auditLog` | `audit_events` and `job_status_history` | Covered: generic append-only audit plus structured operational status history. |
+| Prototype collection       | Production table(s)                                                                            | Review result                                                                                                                                                                                    |
+| -------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Customer master data       | `customers`, job customer snapshot columns                                                     | Covered: type, contact, billing notes, and operational instructions are retained.                                                                                                                |
+| `addresses`                | `locations`, `job_locations`                                                                   | Covered: reusable location plus immutable pickup/delivery snapshot and schedule.                                                                                                                 |
+| `documents`                | `infopoint_documents`, `document_files`                                                        | Covered: title, description, category, scope, version, visibility, and optional private file.                                                                                                    |
+| `newsItems`                | `infopoint_news`, `infopoint_news_reads`                                                       | Covered: content, publication/visibility, notification flags, and per-user reads.                                                                                                                |
+| `jobs`                     | `jobs`, `job_locations`, `job_financials`, `job_distance_estimates`, `generated_job_documents` | Covered: operational data, snapshot fields, vehicle, costs, documents, distance, PDF versions, and independent statuses.                                                                         |
+| `drivers` and `admins`     | `app_users`, `drivers`, `notification_preferences`; roles from Keycloak                        | Covered: shared local user profile, Keycloak role linkage by subject, driver profile/status, and all five prototype notification preferences. AUTHEON does not duplicate role assignment tables. |
+| `driverState`              | Derived from jobs, assignments, documents, and notifications                                   | Intentionally not persisted: it is a cacheable UI projection and must not become a second source of truth.                                                                                       |
+| `tourDocuments`            | `job_documents`, `document_files`, `job_document_reviews`                                      | Covered: metadata, source, file versions, review/processed state, rejection, correction, and invoice fields.                                                                                     |
+| `driverNotifications`      | `user_notifications`                                                                           | Covered: driver recipient, type, tour deep link, read state, title, body, and timestamp.                                                                                                         |
+| `adminEmailQueue`          | `outbox_events`, `notification_deliveries`, `user_notifications`                               | Covered: durable event, per-channel delivery attempt/status, recipient, and admin in-app feed.                                                                                                   |
+| `masterDataChangeRequests` | `master_data_change_requests`                                                                  | Covered: submit snapshot, proposed changes, open/approved/rejected status, resolver, and notes.                                                                                                  |
+| `featureFlags`             | `feature_flags`                                                                                | Covered: auditable rollout configuration.                                                                                                                                                        |
+| `branding`                 | `app_settings`                                                                                 | Covered: configurable display name and future legal/branding settings without hard-coding product copy.                                                                                          |
+| `auditLog`                 | `audit_events` and `job_status_history`                                                        | Covered: generic append-only audit plus structured operational status history.                                                                                                                   |
 
 No production table represents the prototype's former return-request/return-window flow. That is intentional: the current PRD replaces it with `job_problem_reports` for cancellation and not-performable handling.
 
@@ -68,9 +68,19 @@ No production table represents the prototype's former return-request/return-wind
 
 This is intentional. A dispatch edit to a saved address or a customer name must not alter an already assigned tour, an accepted contractual commitment, an audit export, or an already generated PDF. Updating a master record can be offered during draft order entry; it never silently changes a committed tour.
 
+### Assignment mode and marketplace filters
+
+`jobs.assignment_mode` distinguishes between `marketplace` (the job is published and visible to eligible drivers) and `direct` (the job is assigned directly to a specific driver). This determines which notification path fires at publish time.
+
+When `assignment_mode = 'marketplace'`, the columns `required_vehicle_type`, `required_axle_type`, and `pickup_postal_area` drive the eligibility match against `notification_preferences.postal_areas`, `vehicle_type`, and `axle_type`. These are set at publish time and must not change after the job leaves `draft`.
+
+`notification_preferences.postal_areas` is a `text[]` array — drivers subscribe to multiple postal areas. A single `pickup_postal_prefix` was insufficient for multi-area subscriptions.
+
 ### Assignment and acceptance
 
 `job_assignments` records every direct assignment, reassignment, and marketplace acceptance. Only one open assignment may exist per job. The current assignee is duplicated in `jobs.current_driver_id` for fast authorization and list queries, but the assignment table is the history.
+
+`jobs.accepted_at` and `jobs.performed_at` are denormalized from `job_status_history` for fast SLA and settlement queries. The service layer sets them during the corresponding status transition; they are never written directly by a client.
 
 Marketplace acceptance must be one transaction:
 
@@ -90,6 +100,16 @@ This prevents two drivers from accepting the same published tour.
 Status transitions belong in a transaction/service layer, not an unconstrained client update. Every transition writes `job_status_history`, `audit_events`, and, where required, `outbox_events`.
 
 `message_delivery_status` is used only for outbox/email/push/in-app delivery attempts. It is not a vehicle pickup/delivery or tour lifecycle status.
+
+### Settlement audit
+
+`job_financials.settlement_initiated_by` and `settlement_initiated_at` record which admin triggered the settlement transition and when. This satisfies the audit/compliance requirement that all financial state changes are attributable. The `updated_by_user_id` field covers any financial field edit; `settlement_initiated_by` is specific to the act of opening settlement.
+
+### Master-data change type
+
+`master_data_change_requests.change_type` is a required discriminator (`bank_details`, `address`, `vehicle_info`, `license`, `contact`). Without it the admin review queue cannot filter by type, and the service layer cannot apply type-specific validation rules to the proposed change JSON. The partial unique index on `(driver_id) where status = 'open'` applies regardless of type — one open request per driver at a time.
+
+`reviewed_by_user_id` and `reviewed_at` record the reviewing admin independently of `resolved_by_user_id`, which allows a future multi-step flow where a reviewer and an approver may differ.
 
 ## Documents and object storage
 
@@ -123,14 +143,14 @@ Marketplace queries must project a deliberately reduced view. They must not retu
 
 ## Open decisions that affect the physical schema
 
-| Decision | Current schema position | Approval needed |
-| --- | --- | --- |
-| Authentication | Keycloak selected. `app_users.keycloak_subject` links AUTHEON records to Keycloak users. No password, role, or identity-provider-link tables are stored in AUTHEON. | Realm/client configuration, exact role names/groups, token claims, admin MFA policy, and user provisioning flow. |
-| Map/distance | `job_distance_estimates` records provider, raw result, and manual override. | Provider, routing profile, country coverage, pricing/retention requirements. |
-| Admin alerts | Durable outbox/delivery records, but no hard-coded recipient list. | Recipient groups, escalation rules, business hours, sender/reply policy. |
-| File retention/security | Versioned metadata supports deletion/hold policy; storage implementation remains open. | EU-region requirement, retention periods, malware scanner, size/type limits, deletion authority. |
-| Product display name | `system_settings`/branding configuration is intentionally deferred. | Final name, legal entity details, domain, sender identity, localization rules. |
-| Finance | `job_financials` holds only operational amounts and invoice/payment summary fields; `jobs.settlement_state` remains the tour closeout state. | Whether advanced invoices/ledger/accounting integration become approved scope. |
+| Decision                | Current schema position                                                                                                                                             | Approval needed                                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Authentication          | Keycloak selected. `app_users.keycloak_subject` links AUTHEON records to Keycloak users. No password, role, or identity-provider-link tables are stored in AUTHEON. | Realm/client configuration, exact role names/groups, token claims, admin MFA policy, and user provisioning flow. |
+| Map/distance            | `job_distance_estimates` records provider, raw result, and manual override.                                                                                         | Provider, routing profile, country coverage, pricing/retention requirements.                                     |
+| Admin alerts            | Durable outbox/delivery records, but no hard-coded recipient list.                                                                                                  | Recipient groups, escalation rules, business hours, sender/reply policy.                                         |
+| File retention/security | Versioned metadata supports deletion/hold policy; storage implementation remains open.                                                                              | EU-region requirement, retention periods, malware scanner, size/type limits, deletion authority.                 |
+| Product display name    | `system_settings`/branding configuration is intentionally deferred.                                                                                                 | Final name, legal entity details, domain, sender identity, localization rules.                                   |
+| Finance                 | `job_financials` holds only operational amounts and invoice/payment summary fields; `jobs.settlement_state` remains the tour closeout state.                        | Whether advanced invoices/ledger/accounting integration become approved scope.                                   |
 
 ## Explicit non-goals
 

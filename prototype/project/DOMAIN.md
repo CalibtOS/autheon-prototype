@@ -6,14 +6,14 @@ Canonical spec: [`../../docs/requirements/prd.json`](../../docs/requirements/prd
 
 Seven values only — no `return_requested`, no operational `completed`:
 
-| Code | Meaning |
-|------|---------|
-| `draft` | Internal preparation |
-| `published` | On driver marketplace |
-| `assigned` | Direct dispatch from draft |
-| `accepted` | Driver accepted from marketplace |
-| `performed` | Driver finished the transfer |
-| `cancelled` | Ended (admin or Report Problem cancel) |
+| Code           | Meaning                                     |
+| -------------- | ------------------------------------------- |
+| `draft`        | Internal preparation                        |
+| `published`    | On driver marketplace                       |
+| `assigned`     | Direct dispatch from draft                  |
+| `accepted`     | Driver accepted from marketplace            |
+| `performed`    | Driver finished the transfer                |
+| `cancelled`    | Ended (admin or Report Problem cancel)      |
 | `special_case` | Not performable; dispatch decides next step |
 
 ## Per-file tour document review (`tourDocuments[].reviewStatus`)
@@ -43,6 +43,35 @@ Wireframe and admin UI label this entity **Customer** (DE: **Kunde**). The proto
 
 - **Source of truth:** customer context, `pickup`, and `delivery`.
 - **Denormalized fields** (`customer`, `startCity`, …): computed by `syncDisplayFields()` for tables, search, and CSV export.
+
+## Assignment mode (`job.assignmentMode`)
+
+Two values only:
+
+| Code          | Meaning                                                              |
+| ------------- | -------------------------------------------------------------------- |
+| `marketplace` | Published to driver marketplace; any eligible driver may accept      |
+| `direct`      | Assigned directly to a specific driver; never appears in marketplace |
+
+The `push_on_direct_assign` feature flag controls whether a push notification fires on direct assignment (`false` in v1).
+
+## Driver postal area filter (`driver.prefs.postalAreas`)
+
+Array of postal-code prefixes (e.g. `[“80”, “81”]`). Replaces the former single `notifyPostalPrefix` string. A job matches if its pickup postal code starts with **any** entry in the array. Empty array = no filter (all published jobs match for that driver's vehicle/axle preferences).
+
+## Master data change type (`masterDataChangeRequest.changeType`)
+
+Required field — discriminates requests in the admin review queue:
+
+| Code           | Fields covered                     |
+| -------------- | ---------------------------------- |
+| `address`      | Street, postal code, city, country |
+| `contact`      | Company name, email, phone         |
+| `bank_details` | IBAN, BIC, account holder          |
+| `vehicle_info` | Vehicle type, registration, axle   |
+| `license`      | Driver licence class, expiry       |
+
+Prototype auto-derives `address` or `contact` from changed fields. Production uses explicit selection.
 
 ## Report Problem
 
