@@ -372,10 +372,14 @@
       "story": "As an admin or driver, I want secure role-based access so every user only sees and changes allowed data while driver access stays simple.",
       "acceptance": [
         "Keycloak is the identity provider and source of truth for application roles/groups.",
+        "Production application roles are admin and driver; generic public self-registration is not part of Version 1.",
         "Each driver has protected individual access because invoices and documents may be uploaded.",
         "AUTHEON stores a local app user profile linked to the Keycloak subject; it does not store passwords or duplicate role-assignment tables.",
-        "Exact driver login ceremony is configured in Keycloak and should avoid unnecessary password reset complexity where possible.",
-        "Admin can resend or reset driver access.",
+        "Production driver and admin account provisioning uses Keycloak action emails/invite links for initial password setup and password reset; AUTHEON admins never view, copy, store, or manually send generated passwords.",
+        "The backend creates or links the Keycloak user, assigns the correct role/group, persists the local app user/profile link, and then requests Keycloak or the configured mail provider to send the invite/reset action.",
+        "Invite and reset links expire according to Keycloak realm policy and can be resent by an authorized admin.",
+        "Exact driver login ceremony is configured in Keycloak and should keep first login simple while still forcing the user to set their own password.",
+        "Admin can create admin and driver accounts and can resend or reset driver access.",
         "Admin can manage orders, customers, addresses, drivers, documents, driver invoices, Infopoint content, audit logs, and status decisions according to permissions.",
         "Driver can access only Published jobs in the marketplace, own Assigned/Accepted/Performed/Cancelled/Special Case jobs where allowed, profile, Information Center/Infopoint, and permitted PDFs/documents.",
         "Blocked or inactive drivers cannot access marketplace active actions or accept new tours.",
@@ -396,6 +400,9 @@
       "story": "As an admin, I want to create and manage drivers, access, and backend users so platform access is controlled and historical links remain preserved.",
       "acceptance": [
         "Admin can create and edit driver records.",
+        "Creating a driver account in production creates or links a local app user, a driver profile, and a Keycloak user in one auditable backend workflow.",
+        "Driver account creation requires email, person/contact name, company name, and driver ID; the driver profile remains separate from the identity account but is linked through userId/keycloak subject.",
+        "After driver creation, the system sends an invitation or required-action email for the driver to set their own password; the admin UI shows delivery status and resend action, not the password.",
         "Driver record includes company name, person name, contact data, driver ID, notes, account/access state, and operational status.",
         "Driver statuses include Active, Blocked, Inactive, Archived, and Soft Deleted.",
         "Blocked or inactive drivers cannot accept new tours or use active marketplace actions.",
@@ -1189,6 +1196,11 @@
       "notify_postal_code_prefix_area"
     ],
     "admin_notification_feed_v1": "Lightweight in-admin event list for critical events; complements email alerts; not a full notification center.",
+    "account_provisioning_v1": "Prototype-generated temporary passwords are demo-only. In production, public /v1/users self-registration is removed; admins create driver/admin accounts and resend access from the admin UI, but credentials are delivered through Keycloak required-action/invite emails so users set their own passwords. AUTHEON does not expose generated passwords in the UI or store them in the application database.",
+    "production_roles_v1": "Use Keycloak/application roles admin and driver. Driver workflows must resolve the local driver profile from the authenticated Keycloak subject server-side; clients must not submit or spoof driverId for self-actions.",
+    "backend_schema_strategy_v1": "Backend schema changes follow existing TypeORM entity synchronization for now; explicit database migrations are deferred and must be planned before production hardening with DB_SYNCHRONIZE=false.",
+    "backend_finance_boundary_v1": "Only basic job financial fields are implemented and must be feature-gated. Full Finance dashboard and advanced finance analytics remain future scope unless separately approved.",
+    "backend_notification_routing_v1": "Backend notification routing follows notification_channels_matrix. Critical business events are routed to admin feed/email or driver in-app/push as specified; technical account sync and non-critical CRUD events remain audit/outbox records only.",
     "document_review_checked_step": "Optional admin mark-as-checked before accept/reject when operations require it.",
     "client_display_status_labels": "UI may show Under review and Completed from document_review_summary and settlement Closed without adding operational statuses.",
     "master_data_change_request_v1": "Driver request queue; one open per driver; admin Approve & save applies updateDriver; Reject without save; audit master_data_change_requested|approved|rejected; driver in-app notify on resolution.",
@@ -1226,6 +1238,7 @@
     "master_data_change_requests_prototype": "store.masterDataChangeRequests[]; requestMasterDataChange, listMasterDataChangeRequests, getOpenMasterDataChangeRequestForDriver, resolveMasterDataChangeRequest, getOpenMasterDataChangeRequestCount; MasterDataRequestsPane in admin.jsx; metadata-only evidence on specialCaseReport.evidence."
   },
   "production_open_questions": [
+    "Confirm Keycloak email action settings for account invites and password resets: sender domain, templates, link expiry, required actions, and whether SMTP is handled by Keycloak or AUTHEON's mail provider.",
     "Confirm which map or distance API vendor to use and acceptable ongoing usage budget.",
     "Confirm production file retention period, encryption at rest, malware scanning, and DSGVO handling for tour document uploads.",
     "Confirm final client-provided app display name string for production UI and legal copy.",
