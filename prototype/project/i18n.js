@@ -601,6 +601,8 @@ window.I18n = (() => {
       adminUsersTriggerPwReset: "Trigger password reset",
       adminUsersToastDriverChanged: "Driver status changed",
       adminUsersToastDriverOff: "Driver deactivated",
+      adminUsersToastDriverActiveJobs:
+        "Cannot deactivate — driver has {count} active tour(s). Reassign or complete them first.",
       adminUsersToastPwDriver: "Password reset triggered",
       adminUsersToastPwAdmin: "Admin password reset triggered",
       adminCustomersCreated: "Customer created",
@@ -1596,6 +1598,8 @@ window.I18n = (() => {
       adminUsersTriggerPwReset: "Passwort zurücksetzen",
       adminUsersToastDriverChanged: "Fahrerstatus geändert",
       adminUsersToastDriverOff: "Fahrer deaktiviert",
+      adminUsersToastDriverActiveJobs:
+        "Deaktivierung nicht möglich — Fahrer hat {count} aktive Tour(en). Bitte zuerst neu zuweisen oder abschließen.",
       adminUsersToastPwDriver: "Passwort-Zurücksetzung ausgelöst",
       adminUsersToastPwAdmin: "Admin-Passwort-Zurücksetzung ausgelöst",
       adminCustomersCreated: "Kunde angelegt",

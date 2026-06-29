@@ -35,6 +35,8 @@ window.AuthStore = (() => {
     "correction_required",
   ];
 
+  const ACTIVE_JOB_STATUSES = ["assigned", "accepted", "special_case"];
+
   function normalizeTourDocumentReviewStatus(st) {
     const s = String(st || "").trim();
     if (DOC_REVIEW.includes(s)) return s;
@@ -2451,6 +2453,17 @@ window.AuthStore = (() => {
       ).length;
     },
 
+    countActiveJobsForDriver(driverId) {
+      const driver = drivers.find((x) => x.id === driverId);
+      if (!driver) return 0;
+      return jobs.filter(
+        (j) =>
+          ACTIVE_JOB_STATUSES.includes(j.status) &&
+          (j.driverId === driverId ||
+            (!j.driverId && j.driver === driver.name)),
+      ).length;
+    },
+
     addCustomer(data) {
       const name = String(data?.name || "").trim();
       if (!name) return { ok: false, reason: "name_required" };
@@ -3396,6 +3409,12 @@ window.AuthStore = (() => {
       ];
       const d = drivers.find((x) => x.id === id);
       if (!d || !allowed.includes(status)) return { ok: false };
+      if (status !== "Active") {
+        const activeJobs = api.countActiveJobsForDriver(id);
+        if (activeJobs > 0) {
+          return { ok: false, reason: "active_jobs", count: activeJobs };
+        }
+      }
       d.status = status;
       log("driver_status_changed", DEMO_ADMIN, d.name, status);
       emit();

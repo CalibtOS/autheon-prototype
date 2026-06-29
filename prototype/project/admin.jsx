@@ -3041,6 +3041,19 @@ const UsersPane = ({ showToast }) => {
   const adminFormValid =
     Object.keys(validateAdminFormLocal(adminForm, t)).length === 0;
 
+  const applyDriverStatus = (driver, status) => {
+    const result = store.setDriverStatus(driver.id, status);
+    if (!result.ok && result.reason === "active_jobs") {
+      showToast?.(
+        t("adminUsersToastDriverActiveJobs", { count: result.count }),
+        driver.name,
+      );
+      return;
+    }
+    if (!result.ok) return;
+    showToast?.(t("adminUsersToastDriverChanged"), driver.name);
+  };
+
   const saveDriver = () => {
     const localErrors = validateDriverFormLocal(driverForm, t);
     if (Object.keys(localErrors).length) {
@@ -3171,13 +3184,9 @@ const UsersPane = ({ showToast }) => {
                       <button
                         className="btn xs"
                         onClick={() => {
-                          store.setDriverStatus(
-                            d.id,
+                          applyDriverStatus(
+                            d,
                             d.status === "Active" ? "Blocked" : "Active",
-                          );
-                          showToast?.(
-                            t("adminUsersToastDriverChanged"),
-                            d.name,
                           );
                         }}
                       >
@@ -3191,8 +3200,7 @@ const UsersPane = ({ showToast }) => {
                           type="button"
                           className="btn xs"
                           onClick={() => {
-                            store.setDriverStatus(d.id, st);
-                            showToast?.(t("adminUsersToastDriverChanged"), st);
+                            applyDriverStatus(d, st);
                           }}
                         >
                           {st}
@@ -4264,7 +4272,9 @@ const InfopointPane = ({ showToast }) => {
   const [renameDoc, setRenameDoc] = useStateA(null);
   const [renameTitle, setRenameTitle] = useStateA("");
   const uploadInputRef = useRefA(null);
+  const docFileRef = useRefA(null);
   const [uploadMeta, setUploadMeta] = useStateA(null);
+  const [docFile, setDocFile] = useStateA(null);
 
   const docs = store.getDocumentsAdmin();
   const news = store.getNewsAdmin();
@@ -4307,16 +4317,34 @@ const InfopointPane = ({ showToast }) => {
     setEditNews(null);
   };
 
+  const closeDocModal = () => {
+    setDocModal(null);
+    setDocFile(null);
+    if (docFileRef.current) docFileRef.current.value = "";
+  };
+
   const openNewDoc = () => {
     setDocForm({ title: "", description: "", category: "Operations" });
+    setDocFile(null);
+    if (docFileRef.current) docFileRef.current.value = "";
     setDocModal("new");
   };
 
+  const onDocFilePick = (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    setDocFile(f || null);
+  };
+
   const saveDoc = () => {
-    if (!docForm.title.trim()) return;
-    const item = store.addGeneralDocument(docForm);
+    if (!docForm.title.trim() || !docFile) return;
+    const item = store.uploadGeneralDocumentStub(docFile, {
+      title: docForm.title,
+      description: docForm.description,
+      category: docForm.category,
+    });
     showToast?.(t("adminInfopointDocAdded"), item.title);
-    setDocModal(null);
+    closeDocModal();
   };
 
   const saveRename = () => {
@@ -4388,9 +4416,6 @@ const InfopointPane = ({ showToast }) => {
               gap: 8,
             }}
           >
-            <button type="button" className="btn" onClick={() => onUploadPick(null)}>
-              {t("adminInfopointUploadPdf")}
-            </button>
             <button type="button" className="btn primary" onClick={openNewDoc}>
               <Ic.Plus /> {t("adminInfopointAddDoc")}
             </button>
@@ -4629,7 +4654,7 @@ const InfopointPane = ({ showToast }) => {
       <MasterDataModal
         open={!!docModal}
         title={t("adminInfopointAddDoc")}
-        onClose={() => setDocModal(null)}
+        onClose={closeDocModal}
         footer={
           <div
             style={{
@@ -4639,13 +4664,13 @@ const InfopointPane = ({ showToast }) => {
               justifyContent: "flex-end",
             }}
           >
-            <button type="button" className="btn" onClick={() => setDocModal(null)}>
+            <button type="button" className="btn" onClick={closeDocModal}>
               {t("adminInvoiceCancel")}
             </button>
             <button
               type="button"
               className="btn primary"
-              disabled={!docForm.title.trim()}
+              disabled={!docForm.title.trim() || !docFile}
               onClick={saveDoc}
             >
               {t("adminMasterDataSave")}
@@ -4689,6 +4714,34 @@ const InfopointPane = ({ showToast }) => {
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="field-label" htmlFor="infopoint-doc-file">
+              {t("adminInvoiceUploadLabel")} *
+            </label>
+            <input
+              id="infopoint-doc-file"
+              ref={docFileRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              style={{ display: "none" }}
+              onChange={onDocFilePick}
+            />
+            <button
+              type="button"
+              className="btn"
+              onClick={() => docFileRef.current?.click()}
+            >
+              <Ic.Plus /> {t("adminInvoiceUploadButton")}
+            </button>
+            {docFile ? (
+              <p
+                className="label mono"
+                style={{ margin: "8px 0 0", fontSize: 12.5, wordBreak: "break-all" }}
+              >
+                {docFile.name}
+              </p>
+            ) : null}
           </div>
         </div>
       </MasterDataModal>

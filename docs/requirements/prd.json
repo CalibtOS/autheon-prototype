@@ -78,7 +78,8 @@
       "2026-05-25: Consolidated prd_updated_v2.json into prd.json; AUTHEON/prd.json is the only canonical spec file.",
       "2026-05-25: Admin Infopoint pane (general documents + news publish); driver Infopoint doc view/download stub; clarifies Infopoint news vs tour notifications.",
       "2026-05-25: Client feedback gap pass — Report Problem cancel binding warning + terms; seven cancellation reason codes; not-performable evidence on specialCaseReport; Report Problem warning icon; order-entry formatters (inputFormatters.js).",
-      "2026-05-25: Driver profile change requests — persistent masterDataChangeRequests queue; one open request per driver; admin Profile change requests pane with inline edit and Approve & save; driver pending state; notification feed Review request link; driver notifications on approve/reject."
+      "2026-05-25: Driver profile change requests — persistent masterDataChangeRequests queue; one open request per driver; admin Profile change requests pane with inline edit and Approve & save; driver pending state; notification feed Review request link; driver notifications on approve/reject.",
+      "2026-06-29: Driver deactivation guard — admin cannot block, deactivate, archive, or soft-delete a driver while assigned/accepted/special_case tours are open; activation remains allowed."
     ],
     "prd_spec_reference": "docs/requirements/prd.json"
   },
@@ -406,6 +407,7 @@
         "Driver record includes company name, person name, contact data, driver ID, notes, account/access state, and operational status.",
         "Driver statuses include Active, Blocked, Inactive, Archived, and Soft Deleted.",
         "Blocked or inactive drivers cannot accept new tours or use active marketplace actions.",
+        "Admin cannot block, deactivate, archive, or soft-delete a driver while that driver has active tours (assigned, accepted, or special case); activation is always allowed.",
         "Historical tours remain linked to archived or soft-deleted drivers.",
         "Hard delete is avoided except for test records or records with no historical activity, subject to compliance rules.",
         "Admin can reset, resend, or regenerate driver access.",
@@ -987,6 +989,7 @@
       "acceptance": [
         "Test: two simultaneous accepts result in exactly one success and one clean failure.",
         "Test: blocked or inactive driver cannot access marketplace active actions or accept jobs.",
+        "Test: admin cannot deactivate a driver with assigned, accepted, or special_case tours; activation succeeds when jobs are cleared.",
         "Test: pre-acceptance driver cannot fetch locked fields.",
         "Test: Draft can Publish or Assign (with active driver selection), but Published cannot Assign in Phase 1 without returning to Draft.",
         "Test: admin can reassign Assigned, Accepted, or Special case tour to another active driver; same driver selection is rejected; audit log records reassignment.",
