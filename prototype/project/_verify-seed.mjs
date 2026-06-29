@@ -1,0 +1,127 @@
+/**
+ * Loads store.js in a minimal browser shim and verifies seed invariants.
+ */
+import fs from "fs";
+import path from "path";
+import vm from "vm";
+import { fileURLToPath } from "url";
+
+const out = (line) => process.stdout.write(`${line}\n`);
+const err = (line) => process.stderr.write(`${line}\n`);
+
+const root = path.dirname(fileURLToPath(import.meta.url));
+const code = fs.readFileSync(path.join(root, "store.js"), "utf8");
+
+const seedWarnings = [];
+const sandbox = {
+  window: {
+    AUTHEON_BRANDING_DEFAULTS: {},
+    AUTHEON_FLAG_DEFAULTS: {},
+  },
+  React: {
+    useState: (v) => [v, () => {}],
+    useEffect: () => {},
+  },
+  console: {
+    log: () => {},
+    warn: (...args) => {
+      const msg = args.join(" ");
+      if (msg.includes("[AUTHEON] Seed data issues")) {
+        seedWarnings.push(msg);
+      }
+    },
+  },
+};
+
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+
+const store = sandbox.window.AuthStore;
+if (!store) {
+  err("FAIL: AuthStore not initialized");
+  process.exit(1);
+}
+
+const jobs = store.getJobs();
+const docs = store.getTourDocuments();
+let failed = 0;
+
+function fail(msg) {
+  err(`FAIL: ${msg}`);
+  failed++;
+}
+
+function ok(msg) {
+  out(`OK: ${msg}`);
+}
+
+if (docs.length !== 6) fail(`expected 6 tour documents, got ${docs.length}`);
+else ok("6 tour documents");
+
+const nonPerformedDocs = docs.filter((d) => {
+  const j = jobs.find((x) => x.id === d.jobId);
+  return !j || j.status !== "performed";
+});
+if (nonPerformedDocs.length)
+  fail(
+    `documents on non-performed jobs: ${nonPerformedDocs.map((d) => d.id).join(", ")}`,
+  );
+else ok("all tour documents on performed jobs only");
+
+const j842 = jobs.find((j) => j.id === "A-2026-00842");
+if (!j842) fail("missing job A-2026-00842");
+else {
+  if (j842.status !== "performed") fail("0842 not performed");
+  else ok("0842 is performed");
+  if (j842.paymentStatus === "Paid")
+    fail(`0842 paymentStatus should not be Paid (got ${j842.paymentStatus})`);
+  else ok(`0842 paymentStatus=${j842.paymentStatus}`);
+  if (docs.filter((d) => d.jobId === j842.id).length !== 6)
+    fail("0842 should have 6 documents");
+  else ok("0842 has 6 documents");
+  const rejectedInvoice = docs.find(
+    (d) =>
+      d.jobId === j842.id &&
+      d.documentType === "invoice" &&
+      d.reviewStatus === "rejected",
+  );
+  if (!rejectedInvoice) fail("0842 missing rejected invoice seed");
+  else ok("0842 has rejected invoice (TD-SEED-005)");
+}
+
+const j845 = jobs.find((j) => j.id === "A-2026-00845");
+if (docs.some((d) => d.jobId === j845?.id))
+  fail("active job 0845 must have no tour documents");
+else ok("0845 (accepted/active) has no tour documents");
+
+const j846 = jobs.find((j) => j.id === "A-2026-00846");
+if (docs.some((d) => d.jobId === j846?.id))
+  fail("special_case 0846 must have no tour documents");
+else ok("0846 (special_case) has no tour documents");
+if (!(j846?.specialCaseReport?.evidence || []).length)
+  fail("0846 missing specialCaseReport.evidence");
+else ok("0846 has special case evidence");
+
+if (j845?.documentReviewSummary !== "Not Started")
+  fail(
+    `0845 documentReviewSummary should be Not Started (got ${j845?.documentReviewSummary})`,
+  );
+else ok("0845 documentReviewSummary is Not Started");
+
+if (seedWarnings.length) {
+  fail(`validateSeedData reported issues:\n${seedWarnings.join("\n")}`);
+} else ok("validateSeedData reported no issues");
+
+const gate845 = store.canDriverUploadTourDocument("A-2026-00845");
+if (gate845.ok) fail("upload gate should block active job 0845");
+else ok(`upload blocked on 0845 (${gate845.reason})`);
+
+const gate842 = store.canDriverUploadTourDocument("A-2026-00842");
+if (!gate842.ok) fail(`upload should allow performed 0842 (${gate842.reason})`);
+else ok("upload allowed on performed 0842");
+
+if (failed) {
+  err(`\n${failed} check(s) failed`);
+  process.exit(1);
+}
+out("\nAll seed verification checks passed");
