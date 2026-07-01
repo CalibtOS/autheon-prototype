@@ -100,6 +100,7 @@ Enum master_data_change_type {
   vehicle_info
   license
   contact
+  daily_limit_override  // request to increase driver daily job acceptance limit
 }
 
 Enum notification_channel {
@@ -143,6 +144,7 @@ Table drivers {
   country_code char(2) [not null, default: 'DE']
   phone varchar(64)
   notes text
+  daily_job_limit smallint [not null, default: 3]  // configurable per-driver; hard acceptance block at limit; default value TBD with client
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
 }
