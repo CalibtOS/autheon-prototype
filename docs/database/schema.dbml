@@ -1,12 +1,18 @@
 ﻿// AUTHEON Version 1 database draft — PostgreSQL target.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
-// Last updated: 2026-06-25 — resolved schema gaps identified against prd.json Phase 1 requirements.
+// Last updated: 2026-07-01 — aligned users table with autheon-be UserEntity and @autheon/shared enums.
 
 Enum user_status {
+  pending_verification
   active
-  blocked
+  suspended
   inactive
-  archived
+}
+
+Enum user_role {
+  user
+  admin
+  driver
 }
 
 Enum job_status {
@@ -110,16 +116,18 @@ Enum message_delivery_status {
   cancelled
 }
 
-Table app_users {
+Table users {
   id uuid [pk]
-  keycloak_subject varchar(255) [not null, unique]
-  email citext [not null, unique]
-  display_name varchar(200) [not null]
-  status user_status [not null, default: 'active']
-  locale varchar(10) [not null, default: 'de']
+  keycloak_id varchar(36) [unique] // nullable until Keycloak provisioning completes; partial unique index where not null
+  email varchar(255) [not null, unique]
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  status user_status [not null, default: 'pending_verification']
+  roles text [not null, default: 'user'] // TypeORM simple-array of user_role values
+  email_verified boolean [not null, default: false]
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
-  archived_at timestamptz
+  deleted_at timestamptz
 }
 
 Table drivers {
@@ -537,61 +545,61 @@ Table audit_events {
   }
 }
 
-Ref: drivers.user_id > app_users.id
+Ref: drivers.user_id > users.id
 
 Ref: jobs.customer_id > customers.id
 Ref: jobs.current_driver_id > drivers.id
-Ref: jobs.created_by_user_id > app_users.id
-Ref: jobs.cancelled_by_user_id > app_users.id
+Ref: jobs.created_by_user_id > users.id
+Ref: jobs.cancelled_by_user_id > users.id
 Ref: job_locations.job_id > jobs.id
 Ref: job_locations.master_location_id > locations.id
 Ref: job_assignments.job_id > jobs.id
 Ref: job_assignments.driver_id > drivers.id
-Ref: job_assignments.assigned_by_user_id > app_users.id
+Ref: job_assignments.assigned_by_user_id > users.id
 Ref: job_status_history.job_id > jobs.id
-Ref: job_status_history.actor_user_id > app_users.id
+Ref: job_status_history.actor_user_id > users.id
 Ref: job_status_history.evidence_document_file_id > document_files.id
 Ref: job_distance_estimates.job_id > jobs.id
-Ref: job_distance_estimates.calculated_by_user_id > app_users.id
+Ref: job_distance_estimates.calculated_by_user_id > users.id
 Ref: job_financials.job_id > jobs.id
 
 Ref: job_problem_reports.job_id > jobs.id
-Ref: job_problem_reports.reported_by_user_id > app_users.id
+Ref: job_problem_reports.reported_by_user_id > users.id
 Ref: job_problem_reports.reported_by_customer_id > customers.id
-Ref: job_problem_reports.resolved_by_user_id > app_users.id
+Ref: job_problem_reports.resolved_by_user_id > users.id
 Ref: problem_report_evidence.problem_report_id > job_problem_reports.id
 Ref: problem_report_evidence.document_file_id > document_files.id
 
 Ref: job_documents.job_id > jobs.id
-Ref: job_documents.uploaded_by_user_id > app_users.id
-Ref: job_documents.processed_by_user_id > app_users.id
+Ref: job_documents.uploaded_by_user_id > users.id
+Ref: job_documents.processed_by_user_id > users.id
 Ref: document_files.job_document_id > job_documents.id
 Ref: document_files.supersedes_file_id > document_files.id
 Ref: job_documents.current_file_id > document_files.id
 Ref: job_document_reviews.job_document_id > job_documents.id
-Ref: job_document_reviews.reviewer_user_id > app_users.id
+Ref: job_document_reviews.reviewer_user_id > users.id
 Ref: generated_job_documents.job_id > jobs.id
 Ref: generated_job_documents.document_file_id > document_files.id
 
-Ref: job_financials.settlement_initiated_by > app_users.id
+Ref: job_financials.settlement_initiated_by > users.id
 
 Ref: master_data_change_requests.driver_id > drivers.id
-Ref: master_data_change_requests.requested_by_user_id > app_users.id
-Ref: master_data_change_requests.resolved_by_user_id > app_users.id
-Ref: master_data_change_requests.reviewed_by_user_id > app_users.id
+Ref: master_data_change_requests.requested_by_user_id > users.id
+Ref: master_data_change_requests.resolved_by_user_id > users.id
+Ref: master_data_change_requests.reviewed_by_user_id > users.id
 Ref: infopoint_documents.current_file_id > document_files.id
-Ref: infopoint_documents.updated_by_user_id > app_users.id
-Ref: infopoint_news.created_by_user_id > app_users.id
+Ref: infopoint_documents.updated_by_user_id > users.id
+Ref: infopoint_news.created_by_user_id > users.id
 Ref: infopoint_news_reads.news_id > infopoint_news.id
-Ref: infopoint_news_reads.user_id > app_users.id
+Ref: infopoint_news_reads.user_id > users.id
 
-Ref: notification_preferences.user_id > app_users.id
-Ref: push_subscriptions.user_id > app_users.id
-Ref: user_notifications.user_id > app_users.id
+Ref: notification_preferences.user_id > users.id
+Ref: push_subscriptions.user_id > users.id
+Ref: user_notifications.user_id > users.id
 Ref: user_notifications.job_id > jobs.id
 Ref: notification_deliveries.outbox_event_id > outbox_events.id
-Ref: notification_deliveries.recipient_user_id > app_users.id
-Ref: feature_flags.updated_by_user_id > app_users.id
-Ref: app_settings.updated_by_user_id > app_users.id
-Ref: audit_events.actor_user_id > app_users.id
+Ref: notification_deliveries.recipient_user_id > users.id
+Ref: feature_flags.updated_by_user_id > users.id
+Ref: app_settings.updated_by_user_id > users.id
+Ref: audit_events.actor_user_id > users.id
 Ref: audit_events.job_id > jobs.id

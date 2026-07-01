@@ -19,7 +19,7 @@ This directory is the proposed production data design for AUTHEON Version 1.
 ## Design decisions already made
 
 - Relational source of truth; no document database or spreadsheet-style job record.
-- Keycloak owns authentication and roles; `app_users` stores the AUTHEON profile and stable Keycloak subject link only.
+- Keycloak owns authentication; `users` stores the AUTHEON profile, roles, and stable Keycloak ID link.
 - UUID primary keys, `timestamptz` timestamps, `numeric(12,2)` monetary values, and ISO country codes.
 - Job addresses and customer details are snapshotted at order creation; later master-data edits do not rewrite historical tours.
 - Operational status, document-review status, and settlement status are independent.

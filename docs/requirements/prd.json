@@ -1161,7 +1161,7 @@
       "status",
       "accessState"
     ],
-    "driver_auth_production": "Keycloak selected for authentication. AUTHEON links app_users to the Keycloak subject; exact realm/client setup and driver login ceremony remain implementation configuration.",
+    "driver_auth_production": "Keycloak selected for authentication. AUTHEON links users to Keycloak via keycloak_id; exact realm/client setup and driver login ceremony remain implementation configuration.",
     "admin_email_alerts_v1": "Global dispatcher mailbox list; per-event configuration deferred.",
     "blocked_inactive_history": "Inactive and archived: read-only historical tours; blocked: no marketplace actions, read-only history.",
     "pdf_generation_timing": "On acceptance or direct assignment, not on publish.",

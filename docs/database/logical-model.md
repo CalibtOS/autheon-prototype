@@ -1,6 +1,6 @@
 # AUTHEON database logical model
 
-> **Status:** Updated 2026-06-25 — schema gaps resolved against prd.json Phase 1 requirements. [`schema.dbml`](schema.dbml) is the accompanying relational schema. [`../requirements/prd.json`](../requirements/prd.json) remains the functional source of truth.
+> **Status:** Updated 2026-07-01 — `users` table aligned with autheon-be `UserEntity` and `@autheon/shared` enums. [`schema.dbml`](schema.dbml) is the accompanying relational schema. [`../requirements/prd.json`](../requirements/prd.json) remains the functional source of truth.
 
 ## Scope and modelling approach
 
@@ -11,7 +11,7 @@ The production model separates master data, transactional tour data, immutable h
 ## Entity map
 
 ```text
-app_users (Keycloak-linked) ──1:0..1── drivers ──< job_assignments >── jobs
+users (Keycloak-linked) ──1:0..1── drivers ──< job_assignments >── jobs
     │                                                    │
     ├──< audit_events                                  ├──< job_locations
     ├──< user_notifications                             ├──< job_status_history
@@ -28,7 +28,7 @@ outbox_events ──< notification_deliveries
 
 | Area                     | Tables                                                                                                             | Purpose                                                                                                                                                                                                |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Identity                 | `app_users`, `drivers`                                                                                             | Keycloak owns authentication and role/group assignment. AUTHEON stores a local user profile linked by Keycloak subject plus the driver business profile where applicable.                              |
+| Identity                 | `users`, `drivers`                                                                                             | Keycloak owns authentication. AUTHEON stores the local user record (`users`) linked by `keycloak_id`, with first/last name, status, roles, and email verification state. The driver business profile lives in `drivers` where applicable. Roles are persisted locally and provisioned to Keycloak on account invite.                              |
 | Master data              | `customers`, `locations`                                                                                           | Reusable reporting/billing customers and pickup/delivery locations, including customer type, billing notes, and operational instructions. Deactivation replaces deletion where a record is referenced. |
 | Tours                    | `jobs`, `job_locations`, `job_assignments`, `job_status_history`, `job_distance_estimates`, `job_financials`       | Current operational state plus immutable historical context.                                                                                                                                           |
 | Problems                 | `job_problem_reports`, `problem_report_evidence`                                                                   | Cancellation and not-performable reports, reasons, evidence, and the pre-problem status needed for dispatch resolution.                                                                                |
@@ -48,7 +48,7 @@ The following maps every persisted prototype collection in `prototype/project/st
 | `documents`                | `infopoint_documents`, `document_files`                                                        | Covered: title, description, category, scope, version, visibility, and optional private file.                                                                                                    |
 | `newsItems`                | `infopoint_news`, `infopoint_news_reads`                                                       | Covered: content, publication/visibility, notification flags, and per-user reads.                                                                                                                |
 | `jobs`                     | `jobs`, `job_locations`, `job_financials`, `job_distance_estimates`, `generated_job_documents` | Covered: operational data, snapshot fields, vehicle, costs, documents, distance, PDF versions, and independent statuses.                                                                         |
-| `drivers` and `admins`     | `app_users`, `drivers`, `notification_preferences`; roles from Keycloak                        | Covered: shared local user profile, Keycloak role linkage by subject, driver profile/status, and all five prototype notification preferences. AUTHEON does not duplicate role assignment tables. |
+| `drivers` and `admins`     | `users`, `drivers`, `notification_preferences`                        | Covered: shared local user profile with `first_name`/`last_name`, `keycloak_id`, `status`, and `roles`; driver profile/status; and all five prototype notification preferences. Admin and driver authorization uses `users.roles` (`user`, `admin`, `driver`) in addition to Keycloak realm roles. |
 | `driverState`              | Derived from jobs, assignments, documents, and notifications                                   | Intentionally not persisted: it is a cacheable UI projection and must not become a second source of truth.                                                                                       |
 | `tourDocuments`            | `job_documents`, `document_files`, `job_document_reviews`                                      | Covered: metadata, source, file versions, review/processed state, rejection, correction, and invoice fields.                                                                                     |
 | `driverNotifications`      | `user_notifications`                                                                           | Covered: driver recipient, type, tour deep link, read state, title, body, and timestamp.                                                                                                         |
@@ -122,6 +122,8 @@ Files are not stored in PostgreSQL blobs. `document_files.storage_key` points to
 The SQL implementation must include at least these controls:
 
 - Unique `jobs.tour_number` and `drivers.driver_code`.
+- Unique `users.email` and partial unique index on `users.keycloak_id where keycloak_id is not null`.
+- User soft-delete via `users.deleted_at`; active-user checks also require `status = 'active'`.
 - Unique active assignment per job: partial unique index on `job_assignments(job_id) where ended_at is null`.
 - One `pickup` and one `delivery` row per job: unique `(job_id, location_role)`.
 - One open master-data change request per driver: partial unique index on `master_data_change_requests(driver_id) where status = 'open'`.
@@ -137,7 +139,7 @@ The SQL implementation must include at least these controls:
 
 Authorization is not a UI concern. The database/service policy must enforce that a driver can retrieve only its own assigned/accepted/performed/cancelled/special-case tours and permitted documents.
 
-Keycloak is the identity and role source of truth. Application services validate the Keycloak token, resolve `sub` to `app_users.keycloak_subject`, read Keycloak realm/client roles or groups for admin/driver authorization, and then apply AUTHEON domain rules. `app_users.status` remains an application-level access flag for active, blocked, inactive, and archived users; it does not replace Keycloak account state.
+Keycloak is the identity source of truth for authentication. Application services validate the Keycloak token, resolve `sub` to `users.keycloak_id`, and apply AUTHEON domain rules using the local `users` record. `users.status` (`pending_verification`, `active`, `suspended`, `inactive`) and `users.deleted_at` provide application-level access control; they do not replace Keycloak account state. Authorization checks use `users.roles` (`user`, `admin`, `driver`), which are synced to Keycloak when an account is provisioned.
 
 Marketplace queries must project a deliberately reduced view. They must not return full locations, contacts, vehicle identifiers, customer details, internal notes, or PDFs before acceptance. The base `jobs` and `job_locations` tables are never exposed directly to an untrusted driver client.
 
@@ -145,7 +147,7 @@ Marketplace queries must project a deliberately reduced view. They must not retu
 
 | Decision                | Current schema position                                                                                                                                             | Approval needed                                                                                                  |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Authentication          | Keycloak selected. `app_users.keycloak_subject` links AUTHEON records to Keycloak users. No password, role, or identity-provider-link tables are stored in AUTHEON. | Realm/client configuration, exact role names/groups, token claims, admin MFA policy, and user provisioning flow. |
+| Authentication          | Keycloak selected. `users.keycloak_id` links AUTHEON records to Keycloak users. Local `users.roles` are provisioned to Keycloak on invite. No password or identity-provider-link tables are stored in AUTHEON. | Realm/client configuration, exact role names/groups, token claims, admin MFA policy, and user provisioning flow. |
 | Map/distance            | `job_distance_estimates` records provider, raw result, and manual override.                                                                                         | Provider, routing profile, country coverage, pricing/retention requirements.                                     |
 | Admin alerts            | Durable outbox/delivery records, but no hard-coded recipient list.                                                                                                  | Recipient groups, escalation rules, business hours, sender/reply policy.                                         |
 | File retention/security | Versioned metadata supports deletion/hold policy; storage implementation remains open.                                                                              | EU-region requirement, retention periods, malware scanner, size/type limits, deletion authority.                 |
