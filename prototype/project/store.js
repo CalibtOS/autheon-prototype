@@ -2617,6 +2617,33 @@ window.AuthStore = (() => {
       return !d || d.status === "Active";
     },
 
+    todayCalendarKey() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    },
+
+    getDriverDailyAcceptanceSummary(dayKey) {
+      const d = api.getCurrentDriver();
+      if (!d) return null;
+      const key = dayKey || api.todayCalendarKey();
+      const limit =
+        d.dailyJobLimit ?? driverAcceptanceDefaults.defaultDailyJobLimit ?? 3;
+      const count = driverAcceptanceCountForDay(d.id, key);
+      const openMdr = api.getOpenMasterDataChangeRequestForDriver(d.id);
+      return {
+        limit,
+        count,
+        dayKey: key,
+        atLimit: count >= limit,
+        remaining: Math.max(0, limit - count),
+        pendingLimitRequest: openMdr?.changeType === "daily_limit_override",
+        hasOpenRequest: Boolean(openMdr),
+      };
+    },
+
     countsByStatus: () => {
       const c = {};
       jobs.forEach((j) => {

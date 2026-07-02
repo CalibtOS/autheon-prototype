@@ -72,7 +72,7 @@
 ## Prototype validation
 
 - `prototype_validation.last_synced`: 2026-07-02
-- `prototype_validation.verdict`: PASS v1.8 (verified `_audit-prototype.mjs` 2026-07-02)
+**Prototype sync:** `_audit-prototype.mjs`, `_audit-i18n.js`, and `_verify-seed.mjs` must exit 0. Includes profile daily limit card, overlap sheet, active-tour upload UI.
 
 ---
 

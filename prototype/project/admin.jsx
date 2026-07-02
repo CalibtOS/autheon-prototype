@@ -1200,7 +1200,11 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
               onChange={(e) => setDriverMessage(e.target.value)}
               placeholder={t("adminCancelDriverMessagePh")}
             />
-            <div className="label" style={{ marginTop: 4 }}>
+            <div
+              className={`field-counter ${
+                driverMessage.length >= minMsg ? "valid" : "invalid"
+              }`}
+            >
               {t("adminCancelMessageCounter", {
                 count: driverMessage.length,
                 min: minMsg,
@@ -2777,37 +2781,35 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
               <h3>
                 <span className="num">07</span> {t("newOrderSecDocumentsTitle")}
               </h3>
+              <Pill status="published" className="no-dot">
+                {t("tourDocUploadAvailable")}
+              </Pill>
             </div>
-            <p
-              className="label"
-              style={{ margin: "10px 0 0", fontSize: 12, lineHeight: 1.5 }}
-            >
+            <p className="req-panel-desc" style={{ marginTop: 10 }}>
               {t("newOrderAdminDocsHint")}
             </p>
             {existingAdminDocs.length ? (
-              <div style={{ marginTop: 14 }}>
-                <div className="label" style={{ marginBottom: 8 }}>
+              <>
+                <div className="label" style={{ marginTop: 14, marginBottom: 8 }}>
                   {t("newOrderAdminDocsExisting")}
                 </div>
-                <ul
-                  style={{
-                    margin: 0,
-                    padding: "0 0 0 18px",
-                    fontSize: 13,
-                    lineHeight: 1.6,
-                  }}
-                >
+                <ul className="doc-card-list">
                   {existingAdminDocs.map((doc) => (
-                    <li key={doc.id}>
-                      <span className="mono">{doc.fileName}</span>
-                      {" · "}
-                      {displayTourDocType(doc.documentType, t)}
+                    <li key={doc.id} className="doc-card">
+                      <div className="doc-card-head">
+                        <span className="mono" style={{ wordBreak: "break-all" }}>
+                          {doc.fileName}
+                        </span>
+                      </div>
+                      <div className="doc-card-meta">
+                        {displayTourDocType(doc.documentType, t)}
+                      </div>
                     </li>
                   ))}
                 </ul>
-              </div>
+              </>
             ) : null}
-            <div style={{ marginTop: 14 }}>
+            <div className="req-panel-actions" style={{ marginTop: 14 }}>
               <input
                 ref={adminDocFileRef}
                 type="file"
@@ -2821,29 +2823,28 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
               />
               <button
                 type="button"
-                className="btn"
+                className="btn primary touch-target"
                 onClick={() => adminDocFileRef.current?.click()}
               >
                 <Ic.Plus /> {t("newOrderAdminDocsAdd")}
               </button>
-              {adminAttachFiles.length ? (
-                <ul
-                  style={{
-                    margin: "12px 0 0",
-                    padding: "0 0 0 18px",
-                    fontSize: 13,
-                    lineHeight: 1.6,
-                  }}
-                >
-                  {adminAttachFiles.map((item) => (
-                    <li key={item.id}>
-                      <span className="mono">{item.fileName}</span>
-                      {" · "}
+            </div>
+            {adminAttachFiles.length ? (
+              <ul className="doc-card-list">
+                {adminAttachFiles.map((item) => (
+                  <li key={item.id} className="doc-card">
+                    <div className="doc-card-head">
+                      <span className="mono" style={{ wordBreak: "break-all" }}>
+                        {item.fileName}
+                      </span>
+                    </div>
+                    <div className="doc-card-meta">
                       {displayTourDocType(item.documentType, t)}
+                    </div>
+                    <div className="doc-card-actions">
                       <button
                         type="button"
-                        className="btn ghost xs"
-                        style={{ marginLeft: 8 }}
+                        className="btn ghost xs touch-target"
                         onClick={() =>
                           setAdminAttachFiles((prev) =>
                             prev.filter((x) => x.id !== item.id),
@@ -2852,18 +2853,15 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                       >
                         {t("reportProblemEvidenceRemove")}
                       </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p
-                  className="label"
-                  style={{ marginTop: 10, fontSize: 12, lineHeight: 1.45 }}
-                >
-                  {t("newOrderAdminDocsEmpty")}
-                </p>
-              )}
-            </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="empty-state">
+                <p className="empty-state-title">{t("newOrderAdminDocsEmpty")}</p>
+              </div>
+            )}
           </section>
         </div>
 
@@ -7161,10 +7159,13 @@ const OperationalPoliciesForm = ({ showToast }) => {
   };
 
   return (
-    <div style={{ marginTop: 16, display: "grid", gap: 14, maxWidth: 420 }}>
-      <div>
-        <label className="field-label">{t("adminPolicyCancelHoursLabel")}</label>
+    <div className="policy-grid">
+      <div className="policy-field">
+        <label className="field-label" htmlFor="policy-cancel-hours">
+          {t("adminPolicyCancelHoursLabel")}
+        </label>
         <input
+          id="policy-cancel-hours"
           className="input"
           type="number"
           min={0}
@@ -7173,9 +7174,12 @@ const OperationalPoliciesForm = ({ showToast }) => {
           onChange={(e) => setAdminCancelHours(e.target.value)}
         />
       </div>
-      <div>
-        <label className="field-label">{t("adminPolicyScheduleHoursLabel")}</label>
+      <div className="policy-field">
+        <label className="field-label" htmlFor="policy-schedule-hours">
+          {t("adminPolicyScheduleHoursLabel")}
+        </label>
         <input
+          id="policy-schedule-hours"
           className="input"
           type="number"
           min={0}
@@ -7184,9 +7188,12 @@ const OperationalPoliciesForm = ({ showToast }) => {
           onChange={(e) => setScheduleHours(e.target.value)}
         />
       </div>
-      <div>
-        <label className="field-label">{t("adminPolicyMinDriverMsgLabel")}</label>
+      <div className="policy-field">
+        <label className="field-label" htmlFor="policy-min-driver-msg">
+          {t("adminPolicyMinDriverMsgLabel")}
+        </label>
         <input
+          id="policy-min-driver-msg"
           className="input"
           type="number"
           min={1}
@@ -7194,9 +7201,12 @@ const OperationalPoliciesForm = ({ showToast }) => {
           onChange={(e) => setMinDriverMsg(e.target.value)}
         />
       </div>
-      <div>
-        <label className="field-label">{t("adminPolicyDefaultDailyLimitLabel")}</label>
+      <div className="policy-field">
+        <label className="field-label" htmlFor="policy-default-limit">
+          {t("adminPolicyDefaultDailyLimitLabel")}
+        </label>
         <input
+          id="policy-default-limit"
           className="input"
           type="number"
           min={1}
@@ -7204,7 +7214,7 @@ const OperationalPoliciesForm = ({ showToast }) => {
           onChange={(e) => setDefaultLimit(e.target.value)}
         />
       </div>
-      <button type="button" className="btn primary" style={{ width: "fit-content" }} onClick={save}>
+      <button type="button" className="btn primary touch-target" style={{ width: "fit-content" }} onClick={save}>
         {t("adminOperationalPoliciesSave")}
       </button>
     </div>

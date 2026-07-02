@@ -123,7 +123,7 @@ Changelogs: [`../archive/2026-07/prd-changelog-since-2026-06-25.md`](../archive/
 
 **Closed in prototype (2026-05-25 profile requests):** persistent `masterDataChangeRequests` queue; admin nav with open-count badge; inline driver edit on request detail; **Approve & save** (save then close) and **Reject**; driver pending state when one open request exists; notification feed **Review request** deep-link; driver in-app notifications on resolution.
 
-**Closed in prototype (2026-07-02 v1.8):** pre-Performed upload; daily limit + overlap prompt + limit-increase request (`daily_limit_override`); admin document attach at job create/edit; admin cancel reason + driver message; operational policy settings; schedule-change cutoff on revert/edit draft.
+**Closed in prototype (2026-07-02 v1.8):** pre-Performed upload; daily limit + overlap sheet + limit-increase request (`daily_limit_override`); profile daily limit card; admin document attach at job create/edit; admin cancel reason + driver message; operational policy settings; schedule-change cutoff on revert/edit draft.
 
 ---
 

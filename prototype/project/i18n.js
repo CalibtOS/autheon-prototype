@@ -178,6 +178,10 @@ window.I18n = (() => {
       tourDocRequiresPerformed:
         "Document upload is not available for this tour status.",
       tourDocUploadEmpty: "No documents uploaded yet.",
+      tourDocEmptyTitle: "No documents yet",
+      tourDocEmptyAction: "Add receipts, delivery notes, or proof while this tour is active.",
+      tourDocUploadSuccess: "Document uploaded. Dispatch will review it.",
+      tourDocUploadAvailable: "Upload available",
       tourDocRejectionReason: "Rejection: {reason}",
       tourDocReplaceButton: "Replace file",
       tourDocReplaceNotAllowed: "Accepted documents cannot be replaced. Contact dispatch if needed.",
@@ -346,8 +350,21 @@ window.I18n = (() => {
       driverCancellationReasonLabel: "Reason",
       driverAcceptOverlapConfirm:
         "You already have another tour on this day. Accept anyway?",
+      driverAcceptOverlapTitle: "Same-day tour overlap",
+      driverAcceptOverlapConfirmBtn: "Accept anyway",
+      uiDismiss: "Dismiss",
       driverDailyLimitReached:
         "You reached your daily job acceptance limit. Request a higher limit from dispatch.",
+      driverDailyLimitProfileTitle: "Daily acceptance limit",
+      driverDailyLimitProfileUsage:
+        "{count} of {limit} tours accepted (pickup date {date})",
+      driverDailyLimitProfileRemaining:
+        "{remaining} acceptance(s) remaining for this pickup day",
+      driverDailyLimitProfileAtLimit:
+        "Daily limit reached for tours with pickup on {date}",
+      driverDailyLimitRequestBtn: "Request higher limit",
+      driverDailyLimitPendingRequest:
+        "Limit increase request pending with dispatch",
       driverDailyLimitRequestTitle: "Request higher daily limit",
       driverDailyLimitRequestHint:
         "Your current limit is {current} tour(s) per day ({count} already accepted today). Ask dispatch to raise it.",
@@ -1242,6 +1259,10 @@ window.I18n = (() => {
       tourDocRequiresPerformed:
         "Dokument-Upload ist für diesen Tour-Status nicht verfügbar.",
       tourDocUploadEmpty: "Noch keine Dokumente.",
+      tourDocEmptyTitle: "Noch keine Dokumente",
+      tourDocEmptyAction: "Belege, Lieferscheine oder Nachweise während der aktiven Tour hinzufügen.",
+      tourDocUploadSuccess: "Dokument hochgeladen. Die Disposition prüft es.",
+      tourDocUploadAvailable: "Upload möglich",
       tourDocRejectionReason: "Ablehnung: {reason}",
       tourDocReplaceButton: "Datei ersetzen",
       tourDocReplaceNotAllowed:
@@ -1414,8 +1435,21 @@ window.I18n = (() => {
       driverCancellationReasonLabel: "Grund",
       driverAcceptOverlapConfirm:
         "Sie haben an diesem Tag bereits eine andere Tour. Trotzdem annehmen?",
+      driverAcceptOverlapTitle: "Tour-Überschneidung am selben Tag",
+      driverAcceptOverlapConfirmBtn: "Trotzdem annehmen",
+      uiDismiss: "Schließen",
       driverDailyLimitReached:
         "Sie haben Ihr tägliches Annahmelimit erreicht. Fordern Sie bei der Disposition eine Erhöhung an.",
+      driverDailyLimitProfileTitle: "Tägliches Annahmelimit",
+      driverDailyLimitProfileUsage:
+        "{count} von {limit} Touren angenommen (Abholdatum {date})",
+      driverDailyLimitProfileRemaining:
+        "Noch {remaining} Annahme(n) für diesen Abholtag",
+      driverDailyLimitProfileAtLimit:
+        "Tageslimit erreicht für Touren mit Abholung am {date}",
+      driverDailyLimitRequestBtn: "Höheres Limit anfragen",
+      driverDailyLimitPendingRequest:
+        "Anfrage zur Limit-Erhöhung bei der Disposition offen",
       driverDailyLimitRequestTitle: "Höheres Tageslimit anfragen",
       driverDailyLimitRequestHint:
         "Ihr aktuelles Limit ist {current} Tour(en) pro Tag ({count} heute bereits angenommen). Bitten Sie die Disposition um eine Erhöhung.",

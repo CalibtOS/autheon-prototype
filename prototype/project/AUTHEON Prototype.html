@@ -64,6 +64,7 @@
         const [reportProblemJob, setReportProblemJob] = useState(null);
         const [pendingNotice, setPendingNotice] = useState(null);
         const [dailyLimitModal, setDailyLimitModal] = useState(null);
+        const [overlapConfirm, setOverlapConfirm] = useState(null);
         const [banner, setBanner] = useState(null);
         const [showNotifications, setShowNotifications] = useState(false);
 
@@ -128,7 +129,14 @@
         } else if (tab === "info") {
           body = <Infopoint />;
         } else {
-          body = <ProfilePaneFull />;
+          body = (
+            <ProfilePaneFull
+              onRequestDailyLimitIncrease={() => {
+                const s = store.getDriverDailyAcceptanceSummary();
+                if (s) setDailyLimitModal({ limit: s.limit, count: s.count });
+              }}
+            />
+          );
         }
 
         return (
@@ -147,11 +155,18 @@
                   }}
                 >
                   {banner && (
-                    <div className="banner banner-warn" role="alert">
-                      {banner}
+                    <div
+                      className={`banner ${
+                        typeof banner === "object" && banner.tone === "success"
+                          ? "banner-success"
+                          : "banner-warn"
+                      }`}
+                      role="alert"
+                    >
+                      {typeof banner === "object" ? banner.text : banner}
                       <button
                         type="button"
-                        className="btn xs"
+                        className="btn xs touch-target"
                         style={{ marginLeft: 10 }}
                         onClick={() => setBanner(null)}
                       >
@@ -183,23 +198,20 @@
                         const id = acceptModal.id;
                         if (!r.ok) {
                           if (r.reason === "same_day_overlap_confirm") {
-                            if (
-                              window.confirm(t("driverAcceptOverlapConfirm"))
-                            ) {
-                              tryAccept(true);
-                            }
+                            setAcceptModal(null);
+                            setOverlapConfirm({ jobId: id });
                             return;
                           }
                           setAcceptModal(null);
                           if (r.reason === "driver_restricted") {
-                            setBanner(t("blockedDriverBody"));
+                            setBanner({ tone: "warn", text: t("blockedDriverBody") });
                           } else if (r.reason === "daily_limit_reached") {
                             setDailyLimitModal({
                               limit: r.limit,
                               count: r.count,
                             });
                           } else {
-                            setBanner(t("toastAssignedElsewhere"));
+                            setBanner({ tone: "warn", text: t("toastAssignedElsewhere") });
                           }
                           setActiveJob({ id, mode: "locked" });
                           return;
@@ -247,8 +259,41 @@
                     limitInfo={dailyLimitModal}
                     onClose={() => setDailyLimitModal(null)}
                     onSubmitted={() => {
-                      setBanner(t("driverDailyLimitRequestSent"));
+                      setBanner({
+                        tone: "success",
+                        text: t("driverDailyLimitRequestSent"),
+                      });
                       setDailyLimitModal(null);
+                    }}
+                  />
+                )}
+                {overlapConfirm && (
+                  <SameDayOverlapSheet
+                    onCancel={() => {
+                      setOverlapConfirm(null);
+                      setActiveJob({ id: overlapConfirm.jobId, mode: "locked" });
+                    }}
+                    onConfirm={() => {
+                      const id = overlapConfirm.jobId;
+                      const r = store.acceptJob(id, {
+                        confirmSameDayOverlap: true,
+                      });
+                      setOverlapConfirm(null);
+                      if (!r.ok) {
+                        if (r.reason === "daily_limit_reached") {
+                          setDailyLimitModal({
+                            limit: r.limit,
+                            count: r.count,
+                          });
+                        } else if (r.reason === "driver_restricted") {
+                          setBanner({ tone: "warn", text: t("blockedDriverBody") });
+                        } else {
+                          setBanner({ tone: "warn", text: t("toastAssignedElsewhere") });
+                        }
+                        setActiveJob({ id, mode: "locked" });
+                        return;
+                      }
+                      setActiveJob({ id, mode: "unlocked" });
                     }}
                   />
                 )}

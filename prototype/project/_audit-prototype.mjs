@@ -395,6 +395,9 @@ const v18Needles = [
   ["DailyLimitRequestSheet", "driver limit increase request UI"],
   ["daily_limit_override", "daily_limit_override change type"],
   ["TD-SEED-ACTIVE-001", "seed document on active tour"],
+  ["const canUpload = uploadGate.ok", "driver upload UI uses active-tour gate"],
+  ["getDriverDailyAcceptanceSummary", "driver daily limit summary API"],
+  ["DriverDailyLimitCard", "driver profile daily limit card"],
 ];
 out("");
 out("PRD v1.8 checks:");
@@ -410,6 +413,16 @@ for (const [needle, label] of v18Needles) {
         ? i18n.includes(needle) && (needle === "adminUsersFieldDailyLimit" ? admin.includes("dailyJobLimit") : admin.includes("sec-07"))
       : needle === "TD-SEED-ACTIVE-001"
         ? inStore
+        : needle === "const canUpload = uploadGate.ok"
+          ? driver.includes(needle)
+        : needle === "SameDayOverlapSheet"
+          ? driver.includes(needle)
+        : needle === "getDriverDailyAcceptanceSummary"
+          ? inStore
+        : needle === "DriverDailyLimitCard"
+          ? driver.includes(needle)
+        : needle === "req-panel"
+          ? driver.includes(needle)
         : inStore;
   if (!ok) {
     out(`PRD v1.8 missing ${label}`);

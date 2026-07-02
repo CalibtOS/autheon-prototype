@@ -102,6 +102,39 @@ const displayDocReviewStatus = (st, t) => {
   );
 };
 
+const InlineAlert = ({ tone = "error", message, onDismiss }) => {
+  const { t } = useI18n();
+  if (!message) return null;
+  return (
+    <div className={`inline-alert inline-alert-${tone}`} role="alert">
+      <span>{message}</span>
+      {onDismiss ? (
+        <button
+          type="button"
+          className="inline-alert-dismiss touch-target"
+          onClick={onDismiss}
+          aria-label={t("uiDismiss")}
+        >
+          ×
+        </button>
+      ) : null}
+    </div>
+  );
+};
+
+const tourDocUploadErrorMessage = (reason, t) => {
+  if (reason === "invalid_type") return t("invoiceUploadInvalidType");
+  if (reason === "driver_restricted") return t("invoiceUploadRestricted");
+  if (reason === "job_not_performed" || reason === "job_not_uploadable")
+    return t("tourDocRequiresPerformed");
+  if (reason === "not_assigned_driver") return t("invoiceUploadNotYourTour");
+  if (reason === "job_required" || reason === "bad_job")
+    return t("invoiceUploadTourRequired");
+  if (reason === "not_replaceable") return t("tourDocReplaceNotAllowed");
+  if (reason === "not_owner") return t("tourDocReplaceNotOwner");
+  return t("invoiceUploadTourRequired");
+};
+
 const jobNeedsDocCorrection = (job, store) =>
   job.status === "performed" &&
   (/correction/i.test(String(job.documentReviewSummary || "")) ||
@@ -1512,36 +1545,34 @@ const JobTourDocuments = ({ job }) => {
   const inputRef = useRef(null);
   const replaceInputRef = useRef(null);
   const jobId = job.id;
-  const tourPerformed = job.status === "performed";
+  const uploadGate = store.canDriverUploadTourDocument(jobId);
+  const canUpload = uploadGate.ok;
   const uploads = store.getTourDocumentsForJob(jobId);
   const [categoryModal, setCategoryModal] = useState(false);
   const [pendingType, setPendingType] = useState(null);
   const [replaceDocId, setReplaceDocId] = useState(null);
+  const [feedback, setFeedback] = useState(null);
   const active = store.isCurrentDriverActive();
-  const uploadErr = (reason) => {
-    if (reason === "invalid_type") window.alert(t("invoiceUploadInvalidType"));
-    else if (reason === "driver_restricted")
-      window.alert(t("invoiceUploadRestricted"));
-    else if (reason === "job_not_performed")
-      window.alert(t("tourDocRequiresPerformed"));
-    else if (reason === "not_assigned_driver")
-      window.alert(t("invoiceUploadNotYourTour"));
-    else if (reason === "job_required" || reason === "bad_job")
-      window.alert(t("invoiceUploadTourRequired"));
-    else if (reason === "not_replaceable")
-      window.alert(t("tourDocReplaceNotAllowed"));
-    else if (reason === "not_owner") window.alert(t("tourDocReplaceNotOwner"));
+
+  const showUploadError = (reason) => {
+    setFeedback({
+      tone: "error",
+      message: tourDocUploadErrorMessage(reason, t),
+    });
   };
+
   const startUpload = (documentType) => {
     const gate = store.canDriverUploadTourDocument(jobId);
     if (!gate.ok) {
-      uploadErr(gate.reason);
+      showUploadError(gate.reason);
       return;
     }
+    setFeedback(null);
     setPendingType(documentType);
     setCategoryModal(false);
     inputRef.current?.click();
   };
+
   const onPick = (e) => {
     const f = e.target.files?.[0];
     e.target.value = "";
@@ -1549,86 +1580,66 @@ const JobTourDocuments = ({ job }) => {
     if (replaceDocId) {
       const r = store.replaceTourDocument(replaceDocId, f);
       setReplaceDocId(null);
-      if (!r.ok) uploadErr(r.reason);
+      if (!r.ok) showUploadError(r.reason);
+      else
+        setFeedback({ tone: "success", message: t("tourDocUploadSuccess") });
       return;
     }
     if (!pendingType) return;
     const r = store.addTourDocument(f, { jobId, documentType: pendingType });
     setPendingType(null);
-    if (!r.ok) uploadErr(r.reason);
+    if (!r.ok) showUploadError(r.reason);
+    else setFeedback({ tone: "success", message: t("tourDocUploadSuccess") });
   };
+
   const startReplace = (docId) => {
-    if (!tourPerformed) {
-      uploadErr("job_not_performed");
+    if (!canUpload) {
+      showUploadError(uploadGate.reason || "job_not_uploadable");
       return;
     }
+    setFeedback(null);
     setReplaceDocId(docId);
     setCategoryModal(false);
     replaceInputRef.current?.click();
   };
+
   const canReplaceDoc = (u) => {
+    if (!canUpload) return false;
     const st = AuthStore.normalizeTourDocumentReviewStatus(u.reviewStatus);
-    return (
-      tourPerformed &&
-      ["uploaded", "rejected", "correction_required"].includes(st)
-    );
+    return ["uploaded", "rejected", "correction_required"].includes(st);
   };
+
   if (!active) return null;
 
-  if (!tourPerformed) {
-    return (
-      <div
-        style={{
-          marginTop: 16,
-          padding: 14,
-          borderRadius: 12,
-          border: "1px solid var(--line)",
-          background: "var(--paper-2)",
-        }}
-      >
-        <Lbl>{t("tourDocumentsSection")}</Lbl>
-        <p
-          style={{
-            fontSize: 12,
-            color: "var(--muted)",
-            margin: "8px 0 0",
-            lineHeight: 1.55,
-          }}
-        >
-          {t("tourDocAfterPerformedHint")}
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div
-      style={{
-        marginTop: 16,
-        padding: 14,
-        borderRadius: 12,
-        border: "1px solid var(--line)",
-        background: "var(--paper-2)",
-      }}
-    >
-      <Lbl>{t("tourDocumentsSection")}</Lbl>
-      <p
-        style={{
-          fontSize: 12,
-          color: "var(--muted)",
-          margin: "8px 0 12px",
-          lineHeight: 1.55,
-        }}
-      >
-        {t("tourDocUploadHint")}
+    <section className="req-panel" aria-labelledby={`tour-docs-${jobId}`}>
+      <div className="req-panel-head">
+        <h4 id={`tour-docs-${jobId}`}>{t("tourDocumentsSection")}</h4>
+        {canUpload ? (
+          <Pill status="accepted" className="no-dot">
+            {t("tourDocUploadAvailable")}
+          </Pill>
+        ) : null}
+      </div>
+      <p className="req-panel-desc">
+        {canUpload ? t("tourDocUploadHint") : t("tourDocRequiresPerformed")}
       </p>
-      <button
-        type="button"
-        className="btn xs"
-        onClick={() => setCategoryModal(true)}
-      >
-        <Ic.Plus /> {t("tourDocUploadReceiptButton")}
-      </button>
+      {canUpload ? (
+        <div className="req-panel-actions">
+          <button
+            type="button"
+            className="btn primary touch-target"
+            onClick={() => setCategoryModal(true)}
+          >
+            <Ic.Plus /> {t("tourDocUploadReceiptButton")}
+          </button>
+        </div>
+      ) : null}
+      <InlineAlert
+        tone={feedback?.tone}
+        message={feedback?.message}
+        onDismiss={() => setFeedback(null)}
+      />
       <input
         ref={inputRef}
         type="file"
@@ -1645,49 +1656,15 @@ const JobTourDocuments = ({ job }) => {
         onChange={onPick}
       />
       {uploads.length > 0 ? (
-        <ul
-          style={{
-            margin: "14px 0 0",
-            padding: 0,
-            listStyle: "none",
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
-        >
+        <ul className="doc-card-list">
           {uploads.map((u) => (
-            <li
-              key={u.id}
-              style={{
-                fontSize: 12.5,
-                padding: 10,
-                border: "1px solid var(--line)",
-                borderRadius: "var(--r-2)",
-                background: "var(--paper)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  gap: 8,
-                }}
-              >
+            <li key={u.id} className="doc-card">
+              <div className="doc-card-head">
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span
-                    className="mono"
-                    style={{
-                      wordBreak: "break-all",
-                      display: "block",
-                    }}
-                  >
+                  <span className="mono" style={{ wordBreak: "break-all", display: "block" }}>
                     {u.fileName}
                   </span>
-                  <span
-                    className="label"
-                    style={{ fontSize: 11, marginTop: 4, display: "block" }}
-                  >
+                  <span className="doc-card-meta">
                     {displayTourDocType(u.documentType, t)}
                   </span>
                 </span>
@@ -1719,21 +1696,27 @@ const JobTourDocuments = ({ job }) => {
                 </p>
               ) : null}
               {canReplaceDoc(u) ? (
-                <button
-                  type="button"
-                  className="btn xs"
-                  style={{ marginTop: 8 }}
-                  onClick={() => startReplace(u.id)}
-                >
-                  {t("tourDocReplaceButton")}
-                </button>
+                <div className="doc-card-actions">
+                  <button
+                    type="button"
+                    className="btn xs touch-target"
+                    onClick={() => startReplace(u.id)}
+                  >
+                    {t("tourDocReplaceButton")}
+                  </button>
+                </div>
               ) : null}
             </li>
           ))}
         </ul>
+      ) : canUpload ? (
+        <div className="empty-state">
+          <p className="empty-state-title">{t("tourDocEmptyTitle")}</p>
+          <p className="empty-state-desc">{t("tourDocEmptyAction")}</p>
+        </div>
       ) : (
-        <div className="label" style={{ marginTop: 12 }}>
-          {t("tourDocUploadEmpty")}
+        <div className="empty-state">
+          <p className="empty-state-title">{t("tourDocUploadEmpty")}</p>
         </div>
       )}
       {categoryModal ? (
@@ -1742,46 +1725,26 @@ const JobTourDocuments = ({ job }) => {
             className="sheet modal"
             onClick={(e) => e.stopPropagation()}
             style={{ padding: 20 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tour-doc-category-title"
           >
-            <Lbl>{t("tourDocChooseCategory")}</Lbl>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-                marginTop: 14,
-              }}
-            >
+            <Lbl id="tour-doc-category-title">{t("tourDocChooseCategory")}</Lbl>
+            <div className="category-picker">
               {TOUR_DOC_TYPES.map((type) => (
                 <div key={type}>
                   <button
                     type="button"
-                    className="btn block"
+                    className="btn block touch-target"
                     onClick={() => startUpload(type)}
                   >
                     {displayTourDocType(type, t)}
                   </button>
                   {type === "fuel_receipt" ? (
-                    <p
-                      style={{
-                        margin: "6px 0 0",
-                        fontSize: 11.5,
-                        color: "var(--muted)",
-                        lineHeight: 1.45,
-                      }}
-                    >
-                      {t("tourDocHelperFuel")}
-                    </p>
+                    <p className="category-picker-hint">{t("tourDocHelperFuel")}</p>
                   ) : null}
                   {type === "waiting_time_evidence" ? (
-                    <p
-                      style={{
-                        margin: "6px 0 0",
-                        fontSize: 11.5,
-                        color: "var(--muted)",
-                        lineHeight: 1.45,
-                      }}
-                    >
+                    <p className="category-picker-hint">
                       {t("tourDocHelperWaiting")}
                     </p>
                   ) : null}
@@ -1790,7 +1753,7 @@ const JobTourDocuments = ({ job }) => {
             </div>
             <button
               type="button"
-              className="btn block"
+              className="btn block touch-target"
               style={{ marginTop: 10 }}
               onClick={() => setCategoryModal(false)}
             >
@@ -1799,7 +1762,7 @@ const JobTourDocuments = ({ job }) => {
           </div>
         </div>
       ) : null}
-    </div>
+    </section>
   );
 };
 
@@ -1861,14 +1824,11 @@ const JobUnlocked = ({
 
       <div className="scroll" style={{ padding: "12px 18px 22px" }}>
         {isCancelled && (
-          <div
-            className="banner banner-warn"
-            style={{ marginBottom: 14, fontSize: 13, lineHeight: 1.5 }}
-            role="status"
-          >
+          <div className="cancellation-card" role="status">
+            <p className="cancellation-card-title">{t("cancelled")}</p>
             <div>{t("driverTourCancelledNotice")}</div>
             {job.cancellationReason ? (
-              <div style={{ marginTop: 8, fontWeight: 600 }}>
+              <div className="cancellation-card-reason">
                 {t("driverCancellationReasonLabel")}:{" "}
                 {t(`cancellationReason_${job.cancellationReason}`) ||
                   AuthStore.getCancellationReasonLabel?.(job.cancellationReason) ||
@@ -1876,7 +1836,9 @@ const JobUnlocked = ({
               </div>
             ) : null}
             {job.cancellationReasonText ? (
-              <div style={{ marginTop: 6 }}>{job.cancellationReasonText}</div>
+              <div className="cancellation-card-message">
+                {job.cancellationReasonText}
+              </div>
             ) : null}
           </div>
         )}
@@ -3091,7 +3053,81 @@ const emptyMasterDataChangeForm = (driver) => ({
 const fieldChanged = (before, after) =>
   String(before || "").trim() !== String(after || "").trim();
 
-const ProfilePaneFull = () => {
+const formatCalendarDayLabel = (dayKey) => {
+  const m = String(dayKey || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : dayKey || "—";
+};
+
+const DriverDailyLimitCard = ({ onRequestIncrease }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const summary = store.getDriverDailyAcceptanceSummary();
+  if (!summary) return null;
+  const dateLabel = formatCalendarDayLabel(summary.dayKey);
+  const pct = summary.limit
+    ? Math.min(100, Math.round((summary.count / summary.limit) * 100))
+    : 0;
+  const canRequest =
+    !summary.hasOpenRequest && typeof onRequestIncrease === "function";
+
+  return (
+    <section className="req-panel" style={{ marginTop: 16 }}>
+      <div className="req-panel-head">
+        <h4>{t("driverDailyLimitProfileTitle")}</h4>
+        {summary.atLimit ? (
+          <Pill status="warn" className="no-dot">
+            {summary.count} / {summary.limit}
+          </Pill>
+        ) : null}
+      </div>
+      <p className="req-panel-desc">
+        {t("driverDailyLimitProfileUsage", {
+          count: summary.count,
+          limit: summary.limit,
+          date: dateLabel,
+        })}
+      </p>
+      <div className="limit-meter" aria-hidden="true">
+        <div className="limit-meter-track">
+          <span
+            className={`limit-meter-fill${summary.atLimit ? " at-limit" : ""}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="limit-meter-meta">
+          <span className="limit-meter-count">
+            {summary.count} / {summary.limit}
+          </span>
+          <span>
+            {summary.atLimit
+              ? t("driverDailyLimitProfileAtLimit", { date: dateLabel })
+              : t("driverDailyLimitProfileRemaining", {
+                  remaining: summary.remaining,
+                })}
+          </span>
+        </div>
+      </div>
+      {summary.pendingLimitRequest ? (
+        <InlineAlert tone="info" message={t("driverDailyLimitPendingRequest")} />
+      ) : summary.hasOpenRequest ? (
+        <InlineAlert tone="info" message={t("masterDataChangeOpenExists")} />
+      ) : (
+        <div className="req-panel-actions">
+          <button
+            type="button"
+            className={`btn touch-target${summary.atLimit ? " cta" : ""}`}
+            onClick={onRequestIncrease}
+            disabled={!canRequest}
+          >
+            {t("driverDailyLimitRequestBtn")}
+          </button>
+        </div>
+      )}
+    </section>
+  );
+};
+
+const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const d = store.getCurrentDriver();
@@ -3163,6 +3199,7 @@ const ProfilePaneFull = () => {
           </div>
         </div>
       </div>
+      <DriverDailyLimitCard onRequestIncrease={onRequestDailyLimitIncrease} />
       <div className="card mdr-card" style={{ padding: 14, marginTop: 16 }}>
         <div className="mdr-card-head">
           <Lbl>{t("profileMasterData")}</Lbl>
@@ -3648,22 +3685,25 @@ const DailyLimitRequestSheet = ({ limitInfo, onClose, onSubmitted }) => {
   return (
     <div className="sheet-backdrop center" onClick={onClose}>
       <div
-        className="sheet card"
+        className="sheet card confirm-sheet"
         style={{ maxWidth: 420, width: "100%", padding: 22 }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
       >
-        <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700 }}>
-          {t("driverDailyLimitRequestTitle")}
-        </h2>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>
+        <Lbl>{t("driverDailyLimitRequestTitle")}</Lbl>
+        <p style={{ marginTop: 8 }}>
           {t("driverDailyLimitRequestHint", {
             current,
             count: limitInfo?.count ?? current,
           })}
         </p>
         <div style={{ marginTop: 16 }}>
-          <label className="field-label">{t("driverDailyLimitRequestedLabel")}</label>
+          <label className="field-label" htmlFor="daily-limit-requested">
+            {t("driverDailyLimitRequestedLabel")}
+          </label>
           <input
+            id="daily-limit-requested"
             className="input mono"
             type="number"
             min={current + 1}
@@ -3677,8 +3717,11 @@ const DailyLimitRequestSheet = ({ limitInfo, onClose, onSubmitted }) => {
           />
         </div>
         <div style={{ marginTop: 14 }}>
-          <label className="field-label">{t("driverDailyLimitRequestNote")}</label>
+          <label className="field-label" htmlFor="daily-limit-note">
+            {t("driverDailyLimitRequestNote")}
+          </label>
           <textarea
+            id="daily-limit-note"
             className="input"
             rows={3}
             value={note}
@@ -3687,28 +3730,41 @@ const DailyLimitRequestSheet = ({ limitInfo, onClose, onSubmitted }) => {
             style={{ marginTop: 6, resize: "vertical" }}
           />
         </div>
-        {err ? (
-          <p
-            className="label"
-            role="alert"
-            style={{ color: "#dc2626", marginTop: 10, fontSize: 12 }}
-          >
-            {err}
-          </p>
-        ) : null}
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginTop: 18,
-            justifyContent: "flex-end",
-          }}
-        >
-          <button type="button" className="btn" onClick={onClose}>
+        <InlineAlert tone="error" message={err} onDismiss={() => setErr("")} />
+        <div className="confirm-sheet-actions">
+          <button type="button" className="btn touch-target" onClick={onClose}>
             {t("cancel")}
           </button>
-          <button type="button" className="btn primary" onClick={submit}>
+          <button type="button" className="btn primary touch-target" onClick={submit}>
             {t("driverDailyLimitRequestSubmit")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SameDayOverlapSheet = ({ onCancel, onConfirm }) => {
+  const { t } = useI18n();
+  return (
+    <div className="sheet-backdrop center" onClick={onCancel}>
+      <div
+        className="sheet card confirm-sheet"
+        style={{ maxWidth: 420, width: "100%", padding: 22 }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="overlap-sheet-title"
+      >
+        <Lbl>{t("driverAcceptOverlapTitle")}</Lbl>
+        <h2 id="overlap-sheet-title">{t("bindingAcceptance")}</h2>
+        <p>{t("driverAcceptOverlapConfirm")}</p>
+        <div className="confirm-sheet-actions">
+          <button type="button" className="btn touch-target" onClick={onCancel}>
+            {t("cancel")}
+          </button>
+          <button type="button" className="btn cta touch-target" onClick={onConfirm}>
+            {t("driverAcceptOverlapConfirmBtn")}
           </button>
         </div>
       </div>
@@ -3738,6 +3794,9 @@ Object.assign(window, {
   ReportProblemSheet,
   PendingNotice,
   DailyLimitRequestSheet,
+  SameDayOverlapSheet,
+  InlineAlert,
+  DriverDailyLimitCard,
   ProfilePane,
   ProfilePaneFull,
   Infopoint,
