@@ -1,21 +1,21 @@
 # Client feedback ↔ PRD ↔ prototype comparison
 
-**Canonical spec:** [`../requirements/prd.json`](../requirements/prd.json) (PRD v1.6)
+**Canonical spec:** [`../requirements/prd.json`](../requirements/prd.json) (PRD v1.8)
 **Written feedback reference:** [`../../meetings/source/autheon_aw_written_feedback_en.md`](../../meetings/source/autheon_aw_written_feedback_en.md) (from Feedback.pdf)
 **Meeting reference:** [`../../meetings/source/autheon_aw_meeting_transcript_en_with_index.md`](../../meetings/source/autheon_aw_meeting_transcript_en_with_index.md) (2026-05-18)
 **Full validation report:** [`../requirements/prd-client-source-validation.md`](../requirements/prd-client-source-validation.md)
 **Prototype:** [`../../prototype/project/`](../../prototype/project/)
 **Period covered:** 2026-05-20 (Tuesday) → 2026-05-25  
 **PRD diff detail:** [`../archive/2026-05/prd-changelog-since-2026-05-20.md`](../archive/2026-05/prd-changelog-since-2026-05-20.md) (baseline `bd55711` → HEAD `5af4b75`)
-**Automated check:** `_audit-prototype.mjs` — **PASS** (2026-05-25)
+**Automated check:** `_audit-prototype.mjs` — **PASS v1.8** (2026-07-02)
 
-**Git note:** Working tree, index, and HEAD all match — PRD v1.6 is fully committed; no unstaged `prd.json` delta.
+**Git note:** PRD v1.8 and prototype sync are on branch `feat/add-two-meeting-summary` (v1.7 committed; v1.8 docs/prototype may be uncommitted until merge).
 
 ---
 
 ## Executive summary
 
-Since 2026-05-20 the static prototype and PRD were aligned to **client Feedback.pdf (May 2026)**: separate customer / pickup / delivery, Report Problem flows, tour documents after Performed, master data CRUD, notifications (three push toggles, in-app feeds), and v1.6 traceability matrices. **All 15 Feedback.pdf sections in `client_feedback_traceability` are marked covered or gap-closed in the PRD; the prototype audit script passes.**
+Since 2026-05-20 the static prototype and PRD were aligned to **client Feedback.pdf (May 2026)**. **June/July 2026 meetings (v1.7–v1.8)** added pre-Performed upload, daily acceptance limits with limit-increase requests, admin docs at job creation, admin cancel driver messages, and operational policy settings. **All 15 Feedback.pdf sections remain covered; v1.7/v1.8 meeting outcomes are reflected in PRD v1.8 and the prototype audit.**
 
 Production backend (DB, auth, SMTP, real file storage) remains **out of scope** for the HTML demo — PRD tasks stay `pending` for implementation tracking.
 
@@ -97,6 +97,22 @@ Full detail: [`../requirements/prd-prototype-validation.md`](../requirements/prd
 
 ---
 
+## PRD v1.7–v1.8 meeting outcomes (2026-06-25 / 2026-06-29 / 2026-07-02)
+
+| Topic | PRD | Prototype |
+|-------|-----|-----------|
+| Q1 Pre-Performed document upload | Task 11/27, `document_upload_pre_completion_v1` | `canDriverUploadTourDocument` on active statuses |
+| Q2 No car color / photo field | important_notes | Notes + optional admin attach (Q4) |
+| Q3 Daily acceptance limit + overlap prompt | Task 30 | `dailyJobLimit`, `acceptJob`, overlap confirm, `requestDailyLimitIncrease` |
+| Q4 Admin docs at job creation | `admin_documents_at_creation_v1` | New job section 07, `admin_off_channel` |
+| Q5 No lat/long | future_scope | N/A |
+| Admin cancel driver message | Task 14, v1.8 | `AdminCancelJobModal`, driver cancelled detail |
+| Operational policies | Task 31 | Settings → `OperationalPoliciesForm`, cutoffs enforced |
+
+Changelogs: [`../archive/2026-07/prd-changelog-since-2026-06-25.md`](../archive/2026-07/prd-changelog-since-2026-06-25.md), [`../archive/2026-07/prd-changelog-since-2026-07-01.md`](../archive/2026-07/prd-changelog-since-2026-07-01.md).
+
+---
+
 ## Gaps / not in prototype
 
 - PRD **tasks** remain `pending` for production delivery (expected).
@@ -106,6 +122,8 @@ Full detail: [`../requirements/prd-prototype-validation.md`](../requirements/prd
 **Closed in prototype (2026-05-25 gap pass):** cancel binding warning + terms; seven cancel reasons; not-performable evidence upload; Report Problem warning icon; admin order-entry formatters (`inputFormatters.js`).
 
 **Closed in prototype (2026-05-25 profile requests):** persistent `masterDataChangeRequests` queue; admin nav with open-count badge; inline driver edit on request detail; **Approve & save** (save then close) and **Reject**; driver pending state when one open request exists; notification feed **Review request** deep-link; driver in-app notifications on resolution.
+
+**Closed in prototype (2026-07-02 v1.8):** pre-Performed upload; daily limit + overlap prompt + limit-increase request (`daily_limit_override`); admin document attach at job create/edit; admin cancel reason + driver message; operational policy settings; schedule-change cutoff on revert/edit draft.
 
 ---
 

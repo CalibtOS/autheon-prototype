@@ -36,11 +36,11 @@ Added to `product_context.source_inputs`:
 - Task 27 acceptance: added "Upload available at any operational status"
 - `resolved_defaults.document_upload_pre_completion_v1`: new key
 - `scope_alignment.v1_in_scope`: added item
-- `prototype_coverage_notes`: flagged that prototype still restricts to post-Performed (sync pending)
+- `prototype_coverage_notes`: updated — upload on active tours (prototype synced in PRD v1.8)
 
 **Database:** No schema change. `job_documents.source` already supports driver/admin uploads at any status — the restriction was only at the application layer.
 
-**Prototype sync needed:** Yes — driver and admin upload UI must be enabled on active tours.
+**Prototype sync:** Done in PRD v1.8.
 
 ---
 
@@ -106,15 +106,15 @@ Added to `product_context.source_inputs`:
 
 ## Prototype validation status
 
-The prototype matched PRD v1.6 as of 2026-05-25 (PASS). PRD v1.7 introduces **three breaking changes** not yet reflected in the prototype:
+> **Superseded by PRD v1.8 (2026-07-02):** All v1.7 prototype sync items below are **done**. See [`prd-changelog-since-2026-07-01.md`](prd-changelog-since-2026-07-01.md) and [`../../requirements/prd-prototype-validation.md`](../../requirements/prd-prototype-validation.md).
 
-| Change | Prototype sync needed |
+Historical note at v1.7 authoring time: the prototype had matched PRD v1.6 (2026-05-25). v1.7 introduced three changes that were pending prototype sync until v1.8:
+
+| Change | Status (v1.8) |
 |---|---|
-| Pre-Performed document upload (Q1) | Yes — enable upload on active tours |
-| Admin documents at job creation (Q4) | Yes — add document attach to new job form |
-| Driver daily acceptance limits (Q3) | Yes — acceptance limit check + same-day prompt |
-
-The `prototype_validation.verdict` has been updated to note this mismatch.
+| Pre-Performed document upload (Q1) | Done |
+| Admin documents at job creation (Q4) | Done |
+| Driver daily acceptance limits (Q3) | Done (incl. limit-increase request) |
 
 ---
 
@@ -140,4 +140,4 @@ The `prototype_validation.verdict` has been updated to note this mismatch.
 
 - Meeting transcripts: `meetings/source/autheon_meeting_2026-06-25_transcript_en.md`, `meetings/source/autheon_meeting_2026-06-29_transcript_en.md`
 - Database schema: `docs/database/schema.dbml` (drivers + enum updated)
-- Prototype coverage: `docs/requirements/prd-prototype-validation.md` (not yet re-run for v1.7)
+- Prototype coverage: [`../../requirements/prd-prototype-validation.md`](../../requirements/prd-prototype-validation.md) (PASS v1.8)

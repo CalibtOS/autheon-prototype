@@ -1866,7 +1866,18 @@ const JobUnlocked = ({
             style={{ marginBottom: 14, fontSize: 13, lineHeight: 1.5 }}
             role="status"
           >
-            {t("driverTourCancelledNotice")}
+            <div>{t("driverTourCancelledNotice")}</div>
+            {job.cancellationReason ? (
+              <div style={{ marginTop: 8, fontWeight: 600 }}>
+                {t("driverCancellationReasonLabel")}:{" "}
+                {t(`cancellationReason_${job.cancellationReason}`) ||
+                  AuthStore.getCancellationReasonLabel?.(job.cancellationReason) ||
+                  job.cancellationReason}
+              </div>
+            ) : null}
+            {job.cancellationReasonText ? (
+              <div style={{ marginTop: 6 }}>{job.cancellationReasonText}</div>
+            ) : null}
           </div>
         )}
         <div
@@ -3610,6 +3621,101 @@ const Infopoint = () => {
 
 const InfoPaneFull = Infopoint;
 
+const DailyLimitRequestSheet = ({ limitInfo, onClose, onSubmitted }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const current = limitInfo?.limit ?? 3;
+  const [requested, setRequested] = useState(String(current + 1));
+  const [note, setNote] = useState("");
+  const [err, setErr] = useState("");
+
+  const submit = () => {
+    const r = store.requestDailyLimitIncrease(requested, note);
+    if (!r.ok) {
+      if (r.reason === "open_request_exists")
+        setErr(t("driverDailyLimitRequestOpenExists"));
+      else if (r.reason === "limit_not_increased")
+        setErr(t("driverDailyLimitRequestMustIncrease"));
+      else if (r.reason === "invalid_daily_limit")
+        setErr(t("driverDailyLimitRequestInvalid"));
+      else setErr(t("driverDailyLimitRequestFailed"));
+      return;
+    }
+    onSubmitted?.(r);
+    onClose?.();
+  };
+
+  return (
+    <div className="sheet-backdrop center" onClick={onClose}>
+      <div
+        className="sheet card"
+        style={{ maxWidth: 420, width: "100%", padding: 22 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700 }}>
+          {t("driverDailyLimitRequestTitle")}
+        </h2>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>
+          {t("driverDailyLimitRequestHint", {
+            current,
+            count: limitInfo?.count ?? current,
+          })}
+        </p>
+        <div style={{ marginTop: 16 }}>
+          <label className="field-label">{t("driverDailyLimitRequestedLabel")}</label>
+          <input
+            className="input mono"
+            type="number"
+            min={current + 1}
+            max={99}
+            value={requested}
+            onChange={(e) => {
+              setRequested(e.target.value);
+              setErr("");
+            }}
+            style={{ marginTop: 6, maxWidth: 120 }}
+          />
+        </div>
+        <div style={{ marginTop: 14 }}>
+          <label className="field-label">{t("driverDailyLimitRequestNote")}</label>
+          <textarea
+            className="input"
+            rows={3}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={t("driverDailyLimitRequestNotePh")}
+            style={{ marginTop: 6, resize: "vertical" }}
+          />
+        </div>
+        {err ? (
+          <p
+            className="label"
+            role="alert"
+            style={{ color: "#dc2626", marginTop: 10, fontSize: 12 }}
+          >
+            {err}
+          </p>
+        ) : null}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginTop: 18,
+            justifyContent: "flex-end",
+          }}
+        >
+          <button type="button" className="btn" onClick={onClose}>
+            {t("cancel")}
+          </button>
+          <button type="button" className="btn primary" onClick={submit}>
+            {t("driverDailyLimitRequestSubmit")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // expose
 Object.assign(window, {
   Pill,
@@ -3631,6 +3737,7 @@ Object.assign(window, {
   MyJobs,
   ReportProblemSheet,
   PendingNotice,
+  DailyLimitRequestSheet,
   ProfilePane,
   ProfilePaneFull,
   Infopoint,

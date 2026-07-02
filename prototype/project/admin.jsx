@@ -761,6 +761,13 @@ const SpecialCaseResolutionPanel = ({ job, showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [note, setNote] = useStateA("");
+  const [cancelReasonCode, setCancelReasonCode] = useStateA("");
+  const [cancelDriverMessage, setCancelDriverMessage] = useStateA("");
+  const codes = store.getCancellationReasonCodes();
+  const minMsg =
+    store.getOperationalPolicies().cancellation?.adminCancelDriverMessageMinChars ||
+    20;
+  const hasDriver = !!(job.driver || job.driverId);
   if (job.status !== "special_case") return null;
   const report = job.specialCaseReport || {};
   const priorStatus =
@@ -776,7 +783,14 @@ const SpecialCaseResolutionPanel = ({ job, showToast }) => {
     })();
   const resolve = (decision) => {
     const mapped = SPECIAL_CASE_STORE_DECISION[decision] || decision;
-    const r = store.resolveSpecialCase(job.id, mapped, note.trim());
+    const opts =
+      mapped === "cancel"
+        ? {
+            reasonCode: cancelReasonCode,
+            driverMessage: cancelDriverMessage || note.trim(),
+          }
+        : {};
+    const r = store.resolveSpecialCase(job.id, mapped, note.trim(), opts);
     if (r && r.ok) {
       showToast?.(
         t("adminSpecialCaseResolved") || "Special case resolved",
@@ -866,6 +880,43 @@ const SpecialCaseResolutionPanel = ({ job, showToast }) => {
           status: AuthStore.statusLabel(priorStatus),
         })}
       </p>
+      {hasDriver ? (
+        <>
+          <label className="field-label" style={{ marginTop: 14 }}>
+            {t("adminCancelReasonLabel")}
+          </label>
+          <select
+            className="input"
+            style={{ marginTop: 6, width: "100%" }}
+            value={cancelReasonCode}
+            onChange={(e) => setCancelReasonCode(e.target.value)}
+          >
+            <option value="">{t("adminCancelReasonPlaceholder")}</option>
+            {codes.map((c) => (
+              <option key={c} value={c}>
+                {t(`cancellationReason_${c}`) || store.getCancellationReasonLabel(c)}
+              </option>
+            ))}
+          </select>
+          <label className="field-label" style={{ marginTop: 12 }}>
+            {t("adminCancelDriverMessageLabel")}
+          </label>
+          <textarea
+            className="input"
+            rows={3}
+            style={{ marginTop: 6, width: "100%" }}
+            value={cancelDriverMessage}
+            onChange={(e) => setCancelDriverMessage(e.target.value)}
+            placeholder={t("adminCancelDriverMessagePh")}
+          />
+          <div className="label" style={{ marginTop: 4 }}>
+            {t("adminCancelMessageCounter", {
+              count: cancelDriverMessage.length,
+              min: minMsg,
+            })}
+          </div>
+        </>
+      ) : null}
       <div
         style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}
       >
@@ -888,6 +939,10 @@ const SpecialCaseResolutionPanel = ({ job, showToast }) => {
         <button
           type="button"
           className="btn danger"
+          disabled={
+            hasDriver &&
+            (!cancelReasonCode || cancelDriverMessage.length < minMsg)
+          }
           onClick={() => resolve("cancel")}
         >
           {t("adminSpecialCaseCancel") || "Cancel tour"}
@@ -1057,6 +1112,141 @@ const AssignDriverDialog = ({
 };
 
 // =========================================================================
+// ADMIN — CANCEL JOB MODAL
+// =========================================================================
+const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const codes = store.getCancellationReasonCodes();
+  const policies = store.getOperationalPolicies();
+  const minMsg = policies.cancellation?.adminCancelDriverMessageMinChars || 20;
+  const dr = job?.driver || job?.driverId;
+  const [reasonCode, setReasonCode] = useStateA("");
+  const [driverMessage, setDriverMessage] = useStateA("");
+  const [overrideNote, setOverrideNote] = useStateA("");
+  const policy = job ? store.checkAdminCancelPolicy(job, { overrideNote }) : { ok: true };
+  const needsOverride = job && !policy.ok && policy.reason === "within_cancel_cutoff";
+
+  const submit = () => {
+    const r = store.cancelJob(job.id, {
+      actor: "admin",
+      reason: reasonCode,
+      note: driverMessage,
+      overrideNote: needsOverride ? overrideNote : "",
+    });
+    if (!r.ok) {
+      if (r.reason === "reason_code_required")
+        showToast?.(t("adminCancelReasonRequired"));
+      else if (r.reason === "driver_message_too_short")
+        showToast?.(
+          t("adminCancelMessageTooShort", { min: r.min || minMsg }),
+        );
+      else if (r.reason === "within_cancel_cutoff")
+        showToast?.(
+          t("adminCancelCutoffBlocked", { hours: r.minHours || 1 }),
+        );
+      else showToast?.(t("cancellationBlocked"), t("cancellationRules"));
+      return;
+    }
+    onConfirm?.(r);
+  };
+
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal card" style={{ maxWidth: 480, padding: 22 }}>
+        <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700 }}>
+          {t("adminCancelJobModalTitle")}
+        </h2>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>
+          {dr ? t("adminCancelJobModalHintDriver") : t("adminCancelJobModalHintNoDriver")}
+        </p>
+        {needsOverride ? (
+          <div className="banner banner-warn" style={{ marginTop: 14, fontSize: 13 }}>
+            {t("adminCancelCutoffBlocked", {
+              hours: policy.minHours || 1,
+            })}
+          </div>
+        ) : null}
+        <div style={{ marginTop: 16 }}>
+          <label className="field-label" htmlFor="cancel-reason-code">
+            {t("adminCancelReasonLabel")}
+          </label>
+          <select
+            id="cancel-reason-code"
+            className="input"
+            style={{ marginTop: 6, width: "100%" }}
+            value={reasonCode}
+            onChange={(e) => setReasonCode(e.target.value)}
+          >
+            <option value="">{t("adminCancelReasonPlaceholder")}</option>
+            {codes.map((c) => (
+              <option key={c} value={c}>
+                {t(`cancellationReason_${c}`) || store.getCancellationReasonLabel(c)}
+              </option>
+            ))}
+          </select>
+        </div>
+        {dr ? (
+          <div style={{ marginTop: 14 }}>
+            <label className="field-label" htmlFor="cancel-driver-message">
+              {t("adminCancelDriverMessageLabel")}
+            </label>
+            <textarea
+              id="cancel-driver-message"
+              className="input"
+              rows={4}
+              style={{ marginTop: 6, width: "100%", resize: "vertical" }}
+              value={driverMessage}
+              onChange={(e) => setDriverMessage(e.target.value)}
+              placeholder={t("adminCancelDriverMessagePh")}
+            />
+            <div className="label" style={{ marginTop: 4 }}>
+              {t("adminCancelMessageCounter", {
+                count: driverMessage.length,
+                min: minMsg,
+              })}
+            </div>
+          </div>
+        ) : null}
+        {needsOverride ? (
+          <div style={{ marginTop: 14 }}>
+            <label className="field-label" htmlFor="cancel-override-note">
+              {t("adminCancelOverrideLabel")}
+            </label>
+            <textarea
+              id="cancel-override-note"
+              className="input"
+              rows={2}
+              style={{ marginTop: 6, width: "100%" }}
+              value={overrideNote}
+              onChange={(e) => setOverrideNote(e.target.value)}
+              placeholder={t("adminCancelOverridePh")}
+            />
+          </div>
+        ) : null}
+        <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}>
+          <button type="button" className="btn" onClick={onClose}>
+            {t("adminInvoiceCancel")}
+          </button>
+          <button
+            type="button"
+            className="btn danger"
+            disabled={
+              !reasonCode ||
+              (dr && driverMessage.length < minMsg) ||
+              (needsOverride && overrideNote.trim().length < 10)
+            }
+            onClick={submit}
+          >
+            {t("adminCancelJobConfirmBtn")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// =========================================================================
 // ADMIN — DETAIL
 // =========================================================================
 const AdminDetail = ({
@@ -1065,7 +1255,7 @@ const AdminDetail = ({
   onPublish,
   onRequestAssign,
   onRequestReassign,
-  onCancel,
+  onCancelled,
   onEdit,
   onEditFinances,
   onOpenTourBilling,
@@ -1074,8 +1264,20 @@ const AdminDetail = ({
   const { t } = useI18n();
   const store = useAuthStore();
   const financeOn = store.getFeatureFlag("financeModule");
+  const [cancelOpen, setCancelOpen] = useStateA(false);
   return (
     <>
+      {cancelOpen ? (
+        <AdminCancelJobModal
+          job={job}
+          onClose={() => setCancelOpen(false)}
+          onConfirm={() => {
+            setCancelOpen(false);
+            onCancelled?.(job);
+          }}
+          showToast={showToast}
+        />
+      ) : null}
       <div
         style={{
           display: "flex",
@@ -1792,10 +1994,7 @@ const AdminDetailFooter = ({
           <button
             type="button"
             className="btn danger"
-            onClick={() => {
-              if (!window.confirm(t("adminCancelJobConfirm"))) return;
-              onCancel();
-            }}
+            onClick={() => setCancelOpen(true)}
           >
             {t("adminCancelJob")}
           </button>
@@ -1892,10 +2091,15 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
   ];
   const [form, setForm] = useStateA(buildFormState);
   const [activeSec, setActiveSec] = useStateA("01");
+  const [adminAttachFiles, setAdminAttachFiles] = useStateA([]);
+  const [scheduleOverrideNote, setScheduleOverrideNote] = useStateA("");
+  const adminDocFileRef = useRefA(null);
 
   useEffectA(() => {
     setForm(buildFormState());
     setActiveSec("01");
+    setAdminAttachFiles([]);
+    setScheduleOverrideNote("");
   }, [editJobId]);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const applyMasterAddress = (side, addrId) => {
@@ -2010,10 +2214,35 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
   ).length;
   const total = required.length;
   const valid = filled === total;
+  const wasCommitted =
+    editingJob && AuthStore.jobWasEverCommitted(editingJob);
+  const existingAdminDocs = editJobId
+    ? store
+        .getTourDocumentsForJob(editJobId)
+        .filter(
+          (d) => d.source === "admin_off_channel" || d.source === "admin",
+        )
+    : [];
+
+  const appendAdminFiles = (fileList) => {
+    if (!fileList?.length) return;
+    const next = [];
+    for (const file of fileList) {
+      if (!AuthStore.isAllowedTourDocumentFile(file)) continue;
+      next.push({
+        id: `pending-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        file,
+        fileName: file.name,
+        documentType: "other_proof",
+      });
+    }
+    if (next.length) setAdminAttachFiles((prev) => [...prev, ...next]);
+  };
 
   useEffectA(() => {
-    if (typeof onFormChange === "function") onFormChange(form, valid);
-  }, [form, valid]);
+    if (typeof onFormChange === "function")
+      onFormChange({ ...form, adminAttachFiles, scheduleOverrideNote }, valid);
+  }, [form, valid, adminAttachFiles, scheduleOverrideNote]);
 
   const sections = [
     ["01", t("newOrderSecCustomer")],
@@ -2022,6 +2251,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
     ["04", t("newOrderSecVehicle")],
     ["05", t("newOrderSecDriverOffer")],
     ["06", t("newOrderSecNotes")],
+    ["07", t("newOrderSecDocuments")],
   ];
 
   return (
@@ -2368,6 +2598,27 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 </label>
               </div>
             </div>
+            {wasCommitted ? (
+              <div style={{ marginTop: 18 }}>
+                <label className="field-label">
+                  {t("adminScheduleOverrideLabel")}
+                </label>
+                <textarea
+                  className="input"
+                  rows={2}
+                  value={scheduleOverrideNote}
+                  onChange={(e) => setScheduleOverrideNote(e.target.value)}
+                  placeholder={t("adminScheduleOverridePh")}
+                  style={{ marginTop: 6, resize: "vertical" }}
+                />
+                <p
+                  className="label"
+                  style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}
+                >
+                  {t("adminScheduleOverrideHint")}
+                </p>
+              </div>
+            ) : null}
           </section>
 
           <section id="sec-04" className="card" style={{ padding: 22 }}>
@@ -2518,6 +2769,100 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 value={form.notes}
                 onChange={(e) => set("notes", e.target.value)}
               />
+            </div>
+          </section>
+
+          <section id="sec-07" className="card" style={{ padding: 22 }}>
+            <div className="sec-head">
+              <h3>
+                <span className="num">07</span> {t("newOrderSecDocumentsTitle")}
+              </h3>
+            </div>
+            <p
+              className="label"
+              style={{ margin: "10px 0 0", fontSize: 12, lineHeight: 1.5 }}
+            >
+              {t("newOrderAdminDocsHint")}
+            </p>
+            {existingAdminDocs.length ? (
+              <div style={{ marginTop: 14 }}>
+                <div className="label" style={{ marginBottom: 8 }}>
+                  {t("newOrderAdminDocsExisting")}
+                </div>
+                <ul
+                  style={{
+                    margin: 0,
+                    padding: "0 0 0 18px",
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {existingAdminDocs.map((doc) => (
+                    <li key={doc.id}>
+                      <span className="mono">{doc.fileName}</span>
+                      {" · "}
+                      {displayTourDocType(doc.documentType, t)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <div style={{ marginTop: 14 }}>
+              <input
+                ref={adminDocFileRef}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,application/pdf,image/*"
+                multiple
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  appendAdminFiles(Array.from(e.target.files || []));
+                  e.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                className="btn"
+                onClick={() => adminDocFileRef.current?.click()}
+              >
+                <Ic.Plus /> {t("newOrderAdminDocsAdd")}
+              </button>
+              {adminAttachFiles.length ? (
+                <ul
+                  style={{
+                    margin: "12px 0 0",
+                    padding: "0 0 0 18px",
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {adminAttachFiles.map((item) => (
+                    <li key={item.id}>
+                      <span className="mono">{item.fileName}</span>
+                      {" · "}
+                      {displayTourDocType(item.documentType, t)}
+                      <button
+                        type="button"
+                        className="btn ghost xs"
+                        style={{ marginLeft: 8 }}
+                        onClick={() =>
+                          setAdminAttachFiles((prev) =>
+                            prev.filter((x) => x.id !== item.id),
+                          )
+                        }
+                      >
+                        {t("reportProblemEvidenceRemove")}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p
+                  className="label"
+                  style={{ marginTop: 10, fontSize: 12, lineHeight: 1.45 }}
+                >
+                  {t("newOrderAdminDocsEmpty")}
+                </p>
+              )}
             </div>
           </section>
         </div>
@@ -2722,6 +3067,7 @@ const emptyDriverEditForm = () => ({
   email: "",
   phone: "",
   notes: "",
+  dailyJobLimit: "3",
 });
 
 const emptyAdminEditForm = () => ({
@@ -2752,6 +3098,12 @@ const validateDriverFormLocal = (form, t) => {
     errors.email = t("adminUsersErrEmailRequired");
   else if (!AuthStore.isValidEmail(form.email))
     errors.email = t("adminUsersErrEmailInvalid");
+  const limitRaw = String(form.dailyJobLimit ?? "").trim();
+  if (limitRaw) {
+    const n = parseInt(limitRaw, 10);
+    if (!Number.isFinite(n) || n < 1 || n > 99)
+      errors.dailyJobLimit = t("adminUsersErrDailyLimit");
+  }
   return errors;
 };
 
@@ -2837,6 +3189,24 @@ const DriverUserFormFields = ({ form, setF, errors = {}, t }) => (
         onChange={(e) => setF("notes", e.target.value)}
       />
     </div>
+    <div>
+      <label className="field-label">{t("adminUsersFieldDailyLimit")}</label>
+      <input
+        className="input mono"
+        type="number"
+        min={1}
+        max={99}
+        value={form.dailyJobLimit ?? ""}
+        onChange={(e) => setF("dailyJobLimit", e.target.value)}
+      />
+      <UserFormError message={errors.dailyJobLimit} />
+      <p
+        className="label"
+        style={{ marginTop: 4, fontSize: 11.5, lineHeight: 1.45 }}
+      >
+        {t("adminUsersFieldDailyLimitHint")}
+      </p>
+    </div>
   </div>
 );
 
@@ -2879,6 +3249,7 @@ const userSaveErr = (r, kind, t) => {
   if (reason === "email_required") return t("adminUsersErrEmailRequired");
   if (reason === "invalid_email") return t("adminUsersErrEmailInvalid");
   if (reason === "duplicate_email") return t("adminUsersEmailDuplicate");
+  if (reason === "invalid_daily_limit") return t("adminUsersErrDailyLimit");
   return t("adminInvoiceErrGeneric");
 };
 
@@ -3016,6 +3387,8 @@ const UsersPane = ({ showToast }) => {
       email: d.email || "",
       phone: d.phone || "",
       notes: d.notes || "",
+      dailyJobLimit:
+        d.dailyJobLimit != null ? String(d.dailyJobLimit) : "3",
     });
     setDriverErrors({});
     setDriverModal(d.id);
@@ -4911,7 +5284,9 @@ const TourBillingPane = ({
     }
   };
   const sourceLabel = (u) =>
-    u.source === "admin" ? t("adminInvoiceSourceAdmin") : t("adminInvoiceSourceDriver");
+    u.source === "admin" || u.source === "admin_off_channel"
+      ? t("adminInvoiceSourceAdmin")
+      : t("adminInvoiceSourceDriver");
 
   const toggleSelect = (id) => {
     setSelected((prev) => {
@@ -6340,12 +6715,21 @@ const MASTER_DATA_CHANGE_FIELDS = [
   ["phone", "phone"],
 ];
 
+const mdrFieldsForRow = (row) =>
+  row?.changeType === "daily_limit_override"
+    ? [["dailyJobLimit", "adminUsersFieldDailyLimit"]]
+    : MASTER_DATA_CHANGE_FIELDS;
+
 const mdrChangedFields = (row) =>
-  MASTER_DATA_CHANGE_FIELDS.filter(
+  mdrFieldsForRow(row).filter(
     ([key]) =>
-      String(row.snapshot?.[key] || "").trim() !==
-      String(row.proposed?.[key] || "").trim(),
+      String(row.snapshot?.[key] ?? "") !== String(row.proposed?.[key] ?? ""),
   );
+
+const mdrChangeTypeLabel = (row, t) => {
+  const code = row?.changeType || "contact";
+  return t(`masterDataChangeType_${code}`) || code;
+};
 
 const MasterDataChangeListChips = ({ row, t }) => {
   if (!row.proposed) {
@@ -6375,8 +6759,12 @@ const MasterDataChangeListChips = ({ row, t }) => {
   );
 };
 
-const MasterDataCompareTable = ({ snapshot, proposed, t, onlyChanged }) => {
-  const rows = MASTER_DATA_CHANGE_FIELDS.map(([key, labelKey]) => {
+const MasterDataCompareTable = ({ snapshot, proposed, changeType, t, onlyChanged }) => {
+  const fields =
+    changeType === "daily_limit_override"
+      ? [["dailyJobLimit", "adminUsersFieldDailyLimit"]]
+      : MASTER_DATA_CHANGE_FIELDS;
+  const rows = fields.map(([key, labelKey]) => {
     const before = snapshot?.[key] || "";
     const after = proposed?.[key] ?? before;
     const changed = String(before).trim() !== String(after).trim();
@@ -6517,6 +6905,9 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                 <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
                   {row.driverCode || "—"} · {row.createdAt}
                 </div>
+                <div className="label" style={{ fontSize: 10.5, marginTop: 6 }}>
+                  {mdrChangeTypeLabel(row, t)}
+                </div>
                 <MasterDataChangeListChips row={row} t={t} />
                 <Pill
                   status={
@@ -6543,6 +6934,9 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
             <p className="mono" style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
               {t("driverCode")}: {selected.driverCode || "—"} · {selected.createdAt}
             </p>
+            <div className="label" style={{ fontSize: 11, marginTop: 8 }}>
+              {mdrChangeTypeLabel(selected, t)}
+            </div>
             {selected.proposed ? (
               <div style={{ marginTop: 16 }}>
                 <div className="field-label">{t("adminMdrProposedChanges")}</div>
@@ -6557,9 +6951,18 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                 <MasterDataCompareTable
                   snapshot={selected.snapshot}
                   proposed={selected.proposed}
+                  changeType={selected.changeType}
                   t={t}
                   onlyChanged
                 />
+                {selected.changeType === "daily_limit_override" && selected.note ? (
+                  <div style={{ marginTop: 14 }}>
+                    <div className="field-label">{t("driverDailyLimitRequestNote")}</div>
+                    <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.5 }}>
+                      {selected.note}
+                    </p>
+                  </div>
+                ) : null}
               </div>
             ) : selected.note ? (
               <>
@@ -6724,7 +7127,91 @@ const NotificationFeedPane = ({ showToast, onOpenJob, onReviewMasterDataRequest 
   );
 };
 
-const FeaturesPane = () => {
+const OperationalPoliciesForm = ({ showToast }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const policies = store.getOperationalPolicies();
+  const [adminCancelHours, setAdminCancelHours] = useStateA(
+    String(policies.adminCancelMinHoursBeforePickupStart ?? 1),
+  );
+  const [scheduleHours, setScheduleHours] = useStateA(
+    String(policies.scheduleChangeMinHoursBeforePickupStart ?? 1),
+  );
+  const [minDriverMsg, setMinDriverMsg] = useStateA(
+    String(policies.cancellation?.adminCancelDriverMessageMinChars ?? 20),
+  );
+  const [defaultLimit, setDefaultLimit] = useStateA(
+    String(policies.driverAcceptance?.defaultDailyJobLimit ?? 3),
+  );
+
+  const save = () => {
+    store.setOperationalPolicies({
+      operational: {
+        adminCancelMinHoursBeforePickupStart: Number(adminCancelHours) || 0,
+        scheduleChangeMinHoursBeforePickupStart: Number(scheduleHours) || 0,
+      },
+      cancellation: {
+        adminCancelDriverMessageMinChars: Number(minDriverMsg) || 20,
+      },
+      driverAcceptance: {
+        defaultDailyJobLimit: Number(defaultLimit) || 3,
+      },
+    });
+    showToast?.(t("adminOperationalPoliciesSaved"));
+  };
+
+  return (
+    <div style={{ marginTop: 16, display: "grid", gap: 14, maxWidth: 420 }}>
+      <div>
+        <label className="field-label">{t("adminPolicyCancelHoursLabel")}</label>
+        <input
+          className="input"
+          type="number"
+          min={0}
+          step={0.5}
+          value={adminCancelHours}
+          onChange={(e) => setAdminCancelHours(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="field-label">{t("adminPolicyScheduleHoursLabel")}</label>
+        <input
+          className="input"
+          type="number"
+          min={0}
+          step={0.5}
+          value={scheduleHours}
+          onChange={(e) => setScheduleHours(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="field-label">{t("adminPolicyMinDriverMsgLabel")}</label>
+        <input
+          className="input"
+          type="number"
+          min={1}
+          value={minDriverMsg}
+          onChange={(e) => setMinDriverMsg(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="field-label">{t("adminPolicyDefaultDailyLimitLabel")}</label>
+        <input
+          className="input"
+          type="number"
+          min={1}
+          value={defaultLimit}
+          onChange={(e) => setDefaultLimit(e.target.value)}
+        />
+      </div>
+      <button type="button" className="btn primary" style={{ width: "fit-content" }} onClick={save}>
+        {t("adminOperationalPoliciesSave")}
+      </button>
+    </div>
+  );
+};
+
+const FeaturesPane = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const flags = store.getFeatureFlags();
@@ -6788,6 +7275,24 @@ const FeaturesPane = () => {
             }}
           />
         </div>
+      </section>
+
+      <section className="card" style={{ padding: 22, marginTop: 22 }}>
+        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>
+          {t("adminOperationalPoliciesTitle")}
+        </h2>
+        <p
+          style={{
+            color: "var(--muted)",
+            marginTop: 8,
+            marginBottom: 0,
+            fontSize: 13,
+            lineHeight: 1.55,
+          }}
+        >
+          {t("adminOperationalPoliciesBlurb")}
+        </p>
+        <OperationalPoliciesForm showToast={showToast} />
       </section>
 
       <h2
