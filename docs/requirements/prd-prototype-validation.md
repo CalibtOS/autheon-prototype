@@ -1,90 +1,81 @@
-# PRD v1.6 vs Static Prototype Audit
+# PRD v1.8 vs Static Prototype Audit
 
-> **Canonical spec:** [`prd.json`](prd.json) (PRD v1.6, Feedback.pdf traceability, May 2026).
+> **Canonical spec:** [`prd.json`](prd.json) (PRD v1.8).
 
-Last PRD sync: **2026-05-25** (single-file consolidation; re-audit after 2026-05-24 prototype commits).
+**Last synced:** 2026-07-02  
+**Audit scripts:** `prototype/project/_audit-prototype.mjs`, `prototype/project/_audit-i18n.js`, `prototype/project/_verify-seed.mjs`
 
-Validated against:
-
-- `prd.json` (`client_feedback_traceability`, `driver_visibility_matrix`, `notification_channels_matrix`, `resolved_defaults`)
-- `../../prototype/project/AUTHEON Prototype.html`
-- `../../prototype/project/store.js`
-- `../../prototype/project/driver.jsx`
-- `../../prototype/project/admin.jsx`
-- `../../prototype/project/i18n.js`
-- `../../prototype/project/_audit-prototype.mjs` (automated checks)
+---
 
 ## Verdict
 
-**PASS (2026-05-25)** — `_audit-prototype.mjs` exits 0; v1.6 checklist (items 1–25) plus six client-feedback gap closures and profile change-request queue. Canonical spec: `prd.json`.
+**PASS v1.8** when all three scripts exit 0.
 
-Operational statuses remain seven (`draft` … `special_case`); client labels **Under review** and **Completed** are derived from `document_review_summary` and `settlementState`.
+Includes v1.7 meeting outcomes (pre-Performed upload, daily limits, admin docs at creation) plus v1.8 admin cancel driver message, operational policies, profile limit tracking, and limit-increase requests.
 
-Production implementation (database, auth, real PDF template, file storage, map API, SMTP, service worker) remains out of scope for the prototype.
+---
 
-## v1.6 gap checklist
+## v1.8 checklist
+
+| # | Requirement | Prototype evidence |
+|---|-------------|-------------------|
+| 1 | Tour document upload on active tours (not post-Performed only) | `canDriverUploadTourDocument` + `JobTourDocuments` uses `canUpload` gate; seed `TD-SEED-ACTIVE-001` on job 0845 |
+| 2 | Driver daily acceptance limit on accept | `acceptJob()` hard block at `dailyJobLimit`; `DriverDailyLimitCard` on Profile |
+| 3 | Same-day overlap confirmation on accept | `SameDayOverlapSheet` (no `window.confirm`) |
+| 4 | Admin cancel modal: reason code + driver message (min chars) | `AdminCancelJobModal` + live counter |
+| 5 | Driver cancelled tour shows reason + message | `cancellation-card` on `JobUnlocked` |
+| 6 | Special-case cancel uses same reason rules | `SpecialCaseResolutionPanel` reason + message fields → `cancelJob()` |
+| 7 | Settings → operational policies | `OperationalPoliciesForm` in Features/Settings |
+| 8 | `getOperationalPolicies` / policy check APIs | `store.js` |
+| 9 | Seed document on active tour (0845) | `TD-SEED-ACTIVE-001` |
+| 10 | EN/DE i18n parity | `_audit-i18n.js` |
+| 11 | Schedule-change cutoff on revert + draft edit | `checkScheduleChangePolicy` + override in `AUTHEON Prototype.html` |
+| 12 | Driver limit-increase request (`daily_limit_override`) | `requestDailyLimitIncrease()` + `MasterDataRequestsPane` |
+| 13 | Driver profile shows daily limit usage | `getDriverDailyAcceptanceSummary()` + `DriverDailyLimitCard` |
+| 14 | Admin sets `daily_job_limit` per driver | Users pane field `adminUsersFieldDailyLimit` |
+| 15 | Admin docs at job create/edit (section 07) | `newOrderSecDocuments` + `attachAdminJobDocument` |
+| 16 | Admin notification for limit / profile requests | `master_data_change_requested` in notification feed |
+
+---
+
+## v1.7 checklist (carried forward)
 
 | # | Requirement | Status |
 |---|-------------|--------|
-| 1 | `document_review_summary` → Under Review after first post-Performed upload | Done (`reconcileDocumentReviewSummary`; seed tour 0842-26) |
-| 2 | Admin notification feed (in-app) | Done (`NotificationFeedPane`, nav) |
-| 3 | Driver in-app notifications | Done (`DriverNotificationsList`, profile badge) |
-| 4 | Three push toggles | Done (`pushEnabled`, `notifyNewPublished`, `notifyPostalPrefix`) |
-| 5 | No push on direct assign | Done (`maybeNotifyPublishedJob`) |
-| 6 | Alternate contact + progressive disclosure | Done (New order sec-05 + `mkLocation`) |
-| 7 | Update master data from order entry | Done (checkboxes + customer/address update flow) |
-| 8 | `driver_visibility_matrix` | Done (customer in `JobUnlocked` only) |
-| 9 | Display labels Under review / Completed | Done (`getJobDisplayStatus` in admin overview) |
-| 10 | Admin document review | Done (Accept / Reject only; Mark checked removed as duplicate of Accept) |
-| 11 | Upload document / receipt CTA | Done (`tourDocUploadReceiptButton`) |
-| 12 | Document type helper notices | Done (fuel + waiting in upload modal) |
-| 13 | Re-upload admin alert | Done (`tour_document_reuploaded`) |
-| 14 | Infopoint tab labels + nav badge | Done (`infopointDocsTab` / `infopointNewsTab`) |
-| 15 | `cancellationActor` on cancel | Done (seed + admin detail banner) |
-| 16 | Audit script v1.6 | Done (exit 0, 2026-05-25) |
-| 17 | Admin Infopoint: general documents + news publish | Done (`InfopointPane`, `addNewsItem`, upload stub) |
-| 18 | Driver Infopoint docs: description, date, view/download stub | Done (`infopointDocViewDownload`) |
-| 19 | Cancel binding warning + driver terms link on Report Problem cancel | Done |
-| 20 | Seven cancellation reason codes (Feedback.pdf C.1) | Done |
-| 21 | Not-performable evidence upload (max 5 files) + admin special-case list | Done |
-| 22 | Master-data change request → admin notification feed | Done (`requestMasterDataChange`) |
-| 23 | Report Problem warning icon (tour footer + sheet header) | Done (`Ic.Alert`) |
-| 24 | Order-entry date/time/VIN/plate formatters + manufacturer datalist | Done (`inputFormatters.js`) |
-| 25 | Profile change requests admin pane (list/filter, inline edit, Approve & save, Reject) | Done (`MasterDataRequestsPane`, `masterDataChangeRequests[]`) |
-| 26 | One open master-data request per driver; pending UI blocks new submit | Done (`open_request_exists`, `ProfilePaneFull` banner) |
-| 27 | Notification feed Review request → masterdata pane with request id | Done (`onReviewMasterDataRequest`, `MDR-*` meta) |
-| 28 | Driver in-app notify on master-data approve/reject | Done (`master_data_change_approved` / `rejected`) |
+| 17 | Document Under Review after first post-Performed upload | Done (v1.6; active uploads use `Uploaded` summary until performed) |
+| 18 | Report Problem seven codes + slide min 10 chars | Done (v1.6) |
+| 19 | Schema `daily_job_limit` + `daily_limit_override` | [`schema.dbml`](../database/schema.dbml) |
+| 20 | Single upload CTA on tour documents (no duplicate buttons) | One primary button in `JobTourDocuments` panel header |
 
-## Coverage matrix (PRD v1.6 tasks)
+---
 
-Same task IDs as v1.5; v1.6 strengthens Tasks 4, 5, 7, 8, 10, 18–20, 22, 26, 27 per `prd.json`.
+## Demo smoke test (v1.8)
 
-## Demo script (smoke test v1.6)
+1. Admin → Settings → change cancel cutoff to 0, save.
+2. Admin → job detail → Cancel job → pick reason + min-length message → driver notification body matches.
+3. Driver → cancelled tour → reason label + message visible.
+4. Driver → accept marketplace job → same-day overlap → confirmation sheet (not browser alert).
+5. Driver → active tour 0845 → Tour documents → single upload button → upload works.
+6. Admin → New job → section 07 → attach PDF/image → save draft → visible on Tour billing.
+7. Admin → Users → edit driver → change daily job limit → accept blocked at new limit.
+8. Admin → published tour → revert to draft inside schedule cutoff → override prompt or block.
+9. Driver → Profile → daily limit card shows count → Request higher limit OR hit limit on accept → Admin → Profile change requests → Approve & save → accept succeeds.
+10. Run: `node prototype/project/_audit-prototype.mjs` and `node prototype/project/_verify-seed.mjs`.
 
-**Driver:** Set three push toggles → marketplace pull-refresh → accept → perform → **Infopoint → New messages** (badge, expand) → **General documents** (view/download stub) → notification inbox (tour alerts vs Infopoint hint).
+---
 
-**Admin:** **Infopoint → New messages** publish (subject, body, date) → **General documents** manage/upload stub → publish job → notification feed → tour document review → special case resolve.
+## Explicit prototype scope limits (not gaps)
 
-**Both:** EN/DE on new strings.
+| Topic | Status |
+|-------|--------|
+| Geo / travel-time overlap blocking | Future scope (`prd.json` `future_scope`) |
+| Cross-day pickup/delivery date ranges on one leg | Future / client TBD |
+| Production backend enforcement | `autheon-be` tasks still `pending` |
+| Daily limit on admin direct assign | Not in prototype (accept-only enforcement) |
 
-## Automated verification
+---
 
-```bash
-node ../../prototype/project/_audit-prototype.mjs
-```
+## Related
 
-Expect: i18n EN/DE parity, PRD v1.5+v1.6 store APIs, v1.6 document summary string `Under Review`, three push pref keys, `alternateContactPerson`, no forbidden v1.4 strings, `DOMAIN.md` present, and no legacy billing-invoice route identifiers.
-
-## Clarity pass (2026-05)
-
-- Terminology: **Tour documents** + **Billing invoice** (type `invoice`); **Report Problem** (not return request).
-- Code: `reportProblemJob` state, `onOpenTourBilling`, `use_tour_documents` financial guard.
-- Removed v1.4 i18n and unused driver-invoice copy; see `DOMAIN.md` for operational vs display statuses.
-
-## Remaining production work
-
-See `production_open_questions` in `prd.json`.
-
-## Client feedback comparison
-
-See [`../research/client-feedback-comparison.md`](../research/client-feedback-comparison.md) for Feedback.pdf section ↔ prototype mapping (2026-05-20 onward).
+- Changelog: [`../archive/2026-07/prd-changelog-since-2026-07-01.md`](../archive/2026-07/prd-changelog-since-2026-07-01.md)
+- Prior v1.6 audit items 1–28: [`../archive/2026-05/prd-changelog-since-2026-05-20.md`](../archive/2026-05/prd-changelog-since-2026-05-20.md)

@@ -173,11 +173,15 @@ window.I18n = (() => {
       tourDocUploadHint:
         "Upload tour documents such as invoice, receipts, delivery note, waiting time evidence, or other proof. PDF or images.",
       tourDocAfterPerformedHint:
-        "Mark this tour as performed before uploading documents.",
+        "Upload tour documents at any time while the tour is active or after it is performed.",
       tourDocUploadButton: "Upload document",
       tourDocRequiresPerformed:
-        "Upload documents only after the tour is marked performed.",
+        "Document upload is not available for this tour status.",
       tourDocUploadEmpty: "No documents uploaded yet.",
+      tourDocEmptyTitle: "No documents yet",
+      tourDocEmptyAction: "Add receipts, delivery notes, or proof while this tour is active.",
+      tourDocUploadSuccess: "Document uploaded. Dispatch will review it.",
+      tourDocUploadAvailable: "Upload available",
       tourDocRejectionReason: "Rejection: {reason}",
       tourDocReplaceButton: "Replace file",
       tourDocReplaceNotAllowed: "Accepted documents cannot be replaced. Contact dispatch if needed.",
@@ -342,7 +346,43 @@ window.I18n = (() => {
       cancelledTour: "Cancelled · Tour {tour}",
       cancelledSub: "Removed from marketplace and active lists.",
       driverTourCancelledNotice:
-        "Dispatch cancelled this tour. You can view details here; no further actions are required.",
+        "Dispatch cancelled this tour. The message below explains why — no further action is required on your side.",
+      driverCancellationReasonLabel: "Reason",
+      driverAcceptOverlapConfirm:
+        "You already have another tour on this day. Accept anyway?",
+      driverAcceptOverlapTitle: "Same-day tour overlap",
+      driverAcceptOverlapConfirmBtn: "Accept anyway",
+      uiDismiss: "Dismiss",
+      driverDailyLimitReached:
+        "You reached your daily job acceptance limit. Request a higher limit from dispatch.",
+      driverDailyLimitProfileTitle: "Daily acceptance limit",
+      driverDailyLimitProfileUsage:
+        "{count} of {limit} tours accepted (pickup date {date})",
+      driverDailyLimitProfileRemaining:
+        "{remaining} acceptance(s) remaining for this pickup day",
+      driverDailyLimitProfileAtLimit:
+        "Daily limit reached for tours with pickup on {date}",
+      driverDailyLimitRequestBtn: "Request higher limit",
+      driverDailyLimitPendingRequest:
+        "Limit increase request pending with dispatch",
+      driverDailyLimitRequestTitle: "Request higher daily limit",
+      driverDailyLimitRequestHint:
+        "Your current limit is {current} tour(s) per day ({count} already accepted today). Ask dispatch to raise it.",
+      driverDailyLimitRequestedLabel: "Requested daily limit",
+      driverDailyLimitRequestNote: "Reason (optional)",
+      driverDailyLimitRequestNotePh: "e.g. Extra tours available in your area today…",
+      driverDailyLimitRequestSubmit: "Send request",
+      driverDailyLimitRequestSent:
+        "Limit increase request sent. Dispatch will review it in Profile change requests.",
+      driverDailyLimitRequestOpenExists:
+        "You already have an open change request. Wait for dispatch to resolve it first.",
+      driverDailyLimitRequestMustIncrease:
+        "Requested limit must be higher than your current limit.",
+      driverDailyLimitRequestInvalid: "Enter a whole number between 1 and 99.",
+      driverDailyLimitRequestFailed: "Could not send limit increase request.",
+      masterDataChangeType_address: "Address change",
+      masterDataChangeType_contact: "Contact change",
+      masterDataChangeType_daily_limit_override: "Daily job limit increase",
       usersDesc: "Manage dispatcher accounts and driver profiles.",
       customersDesc:
         "Customers for billing and reporting. Edits do not change existing tour snapshots.",
@@ -670,6 +710,10 @@ window.I18n = (() => {
       adminUsersFieldEmail: "Email",
       adminUsersFieldPhone: "Phone",
       adminUsersFieldNotes: "Internal notes",
+      adminUsersFieldDailyLimit: "Daily job limit",
+      adminUsersFieldDailyLimitHint:
+        "Maximum tours this driver can accept per calendar day (default 3).",
+      adminUsersErrDailyLimit: "Enter a whole number between 1 and 99.",
       adminUsersErrNameRequired: "Name is required.",
       adminUsersErrCompanyRequired: "Company is required.",
       adminUsersErrEmailRequired: "Email is required for login.",
@@ -713,6 +757,47 @@ window.I18n = (() => {
       adminCancelJob: "Cancel job",
       adminCancelJobConfirm:
         "Cancel this tour? It will be removed from the marketplace and the driver’s active list.",
+      adminCancelJobModalTitle: "Cancel tour",
+      adminCancelJobModalHintDriver:
+        "Tell the driver why this tour was cancelled. They will see your message on the tour and in their notification.",
+      adminCancelJobModalHintNoDriver:
+        "Provide a cancellation reason for the audit log.",
+      adminCancelReasonLabel: "Cancellation reason",
+      adminCancelReasonPlaceholder: "Select a reason…",
+      adminCancelReasonRequired: "Select a cancellation reason.",
+      adminCancelDriverMessageLabel: "Message to driver",
+      adminCancelDriverMessagePh:
+        "Explain clearly why the tour was cancelled (e.g. customer withdrew the slot).",
+      adminCancelMessageCounter: "{count} / {min} characters",
+      adminCancelMessageTooShort: "Driver message must be at least {min} characters.",
+      adminCancelCutoffBlocked:
+        "Cancellation is blocked within {hours} hour(s) of pickup start. Add an override note if allowed.",
+      adminCancelOverrideLabel: "Override note (audit)",
+      adminCancelOverridePh: "Why are you cancelling inside the cutoff window?",
+      adminCancelJobConfirmBtn: "Confirm cancellation",
+      adminScheduleCutoffBlocked:
+        "Schedule change is blocked within {hours} hour(s) of pickup start. Add an override note if allowed.",
+      adminScheduleOverrideLabel: "Schedule override note (audit)",
+      adminScheduleOverridePh:
+        "Why are you changing the schedule inside the cutoff window?",
+      adminScheduleOverrideHint:
+        "Required when editing pickup/delivery times on a tour that was previously published or assigned.",
+      adminOperationalPoliciesTitle: "Operational policies",
+      adminOperationalPoliciesBlurb:
+        "Configure cutoffs and cancellation rules (stored as app_settings in production).",
+      adminPolicyCancelHoursLabel: "Min. hours before pickup — admin cancel",
+      adminPolicyScheduleHoursLabel: "Min. hours before pickup — schedule change",
+      adminPolicyMinDriverMsgLabel: "Min. characters — message to driver",
+      adminPolicyDefaultDailyLimitLabel: "Default daily job limit (new drivers)",
+      adminOperationalPoliciesSave: "Save policies",
+      adminOperationalPoliciesSaved: "Operational policies updated.",
+      cancellationReason_driver_unavailable: "Driver unavailable",
+      cancellationReason_vehicle_not_available: "Vehicle not available",
+      cancellationReason_customer_cancelled: "Customer cancelled order",
+      cancellationReason_appointment_not_possible: "Appointment no longer possible",
+      cancellationReason_incorrect_order_data: "Incorrect order data",
+      cancellationReason_vehicle_not_roadworthy: "Vehicle not roadworthy",
+      cancellationReason_other: "Other reason",
       adminDeleteDraft: "Delete draft",
       adminDeleteDraftConfirm:
         "Permanently delete this draft? It will be removed from the job list and cannot be recovered.",
@@ -780,6 +865,13 @@ window.I18n = (() => {
       newOrderSecContacts: "Contacts",
       newOrderSecDriverOffer: "Driver offer",
       newOrderSecNotes: "Notes",
+      newOrderSecDocuments: "Documents",
+      newOrderSecDocumentsTitle: "Off-channel documents",
+      newOrderAdminDocsHint:
+        "Attach PDF or images (e.g. vehicle photo) received outside the system. Stored as admin off-channel documents on save.",
+      newOrderAdminDocsAdd: "Add file",
+      newOrderAdminDocsEmpty: "No pending files — optional.",
+      newOrderAdminDocsExisting: "Already attached to this draft",
       newOrderSecCustomerTitle: "Customer",
       newOrderPrefillMaster: "Pre-fill from master data",
       newOrderCustomerMasterLabel: "Customer master data",
@@ -799,6 +891,14 @@ window.I18n = (() => {
       newOrderPlzPh: "Postcode",
       newOrderCityPh: "City / town",
       newOrderDistanceKm: "Distance (km)",
+      newOrderEstimateDistance: "Estimate distance",
+      newOrderDistanceManualHint:
+        "Use Estimate to calculate from pickup and delivery postal codes, or enter km manually.",
+      newOrderDistanceEstimateMissingPlz:
+        "Enter pickup and delivery postal codes before estimating distance.",
+      newOrderDistanceEstimateApplied: "System estimate: {km} km ({source})",
+      newOrderDistanceSourceTable: "known route table",
+      newOrderDistanceSourceHeuristic: "postal-code approximation",
       newOrderSecScheduleTitle: "Schedule / time windows",
       newOrderScheduleHint:
         "Pickup and delivery can be on different days — each has its own date and time window.",
@@ -1162,11 +1262,15 @@ window.I18n = (() => {
       tourDocUploadHint:
         "Tour-Dokumente wie Rechnung, Belege, Lieferschein, Wartezeitnachweis oder sonstige Nachweise hochladen. PDF oder Bilder.",
       tourDocAfterPerformedHint:
-        "Tour zuerst als durchgeführt markieren, dann Dokumente hochladen.",
+        "Tour-Dokumente können jederzeit während der aktiven Tour oder nach Durchführung hochgeladen werden.",
       tourDocUploadButton: "Dokument hochladen",
       tourDocRequiresPerformed:
-        "Dokumente erst nach „durchgeführt“ hochladbar.",
+        "Dokument-Upload ist für diesen Tour-Status nicht verfügbar.",
       tourDocUploadEmpty: "Noch keine Dokumente.",
+      tourDocEmptyTitle: "Noch keine Dokumente",
+      tourDocEmptyAction: "Belege, Lieferscheine oder Nachweise während der aktiven Tour hinzufügen.",
+      tourDocUploadSuccess: "Dokument hochgeladen. Die Disposition prüft es.",
+      tourDocUploadAvailable: "Upload möglich",
       tourDocRejectionReason: "Ablehnung: {reason}",
       tourDocReplaceButton: "Datei ersetzen",
       tourDocReplaceNotAllowed:
@@ -1335,7 +1439,43 @@ window.I18n = (() => {
       cancelledTour: "Storniert · Tour {tour}",
       cancelledSub: "Aus Marktplatz und aktiven Listen entfernt.",
       driverTourCancelledNotice:
-        "Die Disposition hat diese Tour storniert. Details sind einsehbar; es sind keine weiteren Schritte nötig.",
+        "Die Disposition hat diese Tour storniert. Die Nachricht unten erklärt warum — es sind keine weiteren Schritte nötig.",
+      driverCancellationReasonLabel: "Grund",
+      driverAcceptOverlapConfirm:
+        "Sie haben an diesem Tag bereits eine andere Tour. Trotzdem annehmen?",
+      driverAcceptOverlapTitle: "Tour-Überschneidung am selben Tag",
+      driverAcceptOverlapConfirmBtn: "Trotzdem annehmen",
+      uiDismiss: "Schließen",
+      driverDailyLimitReached:
+        "Sie haben Ihr tägliches Annahmelimit erreicht. Fordern Sie bei der Disposition eine Erhöhung an.",
+      driverDailyLimitProfileTitle: "Tägliches Annahmelimit",
+      driverDailyLimitProfileUsage:
+        "{count} von {limit} Touren angenommen (Abholdatum {date})",
+      driverDailyLimitProfileRemaining:
+        "Noch {remaining} Annahme(n) für diesen Abholtag",
+      driverDailyLimitProfileAtLimit:
+        "Tageslimit erreicht für Touren mit Abholung am {date}",
+      driverDailyLimitRequestBtn: "Höheres Limit anfragen",
+      driverDailyLimitPendingRequest:
+        "Anfrage zur Limit-Erhöhung bei der Disposition offen",
+      driverDailyLimitRequestTitle: "Höheres Tageslimit anfragen",
+      driverDailyLimitRequestHint:
+        "Ihr aktuelles Limit ist {current} Tour(en) pro Tag ({count} heute bereits angenommen). Bitten Sie die Disposition um eine Erhöhung.",
+      driverDailyLimitRequestedLabel: "Gewünschtes Tageslimit",
+      driverDailyLimitRequestNote: "Begründung (optional)",
+      driverDailyLimitRequestNotePh: "z. B. Heute zusätzliche Touren in Ihrer Region…",
+      driverDailyLimitRequestSubmit: "Anfrage senden",
+      driverDailyLimitRequestSent:
+        "Anfrage gesendet. Die Disposition prüft sie unter Profiländerungen.",
+      driverDailyLimitRequestOpenExists:
+        "Sie haben bereits eine offene Änderungsanfrage. Bitte warten Sie auf die Bearbeitung.",
+      driverDailyLimitRequestMustIncrease:
+        "Das gewünschte Limit muss höher als Ihr aktuelles Limit sein.",
+      driverDailyLimitRequestInvalid: "Ganze Zahl zwischen 1 und 99 eingeben.",
+      driverDailyLimitRequestFailed: "Anfrage konnte nicht gesendet werden.",
+      masterDataChangeType_address: "Adressänderung",
+      masterDataChangeType_contact: "Kontaktänderung",
+      masterDataChangeType_daily_limit_override: "Erhöhung Tageslimit",
       usersDesc: "Verwalte Dispatcher-Konten und Fahrerprofile.",
       customersDesc:
         "Kunden für Abrechnung und Reporting. Änderungen ändern keine bestehenden Tour-Snapshots.",
@@ -1667,6 +1807,10 @@ window.I18n = (() => {
       adminUsersFieldEmail: "E-Mail",
       adminUsersFieldPhone: "Telefon",
       adminUsersFieldNotes: "Interne Notizen",
+      adminUsersFieldDailyLimit: "Tageslimit Aufträge",
+      adminUsersFieldDailyLimitHint:
+        "Maximale Touren pro Kalendertag, die der Fahrer annehmen kann (Standard 3).",
+      adminUsersErrDailyLimit: "Ganze Zahl zwischen 1 und 99 eingeben.",
       adminUsersErrNameRequired: "Name ist erforderlich.",
       adminUsersErrCompanyRequired: "Firma ist erforderlich.",
       adminUsersErrEmailRequired: "E-Mail ist für den Login erforderlich.",
@@ -1710,6 +1854,48 @@ window.I18n = (() => {
       adminCancelJob: "Auftrag stornieren",
       adminCancelJobConfirm:
         "Diese Tour stornieren? Sie wird aus dem Marktplatz und der aktiven Fahrerliste entfernt.",
+      adminCancelJobModalTitle: "Tour stornieren",
+      adminCancelJobModalHintDriver:
+        "Erklären Sie dem Fahrer, warum die Tour storniert wurde.",
+      adminCancelJobModalHintNoDriver:
+        "Stornierungsgrund für das Audit-Protokoll angeben.",
+      adminCancelReasonLabel: "Stornierungsgrund",
+      adminCancelReasonPlaceholder: "Grund wählen…",
+      adminCancelReasonRequired: "Bitte einen Stornierungsgrund wählen.",
+      adminCancelDriverMessageLabel: "Nachricht an den Fahrer",
+      adminCancelDriverMessagePh:
+        "Erklären Sie klar, warum die Tour storniert wurde.",
+      adminCancelMessageCounter: "{count} / {min} Zeichen",
+      adminCancelMessageTooShort:
+        "Die Fahrernachricht muss mindestens {min} Zeichen haben.",
+      adminCancelCutoffBlocked:
+        "Stornierung innerhalb von {hours} Stunde(n) vor Abholbeginn gesperrt.",
+      adminCancelOverrideLabel: "Override-Notiz (Audit)",
+      adminCancelOverridePh: "Warum stornieren Sie innerhalb des Cutoff-Fensters?",
+      adminCancelJobConfirmBtn: "Stornierung bestätigen",
+      adminScheduleCutoffBlocked:
+        "Terminänderung ist innerhalb von {hours} Stunde(n) vor Abholbeginn blockiert. Override-Notiz hinzufügen, falls erlaubt.",
+      adminScheduleOverrideLabel: "Override-Notiz Terminänderung (Audit)",
+      adminScheduleOverridePh:
+        "Warum ändern Sie den Termin innerhalb des Cutoff-Fensters?",
+      adminScheduleOverrideHint:
+        "Erforderlich bei Änderung von Abhol-/Lieferzeiten an Touren, die zuvor veröffentlicht oder zugewiesen waren.",
+      adminOperationalPoliciesTitle: "Betriebsrichtlinien",
+      adminOperationalPoliciesBlurb:
+        "Cutoffs und Stornierungsregeln konfigurieren (Produktion: app_settings).",
+      adminPolicyCancelHoursLabel: "Min. Stunden vor Abholung — Admin-Storno",
+      adminPolicyScheduleHoursLabel: "Min. Stunden vor Abholung — Terminänderung",
+      adminPolicyMinDriverMsgLabel: "Min. Zeichen — Nachricht an Fahrer",
+      adminPolicyDefaultDailyLimitLabel: "Standard Tageslimit (neue Fahrer)",
+      adminOperationalPoliciesSave: "Richtlinien speichern",
+      adminOperationalPoliciesSaved: "Betriebsrichtlinien aktualisiert.",
+      cancellationReason_driver_unavailable: "Fahrer nicht verfügbar",
+      cancellationReason_vehicle_not_available: "Fahrzeug nicht verfügbar",
+      cancellationReason_customer_cancelled: "Kunde hat Auftrag storniert",
+      cancellationReason_appointment_not_possible: "Termin nicht mehr möglich",
+      cancellationReason_incorrect_order_data: "Falsche Auftragsdaten",
+      cancellationReason_vehicle_not_roadworthy: "Fahrzeug nicht fahrbereit",
+      cancellationReason_other: "Sonstiger Grund",
       adminDeleteDraft: "Entwurf löschen",
       adminDeleteDraftConfirm:
         "Diesen Entwurf endgültig löschen? Er wird aus der Auftragsliste entfernt und kann nicht wiederhergestellt werden.",
@@ -1779,6 +1965,13 @@ window.I18n = (() => {
       newOrderSecContacts: "Kontakte",
       newOrderSecDriverOffer: "Fahrerangebot",
       newOrderSecNotes: "Notizen",
+      newOrderSecDocuments: "Dokumente",
+      newOrderSecDocumentsTitle: "Off-Channel-Dokumente",
+      newOrderAdminDocsHint:
+        "PDF oder Bilder (z. B. Fahrzeugfoto) anhängen, die außerhalb des Systems eingegangen sind. Beim Speichern als Admin-Off-Channel-Dokumente gespeichert.",
+      newOrderAdminDocsAdd: "Datei hinzufügen",
+      newOrderAdminDocsEmpty: "Keine ausstehenden Dateien — optional.",
+      newOrderAdminDocsExisting: "Bereits an diesem Entwurf angehängt",
       newOrderSecCustomerTitle: "Kunde",
       newOrderPrefillMaster: "Pre-fill aus Master-Daten",
       newOrderCustomerMasterLabel: "Kundenstammdaten",
@@ -1798,6 +1991,14 @@ window.I18n = (() => {
       newOrderPlzPh: "PLZ",
       newOrderCityPh: "Stadt / Ort",
       newOrderDistanceKm: "Distanz (km)",
+      newOrderEstimateDistance: "Distanz schätzen",
+      newOrderDistanceManualHint:
+        "Schätzen berechnet aus Abhol- und Ziel-PLZ, oder km manuell eingeben.",
+      newOrderDistanceEstimateMissingPlz:
+        "Abhol- und Ziel-PLZ eingeben, bevor die Distanz geschätzt wird.",
+      newOrderDistanceEstimateApplied: "Systemschätzung: {km} km ({source})",
+      newOrderDistanceSourceTable: "bekannte Route",
+      newOrderDistanceSourceHeuristic: "PLZ-Näherung",
       newOrderSecScheduleTitle: "Termin / Zeitfenster",
       newOrderScheduleHint:
         "Abholung und Lieferung können an unterschiedlichen Tagen liegen — jeweils mit eigenem Datum und Zeitfenster.",

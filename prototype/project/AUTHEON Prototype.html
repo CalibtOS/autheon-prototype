@@ -63,6 +63,8 @@
         const [acceptModal, setAcceptModal] = useState(null);
         const [reportProblemJob, setReportProblemJob] = useState(null);
         const [pendingNotice, setPendingNotice] = useState(null);
+        const [dailyLimitModal, setDailyLimitModal] = useState(null);
+        const [overlapConfirm, setOverlapConfirm] = useState(null);
         const [banner, setBanner] = useState(null);
         const [showNotifications, setShowNotifications] = useState(false);
 
@@ -127,7 +129,14 @@
         } else if (tab === "info") {
           body = <Infopoint />;
         } else {
-          body = <ProfilePaneFull />;
+          body = (
+            <ProfilePaneFull
+              onRequestDailyLimitIncrease={() => {
+                const s = store.getDriverDailyAcceptanceSummary();
+                if (s) setDailyLimitModal({ limit: s.limit, count: s.count });
+              }}
+            />
+          );
         }
 
         return (
@@ -146,11 +155,18 @@
                   }}
                 >
                   {banner && (
-                    <div className="banner banner-warn" role="alert">
-                      {banner}
+                    <div
+                      className={`banner ${
+                        typeof banner === "object" && banner.tone === "success"
+                          ? "banner-success"
+                          : "banner-warn"
+                      }`}
+                      role="alert"
+                    >
+                      {typeof banner === "object" ? banner.text : banner}
                       <button
                         type="button"
-                        className="btn xs"
+                        className="btn xs touch-target"
                         style={{ marginLeft: 10 }}
                         onClick={() => setBanner(null)}
                       >
@@ -175,19 +191,35 @@
                     job={acceptModal}
                     onCancel={() => setAcceptModal(null)}
                     onConfirm={() => {
-                      const r = store.acceptJob(acceptModal.id);
-                      const id = acceptModal.id;
-                      setAcceptModal(null);
-                      if (!r.ok) {
-                        setBanner(
-                          r.reason === "driver_restricted"
-                            ? t("blockedDriverBody")
-                            : t("toastAssignedElsewhere"),
-                        );
-                        setActiveJob({ id, mode: "locked" });
-                        return;
-                      }
-                      setActiveJob({ id, mode: "unlocked" });
+                      const tryAccept = (confirmOverlap) => {
+                        const r = store.acceptJob(acceptModal.id, {
+                          confirmSameDayOverlap: confirmOverlap,
+                        });
+                        const id = acceptModal.id;
+                        if (!r.ok) {
+                          if (r.reason === "same_day_overlap_confirm") {
+                            setAcceptModal(null);
+                            setOverlapConfirm({ jobId: id });
+                            return;
+                          }
+                          setAcceptModal(null);
+                          if (r.reason === "driver_restricted") {
+                            setBanner({ tone: "warn", text: t("blockedDriverBody") });
+                          } else if (r.reason === "daily_limit_reached") {
+                            setDailyLimitModal({
+                              limit: r.limit,
+                              count: r.count,
+                            });
+                          } else {
+                            setBanner({ tone: "warn", text: t("toastAssignedElsewhere") });
+                          }
+                          setActiveJob({ id, mode: "locked" });
+                          return;
+                        }
+                        setAcceptModal(null);
+                        setActiveJob({ id, mode: "unlocked" });
+                      };
+                      tryAccept(false);
                     }}
                   />
                 )}
@@ -220,6 +252,49 @@
                   <PendingNotice
                     kind={pendingNotice}
                     onClose={() => setPendingNotice(null)}
+                  />
+                )}
+                {dailyLimitModal && (
+                  <DailyLimitRequestSheet
+                    limitInfo={dailyLimitModal}
+                    onClose={() => setDailyLimitModal(null)}
+                    onSubmitted={() => {
+                      setBanner({
+                        tone: "success",
+                        text: t("driverDailyLimitRequestSent"),
+                      });
+                      setDailyLimitModal(null);
+                    }}
+                  />
+                )}
+                {overlapConfirm && (
+                  <SameDayOverlapSheet
+                    onCancel={() => {
+                      setOverlapConfirm(null);
+                      setActiveJob({ id: overlapConfirm.jobId, mode: "locked" });
+                    }}
+                    onConfirm={() => {
+                      const id = overlapConfirm.jobId;
+                      const r = store.acceptJob(id, {
+                        confirmSameDayOverlap: true,
+                      });
+                      setOverlapConfirm(null);
+                      if (!r.ok) {
+                        if (r.reason === "daily_limit_reached") {
+                          setDailyLimitModal({
+                            limit: r.limit,
+                            count: r.count,
+                          });
+                        } else if (r.reason === "driver_restricted") {
+                          setBanner({ tone: "warn", text: t("blockedDriverBody") });
+                        } else {
+                          setBanner({ tone: "warn", text: t("toastAssignedElsewhere") });
+                        }
+                        setActiveJob({ id, mode: "locked" });
+                        return;
+                      }
+                      setActiveJob({ id, mode: "unlocked" });
+                    }}
                   />
                 )}
               </div>
@@ -302,6 +377,27 @@
           setToast({ msg, sub, action });
           clearTimeout(window.__t);
           window.__t = setTimeout(() => setToast(null), 5000);
+        };
+
+        const saveNewOrderDraft = () => {
+          const saved = store.saveDraft(newOrderForm || {});
+          if (!saved || saved.error) {
+            if (saved?.error === "within_schedule_cutoff") {
+              showToast(
+                t("adminScheduleCutoffBlocked", {
+                  hours: saved.minHours || 1,
+                }),
+                t("adminScheduleOverrideHint"),
+              );
+            } else {
+              showToast(
+                t("adminToastUpdateFailed"),
+                t("adminMasterDataSaveFailed"),
+              );
+            }
+            return null;
+          }
+          return saved;
         };
 
         const onOpenJob = (j) => {
@@ -441,16 +537,12 @@
               onRequestReassign={() =>
                 setAssignDialog({ jobId: fresh.id, mode: "reassign" })
               }
-              onCancel={() => {
-                const r = store.cancelJob(fresh.id);
-                if (!r.ok)
-                  showToast(t("cancellationBlocked"), t("cancellationRules"));
-                else
-                  showToast(
-                    t("cancelledTour", { tour: fresh.tour }),
-                    t("cancelledSub"),
-                  );
-              }}
+              onCancelled={(j) =>
+                showToast(
+                  t("cancelledTour", { tour: j.tour }),
+                  t("cancelledSub"),
+                )
+              }
               onEdit={() => openEditDraft(fresh.id)}
               onEditFinances={() => openFinancesForJob(fresh.id)}
               onOpenTourBilling={() => openTourBillingForJob(fresh.id)}
@@ -526,7 +618,7 @@
             />
           );
         } else if (section === "features") {
-          body = <FeaturesPane />;
+          body = <FeaturesPane showToast={showToast} />;
         } else {
           const stubTitles = {
             users: [t("navUsers"), t("usersDesc")],
@@ -577,28 +669,64 @@
               }
               onEdit={() => openEditDraft(fresh.id)}
               onRevertToDraft={() => {
-                const r = store.revertJobToDraft(fresh.id);
-                if (!r.ok)
-                  showToast(
-                    t("revertToDraftBlocked"),
-                    t("revertToDraftBlockedSub"),
-                  );
-                else
+                const fresh = store.getJob(activeJob.id);
+                let overrideNote = "";
+                const prePolicy = store.checkScheduleChangePolicy(fresh, {});
+                if (
+                  !prePolicy.ok &&
+                  prePolicy.reason === "within_schedule_cutoff"
+                ) {
+                  const policies = store.getOperationalPolicies();
+                  if (policies.allowPolicyOverrideWithAuditNote) {
+                    overrideNote =
+                      window.prompt(t("adminScheduleOverridePh"), "") || "";
+                    if (overrideNote.trim().length < 10) {
+                      showToast(
+                        t("adminScheduleCutoffBlocked", {
+                          hours: prePolicy.minHours || 1,
+                        }),
+                        t("adminScheduleOverrideHint"),
+                      );
+                      return;
+                    }
+                  } else {
+                    showToast(
+                      t("adminScheduleCutoffBlocked", {
+                        hours: prePolicy.minHours || 1,
+                      }),
+                      t("adminScheduleOverrideHint"),
+                    );
+                    return;
+                  }
+                }
+                const r = store.revertJobToDraft(fresh.id, {
+                  overrideNote: overrideNote.trim(),
+                });
+                if (!r.ok) {
+                  if (r.reason === "within_schedule_cutoff")
+                    showToast(
+                      t("adminScheduleCutoffBlocked", {
+                        hours: r.minHours || 1,
+                      }),
+                      t("adminScheduleOverrideHint"),
+                    );
+                  else
+                    showToast(
+                      t("revertToDraftBlocked"),
+                      t("revertToDraftBlockedSub"),
+                    );
+                } else
                   showToast(
                     t("revertedToDraftTour", { tour: fresh.tour }),
                     t("adminRevertToDraftSub"),
                   );
               }}
-              onCancel={() => {
-                const r = store.cancelJob(fresh.id);
-                if (!r.ok)
-                  showToast(t("cancellationBlocked"), t("cancellationRules"));
-                else
-                  showToast(
-                    t("cancelledTour", { tour: fresh.tour }),
-                    t("cancelledSub"),
-                  );
-              }}
+              onCancelled={(j) =>
+                showToast(
+                  t("cancelledTour", { tour: j.tour }),
+                  t("cancelledSub"),
+                )
+              }
               onDeleteDraft={() => {
                 const r = store.deleteDraftJob(fresh.id);
                 if (!r.ok)
@@ -624,19 +752,13 @@
               valid={newOrderValid}
               onCancel={cancelNewOrder}
               onSaveDraft={() => {
-                const saved = store.saveDraft(newOrderForm || {});
-                if (!saved) {
-                  showToast(
-                    t("adminToastUpdateFailed"),
-                    t("adminMasterDataSaveFailed"),
-                  );
-                  return;
-                }
+                const saved = saveNewOrderDraft();
+                if (!saved) return;
                 setFreshId(saved.id);
                 setEditingJobId(null);
                 showToast(
                   t("draftSavedTour", { tour: saved.tour }),
-                  (saved.customer || "—") +
+                  (saved.customer || saved.customerName || "—") +
                     " · " +
                     (saved.startPlz || "—") +
                     " → " +
@@ -648,14 +770,8 @@
               }}
               onPublish={() => {
                 if (!newOrderValid) return;
-                const saved = store.saveDraft(newOrderForm || {});
-                if (!saved) {
-                  showToast(
-                    t("adminToastUpdateFailed"),
-                    t("adminMasterDataSaveFailed"),
-                  );
-                  return;
-                }
+                const saved = saveNewOrderDraft();
+                if (!saved) return;
                 const r = store.publishJob(saved.id);
                 setFreshId(saved.id);
                 setEditingJobId(null);
@@ -670,14 +786,8 @@
               }}
               onAssign={() => {
                 if (!newOrderValid) return;
-                const saved = store.saveDraft(newOrderForm || {});
-                if (!saved) {
-                  showToast(
-                    t("adminToastUpdateFailed"),
-                    t("adminMasterDataSaveFailed"),
-                  );
-                  return;
-                }
+                const saved = saveNewOrderDraft();
+                if (!saved) return;
                 setFreshId(saved.id);
                 setEditingJobId(null);
                 setAssignDialog({

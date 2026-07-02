@@ -11,16 +11,19 @@ AUTHEON is a vehicle-transport operations platform with two surfaces: a mobile-f
 1. Dispatch creates a draft with a customer, separate pickup and delivery locations, schedules, vehicle data, and operational notes.
 2. Dispatch either publishes the tour to the marketplace or directly assigns an active driver. These paths are mutually exclusive.
 3. A driver accepts a published tour through a binding confirmation; the driver receives full tour data only after acceptance or direct assignment.
-4. The driver marks the tour as performed, uploads any required tour documents, or uses **Report Problem** to cancel with a reason or report the tour as not performable.
-5. Dispatch resolves special cases, reviews tour documents, and manages settlement separately from operational status.
+4. The driver marks the tour as performed, uploads tour documents (including on active tours before completion where needed), or uses **Report Problem** to cancel with a reason or report the tour as not performable.
+5. If dispatch cancels an assigned tour, the driver sees a **reason and explanatory message** on the cancelled tour and in notifications.
+6. Dispatch resolves special cases, reviews tour documents, and manages settlement separately from operational status.
 
 ## Core rules
 
 - Operational statuses are: Draft, Published, Assigned, Accepted, Performed, Cancelled, and Special Case.
 - The former return-request and return-window flow is not part of Version 1.
-- Driver master data is maintained by dispatch; drivers submit change requests.
+- Driver master data is maintained by dispatch; drivers submit change requests (profile or daily limit increase).
+- Per-driver daily job acceptance limits apply on marketplace accept; drivers may request a limit increase via the same change-request queue.
 - Marketplace data is anonymised before acceptance. Full addresses, contacts, vehicle identifiers, and operational notes unlock only after commitment.
 - The product uses external map-app handoff, not in-app GPS tracking.
+- Operational policies (minimum hours before cancel/schedule change) are admin-configurable via app settings.
 - Full finance dashboards, accounting integration, historical Excel migration, CSV mass import, vehicle-condition documentation, and complex tour chains are out of scope.
 
 ## Evidence and validation

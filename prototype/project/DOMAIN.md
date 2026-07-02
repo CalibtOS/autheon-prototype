@@ -1,4 +1,4 @@
-# AUTHEON prototype — domain glossary (PRD v1.6)
+# AUTHEON prototype — domain glossary (PRD v1.8)
 
 Canonical spec: [`../../docs/requirements/prd.json`](../../docs/requirements/prd.json). This file explains terms used in the static prototype (`store.js`, admin, driver).
 
@@ -70,12 +70,25 @@ Required field — discriminates requests in the admin review queue:
 | `bank_details` | IBAN, BIC, account holder          |
 | `vehicle_info` | Vehicle type, registration, axle   |
 | `license`      | Driver licence class, expiry       |
+| `daily_limit_override` | Request to raise `daily_job_limit` |
 
-Prototype auto-derives `address` or `contact` from changed fields. Production uses explicit selection.
+Prototype auto-derives `address` or `contact` from changed fields for profile requests. Limit-increase requests use explicit `daily_limit_override`.
 
 ## Report Problem
 
 Replaces the removed v1.4 “return request” flow: cancel order or report not performable (→ `special_case`).
+
+## Admin off-channel documents (`tourDocuments[].source`)
+
+`admin_off_channel` — PDF/images attached by dispatch at job creation/edit or via Tour documents register. Distinct from driver PWA uploads (`driver`).
+
+## Driver daily job limit (`drivers.dailyJobLimit`)
+
+Per-driver cap on accepted tours per calendar day (default 3). Enforced in `acceptJob()`; editable in Admin → Users.
+
+## Operational policies (Settings)
+
+`operationalPolicies` in `store.js` mirrors production `app_settings`: admin-cancel cutoff, schedule-change cutoff, min driver message length, default daily limit. Override requires audit note when `allowPolicyOverrideWithAuditNote` is true.
 
 ## Prototype-only
 

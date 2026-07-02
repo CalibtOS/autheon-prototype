@@ -1,6 +1,6 @@
 # AUTHEON database logical model
 
-> **Status:** Updated 2026-07-01 — `users` table aligned with autheon-be `UserEntity` and `@autheon/shared` enums. [`schema.dbml`](schema.dbml) is the accompanying relational schema. [`../requirements/prd.json`](../requirements/prd.json) remains the functional source of truth.
+> **Status:** Updated 2026-07-02 — PRD v1.8: `daily_job_limit`, app_settings operational policies, admin cancel driver message. [`schema.dbml`](schema.dbml) is the accompanying relational schema. [`../requirements/prd.json`](../requirements/prd.json) remains the functional source of truth.
 
 ## Scope and modelling approach
 
@@ -153,6 +153,25 @@ Marketplace queries must project a deliberately reduced view. They must not retu
 | File retention/security | Versioned metadata supports deletion/hold policy; storage implementation remains open.                                                                              | EU-region requirement, retention periods, malware scanner, size/type limits, deletion authority.                 |
 | Product display name    | `system_settings`/branding configuration is intentionally deferred.                                                                                                 | Final name, legal entity details, domain, sender identity, localization rules.                                   |
 | Finance                 | `job_financials` holds only operational amounts and invoice/payment summary fields; `jobs.settlement_state` remains the tour closeout state.                        | Whether advanced invoices/ledger/accounting integration become approved scope.                                   |
+
+## Cancellation attribution and driver communication
+
+`jobs.cancellation_actor`, `cancellation_reason_code`, and `cancellation_reason_text` record who cancelled and why. When dispatch cancels an assigned tour, `cancellation_reason_text` is the **driver-facing message** shown in the driver PWA and `order_cancelled_by_autheon` notifications — not an internal-only note.
+
+## App settings (`app_settings`)
+
+Key/value JSON configuration managed by admins (see PRD Task 31 and `resolved_defaults.app_settings_catalog_v1`):
+
+| Key | Purpose |
+|-----|---------|
+| `branding.display` | Product display name in UI |
+| `operational.policies` | Minimum hours before pickup for admin cancel and schedule change; optional override-with-audit flag |
+| `cancellation.policies` | Required reason code, minimum driver message length for admin cancel |
+| `driver.acceptance.defaultDailyJobLimit` | Default `drivers.daily_job_limit` for new driver records |
+
+## Driver daily acceptance limits (PRD v1.7+)
+
+`drivers.daily_job_limit` caps marketplace acceptances per calendar day. Limit-increase requests reuse `master_data_change_requests` with `change_type = daily_limit_override`.
 
 ## Explicit non-goals
 

@@ -1,4 +1,4 @@
-// AUTHEON — Shared store (PRD v1.6 prototype). Target spec: AUTHEON/prd.json
+// AUTHEON — Shared store (PRD v1.8 prototype). Target spec: docs/requirements/prd.json
 // Domain glossary: DOMAIN.md
 // Single source of truth for Driver + Admin views.
 // Operational statuses: draft, published, assigned, accepted, performed, cancelled, special_case.
@@ -1217,6 +1217,7 @@ window.AuthStore = (() => {
         phone: "+49 170 4400228",
         notes: "",
         status: "Active",
+        dailyJobLimit: 3,
         prefs: {
           postalAreas: ["80"],
           vehicle: "PKW",
@@ -1235,6 +1236,7 @@ window.AuthStore = (() => {
         phone: "+49 172 3300301",
         notes: "",
         status: "Active",
+        dailyJobLimit: 3,
         prefs: {
           postalAreas: ["60"],
           vehicle: "Transporter",
@@ -1253,6 +1255,7 @@ window.AuthStore = (() => {
         phone: "+49 171 991177",
         notes: "",
         status: "Blocked",
+        dailyJobLimit: 3,
         prefs: {
           postalAreas: ["10"],
           vehicle: "SUV",
@@ -1291,6 +1294,24 @@ window.AuthStore = (() => {
 
   function seedTourDocuments() {
     return [
+      {
+        id: "TD-SEED-ACTIVE-001",
+        jobId: "A-2026-00845",
+        driverId: "DRV-0228",
+        driverName: DEMO_DRIVER,
+        fileName: "pickup-proof-0845.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 156000,
+        uploadedAt: "2026-04-23T07:15:00.000Z",
+        documentType: "other_proof",
+        reviewStatus: "uploaded",
+        rejectionReason: "",
+        processed: false,
+        source: "driver",
+        notes: "Pre-completion upload on active tour (v1.8).",
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
+      },
       {
         id: "TD-SEED-001",
         jobId: "A-2026-00842",
@@ -1641,9 +1662,9 @@ window.AuthStore = (() => {
     }
     for (const d of docList) {
       const j = jobList.find((x) => x.id === d.jobId);
-      if (j && j.status !== "performed") {
+      if (j && !uploadAllowedStatuses().includes(j.status)) {
         issues.push(
-          `${d.id}: document on non-performed job ${j.id} (${j.status})`,
+          `${d.id}: document on job ${j.id} with status ${j.status} (allowed: ${uploadAllowedStatuses().join(", ")})`,
         );
       }
       if (
@@ -1699,6 +1720,110 @@ window.AuthStore = (() => {
     financeModule: false,
     ...flagDefaults,
   };
+
+  const CANCELLATION_REASON_CODES = [
+    "driver_unavailable",
+    "vehicle_not_available",
+    "customer_cancelled",
+    "appointment_not_possible",
+    "incorrect_order_data",
+    "vehicle_not_roadworthy",
+    "other",
+  ];
+
+  const CANCELLATION_REASON_LABELS = {
+    driver_unavailable: "Driver unavailable",
+    vehicle_not_available: "Vehicle not available",
+    customer_cancelled: "Customer cancelled order",
+    appointment_not_possible: "Appointment no longer possible",
+    incorrect_order_data: "Incorrect order data",
+    vehicle_not_roadworthy: "Vehicle not roadworthy",
+    other: "Other reason",
+  };
+
+  const operationalPolicies = {
+    adminCancelMinHoursBeforePickupStart: 1,
+    scheduleChangeMinHoursBeforePickupStart: 1,
+    referenceTime: "pickup_window_start",
+    allowPolicyOverrideWithAuditNote: true,
+  };
+
+  const cancellationPolicies = {
+    adminCancelRequiresReasonCode: true,
+    adminCancelRequiresDriverMessage: true,
+    adminCancelDriverMessageMinChars: 20,
+    driverCancelExplanationMinChars: 10,
+  };
+
+  const driverAcceptanceDefaults = {
+    defaultDailyJobLimit: 3,
+  };
+
+  function cancellationReasonLabel(code) {
+    return CANCELLATION_REASON_LABELS[code] || code || "";
+  }
+
+  function parseLocationDateTime(loc) {
+    if (!loc) return null;
+    const dl = String(loc.dateLong || "");
+    const m = dl.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+    if (!m) return null;
+    const wf = String(loc.windowFrom || "00:00").match(/^(\d{1,2}):(\d{2})/);
+    const h = wf ? +wf[1] : 0;
+    const min = wf ? +wf[2] : 0;
+    return new Date(+m[3], +m[2] - 1, +m[1], h, min, 0);
+  }
+
+  function hoursUntilPickupStart(job, at = new Date()) {
+    const start = parseLocationDateTime(job?.pickup);
+    if (!start || Number.isNaN(start.getTime())) return Infinity;
+    return (start.getTime() - at.getTime()) / 3600000;
+  }
+
+  function pickupCalendarKey(loc) {
+    const dl = String(loc?.dateLong || loc?.date || "");
+    const m = dl.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+    if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+    const d = String(loc?.date || "").match(/(\d{2})\.(\d{2})/);
+    if (d) return `2026-${d[2]}-${d[1]}`;
+    return "";
+  }
+
+  function jobDriverRecord(job) {
+    if (!job) return null;
+    if (job.driverId) return drivers.find((d) => d.id === job.driverId) || null;
+    if (job.driver)
+      return drivers.find((d) => d.name === job.driver) || null;
+    return null;
+  }
+
+  function driverAcceptanceCountForDay(driverId, dayKey) {
+    if (!driverId || !dayKey) return 0;
+    return jobs.filter((j) => {
+      if (!["accepted", "assigned", "performed", "special_case"].includes(j.status))
+        return false;
+      const dr = jobDriverRecord(j);
+      if (!dr || dr.id !== driverId) return false;
+      return pickupCalendarKey(j.pickup) === dayKey;
+    }).length;
+  }
+
+  function driverHasSameDayActiveJob(driverId, job, excludeId) {
+    const day = pickupCalendarKey(job?.pickup);
+    if (!driverId || !day) return false;
+    return jobs.some((j) => {
+      if (j.id === excludeId) return false;
+      if (!["accepted", "assigned", "special_case"].includes(j.status))
+        return false;
+      const dr = jobDriverRecord(j);
+      if (!dr || dr.id !== driverId) return false;
+      return pickupCalendarKey(j.pickup) === day;
+    });
+  }
+
+  function uploadAllowedStatuses() {
+    return ["assigned", "accepted", "special_case", "performed"];
+  }
 
   const DISTANCE_TABLE = {
     "80339-10115": 585,
@@ -1777,6 +1902,24 @@ window.AuthStore = (() => {
         (parseInt(job.delivery?.postalCode, 10) || 20000),
     );
     return Math.max(40, Math.min(720, Math.round(base / 8)));
+  }
+
+  function distanceEstimateSourceForJob(job) {
+    const key = distanceKey(job);
+    if (key && DISTANCE_TABLE[key]) return "table";
+    if (job?.pickup?.postalCode && job?.delivery?.postalCode) return "heuristic";
+    return "unknown";
+  }
+
+  function jobLikeFromForm(form) {
+    return {
+      pickup: {
+        postalCode: String(form.startPlz || form.pickup?.postalCode || "").trim(),
+      },
+      delivery: {
+        postalCode: String(form.endPlz || form.delivery?.postalCode || "").trim(),
+      },
+    };
   }
 
   function normalizeDriverPrefs(prefs = {}) {
@@ -2197,6 +2340,53 @@ window.AuthStore = (() => {
     };
   }
 
+  function jobWasEverCommitted(job) {
+    return (job?.history || []).some((h) =>
+      ["published", "assigned", "accepted", "performed", "special_case"].includes(
+        h.st,
+      ),
+    );
+  }
+
+  function jobScheduleSnapshot(job) {
+    const p = job?.pickup || {};
+    const d = job?.delivery || {};
+    return [
+      p.date,
+      p.windowFrom,
+      p.windowTo,
+      d.date,
+      d.windowFrom,
+      d.windowTo,
+    ].join("|");
+  }
+
+  function formScheduleSnapshot(form) {
+    return [
+      form.pickupDate,
+      form.pickupFrom,
+      form.pickupTo,
+      form.deliveryDate,
+      form.deliveryFrom,
+      form.deliveryTo,
+    ].join("|");
+  }
+
+  function processPendingAdminAttachments(jobId, form) {
+    const pending = form?.adminAttachFiles || [];
+    let count = 0;
+    for (const item of pending) {
+      const file = item?.file || item;
+      if (!file?.name) continue;
+      const r = api.attachAdminJobDocument(jobId, file, {
+        documentType: item.documentType || "other_proof",
+        notes: item.notes || "",
+      });
+      if (r.ok) count++;
+    }
+    return count;
+  }
+
   function parseDottedDate(s) {
     const m = String(s || "")
       .trim()
@@ -2301,6 +2491,8 @@ window.AuthStore = (() => {
     syncDisplayFields,
     jobToDraftForm,
     isValidEmail,
+    isAllowedTourDocumentFile,
+    jobWasEverCommitted,
 
     statusLabel: (s) => {
       const key = STATUSES[s]?.i18n;
@@ -2322,6 +2514,70 @@ window.AuthStore = (() => {
       log("branding_changed", DEMO_ADMIN, "appDisplayName", next);
       emit();
       return { ok: true };
+    },
+
+    getCancellationReasonCodes: () => CANCELLATION_REASON_CODES.slice(),
+    getCancellationReasonLabel: (code) => cancellationReasonLabel(code),
+
+    getOperationalPolicies: () => ({
+      ...operationalPolicies,
+      cancellation: { ...cancellationPolicies },
+      driverAcceptance: { ...driverAcceptanceDefaults },
+    }),
+
+    setOperationalPolicies(partial = {}) {
+      if (partial.operational)
+        Object.assign(operationalPolicies, partial.operational);
+      if (partial.cancellation)
+        Object.assign(cancellationPolicies, partial.cancellation);
+      if (partial.driverAcceptance)
+        Object.assign(driverAcceptanceDefaults, partial.driverAcceptance);
+      log(
+        "operational_policies_changed",
+        DEMO_ADMIN,
+        "app_settings",
+        JSON.stringify(partial),
+      );
+      emit();
+      return { ok: true };
+    },
+
+    checkAdminCancelPolicy(job, opts = {}) {
+      const minH = operationalPolicies.adminCancelMinHoursBeforePickupStart;
+      if (minH == null || minH <= 0) return { ok: true };
+      const hours = hoursUntilPickupStart(job);
+      if (hours >= minH) return { ok: true };
+      if (
+        opts.overrideNote &&
+        operationalPolicies.allowPolicyOverrideWithAuditNote
+      ) {
+        return { ok: true, policyOverride: true };
+      }
+      return {
+        ok: false,
+        reason: "within_cancel_cutoff",
+        hoursRemaining: Math.max(0, hours),
+        minHours: minH,
+      };
+    },
+
+    checkScheduleChangePolicy(job, opts = {}) {
+      const minH = operationalPolicies.scheduleChangeMinHoursBeforePickupStart;
+      if (minH == null || minH <= 0) return { ok: true };
+      const hours = hoursUntilPickupStart(job);
+      if (hours >= minH) return { ok: true };
+      if (
+        opts.overrideNote &&
+        operationalPolicies.allowPolicyOverrideWithAuditNote
+      ) {
+        return { ok: true, policyOverride: true };
+      }
+      return {
+        ok: false,
+        reason: "within_schedule_cutoff",
+        hoursRemaining: Math.max(0, hours),
+        minHours: minH,
+      };
     },
 
     getJobs: () => jobs,
@@ -2377,6 +2633,33 @@ window.AuthStore = (() => {
     isCurrentDriverActive() {
       const d = api.getCurrentDriver();
       return !d || d.status === "Active";
+    },
+
+    todayCalendarKey() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    },
+
+    getDriverDailyAcceptanceSummary(dayKey) {
+      const d = api.getCurrentDriver();
+      if (!d) return null;
+      const key = dayKey || api.todayCalendarKey();
+      const limit =
+        d.dailyJobLimit ?? driverAcceptanceDefaults.defaultDailyJobLimit ?? 3;
+      const count = driverAcceptanceCountForDay(d.id, key);
+      const openMdr = api.getOpenMasterDataChangeRequestForDriver(d.id);
+      return {
+        limit,
+        count,
+        dayKey: key,
+        atLimit: count >= limit,
+        remaining: Math.max(0, limit - count),
+        pendingLimitRequest: openMdr?.changeType === "daily_limit_override",
+        hasOpenRequest: Boolean(openMdr),
+      };
     },
 
     countsByStatus: () => {
@@ -2674,7 +2957,26 @@ window.AuthStore = (() => {
           : jobs.find((x) => x.id === jobOrId);
       if (!j) return { ok: false, km: 0 };
       const km = estimateDistanceKm(j);
-      return { ok: true, km, source: "estimate" };
+      return {
+        ok: true,
+        km,
+        source: distanceEstimateSourceForJob(j),
+      };
+    },
+
+    estimateDistanceFromForm(form) {
+      const jobLike = jobLikeFromForm(form || {});
+      const pickup = jobLike.pickup.postalCode;
+      const delivery = jobLike.delivery.postalCode;
+      if (!pickup || !delivery) {
+        return { ok: false, reason: "postal_codes_required" };
+      }
+      const km = estimateDistanceKm(jobLike);
+      return {
+        ok: true,
+        km,
+        source: distanceEstimateSourceForJob(jobLike),
+      };
     },
 
     recalculateDistance(id) {
@@ -2698,22 +3000,37 @@ window.AuthStore = (() => {
       return { ok: true, km: j.distanceKm };
     },
 
-    acceptJob(id) {
+    acceptJob(id, opts = {}) {
       const j = api.getJob(id);
       if (!j || j.status !== "published")
         return { ok: false, reason: "not_available" };
       if (!api.isCurrentDriverActive())
         return { ok: false, reason: "driver_restricted" };
+      const dr = api.getCurrentDriver();
+      if (!dr) return { ok: false, reason: "no_driver" };
+      const limit =
+        dr.dailyJobLimit ?? driverAcceptanceDefaults.defaultDailyJobLimit ?? 3;
+      const dayKey = pickupCalendarKey(j.pickup);
+      const count = driverAcceptanceCountForDay(dr.id, dayKey);
+      if (count >= limit)
+        return { ok: false, reason: "daily_limit_reached", limit, count };
+      if (
+        !opts.confirmSameDayOverlap &&
+        driverHasSameDayActiveJob(dr.id, j, id)
+      ) {
+        return { ok: false, reason: "same_day_overlap_confirm" };
+      }
       j.status = "accepted";
-      j.driver = DEMO_DRIVER;
+      j.driver = dr.name;
+      j.driverId = dr.id;
       bumpPdf(j);
       j.history = [
         ...(j.history || []),
-        { st: "accepted", at: nowStamp(), by: DEMO_DRIVER },
+        { st: "accepted", at: nowStamp(), by: dr.name },
       ];
       driverState.acceptedIds.add(id);
-      log("job_accepted", DEMO_DRIVER, j.tour, "Binding slide confirmation");
-      queueAdminEmailAlert("job_accepted", id, `Driver ${DEMO_DRIVER}`);
+      log("job_accepted", dr.name, j.tour, "Binding slide confirmation");
+      queueAdminEmailAlert("job_accepted", id, `Driver ${dr.name}`);
       emit();
       return { ok: true };
     },
@@ -2942,6 +3259,64 @@ window.AuthStore = (() => {
       return { ok: true, id: reqId, request: row };
     },
 
+    requestDailyLimitIncrease(requestedLimit, note = "") {
+      if (!api.isCurrentDriverActive())
+        return { ok: false, reason: "driver_restricted" };
+      const d = api.getCurrentDriver();
+      if (!d) return { ok: false, reason: "no_driver" };
+      if (api.getOpenMasterDataChangeRequestForDriver(d.id)) {
+        return { ok: false, reason: "open_request_exists" };
+      }
+      const current =
+        d.dailyJobLimit ?? driverAcceptanceDefaults.defaultDailyJobLimit ?? 3;
+      const requested = parseInt(String(requestedLimit).trim(), 10);
+      if (!Number.isFinite(requested) || requested < 1 || requested > 99) {
+        return { ok: false, reason: "invalid_daily_limit" };
+      }
+      if (requested <= current) {
+        return { ok: false, reason: "limit_not_increased" };
+      }
+      const who = d.name || DEMO_DRIVER;
+      const reqId = `MDR-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const row = {
+        id: reqId,
+        driverId: d.id,
+        driverName: who,
+        driverCode: d.driverCode || "",
+        changeType: "daily_limit_override",
+        note: String(note || "").trim(),
+        proposed: { dailyJobLimit: requested },
+        snapshot: { dailyJobLimit: current },
+        status: "open",
+        createdAt: nowStamp(),
+        resolvedAt: null,
+        resolvedBy: null,
+        reviewedBy: null,
+        reviewedAt: null,
+        adminNote: "",
+      };
+      masterDataChangeRequests.unshift(row);
+      queueAdminEmailAlert(
+        "master_data_change_requested",
+        "",
+        `${who}: daily limit ${current} → ${requested} · ${reqId}`,
+      );
+      log(
+        "daily_limit_increase_requested",
+        who,
+        "acceptance limit",
+        `${reqId} · ${current} → ${requested}`,
+      );
+      pushDriverNotification({
+        type: "master_data_change_sent",
+        title: "Limit increase request sent",
+        body: "Dispatch received your request for a higher daily job limit.",
+        driverId: d.id,
+      });
+      emit();
+      return { ok: true, id: reqId, request: row };
+    },
+
     resolveMasterDataChangeRequest(id, decision, adminNote) {
       const row = masterDataChangeRequests.find((r) => r.id === id);
       if (!row) return { ok: false, reason: "not_found" };
@@ -2953,12 +3328,17 @@ window.AuthStore = (() => {
       if (approved) {
         const p = row.proposed;
         if (!p) return { ok: false, reason: "no_proposed_data" };
-        const upd = api.updateDriver(row.driverId, {
-          company: p.company,
-          address: p.address,
-          email: p.email,
-          phone: p.phone,
-        });
+        const upd =
+          row.changeType === "daily_limit_override"
+            ? api.updateDriver(row.driverId, {
+                dailyJobLimit: p.dailyJobLimit,
+              })
+            : api.updateDriver(row.driverId, {
+                company: p.company,
+                address: p.address,
+                email: p.email,
+                phone: p.phone,
+              });
         if (!upd.ok)
           return { ok: false, reason: upd.reason || "update_failed" };
       }
@@ -2981,43 +3361,41 @@ window.AuthStore = (() => {
         type: approved
           ? "master_data_change_approved"
           : "master_data_change_rejected",
-        title: approved ? "Profile change approved" : "Profile change declined",
+        title:
+          row.changeType === "daily_limit_override"
+            ? approved
+              ? "Daily limit updated"
+              : "Limit increase declined"
+            : approved
+              ? "Profile change approved"
+              : "Profile change declined",
         body: row.adminNote
           ? row.adminNote
           : approved
-            ? "Your master-data change request was approved."
-            : "Your master-data change request was declined.",
+            ? row.changeType === "daily_limit_override"
+              ? `Your daily job limit is now ${row.proposed?.dailyJobLimit ?? "—"}.`
+              : "Your master-data change request was approved."
+            : row.changeType === "daily_limit_override"
+              ? "Your daily limit increase request was declined."
+              : "Your master-data change request was declined.",
         driverId: row.driverId,
       });
       emit();
       return { ok: true, request: row };
     },
 
-    resolveSpecialCase(id, decision, note) {
+    resolveSpecialCase(id, decision, note, opts = {}) {
       const j = api.getJob(id);
       if (!j || j.status !== "special_case") return { ok: false };
       const d = String(decision || "").toLowerCase();
       if (d === "cancel" || d === "cancelled") {
-        j.status = "cancelled";
-        driverState.specialCaseIds.delete(id);
-        driverState.cancelledIds.add(id);
-        j.history = [
-          ...(j.history || []),
-          {
-            st: "cancelled",
-            at: nowStamp(),
-            by: DEMO_ADMIN,
-            meta: note || "Special case resolved → cancelled",
-          },
-        ];
-        log("special_case_resolved", DEMO_ADMIN, j.tour, "Cancelled");
-        pushDriverNotification({
-          type: "order_cancelled",
-          jobId: id,
-          tour: j.tour,
-          title: "Tour cancelled",
-          body: note || "",
-          driverId: j.driverId,
+        return api.cancelJob(id, {
+          actor: "admin",
+          reason: opts.reasonCode || "",
+          note: opts.driverMessage || note || "",
+          overrideNote: opts.overrideNote || "",
+          by: DEMO_ADMIN,
+          fromSpecialCase: true,
         });
       } else if (d === "republish") {
         j.status = "published";
@@ -3143,10 +3521,14 @@ window.AuthStore = (() => {
       return { ok: true, tour };
     },
 
-    revertJobToDraft(id) {
+    revertJobToDraft(id, opts = {}) {
       const j = api.getJob(id);
       if (!j || j.status !== "published")
         return { ok: false, reason: "not_published" };
+      const policy = api.checkScheduleChangePolicy(j, {
+        overrideNote: opts.overrideNote,
+      });
+      if (!policy.ok) return { ok: false, ...policy };
       j.status = "draft";
       j.driver = null;
       j.history = [
@@ -3164,6 +3546,14 @@ window.AuthStore = (() => {
         j.tour,
         "Removed from marketplace; editable as draft",
       );
+      if (policy.policyOverride) {
+        log(
+          "policy_override",
+          DEMO_ADMIN,
+          j.tour,
+          `Revert to draft inside cutoff: ${opts.overrideNote}`,
+        );
+      }
       emit();
       return { ok: true };
     },
@@ -3231,34 +3621,82 @@ window.AuthStore = (() => {
       ];
       if (!j || !allowed.includes(j.status))
         return { ok: false, reason: "not_cancellable" };
+
+      const actor = opts.actor || "admin";
+      const reasonCode = String(opts.reason || opts.reasonCode || "").trim();
+      const reasonText = String(opts.note || opts.reasonText || "").trim();
+      const overrideNote = String(opts.overrideNote || "").trim();
+      const dr = jobDriverRecord(j);
+      const hadDriver = !!dr;
+
+      if (actor === "admin" || actor === "customer") {
+        const policy = api.checkAdminCancelPolicy(j, { overrideNote });
+        if (!policy.ok) return policy;
+        if (cancellationPolicies.adminCancelRequiresReasonCode && !reasonCode)
+          return { ok: false, reason: "reason_code_required" };
+        const minMsg =
+          cancellationPolicies.adminCancelDriverMessageMinChars || 20;
+        if (
+          hadDriver &&
+          cancellationPolicies.adminCancelRequiresDriverMessage &&
+          reasonText.length < minMsg
+        ) {
+          return {
+            ok: false,
+            reason: "driver_message_too_short",
+            min: minMsg,
+          };
+        }
+      }
+
       j.status = "cancelled";
       j.specialCaseReport = null;
-      j.cancellationActor = opts.actor || "admin";
-      j.cancellationReason = opts.reason || "";
-      j.cancellationReasonText = opts.note || "";
+      j.cancellationActor = actor;
+      j.cancellationReason = reasonCode;
+      j.cancellationReasonText = reasonText;
       j.history = [
         ...(j.history || []),
         {
           st: "cancelled",
           at: nowStamp(),
           by: opts.by || DEMO_ADMIN,
-          meta: opts.note || "Admin cancellation",
+          meta:
+            reasonText ||
+            cancellationReasonLabel(reasonCode) ||
+            "Admin cancellation",
         },
       ];
       driverState.acceptedIds.delete(id);
       driverState.performedIds.delete(id);
       driverState.specialCaseIds.delete(id);
       driverState.cancelledIds.add(id);
-      log("job_cancelled", opts.by || DEMO_ADMIN, j.tour, opts.note || "");
-      queueAdminEmailAlert("job_cancelled", id, opts.note || "");
-      if (j.driverId) {
+      log(
+        "job_cancelled",
+        opts.by || DEMO_ADMIN,
+        j.tour,
+        reasonText || reasonCode || "",
+      );
+      queueAdminEmailAlert("job_cancelled", id, reasonText || reasonCode || "");
+      if (overrideNote) {
+        log(
+          "policy_override",
+          opts.by || DEMO_ADMIN,
+          j.tour,
+          `Admin cancel inside cutoff: ${overrideNote}`,
+        );
+      }
+      if (dr) {
+        const notifyBody =
+          reasonText ||
+          cancellationReasonLabel(reasonCode) ||
+          "Tour cancelled by dispatch.";
         pushDriverNotification({
           type: "order_cancelled",
           jobId: id,
           tour: j.tour,
           title: "Tour cancelled",
-          body: opts.note || "",
-          driverId: j.driverId,
+          body: notifyBody,
+          driverId: dr.id,
         });
       }
       emit();
@@ -3349,7 +3787,30 @@ window.AuthStore = (() => {
 
       if (editId) {
         const j = jobs.find((x) => x.id === editId);
-        if (!j || j.status !== "draft") return null;
+        if (!j || j.status !== "draft") return { error: "not_draft" };
+        if (
+          jobWasEverCommitted(j) &&
+          formScheduleSnapshot(form) !== jobScheduleSnapshot(j)
+        ) {
+          const policy = api.checkScheduleChangePolicy(j, {
+            overrideNote: form.scheduleOverrideNote,
+          });
+          if (!policy.ok) {
+            return {
+              error: policy.reason,
+              minHours: policy.minHours,
+              hoursRemaining: policy.hoursRemaining,
+            };
+          }
+          if (policy.policyOverride) {
+            log(
+              "policy_override",
+              DEMO_ADMIN,
+              j.tour,
+              `Schedule change inside cutoff: ${form.scheduleOverrideNote}`,
+            );
+          }
+        }
         Object.assign(j, fields);
         j.isNew = false;
         if (!j.distanceKm) {
@@ -3357,6 +3818,7 @@ window.AuthStore = (() => {
           j.distanceEstimateSource = "estimate";
         }
         syncDisplayFields(j);
+        processPendingAdminAttachments(j.id, form);
         log(
           "job_draft_updated",
           DEMO_ADMIN,
@@ -3389,6 +3851,7 @@ window.AuthStore = (() => {
         newJob.distanceEstimateSource = "estimate";
       }
       jobs.unshift(newJob);
+      processPendingAdminAttachments(newJob.id, form);
       log(
         "job_created",
         DEMO_ADMIN,
@@ -3433,6 +3896,12 @@ window.AuthStore = (() => {
       if (!isValidEmail(d.email)) return { ok: false, reason: "invalid_email" };
       if (drivers.some((x) => x.id !== id && x.email === d.email))
         return { ok: false, reason: "duplicate_email" };
+      if (patch.dailyJobLimit !== undefined) {
+        const n = parseInt(String(patch.dailyJobLimit).trim(), 10);
+        if (!Number.isFinite(n) || n < 1 || n > 99)
+          return { ok: false, reason: "invalid_daily_limit" };
+        d.dailyJobLimit = n;
+      }
       log("driver_updated", DEMO_ADMIN, d.name, d.driverCode || "");
       emit();
       return { ok: true };
@@ -3471,6 +3940,13 @@ window.AuthStore = (() => {
         email,
         phone: String(data.phone || "").trim(),
         notes: String(data.notes || "").trim(),
+        dailyJobLimit: (() => {
+          if (data.dailyJobLimit !== undefined && data.dailyJobLimit !== "") {
+            const n = parseInt(String(data.dailyJobLimit).trim(), 10);
+            if (Number.isFinite(n) && n >= 1 && n <= 99) return n;
+          }
+          return driverAcceptanceDefaults.defaultDailyJobLimit ?? 3;
+        })(),
         status: "Active",
         prefs: {
           postalAreas: [],
@@ -3634,8 +4110,8 @@ window.AuthStore = (() => {
       if (!id) return { ok: false, reason: "job_required" };
       const j = api.getJob(id);
       if (!j) return { ok: false, reason: "bad_job" };
-      if (j.status !== "performed")
-        return { ok: false, reason: "job_not_performed" };
+      if (!uploadAllowedStatuses().includes(j.status))
+        return { ok: false, reason: "job_not_uploadable" };
       const d = api.getCurrentDriver();
       if (!d) return { ok: false, reason: "no_driver" };
       if (j.driver && j.driver !== d.name)
@@ -3848,8 +4324,8 @@ window.AuthStore = (() => {
       if (!doc) return { ok: false, reason: "not_found" };
       const jobId = doc.jobId;
       const j = api.getJob(jobId);
-      if (!j || j.status !== "performed")
-        return { ok: false, reason: "job_not_performed" };
+      if (!j || !uploadAllowedStatuses().includes(j.status))
+        return { ok: false, reason: "job_not_uploadable" };
       const actor = opts.actor || "driver";
       if (actor === "driver") {
         if (!api.isCurrentDriverActive())
@@ -3906,6 +4382,52 @@ window.AuthStore = (() => {
       return tourDocuments.filter((x) => x.jobId === jobId);
     },
 
+    attachAdminJobDocument(jobId, file, opts = {}) {
+      const jobRaw = String(jobId || "").trim();
+      const j = api.getJob(jobRaw);
+      if (!j) return { ok: false, reason: "bad_job" };
+      if (j.status === "cancelled")
+        return { ok: false, reason: "bad_status" };
+      if (!file) return { ok: false, reason: "no_file" };
+      if (!isAllowedTourDocumentFile(file))
+        return { ok: false, reason: "invalid_type" };
+      const dr = jobDriverRecord(j);
+      const mime =
+        (file.type || guessMimeFromName(file.name) || "").trim() ||
+        "application/octet-stream";
+      const row = {
+        id: `TD-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        jobId: jobRaw,
+        driverId: dr?.id || "",
+        driverName: dr?.name || j.driver || "Dispatch",
+        fileName: file.name,
+        mimeType: mime,
+        sizeBytes: typeof file.size === "number" ? file.size : 0,
+        uploadedAt: new Date().toISOString(),
+        documentType: normalizeTourDocumentType(opts.documentType),
+        reviewStatus: "uploaded",
+        rejectionReason: "",
+        processed: false,
+        source: "admin_off_channel",
+        notes: String(opts.notes || "").trim(),
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
+      };
+      ensureTourDocumentShape(row);
+      tourDocuments.unshift(row);
+      reconcileDocumentReviewSummary(jobRaw);
+      reconcileJobInvoiceFromTourDocuments(jobRaw);
+      log(
+        "tour_document_admin_registered",
+        DEMO_ADMIN,
+        row.fileName,
+        `${jobRaw} · ${row.documentType} · admin_off_channel`,
+      );
+      queueAdminEmailAlert("tour_document_uploaded", jobRaw, row.documentType);
+      emit();
+      return { ok: true, id: row.id };
+    },
+
     registerTourDocumentAdmin(opts = {}) {
       const jobRaw =
         opts.jobId != null && String(opts.jobId).trim()
@@ -3939,7 +4461,7 @@ window.AuthStore = (() => {
         reviewStatus: "uploaded",
         rejectionReason: "",
         processed: false,
-        source: "admin",
+        source: "admin_off_channel",
         notes: String(opts.notes || "").trim(),
         supplierInvoiceNumber: "",
         supplierInvoiceDate: "",
@@ -3970,7 +4492,7 @@ window.AuthStore = (() => {
         : `${raw.replace(/\.[^.]+$/, "")}-placeholder.txt`;
       const body = [
         `${api.getAppDisplayName()} prototype — binary file not stored.`,
-        `Source: ${doc.source === "admin" ? "admin off-channel" : "driver PWA"}`,
+        `Source: ${doc.source === "admin" || doc.source === "admin_off_channel" ? "admin off-channel" : "driver PWA"}`,
         `Type: ${doc.documentType}`,
         `Original filename: ${doc.fileName}`,
         `MIME: ${doc.mimeType}`,
@@ -4198,7 +4720,7 @@ window.AuthStore = (() => {
         financeModule: false,
         ...reloadOnlyFlags,
       });
-      log("demo_reloaded", "System", "Transport Portal", "PRD v1.6 seed");
+      log("demo_reloaded", "System", "Transport Portal", "PRD v1.8 seed");
       emit();
       return { ok: true };
     },

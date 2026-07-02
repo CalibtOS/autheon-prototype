@@ -100,6 +100,7 @@ Enum master_data_change_type {
   vehicle_info
   license
   contact
+  daily_limit_override  // request to increase driver daily job acceptance limit
 }
 
 Enum notification_channel {
@@ -143,6 +144,7 @@ Table drivers {
   country_code char(2) [not null, default: 'DE']
   phone varchar(64)
   notes text
+  daily_job_limit smallint [not null, default: 3]  // configurable per-driver; hard acceptance block at limit; default value TBD with client
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
 }
@@ -225,7 +227,7 @@ Table jobs {
   cancelled_by_user_id uuid
   cancellation_actor cancellation_actor
   cancellation_reason_code varchar(100)
-  cancellation_reason_text text
+  cancellation_reason_text text  // driver-facing message when cancellation_actor is admin/dispatching; also used for driver cancel explanation
 }
 
 Table job_locations {
@@ -523,7 +525,7 @@ Table feature_flags {
 }
 
 Table app_settings {
-  key varchar(100) [pk]
+  key varchar(100) [pk]  // canonical keys: branding.display, operational.policies, cancellation.policies, driver.acceptance.defaultDailyJobLimit
   value jsonb [not null]
   updated_at timestamptz [not null]
   updated_by_user_id uuid
