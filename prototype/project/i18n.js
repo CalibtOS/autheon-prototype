@@ -891,6 +891,14 @@ window.I18n = (() => {
       newOrderPlzPh: "Postcode",
       newOrderCityPh: "City / town",
       newOrderDistanceKm: "Distance (km)",
+      newOrderEstimateDistance: "Estimate distance",
+      newOrderDistanceManualHint:
+        "Use Estimate to calculate from pickup and delivery postal codes, or enter km manually.",
+      newOrderDistanceEstimateMissingPlz:
+        "Enter pickup and delivery postal codes before estimating distance.",
+      newOrderDistanceEstimateApplied: "System estimate: {km} km ({source})",
+      newOrderDistanceSourceTable: "known route table",
+      newOrderDistanceSourceHeuristic: "postal-code approximation",
       newOrderSecScheduleTitle: "Schedule / time windows",
       newOrderScheduleHint:
         "Pickup and delivery can be on different days — each has its own date and time window.",
@@ -1983,6 +1991,14 @@ window.I18n = (() => {
       newOrderPlzPh: "PLZ",
       newOrderCityPh: "Stadt / Ort",
       newOrderDistanceKm: "Distanz (km)",
+      newOrderEstimateDistance: "Distanz schätzen",
+      newOrderDistanceManualHint:
+        "Schätzen berechnet aus Abhol- und Ziel-PLZ, oder km manuell eingeben.",
+      newOrderDistanceEstimateMissingPlz:
+        "Abhol- und Ziel-PLZ eingeben, bevor die Distanz geschätzt wird.",
+      newOrderDistanceEstimateApplied: "Systemschätzung: {km} km ({source})",
+      newOrderDistanceSourceTable: "bekannte Route",
+      newOrderDistanceSourceHeuristic: "PLZ-Näherung",
       newOrderSecScheduleTitle: "Termin / Zeitfenster",
       newOrderScheduleHint:
         "Abholung und Lieferung können an unterschiedlichen Tagen liegen — jeweils mit eigenem Datum und Zeitfenster.",

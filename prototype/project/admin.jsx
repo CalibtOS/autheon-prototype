@@ -2097,6 +2097,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
   const [activeSec, setActiveSec] = useStateA("01");
   const [adminAttachFiles, setAdminAttachFiles] = useStateA([]);
   const [scheduleOverrideNote, setScheduleOverrideNote] = useStateA("");
+  const [distanceEstimateNote, setDistanceEstimateNote] = useStateA("");
   const adminDocFileRef = useRefA(null);
 
   useEffectA(() => {
@@ -2104,8 +2105,24 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
     setActiveSec("01");
     setAdminAttachFiles([]);
     setScheduleOverrideNote("");
+    setDistanceEstimateNote("");
   }, [editJobId]);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const runDistanceEstimate = () => {
+    const r = store.estimateDistanceFromForm(form);
+    if (!r.ok) {
+      setDistanceEstimateNote(t("newOrderDistanceEstimateMissingPlz"));
+      return;
+    }
+    const sourceLabel =
+      r.source === "table"
+        ? t("newOrderDistanceSourceTable")
+        : t("newOrderDistanceSourceHeuristic");
+    set("distance", String(r.km));
+    setDistanceEstimateNote(
+      t("newOrderDistanceEstimateApplied", { km: r.km, source: sourceLabel }),
+    );
+  };
   const applyMasterAddress = (side, addrId) => {
     if (!addrId) {
       if (side === "pickup") {
@@ -2415,14 +2432,45 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
               />
             </div>
             <div style={{ marginTop: 14 }}>
-              <label className="field-label">{t("newOrderDistanceKm")}</label>
-              <input
-                className="input mono"
-                style={{ maxWidth: 200 }}
-                placeholder="0"
-                value={form.distance}
-                onChange={(e) => set("distance", e.target.value)}
-              />
+              <label className="field-label" htmlFor="new-order-distance-km">
+                {t("newOrderDistanceKm")}
+              </label>
+              <p className="req-panel-desc" style={{ marginTop: 6 }}>
+                {t("newOrderDistanceManualHint")}
+              </p>
+              <div
+                className="req-panel-actions"
+                style={{ marginTop: 10, alignItems: "flex-end" }}
+              >
+                <input
+                  id="new-order-distance-km"
+                  className="input mono"
+                  style={{ maxWidth: 140 }}
+                  placeholder="0"
+                  value={form.distance}
+                  onChange={(e) => {
+                    set("distance", e.target.value);
+                    setDistanceEstimateNote("");
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn primary touch-target"
+                  disabled={!form.startPlz?.trim() || !form.endPlz?.trim()}
+                  onClick={runDistanceEstimate}
+                >
+                  {t("newOrderEstimateDistance")}
+                </button>
+              </div>
+              {distanceEstimateNote ? (
+                <div
+                  className="inline-alert inline-alert-info"
+                  role="status"
+                  style={{ marginTop: 10 }}
+                >
+                  {distanceEstimateNote}
+                </div>
+              ) : null}
             </div>
           </section>
 

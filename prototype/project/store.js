@@ -1904,6 +1904,24 @@ window.AuthStore = (() => {
     return Math.max(40, Math.min(720, Math.round(base / 8)));
   }
 
+  function distanceEstimateSourceForJob(job) {
+    const key = distanceKey(job);
+    if (key && DISTANCE_TABLE[key]) return "table";
+    if (job?.pickup?.postalCode && job?.delivery?.postalCode) return "heuristic";
+    return "unknown";
+  }
+
+  function jobLikeFromForm(form) {
+    return {
+      pickup: {
+        postalCode: String(form.startPlz || form.pickup?.postalCode || "").trim(),
+      },
+      delivery: {
+        postalCode: String(form.endPlz || form.delivery?.postalCode || "").trim(),
+      },
+    };
+  }
+
   function normalizeDriverPrefs(prefs = {}) {
     const p = prefs || {};
     const legacyPush = p.push === true || p.pushEnabled === true;
@@ -2939,7 +2957,26 @@ window.AuthStore = (() => {
           : jobs.find((x) => x.id === jobOrId);
       if (!j) return { ok: false, km: 0 };
       const km = estimateDistanceKm(j);
-      return { ok: true, km, source: "estimate" };
+      return {
+        ok: true,
+        km,
+        source: distanceEstimateSourceForJob(j),
+      };
+    },
+
+    estimateDistanceFromForm(form) {
+      const jobLike = jobLikeFromForm(form || {});
+      const pickup = jobLike.pickup.postalCode;
+      const delivery = jobLike.delivery.postalCode;
+      if (!pickup || !delivery) {
+        return { ok: false, reason: "postal_codes_required" };
+      }
+      const km = estimateDistanceKm(jobLike);
+      return {
+        ok: true,
+        km,
+        source: distanceEstimateSourceForJob(jobLike),
+      };
     },
 
     recalculateDistance(id) {

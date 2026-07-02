@@ -398,6 +398,8 @@ const v18Needles = [
   ["const canUpload = uploadGate.ok", "driver upload UI uses active-tour gate"],
   ["getDriverDailyAcceptanceSummary", "driver daily limit summary API"],
   ["DriverDailyLimitCard", "driver profile daily limit card"],
+  ["estimateDistanceFromForm", "estimate distance from new job form"],
+  ["newOrderEstimateDistance", "estimate distance button on new job form"],
 ];
 out("");
 out("PRD v1.8 checks:");
@@ -421,6 +423,10 @@ for (const [needle, label] of v18Needles) {
           ? inStore
         : needle === "DriverDailyLimitCard"
           ? driver.includes(needle)
+        : needle === "estimateDistanceFromForm"
+          ? inStore
+        : needle === "newOrderEstimateDistance"
+          ? admin.includes(needle) && i18n.includes(needle)
         : needle === "req-panel"
           ? driver.includes(needle)
         : inStore;
