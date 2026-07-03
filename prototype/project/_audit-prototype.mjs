@@ -395,6 +395,11 @@ const v18Needles = [
   ["DailyLimitRequestSheet", "driver limit increase request UI"],
   ["daily_limit_override", "daily_limit_override change type"],
   ["TD-SEED-ACTIVE-001", "seed document on active tour"],
+  ["TD-SEED-ADMIN-0845", "admin reference document on active tour"],
+  ["canDriverReplaceTourDocument", "driver replace blocked for admin docs"],
+  ["getOfficialTourDocumentsForJob", "official dispatch documents API"],
+  ["JobOfficialTourDocuments", "driver read-only reference documents UI"],
+  ["official_doc_not_replaceable", "driver replace guard for dispatch docs"],
   ["const canUpload = uploadGate.ok", "driver upload UI uses active-tour gate"],
   ["getDriverDailyAcceptanceSummary", "driver daily limit summary API"],
   ["DriverDailyLimitCard", "driver profile daily limit card"],
@@ -413,8 +418,14 @@ for (const [needle, label] of v18Needles) {
         ? driver.includes(needle)
       : needle === "newOrderSecDocuments" || needle === "adminUsersFieldDailyLimit"
         ? i18n.includes(needle) && (needle === "adminUsersFieldDailyLimit" ? admin.includes("dailyJobLimit") : admin.includes("sec-07"))
-      : needle === "TD-SEED-ACTIVE-001"
+      : needle === "TD-SEED-ACTIVE-001" || needle === "TD-SEED-ADMIN-0845"
         ? inStore
+        : needle === "canDriverReplaceTourDocument" ||
+            needle === "getOfficialTourDocumentsForJob" ||
+            needle === "official_doc_not_replaceable"
+          ? inStore
+        : needle === "JobOfficialTourDocuments"
+          ? driver.includes(needle)
         : needle === "const canUpload = uploadGate.ok"
           ? driver.includes(needle)
         : needle === "SameDayOverlapSheet"

@@ -186,6 +186,8 @@ window.I18n = (() => {
       tourDocReplaceButton: "Replace file",
       tourDocReplaceNotAllowed: "Accepted documents cannot be replaced. Contact dispatch if needed.",
       tourDocReplaceNotOwner: "You can only replace your own uploads for this tour.",
+      tourDocOfficialNotReplaceable:
+        "Documents from dispatch cannot be replaced. Upload your own receipts in Tour documents below.",
       tourDocChooseCategory: "Choose document type",
       tourDocInvoice: "Billing invoice",
       tourDocFuelReceipt: "Fuel receipt",
@@ -327,6 +329,10 @@ window.I18n = (() => {
       notGenerated: "Not generated",
       demoFile: "demo file",
       transportOrderPdf: "Transport order (PDF)",
+      officialTourDocumentsSection: "Reference documents",
+      officialTourDocHint:
+        "Provided by dispatch alongside the transport order. View or download only.",
+      officialTourDocFromDispatch: "From dispatch",
       regenerate: "Regenerate",
       toastAssignedElsewhere: "This tour was already assigned to another driver.",
       exportGenerated: "Export generated",
@@ -1277,6 +1283,8 @@ window.I18n = (() => {
         "Angenommene Dokumente können nicht ersetzt werden. Bei Bedarf Disposition kontaktieren.",
       tourDocReplaceNotOwner:
         "Sie können nur eigene Uploads für diese Tour ersetzen.",
+      tourDocOfficialNotReplaceable:
+        "Dokumente der Disposition können nicht ersetzt werden. Eigene Belege unten unter Tour-Dokumente hochladen.",
       tourDocChooseCategory: "Dokumenttyp wählen",
       tourDocInvoice: "Abrechnungsrechnung",
       tourDocFuelReceipt: "Tankbeleg",
@@ -1420,6 +1428,10 @@ window.I18n = (() => {
       notGenerated: "Nicht erzeugt",
       demoFile: "Demo-Datei",
       transportOrderPdf: "Transportauftrag (PDF)",
+      officialTourDocumentsSection: "Referenzdokumente",
+      officialTourDocHint:
+        "Von der Disposition bereitgestellt — neben dem Transportauftrag. Nur ansehen oder herunterladen.",
+      officialTourDocFromDispatch: "Von Disposition",
       regenerate: "Neu erzeugen",
       toastAssignedElsewhere: "Diese Tour wurde bereits einem anderen Fahrer zugewiesen.",
       exportGenerated: "Export erstellt",

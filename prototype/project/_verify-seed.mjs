@@ -56,10 +56,14 @@ function ok(msg) {
 }
 
 const activeSeedDoc = docs.find((d) => d.id === "TD-SEED-ACTIVE-001");
-const performedDocCount = docs.filter((d) => d.id !== "TD-SEED-ACTIVE-001").length;
+const adminSeedDoc = docs.find((d) => d.id === "TD-SEED-ADMIN-0845");
+const performedDocCount = docs.filter((d) => {
+  const j = jobs.find((x) => x.id === d.jobId);
+  return j?.status === "performed";
+}).length;
 
-if (docs.length !== 7) fail(`expected 7 tour documents, got ${docs.length}`);
-else ok("7 tour documents (6 performed + 1 active seed)");
+if (docs.length !== 8) fail(`expected 8 tour documents, got ${docs.length}`);
+else ok("8 tour documents (6 performed + 2 on active 0845)");
 
 if (performedDocCount !== 6) fail(`expected 6 performed-only seed docs, got ${performedDocCount}`);
 else ok("6 documents on performed job 0842");
@@ -100,6 +104,14 @@ const j845 = jobs.find((j) => j.id === "A-2026-00845");
 if (!activeSeedDoc || activeSeedDoc.jobId !== j845?.id)
   fail("active job 0845 must have TD-SEED-ACTIVE-001");
 else ok("0845 (accepted/active) has active-tour seed document");
+
+if (!adminSeedDoc || adminSeedDoc.jobId !== j845?.id)
+  fail("active job 0845 must have TD-SEED-ADMIN-0845 admin_off_channel doc");
+else ok("0845 has admin reference document (read-only for driver)");
+
+if (!store.canDriverReplaceTourDocument(adminSeedDoc))
+  ok("driver cannot replace admin_off_channel document");
+else fail("canDriverReplaceTourDocument should be false for admin doc");
 
 const j846 = jobs.find((j) => j.id === "A-2026-00846");
 if (docs.some((d) => d.jobId === j846?.id))

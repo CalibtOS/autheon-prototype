@@ -132,6 +132,8 @@ const tourDocUploadErrorMessage = (reason, t) => {
     return t("invoiceUploadTourRequired");
   if (reason === "not_replaceable") return t("tourDocReplaceNotAllowed");
   if (reason === "not_owner") return t("tourDocReplaceNotOwner");
+  if (reason === "official_doc_not_replaceable")
+    return t("tourDocOfficialNotReplaceable");
   return t("invoiceUploadTourRequired");
 };
 
@@ -139,7 +141,7 @@ const jobNeedsDocCorrection = (job, store) =>
   job.status === "performed" &&
   (/correction/i.test(String(job.documentReviewSummary || "")) ||
     store
-      .getTourDocumentsForJob(job.id)
+      .getDriverTourDocumentsForJob(job.id)
       .some((d) =>
         AuthStore.tourDocumentNeedsDriverCorrection(d.reviewStatus),
       ));
@@ -1539,6 +1541,63 @@ const TOUR_DOC_TYPES = [
   "other_receipt",
 ];
 
+const JobOfficialTourDocuments = ({ job }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const docs = store.getOfficialTourDocumentsForJob(job.id);
+  if (!docs.length) return null;
+
+  return (
+    <>
+      <Lbl style={{ marginTop: 12, display: "block" }}>
+        {t("officialTourDocumentsSection")}
+      </Lbl>
+      <p
+        className="req-panel-desc"
+        style={{ margin: "6px 0 10px", fontSize: 12.5 }}
+      >
+        {t("officialTourDocHint")}
+      </p>
+      <div style={{ display: "grid", gap: 10, marginTop: 4 }}>
+        {docs.map((doc) => (
+          <div
+            key={doc.id}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: 12,
+              border: "1px solid var(--line)",
+              borderRadius: "var(--r-2)",
+            }}
+          >
+            <div style={{ color: "var(--primary-ink)", flexShrink: 0 }}>
+              <Ic.Pdf />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="mono" style={{ fontSize: 12, wordBreak: "break-all" }}>
+                {doc.fileName}
+              </div>
+              <div className="label" style={{ marginTop: 2 }}>
+                {t("officialTourDocFromDispatch")} ·{" "}
+                {displayTourDocType(doc.documentType, t)}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn icon sm"
+              onClick={() => store.downloadTourDocumentPlaceholder(doc.id)}
+              title={t("download")}
+            >
+              <Ic.Down />
+            </button>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+};
+
 const JobTourDocuments = ({ job }) => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -1547,7 +1606,7 @@ const JobTourDocuments = ({ job }) => {
   const jobId = job.id;
   const uploadGate = store.canDriverUploadTourDocument(jobId);
   const canUpload = uploadGate.ok;
-  const uploads = store.getTourDocumentsForJob(jobId);
+  const uploads = store.getDriverTourDocumentsForJob(jobId);
   const [categoryModal, setCategoryModal] = useState(false);
   const [pendingType, setPendingType] = useState(null);
   const [replaceDocId, setReplaceDocId] = useState(null);
@@ -1603,11 +1662,8 @@ const JobTourDocuments = ({ job }) => {
     replaceInputRef.current?.click();
   };
 
-  const canReplaceDoc = (u) => {
-    if (!canUpload) return false;
-    const st = AuthStore.normalizeTourDocumentReviewStatus(u.reviewStatus);
-    return ["uploaded", "rejected", "correction_required"].includes(st);
-  };
+  const canReplaceDoc = (u) =>
+    canUpload && store.canDriverReplaceTourDocument(u);
 
   if (!active) return null;
 
@@ -2110,6 +2166,8 @@ const JobUnlocked = ({
             <Ic.Down />
           </button>
         </div>
+
+        <JobOfficialTourDocuments job={job} />
 
         <JobTourDocuments job={job} />
 

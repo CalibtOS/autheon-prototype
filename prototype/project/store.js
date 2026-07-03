@@ -76,6 +76,29 @@ window.AuthStore = (() => {
     };
   }
 
+  function isOfficialTourDocumentSource(source) {
+    const s = String(source || "")
+      .trim()
+      .toLowerCase();
+    return (
+      s === "admin_off_channel" || s === "admin" || s === "generated"
+    );
+  }
+
+  function isDriverTourDocumentSource(source) {
+    const s = String(source || "")
+      .trim()
+      .toLowerCase();
+    return s === "driver" || s === "driver_pwa";
+  }
+
+  function canDriverReplaceTourDocument(doc) {
+    if (!doc || isOfficialTourDocumentSource(doc.source)) return false;
+    if (!isDriverTourDocumentSource(doc.source)) return false;
+    const st = normalizeTourDocumentReviewStatus(doc.reviewStatus);
+    return ["uploaded", "rejected", "correction_required"].includes(st);
+  }
+
   const SETTLEMENT_STATES = [
     "Not Started",
     "Pending",
@@ -1313,6 +1336,24 @@ window.AuthStore = (() => {
         supplierInvoiceDate: "",
       },
       {
+        id: "TD-SEED-ADMIN-0845",
+        jobId: "A-2026-00845",
+        driverId: "DRV-0228",
+        driverName: DEMO_DRIVER,
+        fileName: "vehicle-photo-0845.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 204800,
+        uploadedAt: "2026-04-22T16:30:00.000Z",
+        documentType: "other_proof",
+        reviewStatus: "uploaded",
+        rejectionReason: "",
+        processed: false,
+        source: "admin_off_channel",
+        notes: "Dispatch reference photo attached at job creation.",
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
+      },
+      {
         id: "TD-SEED-001",
         jobId: "A-2026-00842",
         driverId: "DRV-0228",
@@ -2462,6 +2503,9 @@ window.AuthStore = (() => {
     tourDocumentNeedsDriverCorrection,
     isTourBillingInvoiceType,
     tourDocumentReviewActions,
+    isOfficialTourDocumentSource,
+    isDriverTourDocumentSource,
+    canDriverReplaceTourDocument,
     SETTLEMENT_STATES,
     DEMO_DRIVER,
     parseDottedDate,
@@ -4143,7 +4187,7 @@ window.AuthStore = (() => {
         reviewStatus: "uploaded",
         rejectionReason: "",
         processed: false,
-        source: opts.source || "driver",
+        source: "driver",
         notes: opts.notes || "",
         supplierInvoiceNumber: "",
         supplierInvoiceDate: "",
@@ -4336,6 +4380,10 @@ window.AuthStore = (() => {
           return { ok: false, reason: "not_assigned_driver" };
         if (doc.driverId && doc.driverId !== d.id)
           return { ok: false, reason: "not_owner" };
+        if (isOfficialTourDocumentSource(doc.source))
+          return { ok: false, reason: "official_doc_not_replaceable" };
+        if (!isDriverTourDocumentSource(doc.source))
+          return { ok: false, reason: "official_doc_not_replaceable" };
       }
       const st = normalizeTourDocumentReviewStatus(doc.reviewStatus);
       const replaceable = ["rejected", "correction_required", "uploaded"];
@@ -4381,6 +4429,22 @@ window.AuthStore = (() => {
       if (!jobId) return [];
       return tourDocuments.filter((x) => x.jobId === jobId);
     },
+
+    getOfficialTourDocumentsForJob(jobId) {
+      return api
+        .getTourDocumentsForJob(jobId)
+        .filter((doc) => isOfficialTourDocumentSource(doc.source));
+    },
+
+    getDriverTourDocumentsForJob(jobId) {
+      return api
+        .getTourDocumentsForJob(jobId)
+        .filter((doc) => isDriverTourDocumentSource(doc.source));
+    },
+
+    isOfficialTourDocumentSource,
+    isDriverTourDocumentSource,
+    canDriverReplaceTourDocument,
 
     attachAdminJobDocument(jobId, file, opts = {}) {
       const jobRaw = String(jobId || "").trim();

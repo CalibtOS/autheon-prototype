@@ -80,7 +80,11 @@ Replaces the removed v1.4 “return request” flow: cancel order or report not 
 
 ## Admin off-channel documents (`tourDocuments[].source`)
 
-`admin_off_channel` — PDF/images attached by dispatch at job creation/edit or via Tour documents register. Distinct from driver PWA uploads (`driver`).
+`admin_off_channel` — PDF/images attached by dispatch at job creation/edit or via Tour documents register. Distinct from driver PWA uploads (`driver` / `driver_pwa`).
+
+**Driver permissions:** Admin off-channel documents are **read-only** for drivers (view/download), same as the generated transport order. Drivers cannot replace dispatch-provided documents; only their own `driver_pwa` uploads can be replaced when review status allows.
+
+**Admin permissions:** Dispatch may replace or update `admin_off_channel` documents from the admin console. Transport order PDF uses regenerate, not driver-style file replace.
 
 ## Driver daily job limit (`drivers.dailyJobLimit`)
 

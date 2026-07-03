@@ -1,5 +1,7 @@
 # AUTHEON database logical model
 
+> **Status override:** Updated 2026-07-03 - PRD v1.8 plus backend sync: upload-core `upload_assets`, upload-asset links for feature tables, generated PDF document-file versioning, explicit job date/time windows, and driver daily limits. [`schema.dbml`](schema.dbml) is the accompanying relational schema. [`../requirements/prd.json`](../requirements/prd.json) remains the functional source of truth.
+
 > **Status:** Updated 2026-07-02 — PRD v1.8: `daily_job_limit`, app_settings operational policies, admin cancel driver message. [`schema.dbml`](schema.dbml) is the accompanying relational schema. [`../requirements/prd.json`](../requirements/prd.json) remains the functional source of truth.
 
 ## Scope and modelling approach
@@ -21,7 +23,7 @@ customers ───────────────────────�
 locations (optional master-data reference) ──────────────┘
 
 infopoint_documents / infopoint_news ──< read receipts
-outbox_events ──< notification_deliveries
+user_notifications ──< notification_deliveries
 ```
 
 ## Core entities
@@ -32,9 +34,9 @@ outbox_events ──< notification_deliveries
 | Master data              | `customers`, `locations`                                                                                           | Reusable reporting/billing customers and pickup/delivery locations, including customer type, billing notes, and operational instructions. Deactivation replaces deletion where a record is referenced. |
 | Tours                    | `jobs`, `job_locations`, `job_assignments`, `job_status_history`, `job_distance_estimates`, `job_financials`       | Current operational state plus immutable historical context.                                                                                                                                           |
 | Problems                 | `job_problem_reports`, `problem_report_evidence`                                                                   | Cancellation and not-performable reports, reasons, evidence, and the pre-problem status needed for dispatch resolution.                                                                                |
-| Documents                | `job_documents`, `document_files`, `job_document_reviews`, `generated_job_documents`                               | Business document, immutable file versions, review history, and generated transport-order PDFs.                                                                                                        |
+| Documents                | `job_documents`, `document_files`, `job_document_reviews`, `generated_job_documents`, `upload_assets`              | Business document, immutable file versions, review history, generated transport-order PDFs, and upload-core binary metadata.                                                                            |
 | Content                  | `infopoint_documents`, `infopoint_news`, `infopoint_news_reads`                                                    | Driver-facing general documents and one-way news.                                                                                                                                                      |
-| Notifications            | `notification_preferences`, `push_subscriptions`, `user_notifications`, `outbox_events`, `notification_deliveries` | In-app notifications, driver preferences, push endpoints, and reliable external delivery.                                                                                                              |
+| Notifications            | `notification_preferences`, `push_subscriptions`, `user_notifications`, `outbox_events`, `notification_deliveries` | In-app notifications, driver preferences, push endpoints, durable business events, and per-notification delivery attempts.                                                                                                              |
 | Control and traceability | `feature_flags`, `audit_events`, `master_data_change_requests`                                                     | Optional rollout flags, append-only audit, and the one-open-request driver profile-change workflow.                                                                                                    |
 
 ## Prototype coverage review
@@ -52,7 +54,7 @@ The following maps every persisted prototype collection in `prototype/project/st
 | `driverState`              | Derived from jobs, assignments, documents, and notifications                                   | Intentionally not persisted: it is a cacheable UI projection and must not become a second source of truth.                                                                                       |
 | `tourDocuments`            | `job_documents`, `document_files`, `job_document_reviews`                                      | Covered: metadata, source, file versions, review/processed state, rejection, correction, and invoice fields.                                                                                     |
 | `driverNotifications`      | `user_notifications`                                                                           | Covered: driver recipient, type, tour deep link, read state, title, body, and timestamp.                                                                                                         |
-| `adminEmailQueue`          | `outbox_events`, `notification_deliveries`, `user_notifications`                               | Covered: durable event, per-channel delivery attempt/status, recipient, and admin in-app feed.                                                                                                   |
+| `adminEmailQueue`          | `outbox_events`, `user_notifications`, `notification_deliveries`                               | Covered: durable business event, admin in-app feed, and per-notification channel delivery attempt/status.                                                                                                   |
 | `masterDataChangeRequests` | `master_data_change_requests`                                                                  | Covered: submit snapshot, proposed changes, open/approved/rejected status, resolver, and notes.                                                                                                  |
 | `featureFlags`             | `feature_flags`                                                                                | Covered: auditable rollout configuration.                                                                                                                                                        |
 | `branding`                 | `app_settings`                                                                                 | Covered: configurable display name and future legal/branding settings without hard-coding product copy.                                                                                          |
@@ -113,9 +115,17 @@ Status transitions belong in a transaction/service layer, not an unconstrained c
 
 ## Documents and object storage
 
-Files are not stored in PostgreSQL blobs. `document_files.storage_key` points to private object storage and is immutable once committed. Replacing a file creates a new version; it does not overwrite the previous file record. This preserves review evidence and supports audit, retention, malware scan state, and later legal-hold rules.
+Files are not stored in PostgreSQL blobs. `upload_assets` is the core binary metadata table and is the source of truth for storage key, checksum, MIME type, size, access, generic technical upload profile, and deletion state. Feature tables reference `upload_asset_id` and enforce business authorization and meaning.
 
-`job_documents` represents the business document type on the tour. Its `current_file_id` points to the active immutable file version; older files remain linked through `document_files.supersedes_file_id`. An invoice is a document with `document_type = 'invoice'`; it is not a separate invoice table in Version 1. Its supplier invoice fields and review/processed state remain on the document. `job_financials` holds the cached invoice/payment summary required by the current prototype, including an explicit admin override, without turning Version 1 into an accounting ledger.
+`job_documents` represents the business document type on the tour. Its `current_file_id` points to the active immutable file version; older files remain linked through `document_files.supersedes_file_id`. `document_files.upload_asset_id` points to immutable binary metadata in `upload_assets`. Denormalized fields such as `storage_key`, `mime_type`, and `file_size_bytes` may be retained on `document_files` as audit snapshots, but the upload asset remains the binary source of truth.
+
+Generated transport-order PDFs are represented as generated job documents linked to a `document_files` row (`generated_job_documents.document_file_id`), not as standalone raw storage keys. This keeps generated documents inside the same versioning, download authorization, and audit model as driver/admin tour documents.
+
+Infopoint documents and problem report evidence are not job-document review artifacts. They link directly to `upload_assets` through `infopoint_documents.upload_asset_id` and `problem_report_evidence.upload_asset_id`.
+
+`upload_assets.owner_id` intentionally remains a scalar actor/user identifier in the backend core upload module. Feature tables enforce foreign keys to `upload_assets`; core uploads do not import the users module just to enforce `owner_id`, because that would break the core-module boundary. User existence and business authorization are enforced by feature use cases before upload creation.
+
+An invoice is a document with `document_type = 'invoice'`; it is not a separate invoice table in Version 1. Its supplier invoice fields and review/processed state remain on the document. `job_financials` holds the cached invoice/payment summary required by the current prototype, including an explicit admin override, without turning Version 1 into an accounting ledger.
 
 ## Required constraints and indexes
 
