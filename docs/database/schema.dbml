@@ -1,6 +1,6 @@
 ﻿// AUTHEON Version 1 database draft — PostgreSQL target.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
-// Last updated: 2026-07-01 — aligned users table with autheon-be UserEntity and @autheon/shared enums.
+// Last updated: 2026-07-03 — aligned upload-core asset model, document versioning, infopoint/problem upload links, and explicit job location windows with autheon-be TypeORM sync target.
 
 Enum user_status {
   pending_verification
@@ -100,6 +100,7 @@ Enum master_data_change_type {
   vehicle_info
   license
   contact
+  daily_limit_override  // request to increase driver daily job acceptance limit
 }
 
 Enum notification_channel {
@@ -143,6 +144,7 @@ Table drivers {
   country_code char(2) [not null, default: 'DE']
   phone varchar(64)
   notes text
+  daily_job_limit smallint [not null, default: 3]  // configurable per-driver; hard acceptance block at limit; default value TBD with client
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
 }
@@ -202,7 +204,7 @@ Table jobs {
   vehicle_manufacturer varchar(128)
   vehicle_model varchar(255) [not null]
   vehicle_type varchar(100) [not null]
-  license_plate varchar(32)
+  licenseplate varchar(32)
   vin varchar(17)
   axle_type varchar(32) [not null]
   internal_notes text
@@ -225,34 +227,36 @@ Table jobs {
   cancelled_by_user_id uuid
   cancellation_actor cancellation_actor
   cancellation_reason_code varchar(100)
-  cancellation_reason_text text
+  cancellation_reason_text text  // driver-facing message when cancellation_actor is admin/dispatching; also used for driver cancel explanation
 }
 
 Table job_locations {
   id uuid [pk]
   job_id uuid [not null]
-  location_role location_role [not null]
-  master_location_id uuid
-  name_snapshot varchar(255) [not null]
-  street_snapshot varchar(255) [not null]
-  house_number_snapshot varchar(32)
-  postal_code_snapshot varchar(32) [not null]
-  city_snapshot varchar(128) [not null]
-  country_code_snapshot char(2) [not null]
-  contact_name_snapshot varchar(255) [not null]
-  alternate_contact_name_snapshot varchar(255)
-  phone_snapshot varchar(64) [not null]
-  second_phone_snapshot varchar(64)
-  email_snapshot citext
-  notes_snapshot text
-  scheduled_date date [not null]
+  location_type location_role [not null]
+  sequence int [not null, default: 0]
+  location_id uuid
+  name varchar(255) [not null] // immutable snapshot
+  street varchar(255) [not null] // immutable snapshot
+  house_number varchar(32)
+  postal_code varchar(32) [not null] // immutable snapshot
+  city varchar(128) [not null] // immutable snapshot
+  country_code char(2) [not null]
+  contact_name varchar(255)
+  alternate_contact_name varchar(255)
+  phone varchar(64)
+  second_phone varchar(64)
+  email citext
+  notes text
+  scheduled_date date
   window_start time
   window_end time
   window_is_flexible boolean [not null, default: false]
+  completed_at timestamptz
 
   indexes {
-    (job_id, location_role) [unique]
-    (postal_code_snapshot, scheduled_date)
+    (job_id, location_type, sequence) [unique]
+    (postal_code, scheduled_date)
   }
 }
 
@@ -336,7 +340,8 @@ Table job_problem_reports {
 Table problem_report_evidence {
   id uuid [pk]
   problem_report_id uuid [not null]
-  document_file_id uuid [not null]
+  upload_asset_id uuid [not null]
+  original_filename_snapshot varchar(500)
   created_at timestamptz [not null]
 }
 
@@ -344,7 +349,7 @@ Table job_documents {
   id uuid [pk]
   job_id uuid [not null]
   document_type document_type [not null]
-  source varchar(32) [not null] // driver_pwa | admin_off_channel | generated
+  source varchar(32) [not null] // driver_pwa | admin_off_channel | generated — drivers replace driver_pwa only
   uploaded_by_user_id uuid
   review_status document_review_status [not null, default: 'uploaded']
   processed_at timestamptz
@@ -361,14 +366,16 @@ Table job_documents {
 Table document_files {
   id uuid [pk]
   job_document_id uuid
+  upload_asset_id uuid [not null]
   original_filename varchar(500) [not null]
   mime_type varchar(255) [not null]
-  size_bytes bigint [not null]
+  file_size_bytes bigint [not null]
   sha256 char(64)
   storage_key varchar(1024) [not null, unique]
   scan_status varchar(32) [not null, default: 'pending']
   scanned_at timestamptz
-  created_at timestamptz [not null]
+  uploaded_by_user_id uuid [not null]
+  uploaded_at timestamptz [not null]
   supersedes_file_id uuid
   superseded_at timestamptz
 }
@@ -422,11 +429,31 @@ Table infopoint_documents {
   category varchar(100)
   scope varchar(100) [not null, default: 'global']
   version_label varchar(64)
-  current_file_id uuid
+  upload_asset_id uuid [not null]
   is_visible boolean [not null, default: true]
   published_at timestamptz [not null]
   updated_at timestamptz [not null]
   updated_by_user_id uuid
+}
+
+Table upload_assets {
+  id uuid [pk]
+  storage_key varchar(512) [not null, unique]
+  original_name varchar(255) [not null]
+  filename varchar(255) [not null]
+  mime_type varchar(128) [not null]
+  extension varchar(16) [not null]
+  size int [not null]
+  checksum varchar(64) [not null]
+  access varchar(32) [not null] // public | private
+  purpose varchar(64) [not null] // generic @autheon/shared UploadPurpose value, e.g. private-document-or-image
+  owner_id uuid [not null]
+  status varchar(32) [not null, default: 'active']
+  url varchar(1024)
+  relative_path varchar(1024)
+  variants jsonb [not null, default: '[]']
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
 }
 
 Table infopoint_news {
@@ -503,15 +530,13 @@ Table outbox_events {
 
 Table notification_deliveries {
   id uuid [pk]
-  outbox_event_id uuid [not null]
+  user_notification_id uuid [not null]
   channel notification_channel [not null]
-  recipient_user_id uuid
-  recipient_address varchar(500)
   status message_delivery_status [not null, default: 'pending']
-  provider_message_id varchar(255)
-  attempted_at timestamptz
+  attempt_count int [not null, default: 0]
+  last_attempt_at timestamptz
   delivered_at timestamptz
-  failure_reason text
+  error_message text
 }
 
 Table feature_flags {
@@ -523,7 +548,7 @@ Table feature_flags {
 }
 
 Table app_settings {
-  key varchar(100) [pk]
+  key varchar(100) [pk]  // canonical keys: branding.display, operational.policies, cancellation.policies, driver.acceptance.defaultDailyJobLimit
   value jsonb [not null]
   updated_at timestamptz [not null]
   updated_by_user_id uuid
@@ -552,7 +577,7 @@ Ref: jobs.current_driver_id > drivers.id
 Ref: jobs.created_by_user_id > users.id
 Ref: jobs.cancelled_by_user_id > users.id
 Ref: job_locations.job_id > jobs.id
-Ref: job_locations.master_location_id > locations.id
+Ref: job_locations.location_id > locations.id
 Ref: job_assignments.job_id > jobs.id
 Ref: job_assignments.driver_id > drivers.id
 Ref: job_assignments.assigned_by_user_id > users.id
@@ -568,12 +593,13 @@ Ref: job_problem_reports.reported_by_user_id > users.id
 Ref: job_problem_reports.reported_by_customer_id > customers.id
 Ref: job_problem_reports.resolved_by_user_id > users.id
 Ref: problem_report_evidence.problem_report_id > job_problem_reports.id
-Ref: problem_report_evidence.document_file_id > document_files.id
+Ref: problem_report_evidence.upload_asset_id > upload_assets.id
 
 Ref: job_documents.job_id > jobs.id
 Ref: job_documents.uploaded_by_user_id > users.id
 Ref: job_documents.processed_by_user_id > users.id
 Ref: document_files.job_document_id > job_documents.id
+Ref: document_files.upload_asset_id > upload_assets.id
 Ref: document_files.supersedes_file_id > document_files.id
 Ref: job_documents.current_file_id > document_files.id
 Ref: job_document_reviews.job_document_id > job_documents.id
@@ -587,7 +613,7 @@ Ref: master_data_change_requests.driver_id > drivers.id
 Ref: master_data_change_requests.requested_by_user_id > users.id
 Ref: master_data_change_requests.resolved_by_user_id > users.id
 Ref: master_data_change_requests.reviewed_by_user_id > users.id
-Ref: infopoint_documents.current_file_id > document_files.id
+Ref: infopoint_documents.upload_asset_id > upload_assets.id
 Ref: infopoint_documents.updated_by_user_id > users.id
 Ref: infopoint_news.created_by_user_id > users.id
 Ref: infopoint_news_reads.news_id > infopoint_news.id
@@ -597,8 +623,7 @@ Ref: notification_preferences.user_id > users.id
 Ref: push_subscriptions.user_id > users.id
 Ref: user_notifications.user_id > users.id
 Ref: user_notifications.job_id > jobs.id
-Ref: notification_deliveries.outbox_event_id > outbox_events.id
-Ref: notification_deliveries.recipient_user_id > users.id
+Ref: notification_deliveries.user_notification_id > user_notifications.id
 Ref: feature_flags.updated_by_user_id > users.id
 Ref: app_settings.updated_by_user_id > users.id
 Ref: audit_events.actor_user_id > users.id

@@ -1,6 +1,6 @@
 {
   "feature": "Vehicle Transport Platform Phase 1 - working app name configurable",
-  "version": "PRD v1.6 - Feedback.pdf traceability May 2026 (prototype sync 2026-05-25)",
+  "version": "PRD v1.8 - v1.7 prototype sync; admin cancel driver message; operational app settings (2026-07-02)",
   "goal": "Replace manual vehicle transport dispatch with a contract-driven Version 1 platform focused on operational order creation, marketplace job distribution, direct assignment, binding driver acceptance, clear Report Problem cancellation and special case flows, external map navigation, address master data, simple push notifications for drivers, admin email alerts for critical events, optional tour-linked document and driver invoice handling, auditability, and a controlled rollout from zero without historical Excel tour migration.",
   "product_context": {
     "platform_type": "Vehicle transport / vehicle relocation operations platform",
@@ -18,6 +18,8 @@
       "Translated written client feedback PDF, May 2026",
       "meetings/source/autheon_aw_meeting_transcript_en_with_index.md (meeting 2026-05-18)",
       "meetings/source/autheon_aw_written_feedback_en.md (Feedback.pdf translation, May 2026)",
+      "meetings/source/autheon_meeting_2026-06-25_transcript_en.md (Jour Fixe meeting 2026-06-25, Figma walkthrough and scheduling logic)",
+      "meetings/source/autheon_meeting_2026-06-29_transcript_en.md (prototype review meeting 2026-06-29, requirements discovery)",
       "Client Feedback.pdf (May 2026, repository root d:/Feedback.pdf)"
     ],
     "important_notes": [
@@ -39,24 +41,34 @@
       "The final app display name should be configurable because the client does not want the program to be named AUTHEON in the UI.",
       "Draft jobs may be permanently deleted; they are not cancelled. Cancel Order in the driver PWA requires a minimum-length explanation before slide-to-confirm unlocks.",
       "Driver profile master data (company, address, email, phone, driver ID) is maintained by admin/dispatching. Drivers do not self-edit those fields in V1; they submit change requests. At most one open request per driver until admin approves or rejects.",
-      "Cancel Order shows binding-cost warning and link to driver terms before slide-to-confirm. Not Performable may attach evidence files (photos/PDF) visible to admin on the special-case panel."
+      "Cancel Order shows binding-cost warning and link to driver terms before slide-to-confirm. Not Performable may attach evidence files (photos/PDF) visible to admin on the special-case panel.",
+      "Tour-linked document upload is available before job completion as well as after Performed; it is not restricted to post-completion only.",
+      "Vehicle color and car photos are not required in Version 1. Free-text notes may capture vehicle appearance when needed.",
+      "Admins may attach additional self-created documents when creating or editing a job, including optional images such as a car photo, in addition to or instead of the auto-generated transport-order document.",
+      "Version 1 driver acceptance limits use a configurable maximum number of jobs per driver per calendar day. Exact default values are TBD with the client; the platform must support per-driver overrides set by admin.",
+      "When a driver hits a hard daily acceptance limit, acceptance is blocked and the driver may submit a request for a higher limit. Admin resolves limit changes manually.",
+      "When a driver accepts a job that may overlap another accepted job on the same day (rough same-day or time-window overlap), Version 1 shows a confirmation prompt only; it does not use geo/travel-time optimization or hard overlap blocking.",
+      "Sophisticated acceptance blocking based on pickup/delivery time-span overlap, geolocation, and travel-time planning is out of Version 1; the client will define a fuller blocking-settings model separately.",
+      "Address lat/long coordinates are not collected or entered manually in Version 1; geocoding for more accurate locations is future scope.",
+      "When admin or dispatch cancels a job that was assigned or accepted, cancellation requires a reason code plus a driver-facing message so the assigned driver understands why the tour ended; the message is shown on the cancelled tour detail and in driver in-app/push notifications.",
+      "Operational policies such as minimum hours before pickup when admin cancel or schedule change is allowed are stored in app_settings and managed from admin Settings; defaults are configurable without redeploy."
     ],
-    "prototype_reference": "prototype/project (single-page HTML/React Babel demo: admin.jsx, driver.jsx, store.js, i18n.js, inputFormatters.js — not production repo layout; maps conceptually to apps/* paths in tasks). Final production PRD v1.6 supersedes prototype-only return request and broad finance assumptions with client-validated Report Problem, Special Case, and finance de-scoping decisions."
+    "prototype_reference": "prototype/project (single-page HTML/React Babel demo: admin.jsx, driver.jsx, store.js, i18n.js, inputFormatters.js — not production repo layout; maps conceptually to apps/* paths in tasks). Canonical production spec is docs/requirements/prd.json (currently v1.8)."
   },
   "prototype_coverage_notes": [
-    "Driver PWA (demo): marketplace with pull-to-refresh, My Jobs (Active, Performed, Cancelled, Special case), locked preview, slide accept, map handoff, Mark as performed, Report Problem (seven cancel reasons; cancel path with binding warning + driver terms link; warning icon on tour footer and sheet header; not performable with optional evidence upload up to 5 files), tour-linked document upload only after Performed (categories, rejection reason, replace file), correction badge on Performed tab only, Infopoint (General documents with description, date, view/download stub; New messages with read/unread badge), profile with read-only master data, change-request form (blocked while open request pending), push preferences (no driver workflow email).",
-    "Admin (demo): job overview with special case and performed filters, primary New job CTA on Jobs overview (no separate New job sidebar item), job detail with draft delete and special case resolution (Continue, Republish, administrative close, cancel order) including not-performable evidence file list, distance estimate/recalculate, new order input formatters (date/time blur, VIN/plate normalize, manufacturer datalist, schedule/time-window warnings via inputFormatters.js), full CRUD for customers (all PRD fields, active flag, delete blocked when referenced by tours) and addresses (full location/contact fields, active flag, usage count), new order form with customer select plus pickup/delivery selects from address master data and optional save-to-master checkboxes for manual entry, direct assign and reassign via driver picker (active drivers only), driver invoices and documents with review/reject/replace/bulk download (status via pill only, no full-row green highlight), Infopoint admin (General documents: upload stub, add/rename/replace/hide; New messages: publish form with subject, body, date, optional in-app/push notify), Profile change requests nav (open/approved/rejected filters, inline driver edit, Approve & save applies updateDriver then closes request; Reject closes without save), Users pane driver edit, audit log, admin notification feed with Review request deep-link, admin email alert demo, CSV export. Finance dashboard removed.",
+    "Driver PWA (demo): marketplace with pull-to-refresh, My Jobs (Active, Performed, Cancelled, Special case), locked preview, slide accept with daily limit (hard block + limit-increase request via change-request queue from accept or Profile card) and same-day overlap confirmation sheet, map handoff, Mark as performed, Report Problem (seven cancel reasons; cancel path with binding warning + driver terms link; warning icon on tour footer and sheet header; not performable with optional evidence upload up to 5 files), tour-linked document upload on active and performed tours (single upload CTA, categories, rejection reason, replace file), cancelled tour detail shows admin cancellation reason code and driver-facing message, correction badge on Performed tab only, Profile daily acceptance limit card (usage meter + request higher limit), Infopoint (General documents with description, date, view/download stub; New messages with read/unread badge), profile with read-only master data, change-request form (blocked while open request pending), push preferences (no driver workflow email).",
+    "Admin (demo): job overview with special case and performed filters, primary New job CTA on Jobs overview (no separate New job sidebar item), job detail with draft delete, cancel modal requiring reason code and driver-facing message (operational cutoff enforced from Settings), optional admin document attach on new/edit draft job (section 07, admin_off_channel), special case resolution (Continue, Republish, administrative close, cancel order with same cancel reason rules) including not-performable evidence file list, distance estimate/recalculate, new order input formatters (date/time blur, VIN/plate normalize, manufacturer datalist, schedule/time-window warnings via inputFormatters.js), full CRUD for customers (all PRD fields, active flag, delete blocked when referenced by tours) and addresses (full location/contact fields, active flag, usage count), new order form with customer select plus pickup/delivery selects from address master data and optional save-to-master checkboxes for manual entry, direct assign and reassign via driver picker (active drivers only), driver daily job limit on driver profile, Settings operational policies (cutoff hours, message min length, schedule change cutoff), driver invoices and documents with review/reject/replace/bulk download (status via pill only, no full-row green highlight), Infopoint admin (General documents: upload stub, add/rename/replace/hide; New messages: publish form with subject, body, date, optional in-app/push notify), Profile change requests nav (open/approved/rejected filters, profile and daily_limit_override requests, Approve & save applies updateDriver then closes request; Reject closes without save), Users pane driver edit, audit log, admin notification feed with Review request deep-link, admin email alert demo, CSV export. Finance dashboard removed.",
     "Driver Report Problem (demo): Cancel Order uses slide-to-confirm locked until explanation has at least 10 characters, with clear disabled visual state; Not Performable uses Submit with optional file attachments stored on specialCaseReport.evidence.",
     "Publishing (demo): admin revert Published to Draft; publish and direct assign from Draft only (assign opens modal to pick active driver); admin can reassign driver on Assigned, Accepted, or Special case tours; admin can delete Draft jobs from job detail.",
     "Status model (demo): operational statuses draft, published, accepted, assigned, performed, cancelled, special_case only — no return_requested or completed.",
     "Branding (demo): configurable display name default Transport Portal; AUTHEON not shown in UI chrome.",
     "i18n: EN/DE for UI strings; audit log action keys in English.",
-    "Seed data: 10 jobs, 5 customers, 17 addresses, 3 drivers (2 active, 1 blocked), 6 tour-linked seed documents (only on performed tours; rejected invoice on performed 0842, not on active tours), sample admin email alerts, expanded audit log; validateSeedData() on load checks contacts, addresses, schedules, vehicle IDs, driver offer, history, driverState consistency, performed-tour documents, and no documents on non-performed jobs."
+    "Seed data: 10 jobs, 5 customers, 17 addresses, 3 drivers (2 active, 1 blocked) with dailyJobLimit, tour-linked seed documents on performed and at least one active tour, sample admin email alerts, expanded audit log; validateSeedData() on load checks contacts, addresses, schedules, vehicle IDs, driver offer, history, driverState consistency, and document placement rules aligned with v1.8."
   ],
   "prototype_validation": {
-    "last_synced": "2026-05-25",
+    "last_synced": "2026-07-02",
     "audit_document": "docs/requirements/prd-prototype-validation.md",
-    "verdict": "PASS — prototype matches PRD v1.6 at docs/requirements/prd.json (_audit-prototype.mjs exit 0; checklist items 1–28 in prd-prototype-validation.md).",
+    "verdict": "PASS v1.8 — prototype synced to PRD v1.8 (_audit-prototype.mjs, _audit-i18n.js, _verify-seed.mjs exit 0). Includes v1.7 Q1–Q5 (except deferred Q5 geo), v1.8 policies, profile daily limit card, overlap sheet, and active-tour document upload UI.",
     "sync_pass_notes": [
       "Integrated client feedback requiring customer, pickup location, and delivery location separation.",
       "Replaced return window logic with Report Problem, cancellation, and special case handling.",
@@ -79,7 +91,9 @@
       "2026-05-25: Admin Infopoint pane (general documents + news publish); driver Infopoint doc view/download stub; clarifies Infopoint news vs tour notifications.",
       "2026-05-25: Client feedback gap pass — Report Problem cancel binding warning + terms; seven cancellation reason codes; not-performable evidence on specialCaseReport; Report Problem warning icon; order-entry formatters (inputFormatters.js).",
       "2026-05-25: Driver profile change requests — persistent masterDataChangeRequests queue; one open request per driver; admin Profile change requests pane with inline edit and Approve & save; driver pending state; notification feed Review request link; driver notifications on approve/reject.",
-      "2026-06-29: Driver deactivation guard — admin cannot block, deactivate, archive, or soft-delete a driver while assigned/accepted/special_case tours are open; activation remains allowed."
+      "2026-06-29: Driver deactivation guard — admin cannot block, deactivate, archive, or soft-delete a driver while assigned/accepted/special_case tours are open; activation remains allowed.",
+      "2026-07-01: PRD v1.7 bump — meetings 2026-06-25/2026-06-29 and Ferhat Q&A (Q1–Q5) integrated. Document upload restriction to post-Performed removed; upload now allowed on active tours (Q1). Admin self-created documents at job creation/editing added (Q4). Driver daily acceptance limit system introduced: per-driver configurable integer limit, hard block at limit, driver limit-increase request via change-request queue, same-day overlap confirmation prompt (no hard block) (Q3). Car color/vehicle photos confirmed not required in V1 (Q2). Address lat/long deferred to future scope (Q5).",
+      "2026-07-02: PRD v1.8 — prototype fully synced for v1.7 Q1/Q3/Q4 and v1.8 policies: pre-Performed upload; daily limit + overlap prompt + limit-increase request (daily_limit_override in change-request queue); admin docs at job create/edit; admin cancel and special-case cancel with driver message; operational policies (cancel + schedule cutoffs) in Settings."
     ],
     "prd_spec_reference": "docs/requirements/prd.json"
   },
@@ -479,7 +493,8 @@
         "Required fields are validated before Publish or Direct Assign.",
         "Sensitive fields are persisted but not exposed to drivers before acceptance or assignment.",
         "Pickup and delivery sections support optional alternate contact person distinct from primary contact person.",
-        "Optional contact fields (alternate contact, second phone, email, info notes) are hidden behind progressive disclosure such as Add another contact or Show additional contact details."
+        "Optional contact fields (alternate contact, second phone, email, info notes) are hidden behind progressive disclosure such as Add another contact or Show additional contact details.",
+        "Admin may attach additional self-created documents when creating or editing a draft job, including optional images such as a vehicle photo; attached documents are stored alongside or as a substitute for the auto-generated transport-order document."
       ],
       "status": "pending",
       "files": [
@@ -626,7 +641,8 @@
         "Completion timestamp is stored.",
         "Completion action is disabled after operational status becomes Performed or Cancelled; administrative Closed state is tracked separately from the operational completion action.",
         "Completion event is logged.",
-        "Tour-linked document upload and replace are available only after operational status is Performed if the document module is included; upload is blocked on Active tours with clear messaging.",
+        "Tour-linked document upload is available for jobs in any operational status including active tours (Assigned or Accepted); it is not restricted to post-Performed status.",
+        "Replace is available on both active and performed tours for driver_pwa uploads only; drivers cannot replace admin_off_channel or generated transport-order documents. Admin may replace admin_off_channel documents and regenerate transport-order PDFs.",
         "Administrative or settlement closure after document/invoice review must not be confused with the driver's operational Performed action."
       ],
       "status": "pending",
@@ -696,10 +712,12 @@
       "priority": 14,
       "story": "As an admin, I want to cancel jobs when operations require it and keep clear cancellation attribution.",
       "acceptance": [
-        "Admin can transition Published, Accepted, Assigned, Performed, or Special Case jobs to Cancelled where business rules allow.",
+        "Admin can transition Published, Accepted, Assigned, Performed, or Special Case jobs to Cancelled where business rules and operational policies allow.",
         "Draft jobs are permanently deleted rather than cancelled; cancelled status applies only after a job has left Draft.",
         "Backend records whether cancellation came from driver, admin/dispatching, or customer.",
-        "Cancellation requires reason and optional note.",
+        "Admin cancellation (including special-case Cancel order when a driver was assigned or had accepted) requires a cancellation reason code and a driver-facing message stored in cancellation_reason_text; message minimum length follows cancellation.policies app setting (default 20 characters).",
+        "When a driver was assigned or had accepted the tour, the driver-facing message and reason code are visible on the cancelled tour detail and included in order_cancelled_by_autheon in-app/push notification body.",
+        "Admin cancel is blocked inside the configured minimum hours before pickup window start unless an authorized override with audit note is used when allowPolicyOverrideWithAuditNote is enabled.",
         "Cancelled jobs are excluded from active marketplace and active driver job lists.",
         "Cancellation can trigger admin/driver alerts where relevant.",
         "Admin may republish or adjust a driver cancellation if the operational process requires it and status rules allow it.",
@@ -1033,6 +1051,7 @@
       "story": "As a driver, I want to upload documents per tour; as an admin, I want to review documents and driver invoices with clear statuses, rejection reasons, and optional bulk download.",
       "acceptance": [
         "All uploads are linked to a specific valid job/tour; API requires job id on create.",
+        "Upload is available for jobs in any operational status, not restricted to post-Performed; drivers and admins may submit documents at any point in the tour lifecycle.",
         "Driver can upload multiple document types, not only invoices.",
         "Document types include invoice, fuel receipt, toll receipt, delivery note, waiting time evidence, other proof, and other receipt.",
         "Upload UI allows category selection through modal, overlay, or equivalent clear interaction.",
@@ -1043,7 +1062,7 @@
         "Admin can view, download, accept, reject, mark checked, mark processed/completed, and add internal notes or rejection reasons depending on document type.",
         "Driver can see whether an uploaded document is accepted, rejected, or under review.",
         "Rejected documents create a visible correction need for the driver and show the rejection reason.",
-        "Driver can replace rejected or pending (uploaded) documents on performed tours only; replacement resets review to uploaded.",
+        "Driver can replace rejected or pending (uploaded) driver_pwa documents on active and performed tours; replacement resets review to uploaded. Drivers cannot replace admin_off_channel or transport-order documents (view/download only, shown beside transport order).",
         "Correction badge appears only on performed tours in My Jobs, not on active (accepted/assigned) tours.",
         "Admin can download individual invoices/documents.",
         "Admin can select multiple invoices and download selected invoices in bulk if driver invoice module is included.",
@@ -1116,6 +1135,51 @@
         "apps/admin/src/onboarding/",
         "services/master-data/bootstrap.ts"
       ]
+    },
+    {
+      "id": 30,
+      "epic": "Driver Daily Acceptance Limits",
+      "priority": 9,
+      "story": "As an admin, I want to set a configurable daily job acceptance limit per driver so the platform prevents overloading while allowing admin override for exceptional situations.",
+      "acceptance": [
+        "Each driver record stores a daily_job_limit integer field (default value TBD with client); admin can read and update this value from the driver management UI.",
+        "When a driver attempts to accept a marketplace job and their accepted-job count for that calendar day already equals or exceeds their daily_job_limit, acceptance is blocked with a clear limit-reached message.",
+        "Blocked driver may submit a limit-increase request to the admin when they hit the hard block; this request follows the same change-request queue pattern (one open request per driver until admin resolves it).",
+        "Admin receives a notification for limit-increase requests and can approve or reject from the driver management panel; approval updates daily_job_limit and closes the request.",
+        "When a driver attempts to accept a job on a day where they already have at least one other accepted or assigned job (potential same-day overlap), the system shows a confirmation prompt informing the driver; acceptance proceeds only if the driver explicitly confirms.",
+        "Same-day overlap detection uses calendar date of pickup or delivery window only — no geolocation, travel-time, or time-span optimization is required in Version 1.",
+        "Sophisticated time-span, geolocation, or travel-time-based overlap blocking is out of scope for Version 1; client will define a fuller blocking-settings model in a later version.",
+        "Daily limit and limit-increase request changes are recorded in the audit log.",
+        "Acceptance limit enforcement is applied server-side so a driver cannot bypass it through parallel requests."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/driver-pwa/src/jobs/accept.tsx",
+        "apps/admin/src/users/driver-edit.tsx",
+        "services/jobs/accept-marketplace.ts",
+        "services/drivers/acceptance-limits.ts"
+      ]
+    },
+    {
+      "id": 31,
+      "epic": "Operational Policies (App Settings)",
+      "priority": 8,
+      "story": "As an admin, I want to configure operational rules such as cancellation cutoffs and message requirements without redeploying the application.",
+      "acceptance": [
+        "Operational policies are stored in app_settings under key operational.policies as JSON (adminCancelMinHoursBeforePickupStart, scheduleChangeMinHoursBeforePickupStart, referenceTime pickup_window_start, allowPolicyOverrideWithAuditNote).",
+        "Cancellation policies are stored under cancellation.policies (adminCancelRequiresReasonCode, adminCancelRequiresDriverMessage, adminCancelDriverMessageMinChars, driverCancelExplanationMinChars).",
+        "Admin Settings UI exposes current values with validation (non-negative hours, minimum message lengths >= 1).",
+        "Cancel job and revert-to-draft or committed schedule edit flows read policies server-side (production) or from store settings (prototype) and return a clear error when inside cutoff window.",
+        "Policy changes write an audit event with previous and new values.",
+        "Default daily driver job acceptance limit may be stored under driver.acceptance.defaultDailyJobLimit (TBD with client; prototype default 3).",
+        "Branding display name remains under branding.display app setting aligned with resolved_defaults.app_display_name."
+      ],
+      "status": "pending",
+      "files": [
+        "apps/admin/src/settings/operational-policies.tsx",
+        "services/platform/app-settings.ts",
+        "services/jobs/operational-policy.ts"
+      ]
     }
   ],
   "out_of_scope": [
@@ -1148,7 +1212,7 @@
       "other_proof",
       "other_receipt"
     ],
-    "document_rejection_ux": "Correction required badge on performed tours in My Jobs only; driver/admin can replace rejected or uploaded files on performed tours; no separate correction queue in V1.",
+    "document_rejection_ux": "Correction required badge on performed tours in My Jobs only; driver can replace rejected or uploaded driver_pwa files; admin_off_channel and transport-order docs are read-only for drivers; admin may replace dispatch documents; no separate correction queue in V1.",
     "map_distance_production": "Technical spike required; prefer shortest drivable route by km when API supports route alternatives.",
     "driver_fields_v1": [
       "companyName",
@@ -1159,7 +1223,8 @@
       "driverCode",
       "notes",
       "status",
-      "accessState"
+      "accessState",
+      "dailyJobLimit"
     ],
     "driver_auth_production": "Keycloak selected for authentication. AUTHEON links users to Keycloak via keycloak_id; exact realm/client setup and driver login ceremony remain implementation configuration.",
     "admin_email_alerts_v1": "Global dispatcher mailbox list; per-event configuration deferred.",
@@ -1208,7 +1273,20 @@
     "client_display_status_labels": "UI may show Under review and Completed from document_review_summary and settlement Closed without adding operational statuses.",
     "master_data_change_request_v1": "Driver request queue; one open per driver; admin Approve & save applies updateDriver; Reject without save; audit master_data_change_requested|approved|rejected; driver in-app notify on resolution.",
     "report_problem_cancel_ux_v1": "Binding warning + driver terms link before slide; seven cancellation reason codes per Feedback.pdf C.1; warning icon on tour detail and sheet header.",
-    "report_problem_not_performable_evidence_v1": "Optional file upload on not performable (PDF/images, capped in prototype); listed on admin special-case panel; metadata only in demo."
+    "report_problem_not_performable_evidence_v1": "Optional file upload on not performable (PDF/images, capped in prototype); listed on admin special-case panel; metadata only in demo.",
+    "driver_daily_acceptance_limit_v1": "Each driver stores a daily_job_limit (smallint, default TBD with client). Hard block on acceptance when limit is reached; driver submits a limit-increase request through the change-request queue. Same-day overlap (existing accepted/assigned job on the same calendar day) shows a confirmation prompt only — not a hard block. Geo/travel-time overlap detection is out of V1 scope.",
+    "document_upload_pre_completion_v1": "Tour-linked document upload is available at any job operational status (active as well as Performed). Upload is no longer restricted to post-Performed only. Applies to both driver and admin uploads.",
+    "admin_documents_at_creation_v1": "Admin may attach additional self-created documents during job creation or editing, including optional images such as a vehicle photo. Attached documents are stored as job_documents with source admin_off_channel alongside the auto-generated transport-order document. Drivers see these as read-only reference documents (view/download); only driver_pwa uploads are replaceable by the driver.",
+    "document_replace_permissions_v1": "Drivers may replace only job_documents with source driver_pwa when review status allows. admin_off_channel and generated transport-order documents are read-only for drivers (view/download beside transport order). Admin may replace admin_off_channel documents; transport order uses PDF regenerate.",
+    "admin_cancel_driver_message_v1": "Admin cancel and special-case cancel order require cancellation_reason_code plus driver-facing cancellation_reason_text (min length from cancellation.policies). Driver sees both on cancelled tour detail; order_cancelled_by_autheon notification body uses the message.",
+    "operational_policies_v1": "app_settings operational.policies controls minimum hours before pickup for admin cancel and schedule change (default 1 hour, client TBD), reference time pickup_window_start, optional override with audit note.",
+    "cancellation_policies_v1": "app_settings cancellation.policies controls required admin reason code, required driver message, min char lengths for admin and driver cancel explanations.",
+    "app_settings_catalog_v1": {
+      "branding.display": "App display name for UI chrome",
+      "operational.policies": "Cutoff hours and override rules for cancel/schedule change",
+      "cancellation.policies": "Required reasons and minimum message lengths",
+      "driver.acceptance.defaultDailyJobLimit": "Default daily_job_limit for new drivers"
+    }
   },
   "prototype_assumptions": {
     "purpose": "Client-facing UX validation for PRD v1.5; in-memory only.",
@@ -1234,11 +1312,12 @@
     "document_review_statuses_prototype": "Per-file review: uploaded, accepted, rejected, correction_required. Admin reject → rejected; Require correction → correction_required (driver badge + job Correction Required). Legacy missing/under_review → uploaded on load.",
     "payment_status_prototype": "paymentStatus values: Invoice Missing (default), Invoice Received (auto on invoice accept), Paid (manual Finance only). Unpaid removed; legacy Unpaid normalized to Invoice Missing.",
     "supplier_invoice_number_prototype": "Each tour document may store supplierInvoiceNumber and optional supplierInvoiceDate. Admin Accept on invoice type requires supplierInvoiceNumber (modal); acceptTourDocument() is the only path to accepted. job.invoiceNumber copies from the latest accepted invoice document, not from fileName. Replace/upload resets supplier fields until re-accepted.",
-    "seed_mock_data": "17 addresses, 5 customers, 3 drivers, 10 jobs (full locations + contacts), 6 tour documents (performed tours only), 2 admin email alerts, 5 audit entries; validateSeedData() runs on load and after reloadDemo().",
+    "seed_mock_data": "17 addresses, 5 customers, 3 drivers (with dailyJobLimit), 10 jobs (full locations + contacts), tour documents on performed and active tours (incl. TD-SEED-ACTIVE-001 driver upload and TD-SEED-ADMIN-0845 admin_off_channel reference doc), sample admin email alerts, expanded audit log; validateSeedData() runs on load and after reloadDemo().",
+    "daily_limit_increase_prototype": "requestDailyLimitIncrease() creates masterDataChangeRequests with changeType daily_limit_override; admin Profile change requests pane Approve & save updates drivers.dailyJobLimit; one open request per driver.",
     "assign_driver_picker": "AssignDriverDialog modal; assignJob/reassignJob by driver id; getAssignableDrivers() returns Active only.",
     "customer_select": "New job section 01 uses select populated from customer master data; sets customerId + customer name.",
     "order_entry_formatters_prototype": "inputFormatters.js: formatDateInput, formatTimeInput, normalizeVin, normalizePlate, compareTimeStrings; wired on admin new-order blur; MANUFACTURER_SUGGESTIONS datalist on brand field.",
-    "master_data_change_requests_prototype": "store.masterDataChangeRequests[]; requestMasterDataChange, listMasterDataChangeRequests, getOpenMasterDataChangeRequestForDriver, resolveMasterDataChangeRequest, getOpenMasterDataChangeRequestCount; MasterDataRequestsPane in admin.jsx; metadata-only evidence on specialCaseReport.evidence."
+    "master_data_change_requests_prototype": "store.masterDataChangeRequests[]; requestMasterDataChange, requestDailyLimitIncrease, listMasterDataChangeRequests, getOpenMasterDataChangeRequestForDriver, resolveMasterDataChangeRequest, getOpenMasterDataChangeRequestCount; MasterDataRequestsPane in admin.jsx (profile + daily_limit_override); metadata-only evidence on specialCaseReport.evidence."
   },
   "production_open_questions": [
     "Confirm Keycloak email action settings for account invites and password resets: sender domain, templates, link expiry, required actions, and whether SMTP is handled by Keycloak or AUTHEON's mail provider.",
@@ -1287,7 +1366,11 @@
       "Explicit driver_visibility_matrix and marketplace_sync_policy",
       "client_status_mapping for Under review and Completed display labels",
       "Driver profile change request workflow with admin queue and one-open-request rule",
-      "Admin inline driver master-data edit on approve from change-request detail (production may use same fields as Users module)"
+      "Admin inline driver master-data edit on approve from change-request detail (production may use same fields as Users module)",
+      "Tour-linked document upload available on active tours (not restricted to post-Performed)",
+      "Per-driver configurable daily job acceptance limit with admin override, driver limit-increase request, and same-day overlap confirmation prompt",
+      "Admin-attached self-created documents at job creation and editing",
+      "Admin cancellation with required driver-facing reason message and operational cutoff policies managed in app_settings"
     ],
     "v1_optional_or_needs_decision": [
       "Tour-related document upload and review workflow",
@@ -1306,7 +1389,9 @@
       "Historical Excel tour migration",
       "Complex tour chain support",
       "Cross-border country-based filtering",
-      "Rich newsletter/editor capabilities"
+      "Rich newsletter/editor capabilities",
+      "Geocoding and lat/long coordinate capture for address precision",
+      "Sophisticated driver scheduling: time-span overlap, geolocation, and travel-time-based acceptance blocking"
     ]
   },
   "derived_from": "docs/requirements/prd.json",
@@ -1316,7 +1401,7 @@
     "document_path": "d:/Feedback.pdf",
     "translated_reference": "meetings/source/autheon_aw_written_feedback_en.md",
     "meeting_reference": "meetings/source/autheon_aw_meeting_transcript_en_with_index.md",
-    "integration_version": "PRD v1.6",
+    "integration_version": "PRD v1.8",
     "integrated_into": "docs/requirements/prd.json",
     "canonical_spec": "docs/requirements/prd.json"
   },
@@ -1551,7 +1636,7 @@
       "admin_email": false,
       "driver_in_app": true,
       "driver_push": true,
-      "notes": "Admin or customer cancellation"
+      "notes": "Admin or customer cancellation; driver notification body includes admin cancellation_reason_text when actor is admin/dispatching"
     },
     {
       "event": "document_accepted",
@@ -1619,6 +1704,41 @@
       "question": "Icon for Report problem",
       "resolution": "Report Problem uses clear label plus warning-style icon in tour detail footer.",
       "prd_reference": "resolved_defaults.report_problem_ui"
+    },
+    {
+      "question": "Shall document upload be available only after completing the job, or before too? (Ferhat Q&A 2026-06-29, Q1)",
+      "resolution": "Available before completion as well as after Performed. Upload restriction to post-Performed is removed. Applies to driver and admin uploads on any active status.",
+      "prd_reference": "Task 11, Task 27, important_notes, resolved_defaults.document_upload_pre_completion_v1"
+    },
+    {
+      "question": "Is admin uploading a picture of the car important for drivers, or should admin add the car color? (Ferhat Q&A 2026-06-29, Q2)",
+      "resolution": "Not required in V1. Notes may capture vehicle appearance if needed. Admins may attach self-created documents (including car photos) to a job if desired via the admin documents feature.",
+      "prd_reference": "important_notes, resolved_defaults.admin_documents_at_creation_v1"
+    },
+    {
+      "question": "Should driver timeslots be blocked and admin prevented from assigning a job to a driver currently processing another? (Ferhat Q&A 2026-06-29, Q3)",
+      "resolution": "V1 implements a per-driver configurable daily job acceptance limit (admin-set, default TBD with client). Hard block when limit is reached; driver may request an increase. For potential same-day overlap, V1 shows a confirmation prompt only — no geo/travel-time optimization or hard overlap block. Sophisticated scheduling constraints are deferred to a later version pending a client-defined blocking-settings model.",
+      "prd_reference": "Task 30, resolved_defaults.driver_daily_acceptance_limit_v1"
+    },
+    {
+      "question": "Can admin upload additional documents manually while creating the job, beside the generated one, or even replace it? (Ferhat Q&A 2026-06-29, Q4)",
+      "resolution": "Yes. Admin may attach additional self-created documents at job creation or editing, including optional images. These are stored alongside or as a substitute for the auto-generated transport-order document.",
+      "prd_reference": "Task 5, Task 27, resolved_defaults.admin_documents_at_creation_v1"
+    },
+    {
+      "question": "Shall we let admin add lat/long coordinates of an address for more accurate locations? (Ferhat Q&A 2026-06-29, Q5)",
+      "resolution": "No for V1. Geocoding and manual lat/long entry are deferred to a future version and kept in mind for future scope.",
+      "prd_reference": "important_notes, scope_alignment.future_scope"
+    },
+    {
+      "question": "When admin cancels an assigned tour, must the driver receive an explanation? (Product decision 2026-07-02)",
+      "resolution": "Yes. Admin cancel and special-case cancel order require reason code plus driver-facing message (cancellation_reason_text). Shown on cancelled tour detail and in order_cancelled_by_autheon notification.",
+      "prd_reference": "Task 14, resolved_defaults.admin_cancel_driver_message_v1, notification_channels_matrix order_cancelled_by_autheon"
+    },
+    {
+      "question": "Should admin-configurable rules block cancel or schedule change within X hours of pickup? (Product decision 2026-07-02)",
+      "resolution": "Yes for V1 via app_settings operational.policies. Default 1 hour before pickup window start for admin cancel and schedule change; exact values TBD with client. Optional override with audit note when enabled.",
+      "prd_reference": "Task 31, resolved_defaults.operational_policies_v1"
     }
   ],
   "client_feedback_traceability": [

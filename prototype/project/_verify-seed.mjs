@@ -1,5 +1,5 @@
 /**
- * Loads store.js in a minimal browser shim and verifies seed invariants.
+ * Loads store.js in a minimal browser shim and verifies seed invariants (PRD v1.8).
  */
 import fs from "fs";
 import path from "path";
@@ -55,18 +55,29 @@ function ok(msg) {
   out(`OK: ${msg}`);
 }
 
-if (docs.length !== 6) fail(`expected 6 tour documents, got ${docs.length}`);
-else ok("6 tour documents");
-
-const nonPerformedDocs = docs.filter((d) => {
+const activeSeedDoc = docs.find((d) => d.id === "TD-SEED-ACTIVE-001");
+const adminSeedDoc = docs.find((d) => d.id === "TD-SEED-ADMIN-0845");
+const performedDocCount = docs.filter((d) => {
   const j = jobs.find((x) => x.id === d.jobId);
-  return !j || j.status !== "performed";
+  return j?.status === "performed";
+}).length;
+
+if (docs.length !== 8) fail(`expected 8 tour documents, got ${docs.length}`);
+else ok("8 tour documents (6 performed + 2 on active 0845)");
+
+if (performedDocCount !== 6) fail(`expected 6 performed-only seed docs, got ${performedDocCount}`);
+else ok("6 documents on performed job 0842");
+
+const nonAllowedDocs = docs.filter((d) => {
+  const j = jobs.find((x) => x.id === d.jobId);
+  if (!j) return true;
+  return !["assigned", "accepted", "special_case", "performed"].includes(j.status);
 });
-if (nonPerformedDocs.length)
+if (nonAllowedDocs.length)
   fail(
-    `documents on non-performed jobs: ${nonPerformedDocs.map((d) => d.id).join(", ")}`,
+    `documents on disallowed job statuses: ${nonAllowedDocs.map((d) => d.id).join(", ")}`,
   );
-else ok("all tour documents on performed jobs only");
+else ok("all tour documents on upload-allowed job statuses");
 
 const j842 = jobs.find((j) => j.id === "A-2026-00842");
 if (!j842) fail("missing job A-2026-00842");
@@ -90,9 +101,17 @@ else {
 }
 
 const j845 = jobs.find((j) => j.id === "A-2026-00845");
-if (docs.some((d) => d.jobId === j845?.id))
-  fail("active job 0845 must have no tour documents");
-else ok("0845 (accepted/active) has no tour documents");
+if (!activeSeedDoc || activeSeedDoc.jobId !== j845?.id)
+  fail("active job 0845 must have TD-SEED-ACTIVE-001");
+else ok("0845 (accepted/active) has active-tour seed document");
+
+if (!adminSeedDoc || adminSeedDoc.jobId !== j845?.id)
+  fail("active job 0845 must have TD-SEED-ADMIN-0845 admin_off_channel doc");
+else ok("0845 has admin reference document (read-only for driver)");
+
+if (!store.canDriverReplaceTourDocument(adminSeedDoc))
+  ok("driver cannot replace admin_off_channel document");
+else fail("canDriverReplaceTourDocument should be false for admin doc");
 
 const j846 = jobs.find((j) => j.id === "A-2026-00846");
 if (docs.some((d) => d.jobId === j846?.id))
@@ -102,19 +121,24 @@ if (!(j846?.specialCaseReport?.evidence || []).length)
   fail("0846 missing specialCaseReport.evidence");
 else ok("0846 has special case evidence");
 
-if (j845?.documentReviewSummary !== "Not Started")
+if (j845?.documentReviewSummary !== "Uploaded")
   fail(
-    `0845 documentReviewSummary should be Not Started (got ${j845?.documentReviewSummary})`,
+    `0845 documentReviewSummary should be Uploaded (got ${j845?.documentReviewSummary})`,
   );
-else ok("0845 documentReviewSummary is Not Started");
+else ok("0845 documentReviewSummary is Uploaded");
+
+const summary = store.getDriverDailyAcceptanceSummary();
+if (!summary || typeof summary.limit !== "number")
+  fail("getDriverDailyAcceptanceSummary should return limit/count");
+else ok(`daily limit summary API (${summary.count}/${summary.limit})`);
 
 if (seedWarnings.length) {
   fail(`validateSeedData reported issues:\n${seedWarnings.join("\n")}`);
 } else ok("validateSeedData reported no issues");
 
 const gate845 = store.canDriverUploadTourDocument("A-2026-00845");
-if (gate845.ok) fail("upload gate should block active job 0845");
-else ok(`upload blocked on 0845 (${gate845.reason})`);
+if (!gate845.ok) fail(`upload should allow active job 0845 (${gate845.reason})`);
+else ok("upload allowed on active 0845");
 
 const gate842 = store.canDriverUploadTourDocument("A-2026-00842");
 if (!gate842.ok) fail(`upload should allow performed 0842 (${gate842.reason})`);
