@@ -721,7 +721,7 @@ const Portal = ({
     return new Date(2026, Number(m[2]) - 1, Number(m[1]));
   };
 
-  if (!store.isCurrentDriverActive()) {
+  if (!store.isCurrentDriverMarketplaceActive()) {
     const d = store.getCurrentDriver();
     return (
       <div
@@ -1173,7 +1173,7 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
 // =========================================================================
 // JOB DETAIL — LOCKED (before acceptance)
 // =========================================================================
-const JobLocked = ({ job, onBack, onAccept }) => {
+const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
   const { t } = useI18n();
   return (
     <>
@@ -1187,9 +1187,18 @@ const JobLocked = ({ job, onBack, onAccept }) => {
           <button type="button" className="btn icon sm" onClick={onBack}>
             <Ic.Back />
           </button>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, flex: 1 }}>
             {t("marketplacePreview")}
           </h2>
+          {onBackToMarketplace ? (
+            <button
+              type="button"
+              className="btn xs"
+              onClick={onBackToMarketplace}
+            >
+              {t("backToMarketplace")}
+            </button>
+          ) : null}
         </div>
       </div>
       <div
@@ -1611,7 +1620,6 @@ const JobTourDocuments = ({ job }) => {
   const [pendingType, setPendingType] = useState(null);
   const [replaceDocId, setReplaceDocId] = useState(null);
   const [feedback, setFeedback] = useState(null);
-  const active = store.isCurrentDriverActive();
 
   const showUploadError = (reason) => {
     setFeedback({
@@ -1665,7 +1673,7 @@ const JobTourDocuments = ({ job }) => {
   const canReplaceDoc = (u) =>
     canUpload && store.canDriverReplaceTourDocument(u);
 
-  if (!active) return null;
+  if (!canUpload && uploads.length === 0) return null;
 
   return (
     <section className="req-panel" aria-labelledby={`tour-docs-${jobId}`}>
@@ -1830,6 +1838,7 @@ const JobInvoiceUpload = JobTourDocuments;
 const JobUnlocked = ({
   job,
   onBack,
+  onBackToMarketplace,
   onReturn,
   onComplete,
   onReportProblem,
@@ -1843,6 +1852,8 @@ const JobUnlocked = ({
   const isCancelled = job.status === "cancelled";
   const isSpecialCase = job.status === "special_case";
   const canPerform = ["assigned", "accepted"].includes(job.status);
+  const inExecution =
+    canPerform || isSpecialCase || job.status === "assigned";
   const pickup = job.contactPickup || {};
   const drop = job.contactDelivery || {};
   const pickupMaps = googleMapsSearchUrl(
@@ -1875,10 +1886,28 @@ const JobUnlocked = ({
               {t("myJobsExecutionDetail")}
             </div>
           </div>
+          {onBackToMarketplace ? (
+            <button
+              type="button"
+              className="btn xs"
+              onClick={onBackToMarketplace}
+            >
+              {t("backToMarketplace")}
+            </button>
+          ) : null}
         </div>
       </div>
 
       <div className="scroll" style={{ padding: "12px 18px 22px" }}>
+        {inExecution && !isCancelled && !isPerformed ? (
+          <div
+            className="banner banner-success"
+            role="status"
+            style={{ marginBottom: 12 }}
+          >
+            {t("tourInExecutionBanner")}
+          </div>
+        ) : null}
         {isCancelled && (
           <div className="cancellation-card" role="status">
             <p className="cancellation-card-title">{t("cancelled")}</p>

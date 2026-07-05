@@ -2674,9 +2674,18 @@ window.AuthStore = (() => {
     getCurrentDriver: () =>
       drivers.find((d) => d.name === DEMO_DRIVER) || drivers[0],
 
+    isDriverBlocked() {
+      const d = api.getCurrentDriver();
+      return Boolean(d && d.status === "Blocked");
+    },
+
     isCurrentDriverActive() {
       const d = api.getCurrentDriver();
       return !d || d.status === "Active";
+    },
+
+    isCurrentDriverMarketplaceActive() {
+      return api.isCurrentDriverActive();
     },
 
     todayCalendarKey() {
@@ -3602,11 +3611,12 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
-    assignJob(id, driverRef) {
+    assignJob(id, driverRef, opts = {}) {
       const j = api.getJob(id);
       if (!j || j.status !== "draft") return { ok: false, reason: "not_draft" };
       const dr = api.resolveAssignableDriver(driverRef);
       if (!dr.ok) return dr;
+      const confirmationNote = String(opts.confirmationNote || "").trim();
       j.status = "assigned";
       j.driver = dr.driver.name;
       j.driverId = dr.driver.id;
@@ -3617,12 +3627,35 @@ window.AuthStore = (() => {
           st: "assigned",
           at: nowStamp(),
           by: DEMO_ADMIN,
-          meta: `Driver: ${j.driver} (${j.driverId})`,
+          meta: confirmationNote
+            ? `Driver: ${dr.driver.name} (${dr.driver.id}) · proof: ${confirmationNote}`
+            : `Driver: ${dr.driver.name} (${dr.driver.id})`,
         },
       ];
-      log("job_assigned", DEMO_ADMIN, j.tour, `Driver: ${j.driver}`);
+      log(
+        "job_assigned",
+        DEMO_ADMIN,
+        j.tour,
+        confirmationNote
+          ? `Driver: ${dr.driver.name} · confirmation: ${confirmationNote}`
+          : `Driver: ${dr.driver.name}`,
+      );
+      if (confirmationNote) {
+        log(
+          "manual_assign_confirmation",
+          DEMO_ADMIN,
+          j.tour,
+          confirmationNote,
+        );
+      }
       queuePushNotification(j, "assign");
-      queueAdminEmailAlert("job_assigned", id, `Driver: ${j.driver}`);
+      queueAdminEmailAlert(
+        "job_assigned",
+        id,
+        confirmationNote
+          ? `Driver: ${dr.driver.name} · ${confirmationNote}`
+          : `Driver: ${dr.driver.name}`,
+      );
       emit();
       return { ok: true, driver: dr.driver };
     },
@@ -4167,8 +4200,6 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
-      if (!api.isCurrentDriverActive())
-        return { ok: false, reason: "driver_restricted" };
       const gate = api.canDriverUploadTourDocument(opts.jobId);
       if (!gate.ok) return gate;
       const jobId = gate.jobId;
@@ -4372,8 +4403,6 @@ window.AuthStore = (() => {
         return { ok: false, reason: "job_not_uploadable" };
       const actor = opts.actor || "driver";
       if (actor === "driver") {
-        if (!api.isCurrentDriverActive())
-          return { ok: false, reason: "driver_restricted" };
         const d = api.getCurrentDriver();
         if (!d) return { ok: false, reason: "no_driver" };
         if (j.driver && j.driver !== d.name)

@@ -992,6 +992,7 @@ const AssignDriverDialog = ({
   const store = useAuthStore();
   const drivers = store.getAssignableDrivers();
   const [driverId, setDriverId] = useStateA("");
+  const [confirmationNote, setConfirmationNote] = useStateA("");
 
   useEffectA(() => {
     if (!open || !job) return;
@@ -1001,6 +1002,7 @@ const AssignDriverDialog = ({
         ? job.driverId
         : list.find((d) => d.name === job.driver)?.id;
     setDriverId(preferred || list[0]?.id || "");
+    setConfirmationNote("");
   }, [open, job?.id, job?.driverId, job?.driver]);
 
   if (!open || !job) return null;
@@ -1083,6 +1085,27 @@ const AssignDriverDialog = ({
             ) : null}
           </div>
         )}
+        {mode !== "reassign" ? (
+          <div style={{ marginTop: 14 }}>
+            <label className="field-label" htmlFor="assign-confirmation-note">
+              {t("adminAssignConfirmationNoteLabel")}
+            </label>
+            <textarea
+              id="assign-confirmation-note"
+              className="input"
+              rows={3}
+              value={confirmationNote}
+              onChange={(e) => setConfirmationNote(e.target.value)}
+              placeholder={t("adminAssignConfirmationNotePlaceholder")}
+            />
+            <p
+              className="label"
+              style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.45 }}
+            >
+              {t("adminAssignConfirmationNoteHint")}
+            </p>
+          </div>
+        ) : null}
         <div
           style={{
             display: "flex",
@@ -1099,7 +1122,7 @@ const AssignDriverDialog = ({
             type="button"
             className="btn primary"
             disabled={!driverId || drivers.length === 0}
-            onClick={() => onConfirm(driverId)}
+            onClick={() => onConfirm(driverId, confirmationNote.trim())}
           >
             {mode === "reassign"
               ? t("adminReassignDriverConfirm")

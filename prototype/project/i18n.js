@@ -72,7 +72,10 @@ window.I18n = (() => {
       blockedDriverTitle: "Marketplace unavailable",
       blockedDriverStatusFallback: "Restricted",
       blockedDriverBody:
-        "Portal access and active job actions are restricted for blocked or deactivated drivers. Profile, Info, and historical jobs remain visible in this prototype.",
+        "Marketplace access and new tour acceptance are restricted for blocked drivers. Use My Jobs to correct documents on existing tours. Profile, Info, and historical jobs remain visible in this prototype.",
+      backToMarketplace: "Marketplace",
+      tourInExecutionBanner:
+        "Tour in execution — complete pickup, delivery, and documents from this screen.",
       date: "Date",
       timeWindow: "Time window",
       vehicle: "Vehicle",
@@ -742,9 +745,14 @@ window.I18n = (() => {
       adminAssignDriverTitle: "Assign driver",
       adminReassignDriverTitle: "Reassign driver",
       adminAssignDriverHint:
-        "Direct assignment moves the tour from Draft to Assigned. Only active drivers can be selected.",
+        "Direct assignment is an exception workflow. Record external confirmation (call or email) when available, then assign from Draft to Assigned.",
       adminReassignDriverHint:
         "Change the assigned driver for this tour. The tour stays in its current status.",
+      adminAssignConfirmationNoteLabel: "External confirmation note (optional)",
+      adminAssignConfirmationNotePlaceholder:
+        "e.g. Driver called at 09:15 — agreed to take tour 0845",
+      adminAssignConfirmationNoteHint:
+        "Stored in the audit log when provided. Manual assignment should remain exceptional, not the default dispatch path.",
       adminAssignDriverSelectLabel: "Driver *",
       adminAssignDriverConfirm: "Assign",
       adminReassignDriverConfirm: "Reassign",
@@ -1167,7 +1175,10 @@ window.I18n = (() => {
       blockedDriverTitle: "Marktplatz nicht verfügbar",
       blockedDriverStatusFallback: "Eingeschränkt",
       blockedDriverBody:
-        "Portalzugriff und aktive Tour-Aktionen sind für blockierte oder deaktivierte Fahrer eingeschränkt. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar.",
+        "Marktplatzzugriff und neue Tour-Annahmen sind für blockierte Fahrer eingeschränkt. Nutzen Sie Meine Touren, um Dokumente bestehender Touren zu korrigieren. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar.",
+      backToMarketplace: "Marktplatz",
+      tourInExecutionBanner:
+        "Tour in Ausführung — Abholung, Zustellung und Dokumente hier abschließen.",
       date: "Datum",
       timeWindow: "Zeitfenster",
       vehicle: "Fahrzeug",
@@ -1845,9 +1856,14 @@ window.I18n = (() => {
       adminAssignDriverTitle: "Fahrer zuweisen",
       adminReassignDriverTitle: "Fahrer neu zuweisen",
       adminAssignDriverHint:
-        "Direkte Zuweisung setzt die Tour von Entwurf auf Zugewiesen. Nur aktive Fahrer sind wählbar.",
+        "Direkte Zuweisung ist ein Ausnahme-Workflow. Externe Bestätigung (Anruf oder E-Mail) erfassen, dann von Entwurf auf Zugewiesen setzen.",
       adminReassignDriverHint:
         "Zugewiesenen Fahrer für diese Tour ändern. Der Tourstatus bleibt unverändert.",
+      adminAssignConfirmationNoteLabel: "Externe Bestätigung (optional)",
+      adminAssignConfirmationNotePlaceholder:
+        "z. B. Fahrer rief um 09:15 an — Tour 0845 übernommen",
+      adminAssignConfirmationNoteHint:
+        "Wird bei Angabe im Audit-Log gespeichert. Manuelle Zuweisung soll Ausnahme bleiben, nicht der Standard-Dispatch.",
       adminAssignDriverSelectLabel: "Fahrer *",
       adminAssignDriverConfirm: "Zuweisen",
       adminReassignDriverConfirm: "Neu zuweisen",
