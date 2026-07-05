@@ -51,7 +51,10 @@
       "Sophisticated acceptance blocking based on pickup/delivery time-span overlap, geolocation, and travel-time planning is out of Version 1; the client will define a fuller blocking-settings model separately.",
       "Address lat/long coordinates are not collected or entered manually in Version 1; geocoding for more accurate locations is future scope.",
       "When admin or dispatch cancels a job that was assigned or accepted, cancellation requires a reason code plus a driver-facing message so the assigned driver understands why the tour ended; the message is shown on the cancelled tour detail and in driver in-app/push notifications.",
-      "Operational policies such as minimum hours before pickup when admin cancel or schedule change is allowed are stored in app_settings and managed from admin Settings; defaults are configurable without redeploy."
+      "Operational policies such as minimum hours before pickup when admin cancel or schedule change is allowed are stored in app_settings and managed from admin Settings; defaults are configurable without redeploy.",
+      "Customer and address master-data notes are operational reference notes and must not be automatically copied to every new tour unless an admin explicitly applies or edits them for that order.",
+      "German postal-prefix filtering treats broader prefixes as inclusive of narrower prefixes; for example prefix 4 matches 40 and 41 unless a more specific filter is applied.",
+      "Manual direct assignment policy remains a client decision. If V1 treats it as exception-only, production must store the external confirmation/proof note and audit the assignment."
     ],
     "prototype_reference": "prototype/project (single-page HTML/React Babel demo: admin.jsx, driver.jsx, store.js, i18n.js, inputFormatters.js — not production repo layout; maps conceptually to apps/* paths in tasks). Canonical production spec is docs/requirements/prd.json (currently v1.8)."
   },
@@ -494,7 +497,10 @@
         "Sensitive fields are persisted but not exposed to drivers before acceptance or assignment.",
         "Pickup and delivery sections support optional alternate contact person distinct from primary contact person.",
         "Optional contact fields (alternate contact, second phone, email, info notes) are hidden behind progressive disclosure such as Add another contact or Show additional contact details.",
-        "Admin may attach additional self-created documents when creating or editing a draft job, including optional images such as a vehicle photo; attached documents are stored alongside or as a substitute for the auto-generated transport-order document."
+        "Admin may attach additional self-created documents when creating or editing a draft job, including optional images such as a vehicle photo; attached documents are stored alongside or as a substitute for the auto-generated transport-order document.",
+        "Customer/address master-data notes do not automatically become order-specific notes; admin must explicitly apply, edit, or enter driver-visible/internal notes for the tour.",
+        "If registered/not registered is confirmed for V1, it is added as an explicit vehicle/job field; until confirmed it remains a production open question, not an implicit backend requirement.",
+        "If by-latest scheduling is confirmed for V1, it is represented explicitly rather than overloading pickup/delivery time-window fields."
       ],
       "status": "pending",
       "files": [
@@ -518,7 +524,8 @@
         "Admin can revert Published to Draft, which removes the job from marketplace and enables edit, re-publish, or direct assignment.",
         "Revert is available only for Published jobs, not as a replacement for accepted-job cancellation/problem handling.",
         "Publish, direct assignment, reassignment, and revert-to-draft actions create audit log entries.",
-        "Version 1 supports simple A to B tours only; A to B to A and A to B to C tour chains are represented as separate orders for now."
+        "Version 1 supports simple A to B tours only; A to B to A and A to B to C tour chains are represented as separate orders for now.",
+        "Manual direct assignment, when used as an operational exception, stores an admin confirmation/proof note and writes an audit event once the client confirms the exact required proof policy."
       ],
       "status": "pending",
       "files": [
@@ -550,7 +557,9 @@
         "Blocked or inactive drivers cannot access marketplace active actions.",
         "Data leakage tests verify hidden fields are not returned before acceptance.",
         "Publishing a job makes it visible to authorized drivers on the next marketplace fetch (open screen or pull-to-refresh), not via mandatory real-time WebSocket sync in Version 1.",
-        "Behavior aligns with marketplace_sync_policy answers: newly published orders appear after fetch; pull-to-refresh is the manual refresh path."
+        "Behavior aligns with marketplace_sync_policy answers: newly published orders appear after fetch; pull-to-refresh is the manual refresh path.",
+        "Postal prefix filtering is inclusive: broader prefixes subsume narrower matches, e.g. 4 includes 40 and 41.",
+        "Marketplace card schedule display follows the client decision recorded in production_open_questions; until confirmed, backend exposes schedule fields needed for both card and detail rendering without leaking locked fields."
       ],
       "status": "pending",
       "files": [
@@ -1150,7 +1159,8 @@
         "Same-day overlap detection uses calendar date of pickup or delivery window only — no geolocation, travel-time, or time-span optimization is required in Version 1.",
         "Sophisticated time-span, geolocation, or travel-time-based overlap blocking is out of scope for Version 1; client will define a fuller blocking-settings model in a later version.",
         "Daily limit and limit-increase request changes are recorded in the audit log.",
-        "Acceptance limit enforcement is applied server-side so a driver cannot bypass it through parallel requests."
+        "Acceptance limit enforcement is applied server-side so a driver cannot bypass it through parallel requests.",
+        "Daily-job-limit enforcement on admin direct assignment remains a client decision; current V1 prototype assumption is driver acceptance only and is tracked in production_open_questions."
       ],
       "status": "pending",
       "files": [
@@ -1199,7 +1209,10 @@
     "Full backend notification center unless the chosen platform makes it trivial; Version 1 may use admin email alerts",
     "Full product multilingual/i18n rollout and localized legal copy management unless separately scoped; demo locales may exist in prototype only",
     "External customer import interfaces or PDF recognition unless separately scoped",
-    "Any behavior not described in PRD v1.5, validated wireframes, client feedback, or approved change request"
+    "Any behavior not described in PRD v1.5, validated wireframes, client feedback, or approved change request",
+    "Credit-note generation or credit-note workflow in V1 unless separately approved.",
+    "Scanner or AI-based document quality scoring, OCR validation, or automated document acceptance in V1.",
+    "Partner Policy / driver terms content management when legal terms stay as external static content; V1 may deep-link to the approved external policy."
   ],
   "resolved_defaults": {
     "documents_module_production": "Optional/costed line item; prototype includes full module enabled.",
@@ -1286,6 +1299,16 @@
       "operational.policies": "Cutoff hours and override rules for cancel/schedule change",
       "cancellation.policies": "Required reasons and minimum message lengths",
       "driver.acceptance.defaultDailyJobLimit": "Default daily_job_limit for new drivers"
+    },
+    "manual_direct_assign_policy_v1": {
+      "current_status": "client_decision_required",
+      "default_until_confirmed": "Admin direct assign remains available for dispatch exceptions; prototype captures optional external confirmation note in audit log when provided.",
+      "open_question_reference": "production_open_questions manual direct assignment policy"
+    },
+    "selective_driver_blocking_v1": {
+      "current_status": "client_decision_required",
+      "default_until_confirmed": "Prototype explores granular blocking: marketplace/acceptance blocked while document correction on assigned tours remains available via My Jobs. Coarse Blocked (everything off) remains the fallback if the client rejects granular mode.",
+      "open_question_reference": "production_open_questions selective driver blocking"
     }
   },
   "prototype_assumptions": {
@@ -1324,7 +1347,15 @@
     "Confirm which map or distance API vendor to use and acceptable ongoing usage budget.",
     "Confirm production file retention period, encryption at rest, malware scanning, and DSGVO handling for tour document uploads.",
     "Confirm final client-provided app display name string for production UI and legal copy.",
-    "Confirm production UI labels for special case administrative close vs cancel order (avoid ambiguous Close)."
+    "Confirm production UI labels for special case administrative close vs cancel order (avoid ambiguous Close).",
+    "Meeting 2026-06-29: confirm whether driver blocking must be granular so a driver can be blocked from marketplace/accepting new jobs while still correcting invoices or documents on existing tours, or whether V1 keeps coarse Blocked behavior.",
+    "Meeting 2026-06-29: confirm whether zugelassen / nicht zugelassen (registered / not registered) is a required job or vehicle field for V1 or deferred out of scope.",
+    "Meeting 2026-06-29: confirm final policy for manual direct assignment: when admin direct assign is allowed, whether it is exception-only, and what external proof (phone, email, confirmation note) must be stored.",
+    "Meeting 2026-06-29: confirm whether daily_job_limit applies only to driver marketplace acceptance (current prototype assumption) or also to admin direct assignment.",
+    "Meeting 2026-06-25: confirm whether marketplace list cards show pickup and delivery windows or only dates/regions with full windows in detail.",
+    "Meeting 2026-06-25: confirm whether separate date plus time-window from/to plus flexibility warnings are enough for V1 scheduling, or whether an explicit by-latest date/time mode is required.",
+    "Meeting 2026-06-25: confirm whether pickup-date and delivery-date filters are independent date ranges or linked as one schedule filter.",
+    "Meeting 2026-06-25: confirm final marketplace sort labels, order, and defaults."
   ],
   "risks": [
     "Legal wording inside the transport-order PDF requires legal review before production.",
@@ -1391,7 +1422,11 @@
       "Cross-border country-based filtering",
       "Rich newsletter/editor capabilities",
       "Geocoding and lat/long coordinate capture for address precision",
-      "Sophisticated driver scheduling: time-span overlap, geolocation, and travel-time-based acceptance blocking"
+      "Sophisticated driver scheduling: time-span overlap, geolocation, and travel-time-based acceptance blocking",
+      "Credit-note workflow and credit-note generation; meeting 2026-06-29 treated this as eventual/future scope, not V1.",
+      "Scanner or AI-based document quality validation beyond file malware scanning and manual admin review.",
+      "Vehicle type icons on marketplace cards unless separately approved for V1.",
+      "Explicit by-latest scheduling mode if the client confirms it is needed beyond date plus time-window fields."
     ]
   },
   "derived_from": "docs/requirements/prd.json",
@@ -1739,6 +1774,31 @@
       "question": "Should admin-configurable rules block cancel or schedule change within X hours of pickup? (Product decision 2026-07-02)",
       "resolution": "Yes for V1 via app_settings operational.policies. Default 1 hour before pickup window start for admin cancel and schedule change; exact values TBD with client. Optional override with audit note when enabled.",
       "prd_reference": "Task 31, resolved_defaults.operational_policies_v1"
+    },
+    {
+      "question": "Is credit-note generation part of V1? (Meeting 2026-06-29)",
+      "resolution": "No. Treat as future scope / roadmap item unless the client separately approves it for V1.",
+      "prd_reference": "scope_alignment.future_scope, out_of_scope"
+    },
+    {
+      "question": "Are scanner / AI document quality checks part of V1? (Meetings 2026-06-25/2026-06-29)",
+      "resolution": "No. V1 supports file malware scanning and manual admin document review; automated OCR/AI document-quality validation is future scope.",
+      "prd_reference": "scope_alignment.future_scope, out_of_scope"
+    },
+    {
+      "question": "Do order-specific notes automatically inherit customer/address master-data notes?",
+      "resolution": "No. Master-data notes are reference data. Order-specific internal or driver-visible notes must be explicitly applied or entered for the tour.",
+      "prd_reference": "Task 5 acceptance, product_context.important_notes"
+    },
+    {
+      "question": "How should postal-prefix marketplace filtering work? (Meeting 2026-06-25 Decision 9)",
+      "resolution": "Broader German postal prefixes are inclusive of narrower prefixes; e.g. prefix 4 matches 40 and 41.",
+      "prd_reference": "Task 7 acceptance, product_context.important_notes"
+    },
+    {
+      "question": "Where are Partner Policy / driver terms managed in V1?",
+      "resolution": "If the approved terms remain external static content, V1 links to that external policy instead of building legal content management.",
+      "prd_reference": "out_of_scope, Report Problem cancellation UX"
     }
   ],
   "client_feedback_traceability": [

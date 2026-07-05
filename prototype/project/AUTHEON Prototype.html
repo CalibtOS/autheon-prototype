@@ -68,15 +68,23 @@
         const [banner, setBanner] = useState(null);
         const [showNotifications, setShowNotifications] = useState(false);
 
-        const handleOpenJob = (j) => {
+        const handleOpenJob = (j, fromTab = tab) => {
           const portalLocked =
             j.status === "published" &&
             !store.isAccepted(j.id) &&
             !store.isPerformed(j.id);
           const mode = portalLocked ? "locked" : "unlocked";
-          setActiveJob({ id: j.id, mode });
+          setActiveJob({ id: j.id, mode, fromTab });
         };
-        const back = () => setActiveJob(null);
+        const back = () => {
+          const returnTab = activeJob?.fromTab || tab;
+          setActiveJob(null);
+          if (returnTab) setTab(returnTab);
+        };
+        const backToMarketplace = () => {
+          setActiveJob(null);
+          setTab("portal");
+        };
 
         const job = activeJob ? store.getJob(activeJob.id) : null;
 
@@ -93,6 +101,7 @@
               <JobLocked
                 job={job}
                 onBack={back}
+                onBackToMarketplace={backToMarketplace}
                 onAccept={() => setAcceptModal(job)}
               />
             );
@@ -101,6 +110,7 @@
               <JobUnlocked
                 job={job}
                 onBack={back}
+                onBackToMarketplace={backToMarketplace}
                 onReportProblem={() => setReportProblemJob(job)}
                 onPerform={() => {
                   const r = store.markPerformed(job.id);
@@ -123,7 +133,9 @@
         } else if (tab === "mine") {
           body = (
             <MyJobs
-              onOpen={(j) => setActiveJob({ id: j.id, mode: "unlocked" })}
+              onOpen={(j) =>
+                setActiveJob({ id: j.id, mode: "unlocked", fromTab: "mine" })
+              }
             />
           );
         } else if (tab === "info") {
@@ -327,13 +339,15 @@
         };
         const closeAssignDialog = () => setAssignDialog(null);
 
-        const confirmAssignDriver = (driverId) => {
+        const confirmAssignDriver = (driverId, confirmationNote) => {
           if (!assignDialog?.jobId) return;
           const job = store.getJob(assignDialog.jobId);
           const r =
             assignDialog.mode === "reassign"
               ? store.reassignJob(assignDialog.jobId, driverId)
-              : store.assignJob(assignDialog.jobId, driverId);
+              : store.assignJob(assignDialog.jobId, driverId, {
+                  confirmationNote,
+                });
           if (!r.ok) {
             showToast(
               assignDialog.mode === "reassign"
