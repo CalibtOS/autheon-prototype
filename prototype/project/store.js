@@ -2685,7 +2685,19 @@ window.AuthStore = (() => {
     },
 
     isCurrentDriverMarketplaceActive() {
-      return api.isCurrentDriverActive();
+      const d = api.getCurrentDriver();
+      return !d || d.status === "Active";
+    },
+
+    canDriverAccessMarketplace() {
+      return api.isCurrentDriverMarketplaceActive();
+    },
+
+    canDriverUploadOnAssignedTour(jobId) {
+      const d = api.getCurrentDriver();
+      if (!d) return false;
+      if (d.status === "Active" || d.status === "Blocked") return true;
+      return false;
     },
 
     todayCalendarKey() {
@@ -4191,6 +4203,8 @@ window.AuthStore = (() => {
         return { ok: false, reason: "job_not_uploadable" };
       const d = api.getCurrentDriver();
       if (!d) return { ok: false, reason: "no_driver" };
+      if (!api.canDriverUploadOnAssignedTour(id))
+        return { ok: false, reason: "driver_blocked" };
       if (j.driver && j.driver !== d.name)
         return { ok: false, reason: "not_assigned_driver" };
       return { ok: true, jobId: id };
