@@ -1756,6 +1756,12 @@ window.AuthStore = (() => {
       legacyFlagDefaults.appDisplayName ||
       "Transport Portal",
   };
+  const driverSupportContact = {
+    phone:
+      window.AUTHEON_SUPPORT_DEFAULTS?.phone || "+49 30 1234 5678",
+    email:
+      window.AUTHEON_SUPPORT_DEFAULTS?.email || "support@autheon.example",
+  };
   const { appDisplayName: _legacyName, ...flagDefaults } = legacyFlagDefaults;
   const featureFlags = {
     financeModule: false,
@@ -2550,6 +2556,8 @@ window.AuthStore = (() => {
     },
 
     getBranding: () => ({ ...branding }),
+
+    getDriverSupportContact: () => ({ ...driverSupportContact }),
 
     setAppDisplayName(name) {
       const next = String(name || "").trim() || "Transport Portal";

@@ -210,6 +210,25 @@ const Ic = {
       />
     </svg>
   ),
+  Mail: () => (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+      <rect
+        x="3"
+        y="5"
+        width="18"
+        height="14"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="m3 7 9 6 9-6"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
   Down: () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
       <path
@@ -3214,6 +3233,167 @@ const DriverDailyLimitCard = ({ onRequestIncrease }) => {
   );
 };
 
+const PROFILE_FAQ_ITEMS = [
+  {
+    id: "workflow",
+    questionKey: "autheonWorkflow",
+    answerKey: "faqAutheonWorkflowA",
+  },
+  {
+    id: "binding",
+    questionKey: "bindingAcceptanceInfo",
+    answerKey: "faqBindingAcceptanceA",
+  },
+  {
+    id: "report",
+    questionKey: "reportProblemGuide",
+    answerKey: "faqReportProblemA",
+  },
+  {
+    id: "settlement",
+    questionKey: "settlementRhythm",
+    answerKey: "faqSettlementA",
+  },
+  {
+    id: "masterData",
+    questionKey: "faqMasterDataChange",
+    answerKey: "faqMasterDataChangeA",
+  },
+  {
+    id: "dailyLimit",
+    questionKey: "faqDailyLimit",
+    answerKey: "faqDailyLimitA",
+  },
+];
+
+const profileContactLinkStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  fontSize: 13,
+  color: "var(--text)",
+  textDecoration: "underline",
+  textUnderlineOffset: 2,
+  marginTop: 6,
+};
+
+const ProfileHelpSupport = () => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const driver = store.getCurrentDriver();
+  const support = store.getDriverSupportContact();
+  const [openFaqId, setOpenFaqId] = useState(null);
+  const mailSubject = encodeURIComponent(
+    t("mailtoSubjectSupport", { driverCode: driver?.driverCode || "" }),
+  );
+  const mailtoHref = `mailto:${support.email}?subject=${mailSubject}`;
+  const telHref = `tel:${String(support.phone || "").replace(/\s/g, "")}`;
+
+  return (
+    <div className="card" style={{ padding: 14, marginTop: 16 }}>
+      <Lbl>{t("helpSupportTitle")}</Lbl>
+      <p
+        style={{
+          margin: "8px 0 0",
+          fontSize: 12.5,
+          color: "var(--muted)",
+          lineHeight: 1.5,
+        }}
+      >
+        {t("helpSupportIntro")}
+      </p>
+
+      <div style={{ marginTop: 16 }}>
+        <Lbl>{t("profileFaqsTitle")}</Lbl>
+        <div style={{ marginTop: 8 }}>
+          {PROFILE_FAQ_ITEMS.map(({ id, questionKey, answerKey }) => {
+            const expanded = openFaqId === id;
+            return (
+              <div
+                key={id}
+                style={{ borderBottom: "1px solid var(--line)" }}
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenFaqId((cur) => (cur === id ? null : id))
+                  }
+                  aria-expanded={expanded}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: 10,
+                    padding: "12px 0",
+                    background: "none",
+                    border: "none",
+                    textAlign: "left",
+                    cursor: "pointer",
+                    color: "inherit",
+                    font: "inherit",
+                  }}
+                >
+                  <span style={{ fontWeight: 600, fontSize: 13.5, flex: 1 }}>
+                    {t(questionKey)}
+                  </span>
+                  <span
+                    style={{
+                      flexShrink: 0,
+                      transform: expanded ? "rotate(90deg)" : "none",
+                      transition: "transform 0.15s ease",
+                      color: "var(--muted)",
+                    }}
+                    aria-hidden
+                  >
+                    <Ic.Chev />
+                  </span>
+                </button>
+                {expanded ? (
+                  <p
+                    style={{
+                      margin: "0 0 12px",
+                      fontSize: 12.5,
+                      color: "var(--muted)",
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {t(answerKey)}
+                  </p>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <div className="label">{t("dispatcherHotline")}</div>
+        <a href={telHref} className="mono" style={profileContactLinkStyle}>
+          <Ic.Phone /> {support.phone}
+        </a>
+        <div
+          style={{
+            fontSize: 11.5,
+            color: "var(--muted)",
+            marginTop: 4,
+            lineHeight: 1.45,
+          }}
+        >
+          {t("dispatcherHotlineSub")}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 14 }}>
+        <div className="label">{t("profileEmailSupport")}</div>
+        <a href={mailtoHref} className="mono" style={profileContactLinkStyle}>
+          <Ic.Mail /> {support.email}
+        </a>
+      </div>
+    </div>
+  );
+};
+
 const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -3507,6 +3687,7 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
           {t("pushSupportNotice")}
         </div>
       </div>
+      <ProfileHelpSupport />
       <button
         type="button"
         className="btn block"
