@@ -1564,11 +1564,6 @@ window.AuthStore = (() => {
     return `${prefix}-${String(max + 1).padStart(3, "0")}`;
   }
 
-  function generateDriverCode(driverId) {
-    const num = String(driverId || "").replace(/^DRV-/, "");
-    return `AU-41-${num}`;
-  }
-
   function isValidEmail(value) {
     const email = String(value || "").trim();
     if (!email) return false;
