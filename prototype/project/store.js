@@ -1240,6 +1240,7 @@ window.AuthStore = (() => {
         phone: "+49 170 4400228",
         notes: "",
         status: "Active",
+        accessState: ACCESS_STATE.ACTIVE,
         dailyJobLimit: 3,
         prefs: {
           postalAreas: ["80"],
@@ -1259,6 +1260,7 @@ window.AuthStore = (() => {
         phone: "+49 172 3300301",
         notes: "",
         status: "Active",
+        accessState: ACCESS_STATE.ACTIVE,
         dailyJobLimit: 3,
         prefs: {
           postalAreas: ["60"],
@@ -1278,6 +1280,7 @@ window.AuthStore = (() => {
         phone: "+49 171 991177",
         notes: "",
         status: "Blocked",
+        accessState: ACCESS_STATE.ACTIVE,
         dailyJobLimit: 3,
         prefs: {
           postalAreas: ["10"],
@@ -1297,12 +1300,14 @@ window.AuthStore = (() => {
         name: DEMO_ADMIN,
         email: "anna.bauer@autheon.example",
         status: "Active",
+        accessState: ACCESS_STATE.ACTIVE,
       },
       {
         id: "ADM-002",
         name: "Lukas Reimann",
         email: "lukas.reimann@autheon.example",
         status: "Active",
+        accessState: ACCESS_STATE.ACTIVE,
       },
     ];
   }
@@ -1570,29 +1575,23 @@ window.AuthStore = (() => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
-  function generateTemporaryPassword() {
-    const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-    const lower = "abcdefghijkmnopqrstuvwxyz";
-    const digits = "23456789";
-    const all = upper + lower + digits;
-    const pick = (chars) => chars[Math.floor(Math.random() * chars.length)];
-    let pw = pick(upper) + pick(lower) + pick(digits);
-    for (let i = 0; i < 9; i++) pw += pick(all);
-    return pw
-      .split("")
-      .sort(() => Math.random() - 0.5)
-      .join("");
-  }
+  const ACCESS_STATE = {
+    INVITE_PENDING: "Invite pending",
+    ACTIVE: "Active",
+    INVITE_FAILED: "Invite failed",
+  };
 
-  function applyGeneratedPassword(user) {
-    const password = generateTemporaryPassword();
-    user.tempPassword = password;
-    user.mustChangePassword = true;
-    user.passwordGeneratedAt = new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace("T", " ");
-    return password;
+  function simulateAccountInvite(user, kind) {
+    user.accessState = ACCESS_STATE.INVITE_PENDING;
+    user.lastInviteAt = nowStamp();
+    user.identityProvisioned = true;
+    user.inviteEmailSent = true;
+    user.inviteFailureReason = "";
+    log("user_access_invite_sent", DEMO_ADMIN, user.name || user.email, kind);
+    return {
+      identityProvisioned: true,
+      inviteEmailSent: true,
+    };
   }
 
   /** Restore target when admin continues a special case (fallback if statusBeforeSpecialCase missing). */
@@ -3988,7 +3987,15 @@ window.AuthStore = (() => {
       for (const k of fields) {
         if (patch[k] !== undefined) d[k] = String(patch[k] ?? "").trim();
       }
+      if (patch.driverCode !== undefined) {
+        const code = String(patch.driverCode ?? "").trim();
+        if (!code) return { ok: false, reason: "driver_code_required" };
+        if (drivers.some((x) => x.id !== id && x.driverCode === code))
+          return { ok: false, reason: "duplicate_driver_code" };
+        d.driverCode = code;
+      }
       if (!d.name || !d.company) return { ok: false, reason: "required" };
+      if (!d.driverCode) return { ok: false, reason: "driver_code_required" };
       if (!d.email) return { ok: false, reason: "email_required" };
       if (!isValidEmail(d.email)) return { ok: false, reason: "invalid_email" };
       if (drivers.some((x) => x.id !== id && x.email === d.email))
@@ -4022,17 +4029,21 @@ window.AuthStore = (() => {
       const name = String(data.name || "").trim();
       const company = String(data.company || "").trim();
       const email = String(data.email || "").trim();
+      const driverCode = String(data.driverCode || "").trim();
       if (!name || !company) return { ok: false, reason: "required" };
+      if (!driverCode) return { ok: false, reason: "driver_code_required" };
       if (!email) return { ok: false, reason: "email_required" };
       if (!isValidEmail(email)) return { ok: false, reason: "invalid_email" };
       if (drivers.some((d) => d.email === email))
         return { ok: false, reason: "duplicate_email" };
+      if (drivers.some((d) => d.driverCode === driverCode))
+        return { ok: false, reason: "duplicate_driver_code" };
       const id = nextMasterId("DRV", drivers);
       const driver = {
         id,
         name,
         company,
-        driverCode: generateDriverCode(id),
+        driverCode,
         address: String(data.address || "").trim(),
         email,
         phone: String(data.phone || "").trim(),
@@ -4053,12 +4064,11 @@ window.AuthStore = (() => {
           notifyNewPublished: true,
         },
       };
-      const password = applyGeneratedPassword(driver);
+      const access = simulateAccountInvite(driver, "driver");
       drivers.unshift(driver);
       log("driver_created", DEMO_ADMIN, driver.name, driver.id);
-      log("temporary_password_generated", DEMO_ADMIN, driver.name, "driver");
       emit();
-      return { ok: true, driver, password };
+      return { ok: true, driver, access };
     },
 
     addAdmin(data = {}) {
@@ -4074,23 +4084,31 @@ window.AuthStore = (() => {
         email,
         status: "Active",
       };
-      const password = applyGeneratedPassword(admin);
+      const access = simulateAccountInvite(admin, "admin");
       admins.unshift(admin);
       log("admin_created", DEMO_ADMIN, admin.name, admin.id);
-      log("temporary_password_generated", DEMO_ADMIN, admin.name, "admin");
       emit();
-      return { ok: true, admin, password };
+      return { ok: true, admin, access };
     },
 
-    resetPassword(kind, id) {
+    resendAccess(kind, id) {
       const pool = kind === "admin" ? admins : drivers;
       const u = pool.find((x) => x.id === id);
       if (!u) return { ok: false };
-      const password = applyGeneratedPassword(u);
-      log("password_reset_triggered", DEMO_ADMIN, u.name, kind);
-      log("temporary_password_generated", DEMO_ADMIN, u.name, kind);
+      const access = simulateAccountInvite(u, kind);
+      log("user_access_invite_resent", DEMO_ADMIN, u.name || u.email, kind);
       emit();
-      return { ok: true, password, user: u };
+      return { ok: true, access, user: u };
+    },
+
+    setAdminStatus(id, status) {
+      const allowed = ["Active", "Inactive"];
+      const a = admins.find((x) => x.id === id);
+      if (!a || !allowed.includes(status)) return { ok: false };
+      a.status = status;
+      log("admin_status_changed", DEMO_ADMIN, a.name, status);
+      emit();
+      return { ok: true };
     },
 
     toggleDocument(id) {

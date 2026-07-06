@@ -405,6 +405,10 @@ const v18Needles = [
   ["DriverDailyLimitCard", "driver profile daily limit card"],
   ["estimateDistanceFromForm", "estimate distance from new job form"],
   ["newOrderEstimateDistance", "estimate distance button on new job form"],
+  ["resendAccess", "account resend invite API"],
+  ["AccountAccessDialog", "account invite status dialog"],
+  ["adminUsersFieldDriverCodeHint", "driver ID required on create form"],
+  ["adminUsersAccessNoPasswordNote", "no generated password in admin UI copy"],
 ];
 out("");
 out("PRD v1.8 checks:");
@@ -418,6 +422,11 @@ for (const [needle, label] of v18Needles) {
         ? driver.includes(needle)
       : needle === "newOrderSecDocuments" || needle === "adminUsersFieldDailyLimit"
         ? i18n.includes(needle) && (needle === "adminUsersFieldDailyLimit" ? admin.includes("dailyJobLimit") : admin.includes("sec-07"))
+      : needle === "adminUsersFieldDriverCodeHint" ||
+          needle === "adminUsersAccessNoPasswordNote"
+        ? i18n.includes(needle) && admin.includes("driverCode")
+      : needle === "AccountAccessDialog"
+        ? admin.includes(needle)
       : needle === "TD-SEED-ACTIVE-001" || needle === "TD-SEED-ADMIN-0845"
         ? inStore
         : needle === "canDriverReplaceTourDocument" ||

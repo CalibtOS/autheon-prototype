@@ -3132,6 +3132,7 @@ const Stub = ({ title, desc }) => {
 const emptyDriverEditForm = () => ({
   name: "",
   company: "",
+  driverCode: "",
   address: "",
   email: "",
   phone: "",
@@ -3163,6 +3164,8 @@ const validateDriverFormLocal = (form, t) => {
     errors.name = t("adminUsersErrNameRequired");
   if (!String(form.company || "").trim())
     errors.company = t("adminUsersErrCompanyRequired");
+  if (!String(form.driverCode || "").trim())
+    errors.driverCode = t("adminUsersErrDriverCodeRequired");
   if (!String(form.email || "").trim())
     errors.email = t("adminUsersErrEmailRequired");
   else if (!AuthStore.isValidEmail(form.email))
@@ -3216,6 +3219,23 @@ const DriverUserFormFields = ({ form, setF, errors = {}, t }) => (
         autoComplete="organization"
       />
       <UserFormError message={errors.company} />
+    </div>
+    <div>
+      <label className="field-label">{t("adminUsersFieldDriverCode")} *</label>
+      <input
+        className="input mono"
+        style={errors.driverCode ? userInputErrStyle : undefined}
+        value={form.driverCode}
+        onChange={(e) => setF("driverCode", e.target.value)}
+        placeholder="AU-41-0123"
+      />
+      <UserFormError message={errors.driverCode} />
+      <p
+        className="label"
+        style={{ marginTop: 4, fontSize: 11.5, lineHeight: 1.45 }}
+      >
+        {t("adminUsersFieldDriverCodeHint")}
+      </p>
     </div>
     <div style={{ gridColumn: "1 / -1" }}>
       <label className="field-label">{t("adminUsersFieldPhone")}</label>
@@ -3318,22 +3338,36 @@ const userSaveErr = (r, kind, t) => {
   if (reason === "email_required") return t("adminUsersErrEmailRequired");
   if (reason === "invalid_email") return t("adminUsersErrEmailInvalid");
   if (reason === "duplicate_email") return t("adminUsersEmailDuplicate");
+  if (reason === "duplicate_driver_code") return t("adminUsersErrDriverCodeDuplicate");
+  if (reason === "driver_code_required") return t("adminUsersErrDriverCodeRequired");
   if (reason === "invalid_daily_limit") return t("adminUsersErrDailyLimit");
   return t("adminInvoiceErrGeneric");
 };
 
-const UserCredentialsDialog = ({ open, data, onClose, showToast }) => {
+const accessStateLabel = (state, t) => {
+  const key = {
+    "Invite pending": "adminUsersAccessInvitePending",
+    Active: "adminUsersAccessActive",
+    "Invite failed": "adminUsersAccessInviteFailed",
+    Inactive: "adminUsersAccessInactive",
+  }[state];
+  return key ? t(key) : state || "—";
+};
+
+const AccountAccessDialog = ({ open, data, onClose, onResend, showToast }) => {
   const { t } = useI18n();
   if (!open || !data) return null;
 
-  const copyPassword = async () => {
-    try {
-      await navigator.clipboard.writeText(data.password);
-      showToast?.(t("adminUsersCredentialsCopied"), data.name);
-    } catch {
-      window.prompt(t("adminUsersCredentialsCopyFallback"), data.password);
+  const handleResend = () => {
+    const r = onResend?.();
+    if (r?.ok) {
+      showToast?.(t("adminUsersInviteResentToast"), data.name);
+    } else {
+      showToast?.(t("adminUsersSaveFailed"), t("adminInvoiceErrGeneric"));
     }
   };
+
+  const inviteOk = data.access?.inviteEmailSent !== false;
 
   return (
     <div
@@ -3353,14 +3387,14 @@ const UserCredentialsDialog = ({ open, data, onClose, showToast }) => {
     >
       <div
         className="card elev"
-        style={{ maxWidth: 460, width: "100%", padding: 22 }}
+        style={{ maxWidth: 480, width: "100%", padding: 22 }}
         onClick={(e) => e.stopPropagation()}
       >
         <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>
-          {t("adminUsersCredentialsTitle")}
+          {t("adminUsersAccessDialogTitle")}
         </h2>
         <p style={{ color: "var(--muted)", margin: "0 0 16px", fontSize: 13 }}>
-          {t("adminUsersCredentialsHint")}
+          {t("adminUsersAccessDialogHint")}
         </p>
         <div style={{ display: "grid", gap: 12 }}>
           <div>
@@ -3368,44 +3402,50 @@ const UserCredentialsDialog = ({ open, data, onClose, showToast }) => {
             <strong>{data.name}</strong>
           </div>
           <div>
-            <div className="label">{t("adminUsersCredentialsLoginLabel")}</div>
+            <div className="label">{t("adminUsersAccessEmailLabel")}</div>
             <span className="mono">{data.email || "—"}</span>
           </div>
           <div>
-            <div className="label">{t("adminUsersCredentialsPasswordLabel")}</div>
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
-            >
-              <code
-                className="mono"
-                style={{
-                  fontSize: 15,
-                  padding: "8px 12px",
-                  background: "var(--surface-2, #f1f5f9)",
-                  borderRadius: 8,
-                  letterSpacing: "0.04em",
-                }}
+            <div className="label">{t("adminUsersColAccess")}</div>
+            <Pill status={inviteOk ? "accepted" : "cancelled"}>
+              {inviteOk
+                ? t("adminUsersAccessInviteSent")
+                : t("adminUsersAccessInviteFailed")}
+            </Pill>
+            {data.user?.lastInviteAt ? (
+              <div
+                className="label"
+                style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}
               >
-                {data.password}
-              </code>
-              <button type="button" className="btn xs" onClick={copyPassword}>
-                {t("adminUsersCredentialsCopy")}
-              </button>
-            </div>
+                {t("adminUsersAccessLastInvite", { at: data.user.lastInviteAt })}
+              </div>
+            ) : null}
           </div>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 12.5,
+              color: "var(--muted)",
+              lineHeight: 1.55,
+            }}
+          >
+            {t("adminUsersAccessNoPasswordNote")}
+          </p>
         </div>
         <div
           style={{
             display: "flex",
+            gap: 10,
             justifyContent: "flex-end",
             marginTop: 18,
+            flexWrap: "wrap",
           }}
         >
+          {onResend ? (
+            <button type="button" className="btn" onClick={handleResend}>
+              {t("adminUsersResendInvite")}
+            </button>
+          ) : null}
           <button type="button" className="btn primary" onClick={onClose}>
             {t("close")}
           </button>
@@ -3434,11 +3474,13 @@ const UsersPane = ({ showToast }) => {
     setAdminErrors((e) => ({ ...e, [k]: undefined }));
   };
 
-  const showUserCredentials = (user, password) => {
+  const showAccountAccess = (user, access, kind) => {
     setCredentials({
       name: user.name,
       email: user.email || "",
-      password,
+      access,
+      user,
+      kind,
     });
   };
 
@@ -3452,6 +3494,7 @@ const UsersPane = ({ showToast }) => {
     setDriverForm({
       name: d.name || "",
       company: d.company || "",
+      driverCode: d.driverCode || "",
       address: d.address || "",
       email: d.email || "",
       phone: d.phone || "",
@@ -3512,8 +3555,8 @@ const UsersPane = ({ showToast }) => {
     }
     setDriverModal(null);
     setDriverErrors({});
-    if (driverModal === "new" && r.password) {
-      showUserCredentials(r.driver, r.password);
+    if (driverModal === "new" && r.access) {
+      showAccountAccess(r.driver, r.access, "driver");
       showToast?.(t("adminUsersDriverCreated"), driverForm.name);
     } else {
       showToast?.(t("adminUsersSaved"), driverForm.name);
@@ -3536,27 +3579,33 @@ const UsersPane = ({ showToast }) => {
     }
     setAdminModal(null);
     setAdminErrors({});
-    if (adminModal === "new" && r.password) {
-      showUserCredentials(r.admin, r.password);
+    if (adminModal === "new" && r.access) {
+      showAccountAccess(r.admin, r.access, "admin");
       showToast?.(t("adminUsersAdminCreated"), adminForm.name);
     } else {
       showToast?.(t("adminUsersSaved"), adminForm.name);
     }
   };
 
-  const triggerPasswordReset = (kind, user) => {
-    const r = store.resetPassword(kind, user.id);
+  const triggerResendAccess = (kind, user) => {
+    const r = store.resendAccess(kind, user.id);
     if (!r.ok) {
       showToast?.(t("adminUsersSaveFailed"), t("adminInvoiceErrGeneric"));
       return;
     }
-    showUserCredentials(r.user, r.password);
+    showAccountAccess(r.user, r.access, kind);
     showToast?.(
       kind === "admin"
-        ? t("adminUsersToastPwAdmin")
-        : t("adminUsersToastPwDriver"),
+        ? t("adminUsersToastInviteAdmin")
+        : t("adminUsersToastInviteDriver"),
       user.name,
     );
+  };
+
+  const applyAdminStatus = (admin, status) => {
+    const result = store.setAdminStatus(admin.id, status);
+    if (!result.ok) return;
+    showToast?.(t("adminUsersToastAdminChanged"), admin.name);
   };
 
   return (
@@ -3591,6 +3640,7 @@ const UsersPane = ({ showToast }) => {
                 <th>{t("adminUsersColName")}</th>
                 <th>{t("adminUsersColDriverCode")}</th>
                 <th>{t("adminUsersColStatus")}</th>
+                <th>{t("adminUsersColAccess")}</th>
                 <th>{t("adminUsersColActions")}</th>
               </tr>
             </thead>
@@ -3612,6 +3662,15 @@ const UsersPane = ({ showToast }) => {
                       status={d.status === "Active" ? "accepted" : "cancelled"}
                     >
                       {d.status}
+                    </Pill>
+                  </td>
+                  <td>
+                    <Pill
+                      status={
+                        d.accessState === "Active" ? "accepted" : "published"
+                      }
+                    >
+                      {accessStateLabel(d.accessState, t)}
                     </Pill>
                   </td>
                   <td>
@@ -3650,9 +3709,9 @@ const UsersPane = ({ showToast }) => {
                       ))}
                       <button
                         className="btn xs"
-                        onClick={() => triggerPasswordReset("driver", d)}
+                        onClick={() => triggerResendAccess("driver", d)}
                       >
-                        {t("adminUsersResetPw")}
+                        {t("adminUsersResendInvite")}
                       </button>
                     </div>
                   </td>
@@ -3697,6 +3756,13 @@ const UsersPane = ({ showToast }) => {
                 </div>
                 <Pill status="accepted">{a.status}</Pill>
               </div>
+              <div
+                className="label"
+                style={{ fontSize: 11.5, marginTop: 6 }}
+              >
+                {t("adminUsersColAccess")}:{" "}
+                {accessStateLabel(a.accessState, t)}
+              </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
                 <button
                   type="button"
@@ -3708,9 +3774,23 @@ const UsersPane = ({ showToast }) => {
                 <button
                   type="button"
                   className="btn xs"
-                  onClick={() => triggerPasswordReset("admin", a)}
+                  onClick={() =>
+                    applyAdminStatus(
+                      a,
+                      a.status === "Active" ? "Inactive" : "Active",
+                    )
+                  }
                 >
-                  {t("adminUsersTriggerPwReset")}
+                  {a.status === "Active"
+                    ? t("adminUsersDeactivate")
+                    : t("adminUsersActivate")}
+                </button>
+                <button
+                  type="button"
+                  className="btn xs"
+                  onClick={() => triggerResendAccess("admin", a)}
+                >
+                  {t("adminUsersResendInvite")}
                 </button>
               </div>
             </div>
@@ -3848,10 +3928,28 @@ const UsersPane = ({ showToast }) => {
         </div>
       ) : null}
 
-      <UserCredentialsDialog
+      <AccountAccessDialog
         open={!!credentials}
         data={credentials}
         onClose={() => setCredentials(null)}
+        onResend={
+          credentials?.user && credentials?.kind
+            ? () => {
+                const r = store.resendAccess(
+                  credentials.kind,
+                  credentials.user.id,
+                );
+                if (r.ok) {
+                  setCredentials({
+                    ...credentials,
+                    access: r.access,
+                    user: r.user,
+                  });
+                }
+                return r;
+              }
+            : undefined
+        }
         showToast={showToast}
       />
     </div>
