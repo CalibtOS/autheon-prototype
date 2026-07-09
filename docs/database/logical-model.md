@@ -189,7 +189,7 @@ The Performed count that drives automatic release is derived from `jobs` / `job_
 
 The prior per-day model (`drivers.daily_job_limit` plus driver limit-increase requests via `master_data_change_requests.change_type = daily_limit_override`) is superseded; `daily_limit_override` is retained as a deprecated enum value for legacy prototype rows only. The same-day overlap confirmation prompt is unchanged and remains a soft prompt, not a hard block.
 
-Open question (F-01): whether admin direct assignment counts toward the probation Performed threshold, and whether admin may directly assign to a probation-blocked driver, is unresolved and tracked in `prd.json` `production_open_questions`.
+Decision (F-01, 2026-07-10): probation constrains only driver self-service marketplace booking. Admin direct assignment is exempt — admin may assign additional jobs to a driver even while on probation — and Performed jobs count toward the release threshold whether self-accepted or admin-assigned. Enforcement therefore gates the driver acceptance path, not the admin assignment path.
 
 ## Explicit non-goals
 

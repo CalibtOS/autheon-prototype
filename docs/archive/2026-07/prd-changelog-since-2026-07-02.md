@@ -37,7 +37,7 @@ Delta summary since v1.8: **0 NEW · 2 CHANGED · 1 CONFLICT · 2 new open quest
 - `resolved_defaults`: `driver_daily_acceptance_limit_v1` → `driver_probation_acceptance_limit_v1` (rewritten); `app_settings_catalog_v1` key renamed; `driver_fields_v1` `dailyJobLimit` → `probationJobLimit` + `probationCleared`.
 - `client_feedback_resolved`: Ferhat Q3 entry marked superseded and rewritten to the probation model.
 - `scope_alignment.v1_in_scope`: acceptance-limit entry rewritten to probation model.
-- `production_open_questions` (OQ-9): updated — does admin direct assignment count toward the probation Performed threshold, and may admin assign while a driver is probation-blocked?
+- **OQ-9 resolved (2026-07-10):** probation constrains only driver self-service marketplace booking. Admin direct assignment is exempt — admin may assign additional jobs to a driver even while on probation — and Performed jobs count toward release whether self-accepted or admin-assigned. Recorded in Task 30 acceptance, `resolved_defaults.driver_probation_acceptance_limit_v1`, and `client_feedback_resolved`; the corresponding open question was moved out of `production_open_questions`.
 
 **Database:** Schema change (F-01 touches data).
 
