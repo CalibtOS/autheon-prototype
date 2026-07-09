@@ -1,6 +1,7 @@
 ﻿// AUTHEON Version 1 database draft — PostgreSQL target.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
-// Last updated: 2026-07-09 (PRD v1.9, F-01) — replaced drivers.daily_job_limit with the one-time probation model (probation_job_limit + probation_cleared_at); deprecated master_data_change_type.daily_limit_override; renamed app_settings key driver.acceptance.defaultDailyJobLimit -> driver.acceptance.probationJobCount.
+// Last updated: 2026-07-10 (PRD v2.0) — no structural change. Annotated drivers.driver_code semantics (F-03: system-assigned, immutable, never reused) and documented same-day per-leg time-window rule (F-04) in logical-model.md. Probation UI, Infopoint View/Download, branding/domain/Report-Problem-timing are UI/open items with no schema impact.
+// 2026-07-09 (PRD v1.9, F-01) — replaced drivers.daily_job_limit with the one-time probation model (probation_job_limit + probation_cleared_at); deprecated master_data_change_type.daily_limit_override; renamed app_settings key driver.acceptance.defaultDailyJobLimit -> driver.acceptance.probationJobCount.
 // 2026-07-03 — aligned upload-core asset model, document versioning, infopoint/problem upload links, and explicit job location windows with autheon-be TypeORM sync target.
 
 Enum user_status {
@@ -135,7 +136,7 @@ Table users {
 Table drivers {
   id uuid [pk]
   user_id uuid [not null, unique]
-  driver_code varchar(64) [not null, unique]
+  driver_code varchar(64) [not null, unique]  // F-03: system-assigned from a monotonic sequence, immutable after creation, never reused (even after block/inactive/archive/soft-delete/departure); exact format client-defined (see prd.json production_open_questions)
   company_name varchar(255) [not null]
   contact_name varchar(255)
   street varchar(255)
@@ -253,7 +254,7 @@ Table job_locations {
   notes text
   scheduled_date date
   window_start time
-  window_end time
+  window_end time  // F-04: window is same-day only; window_end >= window_start (no cross-midnight). Pickup and delivery legs may still have different scheduled_date.
   window_is_flexible boolean [not null, default: false]
   completed_at timestamptz
 

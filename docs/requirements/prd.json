@@ -1,6 +1,6 @@
 {
   "feature": "Vehicle Transport Platform Phase 1 - working app name configurable",
-  "version": "PRD v1.9 - driver probation model replaces daily acceptance limit; in-PWA document preview/share/print; driver workflow email conflict and inactivity handling flagged for decision (2026-07-09)",
+  "version": "PRD v2.0 - probation-only driver UI (legacy limit-request UI removed); automatic immutable sequential driver IDs; same-day per-leg time-window validation; Infopoint separate View/Download actions; branding pack, driver-ID format, Report Problem timing, and production domain flagged for decision (2026-07-10)",
   "goal": "Replace manual vehicle transport dispatch with a contract-driven Version 1 platform focused on operational order creation, marketplace job distribution, direct assignment, binding driver acceptance, clear Report Problem cancellation and special case flows, external map navigation, address master data, simple push notifications for drivers, admin email alerts for critical events, optional tour-linked document and driver invoice handling, auditability, and a controlled rollout from zero without historical Excel tour migration.",
   "product_context": {
     "platform_type": "Vehicle transport / vehicle relocation operations platform",
@@ -21,6 +21,7 @@
       "meetings/source/autheon_meeting_2026-06-25_transcript_en.md (Jour Fixe meeting 2026-06-25, Figma walkthrough and scheduling logic)",
       "meetings/source/autheon_meeting_2026-06-29_transcript_en.md (prototype review meeting 2026-06-29, requirements discovery)",
       "Post-v1.8 prototype-review meeting (verified delta report: probation model, optional driver workflow email, in-PWA document preview) — transcript not yet committed to meetings/source/; findings F-01..F-11",
+      "Post-v1.9 meeting 2026-07-10 (verified delta report: probation-only driver UI, automatic immutable driver IDs, same-day time-window validation, Infopoint View/Download actions, branding/domain/Report-Problem-timing open) — transcript not yet committed to meetings/source/; findings F-01..F-08",
       "Client Feedback.pdf (May 2026, repository root d:/Feedback.pdf)"
     ],
     "important_notes": [
@@ -424,7 +425,10 @@
       "acceptance": [
         "Admin can create and edit driver records.",
         "Creating a driver account in production creates or links a local app user, a driver profile, and a Keycloak user in one auditable backend workflow.",
-        "Driver account creation requires email, person/contact name, company name, and driver ID; the driver profile remains separate from the identity account but is linked through userId/keycloak subject.",
+        "Driver account creation requires email, person/contact name, and company name; the driver ID is assigned automatically by the system (F-03) and is not entered manually; the driver profile remains separate from the identity account but is linked through userId/keycloak subject.",
+        "The system assigns the next driver ID automatically on driver creation using a monotonic sequence; the exact ID format (prefix, numeric length, padding, year component, starting sequence) is client-defined and tracked in production_open_questions.",
+        "An assigned driver ID is immutable: admins editing a driver record cannot change it.",
+        "Driver IDs are never reused: an ID belonging to a blocked, inactive, archived, soft-deleted, or departed driver is not reassigned to a later driver.",
         "After driver creation, the system sends an invitation or required-action email for the driver to set their own password; the admin UI shows delivery status and resend action, not the password.",
         "Driver record includes company name, person name, contact data, driver ID, notes, account/access state, and operational status.",
         "Driver statuses include Active, Blocked, Inactive, Archived, and Soft Deleted.",
@@ -491,6 +495,7 @@
         "Pickup and delivery locations are independent sections and can be selected from shared address master data or entered freely.",
         "Pickup and delivery each have separate date, time window from, and time window to fields.",
         "System validates obvious date/time inconsistencies such as delivery date before pickup date or time window to before time window from; admins may consciously confirm warnings where business requires flexibility.",
+        "Each leg's time window must start and end on the same calendar day (F-04); pickup and delivery may still fall on different dates. A window that would cross midnight is unsupported in Version 1 and is rejected (or blocked with a clear cross-midnight-not-supported message) on save/publish.",
         "Date input supports free text and calendar picker and formats to DD.MM.YYYY.",
         "Time input supports free text and formats values such as 0800 to 08:00 and 830 to 08:30.",
         "Vehicle manufacturer supports dropdown suggestions plus free text; unknown manufacturers are not blocked.",
@@ -831,7 +836,8 @@
         "The area contains three main sections: General Documents, News, and Help.",
         "General Documents contains permanent PDFs and information such as vehicle pickup instructions, vehicle drop-off instructions, behavior in case of damage, behavior in case of waiting time, fuel receipt notes, invoicing notes, driver terms and conditions, data protection information, cancellation/problem case process, and emergency contacts.",
         "Admin can upload, rename, replace, delete, hide/show, categorize, and manage general documents.",
-        "Documents can be previewed inside the PWA (preferred over a separate browser tab) and downloaded from the PWA; where the device supports share/print system APIs the native dialog is offered (F-03, see Task 27).",
+        "Documents can be previewed inside the PWA (preferred over a separate browser tab) and downloaded from the PWA; where the device supports share/print system APIs the native dialog is offered (see Task 27).",
+        "General Documents expose separate View and Download actions on each document row/card where mobile layout allows; a document type that cannot be previewed falls back to direct download, and where two visible actions do not fit cleanly, View opens a preview screen that itself contains Download (F-05).",
         "News is one-way communication from admins to drivers.",
         "News supports subject, text, publication date, read/unread state, and badge indicators.",
         "News does not support replies, attachments, or rich newsletter formatting in Version 1.",
@@ -858,6 +864,8 @@
       "acceptance": [
         "Profile shows read-only name, company, driver ID, address, email, phone/mobile, and account status where applicable.",
         "Profile explains that master-data changes must be requested through the operator/admin and cannot be edited directly in the PWA.",
+        "While a driver is on probation, the profile shows a probation status/progress card (current probation progress toward release); it must not show a daily-limit usage meter or a 'request higher limit' action (F-02).",
+        "Once the driver is released from probation, the probation card is hidden on the next profile load.",
         "Drivers can enable or disable push notifications without requiring prior admin activation.",
         "Notification preferences include desired pickup postal code prefix area and may include vehicle type and driven on own wheels versus third-party axle filters where in scope.",
         "Postal code preferences support at least one-digit and two-digit German postal code prefixes such as 4, 40, or 41.",
@@ -935,7 +943,7 @@
       "story": "As the platform owner, I want all important actions logged so the system is traceable.",
       "acceptance": [
         "Audit log records action type, actor, affected entity, timestamp, and relevant metadata.",
-        "Logged actions include job created, changed, published, reverted to draft, directly assigned, job reassigned, accepted, marked performed, cancelled, Report Problem submitted, special case created, special case resolved, admin cancellation decision, document uploaded/replaced/rejected/accepted, driver invoice upload registered/updated/deleted, PDF generated/regenerated, acceptance confirmation, driver blocked/inactivated/archived/access reset, audit log export, admin alert sent, and feature flag changes if used.",
+        "Logged actions include job created, changed, published, reverted to draft, directly assigned, job reassigned, accepted, marked performed, cancelled, Report Problem submitted, special case created, special case resolved, admin cancellation decision, document uploaded/replaced/rejected/accepted, driver invoice upload registered/updated/deleted, PDF generated/regenerated, acceptance confirmation, driver created with system-assigned driver ID, driver blocked/inactivated/archived/access reset, driver probation release (automatic or manual), audit log export, admin alert sent, and feature flag changes if used.",
         "Status history records previous status, new status, date/time, triggering user, optional comment, and uploaded evidence if applicable.",
         "Admin can view audit log entries in the admin console.",
         "Admin can download or export the audit log for offline search, filtering, and archival; export is admin-only and is itself auditable.",
@@ -959,6 +967,7 @@
         "If job is already taken, driver sees a clear already-taken message.",
         "If a driver tries to casually return an accepted job, the UI directs them to Report Problem instead.",
         "If blocked or inactive driver opens marketplace active actions, access denied or eligibility message is shown.",
+        "If a probation driver tries to self-accept beyond the allowed initial jobs before release, acceptance is blocked and a clear probation-limit explanation is shown (F-02).",
         "If PDF generation fails, admin sees retry/regenerate option and error is logged.",
         "Validation errors in admin forms identify missing or invalid fields.",
         "Date/time validation warnings are clear and can be consciously confirmed by admin where business rules allow.",
@@ -1090,6 +1099,7 @@
         "Document and driver invoice module may be offered as base V1 or optional module according to final business decision.",
         "When a driver opens a permitted PDF or image, preview opens inside the PWA rather than forcing a separate browser tab (F-03).",
         "While the in-PWA preview is open, the driver can download/save the file, and where the device supports share/print system APIs the native share/print dialog is opened.",
+        "Where mobile layout allows, document rows expose separate View and Download actions; non-previewable types fall back to download-only, and constrained layouts may place Download inside the View preview screen (F-05).",
         "Where supported by device/browser capabilities, upload UX should allow camera capture or scan-like capture so receipts and evidence are clearly legible.",
         "Document type-specific helper notices can be shown, for example reminding drivers to include the vehicle registration number on fuel receipts or to document start, end, and reason for waiting time evidence.",
         "If final legal/template rules require it, driver-facing copy should preserve the invoice submission SLA, for example single or consolidated invoice submission within seven calendar days.",
@@ -1174,7 +1184,8 @@
         "Probation release (automatic or manual admin release) and probation_job_limit changes are recorded in the audit log.",
         "Probation enforcement is applied server-side so a driver cannot bypass it through parallel requests.",
         "Probation blocks only driver self-service marketplace booking. Admin direct assignment is not limited by probation: admin may directly assign additional jobs to a driver even while that driver is on probation (decision 2026-07-10).",
-        "Performed jobs count toward the probation release threshold regardless of whether the driver self-accepted them or an admin directly assigned them."
+        "Performed jobs count toward the probation release threshold regardless of whether the driver self-accepted them or an admin directly assigned them.",
+        "The driver-facing presentation is a probation-specific status/progress card; the legacy daily-limit usage meter and the 'request higher limit' action are removed (F-02, replaces the earlier limit-request UI)."
       ],
       "status": "pending",
       "files": [
@@ -1302,7 +1313,10 @@
     "master_data_change_request_v1": "Driver request queue; one open per driver; admin Approve & save applies updateDriver; Reject without save; audit master_data_change_requested|approved|rejected; driver in-app notify on resolution.",
     "report_problem_cancel_ux_v1": "Binding warning + driver terms link before slide; seven cancellation reason codes per Feedback.pdf C.1; warning icon on tour detail and sheet header.",
     "report_problem_not_performable_evidence_v1": "Optional file upload on not performable (PDF/images, capped in prototype); listed on admin special-case panel; metadata only in demo.",
-    "driver_probation_acceptance_limit_v1": "One-time probation model (F-01, replaces the former per-calendar-day daily_job_limit model). Each driver stores a probation_job_limit (smallint, default 3, confirmable with client) and a probation-released state (probation_cleared_at). A driver on probation may book up to probation_job_limit initial jobs and must have that many jobs marked Performed to be released; after release no further V1 booking limit applies. No rolling daily quota and no driver limit-increase request flow. Admin may manually release a driver from probation for exceptional account-reset cases. Probation constrains only driver self-service marketplace booking; admin direct assignment is exempt, so admin may assign additional jobs to a driver even while on probation (decision 2026-07-10), and Performed jobs count toward release whether self-accepted or admin-assigned. Same-day overlap (existing accepted/assigned job on the same calendar day) still shows a confirmation prompt only — not a hard block. Geo/travel-time overlap detection is out of V1 scope.",
+    "driver_probation_acceptance_limit_v1": "One-time probation model (F-01, replaces the former per-calendar-day daily_job_limit model). Each driver stores a probation_job_limit (smallint, default 3, confirmable with client) and a probation-released state (probation_cleared_at). A driver on probation may book up to probation_job_limit initial jobs and must have that many jobs marked Performed to be released; after release no further V1 booking limit applies. No rolling daily quota and no driver limit-increase request flow. Admin may manually release a driver from probation for exceptional account-reset cases. Probation constrains only driver self-service marketplace booking; admin direct assignment is exempt, so admin may assign additional jobs to a driver even while on probation (decision 2026-07-10), and Performed jobs count toward release whether self-accepted or admin-assigned. Same-day overlap (existing accepted/assigned job on the same calendar day) still shows a confirmation prompt only — not a hard block. Geo/travel-time overlap detection is out of V1 scope. Driver-facing UI (F-02): a probation-specific status/progress card replaces the legacy daily-limit usage meter and 'request higher limit' action; the card is hidden once the driver is released.",
+    "driver_id_generation_v1": "Driver IDs are assigned automatically by the system on driver creation using a monotonic sequence (not entered manually). Assigned IDs are immutable and are never reused, including after a driver is blocked, inactive, archived, soft-deleted, or departed. The exact ID format (prefix, numeric length, padding, optional year component, starting sequence) is client-defined and tracked in production_open_questions (F-03).",
+    "time_window_same_day_v1": "Each tour leg's time window must start and end on the same calendar day; pickup and delivery may be on different dates. Cross-midnight windows are unsupported in V1 and are rejected or blocked with a clear message on save/publish (F-04).",
+    "general_documents_actions_v1": "Infopoint General Documents (and driver document rows) expose separate View and Download actions where mobile layout allows; non-previewable types fall back to download-only, and constrained layouts may place Download inside the View preview screen (F-05).",
     "document_upload_pre_completion_v1": "Tour-linked document upload is available at any job operational status (active as well as Performed). Upload is no longer restricted to post-Performed only. Applies to both driver and admin uploads.",
     "admin_documents_at_creation_v1": "Admin may attach additional self-created documents during job creation or editing, including optional images such as a vehicle photo. Attached documents are stored as job_documents with source admin_off_channel alongside the auto-generated transport-order document. Drivers see these as read-only reference documents (view/download); only driver_pwa uploads are replaceable by the driver.",
     "document_replace_permissions_v1": "Drivers may replace only job_documents with source driver_pwa when review status allows. admin_off_channel and generated transport-order documents are read-only for drivers (view/download beside transport order). Admin may replace admin_off_channel documents; transport order uses PDF regenerate.",
@@ -1361,7 +1375,10 @@
     "Confirm Keycloak email action settings for account invites and password resets: sender domain, templates, link expiry, required actions, and whether SMTP is handled by Keycloak or AUTHEON's mail provider.",
     "Confirm which map or distance API vendor to use and acceptable ongoing usage budget.",
     "Confirm production file retention period, encryption at rest, malware scanning, and DSGVO handling for tour document uploads.",
-    "Confirm final production UI branding inputs (F-05, OQ-4): app display name, logo, font, colors, and related legal/UI copy for production.",
+    "Confirm final production branding package (OQ-4): app display name, logo, exact hex palette, font, icon rules, and related legal/UI copy. Direction advanced 2026-07-10 — minimalist/premium, black/white/grey baseline, restrained purple accent used very sparingly, Montserrat Regular 400; final hex values, logo, display name, and legal copy still pending (client to upload the final Corporate Design package).",
+    "Post-v1.9 meeting 2026-07-10 (F-03): confirm the exact automatic driver ID format — prefix, numeric length, padding, optional year component, and starting sequence number.",
+    "Post-v1.9 meeting 2026-07-10 (F-06): for active tours, when exactly is driver Cancel Order allowed, when is Report Order as Not Performable required instead, and does availability of each path change before pickup, after pickup, before delivery, or after delivery?",
+    "Post-v1.9 meeting 2026-07-10 (F-07): what final production domain, legal/market clearance outcome, and hosting provider/responsibility should be used (likely .com domain and Hetzner hosting if approved)?",
     "Confirm production UI labels for special case administrative close vs cancel order (avoid ambiguous Close).",
     "Meeting 2026-06-29: confirm whether driver blocking must be granular so a driver can be blocked from marketplace/accepting new jobs while still correcting invoices or documents on existing tours, or whether V1 keeps coarse Blocked behavior.",
     "Meeting 2026-06-29: confirm whether zugelassen / nicht zugelassen (registered / not registered) is a required job or vehicle field for V1 or deferred out of scope.",
@@ -1403,6 +1420,7 @@
       "Admin email alerts for critical events",
       "Information Center / Infopoint with general documents, short one-way news, and Help (dispatcher hotline + email; no FAQ accordion)",
       "Driver management with blocked/inactive/archive states and access reset",
+      "Automatic, immutable, never-reused sequential driver IDs (exact format client-defined)",
       "Audit log and status history",
       "PDF generation from structured order data",
       "Rollout from zero with no historical tour migration",
@@ -1443,7 +1461,8 @@
       "Credit-note workflow and credit-note generation; meeting 2026-06-29 treated this as eventual/future scope, not V1.",
       "Scanner or AI-based document quality validation beyond file malware scanning and manual admin review.",
       "Vehicle type icons on marketplace cards unless separately approved for V1.",
-      "Explicit by-latest scheduling mode if the client confirms it is needed beyond date plus time-window fields."
+      "Explicit by-latest scheduling mode if the client confirms it is needed beyond date plus time-window fields.",
+      "Service-partner company model with multiple sub-drivers and structured company/sub-driver management; meeting 2026-07-10 (F-08) confirmed V1 keeps individual driver profiles and defers this to Version 2."
     ]
   },
   "derived_from": "docs/requirements/prd.json",

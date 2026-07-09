@@ -1,5 +1,7 @@
 # AUTHEON database logical model
 
+> **Status override:** Updated 2026-07-10 - PRD v2.0: no structural schema change. `drivers.driver_code` is now documented as system-assigned, immutable, and never reused (F-03); per-leg time windows are same-day only with no cross-midnight window (F-04). Probation-only driver UI, Infopoint View/Download actions, and branding/domain/Report-Problem-timing are UI or open-question items with no data-model impact.
+
 > **Status override:** Updated 2026-07-09 - PRD v1.9 (F-01): driver acceptance limits changed from a per-calendar-day quota to a one-time probation model. `drivers.daily_job_limit` is replaced by `probation_job_limit` + `probation_cleared_at`; the `master_data_change_type.daily_limit_override` request flow is deprecated; the `app_settings` key `driver.acceptance.defaultDailyJobLimit` is renamed to `driver.acceptance.probationJobCount`.
 
 > **Status override:** Updated 2026-07-03 - PRD v1.8 plus backend sync: upload-core `upload_assets`, upload-asset links for feature tables, generated PDF document-file versioning, explicit job date/time windows, and driver daily limits. [`schema.dbml`](schema.dbml) is the accompanying relational schema. [`../requirements/prd.json`](../requirements/prd.json) remains the functional source of truth.
@@ -133,14 +135,14 @@ An invoice is a document with `document_type = 'invoice'`; it is not a separate 
 
 The SQL implementation must include at least these controls:
 
-- Unique `jobs.tour_number` and `drivers.driver_code`.
+- Unique `jobs.tour_number` and `drivers.driver_code`. `driver_code` is system-assigned from a monotonic sequence, immutable after creation, and never reused — a departed/blocked/archived driver's code is not reassigned (F-03). The exact code format is client-defined (open question).
 - Unique `users.email` and partial unique index on `users.keycloak_id where keycloak_id is not null`.
 - User soft-delete via `users.deleted_at`; active-user checks also require `status = 'active'`.
 - Unique active assignment per job: partial unique index on `job_assignments(job_id) where ended_at is null`.
 - One `pickup` and one `delivery` row per job: unique `(job_id, location_role)`.
 - One open master-data change request per driver: partial unique index on `master_data_change_requests(driver_id) where status = 'open'`.
 - Draft-only hard deletion enforced by a stored procedure/service transaction. Non-draft jobs are never hard-deleted.
-- `delivery_date >= pickup_date` where both values are present; time-window sanity checks at service level because flexible windows are allowed.
+- `delivery_date >= pickup_date` where both values are present; time-window sanity checks at service level because flexible windows are allowed. Each leg's window is same-day only: `window_end >= window_start` with no cross-midnight window (F-04); pickup and delivery legs may still have different `scheduled_date`.
 - Active marketplace index: `(operational_status, pickup_postal_code, pickup_date)` for published tours.
 - Driver work queue index: `(current_driver_id, operational_status, pickup_date)`.
 - Audit and status-history indexes: `(job_id, occurred_at desc)`.
