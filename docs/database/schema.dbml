@@ -1,6 +1,7 @@
 ﻿// AUTHEON Version 1 database draft — PostgreSQL target.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
-// Last updated: 2026-07-03 — aligned upload-core asset model, document versioning, infopoint/problem upload links, and explicit job location windows with autheon-be TypeORM sync target.
+// Last updated: 2026-07-09 (PRD v1.9, F-01) — replaced drivers.daily_job_limit with the one-time probation model (probation_job_limit + probation_cleared_at); deprecated master_data_change_type.daily_limit_override; renamed app_settings key driver.acceptance.defaultDailyJobLimit -> driver.acceptance.probationJobCount.
+// 2026-07-03 — aligned upload-core asset model, document versioning, infopoint/problem upload links, and explicit job location windows with autheon-be TypeORM sync target.
 
 Enum user_status {
   pending_verification
@@ -100,7 +101,7 @@ Enum master_data_change_type {
   vehicle_info
   license
   contact
-  daily_limit_override  // request to increase driver daily job acceptance limit
+  daily_limit_override  // DEPRECATED (F-01): driver limit-increase requests are removed under the one-time probation model; retained only for legacy prototype rows
 }
 
 Enum notification_channel {
@@ -144,7 +145,9 @@ Table drivers {
   country_code char(2) [not null, default: 'DE']
   phone varchar(64)
   notes text
-  daily_job_limit smallint [not null, default: 3]  // configurable per-driver; hard acceptance block at limit; default value TBD with client
+  // One-time probation model (F-01, replaces former per-day daily_job_limit).
+  probation_job_limit smallint [not null, default: 3]  // initial job allowance and Performed-count release threshold; default value confirmable with client
+  probation_cleared_at timestamptz  // set when driver is released from probation (auto after probation_job_limit Performed jobs, or manual admin release); null = still on probation
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
 }
@@ -548,7 +551,7 @@ Table feature_flags {
 }
 
 Table app_settings {
-  key varchar(100) [pk]  // canonical keys: branding.display, operational.policies, cancellation.policies, driver.acceptance.defaultDailyJobLimit
+  key varchar(100) [pk]  // canonical keys: branding.display, operational.policies, cancellation.policies, driver.acceptance.probationJobCount (replaces driver.acceptance.defaultDailyJobLimit, F-01)
   value jsonb [not null]
   updated_at timestamptz [not null]
   updated_by_user_id uuid

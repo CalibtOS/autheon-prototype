@@ -1,5 +1,7 @@
 # AUTHEON database logical model
 
+> **Status override:** Updated 2026-07-09 - PRD v1.9 (F-01): driver acceptance limits changed from a per-calendar-day quota to a one-time probation model. `drivers.daily_job_limit` is replaced by `probation_job_limit` + `probation_cleared_at`; the `master_data_change_type.daily_limit_override` request flow is deprecated; the `app_settings` key `driver.acceptance.defaultDailyJobLimit` is renamed to `driver.acceptance.probationJobCount`.
+
 > **Status override:** Updated 2026-07-03 - PRD v1.8 plus backend sync: upload-core `upload_assets`, upload-asset links for feature tables, generated PDF document-file versioning, explicit job date/time windows, and driver daily limits. [`schema.dbml`](schema.dbml) is the accompanying relational schema. [`../requirements/prd.json`](../requirements/prd.json) remains the functional source of truth.
 
 > **Status:** Updated 2026-07-02 — PRD v1.8: `daily_job_limit`, app_settings operational policies, admin cancel driver message. [`schema.dbml`](schema.dbml) is the accompanying relational schema. [`../requirements/prd.json`](../requirements/prd.json) remains the functional source of truth.
@@ -177,11 +179,17 @@ Key/value JSON configuration managed by admins (see PRD Task 31 and `resolved_de
 | `branding.display` | Product display name in UI |
 | `operational.policies` | Minimum hours before pickup for admin cancel and schedule change; optional override-with-audit flag |
 | `cancellation.policies` | Required reason code, minimum driver message length for admin cancel |
-| `driver.acceptance.defaultDailyJobLimit` | Default `drivers.daily_job_limit` for new driver records |
+| `driver.acceptance.probationJobCount` | Default `drivers.probation_job_limit` for new driver records (replaces `driver.acceptance.defaultDailyJobLimit`, F-01) |
 
-## Driver daily acceptance limits (PRD v1.7+)
+## Driver probation acceptance limit (PRD v1.9, F-01)
 
-`drivers.daily_job_limit` caps marketplace acceptances per calendar day. Limit-increase requests reuse `master_data_change_requests` with `change_type = daily_limit_override`.
+Version 1 uses a one-time probation model instead of a per-calendar-day quota. `drivers.probation_job_limit` (default 3) is both the initial job allowance while on probation and the number of Performed jobs required for release. `drivers.probation_cleared_at` is null while a driver is on probation and set when the driver is released — automatically once `probation_job_limit` jobs are Performed, or manually by an admin for exceptional account-reset cases. After release no further V1 booking limit applies.
+
+The Performed count that drives automatic release is derived from `jobs` / `job_status_history`; `probation_cleared_at` is the durable released flag so a driver is never re-probated once released. Enforcement is server-side at acceptance time.
+
+The prior per-day model (`drivers.daily_job_limit` plus driver limit-increase requests via `master_data_change_requests.change_type = daily_limit_override`) is superseded; `daily_limit_override` is retained as a deprecated enum value for legacy prototype rows only. The same-day overlap confirmation prompt is unchanged and remains a soft prompt, not a hard block.
+
+Open question (F-01): whether admin direct assignment counts toward the probation Performed threshold, and whether admin may directly assign to a probation-blocked driver, is unresolved and tracked in `prd.json` `production_open_questions`.
 
 ## Explicit non-goals
 
