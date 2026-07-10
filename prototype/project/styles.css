@@ -10,7 +10,7 @@
   --cta:        #F97316;
   --canvas:     #EFF6FF;
   --paper:      #ffffff;
-  --paper-2:    #F8FAFC;
+  --paper-2:    #F1F5F9;
   --paper-3:    #EFF6FF;
   --ink:        #0F172A;
   --ink-2:      #1E293B;
@@ -493,7 +493,7 @@ textarea.input { min-height: 92px; resize: vertical; }
   --cta:         #6F29FF;
   --canvas:      #F5F5F7;
   --paper:       #ffffff;
-  --paper-2:     #FFFFFF;
+  --paper-2:     #F1F5F9;
   --paper-3:     #F5F5F7;
   --ink:         #111111;
   --ink-2:       #6E6E73;
@@ -517,7 +517,7 @@ textarea.input { min-height: 92px; resize: vertical; }
   --cta:         #8F5BFF;
   --canvas:      #1C1C1E;
   --paper:       #2C2C2E;
-  --paper-2:     #2C2C2E;
+  --paper-2:     #1C1C1E;
   --paper-3:     #3A3A3C;
   --ink:         #FFFFFF;
   --ink-2:       #AEAEB2;
@@ -2576,22 +2576,55 @@ textarea.input { min-height: 92px; resize: vertical; }
 .field-counter.invalid { color: var(--st-cancelled); font-weight: 600; }
 .field-counter.valid { color: var(--st-accepted); }
 
-.category-picker {
+/* Figma File Type Selection Redesign */
+.phone-shell .category-picker {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
   margin-top: 14px;
 }
-.category-picker .btn.block {
-  justify-content: flex-start;
-  text-align: left;
-  min-height: 44px;
-}
-.category-picker-hint {
-  margin: 4px 0 0 12px;
+.phone-shell .category-group-label {
   font-size: 11px;
-  line-height: 1.45;
+  font-weight: 700;
   color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+  margin-left: 4px;
+}
+.phone-shell .category-group {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+.phone-shell .category-group-item {
+  display: flex;
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  outline: none;
+}
+.phone-shell .category-group-item:last-child {
+  border-bottom: none;
+}
+.phone-shell .category-group-item:hover {
+  background: var(--canvas);
+}
+.phone-shell .category-picker-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 6px 4px 0;
 }
 
 .limit-meter {
@@ -2628,3 +2661,528 @@ textarea.input { min-height: 92px; resize: vertical; }
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
+
+/* =========================================================================
+   DRIVER PWA VISUAL OVERHAUL EXTRA STYLES
+   ========================================================================= */
+
+/* My Jobs Search & Tabs */
+.phone-shell .myjobs-search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 20px 16px;
+  background: var(--paper);
+}
+.phone-shell .myjobs-search-input-wrap {
+  position: relative;
+  flex: 1;
+}
+.phone-shell .myjobs-search-input-wrap svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+.phone-shell .myjobs-search-input-wrap input {
+  width: 100%;
+  padding: 10px 12px 10px 36px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--canvas);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: all .15s ease;
+}
+.phone-shell .myjobs-search-input-wrap input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.12);
+}
+
+.phone-shell .myjobs-tabs-slider {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.phone-shell .myjobs-tabs-slider::-webkit-scrollbar {
+  display: none;
+}
+.phone-shell .myjobs-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 0 10px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+  outline: none;
+}
+.phone-shell .myjobs-tab-pill.active {
+  color: var(--primary);
+}
+.phone-shell .myjobs-tab-pill::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+.phone-shell .myjobs-tab-pill.active::after {
+  background: var(--primary);
+}
+.phone-shell .myjobs-tab-pill .pill-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 10px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-weight: 700;
+  margin-left: 4px;
+}
+.phone-shell .myjobs-tab-pill.active .pill-badge {
+  background: #F3E8FF;
+  color: var(--primary);
+}
+[data-theme="dark"] .phone-shell .myjobs-tab-pill.active .pill-badge {
+  background: rgba(111, 41, 255, 0.2);
+  color: #A375FF;
+}
+
+/* Assigned Job Card Banner */
+.phone-shell .jobcard-banner-assigned {
+  background: #EBF5FF;
+  color: #1E40AF;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -16px -16px 16px -16px;
+  border-bottom: 1px solid #D0E5FF;
+}
+[data-theme="dark"] .phone-shell .jobcard-banner-assigned {
+  background: #1E293B;
+  color: #93C5FD;
+  border-bottom: 1px solid #334155;
+}
+
+/* Profile Form styling */
+.phone-shell .input,
+.phone-shell select.input {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--text);
+  padding: 10px 14px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+.phone-shell .input:focus,
+.phone-shell select.input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.12);
+}
+.phone-shell select.input {
+  cursor: pointer;
+}
+
+/* Toggle segment selectors */
+.phone-shell .seg {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--canvas);
+  margin-top: 6px;
+}
+.phone-shell .seg button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.phone-shell .seg button.on {
+  background: var(--paper);
+  color: var(--text);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+[data-theme="dark"] .phone-shell .seg button.on {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* My Documents / Uploaded Document Cards */
+.phone-shell .doc-card {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: box-shadow 0.2s ease;
+}
+.phone-shell .doc-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+.phone-shell .doc-card-layout {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.phone-shell .doc-card-icon-container {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #E5E7EB;
+  color: #4B5563;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+[data-theme="dark"] .phone-shell .doc-card-icon-container {
+  background: #374151;
+  color: #D1D5DB;
+}
+.phone-shell .doc-card-details {
+  flex: 1;
+  min-width: 0;
+}
+.phone-shell .doc-card-filename {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.phone-shell .doc-card-size {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.phone-shell .doc-card-category-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--canvas);
+  padding: 4px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.phone-shell .doc-card-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+.phone-shell .doc-card-close-btn:hover {
+  background: var(--canvas);
+  color: var(--text);
+}
+
+/* Infopoint news & documents cards */
+.phone-shell .infopoint-card {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  margin-top: 14px;
+}
+.phone-shell .infopoint-doc-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.phone-shell .infopoint-doc-row:last-child {
+  border-bottom: none;
+}
+.phone-shell .infopoint-news-row {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.phone-shell .infopoint-news-row:last-child {
+  border-bottom: none;
+}
+
+/* My Jobs Card Header Row styling */
+.phone-shell .jobcard-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  margin-top: 2px;
+}
+.phone-shell .jobcard-tour-num {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.phone-shell .jobcard-header-row .pill {
+  font-size: 10px;
+  padding: 3px 8px;
+  font-weight: 600;
+  border-radius: var(--r-pill);
+}
+.phone-shell .jobcard-header-row .chip.correction-required {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: var(--r-pill);
+}
+
+/* Invisible Sort Select Overlay */
+.phone-shell .sort-icon-btn-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.phone-shell .sort-icon-select {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+/* Floating Notifications Dropdown Popover */
+.phone-shell .notifications-dropdown-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+  z-index: 998;
+}
+.phone-shell .notifications-dropdown {
+  position: absolute;
+  top: 64px;
+  right: 16px;
+  width: 320px;
+  max-height: 400px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--sh-3);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeInDown 0.15s ease-out;
+}
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.phone-shell .notifications-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+.phone-shell .notifications-dropdown-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+/* Profile Redesign & Switch Toggles */
+.phone-shell .profile-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  color: #3B82F6;
+  margin-left: 6px;
+}
+
+/* Daily Limits Progress Meter */
+.phone-shell .limit-progress-track {
+  width: 100%;
+  height: 8px;
+  background: var(--paper-2);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  border: 1px solid var(--line);
+}
+.phone-shell .limit-progress-bar {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+
+/* Master Data Diff highlight */
+.phone-shell .mdr-field-row.is-changed {
+  background: rgba(5, 150, 105, 0.04);
+  border-left: 3px solid var(--st-accepted) !important;
+  padding-left: 10px !important;
+}
+.phone-shell .mdr-field-value.is-new {
+  color: var(--st-accepted) !important;
+  font-weight: 700 !important;
+}
+.phone-shell .mdr-field-old {
+  text-decoration: line-through;
+  color: var(--muted-2);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.phone-shell .mdr-field-badge {
+  background: var(--st-accepted-bg);
+  color: var(--st-accepted);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+/* Premium iOS Switch Toggle */
+.phone-shell .switch-toggle-wrap {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.phone-shell .switch-toggle-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.phone-shell .switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: var(--line-2);
+  transition: 0.25s ease;
+  border-radius: 24px;
+}
+.phone-shell .switch-slider::before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.25s ease;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15);
+}
+.phone-shell .switch-toggle-input:checked + .switch-slider {
+  background-color: var(--primary);
+}
+.phone-shell .switch-toggle-input:checked + .switch-slider::before {
+  transform: translateX(20px);
+}
+
+/* Postal Chip Tags Input */
+.phone-shell .postal-chip-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  min-height: 44px;
+  align-items: center;
+}
+.phone-shell .postal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+.phone-shell .postal-chip-delete {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--muted-2);
+  font-size: 14px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.phone-shell .postal-chip-delete:hover {
+  color: var(--st-cancelled);
+}
+.phone-shell .postal-chip-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text);
+  padding: 4px 0;
+  flex: 1;
+  min-width: 60px;
+}
+[data-theme="dark"] .phone-shell .postal-chip-container {
+  background: var(--paper-2);
+}
+[data-theme="dark"] .phone-shell .postal-chip {
+  background: var(--paper-3);
+}
+
+
+
+
+

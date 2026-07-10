@@ -18,7 +18,7 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=5" />
   </head>
   <body>
     <div id="root"></div>
@@ -43,7 +43,7 @@
     <script src="i18n.js"></script>
     <script src="inputFormatters.js"></script>
     <script src="store.js"></script>
-    <script type="text/babel" src="driver.jsx"></script>
+    <script type="text/babel" src="driver.jsx?v=5"></script>
     <script type="text/babel" src="admin.jsx"></script>
 
     <script type="text/babel" data-presets="env,react">
@@ -89,13 +89,7 @@
         const job = activeJob ? store.getJob(activeJob.id) : null;
 
         let body;
-        if (showNotifications) {
-          body = (
-            <DriverNotificationsPane
-              onBack={() => setShowNotifications(false)}
-            />
-          );
-        } else if (activeJob && job) {
+        if (activeJob && job) {
           if (activeJob.mode === "locked") {
             body = (
               <JobLocked
@@ -188,8 +182,13 @@
                   )}
                   {body}
                 </div>
-                {!activeJob && !showNotifications && (
+                {!activeJob && (
                   <TabBar tab={tab} setTab={setTab} />
+                )}
+                {showNotifications && (
+                  <DriverNotificationsPane
+                    onClose={() => setShowNotifications(false)}
+                  />
                 )}
                 {showFilter && (
                   <FilterSheet

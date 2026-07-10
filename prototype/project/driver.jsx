@@ -646,23 +646,23 @@ const TabBar = ({ tab, setTab }) => {
   );
 };
 
+const renderTimeDate = (loc, t) => {
+  if (!loc) return null;
+  const time = loc.windowFlex ? t("flexible") : (loc.windowFrom || loc.windowTo || "");
+  const date = loc.date || "";
+  return (
+    <div className="jobcard-time-row">
+      <div className="time-val">{time}</div>
+      <div className="date-val">{date}</div>
+    </div>
+  );
+};
+
 // =========================================================================
 // PORTAL (job list)
 // =========================================================================
 const JobCard = ({ job, onOpen }) => {
   const { t } = useI18n();
-
-  const renderTimeDate = (loc) => {
-    if (!loc) return null;
-    const time = loc.windowFlex ? t("flexible") : (loc.windowFrom || loc.windowTo || "");
-    const date = loc.date || "";
-    return (
-      <div className="jobcard-time-row">
-        <div className="time-val">{time}</div>
-        <div className="date-val">{date}</div>
-      </div>
-    );
-  };
 
   return (
     <div className="jobcard" onClick={() => onOpen(job)}>
@@ -688,9 +688,9 @@ const JobCard = ({ job, onOpen }) => {
           </div>
         </div>
         <div className="jobcard-times-col">
-          {renderTimeDate(job.pickup)}
+          {renderTimeDate(job.pickup, t)}
           <div className="jobcard-time-spacer"></div>
-          {renderTimeDate(job.delivery)}
+          {renderTimeDate(job.delivery, t)}
         </div>
       </div>
       <hr className="jobcard-divider" />
@@ -725,7 +725,8 @@ const Portal = ({
 }) => {
   const { t, locale } = useI18n();
   const store = useAuthStore();
-  const [sortDir, setSortDir] = useState("asc");
+  const [sortBy, setSortBy] = useState("date_desc");
+  const [showNotifications, setShowNotifications] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const scrollRef = useRef(null);
   const pullRef = useRef({ startY: 0, pulling: false });
@@ -847,9 +848,24 @@ const Portal = ({
   });
 
   const ordered = filtered.slice().sort((a, b) => {
-    const ad = parseDdMm(a.date)?.getTime() || 0;
-    const bd = parseDdMm(b.date)?.getTime() || 0;
-    return sortDir === "asc" ? ad - bd : bd - ad;
+    if (sortBy === "date_asc") {
+      const ad = parseDdMm(a.date)?.getTime() || 0;
+      const bd = parseDdMm(b.date)?.getTime() || 0;
+      return ad - bd;
+    } else if (sortBy === "date_desc") {
+      const ad = parseDdMm(a.date)?.getTime() || 0;
+      const bd = parseDdMm(b.date)?.getTime() || 0;
+      return bd - ad;
+    } else if (sortBy === "price_asc") {
+      return Number(a.price || 0) - Number(b.price || 0);
+    } else if (sortBy === "price_desc") {
+      return Number(b.price || 0) - Number(a.price || 0);
+    } else if (sortBy === "dist_asc") {
+      return Number(a.distanceKm || 0) - Number(b.distanceKm || 0);
+    } else if (sortBy === "dist_desc") {
+      return Number(b.distanceKm || 0) - Number(a.distanceKm || 0);
+    }
+    return 0;
   });
 
   const activeChips = [];
@@ -888,13 +904,32 @@ const Portal = ({
             className="header-bell-btn"
             title={t("driverNotifications")}
             aria-label={t("driverNotifications")}
-            onClick={() => onOpenNotifications?.()}
+            onClick={() => setShowNotifications(!showNotifications)}
           >
             <Ic.Bell />
             {unreadNotif > 0 ? (
               <span className="bell-badge"></span>
             ) : null}
           </button>
+          
+          {showNotifications && (
+            <>
+              <div className="notifications-dropdown-backdrop" onClick={() => setShowNotifications(false)} />
+              <div className="notifications-dropdown">
+                <div className="notifications-dropdown-header">
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>
+                    {t("driverNotifications")}
+                  </h3>
+                  <button type="button" className="btn icon sm" onClick={() => setShowNotifications(false)}>
+                    <Ic.X />
+                  </button>
+                </div>
+                <div className="notifications-dropdown-body scroll">
+                  <DriverNotificationsList markReadOnMount />
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Title and control buttons row */}
@@ -903,15 +938,29 @@ const Portal = ({
             <h1 className="header-title">{t("marketplace")}</h1>
             <div className="header-subtitle">{t("exploreJobs")}</div>
           </div>
-          <div className="header-controls">
-            <button
-              type="button"
-              className={`header-btn ${sortDir === "desc" ? "active" : ""}`}
-              onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")}
-              title={t("sortDir")}
-            >
-              <Ic.Sort />
-            </button>
+          <div className="header-controls" style={{ gap: 10 }}>
+            <div className="sort-icon-btn-wrap">
+              <button
+                type="button"
+                className="header-btn"
+                title={t("sortJobs")}
+              >
+                <Ic.Sort />
+              </button>
+              <select
+                className="sort-icon-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                aria-label={t("sortJobs")}
+              >
+                <option value="date_desc">{t("sortDateDesc")}</option>
+                <option value="date_asc">{t("sortDateAsc")}</option>
+                <option value="price_desc">{t("sortPriceDesc")}</option>
+                <option value="price_asc">{t("sortPriceAsc")}</option>
+                <option value="dist_desc">{t("sortDistDesc")}</option>
+                <option value="dist_asc">{t("sortDistAsc")}</option>
+              </select>
+            </div>
             <button
               type="button"
               className={`header-btn ${activeChips.length ? "active" : ""}`}
@@ -968,15 +1017,6 @@ const Portal = ({
           <Lbl>
             {ordered.length} {t("results")}
           </Lbl>
-          <button
-            type="button"
-            className={`chip mono actionable ${sortDir === "desc" ? "on" : ""}`}
-            style={{ padding: "5px 10px", cursor: "pointer" }}
-            onClick={() => setSortDir((v) => (v === "asc" ? "desc" : "asc"))}
-            title={sortDir === "asc" ? `${t("date")} ↑` : `${t("date")} ↓`}
-          >
-            <Ic.Sort /> {t("date")} {sortDir === "asc" ? "↑" : "↓"}
-          </button>
         </div>
         {ordered.map((j) => (
           <JobCard key={j.id} job={j} onOpen={onOpenJob} />
@@ -1624,15 +1664,32 @@ const JobTourDocuments = ({ job }) => {
         <ul className="doc-card-list">
           {uploads.map((u) => (
             <li key={u.id} className="doc-card">
-              <div className="doc-card-head">
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span className="mono" style={{ wordBreak: "break-all", display: "block" }}>
-                    {u.fileName}
-                  </span>
-                  <span className="doc-card-meta">
-                    {displayTourDocType(u.documentType, t)}
-                  </span>
-                </span>
+              <div className="doc-card-layout">
+                <div className="doc-card-icon-container">
+                  {u.fileName.split('.').pop().toUpperCase() || "PDF"}
+                </div>
+                <div className="doc-card-details">
+                  <div className="doc-card-filename" title={u.fileName}>{u.fileName}</div>
+                  <div className="doc-card-size">13 MB</div>
+                </div>
+                <div className="doc-card-category-label">
+                  {displayTourDocType(u.documentType, t)}
+                </div>
+                {canReplaceDoc(u) ? (
+                  <button
+                    type="button"
+                    className="doc-card-close-btn"
+                    title={t("tourDocReplaceButton")}
+                    onClick={() => startReplace(u.id)}
+                  >
+                    ✕
+                  </button>
+                ) : null}
+              </div>
+
+              {/* Status Row */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>Status:</span>
                 <Pill
                   status={
                     u.reviewStatus === "accepted"
@@ -1646,6 +1703,7 @@ const JobTourDocuments = ({ job }) => {
                   {displayDocReviewStatus(u.reviewStatus, t)}
                 </Pill>
               </div>
+
               {(u.reviewStatus === "rejected" ||
                 u.reviewStatus === "correction_required") &&
               u.rejectionReason ? (
@@ -1659,17 +1717,6 @@ const JobTourDocuments = ({ job }) => {
                 >
                   {t("tourDocRejectionReason", { reason: u.rejectionReason })}
                 </p>
-              ) : null}
-              {canReplaceDoc(u) ? (
-                <div className="doc-card-actions">
-                  <button
-                    type="button"
-                    className="btn xs touch-target"
-                    onClick={() => startReplace(u.id)}
-                  >
-                    {t("tourDocReplaceButton")}
-                  </button>
-                </div>
               ) : null}
             </li>
           ))}
@@ -1696,30 +1743,54 @@ const JobTourDocuments = ({ job }) => {
           >
             <Lbl id="tour-doc-category-title">{t("tourDocChooseCategory")}</Lbl>
             <div className="category-picker">
-              {TOUR_DOC_TYPES.map((type) => (
-                <div key={type}>
-                  <button
-                    type="button"
-                    className="btn block touch-target"
-                    onClick={() => startUpload(type)}
-                  >
-                    {displayTourDocType(type, t)}
+              {/* Group 1: Core Documents */}
+              <div>
+                <div className="category-group-label">{t("tourDocGroupCore")}</div>
+                <div className="category-group">
+                  <button type="button" className="category-group-item touch-target" onClick={() => startUpload("invoice")}>
+                    {displayTourDocType("invoice", t)}
                   </button>
-                  {type === "fuel_receipt" ? (
-                    <p className="category-picker-hint">{t("tourDocHelperFuel")}</p>
-                  ) : null}
-                  {type === "waiting_time_evidence" ? (
-                    <p className="category-picker-hint">
-                      {t("tourDocHelperWaiting")}
-                    </p>
-                  ) : null}
+                  <button type="button" className="category-group-item touch-target" onClick={() => startUpload("fuel_receipt")}>
+                    {displayTourDocType("fuel_receipt", t)}
+                  </button>
                 </div>
-              ))}
+                <p className="category-picker-desc">{t("tourDocHelperFuel")}</p>
+              </div>
+
+              {/* Group 2: Operational Documents */}
+              <div>
+                <div className="category-group-label">{t("tourDocGroupOperational")}</div>
+                <div className="category-group">
+                  <button type="button" className="category-group-item touch-target" onClick={() => startUpload("toll_receipt")}>
+                    {displayTourDocType("toll_receipt", t)}
+                  </button>
+                  <button type="button" className="category-group-item touch-target" onClick={() => startUpload("delivery_note")}>
+                    {displayTourDocType("delivery_note", t)}
+                  </button>
+                  <button type="button" className="category-group-item touch-target" onClick={() => startUpload("waiting_time_evidence")}>
+                    {displayTourDocType("waiting_time_evidence", t)}
+                  </button>
+                </div>
+                <p className="category-picker-desc">{t("tourDocHelperWaiting")}</p>
+              </div>
+
+              {/* Group 3: Other Documents */}
+              <div>
+                <div className="category-group-label">{t("tourDocGroupOther")}</div>
+                <div className="category-group">
+                  <button type="button" className="category-group-item touch-target" onClick={() => startUpload("other_receipt")}>
+                    {displayTourDocType("other_receipt", t)}
+                  </button>
+                  <button type="button" className="category-group-item touch-target" onClick={() => startUpload("other_proof")}>
+                    {displayTourDocType("other_proof", t)}
+                  </button>
+                </div>
+              </div>
             </div>
             <button
               type="button"
               className="btn block touch-target"
-              style={{ marginTop: 10 }}
+              style={{ marginTop: 20 }}
               onClick={() => setCategoryModal(false)}
             >
               {t("cancel")}
@@ -2068,13 +2139,29 @@ const JobUnlocked = ({
   );
 };
 
+const parseDottedDateToTimestamp = (dateStr, fallbackStr) => {
+  if (!dateStr) return new Date(fallbackStr || 0).getTime();
+  const m = dateStr.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  if (m) {
+    return new Date(`${m[3]}-${m[2]}-${m[1]}`).getTime();
+  }
+  const mShort = dateStr.match(/(\d{2})\.(\d{2})\./);
+  if (mShort) {
+    return new Date(`2026-${mShort[2]}-${mShort[1]}`).getTime();
+  }
+  return new Date(dateStr).getTime() || new Date(fallbackStr || 0).getTime();
+};
+
 // =========================================================================
 // MY JOBS
 // =========================================================================
 const MyJobs = ({ onOpen }) => {
   const { t } = useI18n();
   const [tab, setTab] = useState("active");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("date_desc");
   const store = useAuthStore();
+
   const mine = store.getJobs().filter((j) => store.isMineJob(j));
   const active = mine.filter((j) =>
     ["assigned", "accepted"].includes(j.status),
@@ -2082,6 +2169,7 @@ const MyJobs = ({ onOpen }) => {
   const performed = mine.filter((j) => j.status === "performed");
   const cancelled = mine.filter((j) => j.status === "cancelled");
   const special = mine.filter((j) => j.status === "special_case");
+
   const list =
     tab === "active"
       ? active
@@ -2091,65 +2179,106 @@ const MyJobs = ({ onOpen }) => {
           ? cancelled
           : special;
 
-  const pillFor = (job) => {
-    if (job.status === "special_case")
-      return (
-        <Pill status="special_case">
-          {AuthStore.statusLabel("special_case")}
-        </Pill>
-      );
-    if (job.status === "assigned")
-      return <Pill status="assigned">{t("assignedShort")}</Pill>;
-    if (job.status === "accepted")
-      return <Pill status="accepted">{t("active")}</Pill>;
-    if (job.status === "performed")
-      return (
-        <Pill status="performed">{AuthStore.statusLabel("performed")}</Pill>
-      );
-    if (job.status === "cancelled")
-      return <Pill status="cancelled">{t("cancelled")}</Pill>;
-    return <Pill status="draft">{AuthStore.statusLabel(job.status)}</Pill>;
-  };
+  const filteredList = list.filter((job) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      job.tour.toString().includes(q) ||
+      (job.customer || "").toLowerCase().includes(q) ||
+      (job.customerName || "").toLowerCase().includes(q) ||
+      (job.vehicleModel || "").toLowerCase().includes(q) ||
+      (job.plate || "").toLowerCase().includes(q) ||
+      (job.vin || "").toLowerCase().includes(q) ||
+      (job.startCity || "").toLowerCase().includes(q) ||
+      (job.endCity || "").toLowerCase().includes(q)
+    );
+  }).sort((a, b) => {
+    if (sortBy === "date_asc") {
+      const timeA = parseDottedDateToTimestamp(a.pickup?.date || a.pickupDate, a.createdAt);
+      const timeB = parseDottedDateToTimestamp(b.pickup?.date || b.pickupDate, b.createdAt);
+      return timeA - timeB;
+    } else if (sortBy === "date_desc") {
+      const timeA = parseDottedDateToTimestamp(a.pickup?.date || a.pickupDate, a.createdAt);
+      const timeB = parseDottedDateToTimestamp(b.pickup?.date || b.pickupDate, b.createdAt);
+      return timeB - timeA;
+    } else if (sortBy === "tour_asc") {
+      return Number(a.tour || 0) - Number(b.tour || 0);
+    } else if (sortBy === "tour_desc") {
+      return Number(b.tour || 0) - Number(a.tour || 0);
+    }
+    return 0;
+  });
 
   return (
     <>
-      <div style={{ padding: "8px 22px 0" }}>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 24,
-            fontWeight: 700,
-            letterSpacing: "-0.015em",
-          }}
-        >
+      <div style={{ padding: "16px 20px 14px", background: "var(--paper)", borderBottom: "1px solid var(--line)" }}>
+        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-0.015em", lineHeight: 1.2 }}>
           {t("myJobs")}
         </h1>
-      </div>
-      <div style={{ padding: "16px 22px 0" }}>
-        <div className="tabs">
-          {[
-            ["active", t("active"), active.length],
-            ["performed", t("performedTab"), performed.length],
-            ["cancelled", t("cancelled"), cancelled.length],
-            ["special", t("specialCaseTab"), special.length],
-          ].map(([id, lbl, n]) => (
-            <button
-              key={id}
-              type="button"
-              className={tab === id ? "on" : ""}
-              style={{ cursor: "pointer" }}
-              onClick={() => setTab(id)}
-            >
-              {lbl} <span className="count">({n})</span>
-            </button>
-          ))}
+        <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 4, lineHeight: 1.3 }}>
+          {t("myJobsSubtitle")}
         </div>
       </div>
+
+      {/* Search and control buttons */}
+      <div className="myjobs-search-row">
+        <div className="myjobs-search-input-wrap">
+          <Ic.Search />
+          <input
+            type="text"
+            placeholder={t("searchJobsPlaceholder")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="sort-icon-btn-wrap">
+          <button
+            type="button"
+            className="header-btn"
+            title={t("sortJobs")}
+          >
+            <Ic.Sort />
+          </button>
+          <select
+            className="sort-icon-select"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            aria-label={t("sortJobs")}
+          >
+            <option value="date_desc">{t("sortDateDesc")}</option>
+            <option value="date_asc">{t("sortDateAsc")}</option>
+            <option value="tour_asc">{t("sortTourAsc")}</option>
+            <option value="tour_desc">{t("sortTourDesc")}</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Horizontal tab pills slider */}
+      <div className="myjobs-tabs-slider">
+        {[
+          ["active", t("active"), active.length],
+          ["performed", t("performedTab"), performed.length],
+          ["cancelled", t("cancelled"), cancelled.length],
+          ["special", t("specialCaseTab"), special.length],
+        ].map(([id, lbl, n]) => (
+          <button
+            key={id}
+            type="button"
+            className={`myjobs-tab-pill ${tab === id ? "active" : ""}`}
+            onClick={() => setTab(id)}
+          >
+            <span>{lbl}</span>
+            <span className="pill-badge">{n}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Scrollable list content */}
       <div
         className="scroll"
-        style={{ padding: "16px 18px 22px", background: "var(--paper-2)" }}
+        style={{ padding: "16px 18px 22px", background: "var(--paper-2)", flex: 1 }}
       >
-        {list.length === 0 && (
+        {filteredList.length === 0 && (
           <div
             className="dash-area"
             style={{ padding: 28, textAlign: "center" }}
@@ -2157,56 +2286,92 @@ const MyJobs = ({ onOpen }) => {
             {t("nothingHereYet")}
           </div>
         )}
-        {list.map((job) => (
+        {filteredList.map((job) => (
           <div key={job.id} className="jobcard" onClick={() => onOpen(job)}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 12,
-                gap: 8,
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {pillFor(job)}
-                {jobNeedsDocCorrection(job, store) ? (
-                  <span
-                    className="chip mono"
-                    style={{
-                      borderColor: "var(--st-cancelled)",
-                      color: "var(--st-cancelled)",
-                    }}
-                  >
-                    {t("correctionRequiredBadge")}
-                  </span>
-                ) : null}
+            {job.status === "assigned" ? (
+              <div className="jobcard-banner-assigned">
+                <Ic.TabInfo /> {t("assignedDirectlyNotice")}
               </div>
-              <span className="label">#{job.tour}</span>
+            ) : null}
+            <div className="jobcard-header-row">
+              <span className="jobcard-tour-num">Tour #{job.tour}</span>
+              <div style={{ display: "flex", gap: 6 }}>
+                {job.status === "special_case" && (
+                  <span className="pill special_case">{AuthStore.statusLabel("special_case")}</span>
+                )}
+                {job.status === "accepted" && (
+                  <span className="pill accepted">{t("active")}</span>
+                )}
+                {job.status === "performed" && (
+                  <span className="pill performed">{AuthStore.statusLabel("performed")}</span>
+                )}
+                {job.status === "cancelled" && (
+                  <span className="pill cancelled">{t("cancelled")}</span>
+                )}
+                {job.status === "assigned" && (
+                  <span className="pill assigned">{t("assignedShort")}</span>
+                )}
+              </div>
             </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr auto",
-                gap: 12,
-              }}
-            >
-              <RouteStack job={job} big={false} />
-              <div
-                style={{ textAlign: "right", fontSize: 19, fontWeight: 700 }}
-                className="tnum"
-              >
+            <div className="jobcard-main-grid">
+              <div className="jobcard-route-col">
+                <div className="jobcard-timeline">
+                  <span className="timeline-dot start"></span>
+                  <span className="timeline-line"></span>
+                  <span className="timeline-dot end"></span>
+                </div>
+                <div className="jobcard-cities">
+                  <div className="city-row">
+                    <div className="city-name">{job.startCity}</div>
+                    <div className="city-address">{job.startStreet} · {job.startPlz} {job.startCity}</div>
+                  </div>
+                  <div className="distance-row">
+                    {job.distanceKm}km
+                  </div>
+                  <div className="city-row">
+                    <div className="city-name">{job.endCity}</div>
+                    <div className="city-address">{job.endStreet} · {job.endPlz} {job.endCity}</div>
+                  </div>
+                </div>
+              </div>
+              <div className="jobcard-times-col">
+                {renderTimeDate(job.pickup, t)}
+                <div className="jobcard-time-spacer"></div>
+                {renderTimeDate(job.delivery, t)}
+              </div>
+            </div>
+            <hr className="jobcard-divider" />
+            <div className="jobcard-footer">
+              <div className="jobcard-vehicle">
+                <div className="vehicle-icon-wrapper">
+                  {job.vehicle === "Light truck <3.5t" ? <Ic.Truck /> : <Ic.Van />}
+                </div>
+                <div>
+                  <div className="vehicle-desc">
+                    {displayVehicle(job.vehicle, t)} • {job.vehicleModel}
+                  </div>
+                  <div className="vehicle-axle">
+                    {displayAxle(job.axle, t)}
+                    {jobNeedsDocCorrection(job, store) ? (
+                      <span
+                        className="chip mono"
+                        style={{
+                          borderColor: "var(--st-cancelled)",
+                          color: "var(--st-cancelled)",
+                          marginLeft: 6,
+                          fontSize: 10,
+                          padding: "1px 4px"
+                        }}
+                      >
+                        {t("correctionRequiredBadge")}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+              <div className="jobcard-price-pill">
                 € {fmtDriverOffer(job).toFixed(2)}
               </div>
-            </div>
-            <hr className="dash" style={{ margin: "12px 0 8px" }} />
-            <div
-              className="mono"
-              style={{ fontSize: 11, color: "var(--muted)" }}
-            >
-              {AuthStore.formatJobScheduleShort(job, t("flexible"))} ·{" "}
-              {displayVehicle(job.vehicle, t)}
             </div>
           </div>
         ))}
@@ -2874,34 +3039,38 @@ const DriverNotificationsList = ({ markReadOnMount = false }) => {
   );
 };
 
-const DriverNotificationsPane = ({ onBack }) => {
+const DriverNotificationsPane = ({ onClose, onBack }) => {
   const { t } = useI18n();
+  const close = onClose || onBack;
   return (
-    <>
+    <div className="sheet-backdrop" onClick={close}>
       <div
-        style={{
-          padding: "0 18px 14px",
-          borderBottom: "1px solid var(--line)",
-        }}
+        className="sheet modal"
+        onClick={(e) => e.stopPropagation()}
+        style={{ display: "flex", flexDirection: "column", maxHeight: "85%" }}
+        role="dialog"
+        aria-modal="true"
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button type="button" className="btn icon sm" onClick={onBack}>
-            <Ic.Back />
-          </button>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
-              {t("driverNotifications")}
-            </h2>
-            <div className="label" style={{ marginTop: 2 }}>
-              {t("driverNotificationsSub")}
+        <div className="sheet-head" style={{ padding: "16px 20px 12px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
+                {t("driverNotifications")}
+              </h2>
+              <div className="label" style={{ marginTop: 2 }}>
+                {t("driverNotificationsSub")}
+              </div>
             </div>
+            <button type="button" onClick={close} className="btn icon sm">
+              <Ic.X />
+            </button>
           </div>
         </div>
+        <div className="sheet-body scroll" style={{ padding: "0 20px 24px", flex: 1 }}>
+          <DriverNotificationsList markReadOnMount />
+        </div>
       </div>
-      <div className="scroll" style={{ padding: "12px 18px 24px" }}>
-        <DriverNotificationsList markReadOnMount />
-      </div>
-    </>
+    </div>
   );
 };
 
@@ -2940,31 +3109,55 @@ const DriverDailyLimitCard = ({ onRequestIncrease }) => {
     !summary.hasOpenRequest && typeof onRequestIncrease === "function";
 
   return (
-    <section className="req-panel" style={{ marginTop: 16 }}>
-      <div className="req-panel-head">
-        <h4>{t("driverDailyLimitProfileTitle")}</h4>
+    <div
+      className="card daily-limit-card"
+      style={{
+        padding: 18,
+        marginTop: 16,
+        borderRadius: 20,
+        border: "1px solid var(--line)",
+        background: "var(--paper)",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <Lbl style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
+          {t("driverDailyLimitProfileTitle")}
+        </Lbl>
         {summary.atLimit ? (
-          <Pill status="warn" className="no-dot">
+          <span className="pill warn" style={{ fontSize: 11, padding: "3px 8px" }}>
             {summary.count} / {summary.limit}
-          </Pill>
-        ) : null}
+          </span>
+        ) : (
+          <span className="pill accepted" style={{ fontSize: 11, padding: "3px 8px" }}>
+            {summary.count} / {summary.limit}
+          </span>
+        )}
       </div>
-      <p className="req-panel-desc">
+
+      <p
+        style={{
+          margin: "10px 0 0",
+          fontSize: 13,
+          color: "var(--muted)",
+          lineHeight: 1.5,
+        }}
+      >
         {t("driverDailyLimitProfileUsage", {
           count: summary.count,
           limit: summary.limit,
           date: dateLabel,
         })}
       </p>
-      <div className="limit-meter" aria-hidden="true">
-        <div className="limit-meter-track">
+
+      <div className="limit-meter" style={{ marginTop: 14 }} aria-hidden="true">
+        <div className="limit-meter-track" style={{ background: "var(--paper-2)", borderRadius: 99, height: 8 }}>
           <span
             className={`limit-meter-fill${summary.atLimit ? " at-limit" : ""}`}
-            style={{ width: `${pct}%` }}
+            style={{ width: `${pct}%`, borderRadius: 99 }}
           />
         </div>
-        <div className="limit-meter-meta">
-          <span className="limit-meter-count">
+        <div className="limit-meter-meta" style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 12, color: "var(--muted)" }}>
+          <span className="limit-meter-count" style={{ fontWeight: 700, color: "var(--text)" }}>
             {summary.count} / {summary.limit}
           </span>
           <span>
@@ -2976,23 +3169,27 @@ const DriverDailyLimitCard = ({ onRequestIncrease }) => {
           </span>
         </div>
       </div>
+
       {summary.pendingLimitRequest ? (
-        <InlineAlert tone="info" message={t("driverDailyLimitPendingRequest")} />
-      ) : summary.hasOpenRequest ? (
-        <InlineAlert tone="info" message={t("masterDataChangeOpenExists")} />
-      ) : (
-        <div className="req-panel-actions">
-          <button
-            type="button"
-            className={`btn touch-target${summary.atLimit ? " cta" : ""}`}
-            onClick={onRequestIncrease}
-            disabled={!canRequest}
-          >
-            {t("driverDailyLimitRequestBtn")}
-          </button>
+        <div style={{ marginTop: 16 }}>
+          <InlineAlert tone="info" message={t("driverDailyLimitPendingRequest")} />
         </div>
+      ) : summary.hasOpenRequest ? (
+        <div style={{ marginTop: 16 }}>
+          <InlineAlert tone="info" message={t("masterDataChangeOpenExists")} />
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="btn block"
+          style={{ marginTop: 16, borderRadius: 12, padding: 12 }}
+          onClick={onRequestIncrease}
+          disabled={!canRequest}
+        >
+          {t("driverDailyLimitRequestBtn")}
+        </button>
       )}
-    </section>
+    </div>
   );
 };
 
@@ -3164,6 +3361,32 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
   const prefs = d?.prefs || {};
   const setPref = (patch) => store.updateDriverPrefs(patch);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [postalText, setPostalText] = useState("");
+  const postalAreas = prefs.postalAreas || [];
+
+  const handleAddPostal = (val) => {
+    const trimmed = val.trim();
+    if (!trimmed) return;
+    if (!postalAreas.includes(trimmed)) {
+      setPref({ postalAreas: [...postalAreas, trimmed] });
+    }
+    setPostalText("");
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      handleAddPostal(postalText);
+    }
+  };
+
+  const handleBlur = () => {
+    handleAddPostal(postalText);
+  };
+
+  const removePostal = (indexToRemove) => {
+    setPref({ postalAreas: postalAreas.filter((_, idx) => idx !== indexToRemove) });
+  };
   const [mdForm, setMdForm] = useState(() => emptyMasterDataChangeForm(d));
   const setMdField = (key, value) =>
     setMdForm((prev) => ({ ...prev, [key]: value }));
@@ -3202,37 +3425,54 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
     }
   };
   return (
-    <div className="scroll" style={{ padding: "10px 22px" }}>
-      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
-        {t("profileTitle")}
-      </h1>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 14,
-          padding: "20px 0 16px",
-          borderBottom: "1px solid var(--line)",
-        }}
-      >
+    <>
+      <div style={{ padding: "16px 20px 14px", background: "var(--paper)", borderBottom: "1px solid var(--line)" }}>
+        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-0.015em", lineHeight: 1.2 }}>
+          {t("profileTitle")}
+        </h1>
+        <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 4, lineHeight: 1.3 }}>
+          {t("profileSubtitle")}
+        </div>
+      </div>
+      <div className="scroll" style={{ padding: "16px 20px 24px", background: "var(--paper-2)", flex: 1 }}>
+
+      {/* Driver Identity Card */}
+      <div className="detail-card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 18, background: "var(--paper)" }}>
         <span
           className="avatar"
-          style={{ width: 48, height: 48, fontSize: 14 }}
+          style={{ width: 56, height: 56, fontSize: 16, background: "rgba(37, 99, 235, 0.08)", color: "var(--primary)", border: "2px solid var(--line)" }}
         >
-          JB
+          {d?.name ? d.name.split(" ").map(n => n[0]).join("") : "JB"}
         </span>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>{d?.name}</div>
-          <div className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>
-            {t("driverCode")}: {d?.driverCode} ·{" "}
-            {displayDriverStatus(d?.status, t)}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 18, color: "var(--text)", display: "flex", alignItems: "center" }}>
+            {d?.name}
+            {d?.status === "active" && (
+              <span className="profile-verified-badge" title="Verified Account">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
+              </span>
+            )}
+          </div>
+          <div className="mono" style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
+            {t("driverCode")}: <span style={{ color: "var(--text)", fontWeight: 600 }}>{d?.driverCode}</span>
+          </div>
+          <div style={{ marginTop: 6 }}>
+            <span className="pill accepted" style={{ fontSize: 11, padding: "3px 8px" }}>
+              {displayDriverStatus(d?.status, t)}
+            </span>
           </div>
         </div>
       </div>
+
+      {/* Daily Limits Card */}
       <DriverDailyLimitCard onRequestIncrease={onRequestDailyLimitIncrease} />
-      <div className="card mdr-card" style={{ padding: 14, marginTop: 16 }}>
-        <div className="mdr-card-head">
-          <Lbl>{t("profileMasterData")}</Lbl>
+
+      {/* Master Data Card */}
+      <div className="card mdr-card" style={{ padding: 18, marginTop: 16, borderRadius: 20, border: "1px solid var(--line)", background: "var(--paper)" }}>
+        <div className="mdr-card-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Lbl style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{t("profileMasterData")}</Lbl>
           {profileMode === "pending" ? (
             <span className="pill assigned">
               {t("masterDataChangePendingBadge")}
@@ -3240,15 +3480,15 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
           ) : null}
         </div>
         {profileMode === "pending" ? (
-          <div className="mdr-status-banner" role="status">
+          <div className="mdr-status-banner" role="status" style={{ marginTop: 12, padding: 12, borderRadius: 10 }}>
             <strong>{t("masterDataChangePendingTitle")}</strong>
-            {t("masterDataChangePendingBody", { date: openMdr.createdAt })}
+            <div style={{ marginTop: 4 }}>{t("masterDataChangePendingBody", { date: openMdr.createdAt })}</div>
           </div>
         ) : (
           <p
             style={{
-              margin: "8px 0 0",
-              fontSize: 12.5,
+              margin: "10px 0 0",
+              fontSize: 13,
               color: "var(--muted)",
               lineHeight: 1.5,
             }}
@@ -3258,7 +3498,7 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
               : t("masterDataChangeNotice")}
           </p>
         )}
-        <div className="mdr-field-list">
+        <div className="mdr-field-list" style={{ marginTop: 16 }}>
           {PROFILE_MDR_FIELDS.map(({ key, required, type }) => {
             const label = t(key);
             const current = d?.[key] || "";
@@ -3272,8 +3512,9 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
               <div
                 key={key}
                 className={`mdr-field-row${changed ? " is-changed" : ""}`}
+                style={{ padding: "12px 0", borderBottom: "1px solid var(--line)" }}
               >
-                <div className="mdr-field-label">
+                <div className="mdr-field-label" style={{ fontWeight: 600, fontSize: 13, color: "var(--text)", marginBottom: 6 }}>
                   {label}
                   {required ? " *" : ""}
                 </div>
@@ -3290,31 +3531,32 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
                     <>
                       <div
                         className={`mdr-field-value${changed ? " is-new" : ""}`}
+                        style={{ fontSize: 14, color: "var(--text)" }}
                       >
                         {pendingAfter || "—"}
                         {changed ? (
-                          <span className="mdr-field-badge">
+                          <span className="mdr-field-badge" style={{ marginLeft: 8 }}>
                             {t("masterDataChangeUpdatedBadge")}
                           </span>
                         ) : null}
                       </div>
                       {changed ? (
-                        <div className="mdr-field-old">
+                        <div className="mdr-field-old" style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
                           {pendingBefore || "—"}
                         </div>
                       ) : null}
                     </>
                   ) : (
-                    <div className="mdr-field-value">{current || "—"}</div>
+                    <div className="mdr-field-value" style={{ fontSize: 14, color: "var(--text)" }}>{current || "—"}</div>
                   )}
                 </div>
               </div>
             );
           })}
-          <div className="mdr-field-row">
-            <div className="mdr-field-label">{t("accountStatus")}</div>
-            <div className="mdr-field-body">
-              <div className="mdr-field-value">
+          <div className="mdr-field-row" style={{ padding: "12px 0" }}>
+            <div className="mdr-field-label" style={{ fontWeight: 600, fontSize: 13, color: "var(--text)" }}>{t("accountStatus")}</div>
+            <div className="mdr-field-body" style={{ marginTop: 6 }}>
+              <div className="mdr-field-value" style={{ fontSize: 14, color: "var(--text)" }}>
                 {displayDriverStatus(d?.status, t)}
               </div>
             </div>
@@ -3324,20 +3566,21 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
           <button
             type="button"
             className="btn block"
-            style={{ marginTop: 14 }}
+            style={{ marginTop: 16, borderRadius: 12, padding: 12 }}
             onClick={startProfileEdit}
           >
             {t("masterDataChangeEditBtn")}
           </button>
         ) : null}
         {profileMode === "edit" ? (
-          <div className="mdr-actions">
-            <button type="button" className="btn" onClick={cancelProfileEdit}>
+          <div className="mdr-actions" style={{ marginTop: 16, display: "flex", gap: 10 }}>
+            <button type="button" className="btn block" style={{ borderRadius: 12 }} onClick={cancelProfileEdit}>
               {t("masterDataChangeCancel")}
             </button>
             <button
               type="button"
-              className="btn primary"
+              className="btn primary block"
+              style={{ borderRadius: 12 }}
               onClick={submitMasterDataRequest}
             >
               {t("masterDataChangeSubmit")}
@@ -3358,93 +3601,112 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
           </p>
         ) : null}
       </div>
-      <div className="card" style={{ padding: 14, marginTop: 14 }}>
-        <Lbl>{t("notificationPreferences")}</Lbl>
-        <label className="field-label" style={{ marginTop: 14 }}>
-          {t("vehicleType")}
-        </label>
-        <select
-          className="input"
-          value={prefs.vehicle || "All"}
-          onChange={(e) => setPref({ vehicle: e.target.value })}
-        >
-          {["All", "PKW", "SUV", "Van", "Light truck <3.5t"].map((x) => (
-            <option key={x} value={x}>
-              {displayVehicle(x, t)}
-            </option>
-          ))}
-        </select>
-        <label className="field-label" style={{ marginTop: 12 }}>
-          {t("axle")}
-        </label>
-        <div className="seg full">
-          {["All", "Own axle", "Third-party axle"].map((x) => (
-            <button
-              key={x}
-              type="button"
-              className={(prefs.axle || "All") === x ? "on" : ""}
-              onClick={() => setPref({ axle: x })}
+
+      {/* Preferences & Notification Card */}
+      <div className="card" style={{ padding: 18, marginTop: 16, borderRadius: 20, border: "1px solid var(--line)", background: "var(--paper)" }}>
+        <Lbl style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{t("notificationPreferences")}</Lbl>
+        <div style={{ marginTop: 14 }}>
+          <label className="field-label" style={{ fontWeight: 600, fontSize: 13, color: "var(--text)" }}>
+            {t("vehicleType")}
+          </label>
+          <div style={{ marginTop: 6 }}>
+            <select
+              className="input"
+              value={prefs.vehicle || "All"}
+              onChange={(e) => setPref({ vehicle: e.target.value })}
             >
-              {displayAxle(x, t)}
-            </button>
-          ))}
+              {["All", "PKW", "SUV", "Van", "Light truck <3.5t"].map((x) => (
+                <option key={x} value={x}>
+                  {displayVehicle(x, t)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        <label
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            marginTop: 14,
-            fontSize: 13,
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={prefs.pushEnabled !== false}
-            onChange={(e) => setPref({ pushEnabled: e.target.checked })}
-          />
-          {t("pushEnabledMaster")}
-        </label>
-        <label
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            marginTop: 10,
-            fontSize: 13,
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={prefs.notifyNewPublished !== false}
-            onChange={(e) => setPref({ notifyNewPublished: e.target.checked })}
-          />
-          {t("pushNotifyNewPublished")}
-        </label>
-        <label className="field-label" style={{ marginTop: 12 }}>
-          {t("pushNotifyPostalPrefix")}
-        </label>
-        <input
-          className="input mono"
-          value={(prefs.postalAreas || []).join(", ")}
-          onChange={(e) =>
-            setPref({
-              postalAreas: e.target.value
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean),
-            })
-          }
-          placeholder={t("pushPostalPrefixHint")}
-        />
+        <div style={{ marginTop: 14 }}>
+          <label className="field-label" style={{ fontWeight: 600, fontSize: 13, color: "var(--text)" }}>
+            {t("axle")}
+          </label>
+          <div className="seg full">
+            {["All", "Own axle", "Third-party axle"].map((x) => (
+              <button
+                key={x}
+                type="button"
+                className={(prefs.axle || "All") === x ? "on" : ""}
+                onClick={() => setPref({ axle: x })}
+              >
+                {displayAxle(x, t)}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+          <label className="switch-toggle-label">
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text)" }}>{t("pushEnabledMaster")}</span>
+            <div className="switch-toggle-wrap">
+              <input
+                type="checkbox"
+                className="switch-toggle-input"
+                checked={prefs.pushEnabled !== false}
+                onChange={(e) => setPref({ pushEnabled: e.target.checked })}
+              />
+              <span className="switch-slider" />
+            </div>
+          </label>
+          <label className="switch-toggle-label">
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text)" }}>{t("pushNotifyNewPublished")}</span>
+            <div className="switch-toggle-wrap">
+              <input
+                type="checkbox"
+                className="switch-toggle-input"
+                checked={prefs.notifyNewPublished !== false}
+                onChange={(e) => setPref({ notifyNewPublished: e.target.checked })}
+              />
+              <span className="switch-slider" />
+            </div>
+          </label>
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <label className="field-label" style={{ fontWeight: 600, fontSize: 13, color: "var(--text)", marginBottom: 6, display: "block" }}>
+            {t("pushNotifyPostalPrefix")}
+          </label>
+          <div className="postal-chip-container">
+            {postalAreas.map((chip, idx) => (
+              <span key={idx} className="postal-chip">
+                {chip}
+                <button
+                  type="button"
+                  className="postal-chip-delete"
+                  onClick={() => removePostal(idx)}
+                  aria-label={`Remove postal code ${chip}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            <input
+              type="text"
+              className="postal-chip-input"
+              value={postalText}
+              onChange={(e) => setPostalText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={handleBlur}
+              placeholder={postalAreas.length === 0 ? t("pushPostalPrefixHint") : ""}
+            />
+          </div>
+        </div>
         <div
           className="dash-area"
           style={{
-            marginTop: 12,
+            marginTop: 16,
             fontFamily: "var(--font-sans)",
             fontSize: 12,
             letterSpacing: 0,
             textTransform: "none",
+            borderRadius: 12,
+            padding: 12
           }}
         >
           {t("pushSupportNotice")}
@@ -3460,6 +3722,7 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
         <Ic.Logout /> {t("signOut")}
       </button>
     </div>
+  </>
   );
 };
 
@@ -3479,210 +3742,254 @@ const Infopoint = () => {
   };
 
   return (
-    <div className="scroll" style={{ padding: "10px 22px" }}>
-      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
-        {t("infopoint")}
-      </h1>
-      <div className="label" style={{ marginTop: 4 }}>
-        {store.getAppDisplayName()}
-      </div>
-      <div className="tabs" style={{ marginTop: 16 }}>
-        {[
-          ["documents", t("infopointDocsTab")],
-          ["news", t("infopointNewsTab"), unreadCount],
-        ].map(([id, lbl, n]) => (
-          <button
-            key={id}
-            type="button"
-            className={subTab === id ? "on" : ""}
-            style={{ cursor: "pointer" }}
-            onClick={() => setSubTab(id)}
-          >
-            {lbl}
-            {id === "news" && n > 0 ? (
-              <span className="count"> ({n})</span>
-            ) : null}
-          </button>
-        ))}
-      </div>
-      {subTab === "documents" ? (
-        <>
-          {docs.map((d) => (
-            <div
-              key={d.id}
-              style={{
-                padding: "16px 0",
-                borderBottom: "1px solid var(--line)",
-              }}
+    <div className="scroll" style={{ padding: "16px 20px 24px", background: "var(--paper-2)", flex: 1, display: "flex", flexDirection: "column" }}>
+      <div style={{ background: "var(--paper)", margin: "-16px -20px 0 -20px", padding: "16px 20px 14px", borderBottom: "1px solid var(--line)" }}>
+        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-0.015em", lineHeight: 1.2 }}>
+          {t("infopoint")}
+        </h1>
+        <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 4, lineHeight: 1.3 }}>
+          {t("infopointSubtitle")}
+        </div>
+        
+        {/* Horizontal Tab Pills Selector */}
+        <div className="myjobs-tabs-slider" style={{ marginTop: 16, padding: "0 0 12px 0", borderBottom: "none", justifyContent: "flex-start", gap: "20px" }}>
+          {[
+            ["documents", t("infopointDocsTab")],
+            ["news", t("infopointNewsTab"), unreadCount],
+          ].map(([id, lbl, n]) => (
+            <button
+              key={id}
+              type="button"
+              className={`myjobs-tab-pill ${subTab === id ? "active" : ""}`}
+              onClick={() => setSubTab(id)}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>
-                    {displayDocTitle(d, t)}
-                  </div>
-                  {d.description ? (
-                    <div
-                      style={{
-                        fontSize: 12.5,
-                        color: "var(--muted)",
-                        marginTop: 6,
-                        lineHeight: 1.45,
-                      }}
-                    >
-                      {d.description}
-                    </div>
-                  ) : null}
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "var(--muted)",
-                      marginTop: 6,
-                    }}
-                  >
-                    {displayDocCategory(d.category, t)} ·{" "}
-                    {displayDocScope(d.scope, t)} · {d.version}
-                  </div>
-                  <div
-                    className="mono"
-                    style={{
-                      fontSize: 11,
-                      color: "var(--muted-2)",
-                      marginTop: 4,
-                    }}
-                  >
-                    {t("adminInfopointColUpdated")}: {d.updatedAt}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="btn xs"
-                  onClick={() =>
-                    window.alert(
-                      `${t("infopointDocPreviewDemo")}\n\n${d.title}`,
-                    )
-                  }
-                >
-                  {t("infopointDocViewDownload")}
-                </button>
-              </div>
-            </div>
+              <span>{lbl}</span>
+              {id === "news" && n > 0 ? (
+                <span className="pill-badge">{n}</span>
+              ) : null}
+            </button>
           ))}
-          <div
-            className="dash-area"
-            style={{
-              marginTop: 16,
-              fontFamily: "var(--font-sans)",
-              fontSize: 12,
-              letterSpacing: 0,
-              textTransform: "none",
-            }}
-          >
-            {t("emergencyDispatchNotice")}
-          </div>
-        </>
-      ) : (
-        <>
-          {news.length === 0 ? (
-            <div
-              className="dash-area"
-              style={{ marginTop: 16, padding: 20, textAlign: "center" }}
-            >
-              <div>{t("infopointNewsEmpty")}</div>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: "var(--muted)",
-                  marginTop: 10,
-                  lineHeight: 1.5,
-                }}
-              >
-                {t("infopointNewsAdminHint")}
-              </div>
-            </div>
-          ) : (
-            news.map((n) => {
-              const unread = !n.readBy.includes(readerId);
-              const expanded = openNewsId === n.id;
-              return (
-                <div
-                  key={n.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openNews(n)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openNews(n);
-                    }
-                  }}
-                  style={{
-                    padding: "16px 0",
-                    borderBottom: "1px solid var(--line)",
-                    cursor: "pointer",
-                  }}
-                >
+        </div>
+      </div>
+
+      <div style={{ flex: 1, marginTop: 16 }}>
+        {subTab === "documents" ? (
+          <>
+            <div className="infopoint-card">
+              {docs.map((d) => (
+                <div key={d.id} className="infopoint-doc-row" style={{ display: "flex", gap: 12, alignItems: "center" }}>
                   <div
                     style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 10,
+                      background: "var(--paper-2)",
                       display: "flex",
-                      justifyContent: "space-between",
-                      gap: 10,
-                      alignItems: "flex-start",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "var(--primary)",
+                      flexShrink: 0
                     }}
                   >
-                    <div
-                      style={{ fontWeight: unread ? 700 : 600, fontSize: 14 }}
-                    >
-                      {n.title}
+                    <Ic.Pdf />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>
+                      {displayDocTitle(d, t)}
                     </div>
-                    {unread ? (
-                      <span
-                        className="chip mono"
+                    {d.description ? (
+                      <div
                         style={{
-                          borderColor: "var(--primary)",
-                          color: "var(--primary)",
+                          fontSize: 12.5,
+                          color: "var(--muted)",
+                          marginTop: 4,
+                          lineHeight: 1.4,
                         }}
                       >
-                        {t("infopointNewsUnread")}
-                      </span>
+                        {d.description}
+                      </div>
                     ) : null}
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--muted-2)",
+                        marginTop: 6,
+                        fontWeight: 500
+                      }}
+                    >
+                      {displayDocCategory(d.category, t)} ·{" "}
+                      {displayDocScope(d.scope, t)} · {d.version}
+                    </div>
+                    <div
+                      className="mono"
+                      style={{
+                        fontSize: 10.5,
+                        color: "var(--muted-2)",
+                        marginTop: 4,
+                      }}
+                    >
+                      {d.size ? `${d.size} · ` : ""}{d.updatedAt}
+                    </div>
                   </div>
-                  <div
-                    className="mono"
-                    style={{
-                      fontSize: 11,
-                      color: "var(--muted)",
-                      marginTop: 6,
-                    }}
+                  <button
+                    type="button"
+                    className="btn icon sm touch-target"
+                    style={{ background: "var(--paper-2)", border: "1px solid var(--line)" }}
+                    onClick={() =>
+                      window.alert(
+                        `${t("infopointDocPreviewDemo")}\n\n${d.title}`,
+                      )
+                    }
+                    title={t("infopointDocViewDownload")}
                   >
-                    {n.publishedAt}
-                  </div>
-                  <p
-                    style={{
-                      margin: "8px 0 0",
-                      fontSize: 13,
-                      color: "var(--muted)",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {expanded
-                      ? n.body
-                      : `${(n.body || "").slice(0, 120)}${
-                          (n.body || "").length > 120 ? "…" : ""
-                        }`}
-                  </p>
+                    <Ic.Down />
+                  </button>
                 </div>
-              );
-            })
-          )}
-        </>
-      )}
+              ))}
+            </div>
+            <div
+              className="dash-area"
+              style={{
+                marginTop: 16,
+                fontFamily: "var(--font-sans)",
+                fontSize: 12,
+                letterSpacing: 0,
+                textTransform: "none",
+                borderRadius: 12,
+                padding: 12
+              }}
+            >
+              {t("emergencyDispatchNotice")}
+            </div>
+          </>
+        ) : (
+          <>
+            {news.length === 0 ? (
+              <div
+                className="dash-area"
+                style={{ padding: 28, textAlign: "center", borderRadius: 16 }}
+              >
+                <div style={{ fontWeight: 600 }}>{t("infopointNewsEmpty")}</div>
+                <div
+                  style={{
+                    fontSize: 12.5,
+                    color: "var(--muted)",
+                    marginTop: 10,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {t("infopointNewsAdminHint")}
+                </div>
+              </div>
+            ) : (
+              <div className="infopoint-card">
+                {news.map((n) => {
+                  const unread = !n.readBy.includes(readerId);
+                  const expanded = openNewsId === n.id;
+                  return (
+                    <div
+                      key={n.id}
+                      role="button"
+                      tabIndex={0}
+                      className="infopoint-news-row"
+                      onClick={() => openNews(n)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openNews(n);
+                        }
+                      }}
+                      style={{ cursor: "pointer", outline: "none", display: "flex", gap: 12, alignItems: "flex-start" }}
+                    >
+                      <div
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 10,
+                          background: unread ? "rgba(111, 41, 255, 0.08)" : "var(--paper-2)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: unread ? "var(--primary)" : "var(--muted-2)",
+                          flexShrink: 0,
+                          position: "relative"
+                        }}
+                      >
+                        <Ic.Calendar />
+                        {unread ? (
+                          <span
+                            style={{
+                              position: "absolute",
+                              top: -2,
+                              right: -2,
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              background: "var(--primary)",
+                              border: "1.5px solid var(--paper)"
+                            }}
+                          ></span>
+                        ) : null}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            alignItems: "flex-start",
+                          }}
+                        >
+                          <div
+                            style={{ fontWeight: unread ? 750 : 600, fontSize: 14, color: "var(--text)" }}
+                          >
+                            {n.title}
+                          </div>
+                        </div>
+                        <div
+                          className="mono"
+                          style={{
+                            fontSize: 10.5,
+                            color: "var(--muted)",
+                            marginTop: 4,
+                          }}
+                        >
+                          {n.publishedAt}
+                        </div>
+                        <p
+                          style={{
+                            margin: "8px 0 0",
+                            fontSize: 13,
+                            color: "var(--muted)",
+                            lineHeight: 1.45,
+                          }}
+                        >
+                          {expanded
+                            ? n.body
+                            : `${(n.body || "").slice(0, 100)}${
+                                (n.body || "").length > 100 ? "…" : ""
+                              }`}
+                        </p>
+                      </div>
+                      <div
+                        style={{
+                          alignSelf: "center",
+                          color: "var(--muted-2)",
+                          transform: expanded ? "rotate(180deg)" : "none",
+                          transition: "transform 0.15s ease",
+                          display: "flex"
+                        }}
+                      >
+                        <Ic.Down />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };
