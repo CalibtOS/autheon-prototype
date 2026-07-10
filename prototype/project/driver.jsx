@@ -147,6 +147,22 @@ const jobNeedsDocCorrection = (job, store) =>
       ));
 
 const Ic = {
+  Truck: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="3" width="15" height="13" rx="2" ry="2" />
+      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+      <circle cx="5.5" cy="18.5" r="2.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" />
+    </svg>
+  ),
+  Van: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 18H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" />
+      <path d="M18 12h4l2 3v3h-4" />
+      <circle cx="7.5" cy="18.5" r="2.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" />
+    </svg>
+  ),
   Filter: () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
       <path
@@ -605,42 +621,27 @@ const TabBar = ({ tab, setTab }) => {
     { id: "profile", label: t("profile"), I: Ic.TabUser },
   ];
   return (
-    <div className="tabbar">
-      {items.map((it) => (
-        <button
-          key={it.id}
-          className={tab === it.id ? "on" : ""}
-          onClick={() => setTab(it.id)}
-        >
-          <span className="tab-icon" style={{ position: "relative" }}>
-            <it.I on={tab === it.id} />
-            {it.badge > 0 ? (
-              <span
-                className="mono"
-                style={{
-                  position: "absolute",
-                  top: -4,
-                  right: -8,
-                  minWidth: 16,
-                  height: 16,
-                  padding: "0 4px",
-                  borderRadius: 8,
-                  background: "var(--primary)",
-                  color: "#fff",
-                  fontSize: 9,
-                  fontWeight: 700,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {it.badge > 9 ? "9+" : it.badge}
+    <div className="tabbar-container">
+      <div className="tabbar-capsule">
+        {items.map((it) => {
+          const isActive = tab === it.id;
+          return (
+            <button
+              key={it.id}
+              className={`tabbar-item ${isActive ? "active" : ""}`}
+              onClick={() => setTab(it.id)}
+            >
+              <span className="tabbar-icon-wrap">
+                <it.I on={isActive} />
+                {it.badge > 0 ? (
+                  <span className="tabbar-badge">{it.badge}</span>
+                ) : null}
               </span>
-            ) : null}
-          </span>
-          <span>{it.label}</span>
-        </button>
-      ))}
+              {isActive && <span className="tabbar-label">{it.label}</span>}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -650,41 +651,66 @@ const TabBar = ({ tab, setTab }) => {
 // =========================================================================
 const JobCard = ({ job, onOpen }) => {
   const { t } = useI18n();
+
+  const renderTimeDate = (loc) => {
+    if (!loc) return null;
+    const time = loc.windowFlex ? t("flexible") : (loc.windowFrom || loc.windowTo || "");
+    const date = loc.date || "";
+    return (
+      <div className="jobcard-time-row">
+        <div className="time-val">{time}</div>
+        <div className="date-val">{date}</div>
+      </div>
+    );
+  };
+
   return (
     <div className="jobcard" onClick={() => onOpen(job)}>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr auto",
-          gap: 12,
-          alignItems: "start",
-        }}
-      >
-        <RouteStack job={job} />
-        <div style={{ textAlign: "right" }}>
-          <div className="driver-offer">€ {fmtDriverOffer(job).toFixed(2)}</div>
-          <Lbl
-            className="label"
-            style={{ marginTop: 6, display: "inline-block" }}
-          >
-            {displayAxle(job.axle, t)}
-          </Lbl>
+      <div className="jobcard-main-grid">
+        <div className="jobcard-route-col">
+          <div className="jobcard-timeline">
+            <span className="timeline-dot start"></span>
+            <span className="timeline-line"></span>
+            <span className="timeline-dot end"></span>
+          </div>
+          <div className="jobcard-cities">
+            <div className="city-row">
+              <div className="city-name">{job.startCity}</div>
+              <div className="city-pc">{t("postalCodeAbbr")}: {job.startPlz}</div>
+            </div>
+            <div className="distance-row">
+              {job.distanceKm}km
+            </div>
+            <div className="city-row">
+              <div className="city-name">{job.endCity}</div>
+              <div className="city-pc">{t("postalCodeAbbr")}: {job.endPlz}</div>
+            </div>
+          </div>
+        </div>
+        <div className="jobcard-times-col">
+          {renderTimeDate(job.pickup)}
+          <div className="jobcard-time-spacer"></div>
+          {renderTimeDate(job.delivery)}
         </div>
       </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-        <span className="chip mono">
-          <Ic.Calendar />
-          <span style={{ marginLeft: 4 }}>
-            {AuthStore.formatJobScheduleShort(job, t("flexible"))}
-          </span>
-        </span>
-      </div>
-      <hr className="dash" style={{ margin: "14px 0 10px" }} />
-      <div
-        className="mono"
-        style={{ fontSize: 11.5, color: "var(--muted)", letterSpacing: 0.02 }}
-      >
-        {displayVehicle(job.vehicle, t)} · {job.vehicleModel}
+      <hr className="jobcard-divider" />
+      <div className="jobcard-footer">
+        <div className="jobcard-vehicle">
+          <div className="vehicle-icon-wrapper">
+            {job.vehicle === "Light truck <3.5t" ? <Ic.Truck /> : <Ic.Van />}
+          </div>
+          <div>
+            <div className="vehicle-desc">
+              {displayVehicle(job.vehicle, t)} • {job.vehicleModel}
+            </div>
+            <div className="vehicle-axle">
+              {displayAxle(job.axle, t)}
+            </div>
+          </div>
+        </div>
+        <div className="jobcard-price-pill">
+          € {fmtDriverOffer(job).toFixed(2)}
+        </div>
       </div>
     </div>
   );
@@ -847,106 +873,73 @@ const Portal = ({
 
   return (
     <>
-      <div
-        style={{
-          padding: "8px 22px 18px",
-          borderBottom: "1px solid var(--line)",
-          position: "relative",
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 24,
-            fontWeight: 700,
-            letterSpacing: "-0.015em",
-          }}
-        >
-          {t("marketplace")}
-        </h1>
-        <div
-          style={{
-            position: "absolute",
-            top: 8,
-            right: 22,
-            display: "flex",
-            gap: 8,
-          }}
-        >
+      <div className="pwa-header">
+        {/* Top welcome row */}
+        <div className="header-top-row">
+          <div className="driver-welcome">
+            <div className="driver-avatar">{(store.getCurrentDriver()?.name || "Jakob Arsin").split(" ").map(n => n[0]).join("")}</div>
+            <div className="welcome-text">
+              <div className="welcome-sub">{t("welcomeBack")}</div>
+              <div className="welcome-name">{store.getCurrentDriver()?.name || "Jakob Arsin"}</div>
+            </div>
+          </div>
           <button
             type="button"
-            className="btn icon sm"
-            style={{ position: "relative" }}
+            className="header-bell-btn"
             title={t("driverNotifications")}
             aria-label={t("driverNotifications")}
             onClick={() => onOpenNotifications?.()}
           >
             <Ic.Bell />
             {unreadNotif > 0 ? (
-              <span
-                className="mono"
-                style={{
-                  position: "absolute",
-                  top: -4,
-                  right: -4,
-                  minWidth: 16,
-                  height: 16,
-                  padding: "0 4px",
-                  borderRadius: 8,
-                  background: "var(--primary)",
-                  color: "#fff",
-                  fontSize: 9,
-                  fontWeight: 700,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {unreadNotif > 9 ? "9+" : unreadNotif}
-              </span>
+              <span className="bell-badge"></span>
             ) : null}
           </button>
-          <button
-            type="button"
-            className="btn icon sm"
-            title={t("refreshDemo")}
-            disabled={refreshing}
-            onClick={onRefresh}
-          >
-            <Ic.Refresh />
-          </button>
         </div>
-        <div className="label" style={{ marginTop: 4 }}>
-          {store.getAppDisplayName()} · {all.length} {t("openTours")} ·{" "}
-          {new Date().toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", {
-            weekday: "short",
-            day: "2-digit",
-            month: "short",
-          })}
-        </div>
-        <div
-          style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}
-        >
-          <button
-            className={`chip actionable ${activeChips.length ? "on" : ""}`}
-            onClick={openFilter}
-          >
-            <Ic.Filter /> {t("filters")}
-            {activeChips.length ? " · " + activeChips.length : ""}
-          </button>
-          {activeChips.map((c) => (
-            <span
-              key={c.key}
-              className="chip"
-              onClick={() => setFilters({ ...filters, [c.key]: "" })}
+
+        {/* Title and control buttons row */}
+        <div className="header-title-row">
+          <div>
+            <h1 className="header-title">{t("marketplace")}</h1>
+            <div className="header-subtitle">{t("exploreJobs")}</div>
+          </div>
+          <div className="header-controls">
+            <button
+              type="button"
+              className={`header-btn ${sortDir === "desc" ? "active" : ""}`}
+              onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")}
+              title={t("sortDir")}
             >
-              {c.label}{" "}
-              <span className="x">
-                <Ic.X />
-              </span>
-            </span>
-          ))}
+              <Ic.Sort />
+            </button>
+            <button
+              type="button"
+              className={`header-btn ${activeChips.length ? "active" : ""}`}
+              onClick={openFilter}
+              title={t("filters")}
+            >
+              <Ic.Filter />
+            </button>
+          </div>
         </div>
+
+        {/* Active chips row */}
+        {activeChips.length > 0 ? (
+          <div className="header-chips-row">
+            {activeChips.map((c) => (
+              <span
+                key={c.key}
+                className="chip"
+                onClick={() => setFilters({ ...filters, [c.key]: "" })}
+              >
+                {c.label}{" "}
+                <span className="x">
+                  <Ic.X />
+                </span>
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
       <div
         ref={scrollRef}
@@ -1194,223 +1187,112 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
 // =========================================================================
 const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
   const { t } = useI18n();
+
   return (
     <>
-      <div
-        style={{
-          padding: "0 18px 14px",
-          borderBottom: "1px solid var(--line)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button type="button" className="btn icon sm" onClick={onBack}>
-            <Ic.Back />
-          </button>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, flex: 1 }}>
-            {t("marketplacePreview")}
-          </h2>
-          {onBackToMarketplace ? (
-            <button
-              type="button"
-              className="btn xs"
-              onClick={onBackToMarketplace}
-            >
-              {t("backToMarketplace")}
-            </button>
-          ) : null}
-        </div>
+      {/* Header */}
+      <div className="pwa-detail-header">
+        <button type="button" className="detail-back-btn" onClick={onBack} aria-label={t("back")}>
+          <Ic.Back />
+        </button>
+        <h2 className="detail-header-title">{t("marketplacePreview")}</h2>
+        <div style={{ width: 40 }}></div>
       </div>
-      <div
-        className="scroll"
-        style={{ padding: "16px 18px 22px", background: "var(--paper-2)" }}
-      >
-        <div className="card" style={{ padding: 18 }}>
-          <Lbl>{t("routeSummary")}</Lbl>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              marginTop: 12,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 28,
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-              }}
-              className="mono"
-            >
-              {job.startPlz}
-            </span>
-            <span
-              style={{
-                flex: 1,
-                borderTop: "1.5px dashed var(--line-2)",
-                position: "relative",
-              }}
-            >
-              <span
-                style={{
-                  position: "absolute",
-                  right: -3,
-                  top: -5,
-                  width: 9,
-                  height: 9,
-                  borderRadius: "50%",
-                  background: "var(--primary)",
-                }}
-              ></span>
-            </span>
-            <span
-              style={{
-                fontSize: 28,
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-              }}
-              className="mono"
-            >
-              {job.endPlz}
-            </span>
-          </div>
-          <div className="label" style={{ marginTop: 8 }}>
-            {job.startCity} → {job.endCity} · {job.distanceKm} km
-          </div>
-        </div>
 
-        <div className="card" style={{ padding: 0, marginTop: 12 }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              borderBottom: "1px solid var(--line)",
-            }}
-          >
-            <div style={{ padding: 16, borderRight: "1px solid var(--line)" }}>
-              <Lbl>{t("pickup")}</Lbl>
-              <div style={{ fontWeight: 600, marginTop: 6, fontSize: 13 }}>
-                {AuthStore.formatLocationSchedule(job.pickup, t("flexible"))}
+      {/* Main Content Area */}
+      <div className="scroll pwa-detail-body">
+        {/* Route Card */}
+        <div className="detail-card">
+          <div className="detail-section-title">
+            <Ic.Map />
+            <span>{t("route")}</span>
+          </div>
+          <div className="detail-route-row">
+            <div className="detail-route-city start">
+              <div className="city-name">{job.startCity}</div>
+              <div className="city-pc">{t("postalCodeAbbr")}: {job.startPlz}</div>
+            </div>
+            <div className="detail-route-line-wrap">
+              <div className="detail-route-line"></div>
+              <div className="detail-route-info">
+                <div className="dist">{job.distanceKm}km</div>
+                <div className="time">5h 30m</div>
               </div>
             </div>
-            <div style={{ padding: 16 }}>
-              <Lbl>{t("delivery")}</Lbl>
-              <div style={{ fontWeight: 600, marginTop: 6, fontSize: 13 }}>
-                {AuthStore.formatLocationSchedule(job.delivery, t("flexible"))}
-              </div>
+            <div className="detail-route-city end">
+              <div className="city-name">{job.endCity}</div>
+              <div className="city-pc">{t("postalCodeAbbr")}: {job.endPlz}</div>
             </div>
           </div>
-          <div
-            style={{
-              borderTop: "1px solid var(--line)",
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-            }}
-          >
-            <div style={{ padding: 16, borderRight: "1px solid var(--line)" }}>
-              <Lbl>{t("vehicle")}</Lbl>
-              <div style={{ fontWeight: 600, marginTop: 6 }}>{job.vehicle}</div>
-              <div
-                className="mono"
-                style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}
-              >
-                {job.vehicleModel}
-              </div>
+          <hr className="detail-card-divider" />
+          <div className="detail-route-times">
+            <div>
+              <div className="time-label">{t("pickupTime")}</div>
+              <div className="time-val">{AuthStore.formatLocationSchedule(job.pickup, t("flexible"))}</div>
             </div>
-            <div style={{ padding: 16 }}>
-              <Lbl>{t("axle")}</Lbl>
-              <div style={{ fontWeight: 600, marginTop: 6 }}>{job.axle}</div>
+            <div style={{ textAlign: "right" }}>
+              <div className="time-label">{t("deliveryTime")}</div>
+              <div className="time-val">{AuthStore.formatLocationSchedule(job.delivery, t("flexible"))}</div>
             </div>
           </div>
         </div>
 
-        <div
-          className="card"
-          style={{
-            padding: 18,
-            marginTop: 12,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Lbl>{t("driverOffer")}</Lbl>
-          <div
-            style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em" }}
-            className="tnum"
-          >
-            € {fmtDriverOffer(job).toFixed(2)}
+        {/* Vehicle Card */}
+        <div className="detail-card">
+          <div className="detail-section-title">
+            <Ic.Pkg />
+            <span>{t("vehicle")}</span>
+          </div>
+          <div className="detail-kv-list">
+            <div className="detail-kv-row">
+              <div className="label">{t("type")}</div>
+              <div className="value">{displayVehicle(job.vehicle, t)}</div>
+            </div>
+            <div className="detail-kv-row">
+              <div className="label">{t("model")}</div>
+              <div className="value">{job.vehicleModel}</div>
+            </div>
+            <div className="detail-kv-row">
+              <div className="label">{t("axle")}</div>
+              <div className="value">{displayAxle(job.axle, t)}</div>
+            </div>
           </div>
         </div>
 
-        <div className="dash-area" style={{ marginTop: 14, padding: 16 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 12,
-              color: "var(--text)",
-              letterSpacing: 0,
-            }}
-          >
-            <span
-              style={{
-                width: 14,
-                height: 14,
-                border: "1.5px solid var(--primary-ink)",
-                borderRadius: 3,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Ic.Pkg />
-            </span>
-            <strong
-              style={{
-                fontFamily: "var(--font-sans)",
-                fontSize: 13,
-                textTransform: "none",
-                letterSpacing: 0,
-              }}
-            >
-              {t("unlockedAfterAcceptance")}
-            </strong>
+        {/* Unlocked after acceptance Card */}
+        <div className="detail-card info-card">
+          <div className="detail-section-title">
+            <Ic.Eye />
+            <span>{t("unlockedAfterAcceptance")}</span>
           </div>
-          <ul
-            style={{
-              margin: 0,
-              paddingLeft: 22,
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              lineHeight: 1.9,
-              textTransform: "none",
-              letterSpacing: 0.02,
-              color: "var(--muted)",
-            }}
-          >
-            <li>{t("fullAddresses")}</li>
-            <li>{t("contactsPhones")}</li>
-            <li>{t("licenseVin")}</li>
-            <li>{t("instructionsPdf")}</li>
+          <ul className="detail-check-list">
+            <li>
+              <span className="check-icon">✓</span>
+              <span>{t("fullAddresses")}</span>
+            </li>
+            <li>
+              <span className="check-icon">✓</span>
+              <span>{t("contactsPhones")}</span>
+            </li>
+            <li>
+              <span className="check-icon">✓</span>
+              <span>{t("licenseVin")}</span>
+            </li>
+            <li>
+              <span className="check-icon">✓</span>
+              <span>{t("instructionsPdf")}</span>
+            </li>
           </ul>
         </div>
       </div>
-      <div
-        style={{
-          padding: "12px 16px 18px",
-          borderTop: "1px solid var(--line)",
-          display: "grid",
-          gridTemplateColumns: "1fr 1.6fr",
-          gap: 10,
-          background: "var(--paper)",
-        }}
-      >
-        <button type="button" className="btn" onClick={onBack}>
-          {t("back")}
-        </button>
-        <button type="button" className="btn primary" onClick={onAccept}>
+
+      {/* Bottom Bar */}
+      <div className="pwa-detail-bottom">
+        <div className="bottom-price-info">
+          <div className="label">{t("offer")}</div>
+          <div className="price">€ {fmtDriverOffer(job).toFixed(2)}</div>
+        </div>
+        <button type="button" className="btn primary lg-cta" onClick={onAccept}>
           {t("acceptTour")}
         </button>
       </div>
@@ -1885,48 +1767,45 @@ const JobUnlocked = ({
     job.endPlz,
     job.endCity,
   );
+
   return (
     <>
-      <div
-        style={{
-          padding: "0 18px 14px",
-          borderBottom: "1px solid var(--line)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button type="button" className="btn icon sm" onClick={onBack}>
-            <Ic.Back />
-          </button>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ margin: 0, fontSize: 16.5, fontWeight: 700 }}>
-              Tour #{job.tour}
-            </h2>
-            <div className="label" style={{ marginTop: 2 }}>
-              {t("myJobsExecutionDetail")}
-            </div>
+      {/* Header */}
+      <div className="pwa-detail-header">
+        <button type="button" className="detail-back-btn" onClick={onBack} aria-label={t("back")}>
+          <Ic.Back />
+        </button>
+        <div style={{ flex: 1, textAlign: "center" }}>
+          <h2 className="detail-header-title">Tour #{job.tour}</h2>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+            {isPerformed ? (
+              <Pill status="performed">{AuthStore.statusLabel("performed")}</Pill>
+            ) : isCancelled ? (
+              <Pill status="cancelled">{t("cancelled")}</Pill>
+            ) : isSpecialCase ? (
+              <Pill status="special_case">{AuthStore.statusLabel("special_case")}</Pill>
+            ) : job.status === "assigned" ? (
+              <Pill status="assigned">{t("assignedShort")}</Pill>
+            ) : (
+              <Pill status="accepted">{t("acceptedActive")}</Pill>
+            )}
           </div>
-          {onBackToMarketplace ? (
-            <button
-              type="button"
-              className="btn xs"
-              onClick={onBackToMarketplace}
-            >
-              {t("backToMarketplace")}
-            </button>
-          ) : null}
         </div>
+        <div style={{ width: 40 }}></div>
       </div>
 
-      <div className="scroll" style={{ padding: "12px 18px 22px" }}>
+      {/* Main Content Area */}
+      <div className="scroll pwa-detail-body">
         {inExecution && !isCancelled && !isPerformed ? (
           <div
             className="banner banner-success"
             role="status"
-            style={{ marginBottom: 12 }}
+            style={{ margin: 0 }}
           >
             {t("tourInExecutionBanner")}
           </div>
         ) : null}
+
         {isCancelled && (
           <div className="cancellation-card" role="status">
             <p className="cancellation-card-title">{t("cancelled")}</p>
@@ -1946,358 +1825,242 @@ const JobUnlocked = ({
             ) : null}
           </div>
         )}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "10px 0",
-            borderBottom: "1px dashed var(--line-dash)",
-          }}
-        >
-          {job.status === "performed" ? (
-            <Pill status="performed">{AuthStore.statusLabel("performed")}</Pill>
-          ) : job.status === "cancelled" ? (
-            <Pill status="cancelled">{t("cancelled")}</Pill>
-          ) : job.status === "special_case" ? (
-            <Pill status="special_case">
-              {AuthStore.statusLabel("special_case")}
-            </Pill>
-          ) : job.status === "assigned" ? (
-            <Pill status="assigned">{t("assignedShort")}</Pill>
-          ) : (
-            <Pill status="accepted">{t("acceptedActive")}</Pill>
-          )}
-          <span className="label mono">{job.id}</span>
-        </div>
 
-        <div
-          style={{
-            marginTop: 14,
-            padding: 12,
-            borderRadius: 10,
-            border: "1px solid var(--line)",
-            background: "var(--paper-2)",
-          }}
-        >
-          <Lbl>{t("customerLabel")}</Lbl>
-          <div style={{ fontWeight: 600, fontSize: 14, marginTop: 6 }}>
-            {job.customerName || job.customer || "—"}
+        {/* Customer Card */}
+        <div className="detail-card customer-card">
+          <div className="customer-row">
+            <span className="customer-title">{t("customerLabel")}</span>
+            <span className="customer-name">{job.customerName || job.customer || "—"}</span>
           </div>
         </div>
 
-        {job.status === "performed" && store.getJobDisplayStatus(job) ? (
-          <div style={{ marginTop: 10 }}>
-            <Pill status="assigned">{store.getJobDisplayStatus(job)}</Pill>
+        {/* Route Card with Vertical Timeline */}
+        <div className="detail-card">
+          <div className="detail-section-title">
+            <Ic.Map />
+            <span>{t("route")}</span>
           </div>
-        ) : null}
-
-        <div style={{ marginTop: 18 }}>
-          <Lbl>{t("pickup")}</Lbl>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "16px 1fr",
-              gap: 14,
-              marginTop: 10,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                paddingTop: 6,
-              }}
-            >
-              <span
-                style={{
-                  width: 11,
-                  height: 11,
-                  borderRadius: "50%",
-                  border: "1.5px solid var(--primary-ink)",
-                }}
-              ></span>
-              <span
-                style={{
-                  flex: 1,
-                  width: 1.5,
-                  background: "var(--primary)",
-                  margin: "4px 0",
-                  minHeight: 38,
-                }}
-              ></span>
-              <span
-                style={{
-                  width: 11,
-                  height: 11,
-                  borderRadius: "50%",
-                  background: "var(--primary)",
-                }}
-              ></span>
+          <div className="unlocked-route-timeline">
+            <div className="timeline-item">
+              <div className="timeline-marker">
+                <span className="dot blue"></span>
+                <span className="line"></span>
+              </div>
+              <div className="timeline-content">
+                <div className="city-info">
+                  <div className="city-name">{job.startCity}</div>
+                  <div className="city-address">{job.startStreet} · {job.startPlz} {job.startCity}</div>
+                </div>
+                <a href={pickupMaps} target="_blank" rel="noopener noreferrer" className="map-link">
+                  <Ic.Map /> {t("viewOnMap")}
+                </a>
+              </div>
+            </div>
+            <div className="timeline-item-middle">
+              <span className="info-badge">🚙 {job.distanceKm} km</span>
+              <span className="info-badge">⏱ 5h 30m</span>
+            </div>
+            <div className="timeline-item">
+              <div className="timeline-marker">
+                <span className="dot dark"></span>
+              </div>
+              <div className="timeline-content">
+                <div className="city-info">
+                  <div className="city-name">{job.endCity}</div>
+                  <div className="city-address">{job.endStreet} · {job.endPlz} {job.endCity}</div>
+                </div>
+                <a href={deliveryMaps} target="_blank" rel="noopener noreferrer" className="map-link">
+                  <Ic.Map /> {t("viewOnMap")}
+                </a>
+              </div>
+            </div>
+          </div>
+          <hr className="detail-card-divider" />
+          <div className="detail-route-times">
+            <div>
+              <div className="time-label">{t("pickupTime")}</div>
+              <div className="time-val">{AuthStore.formatLocationSchedule(job.pickup, t("flexible"))}</div>
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15.5 }}>
-                {job.startCompany || job.customer}
-              </div>
-              <div
-                className="mono"
-                style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}
-              >
-                {job.startStreet} · {job.startPlz} {job.startCity}
-              </div>
-              <a
-                href={pickupMaps}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn xs"
-                style={{ marginTop: 8, display: "inline-flex" }}
-              >
-                <Ic.Map /> {t("openInMaps")}
-              </a>
-              <Lbl style={{ marginTop: 18, display: "block" }}>
-                {t("delivery")}
-              </Lbl>
-              <div style={{ fontWeight: 700, fontSize: 15.5, marginTop: 6 }}>
-                {job.endCompany || t("contacts") + " · " + job.endCity}
-              </div>
-              <div
-                className="mono"
-                style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}
-              >
-                {job.endStreet} · {job.endPlz} {job.endCity}
-              </div>
-              <a
-                href={deliveryMaps}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn xs"
-                style={{ marginTop: 8, display: "inline-flex" }}
-              >
-                <Ic.Map /> {t("openInMaps")}
-              </a>
+              <div className="time-label">{t("deliveryTime")}</div>
+              <div className="time-val">{AuthStore.formatLocationSchedule(job.delivery, t("flexible"))}</div>
             </div>
           </div>
         </div>
 
-        <hr className="dash" style={{ margin: "20px 0" }} />
-
-        <Lbl>{t("vehicle")}</Lbl>
-        <div style={{ marginTop: 6, fontWeight: 700, fontSize: 15.5 }}>
-          {job.vehicleModel} · {job.vehicle}
-        </div>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 14,
-            marginTop: 14,
-          }}
-        >
-          <div>
-            <Lbl>{t("licensePlate")}</Lbl>
-            <div
-              className="mono"
-              style={{
-                fontWeight: 600,
-                marginTop: 4,
-                padding: "5px 10px",
-                border: "1.5px solid var(--primary-ink)",
-                display: "inline-block",
-                borderRadius: 3,
-                fontSize: 13,
-              }}
-            >
-              {job.plate}
-            </div>
+        {/* Vehicle Card */}
+        <div className="detail-card">
+          <div className="detail-section-title">
+            <Ic.Pkg />
+            <span>{t("vehicle")}</span>
           </div>
-          <div>
-            <Lbl>{t("vin")}</Lbl>
-            <div className="mono" style={{ fontSize: 12, marginTop: 6 }}>
-              {job.vin}
+          <div className="detail-kv-list">
+            <div className="detail-kv-row">
+              <div className="label">{t("type")}</div>
+              <div className="value">{displayVehicle(job.vehicle, t)}</div>
+            </div>
+            <div className="detail-kv-row">
+              <div className="label">{t("model")}</div>
+              <div className="value">{job.vehicleModel}</div>
+            </div>
+            <div className="detail-kv-row">
+              <div className="label">{t("licensePlate")}</div>
+              <div className="plate-badge">{job.plate}</div>
+            </div>
+            <div className="detail-kv-row">
+              <div className="label">{t("vin")}</div>
+              <div className="value mono" style={{ fontSize: 12 }}>{job.vin}</div>
+            </div>
+            <div className="detail-kv-row">
+              <div className="label">{t("axle")}</div>
+              <div className="value">{displayAxle(job.axle, t)}</div>
             </div>
           </div>
         </div>
 
-        <hr className="dash" style={{ margin: "20px 0" }} />
-
-        <Lbl>{t("contacts")}</Lbl>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 10,
-            marginTop: 8,
-          }}
-        >
-          {[
-            [t("pickup"), pickup],
-            [t("delivery"), drop],
-          ].map(([k, c]) => (
-            <div key={k} className="card flat" style={{ padding: 12 }}>
-              <div className="label">{k}</div>
-              <div style={{ fontWeight: 600, marginTop: 6, fontSize: 14 }}>
-                {c.name || "—"}
+        {/* Contact Card */}
+        <div className="detail-card">
+          <div className="detail-section-title">
+            <Ic.TabUser />
+            <span>{t("contact")}</span>
+          </div>
+          <div className="detail-contacts-grid">
+            <div className="contact-column">
+              <div className="contact-role">{t("pickupContact")}</div>
+              <div className="contact-name">{pickup.name || "—"}</div>
+              <div className="contact-actions">
+                {pickup.phone ? (
+                  <a href={"tel:" + (pickup.phone || "").replace(/\s/g, "")} className="contact-action-btn" title="Call">
+                    <Ic.Phone />
+                  </a>
+                ) : null}
+                {pickup.email ? (
+                  <a href={"mailto:" + pickup.email} className="contact-action-btn" title="Email">
+                    <Ic.Mail />
+                  </a>
+                ) : null}
               </div>
-              <a
-                href={"tel:" + (c.phone || "").replace(/\s/g, "")}
-                className="mono"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  fontSize: 12,
-                  color: "var(--text)",
-                  textDecoration: "underline",
-                  textUnderlineOffset: 2,
-                  marginTop: 4,
-                }}
-              >
-                <Ic.Phone /> {c.phone || "—"}
-              </a>
-              {c.secondPhone ? (
-                <div
-                  className="mono"
-                  style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}
-                >
-                  {t("phone")} 2: {c.secondPhone}
-                </div>
-              ) : null}
-              {c.email ? (
-                <div
-                  style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}
-                >
-                  {t("email")}: {c.email}
-                </div>
-              ) : null}
             </div>
-          ))}
+            <div className="contact-column">
+              <div className="contact-role">{t("deliveryContact")}</div>
+              <div className="contact-name">{drop.name || "—"}</div>
+              <div className="contact-actions">
+                {drop.phone ? (
+                  <a href={"tel:" + (drop.phone || "").replace(/\s/g, "")} className="contact-action-btn" title="Call">
+                    <Ic.Phone />
+                  </a>
+                ) : null}
+                {drop.email ? (
+                  <a href={"mailto:" + drop.email} className="contact-action-btn" title="Email">
+                    <Ic.Mail />
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          </div>
         </div>
 
-        <hr className="dash" style={{ margin: "20px 0" }} />
-
-        <Lbl>{t("transportOrderPdf")}</Lbl>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            marginTop: 8,
-            padding: 12,
-            border: "1px solid var(--line)",
-            borderRadius: "var(--r-2)",
-          }}
-        >
-          <div style={{ color: "var(--primary-ink)", flexShrink: 0 }}>
-            <Ic.Pdf />
+        {/* Operational Instructions Card */}
+        <div className="detail-card">
+          <div className="detail-section-title">
+            <Ic.TabInfo />
+            <span>{t("operationalInstructions")}</span>
           </div>
-          <div style={{ flex: 1 }}>
-            <div className="mono" style={{ fontSize: 12 }}>
-              transport-order-{job.id}.pdf
+          <div className="detail-pdf-card">
+            <div className="pdf-icon-wrap">
+              <Ic.Pdf />
             </div>
-            <div className="label" style={{ marginTop: 2 }}>
-              {t("demoAsset")} · v{job.pdfVersion || 1}
+            <div style={{ flex: 1 }}>
+              <div className="pdf-name">transport-order-{job.id}.pdf</div>
+              <div className="pdf-meta">v{job.pdfVersion || 1}</div>
+            </div>
+            <div className="pdf-actions">
+              <button
+                type="button"
+                className="pdf-btn"
+                title={t("view")}
+                onClick={() => AuthStore.viewPdf(job.id)}
+              >
+                <Ic.Eye />
+              </button>
+              <button
+                type="button"
+                className="pdf-btn"
+                title={t("download")}
+                onClick={() => AuthStore.downloadPdf(job.id)}
+              >
+                <Ic.Down />
+              </button>
             </div>
           </div>
-          <button
-            type="button"
-            className="btn xs"
-            onClick={() => AuthStore.viewPdf(job.id)}
+          <p
+            style={{
+              fontSize: 13,
+              lineHeight: 1.6,
+              margin: 0,
+              color: "var(--muted)",
+            }}
           >
-            <Ic.Eye /> {t("view")}
-          </button>
-          <button
-            type="button"
-            className="btn icon sm"
-            onClick={() => AuthStore.downloadPdf(job.id)}
-          >
-            <Ic.Down />
-          </button>
+            {displayDriverNote(job.notesDriver, t) || t("noDriverAddons")}
+          </p>
+          {job.notes ? (
+            <>
+              <hr className="detail-card-divider" />
+              <div className="time-label">{t("dispatchNotes")}</div>
+              <p style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+                {job.notes}
+              </p>
+            </>
+          ) : null}
         </div>
 
+        {/* Official Documents Component */}
         <JobOfficialTourDocuments job={job} />
 
+        {/* Tour Documents Component */}
         <JobTourDocuments job={job} />
 
-        <hr className="dash" style={{ margin: "20px 0" }} />
-
-        <Lbl>{t("operationalInstructions")}</Lbl>
-        <p
-          style={{
-            fontSize: 13,
-            lineHeight: 1.6,
-            margin: "8px 0 0",
-            color: "var(--muted)",
-          }}
-        >
-          {displayDriverNote(job.notesDriver, t) || t("noDriverAddons")}
-        </p>
-
-        <Lbl style={{ marginTop: 16, display: "block" }}>
-          {t("dispatchNotes")}
-        </Lbl>
-        <p style={{ fontSize: 13, lineHeight: 1.6, margin: "8px 0 0" }}>
-          {job.notes || "—"}
-        </p>
-
-        <hr className="dash" style={{ margin: "20px 0" }} />
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-          }}
-        >
-          <div>
-            <Lbl>{t("driverOffer")}</Lbl>
-            <div
-              className="mono"
-              style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}
-            >
-              {job.distanceKm} km · {displayAxle(job.axle, t)}
+        {/* Financial Offer summary */}
+        <div className="detail-card price-summary-card">
+          <div className="price-summary-row">
+            <div>
+              <div className="price-label">{t("driverOffer")}</div>
+              <div className="price-meta">{job.distanceKm} km · {displayAxle(job.axle, t)}</div>
             </div>
-          </div>
-          <div
-            style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em" }}
-            className="tnum"
-          >
-            € {fmtDriverOffer(job).toFixed(2)}
+            <div className="price-val">€ {fmtDriverOffer(job).toFixed(2)}</div>
           </div>
         </div>
       </div>
+
+      {/* Bottom Bar */}
       {!isPerformed && !isCancelled && !isSpecialCase && (
-        <div
-          style={{
-            padding: "12px 16px 18px",
-            borderTop: "1px solid var(--line)",
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 10,
-            background: "var(--paper)",
-          }}
-        >
+        <div className="pwa-unlocked-bottom">
           <button
             type="button"
-            className="btn"
+            className="btn primary"
+            onClick={onMarkPerformed}
+            disabled={!canPerform}
+            style={{ padding: "12px 24px", borderRadius: 9999, fontSize: 15, fontWeight: 700 }}
+          >
+            {t("markPerformed")}
+          </button>
+          <button
+            type="button"
+            className="btn outline"
             onClick={onReport}
             style={{
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
+              padding: "12px 24px",
+              borderRadius: 9999,
+              fontSize: 15,
+              fontWeight: 600,
             }}
           >
             <Ic.Alert />
             {t("reportProblem")}
-          </button>
-          <button
-            type="button"
-            className="btn primary"
-            onClick={onMarkPerformed}
-            disabled={!canPerform}
-          >
-            {t("markPerformed")}
           </button>
         </div>
       )}

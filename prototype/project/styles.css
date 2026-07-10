@@ -5,6 +5,7 @@
 :root {
   /* AUTHEON — ui-ux-pro-max tokens (logistics SaaS: tracking blue + delivery orange) */
   --primary:    #2563EB;
+  --primary-rgb: 37, 99, 235;
   --primary-ink:#1E40AF;
   --cta:        #F97316;
   --canvas:     #EFF6FF;
@@ -50,7 +51,7 @@
   --r-pill: 999px;
 
   --sh-1: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --sh-2: 0 10px 40px rgba(37, 99, 235, 0.08), 0 1px 2px rgba(15, 23, 42, 0.05);
+  --sh-2: 0 10px 40px rgba(var(--primary-rgb), 0.08), 0 1px 2px rgba(15, 23, 42, 0.05);
   --sh-3: 0 24px 64px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(15, 23, 42, 0.08);
   --sh-inset: inset 0 0 0 1px var(--line);
 
@@ -65,6 +66,7 @@
 
 [data-theme="dark"] {
   --primary: #3B82F6;
+  --primary-rgb: 59, 130, 246;
   --primary-ink: #93C5FD;
   --cta: #F97316;
   --canvas: #0B1220;
@@ -269,7 +271,7 @@ hr.line { border: 0; border-top: 1px solid var(--line); margin: 0; }
   transition: border-color .12s, box-shadow .12s;
 }
 .input::placeholder { color: var(--muted-2); }
-.input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2); }
+.input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2); }
 textarea.input { min-height: 92px; resize: vertical; }
 .field-label {
   font-family: var(--font-mono);
@@ -482,6 +484,935 @@ textarea.input { min-height: 92px; resize: vertical; }
 }
 
 /* ===============================================
+   DRIVER PWA — CUSTOM THEME OVERRIDES
+   =============================================== */
+.phone-shell {
+  --primary-rgb: 111, 41, 255;
+  --primary:     #6F29FF;
+  --primary-ink: #5A16D9;
+  --cta:         #6F29FF;
+  --canvas:      #F5F5F7;
+  --paper:       #ffffff;
+  --paper-2:     #FFFFFF;
+  --paper-3:     #F5F5F7;
+  --ink:         #111111;
+  --ink-2:       #6E6E73;
+  --ink-3:       #6E6E73;
+  --line:        #E5E5EA;
+  --line-2:      #C7C7CC;
+  --line-3:      #111111;
+  --line-dash:   #C7C7CC;
+  --text:        #111111;
+  --muted:       #6E6E73;
+  --muted-2:     #8E8E93;
+
+  --st-published:     #6F29FF;
+  --st-published-bg:  rgba(111, 41, 255, 0.08);
+}
+
+[data-theme="dark"] .phone-shell {
+  --primary-rgb: 143, 91, 255;
+  --primary:     #8F5BFF;
+  --primary-ink: #A375FF;
+  --cta:         #8F5BFF;
+  --canvas:      #1C1C1E;
+  --paper:       #2C2C2E;
+  --paper-2:     #2C2C2E;
+  --paper-3:     #3A3A3C;
+  --ink:         #FFFFFF;
+  --ink-2:       #AEAEB2;
+  --ink-3:       #8E8E93;
+  --line:        #38383A;
+  --line-2:      #48484A;
+  --line-3:      #FFFFFF;
+  --line-dash:   #48484A;
+  --text:        #FFFFFF;
+  --muted:       #AEAEB2;
+  --muted-2:     #8E8E93;
+
+  --st-published:     #8F5BFF;
+  --st-published-bg:  rgba(143, 91, 255, 0.12);
+}
+
+/* JobCard Redesign Styles */
+.phone-shell .jobcard {
+  border-radius: 24px;
+}
+.phone-shell .jobcard-main-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: start;
+}
+.phone-shell .jobcard-route-col {
+  display: flex;
+  gap: 12px;
+  position: relative;
+}
+.phone-shell .jobcard-timeline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  width: 10px;
+  flex-shrink: 0;
+}
+.phone-shell .jobcard-timeline .timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.phone-shell .jobcard-timeline .timeline-dot.start {
+  background: var(--primary);
+}
+.phone-shell .jobcard-timeline .timeline-dot.end {
+  background: var(--ink);
+}
+.phone-shell .jobcard-timeline .timeline-line {
+  flex: 1;
+  width: 0;
+  border-left: 2px dashed var(--line);
+  margin: 6px 0;
+}
+.phone-shell .jobcard-cities {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.phone-shell .jobcard-cities .city-row {
+  display: flex;
+  flex-direction: column;
+}
+.phone-shell .jobcard-cities .city-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+.phone-shell .jobcard-cities .city-pc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.phone-shell .jobcard-cities .distance-row {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text);
+  margin: -4px 0;
+}
+.phone-shell .jobcard-times-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  gap: 32px;
+}
+.phone-shell .jobcard-time-row {
+  display: flex;
+  flex-direction: column;
+}
+.phone-shell .jobcard-time-row .time-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+.phone-shell .jobcard-time-row .date-val {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.phone-shell .jobcard-time-spacer {
+  height: 0;
+}
+.phone-shell .jobcard-divider {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 16px 0;
+}
+.phone-shell .jobcard-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.phone-shell .jobcard-vehicle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.phone-shell .jobcard-vehicle .vehicle-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--canvas);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+}
+.phone-shell .jobcard-vehicle .vehicle-desc {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+.phone-shell .jobcard-vehicle .vehicle-axle {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.phone-shell .jobcard-price-pill {
+  background: var(--canvas);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 9999px;
+}
+
+/* Tabbar Redesign Styles */
+.phone-shell .tabbar-container {
+  padding: 0 16px 20px;
+  background: transparent;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 40;
+}
+.phone-shell .tabbar-capsule {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1C2533;
+  border-radius: 9999px;
+  padding: 8px 10px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.12);
+}
+[data-theme="dark"] .phone-shell .tabbar-capsule {
+  background: #0E121A;
+}
+.phone-shell .tabbar-item {
+  background: transparent;
+  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 10px 14px;
+  border-radius: 9999px;
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor: pointer;
+  min-height: 44px;
+}
+.phone-shell .tabbar-item.active {
+  background: var(--primary);
+  color: #FFFFFF;
+  font-weight: 700;
+  padding: 10px 18px;
+  flex-grow: 1.2;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.22);
+}
+.phone-shell .tabbar-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.phone-shell .tabbar-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  background: #EF4444;
+  color: #FFFFFF;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 9999px;
+  min-width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  border: 1.5px solid #1C2533;
+}
+[data-theme="dark"] .phone-shell .tabbar-badge {
+  border-color: #0E121A;
+}
+.phone-shell .tabbar-label {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+/* Header Redesign Styles */
+.phone-shell .pwa-header {
+  padding: 16px 20px 14px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.phone-shell .header-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.phone-shell .driver-welcome {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.phone-shell .driver-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.phone-shell .welcome-text {
+  display: flex;
+  flex-direction: column;
+}
+.phone-shell .welcome-sub {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.phone-shell .welcome-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+.phone-shell .header-bell-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--canvas);
+  border: 0;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+}
+.phone-shell .header-bell-btn .bell-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #EF4444;
+  border: 1.5px solid var(--paper);
+}
+.phone-shell .header-title-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.phone-shell .header-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+.phone-shell .header-subtitle {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.3;
+  margin-top: 2px;
+}
+.phone-shell .header-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.phone-shell .header-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: var(--sh-1);
+}
+.phone-shell .header-btn:hover {
+  border-color: var(--line-3);
+  background: var(--paper-2);
+}
+.phone-shell .header-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.phone-shell .header-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: -4px;
+}
+
+/* Job Details Redesign Styles */
+.phone-shell .pwa-detail-header {
+  padding: 12px 16px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.phone-shell .detail-back-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--canvas);
+  border: 0;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--sh-1);
+}
+.phone-shell .detail-header-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+  flex: 1;
+}
+.phone-shell .pwa-detail-body {
+  padding: 16px 16px 24px;
+  background: var(--paper-2);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.phone-shell .detail-card {
+  background: var(--paper);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  box-shadow: var(--sh-1);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.phone-shell .detail-card.info-card {
+  background: var(--st-published-bg);
+  border-color: rgba(var(--primary-rgb), 0.2);
+}
+.phone-shell .detail-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.phone-shell .detail-route-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 4px 0;
+}
+.phone-shell .detail-route-city {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.phone-shell .detail-route-city.start {
+  align-items: flex-start;
+}
+.phone-shell .detail-route-city.end {
+  align-items: flex-end;
+}
+.phone-shell .detail-route-city .city-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.phone-shell .detail-route-city .city-pc {
+  font-size: 12px;
+  color: var(--muted);
+}
+.phone-shell .detail-route-line-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 0 8px;
+}
+.phone-shell .detail-route-line {
+  width: 100%;
+  border-top: 2px dashed var(--line-2);
+  margin: 6px 0;
+}
+.phone-shell .detail-route-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.phone-shell .detail-route-info .dist {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+.phone-shell .detail-route-info .time {
+  font-size: 10px;
+  color: var(--muted);
+}
+.phone-shell .detail-card-divider {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 0;
+}
+.phone-shell .detail-route-times {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.phone-shell .detail-route-times .time-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.phone-shell .detail-route-times .time-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.phone-shell .detail-kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.phone-shell .detail-kv-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.phone-shell .detail-kv-row .label {
+  font-size: 14px;
+  color: var(--muted);
+}
+.phone-shell .detail-kv-row .value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.phone-shell .detail-check-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.phone-shell .detail-check-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+}
+.phone-shell .detail-check-list .check-icon {
+  color: var(--primary);
+  font-weight: 700;
+}
+.phone-shell .pwa-detail-bottom {
+  padding: 16px 20px 24px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--paper);
+  flex-shrink: 0;
+}
+.phone-shell .bottom-price-info {
+  display: flex;
+  flex-direction: column;
+}
+.phone-shell .bottom-price-info .label {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.phone-shell .bottom-price-info .price {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+}
+.phone-shell .lg-cta {
+  padding: 12px 32px;
+  border-radius: 9999px;
+  font-size: 16px;
+  font-weight: 700;
+  min-width: 140px;
+}
+
+/* JobUnlocked Redesign Styles */
+.phone-shell .customer-card {
+  padding: 12px 16px;
+}
+.phone-shell .customer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.phone-shell .customer-title {
+  font-size: 14px;
+  color: var(--muted);
+}
+.phone-shell .customer-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.phone-shell .unlocked-route-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0;
+}
+.phone-shell .unlocked-route-timeline .timeline-item {
+  display: flex;
+  gap: 16px;
+}
+.phone-shell .unlocked-route-timeline .timeline-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 12px;
+}
+.phone-shell .unlocked-route-timeline .timeline-marker .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: block;
+  margin-top: 5px;
+}
+.phone-shell .unlocked-route-timeline .timeline-marker .dot.blue {
+  background: var(--primary);
+}
+.phone-shell .unlocked-route-timeline .timeline-marker .dot.dark {
+  background: var(--ink);
+}
+.phone-shell .unlocked-route-timeline .timeline-marker .line {
+  flex: 1;
+  width: 2px;
+  border-left: 2px dashed var(--line);
+  margin: 6px 0;
+  min-height: 48px;
+}
+.phone-shell .unlocked-route-timeline .timeline-content {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.phone-shell .unlocked-route-timeline .city-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.phone-shell .unlocked-route-timeline .city-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.phone-shell .unlocked-route-timeline .city-address {
+  font-size: 12px;
+  color: var(--muted);
+}
+.phone-shell .unlocked-route-timeline .map-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--canvas);
+  flex-shrink: 0;
+}
+.phone-shell .unlocked-route-timeline .timeline-item-middle {
+  display: flex;
+  gap: 8px;
+  padding-left: 28px;
+  margin: -10px 0 10px;
+}
+.phone-shell .unlocked-route-timeline .info-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--canvas);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.phone-shell .plate-badge {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--canvas);
+  border: 1.5px solid var(--line-2);
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+.phone-shell .detail-contacts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.phone-shell .contact-column {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--canvas);
+  padding: 12px;
+  border-radius: 12px;
+}
+.phone-shell .contact-role {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.phone-shell .contact-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 2px 0 4px;
+}
+.phone-shell .contact-actions {
+  display: flex;
+  gap: 8px;
+}
+.phone-shell .contact-action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+.phone-shell .detail-pdf-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--canvas);
+  padding: 12px;
+  border-radius: 12px;
+}
+.phone-shell .pdf-icon-wrap {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.phone-shell .pdf-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 600;
+  word-break: break-all;
+}
+.phone-shell .pdf-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.phone-shell .pdf-actions {
+  display: flex;
+  gap: 6px;
+}
+.phone-shell .pdf-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.phone-shell .price-summary-card {
+  padding: 16px;
+}
+.phone-shell .price-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.phone-shell .price-label {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.phone-shell .price-meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  font-family: var(--font-mono);
+}
+.phone-shell .price-val {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+}
+.phone-shell .pwa-unlocked-bottom {
+  padding: 16px 20px 24px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--paper);
+  flex-shrink: 0;
+}
+
+.phone-shell .btn.primary:hover {
+  background: var(--primary-ink);
+  border-color: var(--primary-ink);
+}
+
+/* Sheet (Filters) Redesign Styles */
+.phone-shell .sheet {
+  border-top-left-radius: 32px;
+  border-top-right-radius: 32px;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  box-shadow: 0 -10px 30px rgba(0,0,0,0.15);
+}
+.phone-shell .sheet .grabber {
+  width: 38px;
+  height: 4px;
+  background: var(--line-2);
+  border-radius: 2px;
+  margin: 10px auto 0;
+}
+.phone-shell .sheet-head {
+  padding: 16px 20px 12px;
+  border-bottom: 0;
+  background: var(--paper);
+}
+.phone-shell .sheet-head h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+}
+.phone-shell .sheet-body {
+  padding: 0 20px 24px;
+}
+.phone-shell .sheet-foot {
+  padding: 16px 20px 24px;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 12px;
+}
+.phone-shell .sheet-body .field-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+.phone-shell .sheet-body .input {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--canvas);
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--text);
+  width: 100%;
+  transition: border-color 0.15s ease;
+}
+.phone-shell .sheet-body .input:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+.phone-shell .sheet-body .chip.actionable {
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+.phone-shell .sheet-body .chip.actionable.on {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.2);
+}
+.phone-shell .sheet-body .seg.full {
+  display: flex;
+  gap: 6px;
+  background: var(--canvas);
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+}
+.phone-shell .sheet-body .seg.full button {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.phone-shell .sheet-body .seg.full button.on {
+  background: var(--paper);
+  color: var(--text);
+  box-shadow: var(--sh-1);
+}
+
+/* ===============================================
    PHONE FRAME
    =============================================== */
 .phone-shell {
@@ -611,7 +1542,7 @@ textarea.input { min-height: 92px; resize: vertical; }
 .tabbar button.on {
   color: var(--text);
   font-weight: 700;
-  background: linear-gradient(180deg, transparent 0%, rgba(37,99,235,0.12) 100%);
+  background: linear-gradient(180deg, transparent 0%, rgba(var(--primary-rgb),0.12) 100%);
 }
 .tabbar .tab-icon {
   width: 22px; height: 22px;
@@ -1277,8 +2208,8 @@ textarea.input { min-height: 92px; resize: vertical; }
   margin-top: 12px;
   padding: 12px 14px;
   border-radius: var(--r-2);
-  border: 1px solid rgba(37, 99, 235, 0.28);
-  background: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(var(--primary-rgb), 0.28);
+  background: rgba(var(--primary-rgb), 0.06);
   font-size: 12.5px;
   line-height: 1.5;
   color: var(--text);
@@ -1307,7 +2238,7 @@ textarea.input { min-height: 92px; resize: vertical; }
   border-bottom: none;
 }
 .mdr-field-row.is-changed {
-  background: rgba(37, 99, 235, 0.04);
+  background: rgba(var(--primary-rgb), 0.04);
 }
 .mdr-field-label {
   font-size: 10px;
@@ -1389,7 +2320,7 @@ textarea.input { min-height: 92px; resize: vertical; }
   border-bottom: none;
 }
 .mdr-compare-row.is-changed {
-  background: rgba(37, 99, 235, 0.05);
+  background: rgba(var(--primary-rgb), 0.05);
 }
 .mdr-compare-cell {
   font-size: 12.5px;
@@ -1424,8 +2355,8 @@ textarea.input { min-height: 92px; resize: vertical; }
   color: var(--muted);
 }
 .mdr-list-chip.on {
-  background: rgba(37, 99, 235, 0.08);
-  border-color: rgba(37, 99, 235, 0.25);
+  background: rgba(var(--primary-rgb), 0.08);
+  border-color: rgba(var(--primary-rgb), 0.25);
   color: var(--primary-ink);
 }
 
@@ -1434,7 +2365,7 @@ textarea.input { min-height: 92px; resize: vertical; }
    =============================================== */
 .banner-info {
   background: var(--st-published-bg);
-  border-color: rgba(37, 99, 235, 0.22);
+  border-color: rgba(var(--primary-rgb), 0.22);
   color: var(--primary-ink);
 }
 .banner-success {
@@ -1508,7 +2439,7 @@ textarea.input { min-height: 92px; resize: vertical; }
 }
 .inline-alert-info {
   background: var(--st-published-bg);
-  border-color: rgba(37, 99, 235, 0.18);
+  border-color: rgba(var(--primary-rgb), 0.18);
   color: var(--primary-ink);
 }
 .inline-alert-dismiss {
