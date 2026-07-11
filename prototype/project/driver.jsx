@@ -122,6 +122,40 @@ const InlineAlert = ({ tone = "error", message, onDismiss }) => {
   );
 };
 
+// Inline policy disclosure — replaces window.alert (plan §6.2 feedback hierarchy)
+const PolicyDisclosure = ({ introKey = "partnerTermsApply" }) => {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      {t(introKey)}{" "}
+      <button
+        type="button"
+        className="btn ghost xs"
+        style={{
+          color: "var(--primary)",
+          padding: 0,
+          textDecoration: "underline",
+          textUnderlineOffset: 3,
+        }}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {t("viewDriverPolicy")}
+      </button>
+      {open ? (
+        <div className="stack-8">
+          <InlineAlert
+            tone="info"
+            message={t("partnerPolicyAlert")}
+            onDismiss={() => setOpen(false)}
+          />
+        </div>
+      ) : null}
+    </>
+  );
+};
+
 const tourDocUploadErrorMessage = (reason, t) => {
   if (reason === "invalid_type") return t("invoiceUploadInvalidType");
   if (reason === "driver_restricted") return t("invoiceUploadRestricted");
@@ -785,12 +819,6 @@ const Portal = ({
     return new Date(2026, Number(m[2]) - 1, Number(m[1]));
   };
 
-  const parseFilterDate = (raw) => {
-    const m = String(raw || "").match(/(\d{2})\.(\d{2})/);
-    if (!m) return null;
-    return new Date(2026, Number(m[2]) - 1, Number(m[1]));
-  };
-
   if (!store.isCurrentDriverMarketplaceActive()) {
     const d = store.getCurrentDriver();
     return (
@@ -830,46 +858,7 @@ const Portal = ({
     .getDriverNotifications()
     .filter((n) => !n.read).length;
   const all = store.getJobs().filter((j) => j.status === "published");
-  const filtered = all.filter((j) => {
-    const jobDate = parseDdMm(j.date);
-    if (filters.startPlz && String(filters.startPlz).trim()) {
-      const d = String(filters.startPlz).replace(/\D/g, "");
-      if (d.length >= 2 && !String(j.startPlz).startsWith(d.slice(0, 2)))
-        return false;
-    }
-    if (filters.endPlz && String(filters.endPlz).trim()) {
-      const d = String(filters.endPlz).replace(/\D/g, "");
-      if (d.length >= 2 && !String(j.endPlz).startsWith(d.slice(0, 2)))
-        return false;
-    }
-    if (
-      filters.from &&
-      String(filters.from).trim() &&
-      !["Today", "This week", "Weekend"].includes(filters.from)
-    ) {
-      const fromDate = parseFilterDate(filters.from);
-      if (fromDate && jobDate && jobDate < fromDate) return false;
-    }
-    if (filters.to && String(filters.to).trim()) {
-      const toDate = parseFilterDate(filters.to);
-      if (toDate && jobDate && jobDate > toDate) return false;
-    }
-    if (filters.from === "Today" && j.date !== "05.05.") return false;
-    if (
-      filters.from === "Weekend" &&
-      !String(j.dateLong || "").match(/Sat|Sun/i)
-    )
-      return false;
-    if (
-      filters.vehicle &&
-      filters.vehicle !== "All" &&
-      j.vehicle !== filters.vehicle
-    )
-      return false;
-    if (filters.axle && filters.axle !== "All" && j.axle !== filters.axle)
-      return false;
-    return true;
-  });
+  const filtered = all.filter((j) => jobMatchesDriverFilters(j, filters));
 
   const ordered = filtered.slice().sort((a, b) => {
     if (sortBy === "date_asc") {
@@ -902,6 +891,23 @@ const Portal = ({
     activeChips.push({
       key: "endPlz",
       label: t("dropPlz", { plz: filters.endPlz }),
+    });
+  if (filters.from)
+    activeChips.push({
+      key: "from",
+      label:
+        filters.from === "Today"
+          ? t("today")
+          : filters.from === "This week"
+            ? t("thisWeek")
+            : filters.from === "Weekend"
+              ? t("weekend")
+              : t("fromDateChip", { date: isoToDisplayDate(filters.from) }),
+    });
+  if (filters.to)
+    activeChips.push({
+      key: "to",
+      label: t("untilDateChip", { date: isoToDisplayDate(filters.to) }),
     });
   if (filters.vehicle && filters.vehicle !== "All")
     activeChips.push({
@@ -1028,16 +1034,18 @@ const Portal = ({
         {activeChips.length > 0 ? (
           <div className="header-chips-row">
             {activeChips.map((c) => (
-              <span
+              <button
                 key={c.key}
+                type="button"
                 className="chip"
+                aria-label={t("removeFilterChip", { label: c.label })}
                 onClick={() => setFilters({ ...filters, [c.key]: "" })}
               >
                 {c.label}{" "}
-                <span className="x">
+                <span className="x" aria-hidden="true">
                   <Ic.X />
                 </span>
-              </span>
+              </button>
             ))}
           </div>
         ) : null}
@@ -1066,9 +1074,9 @@ const Portal = ({
             marginBottom: 12,
           }}
         >
-          <Lbl>
+          <span className="text-caption" aria-live="polite">
             {ordered.length} {t("results")}
-          </Lbl>
+          </span>
         </div>
         {ordered.map((j) => (
           <JobCard key={j.id} job={j} onOpen={onOpenJob} />
@@ -1090,7 +1098,9 @@ const Portal = ({
             </button>
           </div>
         )}
-        <div className="list-end">— {t("endOfList")} —</div>
+        {ordered.length > 0 ? (
+          <div className="list-end">— {t("endOfList")} —</div>
+        ) : null}
       </div>
     </>
   );
@@ -1099,6 +1109,61 @@ const Portal = ({
 // =========================================================================
 // FILTER SHEET
 // =========================================================================
+// Shared marketplace filter predicate (plan §6.1) — single source of truth
+// for Portal's list AND the FilterSheet's live result count.
+const FILTER_DATE_PRESETS = ["Today", "This week", "Weekend"];
+const parseJobDdMm = (raw) => {
+  const m = String(raw || "").match(/(\d{2})\.(\d{2})/);
+  if (!m) return null;
+  return new Date(2026, Number(m[2]) - 1, Number(m[1]));
+};
+const parseFilterDateFlexible = (raw) => {
+  const iso = String(raw || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+  return parseJobDdMm(raw);
+};
+const isoToDisplayDate = (raw) => {
+  const iso = String(raw || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return iso ? `${iso[3]}.${iso[2]}.` : String(raw || "");
+};
+const jobMatchesDriverFilters = (j, filters) => {
+  const jobDate = parseJobDdMm(j.date);
+  if (filters.startPlz && String(filters.startPlz).trim()) {
+    const d = String(filters.startPlz).replace(/\D/g, "");
+    if (d.length >= 2 && !String(j.startPlz).startsWith(d.slice(0, 2)))
+      return false;
+  }
+  if (filters.endPlz && String(filters.endPlz).trim()) {
+    const d = String(filters.endPlz).replace(/\D/g, "");
+    if (d.length >= 2 && !String(j.endPlz).startsWith(d.slice(0, 2)))
+      return false;
+  }
+  if (
+    filters.from &&
+    String(filters.from).trim() &&
+    !FILTER_DATE_PRESETS.includes(filters.from)
+  ) {
+    const fromDate = parseFilterDateFlexible(filters.from);
+    if (fromDate && jobDate && jobDate < fromDate) return false;
+  }
+  if (filters.to && String(filters.to).trim()) {
+    const toDate = parseFilterDateFlexible(filters.to);
+    if (toDate && jobDate && jobDate > toDate) return false;
+  }
+  if (filters.from === "Today" && j.date !== "05.05.") return false;
+  if (filters.from === "Weekend" && !String(j.dateLong || "").match(/Sat|Sun/i))
+    return false;
+  if (
+    filters.vehicle &&
+    filters.vehicle !== "All" &&
+    j.vehicle !== filters.vehicle
+  )
+    return false;
+  if (filters.axle && filters.axle !== "All" && j.axle !== filters.axle)
+    return false;
+  return true;
+};
+
 const FilterSheet = ({ filters, setFilters, onClose }) => {
   const { t } = useI18n();
   const [local, setLocal] = useState({
@@ -1122,14 +1187,12 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
     { val: "Third-party axle", label: "Third-party axle" },
   ];
   const store = useAuthStore();
-  const preview = store.getJobs().filter((j) => {
-    if (j.status !== "published") return false;
-    if (local.vehicle && local.vehicle !== "All" && j.vehicle !== local.vehicle)
-      return false;
-    if (local.axle && local.axle !== "All" && j.axle !== local.axle)
-      return false;
-    return true;
-  }).length;
+  // Same predicate as the marketplace list — the CTA count is exact
+  const preview = store
+    .getJobs()
+    .filter(
+      (j) => j.status === "published" && jobMatchesDriverFilters(j, local),
+    ).length;
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -1159,12 +1222,18 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
             <input
               className="input"
               placeholder={t("pickupExample")}
+              inputMode="numeric"
+              maxLength={5}
+              aria-label={t("pickupExample")}
               value={local.startPlz || ""}
               onChange={(e) => setLocal({ ...local, startPlz: e.target.value })}
             />
             <input
               className="input"
               placeholder={t("deliveryExample")}
+              inputMode="numeric"
+              maxLength={5}
+              aria-label={t("deliveryExample")}
               value={local.endPlz || ""}
               onChange={(e) => setLocal({ ...local, endPlz: e.target.value })}
             />
@@ -1178,13 +1247,17 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
           >
             <input
               className="input"
-              placeholder={t("from")}
-              value={local.from || ""}
+              type="date"
+              aria-label={t("from")}
+              value={
+                FILTER_DATE_PRESETS.includes(local.from) ? "" : local.from || ""
+              }
               onChange={(e) => setLocal({ ...local, from: e.target.value })}
             />
             <input
               className="input"
-              placeholder={t("until")}
+              type="date"
+              aria-label={t("until")}
               value={local.to || ""}
               onChange={(e) => setLocal({ ...local, to: e.target.value })}
             />
@@ -1197,12 +1270,13 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
               [t("thisWeek"), "This week"],
               [t("weekend"), "Weekend"],
             ].map(([label, value]) => (
-              <span
+              <button
                 key={value}
+                type="button"
                 className={
                   "chip actionable " + (local.from === value ? "on" : "")
                 }
-                style={{ cursor: "pointer" }}
+                aria-pressed={local.from === value}
                 onClick={() =>
                   setLocal({
                     ...local,
@@ -1211,7 +1285,7 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
                 }
               >
                 {label}
-              </span>
+              </button>
             ))}
           </div>
 
@@ -1220,12 +1294,13 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {types.map((type) => (
-              <span
+              <button
                 key={type}
+                type="button"
                 className={
                   "chip actionable " + (local.vehicle === type ? "on" : "")
                 }
-                style={{ cursor: "pointer" }}
+                aria-pressed={local.vehicle === type}
                 onClick={() =>
                   setLocal({
                     ...local,
@@ -1234,7 +1309,7 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
                 }
               >
                 {displayVehicle(type, t)}
-              </span>
+              </button>
             ))}
           </div>
 
@@ -1501,20 +1576,7 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
           {t("acceptanceLegal")}
         </p>
         <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 18 }}>
-          {t("partnerTermsApply")}{" "}
-          <button
-            type="button"
-            className="btn ghost xs"
-            style={{
-              color: "var(--primary)",
-              padding: 0,
-              textDecoration: "underline",
-              textUnderlineOffset: 3,
-            }}
-            onClick={() => window.alert(t("partnerPolicyAlert"))}
-          >
-            {t("viewDriverPolicy")}
-          </button>
+          <PolicyDisclosure />
         </div>
 
         <div ref={trackRef} className={"slide-confirm " + (done ? "done" : "")}>
@@ -1698,9 +1760,11 @@ const JobTourDocuments = ({ job }) => {
       </p>
       {canUpload ? (
         <div className="req-panel-actions">
+          {/* secondary — the screen's single primary is "Mark as performed"
+              in the sticky footer (plan §7.3) */}
           <button
             type="button"
-            className="btn primary touch-target"
+            className="btn touch-target"
             onClick={() => setCategoryModal(true)}
           >
             <Ic.Plus /> {t("tourDocUploadReceiptButton")}
@@ -2614,6 +2678,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   const [slidePos, setSlidePos] = useState(0);
   const [slideDone, setSlideDone] = useState(false);
   const [evidenceFiles, setEvidenceFiles] = useState([]);
+  const [evidenceNotice, setEvidenceNotice] = useState(null);
   const trackRef = useRef(null);
   const evidenceInputRef = useRef(null);
   const valid = text.trim().length >= 10;
@@ -2871,9 +2936,11 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                       if (!picked.length) return;
                       setEvidenceFiles((prev) => {
                         const merged = [...prev, ...picked].slice(0, 5);
-                        if (prev.length + picked.length > 5) {
-                          window.alert(t("reportProblemEvidenceTooMany"));
-                        }
+                        setEvidenceNotice(
+                          prev.length + picked.length > 5
+                            ? t("reportProblemEvidenceTooMany")
+                            : null,
+                        );
                         return merged;
                       });
                       e.target.value = "";
@@ -2887,6 +2954,15 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                   >
                     <Ic.Plus /> {t("reportProblemEvidenceAdd")}
                   </button>
+                  {evidenceNotice ? (
+                    <div className="stack-8">
+                      <InlineAlert
+                        tone="warn"
+                        message={evidenceNotice}
+                        onDismiss={() => setEvidenceNotice(null)}
+                      />
+                    </div>
+                  ) : null}
                   {evidenceFiles.length > 0 ? (
                     <ul
                       style={{
@@ -2959,20 +3035,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                         color: "var(--muted)",
                       }}
                     >
-                      {t("reportProblemCancelTermsIntro")}{" "}
-                      <button
-                        type="button"
-                        className="btn ghost xs"
-                        style={{
-                          color: "var(--primary)",
-                          padding: 0,
-                          textDecoration: "underline",
-                          textUnderlineOffset: 3,
-                        }}
-                        onClick={() => window.alert(t("partnerPolicyAlert"))}
-                      >
-                        {t("viewDriverPolicy")}
-                      </button>
+                      <PolicyDisclosure introKey="reportProblemCancelTermsIntro" />
                     </p>
                   </div>
                   <div className="slide-confirm-wrap" style={{ marginTop: 16 }}>
@@ -3134,6 +3197,7 @@ const PendingNotice = ({ onClose, kind }) => {
 // =========================================================================
 const ProfilePane = () => {
   const { t } = useI18n();
+  const [signOutNotice, setSignOutNotice] = useState(false);
   return (
     <div className="scroll" style={{ padding: "10px 22px" }}>
       <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
@@ -3188,11 +3252,20 @@ const ProfilePane = () => {
           <Ic.Chev />
         </div>
       ))}
+      {signOutNotice ? (
+        <div className="stack-16">
+          <InlineAlert
+            tone="info"
+            message={t("signOutAlert")}
+            onDismiss={() => setSignOutNotice(false)}
+          />
+        </div>
+      ) : null}
       <button
         type="button"
-        className="btn block"
+        className="btn destructive-outline block"
         style={{ marginTop: 24 }}
-        onClick={() => window.alert(t("signOutAlert"))}
+        onClick={() => setSignOutNotice(true)}
       >
         <Ic.Logout /> {t("signOut")}
       </button>
@@ -3967,6 +4040,7 @@ const Infopoint = () => {
   const store = useAuthStore();
   const [subTab, setSubTab] = useState("documents");
   const [openNewsId, setOpenNewsId] = useState(null);
+  const [previewNotice, setPreviewNotice] = useState(null);
   const readerId = store.getCurrentDriver()?.id || AuthStore.DEMO_DRIVER;
   const docs = store.getDocuments().filter((d) => d.visible);
   const news = store.getNews();
@@ -4052,6 +4126,15 @@ const Infopoint = () => {
       <div style={{ flex: 1, marginTop: 16 }}>
         {subTab === "documents" ? (
           <>
+            {previewNotice ? (
+              <div style={{ marginBottom: 12 }}>
+                <InlineAlert
+                  tone="info"
+                  message={previewNotice}
+                  onDismiss={() => setPreviewNotice(null)}
+                />
+              </div>
+            ) : null}
             <div className="infopoint-card">
               {docs.map((d) => (
                 <div
@@ -4127,11 +4210,12 @@ const Infopoint = () => {
                       border: "1px solid var(--line)",
                     }}
                     onClick={() =>
-                      window.alert(
-                        `${t("infopointDocPreviewDemo")}\n\n${d.title}`,
+                      setPreviewNotice(
+                        `${t("infopointDocPreviewDemo")} — ${d.title}`,
                       )
                     }
                     title={t("infopointDocViewDownload")}
+                    aria-label={`${t("infopointDocViewDownload")}: ${d.title}`}
                   >
                     <Ic.Down />
                   </button>
