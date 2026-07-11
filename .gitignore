@@ -2,3 +2,22 @@
 .claude
 .playwright-cli
 .github
+
+# =============================================================================
+# Design images — ignore local / scratch assets not used by prototype or docs
+# =============================================================================
+# Kept in git (do not ignore):
+#   prototype/project/icons/icon-192.svg
+#   prototype/project/icons/icon-512.svg
+#   docs/design/audit-2026-07-10/   (referenced by ui-ux-production-plan.md)
+
+# Iteration scratch captures — superseded by audit-2026-07-10; not linked anywhere
+docs/design/redesign-iter1/
+docs/design/redesign-iter2/
+docs/design/redesign-iter3/
+
+# Optional visual-regression baselines (generate locally; see screenshots/README.md)
+docs/design/screenshots/*.png
+docs/design/screenshots/*.jpg
+docs/design/screenshots/*.jpeg
+docs/design/screenshots/*.webp
