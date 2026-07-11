@@ -1,6 +1,10 @@
 /* global React, AuthStore, useAuthStore */
 const { useState, useEffect, useRef, useMemo } = React;
 
+const UI = window.DriverUI || {};
+const { Badge, EmptyState, SkeletonList, Sheet, ConfirmSheet, SortSelect } = UI;
+const F = () => window.AutheonFormatters || {};
+
 // =========================================================================
 // SHARED ATOMS
 // =========================================================================
@@ -483,6 +487,12 @@ const Ic = {
       />
     </svg>
   ),
+  /** Double-check — Material "done_all" (filled paths render cleanly at small sizes) */
+  CheckAll: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
+    </svg>
+  ),
   Refresh: () => (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
       <path
@@ -689,11 +699,11 @@ const TabBar = ({ tab, setTab }) => {
                 <it.I on={isActive} />
                 {it.badge > 0 ? (
                   <span className="tabbar-badge" aria-hidden="true">
-                    {it.badge}
+                    {it.badge > 99 ? "99+" : it.badge}
                   </span>
                 ) : null}
               </span>
-              {isActive && <span className="tabbar-label">{it.label}</span>}
+              <span className="tabbar-label">{it.label}</span>
             </button>
           );
         })}
@@ -723,7 +733,11 @@ const JobCard = ({ job, onOpen }) => {
   const { t } = useI18n();
 
   return (
-    <div className="jobcard" onClick={() => onOpen(job)}>
+    <button
+      type="button"
+      className="jobcard-btn"
+      onClick={() => onOpen(job)}
+    >
       <div className="jobcard-main-grid">
         <div className="jobcard-route-col">
           <div className="jobcard-timeline">
@@ -767,10 +781,12 @@ const JobCard = ({ job, onOpen }) => {
           </div>
         </div>
         <div className="jobcard-price-pill">
-          € {fmtDriverOffer(job).toFixed(2)}
+          {F().formatMoney
+            ? F().formatMoney(fmtDriverOffer(job))
+            : `€ ${fmtDriverOffer(job).toFixed(2)}`}
         </div>
       </div>
-    </div>
+    </button>
   );
 };
 
@@ -780,14 +796,29 @@ const Portal = ({
   openFilter,
   onOpenJob,
   onOpenNotifications,
+  notificationsOpen = false,
 }) => {
   const { t, locale } = useI18n();
   const store = useAuthStore();
   const [sortBy, setSortBy] = useState("date_desc");
-  const [showNotifications, setShowNotifications] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const scrollRef = useRef(null);
   const pullRef = useRef({ startY: 0, pulling: false });
+
+  useEffect(() => {
+    const id = setTimeout(() => setLoading(false), 400);
+    return () => clearTimeout(id);
+  }, []);
+
+  const portalSortOptions = [
+    ["date_desc", t("sortDateDesc")],
+    ["date_asc", t("sortDateAsc")],
+    ["price_desc", t("sortPriceDesc")],
+    ["price_asc", t("sortPriceAsc")],
+    ["dist_desc", t("sortDistDesc")],
+    ["dist_asc", t("sortDistAsc")],
+  ];
 
   const onRefresh = () => {
     if (refreshing) return;
@@ -823,10 +854,9 @@ const Portal = ({
     const d = store.getCurrentDriver();
     return (
       <div
-        className="scroll"
-        style={{ padding: "24px 22px", background: "var(--paper-2)" }}
+        className="scroll profile-header-block"
       >
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>
+        <h1 className="profile-header-title">
           {t("blockedDriverTitle")}
         </h1>
         <div
@@ -941,41 +971,18 @@ const Portal = ({
             className="header-bell-btn"
             title={t("driverNotifications")}
             aria-label={t("driverNotifications")}
-            onClick={() => setShowNotifications(!showNotifications)}
+            aria-expanded={notificationsOpen}
+            aria-haspopup="dialog"
+            onClick={() => onOpenNotifications?.()}
           >
             <Ic.Bell />
-            {unreadNotif > 0 ? <span className="bell-badge"></span> : null}
-          </button>
-
-          {showNotifications && (
-            <>
-              <div
-                className="notifications-dropdown-backdrop"
-                onClick={() => setShowNotifications(false)}
+            {unreadNotif > 0 ? (
+              <span
+                className="ui-badge ui-badge-destructive ui-badge-dot bell-badge"
+                aria-hidden="true"
               />
-              <div
-                className="notifications-dropdown"
-                role="dialog"
-                aria-modal="true"
-                aria-label={t("driverNotifications")}
-              >
-                <div className="notifications-dropdown-header">
-                  <h3>{t("driverNotifications")}</h3>
-                  <button
-                    type="button"
-                    className="btn icon sm"
-                    onClick={() => setShowNotifications(false)}
-                    aria-label={t("dismiss")}
-                  >
-                    <Ic.X />
-                  </button>
-                </div>
-                <div className="notifications-dropdown-body scroll">
-                  <DriverNotificationsList markReadOnMount />
-                </div>
-              </div>
-            </>
-          )}
+            ) : null}
+          </button>
         </div>
 
         {/* Title and control buttons row */}
@@ -984,31 +991,13 @@ const Portal = ({
             <h1 className="header-title">{t("marketplace")}</h1>
             <div className="header-subtitle">{t("exploreJobs")}</div>
           </div>
-          <div className="header-controls" style={{ gap: 10 }}>
-            <div className="sort-icon-btn-wrap">
-              <button
-                type="button"
-                className="header-btn"
-                title={t("sortJobs")}
-                aria-hidden="true"
-                tabIndex={-1}
-              >
-                <Ic.Sort />
-              </button>
-              <select
-                className="sort-icon-select"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                aria-label={t("sortJobs")}
-              >
-                <option value="date_desc">{t("sortDateDesc")}</option>
-                <option value="date_asc">{t("sortDateAsc")}</option>
-                <option value="price_desc">{t("sortPriceDesc")}</option>
-                <option value="price_asc">{t("sortPriceAsc")}</option>
-                <option value="dist_desc">{t("sortDistDesc")}</option>
-                <option value="dist_asc">{t("sortDistAsc")}</option>
-              </select>
-            </div>
+          <div className="header-controls">
+            <SortSelect
+              value={sortBy}
+              onChange={setSortBy}
+              options={portalSortOptions}
+              label={t("sortJobs")}
+            />
             <button
               type="button"
               className={`header-btn ${activeChips.length ? "active" : ""}`}
@@ -1052,55 +1041,43 @@ const Portal = ({
       </div>
       <div
         ref={scrollRef}
-        className="scroll"
-        style={{ padding: "16px 18px 24px", background: "var(--paper-2)" }}
+        className="scroll scroll-body"
         onTouchStart={onScrollTouchStart}
         onTouchMove={onScrollTouchMove}
         onTouchEnd={onScrollTouchEnd}
       >
         {refreshing ? (
-          <div
-            className="label"
-            style={{ textAlign: "center", marginBottom: 10 }}
-          >
+          <div className="label portal-refresh-hint">
             <Ic.Refresh /> {t("refreshDemo")}
           </div>
         ) : null}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 12,
-          }}
-        >
-          <span className="text-caption" aria-live="polite">
-            {ordered.length} {t("results")}
-          </span>
-        </div>
-        {ordered.map((j) => (
-          <JobCard key={j.id} job={j} onOpen={onOpenJob} />
-        ))}
-        {ordered.length === 0 && (
-          <div
-            className="dash-area"
-            style={{ padding: 28, textAlign: "center" }}
-          >
-            {t("noToursMatch")}
-            <br />
-            <button
-              type="button"
-              className="btn xs"
-              style={{ marginTop: 10 }}
-              onClick={() => setFilters({})}
-            >
-              {t("resetFilters")}
-            </button>
+        {loading ? (
+          <div aria-busy="true" aria-label={t("loadingJobs")}>
+            <SkeletonList count={3} />
           </div>
+        ) : (
+          <>
+            <div className="portal-results-row">
+              <span className="text-caption" aria-live="polite">
+                {ordered.length} {t("results")}
+              </span>
+            </div>
+            {ordered.map((j) => (
+              <JobCard key={j.id} job={j} onOpen={onOpenJob} />
+            ))}
+            {ordered.length === 0 && (
+              <EmptyState
+                title={t("noJobsMatch")}
+                description={t("noToursMatch")}
+                actionLabel={t("filters")}
+                onAction={openFilter}
+              />
+            )}
+            {ordered.length > 0 ? (
+              <div className="list-end">— {t("endOfList")} —</div>
+            ) : null}
+          </>
         )}
-        {ordered.length > 0 ? (
-          <div className="list-end">— {t("endOfList")} —</div>
-        ) : null}
       </div>
     </>
   );
@@ -1209,16 +1186,19 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
             >
               {t("reset")}
             </button>
-            <button type="button" onClick={onClose} className="btn icon sm">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn icon sm"
+              aria-label={t("dismiss")}
+            >
               <Ic.X />
             </button>
           </div>
         </div>
         <div className="sheet-body">
           <div className="field-label">{t("postalArea")}</div>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
-          >
+          <div className="grid-2-col-10">
             <input
               className="input"
               placeholder={t("pickupExample")}
@@ -1239,12 +1219,10 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
             />
           </div>
 
-          <div className="field-label" style={{ marginTop: 18 }}>
+          <div className="field-label mt-field">
             {t("dateWindow")}
           </div>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
-          >
+          <div className="grid-2-col-10">
             <input
               className="input"
               type="date"
@@ -1262,9 +1240,7 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
               onChange={(e) => setLocal({ ...local, to: e.target.value })}
             />
           </div>
-          <div
-            style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}
-          >
+          <div className="flex-gap-8-wrap" style={{ marginTop: 10 }}>
             {[
               [t("today"), "Today"],
               [t("thisWeek"), "This week"],
@@ -1273,9 +1249,9 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
               <button
                 key={value}
                 type="button"
-                className={
-                  "chip actionable " + (local.from === value ? "on" : "")
-                }
+                className={`chip actionable chip-btn ${
+                  local.from === value ? "on" : ""
+                }`}
                 aria-pressed={local.from === value}
                 onClick={() =>
                   setLocal({
@@ -1289,17 +1265,17 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
             ))}
           </div>
 
-          <div className="field-label" style={{ marginTop: 18 }}>
+          <div className="field-label mt-field">
             {t("vehicleType")}
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="flex-gap-8-wrap">
             {types.map((type) => (
               <button
                 key={type}
                 type="button"
-                className={
-                  "chip actionable " + (local.vehicle === type ? "on" : "")
-                }
+                className={`chip actionable chip-btn ${
+                  local.vehicle === type ? "on" : ""
+                }`}
                 aria-pressed={local.vehicle === type}
                 onClick={() =>
                   setLocal({
@@ -1313,15 +1289,18 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
             ))}
           </div>
 
-          <div className="field-label" style={{ marginTop: 18 }}>
+          <div className="field-label mt-field">
             {t("axleConfiguration")}
           </div>
-          <div className="seg full">
+          <div className="chip-row-wrap">
             {axles.map((a) => (
               <button
                 key={a.val}
                 type="button"
-                className={local.axle === a.val ? "on" : ""}
+                className={`chip actionable chip-btn ${
+                  local.axle === a.val ? "on" : ""
+                }`}
+                aria-pressed={local.axle === a.val}
                 onClick={() => setLocal({ ...local, axle: a.val })}
               >
                 {displayAxle(a.val, t)}
@@ -1368,7 +1347,7 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
           <Ic.Back />
         </button>
         <h2 className="detail-header-title">{t("marketplacePreview")}</h2>
-        <div style={{ width: 40 }}></div>
+        <div className="w-40-spacer"></div>
       </div>
 
       {/* Main Content Area */}
@@ -1408,7 +1387,7 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
                 {AuthStore.formatLocationSchedule(job.pickup, t("flexible"))}
               </div>
             </div>
-            <div style={{ textAlign: "right" }}>
+            <div className="text-right">
               <div className="time-label">{t("deliveryTime")}</div>
               <div className="time-val">
                 {AuthStore.formatLocationSchedule(job.delivery, t("flexible"))}
@@ -1554,13 +1533,10 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
           <div className="label" style={{ marginBottom: 8 }}>
             Tour #{job.id}
           </div>
-          <div style={{ fontWeight: 700, fontSize: 16 }} className="mono">
+          <div className="mono mono-strong">
             {job.startPlz} → {job.endPlz} · {job.distanceKm} km
           </div>
-          <div
-            className="mono"
-            style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}
-          >
+          <div className="mono text-muted-sm" style={{ marginTop: 6 }}>
             {AuthStore.formatJobScheduleShort(job, t("flexible"))} ·{" "}
             {job.vehicle} · {job.axle}
           </div>
@@ -1572,10 +1548,10 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
           </div>
         </div>
 
-        <p style={{ margin: "16px 0 14px", fontSize: 13.5, lineHeight: 1.55 }}>
+        <p className="para-intro">
           {t("acceptanceLegal")}
         </p>
-        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 18 }}>
+        <div className="para-muted-xs">
           <PolicyDisclosure />
         </div>
 
@@ -1618,6 +1594,66 @@ const TOUR_DOC_TYPES = [
   "other_receipt",
 ];
 
+const tourDocReviewPillStatus = (st) => {
+  const code = AuthStore.normalizeTourDocumentReviewStatus(st);
+  if (code === "accepted") return "performed";
+  if (code === "rejected" || code === "correction_required") return "cancelled";
+  return "assigned";
+};
+
+const TourDocumentRow = ({
+  fileName,
+  metaLine,
+  statusNode,
+  rejectionReason,
+  onDownload,
+  onReplace,
+  downloadLabel,
+  replaceLabel,
+}) => (
+  <div className="tour-doc-row">
+    <div className="tour-doc-row-icon">
+      <Ic.Pdf />
+    </div>
+    <div className="tour-doc-row-body flex-1-min-0">
+      <div className="tour-doc-row-name" title={fileName}>
+        {fileName}
+      </div>
+      <div className="tour-doc-row-meta-row">
+        {metaLine ? <span className="tour-doc-row-meta">{metaLine}</span> : null}
+        {statusNode ? <div className="tour-doc-row-status">{statusNode}</div> : null}
+      </div>
+      {rejectionReason ? (
+        <p className="tour-doc-row-rejection">{rejectionReason}</p>
+      ) : null}
+    </div>
+    <div className="tour-doc-row-actions">
+      {onReplace ? (
+        <button
+          type="button"
+          className="pdf-btn"
+          onClick={onReplace}
+          title={replaceLabel}
+          aria-label={replaceLabel}
+        >
+          <Ic.Refresh />
+        </button>
+      ) : null}
+      {onDownload ? (
+        <button
+          type="button"
+          className="pdf-btn"
+          onClick={onDownload}
+          title={downloadLabel}
+          aria-label={downloadLabel}
+        >
+          <Ic.Down />
+        </button>
+      ) : null}
+    </div>
+  </div>
+);
+
 const JobOfficialTourDocuments = ({ job }) => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -1625,56 +1661,24 @@ const JobOfficialTourDocuments = ({ job }) => {
   if (!docs.length) return null;
 
   return (
-    <>
-      <Lbl style={{ marginTop: 12, display: "block" }}>
-        {t("officialTourDocumentsSection")}
-      </Lbl>
-      <p
-        className="req-panel-desc"
-        style={{ margin: "6px 0 10px", fontSize: 12.5 }}
-      >
-        {t("officialTourDocHint")}
-      </p>
-      <div style={{ display: "grid", gap: 10, marginTop: 4 }}>
+    <div className="detail-card">
+      <div className="detail-section-title">
+        <Ic.Pdf />
+        <span>{t("officialTourDocumentsSection")}</span>
+      </div>
+      <p className="tour-doc-section-hint">{t("officialTourDocHint")}</p>
+      <div className="tour-doc-list">
         {docs.map((doc) => (
-          <div
+          <TourDocumentRow
             key={doc.id}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: 12,
-              border: "1px solid var(--line)",
-              borderRadius: "var(--r-2)",
-            }}
-          >
-            <div style={{ color: "var(--primary-ink)", flexShrink: 0 }}>
-              <Ic.Pdf />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                className="mono"
-                style={{ fontSize: 12, wordBreak: "break-all" }}
-              >
-                {doc.fileName}
-              </div>
-              <div className="label" style={{ marginTop: 2 }}>
-                {t("officialTourDocFromDispatch")} ·{" "}
-                {displayTourDocType(doc.documentType, t)}
-              </div>
-            </div>
-            <button
-              type="button"
-              className="btn icon sm"
-              onClick={() => store.downloadTourDocumentPlaceholder(doc.id)}
-              title={t("download")}
-            >
-              <Ic.Down />
-            </button>
-          </div>
+            fileName={doc.fileName}
+            metaLine={`${t("officialTourDocFromDispatch")} · ${displayTourDocType(doc.documentType, t)} · ${F().formatFileSize(doc.sizeBytes)}`}
+            onDownload={() => store.downloadTourDocumentPlaceholder(doc.id)}
+            downloadLabel={t("download")}
+          />
         ))}
       </div>
-    </>
+    </div>
   );
 };
 
@@ -1746,131 +1750,86 @@ const JobTourDocuments = ({ job }) => {
   if (!canUpload && uploads.length === 0) return null;
 
   return (
-    <section className="req-panel" aria-labelledby={`tour-docs-${jobId}`}>
-      <div className="req-panel-head">
-        <h4 id={`tour-docs-${jobId}`}>{t("tourDocumentsSection")}</h4>
+    <div className="detail-card" aria-labelledby={`tour-docs-${jobId}`}>
+      <div className="detail-section-head">
+        <div className="detail-section-title" id={`tour-docs-${jobId}`}>
+          <Ic.Pdf />
+          <span>{t("tourDocumentsSection")}</span>
+        </div>
         {canUpload ? (
           <Pill status="accepted" className="no-dot">
             {t("tourDocUploadAvailable")}
           </Pill>
         ) : null}
       </div>
-      <p className="req-panel-desc">
+      <p className="tour-doc-section-hint">
         {canUpload ? t("tourDocUploadHint") : t("tourDocRequiresPerformed")}
       </p>
-      {canUpload ? (
-        <div className="req-panel-actions">
-          {/* secondary — the screen's single primary is "Mark as performed"
-              in the sticky footer (plan §7.3) */}
-          <button
-            type="button"
-            className="btn touch-target"
-            onClick={() => setCategoryModal(true)}
-          >
-            <Ic.Plus /> {t("tourDocUploadReceiptButton")}
-          </button>
-        </div>
-      ) : null}
       <InlineAlert
         tone={feedback?.tone}
         message={feedback?.message}
         onDismiss={() => setFeedback(null)}
       />
+      {canUpload ? (
+        <button
+          type="button"
+          className="btn touch-target tour-doc-upload-btn"
+          onClick={() => setCategoryModal(true)}
+        >
+          <Ic.Plus /> {t("tourDocUploadReceiptButton")}
+        </button>
+      ) : null}
       <input
         ref={inputRef}
         type="file"
         capture="environment"
         accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
-        style={{ display: "none" }}
+        className="hidden"
         onChange={onPick}
       />
       <input
         ref={replaceInputRef}
         type="file"
         accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
-        style={{ display: "none" }}
+        className="hidden"
         onChange={onPick}
       />
       {uploads.length > 0 ? (
-        <ul className="doc-card-list">
+        <div className="tour-doc-list">
           {uploads.map((u) => (
-            <li key={u.id} className="doc-card">
-              <div className="doc-card-layout">
-                <div className="doc-card-icon-container">
-                  {u.fileName.split(".").pop().toUpperCase() || "PDF"}
-                </div>
-                <div className="doc-card-details">
-                  <div className="doc-card-filename" title={u.fileName}>
-                    {u.fileName}
-                  </div>
-                  <div className="doc-card-size">13 MB</div>
-                </div>
-                <div className="doc-card-category-label">
-                  {displayTourDocType(u.documentType, t)}
-                </div>
-                {canReplaceDoc(u) ? (
-                  <button
-                    type="button"
-                    className="doc-card-close-btn"
-                    title={t("tourDocReplaceButton")}
-                    onClick={() => startReplace(u.id)}
-                  >
-                    ✕
-                  </button>
-                ) : null}
-              </div>
-
-              {/* Status Row */}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginTop: 4,
-                }}
-              >
-                <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                  Status:
-                </span>
-                <Pill
-                  status={
-                    u.reviewStatus === "accepted"
-                      ? "performed"
-                      : u.reviewStatus === "rejected" ||
-                          u.reviewStatus === "correction_required"
-                        ? "cancelled"
-                        : "assigned"
-                  }
-                >
+            <TourDocumentRow
+              key={u.id}
+              fileName={u.fileName}
+              metaLine={`${displayTourDocType(u.documentType, t)} · ${F().formatFileSize(u.sizeBytes)}`}
+              statusNode={
+                <Pill status={tourDocReviewPillStatus(u.reviewStatus)} className="no-dot">
                   {displayDocReviewStatus(u.reviewStatus, t)}
                 </Pill>
-              </div>
-
-              {(u.reviewStatus === "rejected" ||
-                u.reviewStatus === "correction_required") &&
-              u.rejectionReason ? (
-                <p
-                  style={{
-                    margin: "8px 0 0",
-                    fontSize: 11.5,
-                    lineHeight: 1.45,
-                    color: "var(--st-cancelled)",
-                  }}
-                >
-                  {t("tourDocRejectionReason", { reason: u.rejectionReason })}
-                </p>
-              ) : null}
-            </li>
+              }
+              rejectionReason={
+                (u.reviewStatus === "rejected" ||
+                  u.reviewStatus === "correction_required") &&
+                u.rejectionReason
+                  ? t("tourDocRejectionReason", { reason: u.rejectionReason })
+                  : null
+              }
+              onReplace={
+                canReplaceDoc(u) ? () => startReplace(u.id) : null
+              }
+              onDownload={() => store.downloadTourDocumentPlaceholder(u.id)}
+              replaceLabel={t("tourDocReplaceButton")}
+              downloadLabel={t("download")}
+            />
           ))}
-        </ul>
+        </div>
       ) : canUpload ? (
-        <div className="empty-state">
-          <p className="empty-state-title">{t("tourDocEmptyTitle")}</p>
-          <p className="empty-state-desc">{t("tourDocEmptyAction")}</p>
+        <div className="tour-doc-empty">
+          <p className="tour-doc-empty-title">{t("tourDocEmptyTitle")}</p>
+          <p className="tour-doc-empty-desc">{t("tourDocEmptyAction")}</p>
         </div>
       ) : (
-        <div className="empty-state">
-          <p className="empty-state-title">{t("tourDocUploadEmpty")}</p>
+        <div className="tour-doc-empty">
+          <p className="tour-doc-empty-title">{t("tourDocUploadEmpty")}</p>
         </div>
       )}
       {categoryModal ? (
@@ -1967,8 +1926,7 @@ const JobTourDocuments = ({ job }) => {
             </div>
             <button
               type="button"
-              className="btn block touch-target"
-              style={{ marginTop: 20 }}
+              className="btn block touch-target mt-20"
               onClick={() => setCategoryModal(false)}
             >
               {t("cancel")}
@@ -1976,7 +1934,7 @@ const JobTourDocuments = ({ job }) => {
           </div>
         </div>
       ) : null}
-    </section>
+    </div>
   );
 };
 
@@ -2050,7 +2008,7 @@ const JobUnlocked = ({
             )}
           </div>
         </div>
-        <div style={{ width: 40 }}></div>
+        <div className="w-40-spacer"></div>
       </div>
 
       {/* Main Content Area */}
@@ -2190,7 +2148,7 @@ const JobUnlocked = ({
             </div>
             <div className="detail-kv-row">
               <div className="label">{t("vin")}</div>
-              <div className="value mono" style={{ fontSize: 12 }}>
+              <div className="value mono text-muted-sm">
                 {job.vin}
               </div>
             </div>
@@ -2269,7 +2227,7 @@ const JobUnlocked = ({
             <div className="pdf-icon-wrap">
               <Ic.Pdf />
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="flex-1-min-0">
               <div className="pdf-name">transport-order-{job.id}.pdf</div>
               <div className="pdf-meta">v{job.pdfVersion || 1}</div>
             </div>
@@ -2278,6 +2236,7 @@ const JobUnlocked = ({
                 type="button"
                 className="pdf-btn"
                 title={t("view")}
+                aria-label={t("view")}
                 onClick={() => AuthStore.viewPdf(job.id)}
               >
                 <Ic.Eye />
@@ -2286,27 +2245,21 @@ const JobUnlocked = ({
                 type="button"
                 className="pdf-btn"
                 title={t("download")}
+                aria-label={t("download")}
                 onClick={() => AuthStore.downloadPdf(job.id)}
               >
                 <Ic.Down />
               </button>
             </div>
           </div>
-          <p
-            style={{
-              fontSize: 13,
-              lineHeight: 1.6,
-              margin: 0,
-              color: "var(--muted)",
-            }}
-          >
+          <p className="text-muted-sm" style={{ lineHeight: 1.6, margin: 0, fontSize: 13 }}>
             {displayDriverNote(job.notesDriver, t) || t("noDriverAddons")}
           </p>
           {job.notes ? (
             <>
               <hr className="detail-card-divider" />
               <div className="time-label">{t("dispatchNotes")}</div>
-              <p style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+              <p className="text-muted-sm" style={{ lineHeight: 1.6, margin: 0, fontSize: 13 }}>
                 {job.notes}
               </p>
             </>
@@ -2458,36 +2411,45 @@ const MyJobs = ({ onOpen }) => {
       return 0;
     });
 
+  const myJobsSortOptions = [
+    ["date_desc", t("sortDateDesc")],
+    ["date_asc", t("sortDateAsc")],
+    ["tour_asc", t("sortTourAsc")],
+    ["tour_desc", t("sortTourDesc")],
+  ];
+
+  const emptyCopy = searchQuery
+    ? {
+        title: t("noJobsMatch"),
+        description: t("searchMyJobsPlaceholder"),
+        actionLabel: t("reset"),
+        onAction: () => setSearchQuery(""),
+      }
+    : tab === "active"
+      ? {
+          title: t("nothingHereYet"),
+          description: t("exploreJobs"),
+        }
+      : tab === "performed"
+        ? {
+            title: t("nothingHereYet"),
+            description: t("performedTab"),
+          }
+        : tab === "cancelled"
+          ? {
+              title: t("nothingHereYet"),
+              description: t("cancelledSub"),
+            }
+          : {
+              title: t("nothingHereYet"),
+              description: t("specialCaseTab"),
+            };
+
   return (
     <>
-      <div
-        style={{
-          padding: "16px 20px 14px",
-          background: "var(--paper)",
-          borderBottom: "1px solid var(--line)",
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 24,
-            fontWeight: 700,
-            letterSpacing: "-0.015em",
-            lineHeight: 1.2,
-          }}
-        >
-          {t("myJobs")}
-        </h1>
-        <div
-          style={{
-            fontSize: 13.5,
-            color: "var(--muted)",
-            marginTop: 4,
-            lineHeight: 1.3,
-          }}
-        >
-          {t("myJobsSubtitle")}
-        </div>
+      <div className="pwa-screen-header">
+        <h1 className="header-title">{t("myJobs")}</h1>
+        <div className="header-subtitle">{t("myJobsSubtitle")}</div>
       </div>
 
       {/* Search and control buttons */}
@@ -2501,28 +2463,12 @@ const MyJobs = ({ onOpen }) => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="sort-icon-btn-wrap">
-          <button
-            type="button"
-            className="header-btn"
-            title={t("sortJobs")}
-            aria-hidden="true"
-            tabIndex={-1}
-          >
-            <Ic.Sort />
-          </button>
-          <select
-            className="sort-icon-select"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            aria-label={t("sortJobs")}
-          >
-            <option value="date_desc">{t("sortDateDesc")}</option>
-            <option value="date_asc">{t("sortDateAsc")}</option>
-            <option value="tour_asc">{t("sortTourAsc")}</option>
-            <option value="tour_desc">{t("sortTourDesc")}</option>
-          </select>
-        </div>
+        <SortSelect
+          value={sortBy}
+          onChange={setSortBy}
+          options={myJobsSortOptions}
+          label={t("sortJobs")}
+        />
       </div>
 
       {/* Horizontal tab pills slider */}
@@ -2546,24 +2492,22 @@ const MyJobs = ({ onOpen }) => {
       </div>
 
       {/* Scrollable list content */}
-      <div
-        className="scroll"
-        style={{
-          padding: "16px 18px 22px",
-          background: "var(--paper-2)",
-          flex: 1,
-        }}
-      >
+      <div className="scroll scroll-body">
         {filteredList.length === 0 && (
-          <div
-            className="dash-area"
-            style={{ padding: 28, textAlign: "center" }}
-          >
-            {t("nothingHereYet")}
-          </div>
+          <EmptyState
+            title={emptyCopy.title}
+            description={emptyCopy.description}
+            actionLabel={emptyCopy.actionLabel}
+            onAction={emptyCopy.onAction}
+          />
         )}
         {filteredList.map((job) => (
-          <div key={job.id} className="jobcard" onClick={() => onOpen(job)}>
+          <button
+            key={job.id}
+            type="button"
+            className="jobcard-btn"
+            onClick={() => onOpen(job)}
+          >
             {job.status === "assigned" ? (
               <div className="jobcard-banner-assigned">
                 <Ic.TabInfo /> {t("assignedDirectlyNotice")}
@@ -2656,12 +2600,16 @@ const MyJobs = ({ onOpen }) => {
                 </div>
               </div>
               <div className="jobcard-price-pill">
-                € {fmtDriverOffer(job).toFixed(2)}
+                {F().formatMoney
+                  ? F().formatMoney(fmtDriverOffer(job))
+                  : `€ ${fmtDriverOffer(job).toFixed(2)}`}
               </div>
             </div>
-          </div>
+          </button>
         ))}
-        <div className="list-end">— {t("endOfList")} —</div>
+        {filteredList.length > 0 ? (
+          <div className="list-end">— {t("endOfList")} —</div>
+        ) : null}
       </div>
     </>
   );
@@ -2805,31 +2753,23 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="grabber"></div>
         <div className="sheet-head">
-          <h2
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              margin: 0,
-            }}
-          >
-            <span style={{ color: "var(--st-warn)" }}>
+          <h2 className="sheet-head-warn">
+            <span className="sheet-head-warn-icon">
               <Ic.Alert />
             </span>
             {t("reportProblem")}
           </h2>
-          <button type="button" onClick={onClose} className="btn icon sm">
+          <button type="button" onClick={onClose} className="btn icon sm" aria-label={t("dismiss")}>
             <Ic.X />
           </button>
         </div>
         <div className="sheet-body">
           {!path ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="flex-col-gap-10">
               {pathOptions.map(([id, label, sub]) => (
-                <div
+                <button
                   key={id}
-                  role="button"
-                  tabIndex={0}
+                  type="button"
                   className="radio-card"
                   onClick={() => {
                     setPath(id);
@@ -2845,7 +2785,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                     <div className="t">{label}</div>
                     <div className="s">{sub}</div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           ) : (
@@ -2864,19 +2804,11 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                 {t("back")}
               </button>
               <div className="field-label">{t("reason")}</div>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                  marginBottom: 18,
-                }}
-              >
+              <div className="flex-col-gap-10" style={{ marginBottom: 18 }}>
                 {reasonList.map(([id, label, sub]) => (
-                  <div
+                  <button
                     key={id}
-                    role="button"
-                    tabIndex={0}
+                    type="button"
                     className={"radio-card " + (reason === id ? "on" : "")}
                     onClick={() => setReason(id)}
                   >
@@ -2885,7 +2817,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                       <div className="t">{label}</div>
                       <div className="s">{sub}</div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
               <div className="field-label">{t("explanationRequired")}</div>
@@ -2911,18 +2843,11 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                 </span>
               </div>
               {path === "not_performable" ? (
-                <div style={{ marginTop: 16 }}>
+                <div className="mt-16">
                   <div className="field-label">
                     {t("reportProblemEvidenceLabel")}
                   </div>
-                  <p
-                    style={{
-                      fontSize: 12,
-                      color: "var(--muted)",
-                      margin: "6px 0 10px",
-                      lineHeight: 1.5,
-                    }}
-                  >
+                  <p className="req-panel-desc" style={{ margin: "6px 0 10px" }}>
                     {t("reportProblemEvidenceHint")}
                   </p>
                   <input
@@ -2930,7 +2855,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                     type="file"
                     multiple
                     accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
-                    style={{ display: "none" }}
+                    className="hidden"
                     onChange={(e) => {
                       const picked = Array.from(e.target.files || []);
                       if (!picked.length) return;
@@ -2988,10 +2913,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                             borderRadius: "var(--r-2)",
                           }}
                         >
-                          <span
-                            className="mono"
-                            style={{ wordBreak: "break-all" }}
-                          >
+                          <span className="pdf-name">
                             {f.name}
                           </span>
                           <button
@@ -3038,7 +2960,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                       <PolicyDisclosure introKey="reportProblemCancelTermsIntro" />
                     </p>
                   </div>
-                  <div className="slide-confirm-wrap" style={{ marginTop: 16 }}>
+                  <div className="slide-confirm-wrap mt-16">
                     <div
                       ref={trackRef}
                       className={
@@ -3181,8 +3103,7 @@ const PendingNotice = ({ onClose, kind }) => {
         </p>
         <button
           type="button"
-          className="btn block primary"
-          style={{ marginTop: 20 }}
+          className="btn block primary mt-20"
           onClick={onClose}
         >
           {t("ok")}
@@ -3219,10 +3140,10 @@ const ProfilePane = () => {
           JB
         </span>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>
+          <div className="text-strong-lg">
             {AuthStore.DEMO_DRIVER}
           </div>
-          <div className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>
+          <div className="mono text-muted-sm">
             {t("driverCode")}: AU-41-0228 · {t("driverStatusActive")}
           </div>
         </div>
@@ -3247,7 +3168,7 @@ const ProfilePane = () => {
         >
           <div>
             <div style={{ fontWeight: 600, fontSize: 14 }}>{label}</div>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>{sub}</div>
+            <div className="text-muted-sm">{sub}</div>
           </div>
           <Ic.Chev />
         </div>
@@ -3273,109 +3194,183 @@ const ProfilePane = () => {
   );
 };
 
-const DriverNotificationsList = ({ markReadOnMount = false }) => {
+const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const rows = store.getDriverNotifications();
-  useEffectA(() => {
-    if (markReadOnMount && rows.some((r) => !r.read)) {
-      store.markDriverNotificationsRead();
+
+  const grouped = useMemo(() => {
+    const map = new Map();
+    rows.forEach((row) => {
+      const day =
+        F().formatRelativeDay?.(row.createdAt, t) || row.createdAt || "";
+      if (!map.has(day)) map.set(day, []);
+      map.get(day).push(row);
+    });
+    return [...map.entries()];
+  }, [rows, t]);
+
+  const markRead = (row) => {
+    if (!row.read) store.markDriverNotificationsRead([row.id]);
+  };
+
+  const openRow = (row) => {
+    markRead(row);
+    if (row.type === "infopoint_news") {
+      onOpenInfopoint?.();
+      return;
     }
-  }, [markReadOnMount]);
+    if (!row.jobId || !onOpenJob) return;
+    const job = store.getJobs().find((j) => j.id === row.jobId);
+    if (job) onOpenJob(job);
+  };
+
+  const isActionable = (row) =>
+    row.type === "infopoint_news"
+      ? Boolean(onOpenInfopoint)
+      : Boolean(row.jobId && onOpenJob);
+
   if (!rows.length) {
     return (
-      <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--muted)" }}>
-        {t("driverNotificationsEmpty")}
-      </p>
+      <EmptyState
+        title={t("driverNotificationsEmpty")}
+        className="notifications-empty"
+      />
     );
   }
+
   return (
-    <ul
-      style={{
-        margin: "12px 0 0",
-        padding: 0,
-        listStyle: "none",
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-      }}
-    >
-      {rows.map((row) => (
-        <li
-          key={row.id}
-          style={{
-            padding: 10,
-            border: "1px solid var(--line)",
-            borderRadius: 8,
-            background: row.read ? "var(--paper)" : "var(--paper-2)",
-          }}
-        >
-          <div style={{ fontWeight: 600, fontSize: 13 }}>{row.title}</div>
-          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-            {row.body}
-          </div>
-          {row.type === "infopoint_news" ? (
-            <div
-              style={{ fontSize: 11, color: "var(--primary)", marginTop: 6 }}
-            >
-              {t("driverNotifInfopointHint")}
-            </div>
-          ) : null}
-          <div
-            className="mono"
-            style={{ fontSize: 10, color: "var(--muted-2)", marginTop: 4 }}
-          >
-            {row.createdAt}
-            {row.tour ? ` · ${row.tour}` : ""}
-          </div>
-        </li>
+    <div className="notifications-grouped-list">
+      {grouped.map(([day, dayRows]) => (
+        <section key={day}>
+          <h4 className="notification-day-header">{day}</h4>
+          <ul className="notifications-day-rows">
+            {dayRows.map((row) => {
+              const actionable = isActionable(row);
+              const content = (
+                <>
+                  {!row.read ? (
+                    <span className="notification-row-dot" aria-hidden="true" />
+                  ) : (
+                    <span className="notification-row-dot-spacer" aria-hidden="true" />
+                  )}
+                  <span className="notification-row-body">
+                    <span className="notification-row-title">{row.title}</span>
+                    <span className="notification-row-text">{row.body}</span>
+                    {row.type === "infopoint_news" ? (
+                      <span className="notification-row-hint">
+                        {t("driverNotifInfopointHint")}
+                      </span>
+                    ) : null}
+                    <span className="notification-row-meta mono">
+                      {row.createdAt}
+                      {row.tour ? ` · ${row.tour}` : ""}
+                    </span>
+                  </span>
+                </>
+              );
+
+              return (
+                <li key={row.id}>
+                  {actionable ? (
+                    <button
+                      type="button"
+                      className={`notification-row${row.read ? "" : " unread"}`}
+                      onClick={() => openRow(row)}
+                    >
+                      {content}
+                    </button>
+                  ) : (
+                    <div
+                      className={`notification-row notification-row-static${
+                        row.read ? "" : " unread"
+                      }`}
+                    >
+                      {content}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       ))}
-    </ul>
+    </div>
   );
 };
 
-const DriverNotificationsPane = ({ onClose, onBack }) => {
+const DriverNotificationsPane = ({ onClose, onBack, onOpenJob, onOpenInfopoint }) => {
   const { t } = useI18n();
+  const store = useAuthStore();
   const close = onClose || onBack;
+  const unreadCount = store
+    .getDriverNotifications()
+    .filter((n) => !n.read).length;
+  const titleId = "driver-notifications-pane-title";
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") close?.();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [close]);
+
   return (
-    <div className="sheet-backdrop" onClick={close}>
+    <>
+      <button
+        type="button"
+        className="notifications-dropdown-backdrop"
+        onClick={close}
+        aria-label={t("dismiss")}
+      />
       <div
-        className="sheet modal"
-        onClick={(e) => e.stopPropagation()}
-        style={{ display: "flex", flexDirection: "column", maxHeight: "85%" }}
+        className="notifications-dropdown"
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
       >
-        <div className="sheet-head" style={{ padding: "16px 20px 12px" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              width: "100%",
-            }}
-          >
-            <div>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
-                {t("driverNotifications")}
-              </h2>
-              <div className="label" style={{ marginTop: 2 }}>
-                {t("driverNotificationsSub")}
-              </div>
-            </div>
-            <button type="button" onClick={close} className="btn icon sm">
+        <div className="notifications-dropdown-header">
+          <div className="notifications-pane-head-text">
+            <h3 id={titleId}>{t("driverNotifications")}</h3>
+            <div className="label">{t("driverNotificationsSub")}</div>
+          </div>
+          <div className="notifications-pane-actions">
+            {unreadCount > 0 ? (
+              <button
+                type="button"
+                className="notifications-mark-all-btn"
+                onClick={() => store.markDriverNotificationsRead()}
+                aria-label={t("markAllRead")}
+                title={t("markAllRead")}
+              >
+                <Ic.CheckAll />
+                <span className="notifications-mark-all-label">{t("markAllRead")}</span>
+              </button>
+            ) : (
+              <span className="notifications-all-read-hint" aria-live="polite">
+                {t("driverNotificationsAllRead")}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={close}
+              className="btn icon sm notifications-close-btn"
+              aria-label={t("dismiss")}
+              title={t("dismiss")}
+            >
               <Ic.X />
             </button>
           </div>
         </div>
-        <div
-          className="sheet-body scroll"
-          style={{ padding: "0 20px 24px", flex: 1 }}
-        >
-          <DriverNotificationsList markReadOnMount />
+        <div className="notifications-dropdown-body scroll">
+          <DriverNotificationsList
+            onOpenJob={onOpenJob}
+            onOpenInfopoint={onOpenInfopoint}
+          />
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -3430,7 +3425,18 @@ const DriverDailyLimitCard = ({ onRequestIncrease }) => {
         })}
       </p>
 
-      <div className="limit-meter stack-12" aria-hidden="true">
+      <div
+        className="limit-meter stack-12"
+        role="progressbar"
+        aria-valuenow={summary.count}
+        aria-valuemin={0}
+        aria-valuemax={summary.limit}
+        aria-label={t("driverDailyLimitProfileUsage", {
+          count: summary.count,
+          limit: summary.limit,
+          date: dateLabel,
+        })}
+      >
         <div
           className="limit-meter-track"
           style={{ background: "var(--paper-2)", borderRadius: 99, height: 8 }}
@@ -3438,9 +3444,10 @@ const DriverDailyLimitCard = ({ onRequestIncrease }) => {
           <span
             className={`limit-meter-fill${summary.atLimit ? " at-limit" : ""}`}
             style={{ width: `${pct}%`, borderRadius: 99 }}
+            aria-hidden="true"
           />
         </div>
-        <div className="limit-meter-meta stack-8 text-caption">
+        <div className="limit-meter-meta stack-8 text-caption" aria-hidden="true">
           {summary.atLimit
             ? t("driverDailyLimitProfileAtLimit", { date: dateLabel })
             : t("driverDailyLimitProfileRemaining", {
@@ -3518,8 +3525,7 @@ const profileContactLinkStyle = {
   marginTop: 6,
 };
 
-// Help & FAQ — lives in Infopoint (plan §7.7/§7.8); Profile keeps only the
-// compact contact card (ProfileContactCard) for on-the-road quick access.
+// Help & FAQ — Infopoint tab only (plan §7.8)
 const HelpSupportContent = () => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -3569,7 +3575,7 @@ const HelpSupportContent = () => {
             <span className="contact-row-icon">
               <Ic.Phone />
             </span>
-            <span style={{ flex: 1, minWidth: 0 }}>
+            <span className="flex-1-min-0">
               <span className="contact-row-value">{support.phone}</span>
               <div className="contact-row-sub">{t("dispatcherHotlineSub")}</div>
             </span>
@@ -3578,7 +3584,7 @@ const HelpSupportContent = () => {
             <span className="contact-row-icon">
               <Ic.Mail />
             </span>
-            <span style={{ flex: 1, minWidth: 0 }}>
+            <span className="flex-1-min-0">
               <span className="contact-row-value">{support.email}</span>
               <div className="contact-row-sub">{t("profileEmailSupport")}</div>
             </span>
@@ -3588,46 +3594,6 @@ const HelpSupportContent = () => {
     </>
   );
 };
-
-const ProfileContactCard = () => {
-  const { t } = useI18n();
-  const store = useAuthStore();
-  const driver = store.getCurrentDriver();
-  const support = store.getDriverSupportContact();
-  const mailSubject = encodeURIComponent(
-    t("mailtoSubjectSupport", { driverCode: driver?.driverCode || "" }),
-  );
-  const mailtoHref = `mailto:${support.email}?subject=${mailSubject}`;
-  const telHref = `tel:${String(support.phone || "").replace(/\s/g, "")}`;
-  return (
-    <div className="section-card">
-      <h2 className="section-title">{t("helpSupportTitle")}</h2>
-      <div className="stack-4">
-        <a href={telHref} className="contact-row">
-          <span className="contact-row-icon">
-            <Ic.Phone />
-          </span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span className="contact-row-value">{support.phone}</span>
-            <div className="contact-row-sub">{t("dispatcherHotlineSub")}</div>
-          </span>
-        </a>
-        <a href={mailtoHref} className="contact-row">
-          <span className="contact-row-icon">
-            <Ic.Mail />
-          </span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span className="contact-row-value">{support.email}</span>
-            <div className="contact-row-sub">{t("profileEmailSupport")}</div>
-          </span>
-        </a>
-      </div>
-    </div>
-  );
-};
-
-// Back-compat alias (old name referenced in exports)
-const ProfileHelpSupport = HelpSupportContent;
 
 const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
   const { t } = useI18n();
@@ -3680,7 +3646,7 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
     setEditingProfile(false);
   };
   const [mdFeedback, setMdFeedback] = useState(null); // {tone, message}
-  const [signOutNotice, setSignOutNotice] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
   const submitMasterDataRequest = () => {
     const r = store.requestMasterDataChange(mdForm);
     if (r.ok) {
@@ -3702,28 +3668,14 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
       message: t(reasonToKey[r.reason] || "masterDataChangeSubmitFailed"),
     });
   };
+
   return (
     <>
-      <div
-        style={{
-          padding: "16px 20px 14px",
-          background: "var(--paper)",
-          borderBottom: "1px solid var(--line)",
-        }}
-      >
-        <h1 className="header-title" style={{ margin: 0 }}>
-          {t("profileTitle")}
-        </h1>
+      <div className="pwa-screen-header">
+        <h1 className="header-title">{t("profileTitle")}</h1>
         <div className="header-subtitle">{t("profileSubtitle")}</div>
       </div>
-      <div
-        className="scroll"
-        style={{
-          padding: "16px 20px 24px",
-          background: "var(--paper-2)",
-          flex: 1,
-        }}
-      >
+      <div className="scroll scroll-body">
         {/* Identity — header block, not a card (plan §7.7.1) */}
         <div className="profile-identity">
           <span className="avatar">
@@ -3734,13 +3686,13 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
                   .join("")
               : "JB"}
           </span>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="flex-1-min-0">
             <div className="profile-identity-name">
               {d?.name}
               {d?.status === "active" && (
                 <span
                   className="profile-verified-badge"
-                  title="Verified Account"
+                  title={t("profileVerifiedAccount")}
                 >
                   <svg
                     width="16"
@@ -3908,40 +3860,34 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
             className="stack-12"
             style={{ display: "flex", flexDirection: "column", gap: 4 }}
           >
-            <div className="switch-row">
+            <label className="switch-row">
               <span className="switch-row-text">{t("pushEnabledMaster")}</span>
-              <label className="switch-toggle-label">
-                <div className="switch-toggle-wrap">
-                  <input
-                    type="checkbox"
-                    className="switch-toggle-input"
-                    checked={prefs.pushEnabled !== false}
-                    onChange={(e) => setPref({ pushEnabled: e.target.checked })}
-                    aria-label={t("pushEnabledMaster")}
-                  />
-                  <span className="switch-slider" />
-                </div>
-              </label>
-            </div>
-            <div className="switch-row">
+              <span className="switch-toggle-wrap">
+                <input
+                  type="checkbox"
+                  className="switch-toggle-input"
+                  checked={prefs.pushEnabled !== false}
+                  onChange={(e) => setPref({ pushEnabled: e.target.checked })}
+                />
+                <span className="switch-slider" />
+              </span>
+            </label>
+            <label className="switch-row">
               <span className="switch-row-text">
                 {t("pushNotifyNewPublished")}
               </span>
-              <label className="switch-toggle-label">
-                <div className="switch-toggle-wrap">
-                  <input
-                    type="checkbox"
-                    className="switch-toggle-input"
-                    checked={prefs.notifyNewPublished !== false}
-                    onChange={(e) =>
-                      setPref({ notifyNewPublished: e.target.checked })
-                    }
-                    aria-label={t("pushNotifyNewPublished")}
-                  />
-                  <span className="switch-slider" />
-                </div>
-              </label>
-            </div>
+              <span className="switch-toggle-wrap">
+                <input
+                  type="checkbox"
+                  className="switch-toggle-input"
+                  checked={prefs.notifyNewPublished !== false}
+                  onChange={(e) =>
+                    setPref({ notifyNewPublished: e.target.checked })
+                  }
+                />
+                <span className="switch-slider" />
+              </span>
+            </label>
           </div>
 
           <div className="stack-16">
@@ -3977,7 +3923,7 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
           </div>
 
           <div className="stack-16">
-            <label className="field-label" style={{ display: "block" }}>
+            <label className="field-label" htmlFor="profile-postal-input">
               {t("pushNotifyPostalPrefix")}
             </label>
             <div className="postal-chip-container stack-4">
@@ -3995,6 +3941,7 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
                 </span>
               ))}
               <input
+                id="profile-postal-input"
                 type="text"
                 className="postal-chip-input"
                 value={postalText}
@@ -4012,25 +3959,24 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
           </div>
         </div>
 
-        <ProfileContactCard />
-
-        {signOutNotice ? (
-          <div className="stack-16">
-            <InlineAlert
-              tone="info"
-              message={t("signOutAlert")}
-              onDismiss={() => setSignOutNotice(false)}
-            />
-          </div>
-        ) : null}
         <button
           type="button"
           className="btn destructive-outline block stack-16"
-          onClick={() => setSignOutNotice(true)}
+          onClick={() => setSignOutOpen(true)}
         >
           <Ic.Logout /> {t("signOut")}
         </button>
       </div>
+
+      <ConfirmSheet
+        open={signOutOpen}
+        title={t("signOut")}
+        message={t("signOutAlert")}
+        confirmLabel={t("signOut")}
+        onConfirm={() => setSignOutOpen(false)}
+        onCancel={() => setSignOutOpen(false)}
+        destructive
+      />
     </>
   );
 };
@@ -4140,42 +4086,16 @@ const Infopoint = () => {
                 <div
                   key={d.id}
                   className="infopoint-doc-row"
-                  style={{ display: "flex", gap: 12, alignItems: "center" }}
                 >
-                  <div
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 10,
-                      background: "var(--paper-2)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "var(--primary)",
-                      flexShrink: 0,
-                    }}
-                  >
+                  <div className="infopoint-news-icon read" style={{ color: "var(--primary)" }}>
                     <Ic.Pdf />
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 14,
-                        color: "var(--text)",
-                      }}
-                    >
+                  <div className="flex-1-min-0">
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>
                       {displayDocTitle(d, t)}
                     </div>
                     {d.description ? (
-                      <div
-                        style={{
-                          fontSize: 12.5,
-                          color: "var(--muted)",
-                          marginTop: 4,
-                          lineHeight: 1.4,
-                        }}
-                      >
+                      <div className="text-muted-sm" style={{ marginTop: 4, lineHeight: 1.4 }}>
                         {d.description}
                       </div>
                     ) : null}
@@ -4191,12 +4111,8 @@ const Infopoint = () => {
                       {displayDocScope(d.scope, t)} · {d.version}
                     </div>
                     <div
-                      className="mono"
-                      style={{
-                        fontSize: 10.5,
-                        color: "var(--muted-2)",
-                        marginTop: 4,
-                      }}
+                      className="mono text-muted-sm"
+                      style={{ marginTop: 4 }}
                     >
                       {d.size ? `${d.size} · ` : ""}
                       {d.updatedAt}
@@ -4247,14 +4163,7 @@ const Infopoint = () => {
                 style={{ padding: 28, textAlign: "center", borderRadius: 16 }}
               >
                 <div style={{ fontWeight: 600 }}>{t("infopointNewsEmpty")}</div>
-                <div
-                  style={{
-                    fontSize: 12.5,
-                    color: "var(--muted)",
-                    marginTop: 10,
-                    lineHeight: 1.5,
-                  }}
-                >
+                <div className="infopoint-empty-hint">
                   {t("infopointNewsAdminHint")}
                 </div>
               </div>
@@ -4264,41 +4173,16 @@ const Infopoint = () => {
                   const unread = !n.readBy.includes(readerId);
                   const expanded = openNewsId === n.id;
                   return (
-                    <div
+                    <button
                       key={n.id}
-                      role="button"
-                      tabIndex={0}
+                      type="button"
                       className="infopoint-news-row"
                       onClick={() => openNews(n)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          openNews(n);
-                        }
-                      }}
-                      style={{
-                        cursor: "pointer",
-                        outline: "none",
-                        display: "flex",
-                        gap: 12,
-                        alignItems: "flex-start",
-                      }}
+                      aria-expanded={expanded}
+                      aria-label={n.title}
                     >
                       <div
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 10,
-                          background: unread
-                            ? "rgba(var(--primary-rgb), 0.08)"
-                            : "var(--paper-2)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: unread ? "var(--primary)" : "var(--muted-2)",
-                          flexShrink: 0,
-                          position: "relative",
-                        }}
+                        className={`infopoint-news-icon ${unread ? "unread" : "read"}`}
                       >
                         <Ic.Calendar />
                         {unread ? (
@@ -4316,7 +4200,7 @@ const Infopoint = () => {
                           ></span>
                         ) : null}
                       </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="flex-1-min-0">
                         <div
                           style={{
                             display: "flex",
@@ -4336,22 +4220,14 @@ const Infopoint = () => {
                           </div>
                         </div>
                         <div
-                          className="mono"
-                          style={{
-                            fontSize: 10.5,
-                            color: "var(--muted)",
-                            marginTop: 4,
-                          }}
+                          className="mono text-muted-sm"
+                          style={{ marginTop: 4 }}
                         >
                           {n.publishedAt}
                         </div>
                         <p
-                          style={{
-                            margin: "8px 0 0",
-                            fontSize: 13,
-                            color: "var(--muted)",
-                            lineHeight: 1.45,
-                          }}
+                          className="text-muted-sm"
+                          style={{ margin: "8px 0 0", lineHeight: 1.45, fontSize: 13 }}
                         >
                           {expanded
                             ? n.body
@@ -4371,7 +4247,7 @@ const Infopoint = () => {
                       >
                         <Ic.Down />
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -4412,8 +4288,7 @@ const DailyLimitRequestSheet = ({ limitInfo, onClose, onSubmitted }) => {
   return (
     <div className="sheet-backdrop center" onClick={onClose}>
       <div
-        className="sheet card confirm-sheet"
-        style={{ maxWidth: 420, width: "100%", padding: 22 }}
+        className="sheet card confirm-sheet confirm-sheet-panel"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -4425,7 +4300,7 @@ const DailyLimitRequestSheet = ({ limitInfo, onClose, onSubmitted }) => {
             count: limitInfo?.count ?? current,
           })}
         </p>
-        <div style={{ marginTop: 16 }}>
+        <div className="mt-16">
           <label className="field-label" htmlFor="daily-limit-requested">
             {t("driverDailyLimitRequestedLabel")}
           </label>
@@ -4480,8 +4355,7 @@ const SameDayOverlapSheet = ({ onCancel, onConfirm }) => {
   return (
     <div className="sheet-backdrop center" onClick={onCancel}>
       <div
-        className="sheet card confirm-sheet"
-        style={{ maxWidth: 420, width: "100%", padding: 22 }}
+        className="sheet card confirm-sheet confirm-sheet-panel"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

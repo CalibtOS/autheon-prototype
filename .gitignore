@@ -4,20 +4,19 @@
 .github
 
 # =============================================================================
-# Design images — ignore local / scratch assets not used by prototype or docs
+# Design image binaries — keep on disk locally; do not commit to git
 # =============================================================================
-# Kept in git (do not ignore):
-#   prototype/project/icons/icon-192.svg
-#   prototype/project/icons/icon-512.svg
-#   docs/design/audit-2026-07-10/   (referenced by ui-ux-production-plan.md)
+# Tracked on purpose:
+#   prototype/project/favicon.svg
+#   prototype/project/icons/icon-*.png
 
-# Iteration scratch captures — superseded by audit-2026-07-10; not linked anywhere
-docs/design/redesign-iter1/
-docs/design/redesign-iter2/
-docs/design/redesign-iter3/
+# Audit + iteration scratch captures (referenced by docs as local evidence only)
+docs/design/**/*.jpeg
+docs/design/**/*.jpg
+docs/design/**/*.png
+docs/design/**/*.webp
+docs/design/**/*.gif
 
-# Optional visual-regression baselines (generate locally; see screenshots/README.md)
-docs/design/screenshots/*.png
-docs/design/screenshots/*.jpg
-docs/design/screenshots/*.jpeg
-docs/design/screenshots/*.webp
+# Optional visual-regression baselines (see docs/design/screenshots/README.md)
+docs/design/screenshots/*
+!docs/design/screenshots/README.md

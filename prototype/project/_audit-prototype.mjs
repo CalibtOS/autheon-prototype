@@ -458,6 +458,202 @@ for (const [needle, label] of v18Needles) {
 
 if (!process.exitCode) {
   out("");
+  out("Design contract checks:");
+  const legacyBrandHex = /#(?:2563eb|3b82f6|1d4ed8|1e40af)\b/gi;
+  const allowLegacyInLine = (line) =>
+    /--st-published/i.test(line) ||
+    /st-published-bg/i.test(line) ||
+    /logistics blue/i.test(line) ||
+    /brand-tokens/i.test(line);
+
+  for (const [fname, src] of [
+    ["styles.css", file("styles.css")],
+    ["driver.jsx", driver],
+  ]) {
+    const lines = src.split("\n");
+    lines.forEach((line, i) => {
+      if (legacyBrandHex.test(line) && !allowLegacyInLine(line)) {
+        out(`Design: legacy brand blue in ${fname}:${i + 1}`);
+        process.exitCode = 1;
+      }
+      legacyBrandHex.lastIndex = 0;
+    });
+  }
+
+  function divOpeningTag(src, start) {
+    if (!src.slice(start).startsWith("<div")) return null;
+    let depth = 0;
+    let inString = false;
+    let stringChar = "";
+    for (let i = start; i < src.length; i++) {
+      const c = src[i];
+      if (inString) {
+        if (c === stringChar && src[i - 1] !== "\\") inString = false;
+        continue;
+      }
+      if (c === '"' || c === "'") {
+        inString = true;
+        stringChar = c;
+        continue;
+      }
+      if (c === "{") depth++;
+      if (c === "}") depth--;
+      if (c === ">" && depth === 0) return src.slice(start, i + 1);
+    }
+    return null;
+  }
+
+  function countNonSheetDivOnClick(src) {
+    let bad = 0;
+    let total = 0;
+    let idx = 0;
+    while ((idx = src.indexOf("<div", idx)) !== -1) {
+      const tag = divOpeningTag(src, idx);
+      idx += 4;
+      if (!tag || !/\bonClick=\{/.test(tag)) continue;
+      total++;
+      const allowed =
+        /sheet-backdrop/.test(tag) ||
+        /stopPropagation/.test(tag) ||
+        /role="presentation"/.test(tag);
+      if (!allowed) bad++;
+    }
+    return { bad, total };
+  }
+
+  const { bad: divOnClickNonSheet, total: divOnClickTotal } =
+    countNonSheetDivOnClick(driver);
+  if (divOnClickNonSheet > 0) {
+    out(`Design: driver.jsx has ${divOnClickNonSheet} non-sheet <div onClick`);
+    process.exitCode = 1;
+  } else out(`Design: driver.jsx div onClick (sheet only): ${divOnClickTotal} ok`);
+
+  const inlineStyles = (driver.match(/style=\{\{/g) || []).length;
+  if (inlineStyles > 160) {
+    out(`Design: driver.jsx inline styles ${inlineStyles} (max 160 during remediation)`);
+    process.exitCode = 1;
+  } else out(`Design: driver.jsx inline styles ${inlineStyles}: ok`);
+
+  if (admin.includes("window.confirm")) {
+    out("Design: admin.jsx still uses window.confirm — migrate to ConfirmSheet");
+    process.exitCode = 1;
+  } else out("Design: no window.confirm in admin.jsx: ok");
+
+  const hasBrandDoc = fs.existsSync(
+    path.join(root, "..", "..", "docs", "design", "brand-tokens.md"),
+  );
+  if (!hasBrandDoc) {
+    out("Design: missing docs/design/brand-tokens.md");
+    process.exitCode = 1;
+  } else out("Design: brand-tokens.md: present");
+
+  const hasManifest = fs.existsSync(path.join(root, "manifest.webmanifest"));
+  if (!hasManifest) {
+    out("Design: missing manifest.webmanifest");
+    process.exitCode = 1;
+  } else out("Design: manifest.webmanifest: present");
+
+  out("");
+  out("Design readiness checks:");
+  const css = file("styles.css");
+  const html = fs.existsSync(path.join(root, "AUTHEON Prototype.html"))
+    ? file("AUTHEON Prototype.html")
+    : "";
+
+  const readiness = [
+    [
+      /--brand-accent:\s*#6f29ff/i.test(css),
+      "Farbgebung --brand-accent #6F29FF in styles.css",
+    ],
+    [
+      /--st-special-case:\s*#9333ea/i.test(css),
+      "--st-special-case shifted to #9333EA (no brand collision)",
+    ],
+    [
+      !/#a855f7/i.test(css + driver + admin),
+      "no legacy special-case purple #A855F7",
+    ],
+    [
+      driver.includes("tabbar-capsule") && driver.includes("tabbar-label"),
+      "TabBar capsule + labels wired",
+    ],
+    [
+      driver.includes("SortSelect") && !driver.includes("sort-icon-select"),
+      "SortSelect primitive (no legacy sort overlay)",
+    ],
+    [
+      driver.includes("EmptyState") && driver.includes("SkeletonList"),
+      "EmptyState + SkeletonList wired in driver",
+    ],
+    [
+      fs.existsSync(path.join(root, "driver-ui.jsx")) &&
+        fs.existsSync(path.join(root, "formatters.js")),
+      "driver-ui.jsx + formatters.js present",
+    ],
+    [
+      html.includes("formatters.js") && html.includes("driver-ui.jsx"),
+      "HTML loads formatters + driver-ui before driver",
+    ],
+    [
+      html.includes("AdminConfirmBridge"),
+      "AdminConfirmBridge mounted in HTML",
+    ],
+    [
+      fs.existsSync(path.join(root, "icons", "icon-192.png")) &&
+        fs.existsSync(path.join(root, "icons", "icon-512.png")) &&
+        fs.existsSync(path.join(root, "icons", "icon-192-maskable.png")) &&
+        fs.existsSync(path.join(root, "icons", "icon-512-maskable.png")) &&
+        fs.existsSync(path.join(root, "favicon.svg")),
+      "PWA icons present (autheon-fe assets)",
+    ],
+    [
+      fs.existsSync(
+        path.join(root, "..", "..", "docs", "design", "driver-screen-spec.md"),
+      ),
+      "driver-screen-spec.md present",
+    ],
+    [
+      fs.existsSync(
+        path.join(root, "..", "..", "docs", "design", "driver-i18n-index.md"),
+      ),
+      "driver-i18n-index.md present",
+    ],
+    [
+      !/<div[^>]*\srole="button"/i.test(driver),
+      "no div role=button in driver.jsx",
+    ],
+    [
+      !driver.includes("window.confirm") && !admin.includes("window.confirm"),
+      "no window.confirm in driver/admin",
+    ],
+  ];
+
+  const driverScreens = [
+    "Portal",
+    "MyJobs",
+    "JobLocked",
+    "JobUnlocked",
+    "FilterSheet",
+    "AcceptanceModal",
+    "ReportProblemSheet",
+    "DriverNotificationsPane",
+    "ProfilePaneFull",
+    "Infopoint",
+  ];
+  for (const name of driverScreens) {
+    readiness.push([driver.includes(`const ${name}`), `driver screen ${name}`]);
+  }
+
+  for (const [ok, label] of readiness) {
+    if (!ok) {
+      out(`Design readiness: FAIL ${label}`);
+      process.exitCode = 1;
+    } else out(`Design readiness: ${label}: ok`);
+  }
+}
+
+if (!process.exitCode) {
+  out("");
   out("AUDIT PASS");
 } else {
   out("");

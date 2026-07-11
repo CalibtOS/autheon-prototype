@@ -1,10 +1,50 @@
 # Prototype
 
-`project/` is the imported static prototype. It is a reference implementation, not production application code.
+`project/` is the **design source of truth** for the AUTHEON driver PWA (Figma replacement). It is an interactive reference — not production application code.
 
-- Open `project/AUTHEON Prototype.html` to review the interactive prototype.
-- Read [`../docs/requirements/prd.json`](../docs/requirements/prd.json) before using the prototype for implementation: the PRD is authoritative where the prototype differs.
-- Run `node project/_audit-prototype.mjs` to validate the prototype against the PRD.
-- Use `project/DOMAIN.md` for terminology used by the prototype.
+## Quick start
 
-The original design chat export is not present; the meeting sources and written feedback under `../meetings/source/` provide the available decision context.
+```bash
+# From Autheon repo root
+npx serve .
+# Open http://localhost:3000/prototype/project/AUTHEON%20Prototype.html
+```
+
+## Developer workflow (implementing in autheon-fe)
+
+1. Read [`../docs/design/brand-tokens.md`](../docs/design/brand-tokens.md) for colors and usage rules
+2. Read [`../docs/design/driver-screen-spec.md`](../docs/design/driver-screen-spec.md) for the screen you are building
+3. Open the prototype at the target screen + theme (Driver/Admin, Light/Dark switcher)
+4. Inspect **CSS classes and tokens** in DevTools — do not copy inline styles
+5. Copy **i18n keys** from `project/i18n.js` (EN+DE parity required)
+6. Use **formatters** from `project/formatters.js` for dates/money/PLZ
+7. Map tokens using the handoff table in `driver-screen-spec.md` → autheon-fe Tailwind preset
+
+## Key files
+
+| File | Purpose |
+|------|---------|
+| `driver.jsx` | Driver PWA screens |
+| `driver-ui.jsx` | Shared UI primitives (Sheet, Badge, EmptyState, etc.) |
+| `formatters.js` | Intl date/time/money formatters |
+| `styles.css` | Design tokens + component CSS |
+| `admin.jsx` | Admin console reference |
+| `store.js` | Demo data + PRD business rules (do not change for UI-only work) |
+| `i18n.js` | EN/DE copy |
+| `_export-driver-i18n.mjs` | Generates `docs/design/driver-i18n-index.md` |
+
+## Validation
+
+```bash
+node project/_audit-prototype.mjs   # PRD + design contract
+node project/_verify-seed.mjs         # Seed data integrity
+node project/_export-driver-i18n.mjs      # writes docs/design/driver-i18n-index.md
+```
+
+## Authority
+
+- **Behavior:** [`../docs/requirements/prd.json`](../docs/requirements/prd.json)
+- **Design:** [`../docs/design/brand-tokens.md`](../docs/design/brand-tokens.md), [`../docs/design/ui-ux-production-plan.md`](../docs/design/ui-ux-production-plan.md)
+- **Terminology:** `project/DOMAIN.md`
+
+When the prototype and PRD differ, the PRD wins for behavior; the prototype wins for UI/UX presentation.

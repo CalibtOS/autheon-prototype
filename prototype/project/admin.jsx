@@ -104,7 +104,15 @@ const AdminNav = ({ section, setSection }) => {
       <div className="nav-head">
         <div className="nav-eyebrow">{t("adminConsole")}</div>
         <div className="nav-brand">
-          <span className="mark"></span> {store.getAppDisplayName()}
+          <img
+            className="brand-mark"
+            src="favicon.svg"
+            alt=""
+            width="22"
+            height="22"
+            aria-hidden="true"
+          />{" "}
+          {store.getAppDisplayName()}
         </div>
       </div>
       <div className="nav-list">
@@ -1996,8 +2004,13 @@ const AdminDetailFooter = ({
               type="button"
               className="btn danger"
               onClick={() => {
-                if (!window.confirm(t("adminDeleteDraftConfirm"))) return;
-                onDeleteDraft();
+                void window
+                  .requestAdminConfirm(t("adminDeleteDraftConfirm"), {
+                    destructive: true,
+                  })
+                  .then((ok) => {
+                    if (ok) onDeleteDraft();
+                  });
               }}
             >
               {t("adminDeleteDraft")}
@@ -4365,11 +4378,18 @@ const CustomersPane = ({ showToast }) => {
       );
       return;
     }
-    if (!window.confirm(t("adminMasterDataDeleteConfirm"))) return;
-    const r = store.deleteCustomer(op.id);
-    if (!r.ok)
-      showToast?.(t("adminMasterDataDeleteFailed"), masterDataErr(r, t, "customer"));
-    else showToast?.(t("adminMasterDataDeleted"), op.name);
+    void window
+      .requestAdminConfirm(t("adminMasterDataDeleteConfirm"), { destructive: true })
+      .then((ok) => {
+        if (!ok) return;
+        const r = store.deleteCustomer(op.id);
+        if (!r.ok)
+          showToast?.(
+            t("adminMasterDataDeleteFailed"),
+            masterDataErr(r, t, "customer"),
+          );
+        else showToast?.(t("adminMasterDataDeleted"), op.name);
+      });
   };
 
   return (
@@ -4623,14 +4643,18 @@ const AddressesPane = ({ showToast }) => {
       );
       return;
     }
-    if (!window.confirm(t("adminMasterDataDeleteConfirm"))) return;
-    const r = store.deleteAddress(a.id);
-    if (!r.ok)
-      showToast?.(
-        t("adminMasterDataDeleteFailed"),
-        masterDataErr(r, t, "address"),
-      );
-    else showToast?.(t("adminMasterDataDeleted"), a.label);
+    void window
+      .requestAdminConfirm(t("adminMasterDataDeleteConfirm"), { destructive: true })
+      .then((ok) => {
+        if (!ok) return;
+        const r = store.deleteAddress(a.id);
+        if (!r.ok)
+          showToast?.(
+            t("adminMasterDataDeleteFailed"),
+            masterDataErr(r, t, "address"),
+          );
+        else showToast?.(t("adminMasterDataDeleted"), a.label);
+      });
   };
 
   return (
