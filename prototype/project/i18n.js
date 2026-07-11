@@ -47,11 +47,15 @@ window.I18n = (() => {
       assignedDirectlyNotice: "Assigned directly by admin.",
       statusAll: "Status: all",
       searchJobsPlaceholder: "Search tour, customer, driver, VIN…",
+      searchMyJobsPlaceholder: "Search tour no. or city…",
+      primaryNavigation: "Primary navigation",
+      infopointHelpTab: "Help & FAQ",
       publishBlocked: "Publish blocked",
       publishBlockedSub: "Only Draft tours can be published (PRD Phase 1).",
       assignBlocked: "Assignment blocked",
       assignBlockedSub: "Only Draft tours can be directly assigned.",
-      completionBlocked: "Completion is only available while the tour is Assigned or Accepted.",
+      completionBlocked:
+        "Completion is only available while the tour is Assigned or Accepted.",
       status: {
         draft: "Draft",
         published: "Published",
@@ -197,13 +201,16 @@ window.I18n = (() => {
         "Document upload is not available for this tour status.",
       tourDocUploadEmpty: "No documents uploaded yet.",
       tourDocEmptyTitle: "No documents yet",
-      tourDocEmptyAction: "Add receipts, delivery notes, or proof while this tour is active.",
+      tourDocEmptyAction:
+        "Add receipts, delivery notes, or proof while this tour is active.",
       tourDocUploadSuccess: "Document uploaded. Dispatch will review it.",
       tourDocUploadAvailable: "Upload available",
       tourDocRejectionReason: "Rejection: {reason}",
       tourDocReplaceButton: "Replace file",
-      tourDocReplaceNotAllowed: "Accepted documents cannot be replaced. Contact dispatch if needed.",
-      tourDocReplaceNotOwner: "You can only replace your own uploads for this tour.",
+      tourDocReplaceNotAllowed:
+        "Accepted documents cannot be replaced. Contact dispatch if needed.",
+      tourDocReplaceNotOwner:
+        "You can only replace your own uploads for this tour.",
       tourDocOfficialNotReplaceable:
         "Documents from dispatch cannot be replaced. Upload your own receipts in Tour documents below.",
       tourDocChooseCategory: "Choose document type",
@@ -238,15 +245,18 @@ window.I18n = (() => {
       reportProblemCancelTitle: "Cancel order",
       reportProblemCancelSub: "Ends the tour and notifies dispatch.",
       reportProblemNotPerformableTitle: "Report not performable",
-      reportProblemNotPerformableSub: "Creates a special case for dispatch review.",
+      reportProblemNotPerformableSub:
+        "Creates a special case for dispatch review.",
       reportCancelDriverUnavailable: "Driver unavailable",
       reportCancelDriverUnavailableSub: "You cannot execute this tour in time",
       reportCancelVehicleNotAvailable: "Vehicle not available",
       reportCancelVehicleNotAvailableSub: "Vehicle cannot be handed over",
       reportCancelCustomerCancelled: "Customer cancelled order",
-      reportCancelCustomerCancelledSub: "Customer or dispatch withdrew the order",
+      reportCancelCustomerCancelledSub:
+        "Customer or dispatch withdrew the order",
       reportCancelAppointmentNotPossible: "Appointment no longer possible",
-      reportCancelAppointmentNotPossibleSub: "Pickup or delivery slot is no longer feasible",
+      reportCancelAppointmentNotPossibleSub:
+        "Pickup or delivery slot is no longer feasible",
       reportCancelIncorrectData: "Incorrect order data",
       reportCancelIncorrectDataSub: "Tour data does not match reality",
       reportCancelVehicleNotRoadworthy: "Vehicle not roadworthy",
@@ -279,12 +289,14 @@ window.I18n = (() => {
       masterDataChangeCompanyRequired: "Company is required.",
       masterDataChangeEmailRequired: "Email is required.",
       masterDataChangeInvalidEmail: "Please enter a valid email address.",
-      masterDataChangeDuplicateEmail: "This email is already used by another driver.",
+      masterDataChangeDuplicateEmail:
+        "This email is already used by another driver.",
       masterDataChangePendingChanges: "Submitted changes",
       masterDataChangeSentTitle: "Master-data request",
       masterDataChangeOpenExists:
         "You already have an open profile change request. Wait until operations approves or declines it before submitting another.",
-      masterDataChangeSubmitFailed: "Could not send your request. Try again later.",
+      masterDataChangeSubmitFailed:
+        "Could not send your request. Try again later.",
       masterDataChangePendingTitle: "Change request pending",
       masterDataChangePendingBody:
         "Submitted {date}. Operations will review your request before you can send another.",
@@ -306,7 +318,8 @@ window.I18n = (() => {
       adminMdrProposedChanges: "Proposed changes",
       adminMdrProposedChangesHint:
         "Review the comparison below. Approve to apply the After values automatically.",
-      adminMdrProposedChangesResolved: "Changes that were submitted with this request.",
+      adminMdrProposedChangesResolved:
+        "Changes that were submitted with this request.",
       adminMdrLegacyNote: "Legacy text request",
       adminMdrLegacyApproveBlocked:
         "This older text-only request cannot be approved automatically. Reject it and ask the driver to submit a new form-based request.",
@@ -341,8 +354,7 @@ window.I18n = (() => {
       reportProblemCancelConfirmed: "Cancellation submitted",
       reportProblemSpecialCaseNotice:
         "Dispatch will review this report and follow up.",
-      reportProblemCancelSent:
-        "Your cancellation was sent to dispatch.",
+      reportProblemCancelSent: "Your cancellation was sent to dispatch.",
       reportProblemSpecialCaseSent:
         "Your report was sent. Dispatch will review the special case.",
       profileTitle: "Profile",
@@ -367,9 +379,11 @@ window.I18n = (() => {
         "Provided by dispatch alongside the transport order. View or download only.",
       officialTourDocFromDispatch: "From dispatch",
       regenerate: "Regenerate",
-      toastAssignedElsewhere: "This tour was already assigned to another driver.",
+      toastAssignedElsewhere:
+        "This tour was already assigned to another driver.",
       exportGenerated: "Export generated",
-      exportGeneratedSub: "CSV downloaded with operational and financial fields.",
+      exportGeneratedSub:
+        "CSV downloaded with operational and financial fields.",
       exportCsvBtn: "Export CSV",
       adminFinanceModuleOff:
         "Finance module is disabled. Enable it under Features to edit the ledger.",
@@ -409,7 +423,8 @@ window.I18n = (() => {
         "Your current limit is {current} tour(s) per day ({count} already accepted today). Ask dispatch to raise it.",
       driverDailyLimitRequestedLabel: "Requested daily limit",
       driverDailyLimitRequestNote: "Reason (optional)",
-      driverDailyLimitRequestNotePh: "e.g. Extra tours available in your area today…",
+      driverDailyLimitRequestNotePh:
+        "e.g. Extra tours available in your area today…",
       driverDailyLimitRequestSubmit: "Send request",
       driverDailyLimitRequestSent:
         "Limit increase request sent. Dispatch will review it in Profile change requests.",
@@ -455,13 +470,16 @@ window.I18n = (() => {
         "Submit billing documents for this tour only. PDF or images (JPEG, PNG, WebP, GIF). Demo: file contents are not stored — only the name and metadata.",
       invoiceUploadButton: "Upload invoice",
       invoiceUploadInvalidType: "Only PDF or image files are accepted.",
-      invoiceUploadRestricted: "Uploads are unavailable while your account is restricted.",
+      invoiceUploadRestricted:
+        "Uploads are unavailable while your account is restricted.",
       invoiceUploadAfterCompleteHint:
         "Mark this tour as performed before uploading your invoice. PDF or images (JPEG, PNG, WebP, GIF).",
       invoiceUploadRequiresCompleted:
         "You can upload an invoice only after the tour is marked as performed.",
-      invoiceUploadNotYourTour: "You can only upload invoices for tours assigned to you.",
-      invoiceUploadTourRequired: "Invoice upload must be linked to a valid tour.",
+      invoiceUploadNotYourTour:
+        "You can only upload invoices for tours assigned to you.",
+      invoiceUploadTourRequired:
+        "Invoice upload must be linked to a valid tour.",
       invoiceUploadEmpty: "No uploads yet.",
       invoiceColFile: "File",
       invoiceIdLabel: "Invoice ID",
@@ -540,7 +558,8 @@ window.I18n = (() => {
       adminDocReject: "Reject",
       adminDocErrAlreadyAccepted:
         "This document is already accepted. Use replace only after rejection, or contact dispatch.",
-      adminDocErrNotPending: "Only uploaded documents can be accepted or rejected.",
+      adminDocErrNotPending:
+        "Only uploaded documents can be accepted or rejected.",
       adminDocErrNotRejected:
         "Only rejected documents can be sent for driver correction.",
       adminDocRequireCorrection: "Require correction",
@@ -667,9 +686,11 @@ window.I18n = (() => {
       adminUsersNewDriver: "New driver",
       adminUsersNewAdmin: "New admin",
       adminUsersToastNewDriverTitle: "New driver form",
-      adminUsersToastNewDriverSub: "Demo: production flow will open the driver creation dialog.",
+      adminUsersToastNewDriverSub:
+        "Demo: production flow will open the driver creation dialog.",
       adminUsersToastNewAdminTitle: "New admin form",
-      adminUsersToastNewAdminSub: "Demo: production flow will open the admin creation dialog.",
+      adminUsersToastNewAdminSub:
+        "Demo: production flow will open the admin creation dialog.",
       adminUsersColName: "Name",
       adminUsersColDriverCode: "Driver ID",
       adminUsersColActions: "Actions",
@@ -825,7 +846,8 @@ window.I18n = (() => {
       adminCancelDriverMessagePh:
         "Explain clearly why the tour was cancelled (e.g. customer withdrew the slot).",
       adminCancelMessageCounter: "{count} / {min} characters",
-      adminCancelMessageTooShort: "Driver message must be at least {min} characters.",
+      adminCancelMessageTooShort:
+        "Driver message must be at least {min} characters.",
       adminCancelCutoffBlocked:
         "Cancellation is blocked within {hours} hour(s) of pickup start. Add an override note if allowed.",
       adminCancelOverrideLabel: "Override note (audit)",
@@ -842,15 +864,18 @@ window.I18n = (() => {
       adminOperationalPoliciesBlurb:
         "Configure cutoffs and cancellation rules (stored as app_settings in production).",
       adminPolicyCancelHoursLabel: "Min. hours before pickup — admin cancel",
-      adminPolicyScheduleHoursLabel: "Min. hours before pickup — schedule change",
+      adminPolicyScheduleHoursLabel:
+        "Min. hours before pickup — schedule change",
       adminPolicyMinDriverMsgLabel: "Min. characters — message to driver",
-      adminPolicyDefaultDailyLimitLabel: "Default daily job limit (new drivers)",
+      adminPolicyDefaultDailyLimitLabel:
+        "Default daily job limit (new drivers)",
       adminOperationalPoliciesSave: "Save policies",
       adminOperationalPoliciesSaved: "Operational policies updated.",
       cancellationReason_driver_unavailable: "Driver unavailable",
       cancellationReason_vehicle_not_available: "Vehicle not available",
       cancellationReason_customer_cancelled: "Customer cancelled order",
-      cancellationReason_appointment_not_possible: "Appointment no longer possible",
+      cancellationReason_appointment_not_possible:
+        "Appointment no longer possible",
       cancellationReason_incorrect_order_data: "Incorrect order data",
       cancellationReason_vehicle_not_roadworthy: "Vehicle not roadworthy",
       cancellationReason_other: "Other reason",
@@ -861,7 +886,8 @@ window.I18n = (() => {
         "Draft removed. Use this for mistaken or test entries before publish or assign.",
       draftDeletedTour: "Draft deleted · Tour {tour}",
       deleteDraftBlocked: "Could not delete draft",
-      deleteDraftBlockedSub: "Only draft jobs can be deleted. Cancel or resolve other statuses instead.",
+      deleteDraftBlockedSub:
+        "Only draft jobs can be deleted. Cancel or resolve other statuses instead.",
       adminPhase1PublishedNoAssign:
         "Phase 1: you cannot assign from Published. Return the tour to Draft first, then edit, re-publish, or assign directly.",
       adminRevertToDraft: "Return to draft",
@@ -1037,9 +1063,11 @@ window.I18n = (() => {
       viewDriverPolicy: "View driver policy",
       bindingAcceptance: "Binding acceptance",
       acceptThisTour: "Accept this tour?",
-      acceptanceLegal: "Acceptance is binding. After commitment, use Report Problem to cancel or mark the tour as not performable.",
+      acceptanceLegal:
+        "Acceptance is binding. After commitment, use Report Problem to cancel or mark the tour as not performable.",
       partnerTermsApply: "Driver terms apply.",
-      partnerPolicyAlert: "Demo document: Driver terms are available in the Driver Info area and admin Documents module.",
+      partnerPolicyAlert:
+        "Demo document: Driver terms are available in the Driver Info area and admin Documents module.",
       slideAccepted: "ACCEPTED",
       slideToConfirm: "SLIDE TO CONFIRM →",
       operationalInstructions: "Operational instructions",
@@ -1072,7 +1100,8 @@ window.I18n = (() => {
       pushNotifyNewPublished: "Newly published orders",
       pushNotifyPostalPrefix: "Orders in pickup postal code area",
       pushPostalPrefixHint: "1–2 digit prefix, e.g. 4, 40, or 41",
-      pushSupportNotice: "Android supported in app flow. iOS requires home-screen installation, compatible iOS version, and permission.",
+      pushSupportNotice:
+        "Android supported in app flow. iOS requires home-screen installation, compatible iOS version, and permission.",
       driverNotifications: "Notifications",
       driverNotificationsSub: "Tour and document updates",
       driverNotificationsEmpty: "No notifications yet.",
@@ -1112,12 +1141,14 @@ window.I18n = (() => {
       rejectionPresetRegistration: "Registration number missing",
       rejectionPresetWaiting: "Waiting time not documented comprehensibly",
       signOut: "Sign out",
-      signOutAlert: "Demo sign out: authentication will be implemented in production.",
+      signOutAlert:
+        "Demo sign out: authentication will be implemented in production.",
       all: "All",
       ownAxle: "Own axle",
       thirdPartyAxle: "Third-party axle",
       lightTruck: "Light truck <3.5t",
-      emergencyDispatchNotice: "Emergency dispatch: Mon-Fri 07:00-22:00 CET. Incidents, delays, and anomalies must be reported immediately.",
+      emergencyDispatchNotice:
+        "Emergency dispatch: Mon-Fri 07:00-22:00 CET. Incidents, delays, and anomalies must be reported immediately.",
       vatBankingReadonly: "Address · VAT · banking",
       settlements: "Settlements",
       settlementsSub: "Statements · driver offers",
@@ -1212,11 +1243,16 @@ window.I18n = (() => {
       assignedDirectlyNotice: "Direkt vom Administrator zugewiesen.",
       statusAll: "Status: alle",
       searchJobsPlaceholder: "Tour, Kunde, Fahrer, FIN suchen…",
+      searchMyJobsPlaceholder: "Tour-Nr. oder Stadt suchen…",
+      primaryNavigation: "Hauptnavigation",
+      infopointHelpTab: "Hilfe & FAQ",
       publishBlocked: "Veröffentlichen blockiert",
-      publishBlockedSub: "Nur Entwürfe können veröffentlicht werden (PRD Phase 1).",
+      publishBlockedSub:
+        "Nur Entwürfe können veröffentlicht werden (PRD Phase 1).",
       assignBlocked: "Zuweisung blockiert",
       assignBlockedSub: "Nur Entwürfe können direkt zugewiesen werden.",
-      completionBlocked: "Abschluss ist nur bei Zugewiesen oder Akzeptiert verfügbar.",
+      completionBlocked:
+        "Abschluss ist nur bei Zugewiesen oder Akzeptiert verfügbar.",
       status: {
         draft: "Entwurf",
         published: "Veröffentlicht",
@@ -1351,7 +1387,8 @@ window.I18n = (() => {
       adminInfopointDocAdded: "Dokument hinzugefügt",
       adminInfopointDocRenamed: "Dokument umbenannt",
       adminInfopointNewsUpdated: "Nachricht aktualisiert",
-      adminInfopointPublishRequired: "Betreff und Nachrichtentext sind erforderlich.",
+      adminInfopointPublishRequired:
+        "Betreff und Nachrichtentext sind erforderlich.",
       tourDocumentsSection: "Tour-Dokumente",
       tourDocUploadHint:
         "Tour-Dokumente wie Rechnung, Belege, Lieferschein, Wartezeitnachweis oder sonstige Nachweise hochladen. PDF oder Bilder.",
@@ -1362,7 +1399,8 @@ window.I18n = (() => {
         "Dokument-Upload ist für diesen Tour-Status nicht verfügbar.",
       tourDocUploadEmpty: "Noch keine Dokumente.",
       tourDocEmptyTitle: "Noch keine Dokumente",
-      tourDocEmptyAction: "Belege, Lieferscheine oder Nachweise während der aktiven Tour hinzufügen.",
+      tourDocEmptyAction:
+        "Belege, Lieferscheine oder Nachweise während der aktiven Tour hinzufügen.",
       tourDocUploadSuccess: "Dokument hochgeladen. Die Disposition prüft es.",
       tourDocUploadAvailable: "Upload möglich",
       tourDocRejectionReason: "Ablehnung: {reason}",
@@ -1393,9 +1431,11 @@ window.I18n = (() => {
       sortTourAsc: "Tour-ID (Auf)",
       sortTourDesc: "Tour-ID (Ab)",
       sortJobs: "Aufträge sortieren",
-      myJobsSubtitle: "Verfolgen und aktualisieren Sie Ihre akzeptierten Touren",
+      myJobsSubtitle:
+        "Verfolgen und aktualisieren Sie Ihre akzeptierten Touren",
       profileSubtitle: "Verwalten Sie Ihr Konto, Limits und Einstellungen",
-      infopointSubtitle: "Offizielle Dokumente und Ankündigungen der Disposition",
+      infopointSubtitle:
+        "Offizielle Dokumente und Ankündigungen der Disposition",
       docReviewMissing: "Fehlt",
       docReviewUploaded: "Hochgeladen",
       docReviewUnderReview: "In Prüfung",
@@ -1403,17 +1443,22 @@ window.I18n = (() => {
       docReviewRejected: "Abgelehnt",
       docReviewCorrectionRequired: "Korrektur nötig",
       reportProblemCancelTitle: "Auftrag stornieren",
-      reportProblemCancelSub: "Beendet die Tour und informiert die Disposition.",
+      reportProblemCancelSub:
+        "Beendet die Tour und informiert die Disposition.",
       reportProblemNotPerformableTitle: "Nicht durchführbar melden",
       reportProblemNotPerformableSub: "Erzeugt einen Sonderfall zur Prüfung.",
       reportCancelDriverUnavailable: "Fahrer nicht verfügbar",
-      reportCancelDriverUnavailableSub: "Tour kann zeitlich nicht ausgeführt werden",
+      reportCancelDriverUnavailableSub:
+        "Tour kann zeitlich nicht ausgeführt werden",
       reportCancelVehicleNotAvailable: "Fahrzeug nicht verfügbar",
-      reportCancelVehicleNotAvailableSub: "Fahrzeug kann nicht übergeben werden",
+      reportCancelVehicleNotAvailableSub:
+        "Fahrzeug kann nicht übergeben werden",
       reportCancelCustomerCancelled: "Kunde hat Auftrag storniert",
-      reportCancelCustomerCancelledSub: "Kunde oder Disposition hat zurückgezogen",
+      reportCancelCustomerCancelledSub:
+        "Kunde oder Disposition hat zurückgezogen",
       reportCancelAppointmentNotPossible: "Termin nicht mehr möglich",
-      reportCancelAppointmentNotPossibleSub: "Abhol- oder Lieferfenster nicht mehr machbar",
+      reportCancelAppointmentNotPossibleSub:
+        "Abhol- oder Lieferfenster nicht mehr machbar",
       reportCancelIncorrectData: "Falsche Auftragsdaten",
       reportCancelIncorrectDataSub: "Daten passen nicht zur Realität",
       reportCancelVehicleNotRoadworthy: "Fahrzeug nicht fahrbereit",
@@ -1421,12 +1466,14 @@ window.I18n = (() => {
       reportCancelOther: "Anderer Grund",
       reportCancelOtherSub: "Anderer Stornogrund",
       reportCancelCustomer: "Kunde storniert",
-      reportCancelCustomerSub: "Auftrag vom Kunden oder der Disposition zurückgezogen",
+      reportCancelCustomerSub:
+        "Auftrag vom Kunden oder der Disposition zurückgezogen",
       reportCancelCannotComplete: "Nicht durchführbar",
       reportCancelCannotCompleteSub: "Tour kann nicht ausgeführt werden",
       reportProblemCancelBindingWarning:
         "Sie stornieren diesen Auftrag verbindlich. Eine Stornierung nach Annahme kann gemäß den Fahrerbedingungen Kosten oder weitere Folgen haben. Bitte prüfen Sie Ihre Entscheidung sorgfältig.",
-      reportProblemCancelTermsIntro: "Es gelten die aktuellen Fahrer-Bedingungen.",
+      reportProblemCancelTermsIntro:
+        "Es gelten die aktuellen Fahrer-Bedingungen.",
       reportProblemEvidenceLabel: "Nachweise (optional)",
       reportProblemEvidenceHint:
         "Fotos oder Dokumente helfen der Disposition (PDF oder Bilder, max. 5 Dateien).",
@@ -1446,14 +1493,16 @@ window.I18n = (() => {
         "Bitte mindestens ein Feld ändern, bevor Sie senden.",
       masterDataChangeCompanyRequired: "Firma ist erforderlich.",
       masterDataChangeEmailRequired: "E-Mail ist erforderlich.",
-      masterDataChangeInvalidEmail: "Bitte eine gültige E-Mail-Adresse eingeben.",
+      masterDataChangeInvalidEmail:
+        "Bitte eine gültige E-Mail-Adresse eingeben.",
       masterDataChangeDuplicateEmail:
         "Diese E-Mail wird bereits von einem anderen Fahrer verwendet.",
       masterDataChangePendingChanges: "Eingereichte Änderungen",
       masterDataChangeSentTitle: "Stammdaten-Anfrage",
       masterDataChangeOpenExists:
         "Sie haben bereits eine offene Profiländerungs-Anfrage. Bitte warten Sie, bis die Disposition sie bearbeitet hat.",
-      masterDataChangeSubmitFailed: "Anfrage konnte nicht gesendet werden. Bitte später erneut versuchen.",
+      masterDataChangeSubmitFailed:
+        "Anfrage konnte nicht gesendet werden. Bitte später erneut versuchen.",
       masterDataChangePendingTitle: "Änderungsanfrage ausstehend",
       masterDataChangePendingBody:
         "Eingereicht am {date}. Die Disposition prüft Ihre Anfrage, bevor Sie eine weitere senden können.",
@@ -1511,7 +1560,8 @@ window.I18n = (() => {
       reportProblemCancelConfirmed: "Stornierung gesendet",
       reportProblemSpecialCaseNotice:
         "Die Disposition prüft den Bericht und meldet sich.",
-      reportProblemCancelSent: "Ihre Stornierung wurde an die Disposition gesendet.",
+      reportProblemCancelSent:
+        "Ihre Stornierung wurde an die Disposition gesendet.",
       reportProblemSpecialCaseSent:
         "Ihr Bericht wurde gesendet. Die Disposition prüft den Sonderfall.",
       profileTitle: "Profil",
@@ -1536,16 +1586,19 @@ window.I18n = (() => {
         "Von der Disposition bereitgestellt — neben dem Transportauftrag. Nur ansehen oder herunterladen.",
       officialTourDocFromDispatch: "Von Disposition",
       regenerate: "Neu erzeugen",
-      toastAssignedElsewhere: "Diese Tour wurde bereits einem anderen Fahrer zugewiesen.",
+      toastAssignedElsewhere:
+        "Diese Tour wurde bereits einem anderen Fahrer zugewiesen.",
       exportGenerated: "Export erstellt",
-      exportGeneratedSub: "CSV mit operativen und finanziellen Feldern heruntergeladen.",
+      exportGeneratedSub:
+        "CSV mit operativen und finanziellen Feldern heruntergeladen.",
       exportCsvBtn: "CSV exportieren",
       adminFinanceModuleOff:
         "Finanzmodul ist deaktiviert. Unter Funktionen aktivieren, um das Ledger zu bearbeiten.",
       adminSnapshotInvoiceYes: "Ja",
       adminSnapshotInvoiceNo: "Nein",
       publishedTour: "Veröffentlicht · Tour {tour}",
-      publishedPortalVisible: "Als reduzierte Vorschau im Fahrer-Portal sichtbar.",
+      publishedPortalVisible:
+        "Als reduzierte Vorschau im Fahrer-Portal sichtbar.",
       assignedDriver: "Zugewiesen · {driver}",
       assignedTour: "Tour {tour}",
       cancellationBlocked: "Stornierung blockiert",
@@ -1578,7 +1631,8 @@ window.I18n = (() => {
         "Ihr aktuelles Limit ist {current} Tour(en) pro Tag ({count} heute bereits angenommen). Bitten Sie die Disposition um eine Erhöhung.",
       driverDailyLimitRequestedLabel: "Gewünschtes Tageslimit",
       driverDailyLimitRequestNote: "Begründung (optional)",
-      driverDailyLimitRequestNotePh: "z. B. Heute zusätzliche Touren in Ihrer Region…",
+      driverDailyLimitRequestNotePh:
+        "z. B. Heute zusätzliche Touren in Ihrer Region…",
       driverDailyLimitRequestSubmit: "Anfrage senden",
       driverDailyLimitRequestSent:
         "Anfrage gesendet. Die Disposition prüft sie unter Profiländerungen.",
@@ -1624,7 +1678,8 @@ window.I18n = (() => {
         "Rechnungsnachweise nur für diese Tour. Nur PDF oder Bilder (JPEG, PNG, WebP, GIF). Demo: keine Speicherung der Datei — nur Name und Metadaten.",
       invoiceUploadButton: "Rechnung hochladen",
       invoiceUploadInvalidType: "Nur PDF- oder Bilddateien sind erlaubt.",
-      invoiceUploadRestricted: "Upload nicht möglich, solange das Konto eingeschränkt ist.",
+      invoiceUploadRestricted:
+        "Upload nicht möglich, solange das Konto eingeschränkt ist.",
       invoiceUploadAfterCompleteHint:
         "Tour zuerst als durchgeführt markieren, danach Rechnung hochladen. PDF oder Bilder (JPEG, PNG, WebP, GIF).",
       invoiceUploadRequiresCompleted:
@@ -1706,7 +1761,8 @@ window.I18n = (() => {
       adminSpecialCaseClose: "Schließen",
       adminSpecialCaseCancel: "Tour stornieren",
       adminSpecialCaseResolved: "Sonderfall aktualisiert.",
-      adminSpecialCaseResolveFailed: "Sonderfall konnte nicht aufgelöst werden.",
+      adminSpecialCaseResolveFailed:
+        "Sonderfall konnte nicht aufgelöst werden.",
       adminDocAccept: "Akzeptieren",
       adminDocReject: "Ablehnen",
       adminDocErrAlreadyAccepted:
@@ -1840,9 +1896,11 @@ window.I18n = (() => {
       adminUsersNewDriver: "Neuer Fahrer",
       adminUsersNewAdmin: "Neuer Admin",
       adminUsersToastNewDriverTitle: "Neues Fahrerformular",
-      adminUsersToastNewDriverSub: "Demo: Im Produktivbetrieb öffnet sich der Fahrer-Anlegedialog.",
+      adminUsersToastNewDriverSub:
+        "Demo: Im Produktivbetrieb öffnet sich der Fahrer-Anlegedialog.",
       adminUsersToastNewAdminTitle: "Neues Adminformular",
-      adminUsersToastNewAdminSub: "Demo: Im Produktivbetrieb öffnet sich der Admin-Anlegedialog.",
+      adminUsersToastNewAdminSub:
+        "Demo: Im Produktivbetrieb öffnet sich der Admin-Anlegedialog.",
       adminUsersColName: "Name",
       adminUsersColDriverCode: "Fahrer-ID",
       adminUsersColActions: "Aktionen",
@@ -1897,7 +1955,8 @@ window.I18n = (() => {
       adminFinanceEditRow: "Bearbeiten",
       adminFinanceEditTitle: "Tour-Finanzen bearbeiten",
       adminFinanceSaved: "Finanzdaten gespeichert.",
-      adminFinanceErrSave: "Finanzen für diese Tour konnten nicht gespeichert werden.",
+      adminFinanceErrSave:
+        "Finanzen für diese Tour konnten nicht gespeichert werden.",
       adminDocumentsPaneDesc:
         "Allgemeine Dokumente und kurze Nachrichten für Fahrer veröffentlichen. Fahrer sehen sie unter Infopoint — nicht in Tour-Benachrichtigungen oder der Marktplatz-Glocke.",
       adminUsersDriversTitle: "Benutzer & Fahrer",
@@ -1939,7 +1998,8 @@ window.I18n = (() => {
       adminUsersErrNameRequired: "Name ist erforderlich.",
       adminUsersErrCompanyRequired: "Firma ist erforderlich.",
       adminUsersErrDriverCodeRequired: "Fahrer-ID ist erforderlich.",
-      adminUsersErrDriverCodeDuplicate: "Diese Fahrer-ID wird bereits verwendet.",
+      adminUsersErrDriverCodeDuplicate:
+        "Diese Fahrer-ID wird bereits verwendet.",
       adminUsersErrEmailRequired: "E-Mail ist für den Login erforderlich.",
       adminUsersErrEmailInvalid: "Bitte eine gültige E-Mail-Adresse eingeben.",
       adminUsersSave: "Speichern",
@@ -2003,7 +2063,8 @@ window.I18n = (() => {
       adminCancelCutoffBlocked:
         "Stornierung innerhalb von {hours} Stunde(n) vor Abholbeginn gesperrt.",
       adminCancelOverrideLabel: "Override-Notiz (Audit)",
-      adminCancelOverridePh: "Warum stornieren Sie innerhalb des Cutoff-Fensters?",
+      adminCancelOverridePh:
+        "Warum stornieren Sie innerhalb des Cutoff-Fensters?",
       adminCancelJobConfirmBtn: "Stornierung bestätigen",
       adminScheduleCutoffBlocked:
         "Terminänderung ist innerhalb von {hours} Stunde(n) vor Abholbeginn blockiert. Override-Notiz hinzufügen, falls erlaubt.",
@@ -2016,7 +2077,8 @@ window.I18n = (() => {
       adminOperationalPoliciesBlurb:
         "Cutoffs und Stornierungsregeln konfigurieren (Produktion: app_settings).",
       adminPolicyCancelHoursLabel: "Min. Stunden vor Abholung — Admin-Storno",
-      adminPolicyScheduleHoursLabel: "Min. Stunden vor Abholung — Terminänderung",
+      adminPolicyScheduleHoursLabel:
+        "Min. Stunden vor Abholung — Terminänderung",
       adminPolicyMinDriverMsgLabel: "Min. Zeichen — Nachricht an Fahrer",
       adminPolicyDefaultDailyLimitLabel: "Standard Tageslimit (neue Fahrer)",
       adminOperationalPoliciesSave: "Richtlinien speichern",
@@ -2213,9 +2275,11 @@ window.I18n = (() => {
       viewDriverPolicy: "Fahrerrichtlinie ansehen",
       bindingAcceptance: "Verbindliche Annahme",
       acceptThisTour: "Diese Tour annehmen?",
-      acceptanceLegal: "Die Annahme ist verbindlich. Danach Problem melden nutzen, um zu stornieren oder die Tour als nicht durchführbar zu melden.",
+      acceptanceLegal:
+        "Die Annahme ist verbindlich. Danach Problem melden nutzen, um zu stornieren oder die Tour als nicht durchführbar zu melden.",
       partnerTermsApply: "Es gelten die Fahrerbedingungen.",
-      partnerPolicyAlert: "Demo-Dokument: Fahrerbedingungen sind im Fahrer-Infobereich und im Admin-Dokumentenmodul verfügbar.",
+      partnerPolicyAlert:
+        "Demo-Dokument: Fahrerbedingungen sind im Fahrer-Infobereich und im Admin-Dokumentenmodul verfügbar.",
       slideAccepted: "ANGENOMMEN",
       slideToConfirm: "ZUM BESTÄTIGEN SCHIEBEN →",
       operationalInstructions: "Operative Hinweise",
@@ -2224,8 +2288,10 @@ window.I18n = (() => {
       reportProblemDeadlineNote:
         "Problem melden bleibt nach Annahme verfügbar ({deadline}){closed}",
       closedSuffix: " · geschlossen",
-      cutoffBeforeJob: "Frist: Ende des Vortags der Tour · ({deadline}){closed}",
-      returnPlaceholder: "Beschreiben Sie, was passiert ist (mind. 10 Zeichen).",
+      cutoffBeforeJob:
+        "Frist: Ende des Vortags der Tour · ({deadline}){closed}",
+      returnPlaceholder:
+        "Beschreiben Sie, was passiert ist (mind. 10 Zeichen).",
       returnSubmissionNotice:
         "Das Betriebsteam prüft jede Meldung; bitte unter der registrierten Mobilnummer erreichbar bleiben.",
       returnSentStatus: "Status:",
@@ -2248,7 +2314,8 @@ window.I18n = (() => {
       pushNotifyNewPublished: "Neu veröffentlichte Aufträge",
       pushNotifyPostalPrefix: "Aufträge im Abhol-PLZ-Gebiet",
       pushPostalPrefixHint: "1–2-stelliges Präfix, z. B. 4, 40 oder 41",
-      pushSupportNotice: "Android wird im App-Ablauf unterstützt. iOS erfordert Installation auf dem Homescreen, eine kompatible iOS-Version und Berechtigung.",
+      pushSupportNotice:
+        "Android wird im App-Ablauf unterstützt. iOS erfordert Installation auf dem Homescreen, eine kompatible iOS-Version und Berechtigung.",
       driverNotifications: "Benachrichtigungen",
       driverNotificationsSub: "Tour- und Dokument-Updates",
       driverNotificationsEmpty: "Noch keine Benachrichtigungen.",
@@ -2271,7 +2338,8 @@ window.I18n = (() => {
       contactInfoNotes: "Kontakthinweise",
       addAnotherContact: "Weiteren Kontakt hinzufügen",
       showAdditionalContacts: "Zusätzliche Kontaktdaten anzeigen",
-      updateMasterDataFromEntry: "Verknüpfte Stammdaten aus diesem Eintrag aktualisieren",
+      updateMasterDataFromEntry:
+        "Verknüpfte Stammdaten aus diesem Eintrag aktualisieren",
       markDocumentChecked: "Als geprüft markieren",
       tourDocUploadReceiptButton: "Dokument / Beleg hochladen",
       tourDocHelperFuel:
@@ -2288,12 +2356,14 @@ window.I18n = (() => {
       rejectionPresetRegistration: "Kennzeichen fehlt",
       rejectionPresetWaiting: "Wartezeit nicht nachvollziehbar dokumentiert",
       signOut: "Abmelden",
-      signOutAlert: "Demo-Abmeldung: Authentifizierung wird in der Produktion implementiert.",
+      signOutAlert:
+        "Demo-Abmeldung: Authentifizierung wird in der Produktion implementiert.",
       all: "Alle",
       ownAxle: "Eigene Achse",
       thirdPartyAxle: "Fremdachse",
       lightTruck: "Leicht-Lkw <3,5 t",
-      emergencyDispatchNotice: "Notfall-Disposition: Mo-Fr 07:00-22:00 CET. Vorfälle, Verzögerungen und Auffälligkeiten müssen sofort gemeldet werden.",
+      emergencyDispatchNotice:
+        "Notfall-Disposition: Mo-Fr 07:00-22:00 CET. Vorfälle, Verzögerungen und Auffälligkeiten müssen sofort gemeldet werden.",
       vatBankingReadonly: "Adresse · USt. · Bankdaten",
       settlements: "Abrechnungen",
       settlementsSub: "Abrechnungen · Auszahlungen",
@@ -2304,9 +2374,11 @@ window.I18n = (() => {
       legal: "Rechtliches",
       legalSub: "AGB · Datenschutz · Impressum",
       autheonWorkflow: "AUTHEON Ablauf",
-      autheonWorkflowSub: "Unterschied zwischen Marktplatz- und zugewiesenen Touren",
+      autheonWorkflowSub:
+        "Unterschied zwischen Marktplatz- und zugewiesenen Touren",
       bindingAcceptanceInfo: "Verbindliche Annahme",
-      bindingAcceptanceInfoSub: "Rechtliche Verpflichtung nach dem Schieben zur Bestätigung",
+      bindingAcceptanceInfoSub:
+        "Rechtliche Verpflichtung nach dem Schieben zur Bestätigung",
       reportProblemGuide: "Probleme & Vorfälle",
       reportProblemGuideSub: "Wann storniert oder ein Sonderfall erstellt wird",
       settlementRhythm: "Abrechnungsrhythmus",
@@ -2343,14 +2415,18 @@ window.I18n = (() => {
       docCategorySafety: "Sicherheit",
       docScopeGlobal: "Global",
       noteConfirmArrival: "Bitte Ankunft 15 Minuten vorher bestätigen.",
-      noteReportPickupDelay: "Verzögerungen bei der Abholung sofort an die Disposition melden.",
+      noteReportPickupDelay:
+        "Verzögerungen bei der Abholung sofort an die Disposition melden.",
     },
   };
 
   function getLocale() {
     const stored = localStorage.getItem(LOCALE_KEY);
     if (stored && MESSAGES[stored]) return stored;
-    return navigator.language && navigator.language.toLowerCase().startsWith("de") ? "de" : "en";
+    return navigator.language &&
+      navigator.language.toLowerCase().startsWith("de")
+      ? "de"
+      : "en";
   }
 
   let locale = getLocale();
@@ -2374,7 +2450,12 @@ window.I18n = (() => {
   }
 
   function readKey(obj, key) {
-    return key.split(".").reduce((acc, part) => (acc && acc[part] != null ? acc[part] : undefined), obj);
+    return key
+      .split(".")
+      .reduce(
+        (acc, part) => (acc && acc[part] != null ? acc[part] : undefined),
+        obj,
+      );
   }
 
   function t(key, vars) {
@@ -2384,7 +2465,9 @@ window.I18n = (() => {
     if (value == null) value = readKey(fallback, key);
     if (typeof value !== "string") return key;
     if (!vars) return value;
-    return value.replace(/\{(\w+)\}/g, (_, token) => (vars[token] == null ? "" : String(vars[token])));
+    return value.replace(/\{(\w+)\}/g, (_, token) =>
+      vars[token] == null ? "" : String(vars[token]),
+    );
   }
 
   window.useI18n = function useI18n() {
