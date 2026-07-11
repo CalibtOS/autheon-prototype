@@ -12,6 +12,8 @@
     "test:smoke": "playwright test tests/e2e/smoke --project=chromium",
     "test:regression": "playwright test tests/regression --project=chromium",
     "test:regression:update": "playwright test tests/regression --update-snapshots --project=chromium",
+    "test:regression:visual": "playwright test tests/regression --grep @visual-regression --project=chromium",
+    "test:regression:visual:update": "playwright test tests/regression --grep @visual-regression --update-snapshots --project=chromium",
     "test:report": "playwright show-report",
     "test:install-browsers": "playwright install chromium",
     "test:list": "playwright test --list",
