@@ -52,7 +52,10 @@ export async function openDriverTab(
   page: Page,
   label: RegExp,
 ): Promise<void> {
-  await prototypeFrame(page).locator('.tabbar').getByRole('button', { name: label }).click();
+  await prototypeFrame(page)
+    .locator('.tabbar-capsule')
+    .getByRole('button', { name: label })
+    .click();
   await settleForCapture(page);
 }
 

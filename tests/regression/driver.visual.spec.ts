@@ -32,7 +32,7 @@ function marketplaceDateMask(page: import('@playwright/test').Page) {
 
 /** Open the first published tour card from the marketplace. */
 async function openMarketplaceJob(page: import('@playwright/test').Page) {
-  const card = prototypeFrame(page).locator('.jobcard').first();
+  const card = prototypeFrame(page).locator('.jobcard-btn').first();
   await expect(card).toBeVisible();
   await card.click();
   await expect(
@@ -46,12 +46,10 @@ async function openMarketplaceJob(page: import('@playwright/test').Page) {
 /** Open the first accepted/active tour from the My jobs list (execution detail). */
 async function openMyJobsExecution(page: import('@playwright/test').Page) {
   await openDriverTab(page, TAB.myJobs);
-  const card = prototypeFrame(page).locator('.jobcard').first();
+  const card = prototypeFrame(page).locator('.jobcard-btn').first();
   await expect(card).toBeVisible();
   await card.click();
-  await expect(
-    prototypeFrame(page).getByText(/execution detail|Ausführungsdetail/i),
-  ).toBeVisible();
+  await expect(prototypeFrame(page).locator('.detail-header-title')).toBeVisible();
   await settleForCapture(page);
 }
 
@@ -80,7 +78,7 @@ test.describe('Driver PWA visual regression @visual-regression', () => {
     await prepareDriverVisual(page);
     await openDriverTab(page, TAB.myJobs);
     await prototypeFrame(page)
-      .locator('.tabs')
+      .locator('.myjobs-tabs-slider')
       .getByRole('button', { name: /Performed|Durchgeführt/i })
       .click();
     await settleForCapture(page);
@@ -91,7 +89,7 @@ test.describe('Driver PWA visual regression @visual-regression', () => {
     await prepareDriverVisual(page);
     await openDriverTab(page, TAB.myJobs);
     await prototypeFrame(page)
-      .locator('.tabs')
+      .locator('.myjobs-tabs-slider')
       .getByRole('button', { name: /Cancelled|Storniert/i })
       .click();
     await settleForCapture(page);
@@ -102,7 +100,7 @@ test.describe('Driver PWA visual regression @visual-regression', () => {
     await prepareDriverVisual(page);
     await openDriverTab(page, TAB.myJobs);
     await prototypeFrame(page)
-      .locator('.tabs')
+      .locator('.myjobs-tabs-slider')
       .getByRole('button', { name: /Special|Sonderf/i })
       .click();
     await settleForCapture(page);
