@@ -20,14 +20,15 @@ function StatusPill({ status, children, className = "" }) {
 // ---------------------------------------------------------------------------
 // Badge — numeric notification badge (99+ cap)
 // ---------------------------------------------------------------------------
-function Badge({ count, variant = "primary", className = "" }) {
+function Badge({ count, variant = "primary", className = "", ariaHidden = false }) {
   const n = Number(count) || 0;
   if (n <= 0) return null;
   const label = n > 99 ? "99+" : String(n);
   return (
     <span
       className={`ui-badge ui-badge-${variant} ${className}`.trim()}
-      aria-label={label}
+      aria-hidden={ariaHidden || undefined}
+      aria-label={ariaHidden ? undefined : label}
     >
       {label}
     </span>

@@ -884,9 +884,7 @@ const Portal = ({
       </div>
     );
   }
-  const unreadNotif = store
-    .getDriverNotifications()
-    .filter((n) => !n.read).length;
+  const unreadNotif = store.getDriverNotificationUnreadCount();
   const all = store.getJobs().filter((j) => j.status === "published");
   const filtered = all.filter((j) => jobMatchesDriverFilters(j, filters));
 
@@ -970,18 +968,22 @@ const Portal = ({
             type="button"
             className="header-bell-btn"
             title={t("driverNotifications")}
-            aria-label={t("driverNotifications")}
+            aria-label={
+              unreadNotif > 0
+                ? `${t("driverNotifications")} (${unreadNotif})`
+                : t("driverNotifications")
+            }
             aria-expanded={notificationsOpen}
             aria-haspopup="dialog"
             onClick={() => onOpenNotifications?.()}
           >
             <Ic.Bell />
-            {unreadNotif > 0 ? (
-              <span
-                className="ui-badge ui-badge-destructive ui-badge-dot bell-badge"
-                aria-hidden="true"
-              />
-            ) : null}
+            <Badge
+              count={unreadNotif}
+              variant="destructive"
+              className="bell-badge"
+              ariaHidden
+            />
           </button>
         </div>
 
