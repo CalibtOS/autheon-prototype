@@ -72,6 +72,16 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
     await expect(page).toHaveScreenshot('admin-new-order.png', { fullPage: true });
   });
 
+  test('edit order form screen', async ({ page }) => {
+    await prepareAdminVisual(page);
+    await openJob(page, '0839-26'); // draft -> editable
+    await prototypeFrame(page)
+      .getByRole('button', { name: /Edit draft|Entwurf bearbeiten/i })
+      .click();
+    await settleForCapture(page);
+    await expect(page).toHaveScreenshot('admin-edit-order.png', { fullPage: true });
+  });
+
   test('notification feed screen', async ({ page }) => {
     await prepareAdminVisual(page);
     await openAdminSection(page, NAV.notifications);
@@ -102,10 +112,20 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
     await expect(page).toHaveScreenshot('admin-addresses.png', { fullPage: true });
   });
 
-  test('infopoint screen', async ({ page }) => {
+  test('infopoint screen (documents tab)', async ({ page }) => {
     await prepareAdminVisual(page);
     await openAdminSection(page, NAV.infopoint);
     await expect(page).toHaveScreenshot('admin-infopoint.png', { fullPage: true });
+  });
+
+  test('infopoint screen (news tab)', async ({ page }) => {
+    await prepareAdminVisual(page);
+    await openAdminSection(page, NAV.infopoint);
+    await prototypeFrame(page)
+      .getByRole('button', { name: /New messages|Neue Nachrichten/i })
+      .click();
+    await settleForCapture(page);
+    await expect(page).toHaveScreenshot('admin-infopoint-news.png', { fullPage: true });
   });
 
   test('tour documents (billing) screen', async ({ page }) => {
@@ -279,6 +299,21 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
       .click();
     await waitForOpenDialog(page);
     await expect(page).toHaveScreenshot('admin-tour-billing-view-invoice.png', { fullPage: true });
+  });
+
+  test('tour document accept invoice dialog', async ({ page }) => {
+    await prepareAdminVisual(page);
+    await openAdminSection(page, NAV.tourDocs);
+    // Only invoice-type documents open the accept dialog (others accept
+    // instantly), so target the invoice row specifically.
+    await prototypeFrame(page)
+      .locator('tr')
+      .filter({ hasText: 'driver-invoice-0842.pdf' })
+      .first()
+      .getByRole('button', { name: /^Accept$|^Akzeptieren$/i })
+      .click();
+    await waitForOpenDialog(page);
+    await expect(page).toHaveScreenshot('admin-tour-billing-accept-invoice.png', { fullPage: true });
   });
 
   test('admin toast notification', async ({ page }) => {
