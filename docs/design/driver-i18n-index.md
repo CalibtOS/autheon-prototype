@@ -93,16 +93,16 @@
 | `fromDateChip` | From {date} | Ab {date} |
 | `fullAddresses` | Full pickup and delivery addresses | Vollständige Abhol- und Lieferadressen |
 | `helpAndSupport` | Help & support | Hilfe & Support |
-| `helpSupportIntro` | Quick answers for common driver questions. Contact dispatch if you need help on the road. | Kurze Antworten auf häufige Fahrerfragen. Wende dich an die Disposition, wenn du unterwegs Hilfe brauchst. |
+| `helpSupportIntro` | Contact dispatch if you need help on the road. | Wende dich an die Disposition, wenn du unterwegs Hilfe brauchst. |
 | `helpSupportTitle` | Help & support | Hilfe & Support |
 | `infopoint` | Infopoint | Infopoint |
 | `infopointDocPreviewDemo` | PDF preview (demo) | PDF-Vorschau (Demo) |
 | `infopointDocViewDownload` | View / Download | Ansehen / Herunterladen |
-| `infopointDocsTab` | General documents | General documents |
-| `infopointHelpTab` | Help & FAQ | Hilfe & FAQ |
+| `infopointDocsTab` | General documents | Allgemeine Dokumente |
+| `infopointHelpTab` | Help | Hilfe |
 | `infopointNewsAdminHint` | Messages are published by admins under Admin → Infopoint → New messages. | Nachrichten werden im Admin unter Infopoint → Neue Nachrichten veröffentlicht. |
 | `infopointNewsEmpty` | No news items yet. | Noch keine News. |
-| `infopointNewsTab` | New messages | New messages |
+| `infopointNewsTab` | New messages | Neue Nachrichten |
 | `infopointSubtitle` | Official documents and dispatcher announcements | Offizielle Dokumente und Ankündigungen der Disposition |
 | `instructionsPdf` | Operational instructions and PDF | Operative Hinweise und PDF |
 | `invoiceUploadInvalidType` | Only PDF or image files are accepted. | Nur PDF- oder Bilddateien sind erlaubt. |
@@ -172,7 +172,6 @@
 | `problemReasonWrongAddressSub` | Location does not match order | Ort stimmt nicht mit Auftrag überein |
 | `profile` | Profile | Profil |
 | `profileEmailSupport` | Email support | E-Mail-Support |
-| `profileFaqsTitle` | FAQs | FAQ |
 | `profileMasterData` | Read-only master data | Stammdaten (nur lesbar) |
 | `profileSubtitle` | Manage your account, limits and preferences | Verwalten Sie Ihr Konto, Limits und Einstellungen |
 | `profileTitle` | Profile | Profil |

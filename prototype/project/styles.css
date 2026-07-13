@@ -4018,44 +4018,6 @@ textarea.input {
   color: var(--text);
   flex: 1;
 }
-.phone-shell .faq-item {
-  border-bottom: 1px solid var(--line);
-}
-.phone-shell .faq-item:last-child {
-  border-bottom: none;
-}
-.phone-shell .faq-q {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 13px 0;
-  background: none;
-  border: none;
-  text-align: left;
-  cursor: pointer;
-  color: var(--text);
-  font-family: inherit;
-  font-size: var(--text-body-sm);
-  font-weight: 600;
-  min-height: 44px;
-}
-.phone-shell .faq-q .chev {
-  flex-shrink: 0;
-  color: var(--muted-2);
-  transition: transform 0.15s ease;
-}
-.phone-shell .faq-q[aria-expanded="true"] .chev {
-  transform: rotate(90deg);
-}
-.phone-shell .faq-a {
-  margin: 0 0 13px;
-  font-size: var(--text-caption);
-  font-weight: 400;
-  color: var(--muted);
-  line-height: 1.55;
-}
 .phone-shell .contact-row {
   display: flex;
   align-items: center;

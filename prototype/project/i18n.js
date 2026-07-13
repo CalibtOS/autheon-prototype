@@ -49,7 +49,7 @@ window.I18n = (() => {
       searchJobsPlaceholder: "Search tour, customer, driver, VIN…",
       searchMyJobsPlaceholder: "Search tour no. or city…",
       primaryNavigation: "Primary navigation",
-      infopointHelpTab: "Help & FAQ",
+      infopointHelpTab: "Help",
       publishBlocked: "Publish blocked",
       publishBlockedSub: "Only Draft tours can be published (PRD Phase 1).",
       assignBlocked: "Assignment blocked",
@@ -1167,36 +1167,13 @@ window.I18n = (() => {
       notificationsSub: "Push filters mirror Portal preferences",
       legal: "Legal",
       legalSub: "Terms · privacy · imprint",
-      autheonWorkflow: "AUTHEON workflow",
-      autheonWorkflowSub: "How marketplace vs assigned tours differ",
-      bindingAcceptanceInfo: "Binding acceptance",
-      bindingAcceptanceInfoSub: "Legal commitment after sliding to confirm",
-      reportProblemGuide: "Problems & incidents",
-      reportProblemGuideSub: "When to cancel or create a special case",
-      settlementRhythm: "Settlement rhythm",
-      settlementRhythmSub: "Invoice SLA reminders from PDF wording",
       dispatcherHotline: "Dispatcher hotline",
       dispatcherHotlineSub: "Mon-Fri 07:00-22:00 CET (demo)",
       helpSupportTitle: "Help & support",
       helpSupportIntro:
-        "Quick answers for common driver questions. Contact dispatch if you need help on the road.",
-      profileFaqsTitle: "FAQs",
+        "Contact dispatch if you need help on the road.",
       profileEmailSupport: "Email support",
       mailtoSubjectSupport: "AUTHEON driver support — {driverCode}",
-      faqMasterDataChange: "How do I change my company or contact details?",
-      faqDailyLimit: "What is the daily acceptance limit?",
-      faqAutheonWorkflowA:
-        "Published tours on the Marketplace are open to eligible drivers. Assigned tours were sent to you directly by dispatch. After you slide to accept, the tour is binding and appears under My jobs.",
-      faqBindingAcceptanceA:
-        "Sliding to confirm means you commit to perform the tour. You can still report a problem later if something prevents completion, but casual browsing should not end in acceptance.",
-      faqReportProblemA:
-        "Use Report problem on an active tour for cancellation or not-performable cases after acceptance. Add a short explanation and optional photos so dispatch can resolve or create a special case.",
-      faqSettlementA:
-        "Upload your driver invoice and supporting documents after performing a tour. Settlement reminders follow the deadlines shown in your driver terms and transport documents.",
-      faqMasterDataChangeA:
-        "Profile master data is read-only in the app. Tap Request profile change, edit the fields, and submit a note. Dispatch reviews one open request at a time.",
-      faqDailyLimitA:
-        "You can accept only a limited number of tours per pickup day. The Profile card shows today's usage. Request a higher limit if dispatch should review an exception.",
       docGeneralWorkInstructions: "General work instructions",
       docDriverTerms: "Driver terms",
       docEmergencyContacts: "Emergency contacts",
@@ -1254,7 +1231,7 @@ window.I18n = (() => {
       searchJobsPlaceholder: "Tour, Kunde, Fahrer, FIN suchen…",
       searchMyJobsPlaceholder: "Tour-Nr. oder Stadt suchen…",
       primaryNavigation: "Hauptnavigation",
-      infopointHelpTab: "Hilfe & FAQ",
+      infopointHelpTab: "Hilfe",
       publishBlocked: "Veröffentlichen blockiert",
       publishBlockedSub:
         "Nur Entwürfe können veröffentlicht werden (PRD Phase 1).",
@@ -1357,8 +1334,8 @@ window.I18n = (() => {
       specialCaseTab: "Sonderfall",
       correctionRequiredBadge: "Korrektur",
       infopoint: "Infopoint",
-      infopointDocsTab: "General documents",
-      infopointNewsTab: "New messages",
+      infopointDocsTab: "Allgemeine Dokumente",
+      infopointNewsTab: "Neue Nachrichten",
       infopointNewsEmpty: "Noch keine News.",
       infopointNewsUnread: "Neu",
       infopointNewsAdminHint:
@@ -2391,38 +2368,13 @@ window.I18n = (() => {
       notificationsSub: "Push-Filter spiegeln die Portal-Einstellungen",
       legal: "Rechtliches",
       legalSub: "AGB · Datenschutz · Impressum",
-      autheonWorkflow: "AUTHEON Ablauf",
-      autheonWorkflowSub:
-        "Unterschied zwischen Marktplatz- und zugewiesenen Touren",
-      bindingAcceptanceInfo: "Verbindliche Annahme",
-      bindingAcceptanceInfoSub:
-        "Rechtliche Verpflichtung nach dem Schieben zur Bestätigung",
-      reportProblemGuide: "Probleme & Vorfälle",
-      reportProblemGuideSub: "Wann storniert oder ein Sonderfall erstellt wird",
-      settlementRhythm: "Abrechnungsrhythmus",
-      settlementRhythmSub: "Rechnungsfristen aus der PDF-Formulierung",
       dispatcherHotline: "Dispatcher-Hotline",
       dispatcherHotlineSub: "Mo-Fr 07:00-22:00 CET (Demo)",
       helpSupportTitle: "Hilfe & Support",
       helpSupportIntro:
-        "Kurze Antworten auf häufige Fahrerfragen. Wende dich an die Disposition, wenn du unterwegs Hilfe brauchst.",
-      profileFaqsTitle: "FAQ",
+        "Wende dich an die Disposition, wenn du unterwegs Hilfe brauchst.",
       profileEmailSupport: "E-Mail-Support",
       mailtoSubjectSupport: "AUTHEON Fahrer-Support — {driverCode}",
-      faqMasterDataChange: "Wie ändere ich Firmen- oder Kontaktdaten?",
-      faqDailyLimit: "Was ist das tägliche Annahmelimit?",
-      faqAutheonWorkflowA:
-        "Veröffentlichte Touren im Marktplatz stehen berechtigten Fahrern offen. Zugewiesene Touren hat die Disposition dir direkt geschickt. Nach dem Schieben zur Bestätigung ist die Tour verbindlich und erscheint unter Meine Touren.",
-      faqBindingAcceptanceA:
-        "Das Schieben zur Bestätigung bedeutet, dass du die Tour durchführst. Du kannst später trotzdem ein Problem melden, wenn die Durchführung nicht möglich ist — ein bloßes Durchsehen sollte nicht zur Annahme führen.",
-      faqReportProblemA:
-        "Nutze Problem melden bei einer aktiven Tour für Storno oder nicht durchführbare Fälle nach Annahme. Füge eine kurze Erklärung und optional Fotos hinzu, damit die Disposition entscheiden oder einen Sonderfall anlegen kann.",
-      faqSettlementA:
-        "Lade nach der Durchführung deine Fahrerrechnung und Belege hoch. Abrechnungserinnerungen folgen den Fristen aus Fahrerbedingungen und Transportdokumenten.",
-      faqMasterDataChangeA:
-        "Stammdaten sind in der App schreibgeschützt. Tippe auf Profiländerung anfragen, bearbeite die Felder und sende eine Notiz. Die Disposition prüft jeweils nur eine offene Anfrage.",
-      faqDailyLimitA:
-        "Du kannst pro Abholtag nur eine begrenzte Anzahl Touren annehmen. Die Profilkarte zeigt die heutige Nutzung. Fordere ein höheres Limit an, wenn die Disposition eine Ausnahme prüfen soll.",
       docGeneralWorkInstructions: "Allgemeine Arbeitsanweisungen",
       docDriverTerms: "Fahrerbedingungen",
       docEmergencyContacts: "Notfallkontakte",

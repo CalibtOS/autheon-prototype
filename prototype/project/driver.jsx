@@ -3483,57 +3483,12 @@ const DriverDailyLimitCard = ({ onRequestIncrease }) => {
   );
 };
 
-const PROFILE_FAQ_ITEMS = [
-  {
-    id: "workflow",
-    questionKey: "autheonWorkflow",
-    answerKey: "faqAutheonWorkflowA",
-  },
-  {
-    id: "binding",
-    questionKey: "bindingAcceptanceInfo",
-    answerKey: "faqBindingAcceptanceA",
-  },
-  {
-    id: "report",
-    questionKey: "reportProblemGuide",
-    answerKey: "faqReportProblemA",
-  },
-  {
-    id: "settlement",
-    questionKey: "settlementRhythm",
-    answerKey: "faqSettlementA",
-  },
-  {
-    id: "masterData",
-    questionKey: "faqMasterDataChange",
-    answerKey: "faqMasterDataChangeA",
-  },
-  {
-    id: "dailyLimit",
-    questionKey: "faqDailyLimit",
-    answerKey: "faqDailyLimitA",
-  },
-];
-
-const profileContactLinkStyle = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  fontSize: 13,
-  color: "var(--text)",
-  textDecoration: "underline",
-  textUnderlineOffset: 2,
-  marginTop: 6,
-};
-
-// Help & FAQ — Infopoint tab only (plan §7.8)
+// Help — Infopoint tab only (dispatcher hotline + email; no FAQ accordion)
 const HelpSupportContent = () => {
   const { t } = useI18n();
   const store = useAuthStore();
   const driver = store.getCurrentDriver();
   const support = store.getDriverSupportContact();
-  const [openFaqId, setOpenFaqId] = useState(null);
   const mailSubject = encodeURIComponent(
     t("mailtoSubjectSupport", { driverCode: driver?.driverCode || "" }),
   );
@@ -3541,59 +3496,30 @@ const HelpSupportContent = () => {
   const telHref = `tel:${String(support.phone || "").replace(/\s/g, "")}`;
 
   return (
-    <>
-      <div className="section-card" style={{ marginTop: 0 }}>
-        <h2 className="section-title">{t("profileFaqsTitle")}</h2>
-        <p className="section-hint">{t("helpSupportIntro")}</p>
-        <div className="stack-8">
-          {PROFILE_FAQ_ITEMS.map(({ id, questionKey, answerKey }) => {
-            const expanded = openFaqId === id;
-            return (
-              <div key={id} className="faq-item">
-                <button
-                  type="button"
-                  className="faq-q"
-                  onClick={() =>
-                    setOpenFaqId((cur) => (cur === id ? null : id))
-                  }
-                  aria-expanded={expanded}
-                >
-                  <span style={{ flex: 1 }}>{t(questionKey)}</span>
-                  <span className="chev" aria-hidden="true">
-                    <Ic.Chev />
-                  </span>
-                </button>
-                {expanded ? <p className="faq-a">{t(answerKey)}</p> : null}
-              </div>
-            );
-          })}
-        </div>
+    <div className="section-card" style={{ marginTop: 0 }}>
+      <h2 className="section-title">{t("helpSupportTitle")}</h2>
+      <p className="section-hint">{t("helpSupportIntro")}</p>
+      <div className="stack-4">
+        <a href={telHref} className="contact-row">
+          <span className="contact-row-icon">
+            <Ic.Phone />
+          </span>
+          <span className="flex-1-min-0">
+            <span className="contact-row-value">{support.phone}</span>
+            <div className="contact-row-sub">{t("dispatcherHotlineSub")}</div>
+          </span>
+        </a>
+        <a href={mailtoHref} className="contact-row">
+          <span className="contact-row-icon">
+            <Ic.Mail />
+          </span>
+          <span className="flex-1-min-0">
+            <span className="contact-row-value">{support.email}</span>
+            <div className="contact-row-sub">{t("profileEmailSupport")}</div>
+          </span>
+        </a>
       </div>
-
-      <div className="section-card">
-        <h2 className="section-title">{t("helpSupportTitle")}</h2>
-        <div className="stack-4">
-          <a href={telHref} className="contact-row">
-            <span className="contact-row-icon">
-              <Ic.Phone />
-            </span>
-            <span className="flex-1-min-0">
-              <span className="contact-row-value">{support.phone}</span>
-              <div className="contact-row-sub">{t("dispatcherHotlineSub")}</div>
-            </span>
-          </a>
-          <a href={mailtoHref} className="contact-row">
-            <span className="contact-row-icon">
-              <Ic.Mail />
-            </span>
-            <span className="flex-1-min-0">
-              <span className="contact-row-value">{support.email}</span>
-              <div className="contact-row-sub">{t("profileEmailSupport")}</div>
-            </span>
-          </a>
-        </div>
-      </div>
-    </>
+    </div>
   );
 };
 

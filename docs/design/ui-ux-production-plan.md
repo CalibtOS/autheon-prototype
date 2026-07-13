@@ -203,14 +203,14 @@ Per §6.2 — full-height page replaces the popover. Layout: day group headers (
 
 ### 7.7 Profile (`ProfilePaneFull`, L3357) — flagship fix, currently the worst screen
 
-**Current mess (measured + visual):** one 2085px scroll dumping 6 unrelated content types; 3 different section-title styles on one screen (`DAILY ACCEPTANCE LIMIT` bold mono vs `HELP & SUPPORT` small mono vs plain labels); required-field asterisks (`COMPANY *`) on **read-only** display data; email wraps mid-word ("jordan.blake@example.co m"); label column forces value column to wrap; toggles have labels _above_ instead of beside; a developer disclaimer ("Android supported in app flow. iOS requires home-screen installation…") rendered as a dashed UI box; raw native `<select>` for vehicle type while axle is a segmented control; 9 `window.confirm` calls; FAQ + hotline + sign-out all inline on the same scroll.
+**Current mess (measured + visual):** one 2085px scroll dumping 6 unrelated content types; 3 different section-title styles on one screen (`DAILY ACCEPTANCE LIMIT` bold mono vs `HELP & SUPPORT` small mono vs plain labels); required-field asterisks (`COMPANY *`) on **read-only** display data; email wraps mid-word ("jordan.blake@example.co m"); label column forces value column to wrap; toggles have labels _above_ instead of beside; a developer disclaimer ("Android supported in app flow. iOS requires home-screen installation…") rendered as a dashed UI box; raw native `<select>` for vehicle type while axle is a segmented control; 9 `window.confirm` calls; hotline + sign-out all inline on the same scroll.
 **Target — restructure into a grouped settings screen:**
 
 1. **Identity header** (not a card): avatar 56px, name `title`, `driver-id` mono caption, ACTIVE StatusPill.
 2. **Daily limit card:** heading "Daily acceptance limit", progress bar `2/3 accepted today` (`--primary` fill, `--st-warn` at limit), caption with pickup-date context, secondary button "Request higher limit" → `DailyLimitRequestSheet`.
 3. **Master data card:** heading + caption "Managed by operations — request changes below"; rows as _definition list_ (label caption above value `body`, full width — kills wrapping + asterisks; email/phone as tappable `mailto:`/`tel:` links); primary-ghost "Request changes".
 4. **Notification preferences card:** switch rows (label + description left, switch right, 44px row); vehicle type + axle both checkbox-chip groups (same idiom as FilterSheet §6.1); postal-area chip input with add field; the iOS/Android note becomes a one-line `InlineAlert info` shown _only when push permission is unavailable_.
-5. **Help & support → separate sub-screen** ("Help & FAQ" list row navigates to it): FAQ accordion, dispatcher hotline as tappable card (`tel:`), email support (`mailto:`). Keeps Profile scannable.
+5. **Help & support → Infopoint Help tab**: dispatcher hotline as tappable card (`tel:`), email support (`mailto:`). No FAQ accordion in V1.
 6. **Sign out:** destructive-outline button, own section, confirm sheet (not `window.confirm`).
    All section headings = `heading` sentence case; single card style; every confirm via sheet primitive.
 
@@ -249,7 +249,7 @@ Per §5: all 4 tab items labeled (Marketplace / My jobs / Info / Profile), `aria
 
 **W4 — Screen rebuilds per §7**
 
-12. Profile restructure (§7.7 — flagship) + Help & FAQ sub-screen.
+12. Profile restructure (§7.7 — flagship) + Infopoint Help tab (contacts only).
 13. My Jobs (§7.2), Job detail + documents (§7.3–7.4), sheets (§7.5), Infopoint (§7.8), Marketplace polish (§7.1).
 
 **W5 — Admin alignment + validation**

@@ -33,7 +33,7 @@ All tabs show **icon + label**. Active tab uses `--primary` capsule. Badge uses 
 | Report problem | `ReportProblemSheet` | 7 codes, min 10 chars, evidence | Submit |
 | Notifications | `DriverNotificationsPane` | grouped by day, unread, empty | Deep link |
 | Profile | `ProfilePaneFull` | view, edit MDR, pending | Request changes |
-| Infopoint | `Infopoint` | docs + news + help tabs, empty | Download / FAQ |
+| Infopoint | `Infopoint` | docs + news + help tabs, empty | Download / Help |
 
 ---
 
