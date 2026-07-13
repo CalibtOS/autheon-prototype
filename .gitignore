@@ -2,3 +2,21 @@
 .claude
 .playwright-cli
 .github
+
+# =============================================================================
+# Design image binaries — keep on disk locally; do not commit to git
+# =============================================================================
+# Tracked on purpose:
+#   prototype/project/favicon.svg
+#   prototype/project/icons/icon-*.png
+
+# Audit + iteration scratch captures (referenced by docs as local evidence only)
+docs/design/**/*.jpeg
+docs/design/**/*.jpg
+docs/design/**/*.png
+docs/design/**/*.webp
+docs/design/**/*.gif
+
+# Optional visual-regression baselines (see docs/design/screenshots/README.md)
+docs/design/screenshots/*
+!docs/design/screenshots/README.md
