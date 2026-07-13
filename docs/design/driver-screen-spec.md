@@ -64,14 +64,18 @@ All tabs show **icon + label**. Active tab uses `--primary` capsule. Badge uses 
 
 ## autheon-fe handoff (design-only)
 
-| Prototype | Production target | autheon-fe today |
-|-----------|-------------------|------------------|
-| `--brand-accent` `#6F29FF` | `brand-600` | `#2563eb` — **replace** |
-| `--brand-text` `#111111` | `text-primary` | `#1f2226` — align |
-| `--brand-canvas` `#F5F5F7` | `surface-muted` | `#f9fafb` — align |
-| Plus Jakarta Sans | `font-sans` | Inter — **replace** |
-| `--st-*` status tokens | `status-*` Tailwind namespace | partial `state.*` |
-| Bottom tab IA | `(driver)` route group + `BottomTabBar` | Dashboard/Invoices scaffold |
+| Prototype | Production target | autheon-fe (foundation) |
+|-----------|-------------------|------------------------|
+| `--brand-accent` `#6F29FF` | `brand-600` / `brand-500` | aligned |
+| `--brand-text` `#111111` | `text-primary` | aligned |
+| `--brand-canvas` `#F5F5F7` | `surface-muted` | aligned |
+| Plus Jakarta Sans | `font-sans` | aligned (`plus-jakarta` preset) |
+| `--st-*` status tokens | `status-*` Tailwind namespace | aligned |
+| `--cta` `#EA580C` | `cta` / `cta-hover` | aligned |
+| 7-step type scale | `text-display` … `text-overline` | aligned (Tailwind preset) |
+| 4pt spacing | `spacing` 1–9 | aligned |
+| Light + dark `[data-theme]` | `ThemeProvider` + shared CSS | aligned (web + admin) |
+| Bottom tab IA | `(driver)` route group + `BottomTabBar` | **Step 2** |
 
 Implementation of autheon-fe driver routes is a **separate plan**; this spec is the visual/UX contract.
 
