@@ -1,7 +1,8 @@
 ﻿// AUTHEON Version 1 database draft — PostgreSQL target.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
+// 2026-07-13 (PRD v2.0, F-01) — removed deprecated master_data_change_type.daily_limit_override enum value. Documented that drivers.probation_job_limit is a per-driver snapshot seeded at creation from app_settings 'driver.acceptance.probationJobCount' (application-layer default, literal column default is a fallback only); no structural change to columns.
 // Last updated: 2026-07-10 (PRD v2.0) — no structural change. Annotated drivers.driver_code semantics (F-03: system-assigned, immutable, never reused) and documented same-day per-leg time-window rule (F-04) in logical-model.md. Probation UI, Infopoint View/Download, branding/domain/Report-Problem-timing are UI/open items with no schema impact.
-// 2026-07-09 (PRD v1.9, F-01) — replaced drivers.daily_job_limit with the one-time probation model (probation_job_limit + probation_cleared_at); deprecated master_data_change_type.daily_limit_override; renamed app_settings key driver.acceptance.defaultDailyJobLimit -> driver.acceptance.probationJobCount.
+// 2026-07-09 (PRD v1.9, F-01) — replaced drivers.daily_job_limit with the one-time probation model (probation_job_limit + probation_cleared_at); removed master_data_change_type.daily_limit_override; renamed app_settings key driver.acceptance.defaultDailyJobLimit -> driver.acceptance.probationJobCount.
 // 2026-07-03 — aligned upload-core asset model, document versioning, infopoint/problem upload links, and explicit job location windows with autheon-be TypeORM sync target.
 
 Enum user_status {
@@ -102,7 +103,6 @@ Enum master_data_change_type {
   vehicle_info
   license
   contact
-  daily_limit_override  // DEPRECATED (F-01): driver limit-increase requests are removed under the one-time probation model; retained only for legacy prototype rows
 }
 
 Enum notification_channel {
@@ -147,7 +147,7 @@ Table drivers {
   phone varchar(64)
   notes text
   // One-time probation model (F-01, replaces former per-day daily_job_limit).
-  probation_job_limit smallint [not null, default: 3]  // initial job allowance and Performed-count release threshold; default value confirmable with client
+  probation_job_limit smallint [not null, default: 3]  // Per-driver SNAPSHOT of the probation allowance AND Performed-count release threshold. Seeded at driver creation from app_settings 'driver.acceptance.probationJobCount' by the application layer (see logical-model.md); the literal default here is only a safety fallback when the setting is unavailable. Snapshot semantics: later changes to the app_settings value do NOT retroactively affect existing drivers. Remaining allowance is derived (probation_job_limit minus count of Performed jobs from job_status_history), not stored.
   probation_cleared_at timestamptz  // set when driver is released from probation (auto after probation_job_limit Performed jobs, or manual admin release); null = still on probation
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
@@ -552,7 +552,7 @@ Table feature_flags {
 }
 
 Table app_settings {
-  key varchar(100) [pk]  // canonical keys: branding.display, operational.policies, cancellation.policies, driver.acceptance.probationJobCount (replaces driver.acceptance.defaultDailyJobLimit, F-01)
+  key varchar(100) [pk]  // canonical keys: branding.display, operational.policies, cancellation.policies, driver.acceptance.probationJobCount (F-01: source of the seed value copied into drivers.probation_job_limit at driver creation; replaces driver.acceptance.defaultDailyJobLimit)
   value jsonb [not null]
   updated_at timestamptz [not null]
   updated_by_user_id uuid
