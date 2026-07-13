@@ -73,7 +73,8 @@ const AdminNav = ({ section, setSection }) => {
       count: mdrOpenCount || null,
       I: Ic.N.Users,
     },
-    { id: "users", label: t("navUsers"), count: null, I: Ic.N.Users },
+    { id: "drivers", label: t("navDrivers"), count: null, I: Ic.N.Users },
+    { id: "staff", label: t("navStaff"), count: null, I: Ic.N.Users },
     {
       id: "customers",
       label: t("navCustomers") || "Customers",
@@ -3468,32 +3469,25 @@ const AccountAccessDialog = ({ open, data, onClose, onResend, showToast }) => {
   );
 };
 
-const UsersPane = ({ showToast }) => {
+const DriversPane = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [driverModal, setDriverModal] = useStateA(null);
-  const [adminModal, setAdminModal] = useStateA(null);
   const [driverForm, setDriverForm] = useStateA(emptyDriverEditForm());
-  const [adminForm, setAdminForm] = useStateA(emptyAdminEditForm());
   const [credentials, setCredentials] = useStateA(null);
   const [driverErrors, setDriverErrors] = useStateA({});
-  const [adminErrors, setAdminErrors] = useStateA({});
   const setDF = (k, v) => {
     setDriverForm((p) => ({ ...p, [k]: v }));
     setDriverErrors((e) => ({ ...e, [k]: undefined }));
   };
-  const setAF = (k, v) => {
-    setAdminForm((p) => ({ ...p, [k]: v }));
-    setAdminErrors((e) => ({ ...e, [k]: undefined }));
-  };
 
-  const showAccountAccess = (user, access, kind) => {
+  const showAccountAccess = (user, access) => {
     setCredentials({
       name: user.name,
       email: user.email || "",
       access,
       user,
-      kind,
+      kind: "driver",
     });
   };
 
@@ -3519,25 +3513,8 @@ const UsersPane = ({ showToast }) => {
     setDriverModal(d.id);
   };
 
-  const openNewAdmin = () => {
-    setAdminForm(emptyAdminEditForm());
-    setAdminErrors({});
-    setAdminModal("new");
-  };
-
-  const openEditAdmin = (a) => {
-    setAdminForm({
-      name: a.name || "",
-      email: a.email || "",
-    });
-    setAdminErrors({});
-    setAdminModal(a.id);
-  };
-
   const driverFormValid =
     Object.keys(validateDriverFormLocal(driverForm, t)).length === 0;
-  const adminFormValid =
-    Object.keys(validateAdminFormLocal(adminForm, t)).length === 0;
 
   const applyDriverStatus = (driver, status) => {
     const result = store.setDriverStatus(driver.id, status);
@@ -3569,247 +3546,124 @@ const UsersPane = ({ showToast }) => {
     setDriverModal(null);
     setDriverErrors({});
     if (driverModal === "new" && r.access) {
-      showAccountAccess(r.driver, r.access, "driver");
+      showAccountAccess(r.driver, r.access);
       showToast?.(t("adminUsersDriverCreated"), driverForm.name);
     } else {
       showToast?.(t("adminUsersSaved"), driverForm.name);
     }
   };
 
-  const saveAdmin = () => {
-    const localErrors = validateAdminFormLocal(adminForm, t);
-    if (Object.keys(localErrors).length) {
-      setAdminErrors(localErrors);
-      return;
-    }
-    const r =
-      adminModal === "new"
-        ? store.addAdmin(adminForm)
-        : store.updateAdmin(adminModal, adminForm);
-    if (!r.ok) {
-      showToast?.(t("adminUsersSaveFailed"), userSaveErr(r, "admin", t));
-      return;
-    }
-    setAdminModal(null);
-    setAdminErrors({});
-    if (adminModal === "new" && r.access) {
-      showAccountAccess(r.admin, r.access, "admin");
-      showToast?.(t("adminUsersAdminCreated"), adminForm.name);
-    } else {
-      showToast?.(t("adminUsersSaved"), adminForm.name);
-    }
-  };
-
-  const triggerResendAccess = (kind, user) => {
-    const r = store.resendAccess(kind, user.id);
+  const triggerResendAccess = (user) => {
+    const r = store.resendAccess("driver", user.id);
     if (!r.ok) {
       showToast?.(t("adminUsersSaveFailed"), t("adminInvoiceErrGeneric"));
       return;
     }
-    showAccountAccess(r.user, r.access, kind);
-    showToast?.(
-      kind === "admin"
-        ? t("adminUsersToastInviteAdmin")
-        : t("adminUsersToastInviteDriver"),
-      user.name,
-    );
-  };
-
-  const applyAdminStatus = (admin, status) => {
-    const result = store.setAdminStatus(admin.id, status);
-    if (!result.ok) return;
-    showToast?.(t("adminUsersToastAdminChanged"), admin.name);
+    showAccountAccess(r.user, r.access);
+    showToast?.(t("adminUsersToastInviteDriver"), user.name);
   };
 
   return (
     <div>
       <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
-        {t("adminUsersDriversTitle")}
+        {t("adminDriversTitle")}
       </h1>
       <p style={{ color: "var(--muted)", marginTop: 8 }}>
-        {t("adminUsersDescLong")}
+        {t("adminDriversDescLong")}
       </p>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1.5fr 1fr",
-          gap: 18,
-          marginTop: 22,
-        }}
-      >
-        <section className="card" style={{ padding: 18 }}>
-          <div className="sec-head">
-            <h3>{t("adminUsersSectionDrivers")}</h3>
-            <button
-              className="btn xs primary"
-              onClick={openNewDriver}
-            >
-              <Ic.Plus /> {t("adminUsersNewDriver")}
-            </button>
-          </div>
-          <table className="tbl" style={{ marginTop: 12 }}>
-            <thead>
-              <tr>
-                <th>{t("adminUsersColName")}</th>
-                <th>{t("adminUsersColDriverCode")}</th>
-                <th>{t("adminUsersColStatus")}</th>
-                <th>{t("adminUsersColAccess")}</th>
-                <th>{t("adminUsersColActions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {store.getDrivers().map((d) => (
-                <tr key={d.id}>
-                  <td>
-                    <strong>{d.name}</strong>
-                    <div
-                      className="label"
-                      style={{ fontSize: 9.5, marginTop: 2 }}
-                    >
-                      {d.company} · {d.email}
-                    </div>
-                  </td>
-                  <td className="mono">{d.driverCode}</td>
-                  <td>
-                    <Pill
-                      status={d.status === "Active" ? "accepted" : "cancelled"}
-                    >
-                      {d.status}
-                    </Pill>
-                  </td>
-                  <td>
-                    <Pill
-                      status={
-                        d.accessState === "Active" ? "accepted" : "published"
-                      }
-                    >
-                      {accessStateLabel(d.accessState, t)}
-                    </Pill>
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        className="btn xs primary"
-                        onClick={() => openEditDriver(d)}
-                      >
-                        {t("adminUsersEdit")}
-                      </button>
-                      <button
-                        className="btn xs"
-                        onClick={() => {
-                          applyDriverStatus(
-                            d,
-                            d.status === "Active" ? "Blocked" : "Active",
-                          );
-                        }}
-                      >
-                        {d.status === "Active"
-                          ? t("adminUsersBlock")
-                          : t("adminUsersActivate")}
-                      </button>
-                      {["Inactive", "Archived", "Soft Deleted"].map((st) => (
-                        <button
-                          key={st}
-                          type="button"
-                          className="btn xs"
-                          onClick={() => {
-                            applyDriverStatus(d, st);
-                          }}
-                        >
-                          {st}
-                        </button>
-                      ))}
-                      <button
-                        className="btn xs"
-                        onClick={() => triggerResendAccess("driver", d)}
-                      >
-                        {t("adminUsersResendInvite")}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-        <section className="card" style={{ padding: 18 }}>
-          <div className="sec-head">
-            <h3>{t("adminUsersSectionAdmins")}</h3>
-            <button
-              className="btn xs primary"
-              onClick={openNewAdmin}
-            >
-              <Ic.Plus /> {t("adminUsersNewAdmin")}
-            </button>
-          </div>
-          {store.getAdmins().map((a) => (
-            <div
-              key={a.id}
-              style={{
-                padding: "14px 0",
-                borderBottom: "1px solid var(--line)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 10,
-                }}
-              >
-                <div>
-                  <strong>{a.name}</strong>
+      <section className="card" style={{ padding: 18, marginTop: 22 }}>
+        <div className="sec-head">
+          <h3>{t("adminUsersSectionDrivers")}</h3>
+          <button className="btn xs primary" onClick={openNewDriver}>
+            <Ic.Plus /> {t("adminUsersNewDriver")}
+          </button>
+        </div>
+        <table className="tbl" style={{ marginTop: 12 }}>
+          <thead>
+            <tr>
+              <th>{t("adminUsersColName")}</th>
+              <th>{t("adminUsersColDriverCode")}</th>
+              <th>{t("adminUsersColStatus")}</th>
+              <th>{t("adminUsersColAccess")}</th>
+              <th>{t("adminUsersColActions")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {store.getDrivers().map((d) => (
+              <tr key={d.id}>
+                <td>
+                  <strong>{d.name}</strong>
                   <div
                     className="label"
-                    style={{ fontSize: 9.5, marginTop: 3 }}
+                    style={{ fontSize: 9.5, marginTop: 2 }}
                   >
-                    {a.email}
+                    {d.company} · {d.email}
                   </div>
-                </div>
-                <Pill status="accepted">{a.status}</Pill>
-              </div>
-              <div
-                className="label"
-                style={{ fontSize: 11.5, marginTop: 6 }}
-              >
-                {t("adminUsersColAccess")}:{" "}
-                {accessStateLabel(a.accessState, t)}
-              </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-                <button
-                  type="button"
-                  className="btn xs primary"
-                  onClick={() => openEditAdmin(a)}
-                >
-                  {t("adminUsersEdit")}
-                </button>
-                <button
-                  type="button"
-                  className="btn xs"
-                  onClick={() =>
-                    applyAdminStatus(
-                      a,
-                      a.status === "Active" ? "Inactive" : "Active",
-                    )
-                  }
-                >
-                  {a.status === "Active"
-                    ? t("adminUsersDeactivate")
-                    : t("adminUsersActivate")}
-                </button>
-                <button
-                  type="button"
-                  className="btn xs"
-                  onClick={() => triggerResendAccess("admin", a)}
-                >
-                  {t("adminUsersResendInvite")}
-                </button>
-              </div>
-            </div>
-          ))}
-        </section>
-      </div>
+                </td>
+                <td className="mono">{d.driverCode}</td>
+                <td>
+                  <Pill
+                    status={d.status === "Active" ? "accepted" : "cancelled"}
+                  >
+                    {d.status}
+                  </Pill>
+                </td>
+                <td>
+                  <Pill
+                    status={
+                      d.accessState === "Active" ? "accepted" : "published"
+                    }
+                  >
+                    {accessStateLabel(d.accessState, t)}
+                  </Pill>
+                </td>
+                <td>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="btn xs primary"
+                      onClick={() => openEditDriver(d)}
+                    >
+                      {t("adminUsersEdit")}
+                    </button>
+                    <button
+                      className="btn xs"
+                      onClick={() => {
+                        applyDriverStatus(
+                          d,
+                          d.status === "Active" ? "Blocked" : "Active",
+                        );
+                      }}
+                    >
+                      {d.status === "Active"
+                        ? t("adminUsersBlock")
+                        : t("adminUsersActivate")}
+                    </button>
+                    {["Inactive", "Archived", "Soft Deleted"].map((st) => (
+                      <button
+                        key={st}
+                        type="button"
+                        className="btn xs"
+                        onClick={() => {
+                          applyDriverStatus(d, st);
+                        }}
+                      >
+                        {st}
+                      </button>
+                    ))}
+                    <button
+                      className="btn xs"
+                      onClick={() => triggerResendAccess(d)}
+                    >
+                      {t("adminUsersResendInvite")}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
 
       {driverModal ? (
         <div
@@ -3876,6 +3730,194 @@ const UsersPane = ({ showToast }) => {
           </div>
         </div>
       ) : null}
+
+      <AccountAccessDialog
+        open={!!credentials}
+        data={credentials}
+        onClose={() => setCredentials(null)}
+        onResend={
+          credentials?.user
+            ? () => {
+                const r = store.resendAccess("driver", credentials.user.id);
+                if (r.ok) {
+                  setCredentials({
+                    ...credentials,
+                    access: r.access,
+                    user: r.user,
+                  });
+                }
+                return r;
+              }
+            : undefined
+        }
+        showToast={showToast}
+      />
+    </div>
+  );
+};
+
+const StaffPane = ({ showToast }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const [adminModal, setAdminModal] = useStateA(null);
+  const [adminForm, setAdminForm] = useStateA(emptyAdminEditForm());
+  const [credentials, setCredentials] = useStateA(null);
+  const [adminErrors, setAdminErrors] = useStateA({});
+  const setAF = (k, v) => {
+    setAdminForm((p) => ({ ...p, [k]: v }));
+    setAdminErrors((e) => ({ ...e, [k]: undefined }));
+  };
+
+  const showAccountAccess = (user, access) => {
+    setCredentials({
+      name: user.name,
+      email: user.email || "",
+      access,
+      user,
+      kind: "admin",
+    });
+  };
+
+  const openNewAdmin = () => {
+    setAdminForm(emptyAdminEditForm());
+    setAdminErrors({});
+    setAdminModal("new");
+  };
+
+  const openEditAdmin = (a) => {
+    setAdminForm({
+      name: a.name || "",
+      email: a.email || "",
+    });
+    setAdminErrors({});
+    setAdminModal(a.id);
+  };
+
+  const adminFormValid =
+    Object.keys(validateAdminFormLocal(adminForm, t)).length === 0;
+
+  const saveAdmin = () => {
+    const localErrors = validateAdminFormLocal(adminForm, t);
+    if (Object.keys(localErrors).length) {
+      setAdminErrors(localErrors);
+      return;
+    }
+    const r =
+      adminModal === "new"
+        ? store.addAdmin(adminForm)
+        : store.updateAdmin(adminModal, adminForm);
+    if (!r.ok) {
+      showToast?.(t("adminUsersSaveFailed"), userSaveErr(r, "admin", t));
+      return;
+    }
+    setAdminModal(null);
+    setAdminErrors({});
+    if (adminModal === "new" && r.access) {
+      showAccountAccess(r.admin, r.access);
+      showToast?.(t("adminUsersAdminCreated"), adminForm.name);
+    } else {
+      showToast?.(t("adminUsersSaved"), adminForm.name);
+    }
+  };
+
+  const triggerResendAccess = (user) => {
+    const r = store.resendAccess("admin", user.id);
+    if (!r.ok) {
+      showToast?.(t("adminUsersSaveFailed"), t("adminInvoiceErrGeneric"));
+      return;
+    }
+    showAccountAccess(r.user, r.access);
+    showToast?.(t("adminUsersToastInviteAdmin"), user.name);
+  };
+
+  const applyAdminStatus = (admin, status) => {
+    const result = store.setAdminStatus(admin.id, status);
+    if (!result.ok) return;
+    showToast?.(t("adminUsersToastAdminChanged"), admin.name);
+  };
+
+  return (
+    <div>
+      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+        {t("adminStaffTitle")}
+      </h1>
+      <p style={{ color: "var(--muted)", marginTop: 8 }}>
+        {t("adminStaffDescLong")}
+      </p>
+      <section className="card" style={{ padding: 18, marginTop: 22 }}>
+        <div className="sec-head">
+          <h3>{t("adminUsersSectionAdmins")}</h3>
+          <button className="btn xs primary" onClick={openNewAdmin}>
+            <Ic.Plus /> {t("adminUsersNewAdmin")}
+          </button>
+        </div>
+        {store.getAdmins().map((a) => (
+          <div
+            key={a.id}
+            style={{
+              padding: "14px 0",
+              borderBottom: "1px solid var(--line)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 10,
+              }}
+            >
+              <div>
+                <strong>{a.name}</strong>
+                <div
+                  className="label"
+                  style={{ fontSize: 9.5, marginTop: 3 }}
+                >
+                  {a.email}
+                </div>
+              </div>
+              <Pill status="accepted">{a.status}</Pill>
+            </div>
+            <div
+              className="label"
+              style={{ fontSize: 11.5, marginTop: 6 }}
+            >
+              {t("adminUsersColAccess")}: {accessStateLabel(a.accessState, t)}
+            </div>
+            <div
+              style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}
+            >
+              <button
+                type="button"
+                className="btn xs primary"
+                onClick={() => openEditAdmin(a)}
+              >
+                {t("adminUsersEdit")}
+              </button>
+              <button
+                type="button"
+                className="btn xs"
+                onClick={() =>
+                  applyAdminStatus(
+                    a,
+                    a.status === "Active" ? "Inactive" : "Active",
+                  )
+                }
+              >
+                {a.status === "Active"
+                  ? t("adminUsersDeactivate")
+                  : t("adminUsersActivate")}
+              </button>
+              <button
+                type="button"
+                className="btn xs"
+                onClick={() => triggerResendAccess(a)}
+              >
+                {t("adminUsersResendInvite")}
+              </button>
+            </div>
+          </div>
+        ))}
+      </section>
 
       {adminModal ? (
         <div
@@ -3946,12 +3988,9 @@ const UsersPane = ({ showToast }) => {
         data={credentials}
         onClose={() => setCredentials(null)}
         onResend={
-          credentials?.user && credentials?.kind
+          credentials?.user
             ? () => {
-                const r = store.resendAccess(
-                  credentials.kind,
-                  credentials.user.id,
-                );
+                const r = store.resendAccess("admin", credentials.user.id);
                 if (r.ok) {
                   setCredentials({
                     ...credentials,
@@ -7578,7 +7617,8 @@ Object.assign(window, {
   NewOrder,
   NewOrderFooter,
   Stub,
-  UsersPane,
+  DriversPane,
+  StaffPane,
   CustomersPane,
   AddressesPane,
   DocumentsPane,

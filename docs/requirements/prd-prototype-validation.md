@@ -32,7 +32,7 @@ Includes v1.7 meeting outcomes (pre-Performed upload, daily limits, admin docs a
 | 11 | Schedule-change cutoff on revert + draft edit | `checkScheduleChangePolicy` + override in `AUTHEON Prototype.html` |
 | 12 | Driver limit-increase request (`daily_limit_override`) | `requestDailyLimitIncrease()` + `MasterDataRequestsPane` |
 | 13 | Driver profile shows daily limit usage | `getDriverDailyAcceptanceSummary()` + `DriverDailyLimitCard` |
-| 14 | Admin sets `daily_job_limit` per driver | Users pane field `adminUsersFieldDailyLimit` |
+| 14 | Admin sets `daily_job_limit` per driver | Drivers module field `adminUsersFieldDailyLimit` |
 | 15 | Admin docs at job create/edit (section 07) | `newOrderSecDocuments` + `attachAdminJobDocument` |
 | 16 | Admin notification for limit / profile requests | `master_data_change_requested` in notification feed |
 

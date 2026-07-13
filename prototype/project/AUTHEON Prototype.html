@@ -585,8 +585,10 @@
               }}
             />
           );
-        } else if (section === "users") {
-          body = <UsersPane showToast={showToast} />;
+        } else if (section === "drivers") {
+          body = <DriversPane showToast={showToast} />;
+        } else if (section === "staff") {
+          body = <StaffPane showToast={showToast} />;
         } else if (section === "customers") {
           body = <CustomersPane showToast={showToast} />;
         } else if (section === "addresses") {
@@ -646,7 +648,6 @@
           body = <FeaturesPane showToast={showToast} />;
         } else {
           const stubTitles = {
-            users: [t("navUsers"), t("usersDesc")],
             customers: [
               t("navCustomers") || "Customers",
               t("adminCustomersDesc"),

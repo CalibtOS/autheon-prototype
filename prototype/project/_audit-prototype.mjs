@@ -390,7 +390,7 @@ const v18Needles = [
   ["AdminCancelJobModal", "admin cancel modal component"],
   ["OperationalPoliciesForm", "operational policies settings form"],
   ["newOrderSecDocuments", "admin document attach on new/edit job form"],
-  ["adminUsersFieldDailyLimit", "daily job limit in users UI"],
+  ["adminUsersFieldDailyLimit", "daily job limit in drivers UI"],
   ["requestDailyLimitIncrease", "daily limit increase request API"],
   ["DailyLimitRequestSheet", "driver limit increase request UI"],
   ["daily_limit_override", "daily_limit_override change type"],

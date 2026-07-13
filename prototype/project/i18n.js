@@ -15,6 +15,8 @@ window.I18n = (() => {
       navJobs: "Jobs",
       navNewJob: "New job",
       navUsers: "Users",
+      navDrivers: "Drivers",
+      navStaff: "Staff",
       navCustomers: "Customers",
       navAddresses: "Addresses",
       navDocuments: "Documents",
@@ -443,6 +445,10 @@ window.I18n = (() => {
       masterDataChangeType_contact: "Contact change",
       masterDataChangeType_daily_limit_override: "Daily job limit increase",
       usersDesc: "Manage dispatcher accounts and driver profiles.",
+      driversDesc:
+        "Create and manage driver profiles, daily limits, and access invites.",
+      staffDesc:
+        "Create and manage dispatcher and admin staff accounts.",
       customersDesc:
         "Customers for billing and reporting. Edits do not change existing tour snapshots.",
       adminCustomersDesc:
@@ -687,9 +693,9 @@ window.I18n = (() => {
       adminHistoricalPdfNote:
         "Historical PDFs are not changed unless a job PDF is explicitly regenerated.",
       adminUsersSectionDrivers: "Drivers",
-      adminUsersSectionAdmins: "Admin accounts",
+      adminUsersSectionAdmins: "Staff",
       adminUsersNewDriver: "New driver",
-      adminUsersNewAdmin: "New admin",
+      adminUsersNewAdmin: "New staff",
       adminUsersToastNewDriverTitle: "New driver form",
       adminUsersToastNewDriverSub:
         "Demo: production flow will open the driver creation dialog.",
@@ -720,6 +726,12 @@ window.I18n = (() => {
       adminStubBody: "Demo panel placeholder for non-primary routes.",
       adminUsersDescLong:
         "Create and manage driver and admin accounts. Production sends Keycloak invite emails so users set their own password — admins see delivery status and can resend access, never a generated password.",
+      adminDriversTitle: "Drivers",
+      adminDriversDescLong:
+        "Create and manage driver profiles, daily job limits, and account access. Production sends Keycloak invite emails so drivers set their own password.",
+      adminStaffTitle: "Staff",
+      adminStaffDescLong:
+        "Create and manage dispatcher and admin staff accounts. Production sends Keycloak invite emails so staff set their own password.",
       adminFinanceCompletedInvoiceNote:
         "Payment status starts as Invoice missing, moves to Invoice received when an invoice is accepted in Tour documents, and Paid is set manually here. Invoice file review is done in Tour documents.",
       adminFinanceSnapshotTitle: "Financial snapshot",
@@ -758,11 +770,11 @@ window.I18n = (() => {
       adminUsersColAccess: "Access",
       adminUsersEdit: "Edit",
       adminUsersEditDriverTitle: "Edit driver",
-      adminUsersEditAdminTitle: "Edit admin account",
+      adminUsersEditAdminTitle: "Edit staff account",
       adminUsersNewDriverTitle: "New driver",
-      adminUsersNewAdminTitle: "New admin account",
+      adminUsersNewAdminTitle: "New staff account",
       adminUsersDriverCreated: "Driver added",
-      adminUsersAdminCreated: "Admin added",
+      adminUsersAdminCreated: "Staff added",
       adminUsersEmailDuplicate: "This email is already in use.",
       adminUsersAccessDialogTitle: "Account access",
       adminUsersAccessDialogHint:
@@ -826,7 +838,7 @@ window.I18n = (() => {
       adminReassignDriverConfirm: "Reassign",
       adminAssignCurrentDriver: "Currently assigned: {name}",
       adminAssignNoActiveDrivers:
-        "No active drivers. Activate a driver under Users first.",
+        "No active drivers. Activate a driver under Drivers first.",
       adminAssignDriverRequired: "Select a driver.",
       adminAssignDriverNotFound: "Driver not found.",
       adminAssignDriverInactive:
@@ -1197,6 +1209,8 @@ window.I18n = (() => {
       navJobs: "Aufträge",
       navNewJob: "Neuer Auftrag",
       navUsers: "Benutzer",
+      navDrivers: "Fahrer",
+      navStaff: "Personal",
       navCustomers: "Kunden",
       navAddresses: "Adressen",
       navDocuments: "Dokumente",
@@ -1637,6 +1651,10 @@ window.I18n = (() => {
       masterDataChangeType_contact: "Kontaktänderung",
       masterDataChangeType_daily_limit_override: "Erhöhung Tageslimit",
       usersDesc: "Verwalte Dispatcher-Konten und Fahrerprofile.",
+      driversDesc:
+        "Fahrerprofile, Tageslimits und Zugangseinladungen anlegen und verwalten.",
+      staffDesc:
+        "Dispatcher- und Admin-Personal-Konten anlegen und verwalten.",
       customersDesc:
         "Kunden für Abrechnung und Reporting. Änderungen ändern keine bestehenden Tour-Snapshots.",
       adminCustomersDesc:
@@ -1883,9 +1901,9 @@ window.I18n = (() => {
       adminHistoricalPdfNote:
         "Historische PDFs ändern sich nicht, außer ein Auftrags-PDF wird ausdrücklich neu erzeugt.",
       adminUsersSectionDrivers: "Fahrer",
-      adminUsersSectionAdmins: "Admin-Konten",
+      adminUsersSectionAdmins: "Personal",
       adminUsersNewDriver: "Neuer Fahrer",
-      adminUsersNewAdmin: "Neuer Admin",
+      adminUsersNewAdmin: "Neues Personal",
       adminUsersToastNewDriverTitle: "Neues Fahrerformular",
       adminUsersToastNewDriverSub:
         "Demo: Im Produktivbetrieb öffnet sich der Fahrer-Anlegedialog.",
@@ -1916,6 +1934,12 @@ window.I18n = (() => {
       adminStubBody: "Demo-Platzhalter für sekundäre Bereiche.",
       adminUsersDescLong:
         "Fahrer- und Admin-Konten anlegen und verwalten. In Produktion sendet Keycloak Einladungs-E-Mails zum Passwort setzen — Admins sehen den Zustellstatus und können Zugang erneut senden, niemals ein generiertes Passwort.",
+      adminDriversTitle: "Fahrer",
+      adminDriversDescLong:
+        "Fahrerprofile, Tageslimits und Kontozugang anlegen und verwalten. In Produktion sendet Keycloak Einladungs-E-Mails zum Passwort setzen.",
+      adminStaffTitle: "Personal",
+      adminStaffDescLong:
+        "Dispatcher- und Admin-Personal-Konten anlegen und verwalten. In Produktion sendet Keycloak Einladungs-E-Mails zum Passwort setzen.",
       adminFinanceCompletedInvoiceNote:
         "Zahlungsstatus startet mit Rechnung fehlt, wechselt zu Rechnung eingegangen nach Akzeptanz in Tour-Dokumente; Bezahlt nur manuell hier. Dateiprüfung in Tour-Dokumente.",
       adminFinanceSnapshotTitle: "Finanzübersicht",
@@ -1955,11 +1979,11 @@ window.I18n = (() => {
       adminUsersColAccess: "Zugang",
       adminUsersEdit: "Bearbeiten",
       adminUsersEditDriverTitle: "Fahrer bearbeiten",
-      adminUsersEditAdminTitle: "Admin-Konto bearbeiten",
+      adminUsersEditAdminTitle: "Personal-Konto bearbeiten",
       adminUsersNewDriverTitle: "Neuer Fahrer",
-      adminUsersNewAdminTitle: "Neues Admin-Konto",
+      adminUsersNewAdminTitle: "Neues Personal-Konto",
       adminUsersDriverCreated: "Fahrer angelegt",
-      adminUsersAdminCreated: "Admin angelegt",
+      adminUsersAdminCreated: "Personal angelegt",
       adminUsersEmailDuplicate: "Diese E-Mail wird bereits verwendet.",
       adminUsersAccessDialogTitle: "Kontozugang",
       adminUsersAccessDialogHint:
@@ -2024,7 +2048,7 @@ window.I18n = (() => {
       adminReassignDriverConfirm: "Neu zuweisen",
       adminAssignCurrentDriver: "Aktuell zugewiesen: {name}",
       adminAssignNoActiveDrivers:
-        "Keine aktiven Fahrer. Fahrer unter Benutzer aktivieren.",
+        "Keine aktiven Fahrer. Fahrer unter Fahrer aktivieren.",
       adminAssignDriverRequired: "Bitte Fahrer wählen.",
       adminAssignDriverNotFound: "Fahrer nicht gefunden.",
       adminAssignDriverInactive:
