@@ -1,5 +1,9 @@
 # AUTHEON database logical model
 
+> **Status override:** Updated 2026-07-10 - PRD v2.0: no structural schema change. `drivers.driver_code` is now documented as system-assigned, immutable, and never reused (F-03); per-leg time windows are same-day only with no cross-midnight window (F-04). Probation-only driver UI, Infopoint View/Download actions, and branding/domain/Report-Problem-timing are UI or open-question items with no data-model impact.
+
+> **Status override:** Updated 2026-07-09 - PRD v1.9 (F-01): driver acceptance limits changed from a per-calendar-day quota to a one-time probation model. `drivers.daily_job_limit` is replaced by `probation_job_limit` + `probation_cleared_at`; the `master_data_change_type.daily_limit_override` request flow is removed; the `app_settings` key `driver.acceptance.defaultDailyJobLimit` is renamed to `driver.acceptance.probationJobCount`, whose value is copied into `drivers.probation_job_limit` at driver creation.
+
 > **Status override:** Updated 2026-07-03 - PRD v1.8 plus backend sync: upload-core `upload_assets`, upload-asset links for feature tables, generated PDF document-file versioning, explicit job date/time windows, and driver daily limits. [`schema.dbml`](schema.dbml) is the accompanying relational schema. [`../requirements/prd.json`](../requirements/prd.json) remains the functional source of truth.
 
 > **Status:** Updated 2026-07-02 — PRD v1.8: `daily_job_limit`, app_settings operational policies, admin cancel driver message. [`schema.dbml`](schema.dbml) is the accompanying relational schema. [`../requirements/prd.json`](../requirements/prd.json) remains the functional source of truth.
@@ -131,14 +135,14 @@ An invoice is a document with `document_type = 'invoice'`; it is not a separate 
 
 The SQL implementation must include at least these controls:
 
-- Unique `jobs.tour_number` and `drivers.driver_code`.
+- Unique `jobs.tour_number` and `drivers.driver_code`. `driver_code` is system-assigned from a monotonic sequence, immutable after creation, and never reused — a departed/blocked/archived driver's code is not reassigned (F-03). The exact code format is client-defined (open question).
 - Unique `users.email` and partial unique index on `users.keycloak_id where keycloak_id is not null`.
 - User soft-delete via `users.deleted_at`; active-user checks also require `status = 'active'`.
 - Unique active assignment per job: partial unique index on `job_assignments(job_id) where ended_at is null`.
 - One `pickup` and one `delivery` row per job: unique `(job_id, location_role)`.
 - One open master-data change request per driver: partial unique index on `master_data_change_requests(driver_id) where status = 'open'`.
 - Draft-only hard deletion enforced by a stored procedure/service transaction. Non-draft jobs are never hard-deleted.
-- `delivery_date >= pickup_date` where both values are present; time-window sanity checks at service level because flexible windows are allowed.
+- `delivery_date >= pickup_date` where both values are present; time-window sanity checks at service level because flexible windows are allowed. Each leg's window is same-day only: `window_end >= window_start` with no cross-midnight window (F-04); pickup and delivery legs may still have different `scheduled_date`.
 - Active marketplace index: `(operational_status, pickup_postal_code, pickup_date)` for published tours.
 - Driver work queue index: `(current_driver_id, operational_status, pickup_date)`.
 - Audit and status-history indexes: `(job_id, occurred_at desc)`.
@@ -177,11 +181,19 @@ Key/value JSON configuration managed by admins (see PRD Task 31 and `resolved_de
 | `branding.display` | Product display name in UI |
 | `operational.policies` | Minimum hours before pickup for admin cancel and schedule change; optional override-with-audit flag |
 | `cancellation.policies` | Required reason code, minimum driver message length for admin cancel |
-| `driver.acceptance.defaultDailyJobLimit` | Default `drivers.daily_job_limit` for new driver records |
+| `driver.acceptance.probationJobCount` | System-wide probation allowance; its value is **copied into** `drivers.probation_job_limit` at driver creation (replaces `driver.acceptance.defaultDailyJobLimit`, F-01) |
 
-## Driver daily acceptance limits (PRD v1.7+)
+## Driver probation acceptance limit (PRD v1.9, F-01)
 
-`drivers.daily_job_limit` caps marketplace acceptances per calendar day. Limit-increase requests reuse `master_data_change_requests` with `change_type = daily_limit_override`.
+Version 1 uses a one-time probation model instead of a per-calendar-day quota. `drivers.probation_job_limit` is both the initial job allowance while on probation and the number of Performed jobs required for release. `drivers.probation_cleared_at` is null while a driver is on probation and set when the driver is released — automatically once `probation_job_limit` jobs are Performed, or manually by an admin for exceptional account-reset cases. After release no further V1 booking limit applies.
+
+**Where the limit comes from (configurable default).** The system-wide default lives in `app_settings` under `driver.acceptance.probationJobCount`. At driver creation the application layer reads that setting and **copies the value into** `drivers.probation_job_limit` — a per-driver snapshot. SQL column defaults cannot reference another table, so the literal `default 3` on the column is only a safety fallback for when the setting is unavailable or a row is inserted outside the app path. Snapshot semantics are intentional: changing the `app_settings` value affects only drivers created afterward, never existing drivers, so probation terms stay stable and auditable per driver. The remaining allowance is derived (`probation_job_limit` minus the driver's Performed-job count) and is not stored as a separate counter.
+
+The Performed count that drives automatic release is derived from `jobs` / `job_status_history`; `probation_cleared_at` is the durable released flag so a driver is never re-probated once released. Enforcement is server-side at acceptance time.
+
+The prior per-day model (`drivers.daily_job_limit` plus driver limit-increase requests via `master_data_change_requests.change_type = daily_limit_override`) is superseded; the `daily_limit_override` enum value has been removed from `master_data_change_type` (any legacy prototype rows must be migrated before the enum value is dropped). The same-day overlap confirmation prompt is unchanged and remains a soft prompt, not a hard block.
+
+Decision (F-01, 2026-07-10): probation constrains only driver self-service marketplace booking. Admin direct assignment is exempt — admin may assign additional jobs to a driver even while on probation — and Performed jobs count toward the release threshold whether self-accepted or admin-assigned. Enforcement therefore gates the driver acceptance path, not the admin assignment path.
 
 ## Explicit non-goals
 
