@@ -180,7 +180,11 @@ if (immutable.ok || immutable.reason !== "driver_code_immutable")
 else ok("driverCode is immutable after create");
 
 const preview = store.getTransportOrderPreview("A-2026-00845");
-if (!preview.ok || !preview.preview?.blobUrl || !preview.preview?.previewable)
+if (
+  !preview.ok ||
+  !(preview.preview?.pdfUrl || preview.preview?.blobUrl) ||
+  !preview.preview?.previewable
+)
   fail("getTransportOrderPreview should return in-PWA preview payload");
 else ok("transport order in-PWA preview API");
 

@@ -52,34 +52,25 @@
 | `docReviewRejected` | Rejected | Abgelehnt |
 | `docReviewUploaded` | Uploaded | Hochgeladen |
 | `docScopeGlobal` | Global | Global |
+| `documentPreviewTitle` | Document preview | Dokumentvorschau |
 | `download` | Download | Herunterladen |
 | `driverAcceptOverlapConfirm` | You already have another tour on this day. Accept anyway? | Sie haben an diesem Tag bereits eine andere Tour. Trotzdem annehmen? |
 | `driverAcceptOverlapConfirmBtn` | Accept anyway | Trotzdem annehmen |
 | `driverAcceptOverlapTitle` | Same-day tour overlap | Tour-Überschneidung am selben Tag |
 | `driverCancellationReasonLabel` | Reason | Grund |
 | `driverCode` | driver-id | Fahrer-ID |
-| `driverDailyLimitPendingRequest` | Limit increase request pending with dispatch | Anfrage zur Limit-Erhöhung bei der Disposition offen |
-| `driverDailyLimitProfileAtLimit` | Daily limit reached for tours with pickup on {date} | Tageslimit erreicht für Touren mit Abholung am {date} |
-| `driverDailyLimitProfileRemaining` | {remaining} acceptance(s) remaining for this pickup day | Noch {remaining} Annahme(n) für diesen Abholtag |
-| `driverDailyLimitProfileTitle` | Daily acceptance limit | Tägliches Annahmelimit |
-| `driverDailyLimitProfileUsage` | {count} of {limit} tours accepted (pickup date {date}) | {count} von {limit} Touren angenommen (Abholdatum {date}) |
-| `driverDailyLimitRequestBtn` | Request higher limit | Höheres Limit anfragen |
-| `driverDailyLimitRequestFailed` | Could not send limit increase request. | Anfrage konnte nicht gesendet werden. |
-| `driverDailyLimitRequestHint` | Your current limit is {current} tour(s) per day ({count} already accepted today). Ask dispatch to raise it. | Ihr aktuelles Limit ist {current} Tour(en) pro Tag ({count} heute bereits angenommen). Bitten Sie die Disposition um eine Erhöhung. |
-| `driverDailyLimitRequestInvalid` | Enter a whole number between 1 and 99. | Ganze Zahl zwischen 1 und 99 eingeben. |
-| `driverDailyLimitRequestMustIncrease` | Requested limit must be higher than your current limit. | Das gewünschte Limit muss höher als Ihr aktuelles Limit sein. |
-| `driverDailyLimitRequestNote` | Reason (optional) | Begründung (optional) |
-| `driverDailyLimitRequestNotePh` | e.g. Extra tours available in your area today… | z. B. Heute zusätzliche Touren in Ihrer Region… |
-| `driverDailyLimitRequestOpenExists` | You already have an open change request. Wait for dispatch to resolve it first. | Sie haben bereits eine offene Änderungsanfrage. Bitte warten Sie auf die Bearbeitung. |
-| `driverDailyLimitRequestSubmit` | Send request | Anfrage senden |
-| `driverDailyLimitRequestTitle` | Request higher daily limit | Höheres Tageslimit anfragen |
-| `driverDailyLimitRequestedLabel` | Requested daily limit | Gewünschtes Tageslimit |
 | `driverNotifInfopointHint` | Also in Infopoint → New messages | Auch unter Infopoint → Neue Nachrichten |
 | `driverNotifications` | Notifications | Benachrichtigungen |
 | `driverNotificationsAllRead` | All caught up | Alles gelesen |
 | `driverNotificationsEmpty` | No notifications yet. | Noch keine Benachrichtigungen. |
 | `driverNotificationsSub` | Tour and document updates | Tour- und Dokument-Updates |
 | `driverOffer` | Driver offer | Fahrerangebot |
+| `driverProbationLimitReached` | You are still on probation. Complete {limit} tours marked Performed before booking more (currently {performed} Performed). | Sie sind noch in der Probezeit. Schließen Sie {limit} Touren mit Status Durchgeführt ab, bevor Sie weitere buchen (aktuell {performed} Durchgeführt). |
+| `driverProbationLimitTitle` | Probation booking limit | Probezeit-Buchungslimit |
+| `driverProbationProfileAtLimit` | Initial booking allowance used — complete Performed tours to be released | Initiale Buchungsanzahl erreicht — schließen Sie Durchgeführt-Touren ab zur Freigabe |
+| `driverProbationProfileRemaining` | {remaining} initial booking slot(s) remaining before you must complete Performed tours | Noch {remaining} initiale Buchungsplätze, danach müssen Touren durchgeführt sein |
+| `driverProbationProfileTitle` | Probation progress | Probezeit-Fortschritt |
+| `driverProbationProfileUsage` | {performed} of {limit} tours Performed · {taken} booked so far | {performed} von {limit} Touren durchgeführt · {taken} bisher gebucht |
 | `driverStatusActive` | Active | Aktiv |
 | `driverTourCancelledNotice` | Dispatch cancelled this tour. The message below explains why — no further action is required on your side. | Die Disposition hat diese Tour storniert. Die Nachricht unten erklärt warum — es sind keine weiteren Schritte nötig. |
 | `dropPlz` | Drop PLZ {plz} | Ziel-PLZ {plz} |
@@ -97,8 +88,6 @@
 | `helpSupportIntro` | Contact dispatch if you need help on the road. | Wende dich an die Disposition, wenn du unterwegs Hilfe brauchst. |
 | `helpSupportTitle` | Help & support | Hilfe & Support |
 | `infopoint` | Infopoint | Infopoint |
-| `infopointDocPreviewDemo` | PDF preview (demo) | PDF-Vorschau (Demo) |
-| `infopointDocViewDownload` | View / Download | Ansehen / Herunterladen |
 | `infopointDocsTab` | General documents | Allgemeine Dokumente |
 | `infopointHelpTab` | Help | Hilfe |
 | `infopointNewsAdminHint` | Messages are published by admins under Admin → Infopoint → New messages. | Nachrichten werden im Admin unter Infopoint → Neue Nachrichten veröffentlicht. |
@@ -128,7 +117,6 @@
 | `masterDataChangeEditBtn` | Request changes | Änderung anfragen |
 | `masterDataChangeFormHint` | Update any fields that need changing, then submit for operations to review. | Felder anpassen und zur Prüfung durch die Disposition senden. |
 | `masterDataChangeNotice` | These details are managed by operations. Tap Request changes to propose updates. | Diese Daten verwaltet der Betrieb. Tippen Sie auf Änderung anfragen, um Updates vorzuschlagen. |
-| `masterDataChangeOpenExists` | You already have an open profile change request. Wait until operations approves or declines it before submitting another. | Sie haben bereits eine offene Profiländerungs-Anfrage. Bitte warten Sie, bis die Disposition sie bearbeitet hat. |
 | `masterDataChangePendingBadge` | Pending review | Prüfung ausstehend |
 | `masterDataChangePendingBody` | Submitted {date}. Operations will review your request before you can send another. | Eingereicht am {date}. Die Disposition prüft Ihre Anfrage, bevor Sie eine weitere senden können. |
 | `masterDataChangePendingTitle` | Change request pending | Änderungsanfrage ausstehend |
@@ -153,7 +141,7 @@
 | `officialTourDocumentsSection` | Reference documents | Referenzdokumente |
 | `ok` | OK | OK |
 | `operationalInstructions` | Operational instructions | Operative Hinweise |
-| `ownAxle` | Own axle | Eigene Achse |
+| `ownAxle` | Own axle | Eigenachse |
 | `partnerPolicyAlert` | Demo document: Driver terms are available in the Driver Info area and admin Documents module. | Demo-Dokument: Fahrerbedingungen sind im Fahrer-Infobereich und im Admin-Dokumentenmodul verfügbar. |
 | `performedTab` | Performed | Durchgeführt |
 | `pickup` | Pickup | Abholung |
@@ -163,7 +151,9 @@
 | `pickupTime` | Pickup Time | Abholzeit |
 | `postalArea` | Postal code / area | PLZ / Gebiet |
 | `postalCodeAbbr` | PLZ | PLZ |
+| `previewUnavailable` | Preview is not available for this file type. | Für diesen Dateityp ist keine Vorschau verfügbar. |
 | `primaryNavigation` | Primary navigation | Hauptnavigation |
+| `print` | Print | Drucken |
 | `problemReasonNoContact` | Contact unreachable | Kontakt nicht erreichbar |
 | `problemReasonNoContactSub` | On-site contact not available | Vor-Ort-Kontakt nicht erreichbar |
 | `problemReasonNotOnSite` | Vehicle not on site | Fahrzeug nicht vor Ort |
@@ -186,6 +176,7 @@
 | `pushPostalPrefixHint` | 1–2 digit prefix, e.g. 4, 40, or 41 | 1–2-stelliges Präfix, z. B. 4, 40 oder 41 |
 | `pushSupportNotice` | Android supported in app flow. iOS requires home-screen installation, compatible iOS version, and permission. | Android wird im App-Ablauf unterstützt. iOS erfordert Installation auf dem Homescreen, eine kompatible iOS-Version und Berechtigung. |
 | `reason` | Reason | Grund |
+| `redPlateNumber` | Red plate no. | Rotes Kennzeichen (Nr.) |
 | `refreshDemo` | Refresh | Aktualisieren |
 | `removeFilterChip` | Remove filter: {label} | Filter entfernen: {label} |
 | `reportCancelAppointmentNotPossible` | Appointment no longer possible | Termin nicht mehr möglich |
@@ -225,6 +216,8 @@
 | `searchMyJobsPlaceholder` | Search tour no. or city… | Tour-Nr. oder Stadt suchen… |
 | `settlements` | Settlements | Abrechnungen |
 | `settlementsSub` | Statements · driver offers | Abrechnungen · Auszahlungen |
+| `share` | Share | Teilen |
+| `shareNotSupported` | Sharing is not supported on this device. | Teilen wird auf diesem Gerät nicht unterstützt. |
 | `showResults` | Show {count} results | {count} Ergebnisse anzeigen |
 | `signOut` | Sign out | Abmelden |
 | `signOutAlert` | Demo sign out: authentication will be implemented in production. | Demo-Abmeldung: Authentifizierung wird in der Produktion implementiert. |

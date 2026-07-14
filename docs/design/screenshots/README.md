@@ -24,7 +24,8 @@ Standard viewports/themes — every capture states both:
 | `marketplace-long-cities-light.png` | Marketplace with the longest seeded city names | truncation/wrapping of route lines |
 | `marketplace-diff-dates-light.png` | Card whose pickup/delivery dates differ (e.g. 23.04. → 24.04.) | both dates + windows visible |
 | `marketplace-metadata-light.png` | Card with important-vehicle-info tags set (seed tours 0847/0844: Registered · Deregistered + Red plates; My Jobs 0848: Registered + E-vehicle) | vehicle model, info tags, axle chip |
-| `marketplace-status-light.png` | Any marketplace card | status pill with text label |
+| `myjobs-status-light.png` | Any My Jobs card | tour number + status pill with text label (client decision 2026-07-14: marketplace cards carry neither) |
+| `docview-light.png` | Job detail → transport-order view button | full-height in-app viewer rendering the seeded 2-page PDF |
 | `filters-sheet-light.png` | Marketplace → filter button (top) | filter sheet, top-of-screen entry point |
 | `header-kpi-light.png` | Marketplace header | restrained KPI chip row (Available / Booked / Open documents) |
 | `job-locked-light.png` | Marketplace → tap published job | locked detail, masked data, secondary buttons |

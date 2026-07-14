@@ -1390,7 +1390,7 @@ const AdminDetail = ({
               marginTop: 2,
             }}
           >
-            {job.axle} · {t("adminDriverOfferLumpSum")}
+            {displayAxleAdmin(job.axle, t)} · {t("adminDriverOfferLumpSum")}
           </div>
         </div>
       </div>
@@ -1629,6 +1629,11 @@ const AdminDetail = ({
                   {job.redPlates ? (
                     <span className="pill outline no-dot">
                       {t("vehicleInfoRedPlates")}
+                      {job.redPlateNumber ? (
+                        <span className="mono" style={{ marginLeft: 6 }}>
+                          {job.redPlateNumber}
+                        </span>
+                      ) : null}
                     </span>
                   ) : null}
                 </div>
@@ -2132,11 +2137,22 @@ const EMPTY_NEW_ORDER_FORM = {
   registrationStatus: "",
   electricVehicle: false,
   redPlates: false,
+  redPlateNumber: "",
   pickupLocationId: "",
   deliveryLocationId: "",
   savePickupToMaster: false,
   saveDeliveryToMaster: false,
 };
+
+const displayAxleAdmin = (value, t) =>
+  ({
+    "driven on own wheels": t("ownAxle"),
+    "third-party axle": t("thirdPartyAxle"),
+    Eigenachse: t("ownAxle"),
+    Fremdachse: t("thirdPartyAxle"),
+    "Own axle": t("ownAxle"),
+    "Third-party axle": t("thirdPartyAxle"),
+  })[value] || value;
 
 const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
   const store = useAuthStore();
@@ -2277,7 +2293,10 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
     "pickupDate",
     "deliveryDate",
     "vehicleType",
-    "plate",
+    // Registered (or unspecified) vehicles need the regular plate; a
+    // deregistered vehicle has none (§16 FZV transfer runs use a red plate)
+    ...(form.registrationStatus === "deregistered" ? [] : ["plate"]),
+    ...(form.redPlates ? ["redPlateNumber"] : []),
     "driverOffer",
   ];
   const scheduleDateWarning =
@@ -2802,16 +2821,28 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   onChange={(e) => set("model", e.target.value)}
                 />
               </div>
-              <div>
-                <label className="field-label">{t("plate")} *</label>
-                <input
-                  className="input mono"
-                  placeholder={t("newOrderPlatePh")}
-                  value={form.plate}
-                  onChange={(e) => set("plate", e.target.value)}
-                  onBlur={(e) => set("plate", AuthStore.normalizePlate(e.target.value))}
-                />
-              </div>
+              {form.registrationStatus === "deregistered" ? (
+                <div>
+                  <label className="field-label">{t("plate")}</label>
+                  <p
+                    className="label"
+                    style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.5 }}
+                  >
+                    {t("newOrderPlateHiddenDeregistered")}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label className="field-label">{t("plate")} *</label>
+                  <input
+                    className="input mono"
+                    placeholder={t("newOrderPlatePh")}
+                    value={form.plate}
+                    onChange={(e) => set("plate", e.target.value)}
+                    onBlur={(e) => set("plate", AuthStore.normalizePlate(e.target.value))}
+                  />
+                </div>
+              )}
               <div>
                 <label className="field-label">
                   {t("vin")} ({t("newOrderVinLen")})
@@ -2898,6 +2929,25 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   {t("vehicleInfoRedPlates")}
                 </span>
               </div>
+              {form.redPlates ? (
+                <div style={{ marginTop: 12, maxWidth: 260 }}>
+                  <label className="field-label">
+                    {t("redPlateNumber")} *
+                  </label>
+                  <input
+                    className="input mono"
+                    placeholder={t("newOrderRedPlatePh")}
+                    value={form.redPlateNumber}
+                    onChange={(e) => set("redPlateNumber", e.target.value)}
+                  />
+                  <p
+                    className="label"
+                    style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}
+                  >
+                    {t("newOrderRedPlateHint")}
+                  </p>
+                </div>
+              ) : null}
               <p
                 className="label"
                 style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}

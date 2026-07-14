@@ -154,6 +154,7 @@
       "vehicle registration status: registered / deregistered (optional, nullable = not specified; Design Direction Board 07/2026)",
       "electric vehicle flag (optional boolean, default false)",
       "red license plates flag (optional boolean, default false)",
+      "red license plate number (required only when the red-plates flag is set; German \u00a716 FZV dealer transfer plate \u2014 district code + recognition number starting 06, operator-bound, e.g. K-06 1234)",
       "price/revenue if operationally needed",
       "driver offer if operationally needed",
       "expenses if operationally needed",
@@ -511,7 +512,7 @@
         "Optional contact fields (alternate contact, second phone, email, info notes) are hidden behind progressive disclosure such as Add another contact or Show additional contact details.",
         "Admin may attach additional self-created documents when creating or editing a draft job, including optional images such as a vehicle photo; attached documents are stored alongside or as a substitute for the auto-generated transport-order document.",
         "Customer/address master-data notes do not automatically become order-specific notes; admin must explicitly apply, edit, or enter driver-visible/internal notes for the tour.",
-        "Important vehicle info is captured in the Vehicle section as optional announcement metadata (Design Direction Board 07/2026, resolved 2026-07-14): registration status (registered/deregistered, nullable), electric vehicle flag, red license plates flag. None of these fields is required for Save Draft, Publish, or Direct Assign, and no V1 marketplace filter uses them.",
+        "Important vehicle info is captured in the Vehicle section as announcement metadata (Design Direction Board 07/2026, resolved 2026-07-14): registration status (registered/deregistered, nullable), electric vehicle flag, red license plates flag, and \u2014 when the red-plates flag is set \u2014 the red license plate number. Conditional field rules (2026-07-14): when registration is Registered or unspecified the regular license plate remains a required field; when registration is Deregistered the license plate input is hidden and the stored plate is cleared (a deregistered vehicle carries no valid plate); when the red-plates flag is set a separate red-plate-number input becomes required (German \u00a716 FZV dealer transfer plate: district code + recognition number starting 06 \u2014 05 = inspection bodies, 07 = classic cars; the plate is assigned to the operator, not the vehicle, so it is captured per tour). The registration/electric/red-plates flags themselves stay optional and no V1 marketplace filter uses them.",
         "If by-latest scheduling is confirmed for V1, it is represented explicitly rather than overloading pickup/delivery time-window fields."
       ],
       "status": "pending",
@@ -1280,7 +1281,7 @@
       "Oldtimer"
     ],
     "vehicle_csv_role": "Glossary/reference only; not operational import data.",
-    "vehicle_important_info_v1": "Resolved 2026-07-14 via Design Direction Board (July 2026) \u00a75 and client direction: jobs carry optional important-vehicle-info metadata \u2014 vehicle_registration_status enum (registered | deregistered, nullable = not specified), electric_vehicle boolean (default false), red_license_plates boolean (default false). Captured in the admin job form Vehicle section; rendered as text-labelled tags on driver marketplace cards and in job/vehicle detail (driver and admin). Announcement metadata only: not required for Save Draft/Publish/Direct Assign, no marketplace filter dimension in V1, no acceptance or settlement rule depends on it, and red plates stay order-level metadata (no separate vehicle entity in V1).",
+    "vehicle_important_info_v1": "Resolved 2026-07-14 via Design Direction Board (July 2026) \u00a75 and client direction: jobs carry optional important-vehicle-info metadata \u2014 vehicle_registration_status enum (registered | deregistered, nullable = not specified), electric_vehicle boolean (default false), red_license_plates boolean (default false), plus red_license_plate_number varchar(32). Captured in the admin job form Vehicle section; rendered as text-labelled tags on driver marketplace cards and in job/vehicle detail (driver and admin). Conditional capture rules (client direction, same day): regular license plate required when registration is registered/unspecified; license plate hidden and cleared when deregistered; red_license_plate_number required when red_license_plates is set (\u00a716 FZV rote Kennzeichen, dealer 06-series, operator-bound \u2014 hence order-level, no vehicle master entity in V1). The three flags themselves are never required for Save Draft/Publish/Direct Assign and no marketplace filter dimension uses them in V1.",
     "app_display_name": "Configurable; default Transport Portal until client provides final name.",
     "tablet_ipad_v1": "Phone-first; iPad best-effort responsive.",
     "audit_log_language_v1": "English action keys; UI localized EN/DE.",

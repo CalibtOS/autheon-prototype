@@ -83,6 +83,15 @@ for (const theme of ["light", "dark"]) {
     await page.locator(".jobcard-btn").first().click();
     await page.waitForTimeout(500);
     await shotPhone(page, `driver-job-unlocked-${theme}.png`);
+
+    // In-app document viewer (seeded real PDF)
+    await page.locator(".pdf-actions .pdf-btn").first().click();
+    await page.waitForSelector(".docview-page", { timeout: 15000 });
+    await page.waitForTimeout(600);
+    await shotPhone(page, `driver-docview-${theme}.png`);
+    await page.locator(".docview-head .btn.icon").click();
+    await page.waitForTimeout(300);
+
     await page.locator(".detail-back-btn").click();
     await page.waitForTimeout(400);
 

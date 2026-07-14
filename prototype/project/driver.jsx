@@ -23,9 +23,22 @@ const Lbl = ({ children, className = "", ...props }) => (
 const displayAxle = (value, t) =>
   ({
     All: t("all"),
+    "driven on own wheels": t("ownAxle"),
+    "third-party axle": t("thirdPartyAxle"),
     "Own axle": t("ownAxle"),
     "Third-party axle": t("thirdPartyAxle"),
+    Eigenachse: t("ownAxle"),
+    Fremdachse: t("thirdPartyAxle"),
   })[value] || value;
+
+// Canonical store axle values for filter comparisons
+const canonAxle = (v) =>
+  ({
+    "Own axle": "driven on own wheels",
+    "Third-party axle": "third-party axle",
+    Eigenachse: "driven on own wheels",
+    Fremdachse: "third-party axle",
+  })[v] || v;
 
 const displayVehicle = (value, t) =>
   ({
@@ -856,21 +869,21 @@ const JobCardBody = ({ job }) => {
       </div>
       <hr className="jobcard-divider" />
       <div className="jobcard-footer">
-        <div className="jobcard-meta">
-          <span className="vehicle-meta">
-            {job.vehicle === "Light truck <3.5t" ? <Ic.Truck /> : <Ic.Van />}
-            {job.vehicleModel && job.vehicleModel !== "—"
-              ? job.vehicleModel
-              : displayVehicle(job.vehicle, t)}
-          </span>
-          <VehicleFlagTags job={job} />
-          <span className="axle-chip">{displayAxle(job.axle, t)}</span>
-        </div>
+        <span className="vehicle-meta">
+          {job.vehicle === "Light truck <3.5t" ? <Ic.Truck /> : <Ic.Van />}
+          {job.vehicleModel && job.vehicleModel !== "—"
+            ? job.vehicleModel
+            : displayVehicle(job.vehicle, t)}
+        </span>
         <div className="jobcard-price tnum">
           {F().formatMoney
             ? F().formatMoney(fmtDriverOffer(job))
             : `€ ${fmtDriverOffer(job).toFixed(2)}`}
         </div>
+      </div>
+      <div className="jobcard-tags">
+        <VehicleFlagTags job={job} />
+        <span className="axle-chip">{displayAxle(job.axle, t)}</span>
       </div>
     </>
   );
@@ -882,11 +895,8 @@ const JobCardBody = ({ job }) => {
 const JobCard = ({ job, onOpen }) => {
   return (
     <button type="button" className="jobcard-btn" onClick={() => onOpen(job)}>
-      {/* Board §F/§4: tour identity + text-labelled operational status */}
-      <div className="jobcard-header-row">
-        <span className="jobcard-tour-num">Tour #{job.tour}</span>
-        <Pill status={job.status} />
-      </div>
+      {/* Client decision 2026-07-14: marketplace cards hide tour number and
+          status (all marketplace cards are Published); both stay on My Jobs */}
       <JobCardBody job={job} />
     </button>
   );
@@ -1263,7 +1273,11 @@ const jobMatchesDriverFilters = (j, filters) => {
     j.vehicle !== filters.vehicle
   )
     return false;
-  if (filters.axle && filters.axle !== "All" && j.axle !== filters.axle)
+  if (
+    filters.axle &&
+    filters.axle !== "All" &&
+    canonAxle(j.axle) !== canonAxle(filters.axle)
+  )
     return false;
   return true;
 };
@@ -1543,9 +1557,9 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
               <div className="value">{displayAxle(job.axle, t)}</div>
             </div>
             {vehicleInfoFlags(job, t).length ? (
-              <div className="detail-kv-row">
+              <div className="detail-flag-block">
                 <div className="label">{t("vehicleInfoLabel")}</div>
-                <div className="value jobcard-meta">
+                <div className="jobcard-tags">
                   <VehicleFlagTags job={job} />
                 </div>
               </div>
@@ -1676,7 +1690,7 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
           </div>
           <div className="mono text-muted-sm" style={{ marginTop: 6 }}>
             {AuthStore.formatJobScheduleShort(job, t("flexible"))} ·{" "}
-            {job.vehicle} · {job.axle}
+            {displayVehicle(job.vehicle, t)} · {displayAxle(job.axle, t)}
           </div>
           <div
             style={{ fontSize: 18, fontWeight: 600, marginTop: 10 }}
@@ -1753,10 +1767,46 @@ const tourDocReviewPillStatus = (st) => {
   return "assigned";
 };
 
+// Full-height in-app document viewer (fits the phone frame). Renders the
+// seeded real PDF via the browser's native viewer; Download/Share/Print are
+// functional. Production streams the actual file to the same surface.
+// UMD build — Babel standalone transpiles import() to require(), so the
+// module build is unusable here; the classic script attaches window.pdfjsLib.
+const PDFJS_URL = "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js";
+const PDFJS_WORKER_URL =
+  "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+
+const loadPdfJs = () =>
+  window.pdfjsLib
+    ? Promise.resolve(window.pdfjsLib)
+    : window.__pdfjsLoading ||
+      (window.__pdfjsLoading = new Promise((resolve, reject) => {
+        const sc = document.createElement("script");
+        sc.src = PDFJS_URL;
+        sc.onload = () =>
+          window.pdfjsLib
+            ? resolve(window.pdfjsLib)
+            : reject(new Error("pdfjsLib missing"));
+        sc.onerror = () => reject(new Error("pdf.js failed to load"));
+        document.head.appendChild(sc);
+      }));
+
 const DocumentPreviewSheet = ({ preview, onClose }) => {
   const { t } = useI18n();
   const iframeRef = useRef(null);
+  const pagesRef = useRef(null);
   const [shareMsg, setShareMsg] = useState("");
+  // pdf.js renders the document to canvases inside the phone frame —
+  // works on every browser (iframe PDF viewers don't on mobile Safari).
+  const [pdfState, setPdfState] = useState("loading"); // loading|ready|fallback
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   useEffect(() => {
     return () => {
@@ -1764,40 +1814,89 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
     };
   }, [preview?.blobUrl]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!preview?.pdfUrl) {
+      setPdfState("fallback");
+      return undefined;
+    }
+    (async () => {
+      try {
+        const pdfjs = await loadPdfJs();
+        pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+        const doc = await pdfjs.getDocument(preview.pdfUrl).promise;
+        if (cancelled) return;
+        const el = pagesRef.current;
+        if (!el) return;
+        el.innerHTML = "";
+        const width = Math.max(el.clientWidth - 24, 200);
+        const dpr = window.devicePixelRatio || 1;
+        for (let i = 1; i <= doc.numPages; i++) {
+          const page = await doc.getPage(i);
+          if (cancelled) return;
+          const base = page.getViewport({ scale: 1 });
+          const scale = width / base.width;
+          const vp = page.getViewport({ scale: scale * dpr });
+          const canvas = document.createElement("canvas");
+          canvas.width = vp.width;
+          canvas.height = vp.height;
+          canvas.style.width = `${Math.round(vp.width / dpr)}px`;
+          canvas.style.height = `${Math.round(vp.height / dpr)}px`;
+          canvas.className = "docview-page";
+          el.appendChild(canvas);
+          await page.render({
+            canvasContext: canvas.getContext("2d"),
+            viewport: vp,
+          }).promise;
+        }
+        if (!cancelled) setPdfState("ready");
+      } catch (_) {
+        if (!cancelled) setPdfState("fallback");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [preview?.pdfUrl]);
+
   if (!preview) return null;
 
-  const canShare =
-    typeof navigator !== "undefined" &&
-    typeof navigator.share === "function" &&
-    typeof navigator.canShare === "function";
+  const src = preview.pdfUrl
+    ? `${preview.pdfUrl}#toolbar=0&navpanes=0&view=FitH`
+    : preview.blobUrl;
+  const downloadName = preview.downloadName || preview.fileName || "document.pdf";
 
   const download = () => {
-    const blob = preview.downloadBlob;
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = preview.downloadName || preview.fileName || "document";
+    if (preview.pdfUrl) {
+      a.href = preview.pdfUrl;
+    } else if (preview.downloadBlob) {
+      a.href = URL.createObjectURL(preview.downloadBlob);
+    } else {
+      return;
+    }
+    a.download = downloadName;
     a.click();
-    URL.revokeObjectURL(url);
+    if (!preview.pdfUrl) URL.revokeObjectURL(a.href);
   };
 
   const share = async () => {
     setShareMsg("");
     try {
-      const file = new File(
-        [preview.downloadBlob],
-        preview.downloadName || preview.fileName || "document.txt",
-        { type: preview.downloadBlob.type || "text/plain" },
-      );
-      if (!canShare || !navigator.canShare({ files: [file] })) {
+      const blob = preview.pdfUrl
+        ? await fetch(preview.pdfUrl).then((r) => r.blob())
+        : preview.downloadBlob;
+      const file = new File([blob], downloadName, {
+        type: blob.type || "application/pdf",
+      });
+      if (
+        typeof navigator.canShare !== "function" ||
+        !navigator.canShare({ files: [file] })
+      ) {
         setShareMsg(t("shareNotSupported"));
         return;
       }
-      await navigator.share({
-        files: [file],
-        title: preview.title || preview.fileName,
-      });
+      await navigator.share({ files: [file], title: preview.title });
     } catch (err) {
       if (err && err.name !== "AbortError") setShareMsg(t("shareNotSupported"));
     }
@@ -1805,47 +1904,36 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
 
   const printDoc = () => {
     try {
-      const frame = iframeRef.current;
-      if (frame?.contentWindow) {
-        frame.contentWindow.focus();
-        frame.contentWindow.print();
+      const w = iframeRef.current?.contentWindow;
+      if (w) {
+        w.focus();
+        w.print();
         return;
       }
     } catch (_) {
-      /* fall through */
+      /* PDF viewer frames are opaque — fall through */
     }
-    window.print();
+    if (preview.pdfUrl) window.open(preview.pdfUrl, "_blank");
   };
 
   return (
-    <div className="sheet-backdrop center" onClick={onClose}>
+    <>
+      <button
+        type="button"
+        className="notifications-dropdown-backdrop"
+        onClick={onClose}
+        aria-label={t("uiDismiss")}
+      />
       <div
-        className="sheet card document-preview-sheet"
-        onClick={(e) => e.stopPropagation()}
+        className="docview-panel"
         role="dialog"
         aria-modal="true"
         aria-label={t("documentPreviewTitle")}
-        style={{
-          width: "min(420px, 94vw)",
-          maxHeight: "88vh",
-          display: "flex",
-          flexDirection: "column",
-          padding: 0,
-          overflow: "hidden",
-        }}
       >
-        <div
-          className="row-between"
-          style={{ padding: "14px 16px", borderBottom: "1px solid var(--line)" }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>
-              {t("documentPreviewTitle")}
-            </div>
-            <div
-              className="text-muted-sm"
-              style={{ marginTop: 2, overflow: "hidden", textOverflow: "ellipsis" }}
-            >
+        <div className="docview-head">
+          <div className="flex-1-min-0">
+            <div className="docview-title">{t("documentPreviewTitle")}</div>
+            <div className="docview-filename" title={preview.fileName}>
               {preview.title || preview.fileName}
             </div>
           </div>
@@ -1855,29 +1943,33 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
             onClick={onClose}
             aria-label={t("uiDismiss")}
           >
-            ×
+            <Ic.X />
           </button>
         </div>
-        <div style={{ flex: 1, minHeight: 280, background: "var(--paper-2)" }}>
-          {preview.previewable !== false && preview.blobUrl ? (
+        <div className="docview-body">
+          {preview.pdfUrl && pdfState !== "fallback" ? (
+            <div className="docview-pages scroll">
+              {pdfState === "loading" ? (
+                <div className="docview-loading" aria-busy="true">
+                  <SkeletonList count={2} />
+                </div>
+              ) : null}
+              {/* canvases are appended manually — keep out of React's children */}
+              <div ref={pagesRef} />
+            </div>
+          ) : preview.previewable !== false && src ? (
             <iframe
               ref={iframeRef}
+              className="docview-frame"
               title={preview.title || t("documentPreviewTitle")}
-              src={preview.blobUrl}
-              style={{
-                width: "100%",
-                height: "100%",
-                minHeight: 280,
-                border: 0,
-                background: "#fff",
-              }}
+              src={src}
             />
           ) : (
             <div style={{ padding: 20 }}>{t("previewUnavailable")}</div>
           )}
         </div>
         {shareMsg ? (
-          <div style={{ padding: "8px 16px" }}>
+          <div style={{ padding: "8px 14px" }}>
             <InlineAlert
               tone="info"
               message={shareMsg}
@@ -1885,38 +1977,22 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
             />
           </div>
         ) : null}
-        <div
-          className="document-preview-actions"
-          style={{
-            display: "flex",
-            gap: 8,
-            padding: 12,
-            borderTop: "1px solid var(--line)",
-            flexWrap: "wrap",
-          }}
-        >
-          <button type="button" className="btn" onClick={download}>
-            {t("download")}
+        <div className="docview-actions">
+          <button type="button" className="btn sm" onClick={download}>
+            <Ic.Down /> {t("download")}
           </button>
-          {typeof navigator !== "undefined" && typeof navigator.share === "function" ? (
-            <button type="button" className="btn" onClick={share}>
+          {typeof navigator !== "undefined" &&
+          typeof navigator.share === "function" ? (
+            <button type="button" className="btn sm" onClick={share}>
               {t("share")}
             </button>
           ) : null}
-          <button type="button" className="btn" onClick={printDoc}>
+          <button type="button" className="btn sm" onClick={printDoc}>
             {t("print")}
-          </button>
-          <button
-            type="button"
-            className="btn primary"
-            style={{ marginLeft: "auto" }}
-            onClick={onClose}
-          >
-            {t("uiDismiss")}
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -2491,10 +2567,18 @@ const JobUnlocked = ({
               <div className="label">{t("model")}</div>
               <div className="value">{job.vehicleModel}</div>
             </div>
-            <div className="detail-kv-row">
-              <div className="label">{t("licensePlate")}</div>
-              <div className="plate-badge">{job.plate}</div>
-            </div>
+            {job.plate ? (
+              <div className="detail-kv-row">
+                <div className="label">{t("licensePlate")}</div>
+                <div className="plate-badge">{job.plate}</div>
+              </div>
+            ) : null}
+            {job.redPlateNumber ? (
+              <div className="detail-kv-row">
+                <div className="label">{t("redPlateNumber")}</div>
+                <div className="plate-badge plate-red">{job.redPlateNumber}</div>
+              </div>
+            ) : null}
             <div className="detail-kv-row">
               <div className="label">{t("vin")}</div>
               <div className="value mono text-muted-sm">
@@ -2506,9 +2590,9 @@ const JobUnlocked = ({
               <div className="value">{displayAxle(job.axle, t)}</div>
             </div>
             {vehicleInfoFlags(job, t).length ? (
-              <div className="detail-kv-row">
+              <div className="detail-flag-block">
                 <div className="label">{t("vehicleInfoLabel")}</div>
-                <div className="value jobcard-meta">
+                <div className="jobcard-tags">
                   <VehicleFlagTags job={job} />
                 </div>
               </div>

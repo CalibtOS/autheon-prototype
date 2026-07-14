@@ -103,6 +103,8 @@ Status changes vs the v1.0 matrix (implementation evidence in [`design-direction
 
 New finding from the PDF: the **button board renders the primary button dark/near-black**, while §2 explicitly allows purple for "primäre CTAs". The prototype keeps purple primaries (allowed by §2); black-vs-purple primary buttons is recorded as a new client decision below.
 
+**Same-evening client review (remediation R22–R27):** axle type fully localized (EN/DE); **marketplace cards drop tour number + status by client decision** (all marketplace cards are Published — a recorded deviation from §4's status-in-lists wording; My Jobs keeps both); card footer split into a calm model+price line plus a wrapping tag row; detail vehicle-info reordered into a labelled chip block; document viewing replaced with a full-height in-app viewer rendering a seeded real 2-page PDF (item 35 scanability risk closed for documents); conditional plate capture added (registered → plate required, deregistered → no plate, red plates → §16 FZV `06`-series number required) — mirrored in `prd.json`/`schema.dbml`/`logical-model.md`/changelog without a PRD version change.
+
 ## Method notes
 
 - Rendered checks: Chromium via Playwright (`prototype/project/_capture-design-audit.mjs`), driver phone frame light+dark, admin 1440px light+dark. Screenshot set in [`audit-2026-07-14/before/`](audit-2026-07-14/before/).

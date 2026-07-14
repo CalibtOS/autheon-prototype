@@ -1,5 +1,6 @@
 ﻿// AUTHEON Version 1 database draft — PostgreSQL target.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
+// 2026-07-14 (PRD v2.1 follow-up, same version) — important-vehicle-info conditional rules: added jobs.red_license_plate_number (§16 FZV dealer transfer plate, operator-bound); documented that licenseplate is app-required when registered and null when deregistered.
 // 2026-07-13 (PRD v2.0, F-01) — removed deprecated master_data_change_type.daily_limit_override enum value. Documented that drivers.probation_job_limit is a per-driver snapshot seeded at creation from app_settings 'driver.acceptance.probationJobCount' (application-layer default, literal column default is a fallback only); no structural change to columns.
 // Last updated: 2026-07-10 (PRD v2.0) — no structural change. Annotated drivers.driver_code semantics (F-03: system-assigned, immutable, never reused) and documented same-day per-leg time-window rule (F-04) in logical-model.md. Probation UI, Infopoint View/Download, branding/domain/Report-Problem-timing are UI/open items with no schema impact.
 // 2026-07-09 (PRD v1.9, F-01) — replaced drivers.daily_job_limit with the one-time probation model (probation_job_limit + probation_cleared_at); removed master_data_change_type.daily_limit_override; renamed app_settings key driver.acceptance.defaultDailyJobLimit -> driver.acceptance.probationJobCount.
@@ -217,11 +218,20 @@ Table jobs {
   licenseplate varchar(32)
   vin varchar(17)
   axle_type varchar(32) [not null]
-  // Important vehicle info — optional announcement metadata (DDB 07/2026 §5);
-  // shown as text tags on marketplace cards/detail; no filter dimension in V1
+  // Important vehicle info — announcement metadata (DDB 07/2026 §5) with
+  // conditional capture rules (2026-07-14): licenseplate is required by the
+  // application when registration is 'registered' (or unspecified) and MUST be
+  // null when 'deregistered' (a deregistered vehicle carries no valid plate);
+  // when red_license_plates = true the application requires
+  // red_license_plate_number. No filter dimension in V1.
   vehicle_registration_status vehicle_registration_status // nullable = not specified
   electric_vehicle boolean [not null, default: false]
   red_license_plates boolean [not null, default: false]
+  // German red transfer plate (rotes Kennzeichen, §16 FZV): district code +
+  // recognition number starting 06 (dealer/workshop series; 05 = inspection,
+  // 07 = classic cars). Assigned to the OPERATOR, not the vehicle — captured
+  // per tour, not in a vehicle master table. Example: 'K-06 1234'.
+  red_license_plate_number varchar(32)
   internal_notes text
   driver_visible_notes text
   // Determines publish flow and notification strategy

@@ -127,6 +127,12 @@ window.I18n = (() => {
       vehicleInfoDeregistered: "Deregistered",
       vehicleInfoElectric: "E-vehicle",
       vehicleInfoRedPlates: "Red plates",
+      redPlateNumber: "Red plate no.",
+      newOrderRedPlatePh: "e.g. K-06 1234",
+      newOrderRedPlateHint:
+        "Dealer transfer plate (\u00a7 16 FZV): district code + number starting with 06. Assigned to the operator, not the vehicle.",
+      newOrderPlateHiddenDeregistered:
+        "Deregistered vehicle \u2014 no regular license plate. Add a red plate if the tour runs on its own wheels.",
       vehicleInfoLabel: "Important vehicle info",
       newOrderRegistrationLabel: "Registration",
       newOrderRegistrationNone: "Not specified",
@@ -1333,6 +1339,12 @@ window.I18n = (() => {
       vehicleInfoDeregistered: "Abgemeldet",
       vehicleInfoElectric: "E-Fahrzeug",
       vehicleInfoRedPlates: "Rote Kennzeichen",
+      redPlateNumber: "Rotes Kennzeichen (Nr.)",
+      newOrderRedPlatePh: "z. B. K-06 1234",
+      newOrderRedPlateHint:
+        "H\u00e4ndlerkennzeichen (\u00a7 16 FZV): Unterscheidungszeichen + Nummer beginnend mit 06. Dem Betrieb zugeteilt, nicht dem Fahrzeug.",
+      newOrderPlateHiddenDeregistered:
+        "Abgemeldetes Fahrzeug \u2014 kein amtliches Kennzeichen. F\u00fcr \u00dcberf\u00fchrung auf eigener Achse rotes Kennzeichen erg\u00e4nzen.",
       vehicleInfoLabel: "Wichtige Fahrzeug-Info",
       newOrderRegistrationLabel: "Zulassung",
       newOrderRegistrationNone: "Keine Angabe",
@@ -2401,7 +2413,7 @@ window.I18n = (() => {
       signOutAlert:
         "Demo-Abmeldung: Authentifizierung wird in der Produktion implementiert.",
       all: "Alle",
-      ownAxle: "Eigene Achse",
+      ownAxle: "Eigenachse",
       thirdPartyAxle: "Fremdachse",
       lightTruck: "Leicht-Lkw <3,5 t",
       emergencyDispatchNotice:

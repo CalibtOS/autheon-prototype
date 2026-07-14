@@ -841,11 +841,8 @@ textarea.input {
   flex-shrink: 0;
 }
 /* Important vehicle info tag (Registered / Deregistered / E-vehicle / Red
-   plates) — text label always present; icon supports, never replaces it. */
-.phone-shell .vehicle-flag:first-child {
-  border-left: 0;
-  padding-left: 0;
-}
+   plates) — chip treatment so rows wrap cleanly on narrow cards; text label
+   always present, the icon supports it. */
 .phone-shell .vehicle-flag {
   display: inline-flex;
   align-items: center;
@@ -853,8 +850,10 @@ textarea.input {
   font-size: 12px;
   font-weight: 500;
   color: var(--text);
-  padding-left: 8px;
-  border-left: 1px solid var(--line);
+  background: var(--canvas);
+  border-radius: var(--r-2);
+  padding: 4px 9px;
+  white-space: nowrap;
 }
 .phone-shell .vehicle-flag svg {
   flex-shrink: 0;
@@ -873,6 +872,30 @@ textarea.input {
   border-radius: var(--r-2);
   padding: 4px 9px;
   white-space: nowrap;
+}
+/* Wrapping tag row under the card footer (flags + axle) */
+.phone-shell .jobcard-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.phone-shell .jobcard-tags:empty {
+  display: none;
+}
+/* Ordered vehicle-info block in the detail card: label line, tags beneath */
+.phone-shell .detail-flag-block .label {
+  font-size: 14px;
+  color: var(--muted);
+}
+.phone-shell .detail-flag-block .jobcard-tags {
+  margin-top: 8px;
+}
+/* German red transfer plate (§16 FZV) — literal plate rendering; the text
+   label ("Red plate no.") always accompanies it */
+.phone-shell .plate-badge.plate-red {
+  color: #b91c1c;
+  border-color: #b91c1c;
 }
 .phone-shell .jobcard-price {
   font-size: 19px;
@@ -3904,6 +3927,83 @@ textarea.input {
   overflow-y: auto;
   padding: 16px max(20px, var(--phone-chrome-right)) calc(24px + var(--phone-chrome-bottom))
     max(20px, var(--phone-chrome-left));
+}
+
+/* In-app document viewer — full-height page inside the phone frame */
+.phone-shell .docview-panel {
+  position: absolute;
+  top: var(--phone-chrome-top);
+  right: var(--phone-chrome-right);
+  bottom: var(--phone-chrome-bottom);
+  left: var(--phone-chrome-left);
+  background: var(--canvas);
+  z-index: var(--z-sheet);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideInRight 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.phone-shell .docview-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.phone-shell .docview-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.phone-shell .docview-filename {
+  font-size: var(--text-caption);
+  color: var(--muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.phone-shell .docview-body {
+  flex: 1;
+  min-height: 0;
+  background: var(--paper-2);
+}
+.phone-shell .docview-pages {
+  height: 100%;
+  overflow-y: auto;
+  padding: 12px;
+}
+.phone-shell .docview-pages .docview-page {
+  display: block;
+  margin: 0 auto 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: var(--sh-1);
+  max-width: 100%;
+}
+.phone-shell .docview-loading {
+  padding: 8px 4px;
+}
+.phone-shell .docview-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+.phone-shell .docview-actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px calc(12px + var(--phone-chrome-bottom));
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.phone-shell .docview-actions .btn {
+  flex: 1;
 }
 
 /* Profile Redesign & Switch Toggles */
