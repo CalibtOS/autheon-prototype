@@ -15,6 +15,9 @@ window.AuthStore = (() => {
   const DEMO_DRIVER = "Jordan Blake";
   const DEMO_ADMIN = "Anna Bauer";
 
+  // Seeded real 2-page PDF served by every in-app document view/download —
+  // stands in for the production file stream (see driver DocumentPreviewSheet).
+  const SAMPLE_PDF_URL = "assets/transport-order-sample.pdf";
   const AXLE_OWN = "driven on own wheels";
   const AXLE_THIRD = "third-party axle";
 
@@ -154,6 +157,14 @@ window.AuthStore = (() => {
       plate: "",
       vin: "",
       axle: AXLE_OWN,
+      // Important vehicle info (Design Direction Board §5 — optional metadata;
+      // PRD decision on required V1 persistence still open)
+      registrationStatus: null, // "registered" | "deregistered" | null
+      electricVehicle: false,
+      redPlates: false,
+      // German red transfer plate no. (§16 FZV, dealer "06" series) — belongs
+      // to the operator, not the vehicle; captured per tour when redPlates=true
+      redPlateNumber: "",
 
       revenue: null,
       driverOffer: null,
@@ -812,6 +823,7 @@ window.AuthStore = (() => {
         plate: "M-AB 1234",
         vin: "WVGZZZ5NZKW123456",
         axle: AXLE_OWN,
+        registrationStatus: "registered",
 
         revenue: 340,
         netAmount: 285.71,
@@ -852,6 +864,8 @@ window.AuthStore = (() => {
         plate: "HB-NF 848",
         vin: "TMBJH7NP8P0123848",
         axle: AXLE_OWN,
+        registrationStatus: "registered",
+        electricVehicle: true,
 
         revenue: 185,
         driverOffer: 145,
@@ -986,9 +1000,12 @@ window.AuthStore = (() => {
         distanceKm: 156,
         vehicle: "PKW",
         vehicleModel: "VW Polo",
-        plate: "HH-MA 88",
+        plate: "",
         vin: "WVWZZZ6RZKY098765",
         axle: AXLE_THIRD,
+        registrationStatus: "deregistered",
+        redPlates: true,
+        redPlateNumber: "HH-06 2440",
         driverOffer: 165,
         revenue: 198,
         notes: "Marketplace preview tour Hamburg → Hannover.",
@@ -1627,7 +1644,13 @@ window.AuthStore = (() => {
           issues.push(`${j.id}:${side}: schedule`);
         }
       }
-      if (!j.plate?.trim() || !j.vin?.trim())
+      // Deregistered vehicles have no regular plate; a red transfer plate
+      // number may stand in (§16 FZV). VIN is always required.
+      const plateOk =
+        j.registrationStatus === "deregistered"
+          ? true
+          : !!j.plate?.trim();
+      if (!plateOk || !j.vin?.trim())
         issues.push(`${j.id}: vehicle ids`);
       if (!j.vehicle?.trim() || !j.vehicleModel?.trim()) {
         issues.push(`${j.id}: vehicle`);
@@ -2283,6 +2306,10 @@ window.AuthStore = (() => {
       model: "",
       plate: job.plate || "",
       vin: job.vin || "",
+      registrationStatus: job.registrationStatus || "",
+      electricVehicle: !!job.electricVehicle,
+      redPlates: !!job.redPlates,
+      redPlateNumber: job.redPlateNumber || "",
       cName1: pu.contactPerson || "",
       cPhone1: pu.phone || "",
       cName2: del.contactPerson || "",
@@ -2385,9 +2412,21 @@ window.AuthStore = (() => {
       vehicle: form.vehicleType || form.vehicle || "PKW",
       vehicleModel:
         [form.brand, form.model].filter(Boolean).join(" ").trim() || "—",
-      plate: form.plate,
+      // Deregistered vehicles carry no regular plate (conditional form rule)
+      plate:
+        form.registrationStatus === "deregistered" ? "" : form.plate,
       vin: form.vin,
       axle: normalizeAxle(form.axle),
+      registrationStatus:
+        form.registrationStatus === "registered" ||
+        form.registrationStatus === "deregistered"
+          ? form.registrationStatus
+          : null,
+      electricVehicle: !!form.electricVehicle,
+      redPlates: !!form.redPlates,
+      redPlateNumber: form.redPlates
+        ? String(form.redPlateNumber || "").trim()
+        : "",
       driverOffer: driverOffer,
       expenses:
         parseFloat(String(form.expenses || "").replace(",", ".")) || null,
@@ -4656,36 +4695,14 @@ window.AuthStore = (() => {
     downloadTourDocumentPlaceholder(id) {
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false };
-      const raw =
-        (doc.fileName || "document").replace(/[^a-zA-Z0-9._-]/g, "_") ||
-        "document";
-      const stubName = /\.txt$/i.test(raw)
-        ? raw
-        : `${raw.replace(/\.[^.]+$/, "")}-placeholder.txt`;
-      const body = [
-        `${api.getAppDisplayName()} prototype — binary file not stored.`,
-        `Source: ${doc.source === "admin" || doc.source === "admin_off_channel" ? "admin off-channel" : "driver PWA"}`,
-        `Type: ${doc.documentType}`,
-        `Original filename: ${doc.fileName}`,
-        `MIME: ${doc.mimeType}`,
-        `Uploaded (ISO): ${doc.uploadedAt}`,
-        `Driver: ${doc.driverName} (${doc.driverId})`,
-        `Job ID: ${doc.jobId}`,
-        `Review: ${doc.reviewStatus}`,
-        doc.rejectionReason ? `Rejection: ${doc.rejectionReason}` : "",
-        doc.notes ? `Notes: ${doc.notes}` : "",
-        "",
-        "Placeholder replaces an actual PDF/image in the demo.",
-      ]
-        .filter(Boolean)
-        .join("\r\n");
-      const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
+      const base =
+        String(doc.fileName || "document")
+          .replace(/[^a-zA-Z0-9._-]/g, "_")
+          .replace(/\.[^.]+$/, "") || "document";
       const a = document.createElement("a");
-      a.href = url;
-      a.download = stubName;
+      a.href = SAMPLE_PDF_URL;
+      a.download = `${base}.pdf`;
       a.click();
-      URL.revokeObjectURL(url);
       return { ok: true };
     },
 
@@ -4811,23 +4828,9 @@ window.AuthStore = (() => {
     },
 
     getTransportOrderPreview(id) {
-      const txt = api.transportOrderText(id);
       const j = api.getJob(id);
-      if (!txt || !j) return { ok: false };
+      if (!j) return { ok: false };
       const fileName = `transport-order-${j.id}.pdf`;
-      const escaped = txt.replace(
-        /[&<>]/g,
-        (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c],
-      );
-      const appName = api.getAppDisplayName();
-      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${appName} transport order</title>
-<style>body{margin:0;font:13px/1.5 ui-monospace,monospace;padding:20px;background:#fff;color:#111}</style>
-</head><body><pre style="white-space:pre-wrap;margin:0">${escaped}</pre></body></html>`;
-      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      const blobUrl = URL.createObjectURL(blob);
-      const downloadBlob = new Blob([txt], {
-        type: "text/plain;charset=utf-8",
-      });
       log("pdf_viewed", DEMO_ADMIN, id, "In-PWA transport order preview");
       emit();
       return {
@@ -4837,9 +4840,8 @@ window.AuthStore = (() => {
           fileName,
           mimeType: "application/pdf",
           previewable: true,
-          blobUrl,
-          downloadBlob,
-          downloadName: `transport-order-${j.id}.txt`,
+          pdfUrl: SAMPLE_PDF_URL,
+          downloadName: fileName,
         },
       };
     },
@@ -4849,21 +4851,17 @@ window.AuthStore = (() => {
     },
 
     downloadPdf(id) {
-      const txt = api.transportOrderText(id);
       const j = api.getJob(id);
-      if (!txt || !j) return { ok: false };
-      const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
+      if (!j) return { ok: false };
       const a = document.createElement("a");
-      a.href = url;
-      a.download = `transport-order-${j.id}.txt`;
+      a.href = SAMPLE_PDF_URL;
+      a.download = `transport-order-${j.id}.pdf`;
       a.click();
-      URL.revokeObjectURL(url);
       log(
         "pdf_downloaded",
         DEMO_ADMIN,
         j.tour,
-        "Client-side generated transport order",
+        "Seeded sample transport-order PDF",
       );
       emit();
       return { ok: true };
@@ -4872,43 +4870,16 @@ window.AuthStore = (() => {
     getTourDocumentPreview(id) {
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false };
-      const mime = String(doc.mimeType || "").toLowerCase();
-      const isImage = mime.startsWith("image/");
-      const isPdf =
-        mime === "application/pdf" || /\.pdf$/i.test(doc.fileName || "");
-      const body = [
-        `${api.getAppDisplayName()} — document preview (prototype)`,
-        `File: ${doc.fileName}`,
-        `Type: ${doc.documentType}`,
-        `MIME: ${doc.mimeType}`,
-        `Source: ${doc.source}`,
-        `Uploaded: ${doc.uploadedAt}`,
-        "",
-        "Binary content is not stored in the prototype.",
-        "Production will stream the real PDF/image here.",
-      ].join("\n");
-      const escaped = body.replace(
-        /[&<>]/g,
-        (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c],
-      );
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:20px;font:14px/1.5 system-ui;background:#fff}</style></head><body><pre style="white-space:pre-wrap;margin:0">${escaped}</pre></body></html>`;
-      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      const blobUrl = URL.createObjectURL(blob);
-      const downloadBlob = new Blob([body], {
-        type: "text/plain;charset=utf-8",
-      });
+      const base = String(doc.fileName || "document").replace(/\.[^.]+$/, "");
       return {
         ok: true,
         preview: {
           title: doc.fileName,
           fileName: doc.fileName,
-          mimeType: doc.mimeType || "application/octet-stream",
-          previewable: isPdf || isImage || true,
-          blobUrl,
-          downloadBlob,
-          downloadName:
-            (doc.fileName || "document").replace(/\.[^.]+$/, "") +
-            "-placeholder.txt",
+          mimeType: "application/pdf",
+          previewable: true,
+          pdfUrl: SAMPLE_PDF_URL,
+          downloadName: `${base}.pdf`,
         },
       };
     },
@@ -4917,28 +4888,6 @@ window.AuthStore = (() => {
       const doc = documents.find((x) => x.id === id);
       if (!doc || !doc.visible) return { ok: false };
       const title = doc.title || "document";
-      const body = [
-        `${api.getAppDisplayName()} — Infopoint document`,
-        title,
-        doc.description || "",
-        `Category: ${doc.category || "—"}`,
-        `Version: ${doc.version || "—"}`,
-        `Updated: ${doc.updatedAt || "—"}`,
-        "",
-        "Prototype preview — production streams the attached PDF.",
-      ]
-        .filter(Boolean)
-        .join("\n");
-      const escaped = body.replace(
-        /[&<>]/g,
-        (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c],
-      );
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:20px;font:14px/1.5 system-ui;background:#fff}</style></head><body><pre style="white-space:pre-wrap;margin:0">${escaped}</pre></body></html>`;
-      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      const blobUrl = URL.createObjectURL(blob);
-      const downloadBlob = new Blob([body], {
-        type: "text/plain;charset=utf-8",
-      });
       const fileName = `${String(title).replace(/[^a-zA-Z0-9._-]+/g, "_")}.pdf`;
       return {
         ok: true,
@@ -4947,9 +4896,8 @@ window.AuthStore = (() => {
           fileName,
           mimeType: "application/pdf",
           previewable: true,
-          blobUrl,
-          downloadBlob,
-          downloadName: fileName.replace(/\.pdf$/i, ".txt"),
+          pdfUrl: SAMPLE_PDF_URL,
+          downloadName: fileName,
         },
       };
     },
@@ -4957,13 +4905,10 @@ window.AuthStore = (() => {
     downloadInfopointDocument(id) {
       const r = api.getInfopointDocumentPreview(id);
       if (!r.ok) return { ok: false };
-      const url = URL.createObjectURL(r.preview.downloadBlob);
       const a = document.createElement("a");
-      a.href = url;
+      a.href = SAMPLE_PDF_URL;
       a.download = r.preview.downloadName;
       a.click();
-      URL.revokeObjectURL(url);
-      URL.revokeObjectURL(r.preview.blobUrl);
       return { ok: true };
     },
 

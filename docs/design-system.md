@@ -10,7 +10,7 @@
 | Foundation | Decision |
 | --- | --- |
 | Brand | Client Farbgebung — accent `#6F29FF`, canvas `#F5F5F7`, text `#111111` / `#6E6E73` |
-| Fonts | Plus Jakarta Sans (UI); JetBrains Mono (identifiers, dates, money only) |
+| Fonts | Inter Tight (UI — Design Direction Board 07/2026); JetBrains Mono (identifiers, dates, money only) |
 | Type scale | 7 rem sizes: display, title, heading, body (16px min), body-sm, caption, overline |
 | Spacing | 4pt scale: 4, 8, 12, 16, 20, 24, 32, 40, 48 |
 | Radius | `--r-1` 4px … `--r-4` 16px, `--r-pill` |

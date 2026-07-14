@@ -23,9 +23,22 @@ const Lbl = ({ children, className = "", ...props }) => (
 const displayAxle = (value, t) =>
   ({
     All: t("all"),
+    "driven on own wheels": t("ownAxle"),
+    "third-party axle": t("thirdPartyAxle"),
     "Own axle": t("ownAxle"),
     "Third-party axle": t("thirdPartyAxle"),
+    Eigenachse: t("ownAxle"),
+    Fremdachse: t("thirdPartyAxle"),
   })[value] || value;
+
+// Canonical store axle values for filter comparisons
+const canonAxle = (v) =>
+  ({
+    "Own axle": "driven on own wheels",
+    "Third-party axle": "third-party axle",
+    Eigenachse: "driven on own wheels",
+    Fremdachse: "third-party axle",
+  })[v] || v;
 
 const displayVehicle = (value, t) =>
   ({
@@ -183,6 +196,62 @@ const jobNeedsDocCorrection = (job, store) =>
       .some((d) =>
         AuthStore.tourDocumentNeedsDriverCorrection(d.reviewStatus),
       ));
+
+// Autheon "A" mark used by the Marketplace tab. Shared between the animated
+// active state and the static inactive state so the path data lives in one place.
+const AutheonMark = ({ animated = false }) => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 8 48 32"
+    className={animated ? "tabbar-anim-mark" : "tabbar-static-mark"}
+    fill="currentColor"
+    aria-hidden="true"
+  >
+    <g transform="translate(0 8)">
+      <path pathLength="1" d="M28.7452 0.0499943C29.3687 -0.0214756 30.9431 0.0174098 31.6381 0.0180174C33.6279 0.0329038 35.6176 0.0269789 37.6073 0.000244141C37.9458 1.15288 38.4111 2.45984 38.7891 3.62569L41.1318 10.8437C38.7802 10.9527 36.152 10.7687 33.7703 10.8188C32.0193 10.8557 30.1961 10.7226 28.4612 11.2014C22.0467 12.9713 19.8914 18.3673 16.7499 23.549C15.1759 26.1455 13.6026 28.6479 12.0805 31.2103L11.6666 31.9194C10.5996 31.9722 9.42407 31.9176 8.34659 31.9306C5.58855 31.964 2.75097 31.8662 0 31.9517C0.997865 30.5292 2.50586 27.8959 3.46749 26.3335L10.5896 14.7129C12.8592 10.9904 14.5347 7.73199 17.8721 4.82268C21.2443 1.883 24.3891 0.573297 28.7452 0.0499943Z" />
+      <path pathLength="1" d="M38.3618 17.8626C38.3839 18.3225 39.4974 21.737 39.7447 22.4479C40.7885 25.4482 41.7117 29.0015 42.8468 31.9303C41.7937 31.9141 40.7088 31.9275 39.653 31.9275C38.8473 29.1833 37.9224 26.436 37.0768 23.7013C36.7626 22.685 35.9017 21.6732 34.9229 21.2676C33.7384 20.7767 32.2683 20.8416 31.0836 21.3173C30.3712 21.6337 29.7327 22.0982 29.2099 22.6805C28.5719 23.4055 27.1835 25.8009 26.6472 26.7238C25.6773 28.3928 24.4654 30.2545 23.5761 31.9292C22.505 31.9238 20.7214 31.8709 19.7114 31.9733C20.4259 30.5267 21.7266 28.4617 22.6104 27.09C25.1161 23.2008 26.6843 18.2008 31.9865 17.9032C32.4559 17.8373 33.7521 17.8563 34.2521 17.8566L38.3618 17.8626Z" />
+      <path pathLength="1" d="M30.693 13.1161C32.8075 12.965 36.2745 13.0789 38.499 13.0869C38.6766 14.0339 39.1326 15.2447 39.3859 16.2471C37.5936 16.3169 35.7941 16.2525 34.0053 16.2721C32.7015 16.2864 31.2113 16.1606 29.9673 16.5009C26.065 17.5685 24.7269 20.5448 22.8602 23.6919L19.7354 28.9582C19.1403 29.937 18.5601 30.9247 17.9947 31.9212C17.0191 31.9231 14.7918 31.8713 13.897 32.0002C14.6112 30.9063 15.3757 29.5605 16.0567 28.4225L19.6507 22.4045C22.4928 17.5959 24.5497 13.7028 30.693 13.1161Z" />
+      <path pathLength="1" d="M39.459 17.9398C40.5644 17.9793 41.8666 17.9475 42.9877 17.9492C43.1074 18.7702 43.924 21.0614 44.235 22.0024L47.622 31.9301L43.9359 31.9237C42.5317 27.2651 40.8029 22.6291 39.459 17.9398Z" />
+    </g>
+  </svg>
+);
+
+// Slide-to-confirm handle icons: arrow while ready, lock while disabled,
+// check once confirmed. Sized/coloured via CSS (.slide-handle-icon).
+const SlideArrowIcon = () => (
+  <svg className="slide-handle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M9 5l7 7-7 7"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+const SlideCheckIcon = () => (
+  <svg className="slide-handle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M5 12.5l4.5 4.5L19 7"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+const SlideLockIcon = () => (
+  <svg className="slide-handle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <rect x="5" y="10.5" width="14" height="9" rx="2.2" stroke="currentColor" strokeWidth="2" />
+    <path
+      d="M8 10.5V8a4 4 0 118 0v2.5"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
 
 const Ic = {
   Truck: () => (
@@ -368,25 +437,7 @@ const Ic = {
       />
     </svg>
   ),
-  Tab: ({ on }) => (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill={on ? "currentColor" : "none"}
-    >
-      <rect
-        x="3.5"
-        y="3.5"
-        width="17"
-        height="17"
-        rx="3"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-      {on && <rect x="7" y="7" width="10" height="10" rx="1.5" fill="#fff" />}
-    </svg>
-  ),
+  Tab: ({ on }) => <AutheonMark animated={on} />,
   TabList: ({ on }) => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <path
@@ -712,17 +763,129 @@ const TabBar = ({ tab, setTab }) => {
   );
 };
 
-const renderTimeDate = (loc, t) => {
-  if (!loc) return null;
-  const time = loc.windowFlex
-    ? t("flexible")
-    : loc.windowFrom || loc.windowTo || "";
+// Compact leg line for job cards: "23.04. · 08:00–12:00" (or "Flexible")
+const legWhen = (loc, t) => {
+  if (!loc) return "—";
   const date = loc.date || "";
+  const win = loc.windowFlex
+    ? t("flexible")
+    : [loc.windowFrom, loc.windowTo].filter(Boolean).join("–");
+  return [date, win].filter(Boolean).join(" · ") || "—";
+};
+
+// Small supporting icons for the important-vehicle-info tags (board §5)
+const FlagIc = {
+  Bolt: () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2z" />
+    </svg>
+  ),
+  CheckCircle: () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path d="m8.2 12.4 2.6 2.6 5-5.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  Slash: () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M6 6l12 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  ),
+  Plate: () => (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="2.5" y="8" width="19" height="8.5" rx="2" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M6.5 11v2.6M10 11v2.6M13.5 11v2.6M17 11v2.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  ),
+};
+
+// Important vehicle info (registered / deregistered / e-vehicle / red plates).
+// Optional announcement metadata — renders nothing when unset.
+const vehicleInfoFlags = (job, t) => {
+  const flags = [];
+  if (job.registrationStatus === "registered")
+    flags.push({ key: "registered", Icon: FlagIc.CheckCircle, label: t("vehicleInfoRegistered") });
+  if (job.registrationStatus === "deregistered")
+    flags.push({ key: "deregistered", Icon: FlagIc.Slash, label: t("vehicleInfoDeregistered") });
+  if (job.electricVehicle)
+    flags.push({ key: "electric", Icon: FlagIc.Bolt, label: t("vehicleInfoElectric") });
+  if (job.redPlates)
+    flags.push({ key: "redPlates", Icon: FlagIc.Plate, label: t("vehicleInfoRedPlates") });
+  return flags;
+};
+
+const VehicleFlagTags = ({ job }) => {
+  const { t } = useI18n();
+  const flags = vehicleInfoFlags(job, t);
+  if (!flags.length) return null;
   return (
-    <div className="jobcard-time-row">
-      <div className="time-val">{time}</div>
-      <div className="date-val">{date}</div>
-    </div>
+    <>
+      {flags.map(({ key, Icon, label }) => (
+        <span key={key} className={`vehicle-flag ${key}`}>
+          <Icon /> {label}
+        </span>
+      ))}
+    </>
+  );
+};
+
+// Shared card body (marketplace + My Jobs) — client reference layout
+// (Design Direction Board p.5): route line, pickup/delivery legs,
+// footer meta + price right.
+const JobCardBody = ({ job }) => {
+  const { t } = useI18n();
+  return (
+    <>
+      <div className="jobcard-route-line">
+        <div className="route-city start">
+          <div className="route-city-name">{job.startCity}</div>
+          <div className="route-city-plz">{job.startPlz}</div>
+        </div>
+        <div className="route-mid" aria-hidden="true">
+          <span className="route-arrow">→</span>
+          {job.distanceKm ? (
+            <span className="route-distance">{job.distanceKm} km</span>
+          ) : null}
+        </div>
+        <div className="route-city end">
+          <div className="route-city-name">{job.endCity}</div>
+          <div className="route-city-plz">{job.endPlz}</div>
+        </div>
+      </div>
+      <div className="jobcard-legs">
+        <div className="jobcard-leg">
+          <span className="leg-label">
+            <Ic.Map /> {t("pickup")}
+          </span>
+          <div className="leg-when">{legWhen(job.pickup, t)}</div>
+        </div>
+        <div className="jobcard-leg">
+          <span className="leg-label">
+            <Ic.Map /> {t("delivery")}
+          </span>
+          <div className="leg-when">{legWhen(job.delivery, t)}</div>
+        </div>
+      </div>
+      <hr className="jobcard-divider" />
+      <div className="jobcard-footer">
+        <span className="vehicle-meta">
+          {job.vehicle === "Light truck <3.5t" ? <Ic.Truck /> : <Ic.Van />}
+          {job.vehicleModel && job.vehicleModel !== "—"
+            ? job.vehicleModel
+            : displayVehicle(job.vehicle, t)}
+        </span>
+        <div className="jobcard-price tnum">
+          {F().formatMoney
+            ? F().formatMoney(fmtDriverOffer(job))
+            : `€ ${fmtDriverOffer(job).toFixed(2)}`}
+        </div>
+      </div>
+      <div className="jobcard-tags">
+        <VehicleFlagTags job={job} />
+        <span className="axle-chip">{displayAxle(job.axle, t)}</span>
+      </div>
+    </>
   );
 };
 
@@ -730,62 +893,11 @@ const renderTimeDate = (loc, t) => {
 // PORTAL (job list)
 // =========================================================================
 const JobCard = ({ job, onOpen }) => {
-  const { t } = useI18n();
-
   return (
-    <button
-      type="button"
-      className="jobcard-btn"
-      onClick={() => onOpen(job)}
-    >
-      <div className="jobcard-main-grid">
-        <div className="jobcard-route-col">
-          <div className="jobcard-timeline">
-            <span className="timeline-dot start"></span>
-            <span className="timeline-line"></span>
-            <span className="timeline-dot end"></span>
-          </div>
-          <div className="jobcard-cities">
-            <div className="city-row">
-              <div className="city-name">{job.startCity}</div>
-              <div className="city-pc">
-                {t("postalCodeAbbr")}: {job.startPlz}
-              </div>
-            </div>
-            <div className="distance-row">{job.distanceKm}km</div>
-            <div className="city-row">
-              <div className="city-name">{job.endCity}</div>
-              <div className="city-pc">
-                {t("postalCodeAbbr")}: {job.endPlz}
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="jobcard-times-col">
-          {renderTimeDate(job.pickup, t)}
-          <div className="jobcard-time-spacer"></div>
-          {renderTimeDate(job.delivery, t)}
-        </div>
-      </div>
-      <hr className="jobcard-divider" />
-      <div className="jobcard-footer">
-        <div className="jobcard-vehicle">
-          <div className="vehicle-icon-wrapper">
-            {job.vehicle === "Light truck <3.5t" ? <Ic.Truck /> : <Ic.Van />}
-          </div>
-          <div>
-            <div className="vehicle-desc">
-              {displayVehicle(job.vehicle, t)} • {job.vehicleModel}
-            </div>
-            <div className="vehicle-axle">{displayAxle(job.axle, t)}</div>
-          </div>
-        </div>
-        <div className="jobcard-price-pill">
-          {F().formatMoney
-            ? F().formatMoney(fmtDriverOffer(job))
-            : `€ ${fmtDriverOffer(job).toFixed(2)}`}
-        </div>
-      </div>
+    <button type="button" className="jobcard-btn" onClick={() => onOpen(job)}>
+      {/* Client decision 2026-07-14: marketplace cards hide tour number and
+          status (all marketplace cards are Published); both stay on My Jobs */}
+      <JobCardBody job={job} />
     </button>
   );
 };
@@ -887,6 +999,13 @@ const Portal = ({
   const unreadNotif = store.getDriverNotificationUnreadCount();
   const all = store.getJobs().filter((j) => j.status === "published");
   const filtered = all.filter((j) => jobMatchesDriverFilters(j, filters));
+  const mineJobs = store.getJobs().filter((j) => store.isMineJob(j));
+  const bookedCount = mineJobs.filter((j) =>
+    ["assigned", "accepted"].includes(j.status),
+  ).length;
+  const openDocsCount = mineJobs.filter((j) =>
+    jobNeedsDocCorrection(j, store),
+  ).length;
 
   const ordered = filtered.slice().sort((a, b) => {
     if (sortBy === "date_asc") {
@@ -1021,6 +1140,22 @@ const Portal = ({
           </div>
         </div>
 
+        {/* Restrained header KPIs — reduced dashboard character (board §4) */}
+        <div className="kpi-row">
+          <div className="kpi-chip">
+            <span className="kpi-num tnum">{all.length}</span>
+            <span className="kpi-label">{t("kpiAvailableJobs")}</span>
+          </div>
+          <div className="kpi-chip">
+            <span className="kpi-num tnum">{bookedCount}</span>
+            <span className="kpi-label">{t("kpiBookedJobs")}</span>
+          </div>
+          <div className="kpi-chip">
+            <span className="kpi-num tnum">{openDocsCount}</span>
+            <span className="kpi-label">{t("kpiOpenDocuments")}</span>
+          </div>
+        </div>
+
         {/* Active chips row */}
         {activeChips.length > 0 ? (
           <div className="header-chips-row">
@@ -1138,7 +1273,11 @@ const jobMatchesDriverFilters = (j, filters) => {
     j.vehicle !== filters.vehicle
   )
     return false;
-  if (filters.axle && filters.axle !== "All" && j.axle !== filters.axle)
+  if (
+    filters.axle &&
+    filters.axle !== "All" &&
+    canonAxle(j.axle) !== canonAxle(filters.axle)
+  )
     return false;
   return true;
 };
@@ -1417,6 +1556,14 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
               <div className="label">{t("axle")}</div>
               <div className="value">{displayAxle(job.axle, t)}</div>
             </div>
+            {vehicleInfoFlags(job, t).length ? (
+              <div className="detail-flag-block">
+                <div className="label">{t("vehicleInfoLabel")}</div>
+                <div className="jobcard-tags">
+                  <VehicleFlagTags job={job} />
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -1468,22 +1615,24 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
   const { t } = useI18n();
   const [pos, setPos] = useState(0);
   const [done, setDone] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const trackRef = useRef(null);
 
   const onStart = (e) => {
     e.preventDefault();
     if (done) return;
+    setDragging(true);
     const startX = e.touches ? e.touches[0].clientX : e.clientX;
     const startPos = pos;
     const move = (ev) => {
       const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
       const rect = trackRef.current.getBoundingClientRect();
-      const dx = Math.max(
-        0,
-        Math.min(rect.width - 92, startPos + (cx - startX)),
-      );
+      const maxX = rect.width - 56;
+      const dx = Math.max(0, Math.min(maxX, startPos + (cx - startX)));
       setPos(dx);
-      if (dx >= rect.width - 100) {
+      if (dx >= maxX - 4) {
+        setPos(maxX);
+        setDragging(false);
         setDone(true);
         cleanup();
         setTimeout(onConfirm, 380);
@@ -1491,6 +1640,7 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
     };
     const up = () => {
       cleanup();
+      setDragging(false);
       if (!done) setPos(0);
     };
     const cleanup = () => {
@@ -1517,7 +1667,7 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
           style={{
             margin: "6px 0 18px",
             fontSize: 24,
-            fontWeight: 700,
+            fontWeight: 600,
             letterSpacing: "-0.015em",
           }}
         >
@@ -1540,10 +1690,10 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
           </div>
           <div className="mono text-muted-sm" style={{ marginTop: 6 }}>
             {AuthStore.formatJobScheduleShort(job, t("flexible"))} ·{" "}
-            {job.vehicle} · {job.axle}
+            {displayVehicle(job.vehicle, t)} · {displayAxle(job.axle, t)}
           </div>
           <div
-            style={{ fontSize: 18, fontWeight: 700, marginTop: 10 }}
+            style={{ fontSize: 18, fontWeight: 600, marginTop: 10 }}
             className="tnum"
           >
             € {fmtDriverOffer(job).toFixed(2)}
@@ -1557,17 +1707,31 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
           <PolicyDisclosure />
         </div>
 
-        <div ref={trackRef} className={"slide-confirm " + (done ? "done" : "")}>
+        <div
+          ref={trackRef}
+          className={
+            "slide-confirm " +
+            (done ? "done" : "") +
+            (dragging ? " dragging" : "")
+          }
+        >
           <div className="track-text">
+            {done ? t("slideAccepted") : t("slideToConfirm")}
+          </div>
+          <div className="slide-fill" style={{ width: pos }} />
+          <div
+            className="track-text track-text-fill"
+            style={{ clipPath: `inset(0 calc(100% - ${pos}px) 0 0)` }}
+          >
             {done ? t("slideAccepted") : t("slideToConfirm")}
           </div>
           <div
             className="thumb"
-            style={{ width: done ? "100%" : 92 + pos }}
+            style={{ transform: `translateX(${pos}px)` }}
             onMouseDown={onStart}
             onTouchStart={onStart}
           >
-            {!done && "›››"}
+            {done ? <SlideCheckIcon /> : <SlideArrowIcon />}
           </div>
         </div>
         <button
@@ -1603,10 +1767,46 @@ const tourDocReviewPillStatus = (st) => {
   return "assigned";
 };
 
+// Full-height in-app document viewer (fits the phone frame). Renders the
+// seeded real PDF via the browser's native viewer; Download/Share/Print are
+// functional. Production streams the actual file to the same surface.
+// UMD build — Babel standalone transpiles import() to require(), so the
+// module build is unusable here; the classic script attaches window.pdfjsLib.
+const PDFJS_URL = "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js";
+const PDFJS_WORKER_URL =
+  "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+
+const loadPdfJs = () =>
+  window.pdfjsLib
+    ? Promise.resolve(window.pdfjsLib)
+    : window.__pdfjsLoading ||
+      (window.__pdfjsLoading = new Promise((resolve, reject) => {
+        const sc = document.createElement("script");
+        sc.src = PDFJS_URL;
+        sc.onload = () =>
+          window.pdfjsLib
+            ? resolve(window.pdfjsLib)
+            : reject(new Error("pdfjsLib missing"));
+        sc.onerror = () => reject(new Error("pdf.js failed to load"));
+        document.head.appendChild(sc);
+      }));
+
 const DocumentPreviewSheet = ({ preview, onClose }) => {
   const { t } = useI18n();
   const iframeRef = useRef(null);
+  const pagesRef = useRef(null);
   const [shareMsg, setShareMsg] = useState("");
+  // pdf.js renders the document to canvases inside the phone frame —
+  // works on every browser (iframe PDF viewers don't on mobile Safari).
+  const [pdfState, setPdfState] = useState("loading"); // loading|ready|fallback
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   useEffect(() => {
     return () => {
@@ -1614,40 +1814,89 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
     };
   }, [preview?.blobUrl]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!preview?.pdfUrl) {
+      setPdfState("fallback");
+      return undefined;
+    }
+    (async () => {
+      try {
+        const pdfjs = await loadPdfJs();
+        pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+        const doc = await pdfjs.getDocument(preview.pdfUrl).promise;
+        if (cancelled) return;
+        const el = pagesRef.current;
+        if (!el) return;
+        el.innerHTML = "";
+        const width = Math.max(el.clientWidth - 24, 200);
+        const dpr = window.devicePixelRatio || 1;
+        for (let i = 1; i <= doc.numPages; i++) {
+          const page = await doc.getPage(i);
+          if (cancelled) return;
+          const base = page.getViewport({ scale: 1 });
+          const scale = width / base.width;
+          const vp = page.getViewport({ scale: scale * dpr });
+          const canvas = document.createElement("canvas");
+          canvas.width = vp.width;
+          canvas.height = vp.height;
+          canvas.style.width = `${Math.round(vp.width / dpr)}px`;
+          canvas.style.height = `${Math.round(vp.height / dpr)}px`;
+          canvas.className = "docview-page";
+          el.appendChild(canvas);
+          await page.render({
+            canvasContext: canvas.getContext("2d"),
+            viewport: vp,
+          }).promise;
+        }
+        if (!cancelled) setPdfState("ready");
+      } catch (_) {
+        if (!cancelled) setPdfState("fallback");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [preview?.pdfUrl]);
+
   if (!preview) return null;
 
-  const canShare =
-    typeof navigator !== "undefined" &&
-    typeof navigator.share === "function" &&
-    typeof navigator.canShare === "function";
+  const src = preview.pdfUrl
+    ? `${preview.pdfUrl}#toolbar=0&navpanes=0&view=FitH`
+    : preview.blobUrl;
+  const downloadName = preview.downloadName || preview.fileName || "document.pdf";
 
   const download = () => {
-    const blob = preview.downloadBlob;
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = preview.downloadName || preview.fileName || "document";
+    if (preview.pdfUrl) {
+      a.href = preview.pdfUrl;
+    } else if (preview.downloadBlob) {
+      a.href = URL.createObjectURL(preview.downloadBlob);
+    } else {
+      return;
+    }
+    a.download = downloadName;
     a.click();
-    URL.revokeObjectURL(url);
+    if (!preview.pdfUrl) URL.revokeObjectURL(a.href);
   };
 
   const share = async () => {
     setShareMsg("");
     try {
-      const file = new File(
-        [preview.downloadBlob],
-        preview.downloadName || preview.fileName || "document.txt",
-        { type: preview.downloadBlob.type || "text/plain" },
-      );
-      if (!canShare || !navigator.canShare({ files: [file] })) {
+      const blob = preview.pdfUrl
+        ? await fetch(preview.pdfUrl).then((r) => r.blob())
+        : preview.downloadBlob;
+      const file = new File([blob], downloadName, {
+        type: blob.type || "application/pdf",
+      });
+      if (
+        typeof navigator.canShare !== "function" ||
+        !navigator.canShare({ files: [file] })
+      ) {
         setShareMsg(t("shareNotSupported"));
         return;
       }
-      await navigator.share({
-        files: [file],
-        title: preview.title || preview.fileName,
-      });
+      await navigator.share({ files: [file], title: preview.title });
     } catch (err) {
       if (err && err.name !== "AbortError") setShareMsg(t("shareNotSupported"));
     }
@@ -1655,47 +1904,36 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
 
   const printDoc = () => {
     try {
-      const frame = iframeRef.current;
-      if (frame?.contentWindow) {
-        frame.contentWindow.focus();
-        frame.contentWindow.print();
+      const w = iframeRef.current?.contentWindow;
+      if (w) {
+        w.focus();
+        w.print();
         return;
       }
     } catch (_) {
-      /* fall through */
+      /* PDF viewer frames are opaque — fall through */
     }
-    window.print();
+    if (preview.pdfUrl) window.open(preview.pdfUrl, "_blank");
   };
 
   return (
-    <div className="sheet-backdrop center" onClick={onClose}>
+    <>
+      <button
+        type="button"
+        className="notifications-dropdown-backdrop"
+        onClick={onClose}
+        aria-label={t("uiDismiss")}
+      />
       <div
-        className="sheet card document-preview-sheet"
-        onClick={(e) => e.stopPropagation()}
+        className="docview-panel"
         role="dialog"
         aria-modal="true"
         aria-label={t("documentPreviewTitle")}
-        style={{
-          width: "min(420px, 94vw)",
-          maxHeight: "88vh",
-          display: "flex",
-          flexDirection: "column",
-          padding: 0,
-          overflow: "hidden",
-        }}
       >
-        <div
-          className="row-between"
-          style={{ padding: "14px 16px", borderBottom: "1px solid var(--line)" }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>
-              {t("documentPreviewTitle")}
-            </div>
-            <div
-              className="text-muted-sm"
-              style={{ marginTop: 2, overflow: "hidden", textOverflow: "ellipsis" }}
-            >
+        <div className="docview-head">
+          <div className="flex-1-min-0">
+            <div className="docview-title">{t("documentPreviewTitle")}</div>
+            <div className="docview-filename" title={preview.fileName}>
               {preview.title || preview.fileName}
             </div>
           </div>
@@ -1705,29 +1943,33 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
             onClick={onClose}
             aria-label={t("uiDismiss")}
           >
-            ×
+            <Ic.X />
           </button>
         </div>
-        <div style={{ flex: 1, minHeight: 280, background: "var(--paper-2)" }}>
-          {preview.previewable !== false && preview.blobUrl ? (
+        <div className="docview-body">
+          {preview.pdfUrl && pdfState !== "fallback" ? (
+            <div className="docview-pages scroll">
+              {pdfState === "loading" ? (
+                <div className="docview-loading" aria-busy="true">
+                  <SkeletonList count={2} />
+                </div>
+              ) : null}
+              {/* canvases are appended manually — keep out of React's children */}
+              <div ref={pagesRef} />
+            </div>
+          ) : preview.previewable !== false && src ? (
             <iframe
               ref={iframeRef}
+              className="docview-frame"
               title={preview.title || t("documentPreviewTitle")}
-              src={preview.blobUrl}
-              style={{
-                width: "100%",
-                height: "100%",
-                minHeight: 280,
-                border: 0,
-                background: "#fff",
-              }}
+              src={src}
             />
           ) : (
             <div style={{ padding: 20 }}>{t("previewUnavailable")}</div>
           )}
         </div>
         {shareMsg ? (
-          <div style={{ padding: "8px 16px" }}>
+          <div style={{ padding: "8px 14px" }}>
             <InlineAlert
               tone="info"
               message={shareMsg}
@@ -1735,38 +1977,22 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
             />
           </div>
         ) : null}
-        <div
-          className="document-preview-actions"
-          style={{
-            display: "flex",
-            gap: 8,
-            padding: 12,
-            borderTop: "1px solid var(--line)",
-            flexWrap: "wrap",
-          }}
-        >
-          <button type="button" className="btn" onClick={download}>
-            {t("download")}
+        <div className="docview-actions">
+          <button type="button" className="btn sm" onClick={download}>
+            <Ic.Down /> {t("download")}
           </button>
-          {typeof navigator !== "undefined" && typeof navigator.share === "function" ? (
-            <button type="button" className="btn" onClick={share}>
+          {typeof navigator !== "undefined" &&
+          typeof navigator.share === "function" ? (
+            <button type="button" className="btn sm" onClick={share}>
               {t("share")}
             </button>
           ) : null}
-          <button type="button" className="btn" onClick={printDoc}>
+          <button type="button" className="btn sm" onClick={printDoc}>
             {t("print")}
-          </button>
-          <button
-            type="button"
-            className="btn primary"
-            style={{ marginLeft: "auto" }}
-            onClick={onClose}
-          >
-            {t("uiDismiss")}
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -2341,10 +2567,18 @@ const JobUnlocked = ({
               <div className="label">{t("model")}</div>
               <div className="value">{job.vehicleModel}</div>
             </div>
-            <div className="detail-kv-row">
-              <div className="label">{t("licensePlate")}</div>
-              <div className="plate-badge">{job.plate}</div>
-            </div>
+            {job.plate ? (
+              <div className="detail-kv-row">
+                <div className="label">{t("licensePlate")}</div>
+                <div className="plate-badge">{job.plate}</div>
+              </div>
+            ) : null}
+            {job.redPlateNumber ? (
+              <div className="detail-kv-row">
+                <div className="label">{t("redPlateNumber")}</div>
+                <div className="plate-badge plate-red">{job.redPlateNumber}</div>
+              </div>
+            ) : null}
             <div className="detail-kv-row">
               <div className="label">{t("vin")}</div>
               <div className="value mono text-muted-sm">
@@ -2355,6 +2589,14 @@ const JobUnlocked = ({
               <div className="label">{t("axle")}</div>
               <div className="value">{displayAxle(job.axle, t)}</div>
             </div>
+            {vehicleInfoFlags(job, t).length ? (
+              <div className="detail-flag-block">
+                <div className="label">{t("vehicleInfoLabel")}</div>
+                <div className="jobcard-tags">
+                  <VehicleFlagTags job={job} />
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -2498,9 +2740,8 @@ const JobUnlocked = ({
             disabled={!canPerform}
             style={{
               padding: "12px 24px",
-              borderRadius: 9999,
               fontSize: 15,
-              fontWeight: 700,
+              fontWeight: 600,
             }}
           >
             {t("markPerformed")}
@@ -2515,7 +2756,6 @@ const JobUnlocked = ({
               justifyContent: "center",
               gap: 8,
               padding: "12px 24px",
-              borderRadius: 9999,
               fontSize: 15,
               fontWeight: 600,
             }}
@@ -2739,74 +2979,22 @@ const MyJobs = ({ onOpen }) => {
                 )}
               </div>
             </div>
-            <div className="jobcard-main-grid">
-              <div className="jobcard-route-col">
-                <div className="jobcard-timeline">
-                  <span className="timeline-dot start"></span>
-                  <span className="timeline-line"></span>
-                  <span className="timeline-dot end"></span>
-                </div>
-                <div className="jobcard-cities">
-                  <div className="city-row">
-                    <div className="city-name">{job.startCity}</div>
-                    <div className="city-address">
-                      {job.startStreet} · {job.startPlz} {job.startCity}
-                    </div>
-                  </div>
-                  <div className="distance-row">{job.distanceKm}km</div>
-                  <div className="city-row">
-                    <div className="city-name">{job.endCity}</div>
-                    <div className="city-address">
-                      {job.endStreet} · {job.endPlz} {job.endCity}
-                    </div>
-                  </div>
-                </div>
+            <JobCardBody job={job} />
+            {jobNeedsDocCorrection(job, store) ? (
+              <div className="stack-8">
+                <span
+                  className="chip"
+                  style={{
+                    borderColor: "var(--st-cancelled)",
+                    color: "var(--st-cancelled)",
+                    fontSize: 11,
+                    padding: "1px 6px",
+                  }}
+                >
+                  {t("correctionRequiredBadge")}
+                </span>
               </div>
-              <div className="jobcard-times-col">
-                {renderTimeDate(job.pickup, t)}
-                <div className="jobcard-time-spacer"></div>
-                {renderTimeDate(job.delivery, t)}
-              </div>
-            </div>
-            <hr className="jobcard-divider" />
-            <div className="jobcard-footer">
-              <div className="jobcard-vehicle">
-                <div className="vehicle-icon-wrapper">
-                  {job.vehicle === "Light truck <3.5t" ? (
-                    <Ic.Truck />
-                  ) : (
-                    <Ic.Van />
-                  )}
-                </div>
-                <div>
-                  <div className="vehicle-desc">
-                    {displayVehicle(job.vehicle, t)} • {job.vehicleModel}
-                  </div>
-                  <div className="vehicle-axle">
-                    {displayAxle(job.axle, t)}
-                    {jobNeedsDocCorrection(job, store) ? (
-                      <span
-                        className="chip mono"
-                        style={{
-                          borderColor: "var(--st-cancelled)",
-                          color: "var(--st-cancelled)",
-                          marginLeft: 6,
-                          fontSize: 10,
-                          padding: "1px 4px",
-                        }}
-                      >
-                        {t("correctionRequiredBadge")}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-              <div className="jobcard-price-pill">
-                {F().formatMoney
-                  ? F().formatMoney(fmtDriverOffer(job))
-                  : `€ ${fmtDriverOffer(job).toFixed(2)}`}
-              </div>
-            </div>
+            ) : null}
           </button>
         ))}
         {filteredList.length > 0 ? (
@@ -2827,6 +3015,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   const [text, setText] = useState("");
   const [slidePos, setSlidePos] = useState(0);
   const [slideDone, setSlideDone] = useState(false);
+  const [slideDragging, setSlideDragging] = useState(false);
   const [evidenceFiles, setEvidenceFiles] = useState([]);
   const [evidenceNotice, setEvidenceNotice] = useState(null);
   const trackRef = useRef(null);
@@ -2912,19 +3101,19 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
         /* ignore */
       }
     }
+    setSlideDragging(true);
     const startX = e.clientX;
     const startPos = slidePos;
     let completed = false;
     const move = (ev) => {
       if (!trackRef.current) return;
       const rect = trackRef.current.getBoundingClientRect();
-      const dx = Math.max(
-        0,
-        Math.min(rect.width - 92, startPos + (ev.clientX - startX)),
-      );
+      const maxX = rect.width - 56;
+      const dx = Math.max(0, Math.min(maxX, startPos + (ev.clientX - startX)));
       setSlidePos(dx);
-      if (dx >= rect.width - 100 && !completed) {
+      if (dx >= maxX - 4 && !completed) {
         completed = true;
+        setSlidePos(maxX);
         setSlideDone(true);
         cleanup();
         setTimeout(() => onSubmit("cancel", reason, text.trim(), []), 380);
@@ -2942,6 +3131,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
       if (!completed) setSlidePos(0);
     };
     const cleanup = () => {
+      setSlideDragging(false);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
@@ -3168,6 +3358,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                       className={
                         "slide-confirm" +
                         (slideDone ? " done" : "") +
+                        (slideDragging ? " dragging" : "") +
                         (!slideEnabled ? " disabled" : "")
                       }
                       aria-disabled={!slideEnabled}
@@ -3180,18 +3371,36 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                             : t("slideToCancelOrderLocked")}
                       </div>
                       <div
+                        className="slide-fill"
+                        style={{ width: valid ? slidePos : 0 }}
+                      />
+                      <div
+                        className="track-text track-text-fill"
+                        style={{
+                          clipPath: `inset(0 calc(100% - ${valid ? slidePos : 0}px) 0 0)`,
+                        }}
+                      >
+                        {slideDone
+                          ? t("reportProblemCancelConfirmed")
+                          : valid
+                            ? t("slideToCancelOrder")
+                            : t("slideToCancelOrderLocked")}
+                      </div>
+                      <div
                         className="thumb"
                         style={{
-                          width: slideDone
-                            ? "100%"
-                            : valid
-                              ? 92 + slidePos
-                              : 92,
+                          transform: `translateX(${valid ? slidePos : 0}px)`,
                         }}
                         onPointerDown={slideEnabled ? onSlideStart : undefined}
                         tabIndex={slideEnabled ? 0 : -1}
                       >
-                        {!slideDone && (valid ? "›››" : "LOCK")}
+                        {slideDone ? (
+                          <SlideCheckIcon />
+                        ) : valid ? (
+                          <SlideArrowIcon />
+                        ) : (
+                          <SlideLockIcon />
+                        )}
                       </div>
                     </div>
                     {!valid && !slideDone && (
@@ -3288,7 +3497,7 @@ const PendingNotice = ({ onClose, kind }) => {
             />
           </svg>
         </div>
-        <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 700 }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 600 }}>
           {t("requestSent")}
         </h3>
         <p
@@ -3323,7 +3532,7 @@ const ProfilePane = () => {
   const [signOutNotice, setSignOutNotice] = useState(false);
   return (
     <div className="scroll" style={{ padding: "10px 22px" }}>
-      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
+      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>
         {t("profileTitle")}
       </h1>
       <div
@@ -4163,7 +4372,7 @@ const Infopoint = () => {
           style={{
             margin: 0,
             fontSize: 24,
-            fontWeight: 700,
+            fontWeight: 600,
             letterSpacing: "-0.015em",
             lineHeight: 1.2,
           }}
@@ -4225,7 +4434,7 @@ const Infopoint = () => {
                     <Ic.Pdf />
                   </div>
                   <div className="flex-1-min-0">
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>
                       {displayDocTitle(d, t)}
                     </div>
                     {d.description ? (
@@ -4359,7 +4568,7 @@ const Infopoint = () => {
                         >
                           <div
                             style={{
-                              fontWeight: unread ? 750 : 600,
+                              fontWeight: unread ? 600 : 500,
                               fontSize: 14,
                               color: "var(--text)",
                             }}

@@ -1,0 +1,78 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> /Contents 6 0 R >>
+endobj
+5 0 obj
+<< /Length 1588 >>
+stream
+BT /F2 18 Tf 1 0 0 1 56 764 Tm (AUTHEON - Transport Order) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 746 Tm (Sample document \(prototype seed\) - generated for in-app viewing) Tj ET
+BT /F2 12 Tf 1 0 0 1 56 716 Tm (Tour 0839-26 - Category: Standard) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 698 Tm (Issued: 14.07.2026 - Transport Portal, Vehicle Transport Platform) Tj ET
+BT /F2 11 Tf 1 0 0 1 56 669 Tm (Customer) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 651 Tm (AutoLogistik KG - Billing ref: AL-2026-118) Tj ET
+BT /F2 11 Tf 1 0 0 1 56 622 Tm (Pickup) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 604 Tm (Berlin logistics hub, Invalidenstr. 80, 10115 Berlin) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 586 Tm (Contact: J. Tausch, +49 30 552288) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 568 Tm (Schedule: 27.04.2026, 06:00-09:00) Tj ET
+BT /F2 11 Tf 1 0 0 1 56 539 Tm (Delivery) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 521 Tm (Stuttgart hub, Konigstr. 80, 70565 Stuttgart) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 503 Tm (Contact: R. Wagner, +49 711 224488) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 485 Tm (Schedule: 28.04.2026, 10:00-14:00) Tj ET
+BT /F2 11 Tf 1 0 0 1 56 456 Tm (Vehicle) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 438 Tm (Audi A6 - PKW - VIN WAUZZZ4G9KN123456) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 420 Tm (Registration: deregistered - Red plate: K-06 1234 \(dealer transfer plate, Sec. 16 FZV\)) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 402 Tm (Axle: third-party axle - Distance: 632 km) Tj ET
+BT /F2 11 Tf 1 0 0 1 56 373 Tm (Compensation) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 355 Tm (Driver offer: EUR 365.00 \(lump sum\) - Settlement after document review) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 327 Tm (Page 1 of 2) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Length 1157 >>
+stream
+BT /F2 14 Tf 1 0 0 1 56 768 Tm (Operational instructions) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 740 Tm (1. Pre-trip inspection: record visible damage with photos before departure.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 722 Tm (2. Use the direct route; report deviations to dispatch immediately.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 704 Tm (3. Report incidents, delays, or handover problems via Report Problem in the app.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 686 Tm (4. Submit digital proof \(delivery note, receipts\) through the document upload.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 668 Tm (5. Safety clothing is mandatory on logistics yards.) Tj ET
+BT /F2 14 Tf 1 0 0 1 56 636 Tm (Legal) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 608 Tm (Acceptance of this tour is binding. Cancellation and not-performable reporting) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 590 Tm (follow the driver terms. Legal wording subject to final production review.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 552 Tm (____________________________          ____________________________) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 534 Tm (Place, date                                        Driver signature) Tj ET
+BT /F1 10 Tf 1 0 0 1 56 506 Tm (Page 2 of 2) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+8 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000257 00000 n 
+0000000393 00000 n 
+0000002033 00000 n 
+0000003242 00000 n 
+0000003312 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+3387
+%%EOF

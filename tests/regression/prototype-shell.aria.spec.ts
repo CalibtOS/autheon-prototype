@@ -20,7 +20,9 @@ test.describe('prototype shell ARIA regression', () => {
     await expect(prototypeHeader(page)).toMatchAriaSnapshot({
       name: 'prototype-shell-header.aria.yml',
     });
-    await expect(prototypeFrame(page).locator('.tabbar')).toMatchAriaSnapshot({
+    await expect(
+      prototypeFrame(page).locator('.tabbar-container'),
+    ).toMatchAriaSnapshot({
       name: 'driver-tabbar.aria.yml',
     });
   });

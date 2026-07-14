@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 /**
- * Driver PWA UI primitives — design source of truth building blocks.
+ * Driver PWA UI primitives — shared building blocks of the driver design contract.
  * Loaded before driver.jsx in AUTHEON Prototype.html
  */
 const { useEffect, useLayoutEffect, useRef, useCallback, useState, useId } = React;

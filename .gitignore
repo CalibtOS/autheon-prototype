@@ -25,3 +25,17 @@ test-results/
 playwright-report/
 npm-debug.log*
 snapshots/
+
+# Windows reserved device names (cmd-style `2>nul` in bash creates a real file)
+nul
+NUL
+con
+CON
+prn
+PRN
+aux
+AUX
+com[1-9]
+COM[1-9]
+lpt[1-9]
+LPT[1-9]

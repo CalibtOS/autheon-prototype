@@ -18,7 +18,7 @@
 | `axleConfiguration` | Axle configuration | Achsentyp |
 | `back` | Back | Zurück |
 | `bindingAcceptance` | Binding acceptance | Verbindliche Annahme |
-| `blockedDriverBody` | Marketplace access and new tour acceptance are restricted for blocked drivers. Use My Jobs to correct documents on existing tours. Profile, Info, and historical jobs remain visible in this prototype. | Marktplatzzugriff und neue Tour-Annahmen sind für blockierte Fahrer eingeschränkt. Nutzen Sie Meine Touren, um Dokumente bestehender Touren zu korrigieren. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar. |
+| `blockedDriverBody` | Marketplace access and new tour acceptance are restricted for blocked drivers. Use My Jobs to correct documents on existing tours. Profile, Info, and historical jobs remain visible in this prototype. | Marktplatzzugriff und neue Tour-Annahmen sind für blockierte Fahrer eingeschränkt. Nutzen Sie Meine Aufträge, um Dokumente bestehender Touren zu korrigieren. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar. |
 | `blockedDriverStatusFallback` | Restricted | Eingeschränkt |
 | `blockedDriverTitle` | Marketplace unavailable | Marktplatz nicht verfügbar |
 | `cancel` | Cancel | Abbrechen |
@@ -31,6 +31,7 @@
 | `correctionRequiredBadge` | Correction | Korrektur |
 | `customerLabel` | Customer | Kunde |
 | `dateWindow` | Date window | Datumsfenster |
+| `delivery` | Delivery | Übergabe |
 | `deliveryContact` | Delivery Contact | Ansprechpartner Lieferung |
 | `deliveryExample` | Delivery e.g. 10115 | Lieferung z.B. 10115 |
 | `deliveryTime` | Delivery Time | Lieferzeit |
@@ -51,33 +52,25 @@
 | `docReviewRejected` | Rejected | Abgelehnt |
 | `docReviewUploaded` | Uploaded | Hochgeladen |
 | `docScopeGlobal` | Global | Global |
+| `documentPreviewTitle` | Document preview | Dokumentvorschau |
 | `download` | Download | Herunterladen |
 | `driverAcceptOverlapConfirm` | You already have another tour on this day. Accept anyway? | Sie haben an diesem Tag bereits eine andere Tour. Trotzdem annehmen? |
 | `driverAcceptOverlapConfirmBtn` | Accept anyway | Trotzdem annehmen |
 | `driverAcceptOverlapTitle` | Same-day tour overlap | Tour-Überschneidung am selben Tag |
 | `driverCancellationReasonLabel` | Reason | Grund |
 | `driverCode` | driver-id | Fahrer-ID |
-| `driverDailyLimitPendingRequest` | Limit increase request pending with dispatch | Anfrage zur Limit-Erhöhung bei der Disposition offen |
-| `driverDailyLimitProfileAtLimit` | Daily limit reached for tours with pickup on {date} | Tageslimit erreicht für Touren mit Abholung am {date} |
-| `driverDailyLimitProfileRemaining` | {remaining} acceptance(s) remaining for this pickup day | Noch {remaining} Annahme(n) für diesen Abholtag |
-| `driverDailyLimitProfileTitle` | Daily acceptance limit | Tägliches Annahmelimit |
-| `driverDailyLimitProfileUsage` | {count} of {limit} tours accepted (pickup date {date}) | {count} von {limit} Touren angenommen (Abholdatum {date}) |
-| `driverDailyLimitRequestBtn` | Request higher limit | Höheres Limit anfragen |
-| `driverDailyLimitRequestFailed` | Could not send limit increase request. | Anfrage konnte nicht gesendet werden. |
-| `driverDailyLimitRequestHint` | Your current limit is {current} tour(s) per day ({count} already accepted today). Ask dispatch to raise it. | Ihr aktuelles Limit ist {current} Tour(en) pro Tag ({count} heute bereits angenommen). Bitten Sie die Disposition um eine Erhöhung. |
-| `driverDailyLimitRequestInvalid` | Enter a whole number between 1 and 99. | Ganze Zahl zwischen 1 und 99 eingeben. |
-| `driverDailyLimitRequestMustIncrease` | Requested limit must be higher than your current limit. | Das gewünschte Limit muss höher als Ihr aktuelles Limit sein. |
-| `driverDailyLimitRequestNote` | Reason (optional) | Begründung (optional) |
-| `driverDailyLimitRequestNotePh` | e.g. Extra tours available in your area today… | z. B. Heute zusätzliche Touren in Ihrer Region… |
-| `driverDailyLimitRequestOpenExists` | You already have an open change request. Wait for dispatch to resolve it first. | Sie haben bereits eine offene Änderungsanfrage. Bitte warten Sie auf die Bearbeitung. |
-| `driverDailyLimitRequestSubmit` | Send request | Anfrage senden |
-| `driverDailyLimitRequestTitle` | Request higher daily limit | Höheres Tageslimit anfragen |
-| `driverDailyLimitRequestedLabel` | Requested daily limit | Gewünschtes Tageslimit |
 | `driverNotifInfopointHint` | Also in Infopoint → New messages | Auch unter Infopoint → Neue Nachrichten |
 | `driverNotifications` | Notifications | Benachrichtigungen |
+| `driverNotificationsAllRead` | All caught up | Alles gelesen |
 | `driverNotificationsEmpty` | No notifications yet. | Noch keine Benachrichtigungen. |
 | `driverNotificationsSub` | Tour and document updates | Tour- und Dokument-Updates |
 | `driverOffer` | Driver offer | Fahrerangebot |
+| `driverProbationLimitReached` | You are still on probation. Complete {limit} tours marked Performed before booking more (currently {performed} Performed). | Sie sind noch in der Probezeit. Schließen Sie {limit} Touren mit Status Durchgeführt ab, bevor Sie weitere buchen (aktuell {performed} Durchgeführt). |
+| `driverProbationLimitTitle` | Probation booking limit | Probezeit-Buchungslimit |
+| `driverProbationProfileAtLimit` | Initial booking allowance used — complete Performed tours to be released | Initiale Buchungsanzahl erreicht — schließen Sie Durchgeführt-Touren ab zur Freigabe |
+| `driverProbationProfileRemaining` | {remaining} initial booking slot(s) remaining before you must complete Performed tours | Noch {remaining} initiale Buchungsplätze, danach müssen Touren durchgeführt sein |
+| `driverProbationProfileTitle` | Probation progress | Probezeit-Fortschritt |
+| `driverProbationProfileUsage` | {performed} of {limit} tours Performed · {taken} booked so far | {performed} von {limit} Touren durchgeführt · {taken} bisher gebucht |
 | `driverStatusActive` | Active | Aktiv |
 | `driverTourCancelledNotice` | Dispatch cancelled this tour. The message below explains why — no further action is required on your side. | Die Disposition hat diese Tour storniert. Die Nachricht unten erklärt warum — es sind keine weiteren Schritte nötig. |
 | `dropPlz` | Drop PLZ {plz} | Ziel-PLZ {plz} |
@@ -92,12 +85,9 @@
 | `from` | From | Von |
 | `fromDateChip` | From {date} | Ab {date} |
 | `fullAddresses` | Full pickup and delivery addresses | Vollständige Abhol- und Lieferadressen |
-| `helpAndSupport` | Help & support | Hilfe & Support |
 | `helpSupportIntro` | Contact dispatch if you need help on the road. | Wende dich an die Disposition, wenn du unterwegs Hilfe brauchst. |
 | `helpSupportTitle` | Help & support | Hilfe & Support |
 | `infopoint` | Infopoint | Infopoint |
-| `infopointDocPreviewDemo` | PDF preview (demo) | PDF-Vorschau (Demo) |
-| `infopointDocViewDownload` | View / Download | Ansehen / Herunterladen |
 | `infopointDocsTab` | General documents | Allgemeine Dokumente |
 | `infopointHelpTab` | Help | Hilfe |
 | `infopointNewsAdminHint` | Messages are published by admins under Admin → Infopoint → New messages. | Nachrichten werden im Admin unter Infopoint → Neue Nachrichten veröffentlicht. |
@@ -109,6 +99,9 @@
 | `invoiceUploadNotYourTour` | You can only upload invoices for tours assigned to you. | Rechnungen können nur für Ihnen zugewiesene Touren hochgeladen werden. |
 | `invoiceUploadRestricted` | Uploads are unavailable while your account is restricted. | Upload nicht möglich, solange das Konto eingeschränkt ist. |
 | `invoiceUploadTourRequired` | Invoice upload must be linked to a valid tour. | Der Upload muss einer gültigen Tour zugeordnet sein. |
+| `kpiAvailableJobs` | Available | Verf\u00fcgbar |
+| `kpiBookedJobs` | Booked | Gebucht |
+| `kpiOpenDocuments` | Open documents | Offene Nachweise |
 | `legal` | Legal | Rechtliches |
 | `legalSub` | Terms · privacy · imprint | AGB · Datenschutz · Impressum |
 | `licensePlate` | License plate | Kennzeichen |
@@ -124,7 +117,6 @@
 | `masterDataChangeEditBtn` | Request changes | Änderung anfragen |
 | `masterDataChangeFormHint` | Update any fields that need changing, then submit for operations to review. | Felder anpassen und zur Prüfung durch die Disposition senden. |
 | `masterDataChangeNotice` | These details are managed by operations. Tap Request changes to propose updates. | Diese Daten verwaltet der Betrieb. Tippen Sie auf Änderung anfragen, um Updates vorzuschlagen. |
-| `masterDataChangeOpenExists` | You already have an open profile change request. Wait until operations approves or declines it before submitting another. | Sie haben bereits eine offene Profiländerungs-Anfrage. Bitte warten Sie, bis die Disposition sie bearbeitet hat. |
 | `masterDataChangePendingBadge` | Pending review | Prüfung ausstehend |
 | `masterDataChangePendingBody` | Submitted {date}. Operations will review your request before you can send another. | Eingereicht am {date}. Die Disposition prüft Ihre Anfrage, bevor Sie eine weitere senden können. |
 | `masterDataChangePendingTitle` | Change request pending | Änderungsanfrage ausstehend |
@@ -132,7 +124,7 @@
 | `masterDataChangeSubmit` | Submit change request | Änderungsanfrage senden |
 | `masterDataChangeUpdatedBadge` | Updated | Geändert |
 | `model` | Model | Modell |
-| `myJobs` | My jobs | Meine Touren |
+| `myJobs` | My jobs | Meine Aufträge |
 | `myJobsSubtitle` | Track and update your accepted tours | Verfolgen und aktualisieren Sie Ihre akzeptierten Touren |
 | `noDriverAddons` | No driver-facing add-ons. | Keine fahrerseitigen Zusatzhinweise. |
 | `noJobsMatch` | No jobs match | Keine passenden Touren |
@@ -149,7 +141,7 @@
 | `officialTourDocumentsSection` | Reference documents | Referenzdokumente |
 | `ok` | OK | OK |
 | `operationalInstructions` | Operational instructions | Operative Hinweise |
-| `ownAxle` | Own axle | Eigene Achse |
+| `ownAxle` | Own axle | Eigenachse |
 | `partnerPolicyAlert` | Demo document: Driver terms are available in the Driver Info area and admin Documents module. | Demo-Dokument: Fahrerbedingungen sind im Fahrer-Infobereich und im Admin-Dokumentenmodul verfügbar. |
 | `performedTab` | Performed | Durchgeführt |
 | `pickup` | Pickup | Abholung |
@@ -159,7 +151,9 @@
 | `pickupTime` | Pickup Time | Abholzeit |
 | `postalArea` | Postal code / area | PLZ / Gebiet |
 | `postalCodeAbbr` | PLZ | PLZ |
+| `previewUnavailable` | Preview is not available for this file type. | Für diesen Dateityp ist keine Vorschau verfügbar. |
 | `primaryNavigation` | Primary navigation | Hauptnavigation |
+| `print` | Print | Drucken |
 | `problemReasonNoContact` | Contact unreachable | Kontakt nicht erreichbar |
 | `problemReasonNoContactSub` | On-site contact not available | Vor-Ort-Kontakt nicht erreichbar |
 | `problemReasonNotOnSite` | Vehicle not on site | Fahrzeug nicht vor Ort |
@@ -175,12 +169,14 @@
 | `profileMasterData` | Read-only master data | Stammdaten (nur lesbar) |
 | `profileSubtitle` | Manage your account, limits and preferences | Verwalten Sie Ihr Konto, Limits und Einstellungen |
 | `profileTitle` | Profile | Profil |
+| `profileVerifiedAccount` | Verified account | Verifiziertes Konto |
 | `pushEnabledMaster` | Enable push notifications | Push-Benachrichtigungen aktivieren |
 | `pushNotifyNewPublished` | Newly published orders | Neu veröffentlichte Aufträge |
 | `pushNotifyPostalPrefix` | Orders in pickup postal code area | Aufträge im Abhol-PLZ-Gebiet |
 | `pushPostalPrefixHint` | 1–2 digit prefix, e.g. 4, 40, or 41 | 1–2-stelliges Präfix, z. B. 4, 40 oder 41 |
 | `pushSupportNotice` | Android supported in app flow. iOS requires home-screen installation, compatible iOS version, and permission. | Android wird im App-Ablauf unterstützt. iOS erfordert Installation auf dem Homescreen, eine kompatible iOS-Version und Berechtigung. |
 | `reason` | Reason | Grund |
+| `redPlateNumber` | Red plate no. | Rotes Kennzeichen (Nr.) |
 | `refreshDemo` | Refresh | Aktualisieren |
 | `removeFilterChip` | Remove filter: {label} | Filter entfernen: {label} |
 | `reportCancelAppointmentNotPossible` | Appointment no longer possible | Termin nicht mehr möglich |
@@ -220,14 +216,16 @@
 | `searchMyJobsPlaceholder` | Search tour no. or city… | Tour-Nr. oder Stadt suchen… |
 | `settlements` | Settlements | Abrechnungen |
 | `settlementsSub` | Statements · driver offers | Abrechnungen · Auszahlungen |
+| `share` | Share | Teilen |
+| `shareNotSupported` | Sharing is not supported on this device. | Teilen wird auf diesem Gerät nicht unterstützt. |
 | `showResults` | Show {count} results | {count} Ergebnisse anzeigen |
 | `signOut` | Sign out | Abmelden |
 | `signOutAlert` | Demo sign out: authentication will be implemented in production. | Demo-Abmeldung: Authentifizierung wird in der Produktion implementiert. |
-| `slideAccepted` | ACCEPTED | ANGENOMMEN |
+| `slideAccepted` | Accepted | Angenommen |
 | `slideToCancelOrder` | Slide to cancel order | Zum Stornieren wischen |
 | `slideToCancelOrderHint` | Enter at least 10 characters in the explanation above to unlock the slider. | Geben Sie oben mindestens 10 Zeichen in die Erklärung ein, um den Schieberegler freizuschalten. |
 | `slideToCancelOrderLocked` | Slider locked | Schieberegler gesperrt |
-| `slideToConfirm` | SLIDE TO CONFIRM → | ZUM BESTÄTIGEN SCHIEBEN → |
+| `slideToConfirm` | Slide to confirm → | Zum Bestätigen schieben → |
 | `sortDateAsc` | Oldest first | Älteste zuerst |
 | `sortDateDesc` | Newest first | Neueste zuerst |
 | `sortDistAsc` | Shortest distance | Kürzeste Strecke |
@@ -277,6 +275,11 @@
 | `untilDateChip` | Until {date} | Bis {date} |
 | `vatBankingReadonly` | Address · VAT · banking | Adresse · USt. · Bankdaten |
 | `vehicle` | Vehicle | Fahrzeug |
+| `vehicleInfoDeregistered` | Deregistered | Abgemeldet |
+| `vehicleInfoElectric` | E-vehicle | E-Fahrzeug |
+| `vehicleInfoLabel` | Important vehicle info | Wichtige Fahrzeug-Info |
+| `vehicleInfoRedPlates` | Red plates | Rote Kennzeichen |
+| `vehicleInfoRegistered` | Registered | Zugelassen |
 | `vehicleType` | Vehicle type | Fahrzeugtyp |
 | `view` | View | Ansehen |
 | `viewDriverPolicy` | View driver policy | Fahrerrichtlinie ansehen |

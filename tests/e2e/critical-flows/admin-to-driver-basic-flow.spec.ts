@@ -41,7 +41,7 @@ test.describe('Admin to DriverPWA state handoff', () => {
       await waitForPrototypeStable(page);
 
       const berlinStuttgartCard = frame
-        .locator('.jobcard')
+        .locator('.jobcard-btn')
         .filter({ hasText: 'Berlin' })
         .filter({ hasText: 'Stuttgart' });
 
@@ -52,7 +52,7 @@ test.describe('Admin to DriverPWA state handoff', () => {
         frame.getByRole('heading', { name: /Marketplace preview/i }),
       ).toBeVisible();
       await expect(frame.getByText(/BERLIN.*STUTTGART/i)).toBeVisible();
-      await expect(frame.getByText(/632 km/i)).toBeVisible();
+      await expect(frame.getByText(/632\s?km/i).first()).toBeVisible();
       await expect(frame.getByRole('button', { name: /Accept tour/i })).toBeVisible();
     });
   });

@@ -157,6 +157,18 @@ Keycloak is the identity source of truth for authentication. Application service
 
 Marketplace queries must project a deliberately reduced view. They must not return full locations, contacts, vehicle identifiers, customer details, internal notes, or PDFs before acceptance. The base `jobs` and `job_locations` tables are never exposed directly to an untrusted driver client.
 
+## Important vehicle info (Design Direction Board 07/2026)
+
+`jobs.vehicle_registration_status` (`registered` | `deregistered`, nullable = not specified), `jobs.electric_vehicle` (boolean, default false), `jobs.red_license_plates` (boolean, default false), and `jobs.red_license_plate_number` (varchar(32)) are announcement metadata, resolved 2026-07-14 (see `prd.json` → `resolved_defaults.vehicle_important_info_v1` and the v2.1 changelog). They are captured in the admin job form's Vehicle section and — unlike VIN and regular license plate — the three flags are **included in the reduced marketplace projection** pre-acceptance: decision-relevant for service partners and non-sensitive.
+
+**Conditional capture rules (application-enforced, not database constraints):**
+
+- registration `registered` / null → `licenseplate` required by the job form (unchanged rule).
+- registration `deregistered` → `licenseplate` must be **null**; a deregistered vehicle carries no valid plate.
+- `red_license_plates = true` → `red_license_plate_number` required. German § 16 FZV red transfer plates carry a district code plus a recognition number starting **06** (dealer/workshop series; 05 = inspection bodies, 07 = classic cars), e.g. `K-06 1234`, and are assigned to the **operator, not the vehicle** — which is why the number lives per tour on `jobs` instead of a vehicle master table.
+
+The flags drive no marketplace filter or acceptance rule in V1.
+
 ## Open decisions that affect the physical schema
 
 | Decision                | Current schema position                                                                                                                                             | Approval needed                                                                                                  |

@@ -1,6 +1,6 @@
 # Prototype
 
-`project/` is the **design source of truth** for the AUTHEON driver PWA (Figma replacement). It is an interactive reference — not production application code.
+`project/` is the **implementation reference** for the AUTHEON driver PWA (Figma replacement). It must comply with the PRD (behavior authority) and the client Design Direction Board, July 2026 (visual authority) — see `docs/design/ui-ux-production-plan.md` §0. It is an interactive reference — not production application code.
 
 ## Quick start
 

@@ -146,12 +146,9 @@ const AdminNav = ({ section, setSection }) => {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 600 }}>Anna Bauer</div>
           <div
-            className="mono"
             style={{
-              fontSize: 10.5,
+              fontSize: 12,
               color: "var(--muted)",
-              letterSpacing: 0.06,
-              textTransform: "uppercase",
             }}
           >
             {t("dispatcher")}
@@ -592,7 +589,7 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenTourBilling }) => {
       >
         <div>
           <div className="label">{t("financeCustomerRevenue")}</div>
-          <div style={{ fontWeight: 700, marginTop: 6 }} className="tnum">
+          <div style={{ fontWeight: 600, marginTop: 6 }} className="tnum">
             {fmt(job.revenue)}
           </div>
         </div>
@@ -618,7 +615,7 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenTourBilling }) => {
         </div>
         <div>
           <div className="label">{t("financeGross")}</div>
-          <div style={{ fontWeight: 700, marginTop: 6 }} className="tnum">
+          <div style={{ fontWeight: 600, marginTop: 6 }} className="tnum">
             {fmt(job.grossAmount)}
           </div>
         </div>
@@ -1186,7 +1183,7 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal card" style={{ maxWidth: 480, padding: 22 }}>
-        <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700 }}>
+        <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 600 }}>
           {t("adminCancelJobModalTitle")}
         </h2>
         <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>
@@ -1348,7 +1345,7 @@ const AdminDetail = ({
             style={{
               margin: 0,
               fontSize: 30,
-              fontWeight: 700,
+              fontWeight: 600,
               letterSpacing: "-0.02em",
             }}
           >
@@ -1378,7 +1375,7 @@ const AdminDetail = ({
           <div
             style={{
               fontSize: 28,
-              fontWeight: 700,
+              fontWeight: 600,
               marginTop: 4,
               letterSpacing: "-0.02em",
             }}
@@ -1387,16 +1384,13 @@ const AdminDetail = ({
             € {(job.driverOffer ?? 0).toFixed(2)}
           </div>
           <div
-            className="mono"
             style={{
-              fontSize: 11,
+              fontSize: 12,
               color: "var(--muted)",
-              letterSpacing: 0.04,
-              textTransform: "uppercase",
               marginTop: 2,
             }}
           >
-            {job.axle} · {t("adminDriverOfferLumpSum")}
+            {displayAxleAdmin(job.axle, t)} · {t("adminDriverOfferLumpSum")}
           </div>
         </div>
       </div>
@@ -1478,7 +1472,7 @@ const AdminDetail = ({
               </div>
               <div>
                 <div className="label">{t("pickup")}</div>
-                <div style={{ fontWeight: 700, marginTop: 6 }}>
+                <div style={{ fontWeight: 600, marginTop: 6 }}>
                   {job.startStreet}
                 </div>
                 <div
@@ -1490,7 +1484,7 @@ const AdminDetail = ({
                 <div className="label" style={{ marginTop: 24 }}>
                   {t("delivery")}
                 </div>
-                <div style={{ fontWeight: 700, marginTop: 6 }}>
+                <div style={{ fontWeight: 600, marginTop: 6 }}>
                   {job.endStreet}
                 </div>
                 <div
@@ -1505,7 +1499,7 @@ const AdminDetail = ({
                 <div
                   style={{
                     fontSize: 32,
-                    fontWeight: 700,
+                    fontWeight: 600,
                     letterSpacing: "-0.02em",
                     marginTop: 6,
                   }}
@@ -1569,7 +1563,7 @@ const AdminDetail = ({
             >
               <div>
                 <div className="label">{t("type")}</div>
-                <div style={{ fontWeight: 700, marginTop: 6 }}>
+                <div style={{ fontWeight: 600, marginTop: 6 }}>
                   {job.vehicle}
                 </div>
               </div>
@@ -1584,7 +1578,7 @@ const AdminDetail = ({
                 <div
                   className="mono"
                   style={{
-                    fontWeight: 700,
+                    fontWeight: 600,
                     marginTop: 6,
                     padding: "4px 10px",
                     border: "1.5px solid var(--primary-ink)",
@@ -1606,6 +1600,45 @@ const AdminDetail = ({
                 </div>
               </div>
             </div>
+            {job.registrationStatus || job.electricVehicle || job.redPlates ? (
+              <div style={{ marginTop: 16 }}>
+                <div className="label">{t("vehicleInfoLabel")}</div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    marginTop: 6,
+                  }}
+                >
+                  {job.registrationStatus === "registered" ? (
+                    <span className="pill outline no-dot">
+                      {t("vehicleInfoRegistered")}
+                    </span>
+                  ) : null}
+                  {job.registrationStatus === "deregistered" ? (
+                    <span className="pill outline no-dot">
+                      {t("vehicleInfoDeregistered")}
+                    </span>
+                  ) : null}
+                  {job.electricVehicle ? (
+                    <span className="pill outline no-dot">
+                      {t("vehicleInfoElectric")}
+                    </span>
+                  ) : null}
+                  {job.redPlates ? (
+                    <span className="pill outline no-dot">
+                      {t("vehicleInfoRedPlates")}
+                      {job.redPlateNumber ? (
+                        <span className="mono" style={{ marginLeft: 6 }}>
+                          {job.redPlateNumber}
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </section>
 
           {/* Contacts */}
@@ -1637,7 +1670,7 @@ const AdminDetail = ({
                   }}
                 >
                   <div className="label">{k}</div>
-                  <div style={{ fontWeight: 700, marginTop: 6 }}>
+                  <div style={{ fontWeight: 600, marginTop: 6 }}>
                     {c.name || "—"}
                   </div>
                   <a
@@ -2101,11 +2134,25 @@ const EMPTY_NEW_ORDER_FORM = {
   notes: "",
   notesDriver: "",
   axle: "Eigenachse",
+  registrationStatus: "",
+  electricVehicle: false,
+  redPlates: false,
+  redPlateNumber: "",
   pickupLocationId: "",
   deliveryLocationId: "",
   savePickupToMaster: false,
   saveDeliveryToMaster: false,
 };
+
+const displayAxleAdmin = (value, t) =>
+  ({
+    "driven on own wheels": t("ownAxle"),
+    "third-party axle": t("thirdPartyAxle"),
+    Eigenachse: t("ownAxle"),
+    Fremdachse: t("thirdPartyAxle"),
+    "Own axle": t("ownAxle"),
+    "Third-party axle": t("thirdPartyAxle"),
+  })[value] || value;
 
 const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
   const store = useAuthStore();
@@ -2246,7 +2293,10 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
     "pickupDate",
     "deliveryDate",
     "vehicleType",
-    "plate",
+    // Registered (or unspecified) vehicles need the regular plate; a
+    // deregistered vehicle has none (§16 FZV transfer runs use a red plate)
+    ...(form.registrationStatus === "deregistered" ? [] : ["plate"]),
+    ...(form.redPlates ? ["redPlateNumber"] : []),
     "driverOffer",
   ];
   const scheduleDateWarning =
@@ -2333,7 +2383,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
             style={{
               margin: "6px 0 0",
               fontSize: 30,
-              fontWeight: 700,
+              fontWeight: 600,
               letterSpacing: "-0.02em",
             }}
           >
@@ -2347,7 +2397,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
           <div className="label">{t("tourNo")}</div>
           <div
             className="mono"
-            style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}
+            style={{ fontSize: 20, fontWeight: 600, marginTop: 2 }}
           >
             {editingJob?.tour || "—"}
           </div>
@@ -2771,16 +2821,28 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   onChange={(e) => set("model", e.target.value)}
                 />
               </div>
-              <div>
-                <label className="field-label">{t("plate")} *</label>
-                <input
-                  className="input mono"
-                  placeholder={t("newOrderPlatePh")}
-                  value={form.plate}
-                  onChange={(e) => set("plate", e.target.value)}
-                  onBlur={(e) => set("plate", AuthStore.normalizePlate(e.target.value))}
-                />
-              </div>
+              {form.registrationStatus === "deregistered" ? (
+                <div>
+                  <label className="field-label">{t("plate")}</label>
+                  <p
+                    className="label"
+                    style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.5 }}
+                  >
+                    {t("newOrderPlateHiddenDeregistered")}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label className="field-label">{t("plate")} *</label>
+                  <input
+                    className="input mono"
+                    placeholder={t("newOrderPlatePh")}
+                    value={form.plate}
+                    onChange={(e) => set("plate", e.target.value)}
+                    onBlur={(e) => set("plate", AuthStore.normalizePlate(e.target.value))}
+                  />
+                </div>
+              )}
               <div>
                 <label className="field-label">
                   {t("vin")} ({t("newOrderVinLen")})
@@ -2821,6 +2883,78 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 ))}
               </div>
             </div>
+            {/* Important vehicle info — optional announcement metadata
+                (Design Direction Board §5; prd.json vehicle_important_info_v1) */}
+            <div style={{ marginTop: 14 }}>
+              <label className="field-label">{t("vehicleInfoLabel")}</label>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                }}
+              >
+                <div
+                  className="seg"
+                  style={{ display: "inline-grid", gridAutoFlow: "column" }}
+                >
+                  {[
+                    ["", t("newOrderRegistrationNone")],
+                    ["registered", t("vehicleInfoRegistered")],
+                    ["deregistered", t("vehicleInfoDeregistered")],
+                  ].map(([val, label]) => (
+                    <button
+                      key={val || "none"}
+                      type="button"
+                      className={
+                        (form.registrationStatus || "") === val ? "on" : ""
+                      }
+                      onClick={() => set("registrationStatus", val)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <span
+                  className={"chip " + (form.electricVehicle ? "on" : "")}
+                  onClick={() => set("electricVehicle", !form.electricVehicle)}
+                >
+                  {t("vehicleInfoElectric")}
+                </span>
+                <span
+                  className={"chip " + (form.redPlates ? "on" : "")}
+                  onClick={() => set("redPlates", !form.redPlates)}
+                >
+                  {t("vehicleInfoRedPlates")}
+                </span>
+              </div>
+              {form.redPlates ? (
+                <div style={{ marginTop: 12, maxWidth: 260 }}>
+                  <label className="field-label">
+                    {t("redPlateNumber")} *
+                  </label>
+                  <input
+                    className="input mono"
+                    placeholder={t("newOrderRedPlatePh")}
+                    value={form.redPlateNumber}
+                    onChange={(e) => set("redPlateNumber", e.target.value)}
+                  />
+                  <p
+                    className="label"
+                    style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}
+                  >
+                    {t("newOrderRedPlateHint")}
+                  </p>
+                </div>
+              ) : null}
+              <p
+                className="label"
+                style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}
+              >
+                {t("newOrderVehicleInfoHint")}
+              </p>
+            </div>
           </section>
 
           <section id="sec-05" className="card" style={{ padding: 22 }}>
@@ -2833,7 +2967,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
               <label className="field-label">{t("newOrderDriverOfferEur")}</label>
               <input
                 className="input mono"
-                style={{ maxWidth: 200, fontSize: 18, fontWeight: 700 }}
+                style={{ maxWidth: 200, fontSize: 18, fontWeight: 600 }}
                 placeholder={t("newOrderDriverOfferPh")}
                 value={form.driverOffer}
                 onChange={(e) => set("driverOffer", e.target.value)}
@@ -2969,7 +3103,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
         >
           <div className="label">{t("newOrderLiveSummary")}</div>
           <div className="card" style={{ padding: 18 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>
               {t("newOrderPreviewTitle")}
             </div>
             <div
@@ -3045,7 +3179,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   </div>
                   <div
                     className="mono"
-                    style={{ fontSize: 18, fontWeight: 700, marginTop: 2 }}
+                    style={{ fontSize: 18, fontWeight: 600, marginTop: 2 }}
                   >
                     € {form.driverOffer || t("newOrderDriverOfferZero")}
                   </div>
@@ -3133,7 +3267,7 @@ const Stub = ({ title, desc }) => {
         style={{
           margin: 0,
           fontSize: 30,
-          fontWeight: 700,
+          fontWeight: 600,
           letterSpacing: "-0.02em",
         }}
       >
@@ -3633,7 +3767,7 @@ const DriversPane = ({ showToast }) => {
 
   return (
     <div>
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
         {t("adminDriversTitle")}
       </h1>
       <p style={{ color: "var(--muted)", marginTop: 8 }}>
@@ -3913,7 +4047,7 @@ const StaffPane = ({ showToast }) => {
 
   return (
     <div>
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
         {t("adminStaffTitle")}
       </h1>
       <p style={{ color: "var(--muted)", marginTop: 8 }}>
@@ -4517,7 +4651,7 @@ const CustomersPane = ({ showToast }) => {
         }}
       >
         <div>
-          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
             {t("navCustomers") || "Customers"}
           </h1>
           <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
@@ -4782,7 +4916,7 @@ const AddressesPane = ({ showToast }) => {
         }}
       >
         <div>
-          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
             {t("navAddresses") || "Addresses"}
           </h1>
           <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
@@ -5053,7 +5187,7 @@ const InfopointPane = ({ showToast }) => {
 
   return (
     <div id="infopoint">
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
         {t("navInfopoint")}
       </h1>
       <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14, maxWidth: 720 }}>
@@ -5194,7 +5328,7 @@ const InfopointPane = ({ showToast }) => {
       ) : (
         <>
           <section className="card" style={{ padding: 22, marginTop: 16 }}>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
               {t("adminInfopointPublishTitle")}
             </h2>
             <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
@@ -5258,7 +5392,7 @@ const InfopointPane = ({ showToast }) => {
             </div>
           </section>
 
-          <h2 style={{ margin: "24px 0 0", fontSize: 17, fontWeight: 700 }}>
+          <h2 style={{ margin: "24px 0 0", fontSize: 17, fontWeight: 600 }}>
             {t("adminInfopointNewsListTitle")}
           </h2>
           <table className="tbl" style={{ marginTop: 12 }}>
@@ -5707,7 +5841,7 @@ const TourBillingPane = ({
 
   return (
     <div>
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
         {t("navTourBilling")}
       </h1>
       <p style={{ color: "var(--muted)", marginTop: 8, maxWidth: 720 }}>
@@ -6628,7 +6762,7 @@ const FinancePane = ({
   const unpaid = jobs.filter((j) => j.paymentStatus !== "Paid").length;
   return (
     <div>
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
         {t("adminFinanceTrackingTitle")}
       </h1>
       <div className="statgrid" style={{ marginTop: 22 }}>
@@ -6933,7 +7067,7 @@ const AuditPane = ({ showToast }) => {
           flexWrap: "wrap",
         }}
       >
-        <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+        <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
           {t("navAuditLog")}
         </h1>
         <button
@@ -7145,7 +7279,7 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
 
   return (
     <div style={{ maxWidth: 1040 }}>
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
         {t("adminMdrTitle")}
       </h1>
       <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
@@ -7355,7 +7489,7 @@ const NotificationFeedPane = ({ showToast, onOpenJob, onReviewMasterDataRequest 
   const rows = store.getAdminEmailQueue();
   return (
     <div style={{ maxWidth: 900 }}>
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>
+      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
         {t("adminNotificationFeed")}
       </h1>
       <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
@@ -7549,7 +7683,7 @@ const FeaturesPane = ({ showToast }) => {
         style={{
           margin: 0,
           fontSize: 30,
-          fontWeight: 700,
+          fontWeight: 600,
           letterSpacing: "-0.02em",
         }}
       >
@@ -7557,7 +7691,7 @@ const FeaturesPane = ({ showToast }) => {
       </h1>
 
       <section className="card" style={{ padding: 22, marginTop: 22 }}>
-        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>
+        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
           {t("adminBrandingTitle")}
         </h2>
         <p
@@ -7595,7 +7729,7 @@ const FeaturesPane = ({ showToast }) => {
       </section>
 
       <section className="card" style={{ padding: 22, marginTop: 22 }}>
-        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>
+        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
           {t("adminOperationalPoliciesTitle")}
         </h2>
         <p
@@ -7616,7 +7750,7 @@ const FeaturesPane = ({ showToast }) => {
         style={{
           margin: "28px 0 0",
           fontSize: 17,
-          fontWeight: 700,
+          fontWeight: 600,
         }}
       >
         {t("adminFeatureFlags")}
