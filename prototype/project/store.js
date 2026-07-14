@@ -149,8 +149,6 @@ window.AuthStore = (() => {
       pickup: mkLocation(),
       delivery: mkLocation(),
       distanceKm: 0,
-      distanceManualOverride: null,
-      distanceEstimateSource: null,
       vehicle: "",
       vehicleModel: "",
       plate: "",
@@ -809,7 +807,6 @@ window.AuthStore = (() => {
           windowTo: "14:00",
         }),
         distanceKm: 585,
-        distanceEstimateSource: "seed",
         vehicle: "SUV",
         vehicleModel: "VW Tiguan 2.0 TDI",
         plate: "M-AB 1234",
@@ -850,7 +847,6 @@ window.AuthStore = (() => {
           windowTo: "16:00",
         }),
         distanceKm: 124,
-        distanceEstimateSource: "seed",
         vehicle: "PKW",
         vehicleModel: "Skoda Superb",
         plate: "HB-NF 848",
@@ -887,7 +883,6 @@ window.AuthStore = (() => {
           windowTo: "18:00",
         }),
         distanceKm: 232,
-        distanceEstimateSource: "seed",
         vehicle: "PKW",
         vehicleModel: "BMW 3 Touring",
         plate: "S-CC 220",
@@ -952,7 +947,6 @@ window.AuthStore = (() => {
           windowTo: "18:00",
         }),
         distanceKm: 186,
-        distanceEstimateSource: "seed",
         vehicle: "PKW",
         vehicleModel: "Audi A4",
         plate: "K-AL 845",
@@ -990,7 +984,6 @@ window.AuthStore = (() => {
           windowTo: "16:00",
         }),
         distanceKm: 156,
-        distanceEstimateSource: "seed",
         vehicle: "PKW",
         vehicleModel: "VW Polo",
         plate: "HH-MA 88",
@@ -1025,7 +1018,6 @@ window.AuthStore = (() => {
           windowTo: "16:00",
         }),
         distanceKm: 232,
-        distanceEstimateSource: "seed",
         vehicle: "Van",
         vehicleModel: "Mercedes Sprinter",
         plate: "S-CC 130",
@@ -1074,7 +1066,6 @@ window.AuthStore = (() => {
           windowTo: "15:00",
         }),
         distanceKm: 124,
-        distanceEstimateSource: "seed",
         vehicle: "PKW",
         vehicleModel: "Skoda Octavia",
         plate: "HH-NF 42",
@@ -1111,7 +1102,6 @@ window.AuthStore = (() => {
           windowFlex: true,
         }),
         distanceKm: 188,
-        distanceEstimateSource: "seed",
         vehicle: "SUV",
         vehicleModel: "Ford Kuga",
         plate: "B-MS 200",
@@ -1157,7 +1147,6 @@ window.AuthStore = (() => {
           windowTo: "18:00",
         }),
         distanceKm: 78,
-        distanceEstimateSource: "seed",
         vehicle: "PKW",
         vehicleModel: "Audi Q3",
         plate: "D-CC 80",
@@ -1201,7 +1190,6 @@ window.AuthStore = (() => {
           windowTo: "14:00",
         }),
         distanceKm: 632,
-        distanceEstimateSource: "seed",
         vehicle: "PKW",
         vehicleModel: "Audi A6",
         plate: "B-AL 60",
@@ -1241,7 +1229,8 @@ window.AuthStore = (() => {
         notes: "",
         status: "Active",
         accessState: ACCESS_STATE.ACTIVE,
-        dailyJobLimit: 3,
+        probationJobLimit: 3,
+        probationClearedAt: null,
         prefs: {
           postalAreas: ["80"],
           vehicle: "PKW",
@@ -1261,7 +1250,8 @@ window.AuthStore = (() => {
         notes: "",
         status: "Active",
         accessState: ACCESS_STATE.ACTIVE,
-        dailyJobLimit: 3,
+        probationJobLimit: 3,
+        probationClearedAt: "01.04.2026 10:00",
         prefs: {
           postalAreas: ["60"],
           vehicle: "Transporter",
@@ -1281,7 +1271,8 @@ window.AuthStore = (() => {
         notes: "",
         status: "Blocked",
         accessState: ACCESS_STATE.ACTIVE,
-        dailyJobLimit: 3,
+        probationJobLimit: 3,
+        probationClearedAt: null,
         prefs: {
           postalAreas: ["10"],
           vehicle: "SUV",
@@ -1797,7 +1788,7 @@ window.AuthStore = (() => {
   };
 
   const driverAcceptanceDefaults = {
-    defaultDailyJobLimit: 3,
+    probationJobCount: 3,
   };
 
   function cancellationReasonLabel(code) {
@@ -1838,15 +1829,56 @@ window.AuthStore = (() => {
     return null;
   }
 
-  function driverAcceptanceCountForDay(driverId, dayKey) {
-    if (!driverId || !dayKey) return 0;
+  function driverProbationActiveCount(driverId) {
+    if (!driverId) return 0;
     return jobs.filter((j) => {
-      if (!["accepted", "assigned", "performed", "special_case"].includes(j.status))
-        return false;
+      if (!ACTIVE_JOB_STATUSES.includes(j.status)) return false;
       const dr = jobDriverRecord(j);
-      if (!dr || dr.id !== driverId) return false;
-      return pickupCalendarKey(j.pickup) === dayKey;
+      return dr && dr.id === driverId;
     }).length;
+  }
+
+  function driverProbationPerformedCount(driverId) {
+    if (!driverId) return 0;
+    return jobs.filter((j) => {
+      if (j.status !== "performed") return false;
+      const dr = jobDriverRecord(j);
+      return dr && dr.id === driverId;
+    }).length;
+  }
+
+  function driverProbationTakenCount(driverId) {
+    return (
+      driverProbationActiveCount(driverId) +
+      driverProbationPerformedCount(driverId)
+    );
+  }
+
+  function maybeAutoReleaseProbation(driver) {
+    if (!driver || driver.probationClearedAt) return false;
+    const limit =
+      driver.probationJobLimit ??
+      driverAcceptanceDefaults.probationJobCount ??
+      3;
+    const performed = driverProbationPerformedCount(driver.id);
+    if (performed < limit) return false;
+    driver.probationClearedAt = nowStamp();
+    log(
+      "driver_probation_released",
+      DEMO_ADMIN,
+      driver.name,
+      `automatic · ${performed}/${limit} Performed · ${driver.driverCode || driver.id}`,
+    );
+    return true;
+  }
+
+  function nextDriverCode() {
+    let max = 0;
+    for (const d of drivers) {
+      const m = String(d.driverCode || "").match(/^AU-41-(\d+)$/i);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
+    return `AU-41-${String(max + 1).padStart(4, "0")}`;
   }
 
   function driverHasSameDayActiveJob(driverId, job, excludeId) {
@@ -1932,8 +1964,6 @@ window.AuthStore = (() => {
 
   function estimateDistanceKm(job) {
     if (!job) return 0;
-    if (job.distanceManualOverride != null && job.distanceManualOverride !== "")
-      return Number(job.distanceManualOverride) || 0;
     const key = distanceKey(job);
     if (key && DISTANCE_TABLE[key]) return DISTANCE_TABLE[key];
     const alt = `${job.pickup?.postalCode || ""}-${job.delivery?.postalCode || ""}`;
@@ -1943,13 +1973,6 @@ window.AuthStore = (() => {
         (parseInt(job.delivery?.postalCode, 10) || 20000),
     );
     return Math.max(40, Math.min(720, Math.round(base / 8)));
-  }
-
-  function distanceEstimateSourceForJob(job) {
-    const key = distanceKey(job);
-    if (key && DISTANCE_TABLE[key]) return "table";
-    if (job?.pickup?.postalCode && job?.delivery?.postalCode) return "heuristic";
-    return "unknown";
   }
 
   function jobLikeFromForm(form) {
@@ -2245,11 +2268,8 @@ window.AuthStore = (() => {
       distance:
         job.distanceKm != null && job.distanceKm !== ""
           ? String(job.distanceKm)
-          : job.distanceManualOverride != null
-            ? String(job.distanceManualOverride)
-            : "",
+          : "",
       distanceKm: job.distanceKm,
-      distanceManualOverride: job.distanceManualOverride,
       pickupDate: pu.date || "",
       pickupFrom: pu.windowFrom || "",
       pickupTo: pu.windowTo || "",
@@ -2309,8 +2329,7 @@ window.AuthStore = (() => {
       customers.find((x) => x.name === form.customer);
     const driverOffer =
       parseFloat(String(form.driverOffer || "0").replace(",", ".")) || 0;
-    const distRaw =
-      form.distanceKm ?? form.distance ?? form.distanceManualOverride;
+    const distRaw = form.distanceKm ?? form.distance;
     const dist = parseInt(distRaw, 10) || 0;
     const pickup =
       form.pickup && typeof form.pickup === "object"
@@ -2362,10 +2381,6 @@ window.AuthStore = (() => {
       pickup,
       delivery,
       distanceKm: dist,
-      distanceManualOverride:
-        form.distanceManualOverride != null
-          ? form.distanceManualOverride
-          : null,
       category: form.category || "Standard",
       vehicle: form.vehicleType || form.vehicle || "PKW",
       vehicleModel:
@@ -2710,22 +2725,48 @@ window.AuthStore = (() => {
       return `${y}-${m}-${d}`;
     },
 
-    getDriverDailyAcceptanceSummary(dayKey) {
-      const d = api.getCurrentDriver();
+    getDriverProbationSummary(driverId) {
+      const d = driverId
+        ? drivers.find((x) => x.id === driverId)
+        : api.getCurrentDriver();
       if (!d) return null;
-      const key = dayKey || api.todayCalendarKey();
       const limit =
-        d.dailyJobLimit ?? driverAcceptanceDefaults.defaultDailyJobLimit ?? 3;
-      const count = driverAcceptanceCountForDay(d.id, key);
-      const openMdr = api.getOpenMasterDataChangeRequestForDriver(d.id);
+        d.probationJobLimit ??
+        driverAcceptanceDefaults.probationJobCount ??
+        3;
+      const activeCount = driverProbationActiveCount(d.id);
+      const performedCount = driverProbationPerformedCount(d.id);
+      const takenCount = activeCount + performedCount;
+      const onProbation = !d.probationClearedAt;
       return {
         limit,
-        count,
-        dayKey: key,
-        atLimit: count >= limit,
-        remaining: Math.max(0, limit - count),
-        pendingLimitRequest: openMdr?.changeType === "daily_limit_override",
-        hasOpenRequest: Boolean(openMdr),
+        activeCount,
+        performedCount,
+        takenCount,
+        bookedCount: takenCount,
+        onProbation,
+        clearedAt: d.probationClearedAt || null,
+        atLimit: onProbation && takenCount >= limit && performedCount < limit,
+        remainingSlots: onProbation
+          ? Math.max(0, limit - takenCount)
+          : null,
+      };
+    },
+
+    /** @deprecated use getDriverProbationSummary */
+    getDriverDailyAcceptanceSummary() {
+      const s = api.getDriverProbationSummary();
+      if (!s) return null;
+      return {
+        limit: s.limit,
+        count: s.takenCount,
+        dayKey: api.todayCalendarKey(),
+        atLimit: s.atLimit,
+        remaining: s.remainingSlots ?? 0,
+        pendingLimitRequest: false,
+        hasOpenRequest: false,
+        onProbation: s.onProbation,
+        performedCount: s.performedCount,
       };
     },
 
@@ -3024,11 +3065,14 @@ window.AuthStore = (() => {
           : jobs.find((x) => x.id === jobOrId);
       if (!j) return { ok: false, km: 0 };
       const km = estimateDistanceKm(j);
-      return {
-        ok: true,
-        km,
-        source: distanceEstimateSourceForJob(j),
-      };
+      const key = distanceKey(j);
+      const source =
+        key && DISTANCE_TABLE[key]
+          ? "table"
+          : j?.pickup?.postalCode && j?.delivery?.postalCode
+            ? "heuristic"
+            : "unknown";
+      return { ok: true, km, source };
     },
 
     estimateDistanceFromForm(form) {
@@ -3039,29 +3083,22 @@ window.AuthStore = (() => {
         return { ok: false, reason: "postal_codes_required" };
       }
       const km = estimateDistanceKm(jobLike);
-      return {
-        ok: true,
-        km,
-        source: distanceEstimateSourceForJob(jobLike),
-      };
+      const key = distanceKey(jobLike);
+      const source =
+        key && DISTANCE_TABLE[key] ? "table" : "heuristic";
+      return { ok: true, km, source };
     },
 
     recalculateDistance(id) {
       const j = api.getJob(id);
       if (!j) return { ok: false };
-      if (j.distanceManualOverride != null && j.distanceManualOverride !== "") {
-        j.distanceKm = Number(j.distanceManualOverride) || j.distanceKm;
-        j.distanceEstimateSource = "manual";
-      } else {
-        j.distanceKm = estimateDistanceKm(j);
-        j.distanceEstimateSource = "recalculated";
-      }
+      j.distanceKm = estimateDistanceKm(j);
       syncDisplayFields(j);
       log(
         "distance_recalculated",
         DEMO_ADMIN,
         j.tour,
-        `${j.distanceKm} km (${j.distanceEstimateSource})`,
+        `${j.distanceKm} km`,
       );
       emit();
       return { ok: true, km: j.distanceKm };
@@ -3075,12 +3112,23 @@ window.AuthStore = (() => {
         return { ok: false, reason: "driver_restricted" };
       const dr = api.getCurrentDriver();
       if (!dr) return { ok: false, reason: "no_driver" };
-      const limit =
-        dr.dailyJobLimit ?? driverAcceptanceDefaults.defaultDailyJobLimit ?? 3;
-      const dayKey = pickupCalendarKey(j.pickup);
-      const count = driverAcceptanceCountForDay(dr.id, dayKey);
-      if (count >= limit)
-        return { ok: false, reason: "daily_limit_reached", limit, count };
+      if (!dr.probationClearedAt) {
+        const limit =
+          dr.probationJobLimit ??
+          driverAcceptanceDefaults.probationJobCount ??
+          3;
+        const performedCount = driverProbationPerformedCount(dr.id);
+        const takenCount = driverProbationTakenCount(dr.id);
+        if (takenCount >= limit && performedCount < limit) {
+          return {
+            ok: false,
+            reason: "probation_limit_reached",
+            limit,
+            performedCount,
+            takenCount,
+          };
+        }
+      }
       if (
         !opts.confirmSameDayOverlap &&
         driverHasSameDayActiveJob(dr.id, j, id)
@@ -3124,6 +3172,8 @@ window.AuthStore = (() => {
         "Driver marked tour performed",
       );
       queueAdminEmailAlert("job_performed", id, j.tour);
+      const dr = jobDriverRecord(j);
+      if (dr) maybeAutoReleaseProbation(dr);
       emit();
       return { ok: true };
     },
@@ -3326,62 +3376,23 @@ window.AuthStore = (() => {
       return { ok: true, id: reqId, request: row };
     },
 
-    requestDailyLimitIncrease(requestedLimit, note = "") {
-      if (!api.isCurrentDriverActive())
-        return { ok: false, reason: "driver_restricted" };
-      const d = api.getCurrentDriver();
-      if (!d) return { ok: false, reason: "no_driver" };
-      if (api.getOpenMasterDataChangeRequestForDriver(d.id)) {
-        return { ok: false, reason: "open_request_exists" };
-      }
-      const current =
-        d.dailyJobLimit ?? driverAcceptanceDefaults.defaultDailyJobLimit ?? 3;
-      const requested = parseInt(String(requestedLimit).trim(), 10);
-      if (!Number.isFinite(requested) || requested < 1 || requested > 99) {
-        return { ok: false, reason: "invalid_daily_limit" };
-      }
-      if (requested <= current) {
-        return { ok: false, reason: "limit_not_increased" };
-      }
-      const who = d.name || DEMO_DRIVER;
-      const reqId = `MDR-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      const row = {
-        id: reqId,
-        driverId: d.id,
-        driverName: who,
-        driverCode: d.driverCode || "",
-        changeType: "daily_limit_override",
-        note: String(note || "").trim(),
-        proposed: { dailyJobLimit: requested },
-        snapshot: { dailyJobLimit: current },
-        status: "open",
-        createdAt: nowStamp(),
-        resolvedAt: null,
-        resolvedBy: null,
-        reviewedBy: null,
-        reviewedAt: null,
-        adminNote: "",
-      };
-      masterDataChangeRequests.unshift(row);
-      queueAdminEmailAlert(
-        "master_data_change_requested",
-        "",
-        `${who}: daily limit ${current} → ${requested} · ${reqId}`,
-      );
+    requestDailyLimitIncrease() {
+      return { ok: false, reason: "removed" };
+    },
+
+    releaseDriverFromProbation(id) {
+      const d = drivers.find((x) => x.id === id);
+      if (!d) return { ok: false, reason: "not_found" };
+      if (d.probationClearedAt) return { ok: false, reason: "already_cleared" };
+      d.probationClearedAt = nowStamp();
       log(
-        "daily_limit_increase_requested",
-        who,
-        "acceptance limit",
-        `${reqId} · ${current} → ${requested}`,
+        "driver_probation_released",
+        DEMO_ADMIN,
+        d.name,
+        `manual · ${d.driverCode || d.id}`,
       );
-      pushDriverNotification({
-        type: "master_data_change_sent",
-        title: "Limit increase request sent",
-        body: "Dispatch received your request for a higher daily job limit.",
-        driverId: d.id,
-      });
       emit();
-      return { ok: true, id: reqId, request: row };
+      return { ok: true, driver: d };
     },
 
     resolveMasterDataChangeRequest(id, decision, adminNote) {
@@ -3392,20 +3403,33 @@ window.AuthStore = (() => {
       const approved = d === "approve" || d === "approved";
       const rejected = d === "reject" || d === "rejected";
       if (!approved && !rejected) return { ok: false, reason: "bad_decision" };
+      if (row.changeType === "daily_limit_override") {
+        row.status = "rejected";
+        row.resolvedAt = nowStamp();
+        row.resolvedBy = DEMO_ADMIN;
+        row.reviewedBy = DEMO_ADMIN;
+        row.reviewedAt = nowStamp();
+        row.adminNote =
+          String(adminNote || "").trim() ||
+          "Daily limit overrides removed; probation model is in use.";
+        log(
+          "master_data_change_rejected",
+          DEMO_ADMIN,
+          row.driverName,
+          `${row.id} · legacy daily_limit_override`,
+        );
+        emit();
+        return { ok: true, request: row };
+      }
       if (approved) {
         const p = row.proposed;
         if (!p) return { ok: false, reason: "no_proposed_data" };
-        const upd =
-          row.changeType === "daily_limit_override"
-            ? api.updateDriver(row.driverId, {
-                dailyJobLimit: p.dailyJobLimit,
-              })
-            : api.updateDriver(row.driverId, {
-                company: p.company,
-                address: p.address,
-                email: p.email,
-                phone: p.phone,
-              });
+        const upd = api.updateDriver(row.driverId, {
+          company: p.company,
+          address: p.address,
+          email: p.email,
+          phone: p.phone,
+        });
         if (!upd.ok)
           return { ok: false, reason: upd.reason || "update_failed" };
       }
@@ -3428,23 +3452,14 @@ window.AuthStore = (() => {
         type: approved
           ? "master_data_change_approved"
           : "master_data_change_rejected",
-        title:
-          row.changeType === "daily_limit_override"
-            ? approved
-              ? "Daily limit updated"
-              : "Limit increase declined"
-            : approved
-              ? "Profile change approved"
-              : "Profile change declined",
+        title: approved
+          ? "Profile change approved"
+          : "Profile change declined",
         body: row.adminNote
           ? row.adminNote
           : approved
-            ? row.changeType === "daily_limit_override"
-              ? `Your daily job limit is now ${row.proposed?.dailyJobLimit ?? "—"}.`
-              : "Your master-data change request was approved."
-            : row.changeType === "daily_limit_override"
-              ? "Your daily limit increase request was declined."
-              : "Your master-data change request was declined.",
+            ? "Your master-data change request was approved."
+            : "Your master-data change request was declined.",
         driverId: row.driverId,
       });
       emit();
@@ -3804,6 +3819,22 @@ window.AuthStore = (() => {
     },
 
     saveDraft(form) {
+      const compareTimes =
+        window.InputFormatters?.compareTimeStrings || (() => 0);
+      if (
+        form.pickupFrom &&
+        form.pickupTo &&
+        compareTimes(form.pickupFrom, form.pickupTo) > 0
+      ) {
+        return { error: "cross_midnight_window", leg: "pickup" };
+      }
+      if (
+        form.deliveryFrom &&
+        form.deliveryTo &&
+        compareTimes(form.deliveryFrom, form.deliveryTo) > 0
+      ) {
+        return { error: "cross_midnight_window", leg: "delivery" };
+      }
       const editId = String(form.jobId || form.id || "").trim();
       const opId = form.customerId || "";
       const op =
@@ -3906,7 +3937,6 @@ window.AuthStore = (() => {
         j.isNew = false;
         if (!j.distanceKm) {
           j.distanceKm = estimateDistanceKm(j);
-          j.distanceEstimateSource = "estimate";
         }
         syncDisplayFields(j);
         processPendingAdminAttachments(j.id, form);
@@ -3939,7 +3969,6 @@ window.AuthStore = (() => {
       });
       if (!newJob.distanceKm) {
         newJob.distanceKm = estimateDistanceKm(newJob);
-        newJob.distanceEstimateSource = "estimate";
       }
       jobs.unshift(newJob);
       processPendingAdminAttachments(newJob.id, form);
@@ -3984,10 +4013,9 @@ window.AuthStore = (() => {
       }
       if (patch.driverCode !== undefined) {
         const code = String(patch.driverCode ?? "").trim();
-        if (!code) return { ok: false, reason: "driver_code_required" };
-        if (drivers.some((x) => x.id !== id && x.driverCode === code))
-          return { ok: false, reason: "duplicate_driver_code" };
-        d.driverCode = code;
+        if (code && code !== d.driverCode) {
+          return { ok: false, reason: "driver_code_immutable" };
+        }
       }
       if (!d.name || !d.company) return { ok: false, reason: "required" };
       if (!d.driverCode) return { ok: false, reason: "driver_code_required" };
@@ -3995,11 +4023,20 @@ window.AuthStore = (() => {
       if (!isValidEmail(d.email)) return { ok: false, reason: "invalid_email" };
       if (drivers.some((x) => x.id !== id && x.email === d.email))
         return { ok: false, reason: "duplicate_email" };
-      if (patch.dailyJobLimit !== undefined) {
-        const n = parseInt(String(patch.dailyJobLimit).trim(), 10);
+      if (patch.probationJobLimit !== undefined) {
+        const n = parseInt(String(patch.probationJobLimit).trim(), 10);
         if (!Number.isFinite(n) || n < 1 || n > 99)
-          return { ok: false, reason: "invalid_daily_limit" };
-        d.dailyJobLimit = n;
+          return { ok: false, reason: "invalid_probation_limit" };
+        const prev = d.probationJobLimit;
+        d.probationJobLimit = n;
+        if (prev !== n) {
+          log(
+            "driver_probation_limit_changed",
+            DEMO_ADMIN,
+            d.name,
+            `${prev} → ${n}`,
+          );
+        }
       }
       log("driver_updated", DEMO_ADMIN, d.name, d.driverCode || "");
       emit();
@@ -4024,16 +4061,23 @@ window.AuthStore = (() => {
       const name = String(data.name || "").trim();
       const company = String(data.company || "").trim();
       const email = String(data.email || "").trim();
-      const driverCode = String(data.driverCode || "").trim();
       if (!name || !company) return { ok: false, reason: "required" };
-      if (!driverCode) return { ok: false, reason: "driver_code_required" };
       if (!email) return { ok: false, reason: "email_required" };
       if (!isValidEmail(email)) return { ok: false, reason: "invalid_email" };
       if (drivers.some((d) => d.email === email))
         return { ok: false, reason: "duplicate_email" };
-      if (drivers.some((d) => d.driverCode === driverCode))
-        return { ok: false, reason: "duplicate_driver_code" };
+      const driverCode = nextDriverCode();
       const id = nextMasterId("DRV", drivers);
+      const probationJobLimit = (() => {
+        if (
+          data.probationJobLimit !== undefined &&
+          data.probationJobLimit !== ""
+        ) {
+          const n = parseInt(String(data.probationJobLimit).trim(), 10);
+          if (Number.isFinite(n) && n >= 1 && n <= 99) return n;
+        }
+        return driverAcceptanceDefaults.probationJobCount ?? 3;
+      })();
       const driver = {
         id,
         name,
@@ -4043,13 +4087,8 @@ window.AuthStore = (() => {
         email,
         phone: String(data.phone || "").trim(),
         notes: String(data.notes || "").trim(),
-        dailyJobLimit: (() => {
-          if (data.dailyJobLimit !== undefined && data.dailyJobLimit !== "") {
-            const n = parseInt(String(data.dailyJobLimit).trim(), 10);
-            if (Number.isFinite(n) && n >= 1 && n <= 99) return n;
-          }
-          return driverAcceptanceDefaults.defaultDailyJobLimit ?? 3;
-        })(),
+        probationJobLimit,
+        probationClearedAt: null,
         status: "Active",
         prefs: {
           postalAreas: [],
@@ -4061,7 +4100,12 @@ window.AuthStore = (() => {
       };
       const access = simulateAccountInvite(driver, "driver");
       drivers.unshift(driver);
-      log("driver_created", DEMO_ADMIN, driver.name, driver.id);
+      log(
+        "driver_created",
+        DEMO_ADMIN,
+        driver.name,
+        `system-assigned ID ${driver.driverCode} · ${driver.id}`,
+      );
       emit();
       return { ok: true, driver, access };
     },
@@ -4766,28 +4810,42 @@ window.AuthStore = (() => {
       ].join("\n");
     },
 
-    viewPdf(id) {
+    getTransportOrderPreview(id) {
       const txt = api.transportOrderText(id);
-      if (!txt) return { ok: false };
+      const j = api.getJob(id);
+      if (!txt || !j) return { ok: false };
+      const fileName = `transport-order-${j.id}.pdf`;
       const escaped = txt.replace(
         /[&<>]/g,
         (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c],
       );
       const appName = api.getAppDisplayName();
-      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${appName} transport order</title></head><body><pre style="font:13px/1.5 monospace;white-space:pre-wrap;padding:24px">${escaped}</pre></body></html>`;
+      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${appName} transport order</title>
+<style>body{margin:0;font:13px/1.5 ui-monospace,monospace;padding:20px;background:#fff;color:#111}</style>
+</head><body><pre style="white-space:pre-wrap;margin:0">${escaped}</pre></body></html>`;
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const w = window.open(url, "_blank");
-      if (w) {
-        w.addEventListener("load", () => URL.revokeObjectURL(url), {
-          once: true,
-        });
-      } else {
-        URL.revokeObjectURL(url);
-      }
-      log("pdf_viewed", DEMO_ADMIN, id, "Client-side transport order preview");
+      const blobUrl = URL.createObjectURL(blob);
+      const downloadBlob = new Blob([txt], {
+        type: "text/plain;charset=utf-8",
+      });
+      log("pdf_viewed", DEMO_ADMIN, id, "In-PWA transport order preview");
       emit();
-      return { ok: true };
+      return {
+        ok: true,
+        preview: {
+          title: fileName,
+          fileName,
+          mimeType: "application/pdf",
+          previewable: true,
+          blobUrl,
+          downloadBlob,
+          downloadName: `transport-order-${j.id}.txt`,
+        },
+      };
+    },
+
+    viewPdf(id) {
+      return api.getTransportOrderPreview(id);
     },
 
     downloadPdf(id) {
@@ -4808,6 +4866,104 @@ window.AuthStore = (() => {
         "Client-side generated transport order",
       );
       emit();
+      return { ok: true };
+    },
+
+    getTourDocumentPreview(id) {
+      const doc = tourDocuments.find((x) => x.id === id);
+      if (!doc) return { ok: false };
+      const mime = String(doc.mimeType || "").toLowerCase();
+      const isImage = mime.startsWith("image/");
+      const isPdf =
+        mime === "application/pdf" || /\.pdf$/i.test(doc.fileName || "");
+      const body = [
+        `${api.getAppDisplayName()} — document preview (prototype)`,
+        `File: ${doc.fileName}`,
+        `Type: ${doc.documentType}`,
+        `MIME: ${doc.mimeType}`,
+        `Source: ${doc.source}`,
+        `Uploaded: ${doc.uploadedAt}`,
+        "",
+        "Binary content is not stored in the prototype.",
+        "Production will stream the real PDF/image here.",
+      ].join("\n");
+      const escaped = body.replace(
+        /[&<>]/g,
+        (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c],
+      );
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:20px;font:14px/1.5 system-ui;background:#fff}</style></head><body><pre style="white-space:pre-wrap;margin:0">${escaped}</pre></body></html>`;
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const blobUrl = URL.createObjectURL(blob);
+      const downloadBlob = new Blob([body], {
+        type: "text/plain;charset=utf-8",
+      });
+      return {
+        ok: true,
+        preview: {
+          title: doc.fileName,
+          fileName: doc.fileName,
+          mimeType: doc.mimeType || "application/octet-stream",
+          previewable: isPdf || isImage || true,
+          blobUrl,
+          downloadBlob,
+          downloadName:
+            (doc.fileName || "document").replace(/\.[^.]+$/, "") +
+            "-placeholder.txt",
+        },
+      };
+    },
+
+    getInfopointDocumentPreview(id) {
+      const doc = documents.find((x) => x.id === id);
+      if (!doc || !doc.visible) return { ok: false };
+      const title = doc.title || "document";
+      const body = [
+        `${api.getAppDisplayName()} — Infopoint document`,
+        title,
+        doc.description || "",
+        `Category: ${doc.category || "—"}`,
+        `Version: ${doc.version || "—"}`,
+        `Updated: ${doc.updatedAt || "—"}`,
+        "",
+        "Prototype preview — production streams the attached PDF.",
+      ]
+        .filter(Boolean)
+        .join("\n");
+      const escaped = body.replace(
+        /[&<>]/g,
+        (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c],
+      );
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:20px;font:14px/1.5 system-ui;background:#fff}</style></head><body><pre style="white-space:pre-wrap;margin:0">${escaped}</pre></body></html>`;
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const blobUrl = URL.createObjectURL(blob);
+      const downloadBlob = new Blob([body], {
+        type: "text/plain;charset=utf-8",
+      });
+      const fileName = `${String(title).replace(/[^a-zA-Z0-9._-]+/g, "_")}.pdf`;
+      return {
+        ok: true,
+        preview: {
+          title,
+          fileName,
+          mimeType: "application/pdf",
+          previewable: true,
+          blobUrl,
+          downloadBlob,
+          downloadName: fileName.replace(/\.pdf$/i, ".txt"),
+        },
+      };
+    },
+
+    downloadInfopointDocument(id) {
+      const r = api.getInfopointDocumentPreview(id);
+      if (!r.ok) return { ok: false };
+      const url = URL.createObjectURL(r.preview.downloadBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = r.preview.downloadName;
+      a.click();
+      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(r.preview.blobUrl);
       return { ok: true };
     },
 

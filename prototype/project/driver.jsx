@@ -1603,13 +1603,182 @@ const tourDocReviewPillStatus = (st) => {
   return "assigned";
 };
 
+const DocumentPreviewSheet = ({ preview, onClose }) => {
+  const { t } = useI18n();
+  const iframeRef = useRef(null);
+  const [shareMsg, setShareMsg] = useState("");
+
+  useEffect(() => {
+    return () => {
+      if (preview?.blobUrl) URL.revokeObjectURL(preview.blobUrl);
+    };
+  }, [preview?.blobUrl]);
+
+  if (!preview) return null;
+
+  const canShare =
+    typeof navigator !== "undefined" &&
+    typeof navigator.share === "function" &&
+    typeof navigator.canShare === "function";
+
+  const download = () => {
+    const blob = preview.downloadBlob;
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = preview.downloadName || preview.fileName || "document";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const share = async () => {
+    setShareMsg("");
+    try {
+      const file = new File(
+        [preview.downloadBlob],
+        preview.downloadName || preview.fileName || "document.txt",
+        { type: preview.downloadBlob.type || "text/plain" },
+      );
+      if (!canShare || !navigator.canShare({ files: [file] })) {
+        setShareMsg(t("shareNotSupported"));
+        return;
+      }
+      await navigator.share({
+        files: [file],
+        title: preview.title || preview.fileName,
+      });
+    } catch (err) {
+      if (err && err.name !== "AbortError") setShareMsg(t("shareNotSupported"));
+    }
+  };
+
+  const printDoc = () => {
+    try {
+      const frame = iframeRef.current;
+      if (frame?.contentWindow) {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+        return;
+      }
+    } catch (_) {
+      /* fall through */
+    }
+    window.print();
+  };
+
+  return (
+    <div className="sheet-backdrop center" onClick={onClose}>
+      <div
+        className="sheet card document-preview-sheet"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("documentPreviewTitle")}
+        style={{
+          width: "min(420px, 94vw)",
+          maxHeight: "88vh",
+          display: "flex",
+          flexDirection: "column",
+          padding: 0,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          className="row-between"
+          style={{ padding: "14px 16px", borderBottom: "1px solid var(--line)" }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>
+              {t("documentPreviewTitle")}
+            </div>
+            <div
+              className="text-muted-sm"
+              style={{ marginTop: 2, overflow: "hidden", textOverflow: "ellipsis" }}
+            >
+              {preview.title || preview.fileName}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn icon sm touch-target"
+            onClick={onClose}
+            aria-label={t("uiDismiss")}
+          >
+            ×
+          </button>
+        </div>
+        <div style={{ flex: 1, minHeight: 280, background: "var(--paper-2)" }}>
+          {preview.previewable !== false && preview.blobUrl ? (
+            <iframe
+              ref={iframeRef}
+              title={preview.title || t("documentPreviewTitle")}
+              src={preview.blobUrl}
+              style={{
+                width: "100%",
+                height: "100%",
+                minHeight: 280,
+                border: 0,
+                background: "#fff",
+              }}
+            />
+          ) : (
+            <div style={{ padding: 20 }}>{t("previewUnavailable")}</div>
+          )}
+        </div>
+        {shareMsg ? (
+          <div style={{ padding: "8px 16px" }}>
+            <InlineAlert
+              tone="info"
+              message={shareMsg}
+              onDismiss={() => setShareMsg("")}
+            />
+          </div>
+        ) : null}
+        <div
+          className="document-preview-actions"
+          style={{
+            display: "flex",
+            gap: 8,
+            padding: 12,
+            borderTop: "1px solid var(--line)",
+            flexWrap: "wrap",
+          }}
+        >
+          <button type="button" className="btn" onClick={download}>
+            {t("download")}
+          </button>
+          {typeof navigator !== "undefined" && typeof navigator.share === "function" ? (
+            <button type="button" className="btn" onClick={share}>
+              {t("share")}
+            </button>
+          ) : null}
+          <button type="button" className="btn" onClick={printDoc}>
+            {t("print")}
+          </button>
+          <button
+            type="button"
+            className="btn primary"
+            style={{ marginLeft: "auto" }}
+            onClick={onClose}
+          >
+            {t("uiDismiss")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const TourDocumentRow = ({
   fileName,
   metaLine,
   statusNode,
   rejectionReason,
+  onView,
   onDownload,
   onReplace,
+  viewLabel,
   downloadLabel,
   replaceLabel,
 }) => (
@@ -1641,6 +1810,17 @@ const TourDocumentRow = ({
           <Ic.Refresh />
         </button>
       ) : null}
+      {onView ? (
+        <button
+          type="button"
+          className="pdf-btn"
+          onClick={onView}
+          title={viewLabel}
+          aria-label={viewLabel}
+        >
+          <Ic.Eye />
+        </button>
+      ) : null}
       {onDownload ? (
         <button
           type="button"
@@ -1656,7 +1836,7 @@ const TourDocumentRow = ({
   </div>
 );
 
-const JobOfficialTourDocuments = ({ job }) => {
+const JobOfficialTourDocuments = ({ job, onPreview }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const docs = store.getOfficialTourDocumentsForJob(job.id);
@@ -1675,7 +1855,12 @@ const JobOfficialTourDocuments = ({ job }) => {
             key={doc.id}
             fileName={doc.fileName}
             metaLine={`${t("officialTourDocFromDispatch")} · ${displayTourDocType(doc.documentType, t)} · ${F().formatFileSize(doc.sizeBytes)}`}
+            onView={() => {
+              const r = store.getTourDocumentPreview(doc.id);
+              if (r.ok) onPreview?.(r.preview);
+            }}
             onDownload={() => store.downloadTourDocumentPlaceholder(doc.id)}
+            viewLabel={t("view")}
             downloadLabel={t("download")}
           />
         ))}
@@ -1684,7 +1869,7 @@ const JobOfficialTourDocuments = ({ job }) => {
   );
 };
 
-const JobTourDocuments = ({ job }) => {
+const JobTourDocuments = ({ job, onPreview }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const inputRef = useRef(null);
@@ -1818,8 +2003,13 @@ const JobTourDocuments = ({ job }) => {
               onReplace={
                 canReplaceDoc(u) ? () => startReplace(u.id) : null
               }
+              onView={() => {
+                const r = store.getTourDocumentPreview(u.id);
+                if (r.ok) onPreview?.(r.preview);
+              }}
               onDownload={() => store.downloadTourDocumentPlaceholder(u.id)}
               replaceLabel={t("tourDocReplaceButton")}
+              viewLabel={t("view")}
               downloadLabel={t("download")}
             />
           ))}
@@ -1975,9 +2165,16 @@ const JobUnlocked = ({
     job.endPlz,
     job.endCity,
   );
+  const [docPreview, setDocPreview] = useState(null);
 
   return (
     <>
+      {docPreview ? (
+        <DocumentPreviewSheet
+          preview={docPreview}
+          onClose={() => setDocPreview(null)}
+        />
+      ) : null}
       {/* Header */}
       <div className="pwa-detail-header">
         <button
@@ -2239,7 +2436,10 @@ const JobUnlocked = ({
                 className="pdf-btn"
                 title={t("view")}
                 aria-label={t("view")}
-                onClick={() => AuthStore.viewPdf(job.id)}
+                onClick={() => {
+                  const r = store.getTransportOrderPreview(job.id);
+                  if (r.ok) setDocPreview(r.preview);
+                }}
               >
                 <Ic.Eye />
               </button>
@@ -2248,7 +2448,7 @@ const JobUnlocked = ({
                 className="pdf-btn"
                 title={t("download")}
                 aria-label={t("download")}
-                onClick={() => AuthStore.downloadPdf(job.id)}
+                onClick={() => store.downloadPdf(job.id)}
               >
                 <Ic.Down />
               </button>
@@ -2269,10 +2469,10 @@ const JobUnlocked = ({
         </div>
 
         {/* Official Documents Component */}
-        <JobOfficialTourDocuments job={job} />
+        <JobOfficialTourDocuments job={job} onPreview={setDocPreview} />
 
         {/* Tour Documents Component */}
-        <JobTourDocuments job={job} />
+        <JobTourDocuments job={job} onPreview={setDocPreview} />
 
         {/* Financial Offer summary */}
         <div className="detail-card price-summary-card">
@@ -3398,45 +3598,45 @@ const formatCalendarDayLabel = (dayKey) => {
   return m ? `${m[3]}.${m[2]}.${m[1]}` : dayKey || "—";
 };
 
-const DriverDailyLimitCard = ({ onRequestIncrease }) => {
+const DriverProbationCard = () => {
   const { t } = useI18n();
   const store = useAuthStore();
-  const summary = store.getDriverDailyAcceptanceSummary();
-  if (!summary) return null;
-  const dateLabel = formatCalendarDayLabel(summary.dayKey);
+  const summary = store.getDriverProbationSummary();
+  if (!summary || !summary.onProbation) return null;
   const pct = summary.limit
-    ? Math.min(100, Math.round((summary.count / summary.limit) * 100))
+    ? Math.min(
+        100,
+        Math.round((summary.performedCount / summary.limit) * 100),
+      )
     : 0;
-  const canRequest =
-    !summary.hasOpenRequest && typeof onRequestIncrease === "function";
 
   return (
-    <div className="section-card daily-limit-card">
+    <div className="section-card daily-limit-card probation-card">
       <div className="row-between">
-        <h2 className="section-title">{t("driverDailyLimitProfileTitle")}</h2>
+        <h2 className="section-title">{t("driverProbationProfileTitle")}</h2>
         <span className={`pill ${summary.atLimit ? "warn" : "accepted"}`}>
-          {summary.count} / {summary.limit}
+          {summary.performedCount} / {summary.limit}
         </span>
       </div>
 
       <p className="section-hint">
-        {t("driverDailyLimitProfileUsage", {
-          count: summary.count,
+        {t("driverProbationProfileUsage", {
+          performed: summary.performedCount,
           limit: summary.limit,
-          date: dateLabel,
+          taken: summary.takenCount,
         })}
       </p>
 
       <div
         className="limit-meter stack-12"
         role="progressbar"
-        aria-valuenow={summary.count}
+        aria-valuenow={summary.performedCount}
         aria-valuemin={0}
         aria-valuemax={summary.limit}
-        aria-label={t("driverDailyLimitProfileUsage", {
-          count: summary.count,
+        aria-label={t("driverProbationProfileUsage", {
+          performed: summary.performedCount,
           limit: summary.limit,
-          date: dateLabel,
+          taken: summary.takenCount,
         })}
       >
         <div
@@ -3451,34 +3651,43 @@ const DriverDailyLimitCard = ({ onRequestIncrease }) => {
         </div>
         <div className="limit-meter-meta stack-8 text-caption" aria-hidden="true">
           {summary.atLimit
-            ? t("driverDailyLimitProfileAtLimit", { date: dateLabel })
-            : t("driverDailyLimitProfileRemaining", {
-                remaining: summary.remaining,
+            ? t("driverProbationProfileAtLimit")
+            : t("driverProbationProfileRemaining", {
+                remaining: summary.remainingSlots,
               })}
         </div>
       </div>
+    </div>
+  );
+};
 
-      {summary.pendingLimitRequest ? (
-        <div className="stack-16">
-          <InlineAlert
-            tone="info"
-            message={t("driverDailyLimitPendingRequest")}
-          />
+const ProbationLimitSheet = ({ limitInfo, onClose }) => {
+  const { t } = useI18n();
+  return (
+    <div className="sheet-backdrop center" onClick={onClose}>
+      <div
+        className="sheet card confirm-sheet confirm-sheet-panel"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <Lbl>{t("driverProbationLimitTitle")}</Lbl>
+        <p style={{ marginTop: 8 }}>
+          {t("driverProbationLimitReached", {
+            limit: limitInfo?.limit ?? 3,
+            performed: limitInfo?.performedCount ?? 0,
+          })}
+        </p>
+        <div className="confirm-sheet-actions">
+          <button
+            type="button"
+            className="btn primary touch-target"
+            onClick={onClose}
+          >
+            {t("uiDismiss")}
+          </button>
         </div>
-      ) : summary.hasOpenRequest ? (
-        <div className="stack-16">
-          <InlineAlert tone="info" message={t("masterDataChangeOpenExists")} />
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="btn block stack-16"
-          onClick={onRequestIncrease}
-          disabled={!canRequest}
-        >
-          {t("driverDailyLimitRequestBtn")}
-        </button>
-      )}
+      </div>
     </div>
   );
 };
@@ -3523,7 +3732,7 @@ const HelpSupportContent = () => {
   );
 };
 
-const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
+const ProfilePaneFull = () => {
   const { t } = useI18n();
   const store = useAuthStore();
   const d = store.getCurrentDriver();
@@ -3642,8 +3851,8 @@ const ProfilePaneFull = ({ onRequestDailyLimitIncrease }) => {
           </div>
         </div>
 
-        {/* Daily Limits Card */}
-        <DriverDailyLimitCard onRequestIncrease={onRequestDailyLimitIncrease} />
+        {/* Probation progress card (hidden after release) */}
+        <DriverProbationCard />
 
         {/* Master Data Card */}
         <div className="section-card mdr-card">
@@ -3914,7 +4123,7 @@ const Infopoint = () => {
   const store = useAuthStore();
   const [subTab, setSubTab] = useState("documents");
   const [openNewsId, setOpenNewsId] = useState(null);
-  const [previewNotice, setPreviewNotice] = useState(null);
+  const [docPreview, setDocPreview] = useState(null);
   const readerId = store.getCurrentDriver()?.id || AuthStore.DEMO_DRIVER;
   const docs = store.getDocuments().filter((d) => d.visible);
   const news = store.getNews();
@@ -3936,6 +4145,12 @@ const Infopoint = () => {
         flexDirection: "column",
       }}
     >
+      {docPreview ? (
+        <DocumentPreviewSheet
+          preview={docPreview}
+          onClose={() => setDocPreview(null)}
+        />
+      ) : null}
       <div
         style={{
           background: "var(--paper)",
@@ -4000,15 +4215,6 @@ const Infopoint = () => {
       <div style={{ flex: 1, marginTop: 16 }}>
         {subTab === "documents" ? (
           <>
-            {previewNotice ? (
-              <div style={{ marginBottom: 12 }}>
-                <InlineAlert
-                  tone="info"
-                  message={previewNotice}
-                  onDismiss={() => setPreviewNotice(null)}
-                />
-              </div>
-            ) : null}
             <div className="infopoint-card">
               {docs.map((d) => (
                 <div
@@ -4046,23 +4252,37 @@ const Infopoint = () => {
                       {d.updatedAt}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className="btn icon sm touch-target"
-                    style={{
-                      background: "var(--paper-2)",
-                      border: "1px solid var(--line)",
-                    }}
-                    onClick={() =>
-                      setPreviewNotice(
-                        `${t("infopointDocPreviewDemo")} — ${d.title}`,
-                      )
-                    }
-                    title={t("infopointDocViewDownload")}
-                    aria-label={`${t("infopointDocViewDownload")}: ${d.title}`}
-                  >
-                    <Ic.Down />
-                  </button>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      type="button"
+                      className="btn icon sm touch-target"
+                      style={{
+                        background: "var(--paper-2)",
+                        border: "1px solid var(--line)",
+                      }}
+                      onClick={() => {
+                        const r = store.getInfopointDocumentPreview(d.id);
+                        if (r.ok) setDocPreview(r.preview);
+                      }}
+                      title={t("view")}
+                      aria-label={`${t("view")}: ${d.title}`}
+                    >
+                      <Ic.Eye />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn icon sm touch-target"
+                      style={{
+                        background: "var(--paper-2)",
+                        border: "1px solid var(--line)",
+                      }}
+                      onClick={() => store.downloadInfopointDocument(d.id)}
+                      title={t("download")}
+                      aria-label={`${t("download")}: ${d.title}`}
+                    >
+                      <Ic.Down />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -4189,95 +4409,6 @@ const Infopoint = () => {
 
 const InfoPaneFull = Infopoint;
 
-const DailyLimitRequestSheet = ({ limitInfo, onClose, onSubmitted }) => {
-  const { t } = useI18n();
-  const store = useAuthStore();
-  const current = limitInfo?.limit ?? 3;
-  const [requested, setRequested] = useState(String(current + 1));
-  const [note, setNote] = useState("");
-  const [err, setErr] = useState("");
-
-  const submit = () => {
-    const r = store.requestDailyLimitIncrease(requested, note);
-    if (!r.ok) {
-      if (r.reason === "open_request_exists")
-        setErr(t("driverDailyLimitRequestOpenExists"));
-      else if (r.reason === "limit_not_increased")
-        setErr(t("driverDailyLimitRequestMustIncrease"));
-      else if (r.reason === "invalid_daily_limit")
-        setErr(t("driverDailyLimitRequestInvalid"));
-      else setErr(t("driverDailyLimitRequestFailed"));
-      return;
-    }
-    onSubmitted?.(r);
-    onClose?.();
-  };
-
-  return (
-    <div className="sheet-backdrop center" onClick={onClose}>
-      <div
-        className="sheet card confirm-sheet confirm-sheet-panel"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-      >
-        <Lbl>{t("driverDailyLimitRequestTitle")}</Lbl>
-        <p style={{ marginTop: 8 }}>
-          {t("driverDailyLimitRequestHint", {
-            current,
-            count: limitInfo?.count ?? current,
-          })}
-        </p>
-        <div className="mt-16">
-          <label className="field-label" htmlFor="daily-limit-requested">
-            {t("driverDailyLimitRequestedLabel")}
-          </label>
-          <input
-            id="daily-limit-requested"
-            className="input mono"
-            type="number"
-            min={current + 1}
-            max={99}
-            value={requested}
-            onChange={(e) => {
-              setRequested(e.target.value);
-              setErr("");
-            }}
-            style={{ marginTop: 6, maxWidth: 120 }}
-          />
-        </div>
-        <div style={{ marginTop: 14 }}>
-          <label className="field-label" htmlFor="daily-limit-note">
-            {t("driverDailyLimitRequestNote")}
-          </label>
-          <textarea
-            id="daily-limit-note"
-            className="input"
-            rows={3}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder={t("driverDailyLimitRequestNotePh")}
-            style={{ marginTop: 6, resize: "vertical" }}
-          />
-        </div>
-        <InlineAlert tone="error" message={err} onDismiss={() => setErr("")} />
-        <div className="confirm-sheet-actions">
-          <button type="button" className="btn touch-target" onClick={onClose}>
-            {t("cancel")}
-          </button>
-          <button
-            type="button"
-            className="btn primary touch-target"
-            onClick={submit}
-          >
-            {t("driverDailyLimitRequestSubmit")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const SameDayOverlapSheet = ({ onCancel, onConfirm }) => {
   const { t } = useI18n();
   return (
@@ -4330,10 +4461,11 @@ Object.assign(window, {
   MyJobs,
   ReportProblemSheet,
   PendingNotice,
-  DailyLimitRequestSheet,
+  ProbationLimitSheet,
+  DocumentPreviewSheet,
   SameDayOverlapSheet,
   InlineAlert,
-  DriverDailyLimitCard,
+  DriverProbationCard,
   ProfilePane,
   ProfilePaneFull,
   Infopoint,

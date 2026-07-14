@@ -70,9 +70,9 @@ Required field — discriminates requests in the admin review queue:
 | `bank_details` | IBAN, BIC, account holder          |
 | `vehicle_info` | Vehicle type, registration, axle   |
 | `license`      | Driver licence class, expiry       |
-| `daily_limit_override` | Request to raise `daily_job_limit` |
+| `daily_limit_override` | Legacy — removed from driver UI; retained only for old prototype rows |
 
-Prototype auto-derives `address` or `contact` from changed fields for profile requests. Limit-increase requests use explicit `daily_limit_override`.
+Prototype auto-derives `address` or `contact` from changed fields for profile requests. Driver limit-increase requests are removed (probation model).
 
 ## Report Problem
 
@@ -86,13 +86,13 @@ Replaces the removed v1.4 “return request” flow: cancel order or report not 
 
 **Admin permissions:** Dispatch may replace or update `admin_off_channel` documents from the admin console. Transport order PDF uses regenerate, not driver-style file replace.
 
-## Driver daily job limit (`drivers.dailyJobLimit`)
+## Driver probation acceptance limit (`drivers.probationJobLimit`)
 
-Per-driver cap on accepted tours per calendar day (default 3). Enforced in `acceptJob()`; editable in Admin → Users.
+One-time probation model: each driver may book up to `probationJobLimit` initial jobs (default 3) and must have that many marked **Performed** before release (`probationClearedAt`). Enforced only on driver marketplace `acceptJob()`; admin direct assignment is exempt. Auto-release on perform; admin may manually `releaseDriverFromProbation`. No daily quota and no limit-increase request. Driver profile shows `DriverProbationCard` while on probation.
 
 ## Operational policies (Settings)
 
-`operationalPolicies` in `store.js` mirrors production `app_settings`: admin-cancel cutoff, schedule-change cutoff, min driver message length, default daily limit. Override requires audit note when `allowPolicyOverrideWithAuditNote` is true.
+`operationalPolicies` in `store.js` mirrors production `app_settings`: admin-cancel cutoff, schedule-change cutoff, min driver message length, `probationJobCount` default for new drivers. Override requires audit note when `allowPolicyOverrideWithAuditNote` is true.
 
 ## Prototype-only
 

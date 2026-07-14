@@ -413,40 +413,22 @@ window.I18n = (() => {
       driverAcceptOverlapTitle: "Same-day tour overlap",
       driverAcceptOverlapConfirmBtn: "Accept anyway",
       uiDismiss: "Dismiss",
-      driverDailyLimitReached:
-        "You reached your daily job acceptance limit. Request a higher limit from dispatch.",
-      driverDailyLimitProfileTitle: "Daily acceptance limit",
-      driverDailyLimitProfileUsage:
-        "{count} of {limit} tours accepted (pickup date {date})",
-      driverDailyLimitProfileRemaining:
-        "{remaining} acceptance(s) remaining for this pickup day",
-      driverDailyLimitProfileAtLimit:
-        "Daily limit reached for tours with pickup on {date}",
-      driverDailyLimitRequestBtn: "Request higher limit",
-      driverDailyLimitPendingRequest:
-        "Limit increase request pending with dispatch",
-      driverDailyLimitRequestTitle: "Request higher daily limit",
-      driverDailyLimitRequestHint:
-        "Your current limit is {current} tour(s) per day ({count} already accepted today). Ask dispatch to raise it.",
-      driverDailyLimitRequestedLabel: "Requested daily limit",
-      driverDailyLimitRequestNote: "Reason (optional)",
-      driverDailyLimitRequestNotePh:
-        "e.g. Extra tours available in your area today…",
-      driverDailyLimitRequestSubmit: "Send request",
-      driverDailyLimitRequestSent:
-        "Limit increase request sent. Dispatch will review it in Profile change requests.",
-      driverDailyLimitRequestOpenExists:
-        "You already have an open change request. Wait for dispatch to resolve it first.",
-      driverDailyLimitRequestMustIncrease:
-        "Requested limit must be higher than your current limit.",
-      driverDailyLimitRequestInvalid: "Enter a whole number between 1 and 99.",
-      driverDailyLimitRequestFailed: "Could not send limit increase request.",
+      driverProbationLimitReached:
+        "You are still on probation. Complete {limit} tours marked Performed before booking more (currently {performed} Performed).",
+      driverProbationLimitTitle: "Probation booking limit",
+      driverProbationProfileTitle: "Probation progress",
+      driverProbationProfileUsage:
+        "{performed} of {limit} tours Performed · {taken} booked so far",
+      driverProbationProfileRemaining:
+        "{remaining} initial booking slot(s) remaining before you must complete Performed tours",
+      driverProbationProfileAtLimit:
+        "Initial booking allowance used — complete Performed tours to be released",
       masterDataChangeType_address: "Address change",
       masterDataChangeType_contact: "Contact change",
-      masterDataChangeType_daily_limit_override: "Daily job limit increase",
+      masterDataChangeType_daily_limit_override: "Daily job limit increase (legacy)",
       usersDesc: "Manage dispatcher accounts and driver profiles.",
       driversDesc:
-        "Create and manage driver profiles, daily limits, and access invites.",
+        "Create and manage driver profiles, probation limits, and access invites.",
       staffDesc:
         "Create and manage dispatcher and admin staff accounts.",
       customersDesc:
@@ -792,19 +774,28 @@ window.I18n = (() => {
       adminUsersFieldCompany: "Company",
       adminUsersFieldDriverCode: "Driver ID",
       adminUsersFieldDriverCodeHint:
-        "Unique driver identifier required at account creation (e.g. AU-41-0123).",
+        "Assigned automatically on create and immutable afterward.",
+      adminUsersFieldDriverCodeAuto:
+        "Will be assigned automatically when you save.",
       adminUsersFieldAddress: "Address",
       adminUsersFieldEmail: "Email",
       adminUsersFieldPhone: "Phone",
       adminUsersFieldNotes: "Internal notes",
-      adminUsersFieldDailyLimit: "Daily job limit",
-      adminUsersFieldDailyLimitHint:
-        "Maximum tours this driver can accept per calendar day (default 3).",
-      adminUsersErrDailyLimit: "Enter a whole number between 1 and 99.",
+      adminUsersFieldProbationLimit: "Probation job limit",
+      adminUsersFieldProbationLimitHint:
+        "Initial booking allowance and Performed jobs required for release (default 3).",
+      adminUsersErrProbationLimit: "Enter a whole number between 1 and 99.",
+      adminUsersProbationState: "Probation state",
+      adminUsersProbationOn: "On probation · {performed}/{limit} Performed",
+      adminUsersProbationCleared: "Released · {clearedAt}",
+      adminUsersReleaseProbation: "Release from probation",
+      adminUsersReleaseProbationDone: "Driver released from probation",
+      adminUsersReleaseProbationFailed: "Could not release from probation",
       adminUsersErrNameRequired: "Name is required.",
       adminUsersErrCompanyRequired: "Company is required.",
       adminUsersErrDriverCodeRequired: "Driver ID is required.",
       adminUsersErrDriverCodeDuplicate: "This driver ID is already in use.",
+      adminUsersErrDriverCodeImmutable: "Driver ID cannot be changed.",
       adminUsersErrEmailRequired: "Email is required for login.",
       adminUsersErrEmailInvalid: "Enter a valid email address.",
       adminUsersSave: "Save",
@@ -884,10 +875,18 @@ window.I18n = (() => {
       adminPolicyScheduleHoursLabel:
         "Min. hours before pickup — schedule change",
       adminPolicyMinDriverMsgLabel: "Min. characters — message to driver",
-      adminPolicyDefaultDailyLimitLabel:
-        "Default daily job limit (new drivers)",
+      adminPolicyDefaultProbationLimitLabel:
+        "Default probation job count (new drivers)",
       adminOperationalPoliciesSave: "Save policies",
       adminOperationalPoliciesSaved: "Operational policies updated.",
+      adminScheduleSameDayWindowError:
+        "Each pickup or delivery time window must start and end on the same calendar day (end time cannot be before start).",
+      share: "Share",
+      print: "Print",
+      preview: "Preview",
+      previewUnavailable: "Preview is not available for this file type.",
+      shareNotSupported: "Sharing is not supported on this device.",
+      documentPreviewTitle: "Document preview",
       cancellationReason_driver_unavailable: "Driver unavailable",
       cancellationReason_vehicle_not_available: "Vehicle not available",
       cancellationReason_customer_cancelled: "Customer cancelled order",
@@ -1619,40 +1618,22 @@ window.I18n = (() => {
       driverAcceptOverlapTitle: "Tour-Überschneidung am selben Tag",
       driverAcceptOverlapConfirmBtn: "Trotzdem annehmen",
       uiDismiss: "Schließen",
-      driverDailyLimitReached:
-        "Sie haben Ihr tägliches Annahmelimit erreicht. Fordern Sie bei der Disposition eine Erhöhung an.",
-      driverDailyLimitProfileTitle: "Tägliches Annahmelimit",
-      driverDailyLimitProfileUsage:
-        "{count} von {limit} Touren angenommen (Abholdatum {date})",
-      driverDailyLimitProfileRemaining:
-        "Noch {remaining} Annahme(n) für diesen Abholtag",
-      driverDailyLimitProfileAtLimit:
-        "Tageslimit erreicht für Touren mit Abholung am {date}",
-      driverDailyLimitRequestBtn: "Höheres Limit anfragen",
-      driverDailyLimitPendingRequest:
-        "Anfrage zur Limit-Erhöhung bei der Disposition offen",
-      driverDailyLimitRequestTitle: "Höheres Tageslimit anfragen",
-      driverDailyLimitRequestHint:
-        "Ihr aktuelles Limit ist {current} Tour(en) pro Tag ({count} heute bereits angenommen). Bitten Sie die Disposition um eine Erhöhung.",
-      driverDailyLimitRequestedLabel: "Gewünschtes Tageslimit",
-      driverDailyLimitRequestNote: "Begründung (optional)",
-      driverDailyLimitRequestNotePh:
-        "z. B. Heute zusätzliche Touren in Ihrer Region…",
-      driverDailyLimitRequestSubmit: "Anfrage senden",
-      driverDailyLimitRequestSent:
-        "Anfrage gesendet. Die Disposition prüft sie unter Profiländerungen.",
-      driverDailyLimitRequestOpenExists:
-        "Sie haben bereits eine offene Änderungsanfrage. Bitte warten Sie auf die Bearbeitung.",
-      driverDailyLimitRequestMustIncrease:
-        "Das gewünschte Limit muss höher als Ihr aktuelles Limit sein.",
-      driverDailyLimitRequestInvalid: "Ganze Zahl zwischen 1 und 99 eingeben.",
-      driverDailyLimitRequestFailed: "Anfrage konnte nicht gesendet werden.",
+      driverProbationLimitReached:
+        "Sie sind noch in der Probezeit. Schließen Sie {limit} Touren mit Status Durchgeführt ab, bevor Sie weitere buchen (aktuell {performed} Durchgeführt).",
+      driverProbationLimitTitle: "Probezeit-Buchungslimit",
+      driverProbationProfileTitle: "Probezeit-Fortschritt",
+      driverProbationProfileUsage:
+        "{performed} von {limit} Touren durchgeführt · {taken} bisher gebucht",
+      driverProbationProfileRemaining:
+        "Noch {remaining} initiale Buchungsplätze, danach müssen Touren durchgeführt sein",
+      driverProbationProfileAtLimit:
+        "Initiale Buchungsanzahl erreicht — schließen Sie Durchgeführt-Touren ab zur Freigabe",
       masterDataChangeType_address: "Adressänderung",
       masterDataChangeType_contact: "Kontaktänderung",
-      masterDataChangeType_daily_limit_override: "Erhöhung Tageslimit",
+      masterDataChangeType_daily_limit_override: "Erhöhung Tageslimit (Alt)",
       usersDesc: "Verwalte Dispatcher-Konten und Fahrerprofile.",
       driversDesc:
-        "Fahrerprofile, Tageslimits und Zugangseinladungen anlegen und verwalten.",
+        "Fahrerprofile, Probezeit-Limits und Zugangseinladungen anlegen und verwalten.",
       staffDesc:
         "Dispatcher- und Admin-Personal-Konten anlegen und verwalten.",
       customersDesc:
@@ -2001,20 +1982,29 @@ window.I18n = (() => {
       adminUsersFieldCompany: "Firma",
       adminUsersFieldDriverCode: "Fahrer-ID",
       adminUsersFieldDriverCodeHint:
-        "Eindeutige Fahrer-ID bei der Kontoerstellung erforderlich (z. B. AU-41-0123).",
+        "Wird bei der Erstellung automatisch vergeben und ist danach unveränderlich.",
+      adminUsersFieldDriverCodeAuto:
+        "Wird beim Speichern automatisch vergeben.",
       adminUsersFieldAddress: "Adresse",
       adminUsersFieldEmail: "E-Mail",
       adminUsersFieldPhone: "Telefon",
       adminUsersFieldNotes: "Interne Notizen",
-      adminUsersFieldDailyLimit: "Tageslimit Aufträge",
-      adminUsersFieldDailyLimitHint:
-        "Maximale Touren pro Kalendertag, die der Fahrer annehmen kann (Standard 3).",
-      adminUsersErrDailyLimit: "Ganze Zahl zwischen 1 und 99 eingeben.",
+      adminUsersFieldProbationLimit: "Probezeit-Auftragslimit",
+      adminUsersFieldProbationLimitHint:
+        "Initiale Buchungsanzahl und erforderliche Durchgeführt-Touren zur Freigabe (Standard 3).",
+      adminUsersErrProbationLimit: "Ganze Zahl zwischen 1 und 99 eingeben.",
+      adminUsersProbationState: "Probezeit-Status",
+      adminUsersProbationOn: "In Probezeit · {performed}/{limit} durchgeführt",
+      adminUsersProbationCleared: "Freigegeben · {clearedAt}",
+      adminUsersReleaseProbation: "Aus Probezeit freigeben",
+      adminUsersReleaseProbationDone: "Fahrer aus der Probezeit freigegeben",
+      adminUsersReleaseProbationFailed: "Freigabe aus Probezeit fehlgeschlagen",
       adminUsersErrNameRequired: "Name ist erforderlich.",
       adminUsersErrCompanyRequired: "Firma ist erforderlich.",
       adminUsersErrDriverCodeRequired: "Fahrer-ID ist erforderlich.",
       adminUsersErrDriverCodeDuplicate:
         "Diese Fahrer-ID wird bereits verwendet.",
+      adminUsersErrDriverCodeImmutable: "Fahrer-ID kann nicht geändert werden.",
       adminUsersErrEmailRequired: "E-Mail ist für den Login erforderlich.",
       adminUsersErrEmailInvalid: "Bitte eine gültige E-Mail-Adresse eingeben.",
       adminUsersSave: "Speichern",
@@ -2095,9 +2085,18 @@ window.I18n = (() => {
       adminPolicyScheduleHoursLabel:
         "Min. Stunden vor Abholung — Terminänderung",
       adminPolicyMinDriverMsgLabel: "Min. Zeichen — Nachricht an Fahrer",
-      adminPolicyDefaultDailyLimitLabel: "Standard Tageslimit (neue Fahrer)",
+      adminPolicyDefaultProbationLimitLabel:
+        "Standard Probezeit-Auftraganzahl (neue Fahrer)",
       adminOperationalPoliciesSave: "Richtlinien speichern",
       adminOperationalPoliciesSaved: "Betriebsrichtlinien aktualisiert.",
+      adminScheduleSameDayWindowError:
+        "Jedes Abhol- oder Lieferzeitfenster muss am selben Kalendertag beginnen und enden (Endzeit darf nicht vor Startzeit liegen).",
+      share: "Teilen",
+      print: "Drucken",
+      preview: "Vorschau",
+      previewUnavailable: "Für diesen Dateityp ist keine Vorschau verfügbar.",
+      shareNotSupported: "Teilen wird auf diesem Gerät nicht unterstützt.",
+      documentPreviewTitle: "Dokumentvorschau",
       cancellationReason_driver_unavailable: "Fahrer nicht verfügbar",
       cancellationReason_vehicle_not_available: "Fahrzeug nicht verfügbar",
       cancellationReason_customer_cancelled: "Kunde hat Auftrag storniert",

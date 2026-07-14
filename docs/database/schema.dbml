@@ -202,9 +202,7 @@ Table jobs {
   customer_instructions_snapshot text
   operational_status job_status [not null, default: 'draft']
   current_driver_id uuid
-  distance_km numeric(10,2)
-  distance_manual_override_km numeric(10,2)
-  distance_estimate_source varchar(100)
+  distance_km numeric(10,2) // canonical tour distance: system estimate or admin-entered value (single field — no separate override or source column)
   vehicle_manufacturer varchar(128)
   vehicle_model varchar(255) [not null]
   vehicle_type varchar(100) [not null]

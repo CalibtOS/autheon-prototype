@@ -95,7 +95,11 @@ const critical = [
   "getJobDisplayStatus",
   "markTourDocumentChecked",
   "requestMasterDataChange",
-  "requestDailyLimitIncrease",
+  "releaseDriverFromProbation",
+  "getDriverProbationSummary",
+  "getTransportOrderPreview",
+  "getTourDocumentPreview",
+  "getInfopointDocumentPreview",
   "buildSpecialCaseEvidenceMeta",
   "listMasterDataChangeRequests",
   "getOpenMasterDataChangeRequestForDriver",
@@ -280,16 +284,19 @@ if (!store.includes("addGeneralDocument")) {
   process.exitCode = 1;
 } else out("store.js addGeneralDocument API: present");
 
-if (!driver.includes("infopointDocViewDownload")) {
-  out("driver.jsx Infopoint doc view/download: missing");
+if (
+  !driver.includes("getInfopointDocumentPreview") ||
+  !driver.includes("downloadInfopointDocument")
+) {
+  out("driver.jsx Infopoint in-PWA View/Download: missing");
   process.exitCode = 1;
-} else out("driver.jsx Infopoint doc view/download: present");
+} else out("driver.jsx Infopoint in-PWA View/Download: present");
 
 const gapChecks = [
   ["inputFormatters.js", "inputFormatters.js module"],
   ["formatDateInput", "formatDateInput in store"],
   ["requestMasterDataChange", "requestMasterDataChange API"],
-  ["requestDailyLimitIncrease", "requestDailyLimitIncrease API"],
+  ["releaseDriverFromProbation", "releaseDriverFromProbation API"],
   ["buildSpecialCaseEvidenceMeta", "special case evidence builder"],
   ["reportCancelDriverUnavailable", "seven cancel reasons i18n"],
   ["reportProblemCancelBindingWarning", "cancel binding warning i18n"],
@@ -377,7 +384,9 @@ if (store.includes("Ordering " + oldCustomerNoun + ":")) {
 } else out("store.js transport PDF customer label: ok");
 
 const v18Needles = [
-  ["dailyJobLimit", "dailyJobLimit on drivers"],
+  ["probationJobLimit", "probationJobLimit on drivers"],
+  ["probationClearedAt", "probationClearedAt on drivers"],
+  ["probationJobCount", "probationJobCount settings default"],
   ["getOperationalPolicies", "getOperationalPolicies API"],
   ["checkAdminCancelPolicy", "checkAdminCancelPolicy API"],
   ["checkScheduleChangePolicy", "checkScheduleChangePolicy API"],
@@ -390,10 +399,16 @@ const v18Needles = [
   ["AdminCancelJobModal", "admin cancel modal component"],
   ["OperationalPoliciesForm", "operational policies settings form"],
   ["newOrderSecDocuments", "admin document attach on new/edit job form"],
-  ["adminUsersFieldDailyLimit", "daily job limit in drivers UI"],
-  ["requestDailyLimitIncrease", "daily limit increase request API"],
-  ["DailyLimitRequestSheet", "driver limit increase request UI"],
-  ["daily_limit_override", "daily_limit_override change type"],
+  ["adminUsersFieldProbationLimit", "probation job limit in drivers UI"],
+  ["releaseDriverFromProbation", "admin manual probation release API"],
+  ["DriverProbationCard", "driver probation progress card"],
+  ["ProbationLimitSheet", "driver probation block explanation UI"],
+  ["DocumentPreviewSheet", "in-PWA document preview sheet"],
+  ["getTransportOrderPreview", "transport order in-PWA preview API"],
+  ["cross_midnight_window", "same-day time window validation"],
+  ["adminScheduleSameDayWindowError", "same-day window hard-block copy"],
+  ["nextDriverCode", "auto-assign sequential driver ID"],
+  ["driver_code_immutable", "immutable driver ID on edit"],
   ["TD-SEED-ACTIVE-001", "seed document on active tour"],
   ["TD-SEED-ADMIN-0845", "admin reference document on active tour"],
   ["canDriverReplaceTourDocument", "driver replace blocked for admin docs"],
@@ -401,27 +416,36 @@ const v18Needles = [
   ["JobOfficialTourDocuments", "driver read-only reference documents UI"],
   ["official_doc_not_replaceable", "driver replace guard for dispatch docs"],
   ["const canUpload = uploadGate.ok", "driver upload UI uses active-tour gate"],
-  ["getDriverDailyAcceptanceSummary", "driver daily limit summary API"],
-  ["DriverDailyLimitCard", "driver profile daily limit card"],
+  ["getDriverProbationSummary", "driver probation summary API"],
   ["estimateDistanceFromForm", "estimate distance from new job form"],
   ["newOrderEstimateDistance", "estimate distance button on new job form"],
   ["resendAccess", "account resend invite API"],
   ["AccountAccessDialog", "account invite status dialog"],
-  ["adminUsersFieldDriverCodeHint", "driver ID required on create form"],
+  ["adminUsersFieldDriverCodeHint", "driver ID auto-assign hint"],
   ["adminUsersAccessNoPasswordNote", "no generated password in admin UI copy"],
 ];
 out("");
-out("PRD v1.8 checks:");
+out("PRD v2.0 checks:");
 for (const [needle, label] of v18Needles) {
   const inStore = store.includes(needle);
   const inAdmin = admin.includes(needle);
   const ok =
     needle === "AdminCancelJobModal" || needle === "OperationalPoliciesForm"
       ? inAdmin
-      : needle === "DailyLimitRequestSheet"
+      : needle === "DriverProbationCard" ||
+          needle === "ProbationLimitSheet" ||
+          needle === "DocumentPreviewSheet"
         ? driver.includes(needle)
-      : needle === "newOrderSecDocuments" || needle === "adminUsersFieldDailyLimit"
-        ? i18n.includes(needle) && (needle === "adminUsersFieldDailyLimit" ? admin.includes("dailyJobLimit") : admin.includes("sec-07"))
+      : needle === "newOrderSecDocuments" ||
+          needle === "adminUsersFieldProbationLimit" ||
+          needle === "adminScheduleSameDayWindowError"
+        ? i18n.includes(needle) &&
+          (needle === "adminUsersFieldProbationLimit"
+            ? admin.includes("probationJobLimit")
+            : needle === "adminScheduleSameDayWindowError"
+              ? admin.includes("sameDayWindowBlocked") ||
+                admin.includes("adminScheduleSameDayWindowError")
+              : admin.includes("sec-07"))
       : needle === "adminUsersFieldDriverCodeHint" ||
           needle === "adminUsersAccessNoPasswordNote"
         ? i18n.includes(needle) && admin.includes("driverCode")
@@ -431,17 +455,19 @@ for (const [needle, label] of v18Needles) {
         ? inStore
         : needle === "canDriverReplaceTourDocument" ||
             needle === "getOfficialTourDocumentsForJob" ||
-            needle === "official_doc_not_replaceable"
+            needle === "official_doc_not_replaceable" ||
+            needle === "releaseDriverFromProbation" ||
+            needle === "getDriverProbationSummary" ||
+            needle === "getTransportOrderPreview" ||
+            needle === "nextDriverCode" ||
+            needle === "driver_code_immutable" ||
+            needle === "cross_midnight_window"
           ? inStore
         : needle === "JobOfficialTourDocuments"
           ? driver.includes(needle)
         : needle === "const canUpload = uploadGate.ok"
           ? driver.includes(needle)
         : needle === "SameDayOverlapSheet"
-          ? driver.includes(needle)
-        : needle === "getDriverDailyAcceptanceSummary"
-          ? inStore
-        : needle === "DriverDailyLimitCard"
           ? driver.includes(needle)
         : needle === "estimateDistanceFromForm"
           ? inStore
@@ -451,9 +477,9 @@ for (const [needle, label] of v18Needles) {
           ? driver.includes(needle)
         : inStore;
   if (!ok) {
-    out(`PRD v1.8 missing ${label}`);
+    out(`PRD v2.0 missing ${label}`);
     process.exitCode = 1;
-  } else out(`PRD v1.8 ${label}: present`);
+  } else out(`PRD v2.0 ${label}: present`);
 }
 
 if (!process.exitCode) {

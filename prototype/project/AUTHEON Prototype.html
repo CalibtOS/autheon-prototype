@@ -66,7 +66,7 @@
         const [acceptModal, setAcceptModal] = useState(null);
         const [reportProblemJob, setReportProblemJob] = useState(null);
         const [pendingNotice, setPendingNotice] = useState(null);
-        const [dailyLimitModal, setDailyLimitModal] = useState(null);
+        const [probationLimitModal, setProbationLimitModal] = useState(null);
         const [overlapConfirm, setOverlapConfirm] = useState(null);
         const [banner, setBanner] = useState(null);
         const [showNotifications, setShowNotifications] = useState(false);
@@ -139,14 +139,7 @@
         } else if (tab === "info") {
           body = <Infopoint />;
         } else {
-          body = (
-            <ProfilePaneFull
-              onRequestDailyLimitIncrease={() => {
-                const s = store.getDriverDailyAcceptanceSummary();
-                if (s) setDailyLimitModal({ limit: s.limit, count: s.count });
-              }}
-            />
-          );
+          body = <ProfilePaneFull />;
         }
 
         return (
@@ -228,10 +221,10 @@
                           setAcceptModal(null);
                           if (r.reason === "driver_restricted") {
                             setBanner({ tone: "warn", text: t("blockedDriverBody") });
-                          } else if (r.reason === "daily_limit_reached") {
-                            setDailyLimitModal({
+                          } else if (r.reason === "probation_limit_reached") {
+                            setProbationLimitModal({
                               limit: r.limit,
-                              count: r.count,
+                              performedCount: r.performedCount,
                             });
                           } else {
                             setBanner({ tone: "warn", text: t("toastAssignedElsewhere") });
@@ -277,17 +270,10 @@
                     onClose={() => setPendingNotice(null)}
                   />
                 )}
-                {dailyLimitModal && (
-                  <DailyLimitRequestSheet
-                    limitInfo={dailyLimitModal}
-                    onClose={() => setDailyLimitModal(null)}
-                    onSubmitted={() => {
-                      setBanner({
-                        tone: "success",
-                        text: t("driverDailyLimitRequestSent"),
-                      });
-                      setDailyLimitModal(null);
-                    }}
+                {probationLimitModal && (
+                  <ProbationLimitSheet
+                    limitInfo={probationLimitModal}
+                    onClose={() => setProbationLimitModal(null)}
                   />
                 )}
                 {overlapConfirm && (
@@ -303,10 +289,10 @@
                       });
                       setOverlapConfirm(null);
                       if (!r.ok) {
-                        if (r.reason === "daily_limit_reached") {
-                          setDailyLimitModal({
+                        if (r.reason === "probation_limit_reached") {
+                          setProbationLimitModal({
                             limit: r.limit,
-                            count: r.count,
+                            performedCount: r.performedCount,
                           });
                         } else if (r.reason === "driver_restricted") {
                           setBanner({ tone: "warn", text: t("blockedDriverBody") });
@@ -413,6 +399,13 @@
                   hours: saved.minHours || 1,
                 }),
                 t("adminScheduleOverrideHint"),
+              );
+            } else if (saved?.error === "cross_midnight_window") {
+              showToast(
+                t("adminScheduleSameDayWindowError"),
+                saved.leg === "delivery"
+                  ? t("newOrderDeliverySchedule")
+                  : t("newOrderPickupSchedule"),
               );
             } else {
               showToast(

@@ -13,10 +13,22 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 const code = fs.readFileSync(path.join(root, "store.js"), "utf8");
 
 const seedWarnings = [];
+class BlobPolyfill {
+  constructor(parts = [], opts = {}) {
+    this.parts = parts;
+    this.type = opts.type || "";
+    this.size = parts.reduce((n, p) => n + String(p).length, 0);
+  }
+}
 const sandbox = {
   window: {
     AUTHEON_BRANDING_DEFAULTS: {},
     AUTHEON_FLAG_DEFAULTS: {},
+  },
+  Blob: BlobPolyfill,
+  URL: {
+    createObjectURL: () => "blob:mock",
+    revokeObjectURL: () => {},
   },
   React: {
     useState: (v) => [v, () => {}],
@@ -127,10 +139,50 @@ if (j845?.documentReviewSummary !== "Uploaded")
   );
 else ok("0845 documentReviewSummary is Uploaded");
 
-const summary = store.getDriverDailyAcceptanceSummary();
-if (!summary || typeof summary.limit !== "number")
-  fail("getDriverDailyAcceptanceSummary should return limit/count");
-else ok(`daily limit summary API (${summary.count}/${summary.limit})`);
+const summary = store.getDriverProbationSummary();
+if (
+  !summary ||
+  typeof summary.limit !== "number" ||
+  typeof summary.performedCount !== "number"
+)
+  fail("getDriverProbationSummary should return limit/performedCount");
+else
+  ok(
+    `probation summary API (performed ${summary.performedCount}/${summary.limit}, onProbation=${summary.onProbation})`,
+  );
+
+const klaus = store.getDrivers().find((d) => d.id === "DRV-0301");
+if (!klaus?.probationClearedAt)
+  fail("Klaus (DRV-0301) should be seed-cleared from probation");
+else ok("seed has probation-cleared driver");
+
+const blake = store.getDrivers().find((d) => d.id === "DRV-0228");
+if (blake?.probationClearedAt)
+  fail("Jordan Blake (DRV-0228) should remain on probation in seed");
+else ok("seed has mid-probation driver");
+
+const created = store.addDriver({
+  name: "Audit Probe Driver",
+  company: "Audit Co",
+  email: "audit.probe.driver@example.com",
+});
+if (!created.ok || !created.driver?.driverCode)
+  fail("addDriver should auto-assign driverCode");
+else if (!/^AU-41-\d{4}$/.test(created.driver.driverCode))
+  fail(`unexpected auto driverCode ${created.driver.driverCode}`);
+else ok(`auto-assigned driverCode ${created.driver.driverCode}`);
+
+const immutable = store.updateDriver(created.driver.id, {
+  driverCode: "AU-41-9999",
+});
+if (immutable.ok || immutable.reason !== "driver_code_immutable")
+  fail("updateDriver must reject driverCode changes");
+else ok("driverCode is immutable after create");
+
+const preview = store.getTransportOrderPreview("A-2026-00845");
+if (!preview.ok || !preview.preview?.blobUrl || !preview.preview?.previewable)
+  fail("getTransportOrderPreview should return in-PWA preview payload");
+else ok("transport order in-PWA preview API");
 
 if (seedWarnings.length) {
   fail(`validateSeedData reported issues:\n${seedWarnings.join("\n")}`);

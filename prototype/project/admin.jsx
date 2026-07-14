@@ -1730,7 +1730,11 @@ const AdminDetail = ({
                 <button
                   type="button"
                   className="btn xs"
-                  onClick={() => AuthStore.viewPdf(job.id)}
+                  onClick={() => {
+                    const r = AuthStore.getTransportOrderPreview(job.id);
+                    if (r.ok && r.preview?.blobUrl)
+                      window.open(r.preview.blobUrl, "_blank", "noopener");
+                  }}
                 >
                   <Ic.Eye /> {t("view")}
                 </button>
@@ -2271,7 +2275,8 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
     (k) => form[k] && String(form[k]).trim(),
   ).length;
   const total = required.length;
-  const valid = filled === total;
+  const sameDayWindowBlocked = pickupTimeWarning || deliveryTimeWarning;
+  const valid = filled === total && !sameDayWindowBlocked;
   const wasCommitted =
     editingJob && AuthStore.jobWasEverCommitted(editingJob);
   const existingAdminDocs = editJobId
@@ -2544,11 +2549,12 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   marginTop: 10,
                   padding: 12,
                   fontSize: 12.5,
-                  color: "var(--st-warn)",
-                  borderLeft: "3px solid var(--st-warn)",
+                  color: "var(--st-err, #dc2626)",
+                  borderLeft: "3px solid var(--st-err, #dc2626)",
                 }}
+                role="alert"
               >
-                {t("newOrderTimeWindowWarning")} ({t("newOrderPickupSchedule")})
+                {t("adminScheduleSameDayWindowError")} ({t("newOrderPickupSchedule")})
               </div>
             ) : null}
             {deliveryTimeWarning ? (
@@ -2558,11 +2564,12 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   marginTop: 10,
                   padding: 12,
                   fontSize: 12.5,
-                  color: "var(--st-warn)",
-                  borderLeft: "3px solid var(--st-warn)",
+                  color: "var(--st-err, #dc2626)",
+                  borderLeft: "3px solid var(--st-err, #dc2626)",
                 }}
+                role="alert"
               >
-                {t("newOrderTimeWindowWarning")} ({t("newOrderDeliverySchedule")})
+                {t("adminScheduleSameDayWindowError")} ({t("newOrderDeliverySchedule")})
               </div>
             ) : null}
             <div style={{ marginTop: 16 }}>
@@ -3151,7 +3158,7 @@ const emptyDriverEditForm = () => ({
   email: "",
   phone: "",
   notes: "",
-  dailyJobLimit: "3",
+  probationJobLimit: "3",
 });
 
 const emptyAdminEditForm = () => ({
@@ -3172,23 +3179,23 @@ const UserFormError = ({ message }) =>
     </div>
   ) : null;
 
-const validateDriverFormLocal = (form, t) => {
+const validateDriverFormLocal = (form, t, opts = {}) => {
   const errors = {};
   if (!String(form.name || "").trim())
     errors.name = t("adminUsersErrNameRequired");
   if (!String(form.company || "").trim())
     errors.company = t("adminUsersErrCompanyRequired");
-  if (!String(form.driverCode || "").trim())
+  if (!opts.isNew && !String(form.driverCode || "").trim())
     errors.driverCode = t("adminUsersErrDriverCodeRequired");
   if (!String(form.email || "").trim())
     errors.email = t("adminUsersErrEmailRequired");
   else if (!AuthStore.isValidEmail(form.email))
     errors.email = t("adminUsersErrEmailInvalid");
-  const limitRaw = String(form.dailyJobLimit ?? "").trim();
+  const limitRaw = String(form.probationJobLimit ?? "").trim();
   if (limitRaw) {
     const n = parseInt(limitRaw, 10);
     if (!Number.isFinite(n) || n < 1 || n > 99)
-      errors.dailyJobLimit = t("adminUsersErrDailyLimit");
+      errors.probationJobLimit = t("adminUsersErrProbationLimit");
   }
   return errors;
 };
@@ -3204,7 +3211,15 @@ const validateAdminFormLocal = (form, t) => {
   return errors;
 };
 
-const DriverUserFormFields = ({ form, setF, errors = {}, t }) => (
+const DriverUserFormFields = ({
+  form,
+  setF,
+  errors = {},
+  t,
+  isNew = false,
+  probationSummary = null,
+  onReleaseProbation = null,
+}) => (
   <div
     style={{
       display: "grid",
@@ -3235,13 +3250,17 @@ const DriverUserFormFields = ({ form, setF, errors = {}, t }) => (
       <UserFormError message={errors.company} />
     </div>
     <div>
-      <label className="field-label">{t("adminUsersFieldDriverCode")} *</label>
+      <label className="field-label">{t("adminUsersFieldDriverCode")}</label>
       <input
         className="input mono"
         style={errors.driverCode ? userInputErrStyle : undefined}
-        value={form.driverCode}
-        onChange={(e) => setF("driverCode", e.target.value)}
-        placeholder="AU-41-0123"
+        value={
+          isNew
+            ? form.driverCode || t("adminUsersFieldDriverCodeAuto")
+            : form.driverCode
+        }
+        readOnly
+        disabled
       />
       <UserFormError message={errors.driverCode} />
       <p
@@ -3293,23 +3312,48 @@ const DriverUserFormFields = ({ form, setF, errors = {}, t }) => (
       />
     </div>
     <div>
-      <label className="field-label">{t("adminUsersFieldDailyLimit")}</label>
+      <label className="field-label">{t("adminUsersFieldProbationLimit")}</label>
       <input
         className="input mono"
         type="number"
         min={1}
         max={99}
-        value={form.dailyJobLimit ?? ""}
-        onChange={(e) => setF("dailyJobLimit", e.target.value)}
+        value={form.probationJobLimit ?? ""}
+        onChange={(e) => setF("probationJobLimit", e.target.value)}
       />
-      <UserFormError message={errors.dailyJobLimit} />
+      <UserFormError message={errors.probationJobLimit} />
       <p
         className="label"
         style={{ marginTop: 4, fontSize: 11.5, lineHeight: 1.45 }}
       >
-        {t("adminUsersFieldDailyLimitHint")}
+        {t("adminUsersFieldProbationLimitHint")}
       </p>
     </div>
+    {!isNew && probationSummary ? (
+      <div>
+        <label className="field-label">{t("adminUsersProbationState")}</label>
+        <p className="label" style={{ marginTop: 6, lineHeight: 1.45 }}>
+          {probationSummary.onProbation
+            ? t("adminUsersProbationOn", {
+                performed: probationSummary.performedCount,
+                limit: probationSummary.limit,
+              })
+            : t("adminUsersProbationCleared", {
+                clearedAt: probationSummary.clearedAt || "—",
+              })}
+        </p>
+        {probationSummary.onProbation && onReleaseProbation ? (
+          <button
+            type="button"
+            className="btn xs"
+            style={{ marginTop: 8 }}
+            onClick={onReleaseProbation}
+          >
+            {t("adminUsersReleaseProbation")}
+          </button>
+        ) : null}
+      </div>
+    ) : null}
   </div>
 );
 
@@ -3354,7 +3398,10 @@ const userSaveErr = (r, kind, t) => {
   if (reason === "duplicate_email") return t("adminUsersEmailDuplicate");
   if (reason === "duplicate_driver_code") return t("adminUsersErrDriverCodeDuplicate");
   if (reason === "driver_code_required") return t("adminUsersErrDriverCodeRequired");
-  if (reason === "invalid_daily_limit") return t("adminUsersErrDailyLimit");
+  if (reason === "driver_code_immutable")
+    return t("adminUsersErrDriverCodeImmutable");
+  if (reason === "invalid_probation_limit")
+    return t("adminUsersErrProbationLimit");
   return t("adminInvoiceErrGeneric");
 };
 
@@ -3506,15 +3553,19 @@ const DriversPane = ({ showToast }) => {
       email: d.email || "",
       phone: d.phone || "",
       notes: d.notes || "",
-      dailyJobLimit:
-        d.dailyJobLimit != null ? String(d.dailyJobLimit) : "3",
+      probationJobLimit:
+        d.probationJobLimit != null ? String(d.probationJobLimit) : "3",
     });
     setDriverErrors({});
     setDriverModal(d.id);
   };
 
   const driverFormValid =
-    Object.keys(validateDriverFormLocal(driverForm, t)).length === 0;
+    Object.keys(
+      validateDriverFormLocal(driverForm, t, {
+        isNew: driverModal === "new",
+      }),
+    ).length === 0;
 
   const applyDriverStatus = (driver, status) => {
     const result = store.setDriverStatus(driver.id, status);
@@ -3530,15 +3581,19 @@ const DriversPane = ({ showToast }) => {
   };
 
   const saveDriver = () => {
-    const localErrors = validateDriverFormLocal(driverForm, t);
+    const localErrors = validateDriverFormLocal(driverForm, t, {
+      isNew: driverModal === "new",
+    });
     if (Object.keys(localErrors).length) {
       setDriverErrors(localErrors);
       return;
     }
+    const payload = { ...driverForm };
+    if (driverModal === "new") delete payload.driverCode;
     const r =
       driverModal === "new"
-        ? store.addDriver(driverForm)
-        : store.updateDriver(driverModal, driverForm);
+        ? store.addDriver(payload)
+        : store.updateDriver(driverModal, payload);
     if (!r.ok) {
       showToast?.(t("adminUsersSaveFailed"), userSaveErr(r, "driver", t));
       return;
@@ -3551,6 +3606,19 @@ const DriversPane = ({ showToast }) => {
     } else {
       showToast?.(t("adminUsersSaved"), driverForm.name);
     }
+  };
+
+  const releaseDriverProbation = () => {
+    if (!driverModal || driverModal === "new") return;
+    const r = store.releaseDriverFromProbation(driverModal);
+    if (!r.ok) {
+      showToast?.(
+        t("adminUsersReleaseProbationFailed"),
+        userSaveErr(r, "driver", t),
+      );
+      return;
+    }
+    showToast?.(t("adminUsersReleaseProbationDone"), driverForm.name);
   };
 
   const triggerResendAccess = (user) => {
@@ -3702,6 +3770,13 @@ const DriversPane = ({ showToast }) => {
               setF={setDF}
               errors={driverErrors}
               t={t}
+              isNew={driverModal === "new"}
+              probationSummary={
+                driverModal !== "new"
+                  ? store.getDriverProbationSummary(driverModal)
+                  : null
+              }
+              onReleaseProbation={releaseDriverProbation}
             />
             <div
               style={{
@@ -6947,7 +7022,7 @@ const MASTER_DATA_CHANGE_FIELDS = [
 
 const mdrFieldsForRow = (row) =>
   row?.changeType === "daily_limit_override"
-    ? [["dailyJobLimit", "adminUsersFieldDailyLimit"]]
+    ? [["dailyJobLimit", "adminUsersFieldProbationLimit"]]
     : MASTER_DATA_CHANGE_FIELDS;
 
 const mdrChangedFields = (row) =>
@@ -6992,7 +7067,7 @@ const MasterDataChangeListChips = ({ row, t }) => {
 const MasterDataCompareTable = ({ snapshot, proposed, changeType, t, onlyChanged }) => {
   const fields =
     changeType === "daily_limit_override"
-      ? [["dailyJobLimit", "adminUsersFieldDailyLimit"]]
+      ? [["dailyJobLimit", "adminUsersFieldProbationLimit"]]
       : MASTER_DATA_CHANGE_FIELDS;
   const rows = fields.map(([key, labelKey]) => {
     const before = snapshot?.[key] || "";
@@ -7187,7 +7262,7 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                 />
                 {selected.changeType === "daily_limit_override" && selected.note ? (
                   <div style={{ marginTop: 14 }}>
-                    <div className="field-label">{t("driverDailyLimitRequestNote")}</div>
+                    <div className="field-label">{t("adminUsersFieldNotes")}</div>
                     <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.5 }}>
                       {selected.note}
                     </p>
@@ -7371,7 +7446,7 @@ const OperationalPoliciesForm = ({ showToast }) => {
     String(policies.cancellation?.adminCancelDriverMessageMinChars ?? 20),
   );
   const [defaultLimit, setDefaultLimit] = useStateA(
-    String(policies.driverAcceptance?.defaultDailyJobLimit ?? 3),
+    String(policies.driverAcceptance?.probationJobCount ?? 3),
   );
 
   const save = () => {
@@ -7384,7 +7459,7 @@ const OperationalPoliciesForm = ({ showToast }) => {
         adminCancelDriverMessageMinChars: Number(minDriverMsg) || 20,
       },
       driverAcceptance: {
-        defaultDailyJobLimit: Number(defaultLimit) || 3,
+        probationJobCount: Number(defaultLimit) || 3,
       },
     });
     showToast?.(t("adminOperationalPoliciesSaved"));
@@ -7435,7 +7510,7 @@ const OperationalPoliciesForm = ({ showToast }) => {
       </div>
       <div className="policy-field">
         <label className="field-label" htmlFor="policy-default-limit">
-          {t("adminPolicyDefaultDailyLimitLabel")}
+          {t("adminPolicyDefaultProbationLimitLabel")}
         </label>
         <input
           id="policy-default-limit"
