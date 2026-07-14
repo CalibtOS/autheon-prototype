@@ -19,7 +19,7 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=18" />
+    <link rel="stylesheet" href="styles.css?v=19" />
   </head>
   <body>
     <div id="root"></div>
@@ -46,7 +46,7 @@
     <script src="inputFormatters.js"></script>
     <script src="store.js"></script>
     <script type="text/babel" src="driver-ui.jsx"></script>
-    <script type="text/babel" src="driver.jsx?v=6"></script>
+    <script type="text/babel" src="driver.jsx?v=7"></script>
     <script type="text/babel" src="admin.jsx"></script>
 
     <script type="text/babel" data-presets="env,react">
@@ -630,7 +630,6 @@
             <MasterDataRequestsPane
               showToast={showToast}
               initialRequestId={selectedMdrId}
-              showToast={showToast}
               onOpenJob={(j) => {
                 setActiveJob(j);
                 setSection("detail");

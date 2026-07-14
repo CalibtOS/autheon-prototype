@@ -18,7 +18,7 @@
 | `axleConfiguration` | Axle configuration | Achsentyp |
 | `back` | Back | Zurück |
 | `bindingAcceptance` | Binding acceptance | Verbindliche Annahme |
-| `blockedDriverBody` | Marketplace access and new tour acceptance are restricted for blocked drivers. Use My Jobs to correct documents on existing tours. Profile, Info, and historical jobs remain visible in this prototype. | Marktplatzzugriff und neue Tour-Annahmen sind für blockierte Fahrer eingeschränkt. Nutzen Sie Meine Touren, um Dokumente bestehender Touren zu korrigieren. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar. |
+| `blockedDriverBody` | Marketplace access and new tour acceptance are restricted for blocked drivers. Use My Jobs to correct documents on existing tours. Profile, Info, and historical jobs remain visible in this prototype. | Marktplatzzugriff und neue Tour-Annahmen sind für blockierte Fahrer eingeschränkt. Nutzen Sie Meine Aufträge, um Dokumente bestehender Touren zu korrigieren. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar. |
 | `blockedDriverStatusFallback` | Restricted | Eingeschränkt |
 | `blockedDriverTitle` | Marketplace unavailable | Marktplatz nicht verfügbar |
 | `cancel` | Cancel | Abbrechen |
@@ -132,7 +132,7 @@
 | `masterDataChangeSubmit` | Submit change request | Änderungsanfrage senden |
 | `masterDataChangeUpdatedBadge` | Updated | Geändert |
 | `model` | Model | Modell |
-| `myJobs` | My jobs | Meine Touren |
+| `myJobs` | My jobs | Meine Aufträge |
 | `myJobsSubtitle` | Track and update your accepted tours | Verfolgen und aktualisieren Sie Ihre akzeptierten Touren |
 | `noDriverAddons` | No driver-facing add-ons. | Keine fahrerseitigen Zusatzhinweise. |
 | `noJobsMatch` | No jobs match | Keine passenden Touren |

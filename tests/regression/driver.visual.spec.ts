@@ -20,7 +20,7 @@ import {
 
 const TAB = {
   marketplace: /Marketplace|Marktplatz/i,
-  myJobs: /My jobs|Meine Touren|Meine Jobs/i,
+  myJobs: /My jobs|Meine Aufträge|Meine Jobs/i,
   info: /Infopoint/i,
   profile: /Profile|Profil/i,
 };

@@ -184,6 +184,62 @@ const jobNeedsDocCorrection = (job, store) =>
         AuthStore.tourDocumentNeedsDriverCorrection(d.reviewStatus),
       ));
 
+// Autheon "A" mark used by the Marketplace tab. Shared between the animated
+// active state and the static inactive state so the path data lives in one place.
+const AutheonMark = ({ animated = false }) => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 8 48 32"
+    className={animated ? "tabbar-anim-mark" : "tabbar-static-mark"}
+    fill="currentColor"
+    aria-hidden="true"
+  >
+    <g transform="translate(0 8)">
+      <path pathLength="1" d="M28.7452 0.0499943C29.3687 -0.0214756 30.9431 0.0174098 31.6381 0.0180174C33.6279 0.0329038 35.6176 0.0269789 37.6073 0.000244141C37.9458 1.15288 38.4111 2.45984 38.7891 3.62569L41.1318 10.8437C38.7802 10.9527 36.152 10.7687 33.7703 10.8188C32.0193 10.8557 30.1961 10.7226 28.4612 11.2014C22.0467 12.9713 19.8914 18.3673 16.7499 23.549C15.1759 26.1455 13.6026 28.6479 12.0805 31.2103L11.6666 31.9194C10.5996 31.9722 9.42407 31.9176 8.34659 31.9306C5.58855 31.964 2.75097 31.8662 0 31.9517C0.997865 30.5292 2.50586 27.8959 3.46749 26.3335L10.5896 14.7129C12.8592 10.9904 14.5347 7.73199 17.8721 4.82268C21.2443 1.883 24.3891 0.573297 28.7452 0.0499943Z" />
+      <path pathLength="1" d="M38.3618 17.8626C38.3839 18.3225 39.4974 21.737 39.7447 22.4479C40.7885 25.4482 41.7117 29.0015 42.8468 31.9303C41.7937 31.9141 40.7088 31.9275 39.653 31.9275C38.8473 29.1833 37.9224 26.436 37.0768 23.7013C36.7626 22.685 35.9017 21.6732 34.9229 21.2676C33.7384 20.7767 32.2683 20.8416 31.0836 21.3173C30.3712 21.6337 29.7327 22.0982 29.2099 22.6805C28.5719 23.4055 27.1835 25.8009 26.6472 26.7238C25.6773 28.3928 24.4654 30.2545 23.5761 31.9292C22.505 31.9238 20.7214 31.8709 19.7114 31.9733C20.4259 30.5267 21.7266 28.4617 22.6104 27.09C25.1161 23.2008 26.6843 18.2008 31.9865 17.9032C32.4559 17.8373 33.7521 17.8563 34.2521 17.8566L38.3618 17.8626Z" />
+      <path pathLength="1" d="M30.693 13.1161C32.8075 12.965 36.2745 13.0789 38.499 13.0869C38.6766 14.0339 39.1326 15.2447 39.3859 16.2471C37.5936 16.3169 35.7941 16.2525 34.0053 16.2721C32.7015 16.2864 31.2113 16.1606 29.9673 16.5009C26.065 17.5685 24.7269 20.5448 22.8602 23.6919L19.7354 28.9582C19.1403 29.937 18.5601 30.9247 17.9947 31.9212C17.0191 31.9231 14.7918 31.8713 13.897 32.0002C14.6112 30.9063 15.3757 29.5605 16.0567 28.4225L19.6507 22.4045C22.4928 17.5959 24.5497 13.7028 30.693 13.1161Z" />
+      <path pathLength="1" d="M39.459 17.9398C40.5644 17.9793 41.8666 17.9475 42.9877 17.9492C43.1074 18.7702 43.924 21.0614 44.235 22.0024L47.622 31.9301L43.9359 31.9237C42.5317 27.2651 40.8029 22.6291 39.459 17.9398Z" />
+    </g>
+  </svg>
+);
+
+// Slide-to-confirm handle icons: arrow while ready, lock while disabled,
+// check once confirmed. Sized/coloured via CSS (.slide-handle-icon).
+const SlideArrowIcon = () => (
+  <svg className="slide-handle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M9 5l7 7-7 7"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+const SlideCheckIcon = () => (
+  <svg className="slide-handle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M5 12.5l4.5 4.5L19 7"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+const SlideLockIcon = () => (
+  <svg className="slide-handle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <rect x="5" y="10.5" width="14" height="9" rx="2.2" stroke="currentColor" strokeWidth="2" />
+    <path
+      d="M8 10.5V8a4 4 0 118 0v2.5"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 const Ic = {
   Truck: () => (
     <svg
@@ -368,25 +424,7 @@ const Ic = {
       />
     </svg>
   ),
-  Tab: ({ on }) => (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill={on ? "currentColor" : "none"}
-    >
-      <rect
-        x="3.5"
-        y="3.5"
-        width="17"
-        height="17"
-        rx="3"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-      {on && <rect x="7" y="7" width="10" height="10" rx="1.5" fill="#fff" />}
-    </svg>
-  ),
+  Tab: ({ on }) => <AutheonMark animated={on} />,
   TabList: ({ on }) => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <path
@@ -1468,22 +1506,24 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
   const { t } = useI18n();
   const [pos, setPos] = useState(0);
   const [done, setDone] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const trackRef = useRef(null);
 
   const onStart = (e) => {
     e.preventDefault();
     if (done) return;
+    setDragging(true);
     const startX = e.touches ? e.touches[0].clientX : e.clientX;
     const startPos = pos;
     const move = (ev) => {
       const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
       const rect = trackRef.current.getBoundingClientRect();
-      const dx = Math.max(
-        0,
-        Math.min(rect.width - 92, startPos + (cx - startX)),
-      );
+      const maxX = rect.width - 56;
+      const dx = Math.max(0, Math.min(maxX, startPos + (cx - startX)));
       setPos(dx);
-      if (dx >= rect.width - 100) {
+      if (dx >= maxX - 4) {
+        setPos(maxX);
+        setDragging(false);
         setDone(true);
         cleanup();
         setTimeout(onConfirm, 380);
@@ -1491,6 +1531,7 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
     };
     const up = () => {
       cleanup();
+      setDragging(false);
       if (!done) setPos(0);
     };
     const cleanup = () => {
@@ -1557,17 +1598,31 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
           <PolicyDisclosure />
         </div>
 
-        <div ref={trackRef} className={"slide-confirm " + (done ? "done" : "")}>
+        <div
+          ref={trackRef}
+          className={
+            "slide-confirm " +
+            (done ? "done" : "") +
+            (dragging ? " dragging" : "")
+          }
+        >
           <div className="track-text">
+            {done ? t("slideAccepted") : t("slideToConfirm")}
+          </div>
+          <div className="slide-fill" style={{ width: pos }} />
+          <div
+            className="track-text track-text-fill"
+            style={{ clipPath: `inset(0 calc(100% - ${pos}px) 0 0)` }}
+          >
             {done ? t("slideAccepted") : t("slideToConfirm")}
           </div>
           <div
             className="thumb"
-            style={{ width: done ? "100%" : 92 + pos }}
+            style={{ transform: `translateX(${pos}px)` }}
             onMouseDown={onStart}
             onTouchStart={onStart}
           >
-            {!done && "›››"}
+            {done ? <SlideCheckIcon /> : <SlideArrowIcon />}
           </div>
         </div>
         <button
@@ -2827,6 +2882,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   const [text, setText] = useState("");
   const [slidePos, setSlidePos] = useState(0);
   const [slideDone, setSlideDone] = useState(false);
+  const [slideDragging, setSlideDragging] = useState(false);
   const [evidenceFiles, setEvidenceFiles] = useState([]);
   const [evidenceNotice, setEvidenceNotice] = useState(null);
   const trackRef = useRef(null);
@@ -2912,19 +2968,19 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
         /* ignore */
       }
     }
+    setSlideDragging(true);
     const startX = e.clientX;
     const startPos = slidePos;
     let completed = false;
     const move = (ev) => {
       if (!trackRef.current) return;
       const rect = trackRef.current.getBoundingClientRect();
-      const dx = Math.max(
-        0,
-        Math.min(rect.width - 92, startPos + (ev.clientX - startX)),
-      );
+      const maxX = rect.width - 56;
+      const dx = Math.max(0, Math.min(maxX, startPos + (ev.clientX - startX)));
       setSlidePos(dx);
-      if (dx >= rect.width - 100 && !completed) {
+      if (dx >= maxX - 4 && !completed) {
         completed = true;
+        setSlidePos(maxX);
         setSlideDone(true);
         cleanup();
         setTimeout(() => onSubmit("cancel", reason, text.trim(), []), 380);
@@ -2942,6 +2998,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
       if (!completed) setSlidePos(0);
     };
     const cleanup = () => {
+      setSlideDragging(false);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
@@ -3168,6 +3225,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                       className={
                         "slide-confirm" +
                         (slideDone ? " done" : "") +
+                        (slideDragging ? " dragging" : "") +
                         (!slideEnabled ? " disabled" : "")
                       }
                       aria-disabled={!slideEnabled}
@@ -3180,18 +3238,36 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                             : t("slideToCancelOrderLocked")}
                       </div>
                       <div
+                        className="slide-fill"
+                        style={{ width: valid ? slidePos : 0 }}
+                      />
+                      <div
+                        className="track-text track-text-fill"
+                        style={{
+                          clipPath: `inset(0 calc(100% - ${valid ? slidePos : 0}px) 0 0)`,
+                        }}
+                      >
+                        {slideDone
+                          ? t("reportProblemCancelConfirmed")
+                          : valid
+                            ? t("slideToCancelOrder")
+                            : t("slideToCancelOrderLocked")}
+                      </div>
+                      <div
                         className="thumb"
                         style={{
-                          width: slideDone
-                            ? "100%"
-                            : valid
-                              ? 92 + slidePos
-                              : 92,
+                          transform: `translateX(${valid ? slidePos : 0}px)`,
                         }}
                         onPointerDown={slideEnabled ? onSlideStart : undefined}
                         tabIndex={slideEnabled ? 0 : -1}
                       >
-                        {!slideDone && (valid ? "›››" : "LOCK")}
+                        {slideDone ? (
+                          <SlideCheckIcon />
+                        ) : valid ? (
+                          <SlideArrowIcon />
+                        ) : (
+                          <SlideLockIcon />
+                        )}
                       </div>
                     </div>
                     {!valid && !slideDone && (

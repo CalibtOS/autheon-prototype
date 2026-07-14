@@ -1221,7 +1221,7 @@ window.I18n = (() => {
       jobOverview: "Auftragsübersicht",
       openTours: "offene Touren",
       marketplace: "Marktplatz",
-      myJobs: "Meine Touren",
+      myJobs: "Meine Aufträge",
       info: "Info",
       profile: "Profil",
       filters: "Filter",
@@ -1287,7 +1287,7 @@ window.I18n = (() => {
       blockedDriverTitle: "Marktplatz nicht verfügbar",
       blockedDriverStatusFallback: "Eingeschränkt",
       blockedDriverBody:
-        "Marktplatzzugriff und neue Tour-Annahmen sind für blockierte Fahrer eingeschränkt. Nutzen Sie Meine Touren, um Dokumente bestehender Touren zu korrigieren. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar.",
+        "Marktplatzzugriff und neue Tour-Annahmen sind für blockierte Fahrer eingeschränkt. Nutzen Sie Meine Aufträge, um Dokumente bestehender Touren zu korrigieren. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar.",
       backToMarketplace: "Marktplatz",
       tourInExecutionBanner:
         "Tour in Ausführung — Abholung, Zustellung und Dokumente hier abschließen.",
@@ -1319,7 +1319,7 @@ window.I18n = (() => {
       vehicleType: "Fahrzeugtyp",
       axleConfiguration: "Achsentyp",
       showResults: "{count} Ergebnisse anzeigen",
-      myJobsExecutionDetail: "Meine Touren · Ausführungsdetail",
+      myJobsExecutionDetail: "Meine Aufträge · Ausführungsdetail",
       active: "Aktiv",
       completed: "Durchgeführt",
       cancelled: "Storniert",

@@ -1,0 +1,208 @@
+<title>Autheon Logo Animation</title>
+<style>
+  :root {
+    --brand: #6F29FF;
+    --brand-soft: #9b6bff;
+    --bg: #0e0a17;
+    --bg-2: #140d24;
+    --glow: rgba(111, 41, 255, 0.42);
+    --ink: #ece7f7;
+    --muted: #8f86a8;
+    --line: rgba(150, 120, 230, 0.22);
+    --btn-bg: rgba(111, 41, 255, 0.10);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f2fc;
+      --bg-2: #ece5fb;
+      --glow: rgba(111, 41, 255, 0.28);
+      --ink: #241a3d;
+      --muted: #6f6690;
+      --line: rgba(111, 41, 255, 0.22);
+      --btn-bg: rgba(111, 41, 255, 0.08);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e0a17; --bg-2: #140d24; --glow: rgba(111,41,255,0.42);
+    --ink: #ece7f7; --muted: #8f86a8; --line: rgba(150,120,230,0.22);
+    --btn-bg: rgba(111,41,255,0.10);
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f2fc; --bg-2: #ece5fb; --glow: rgba(111,41,255,0.28);
+    --ink: #241a3d; --muted: #6f6690; --line: rgba(111,41,255,0.22);
+    --btn-bg: rgba(111,41,255,0.08);
+  }
+
+  .stage {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(24px, 5vh, 48px);
+    padding: 40px 20px;
+    background:
+      radial-gradient(60% 55% at 50% 42%, var(--glow) 0%, transparent 70%),
+      radial-gradient(120% 120% at 50% 0%, var(--bg-2) 0%, var(--bg) 60%);
+    color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  .art {
+    width: clamp(220px, 58vmin, 380px);
+    aspect-ratio: 1;
+    filter: drop-shadow(0 14px 40px var(--glow));
+  }
+  .art svg { width: 100%; height: 100%; display: block; }
+
+  .tile { transform-box: fill-box; transform-origin: center; }
+  .ribbon {
+    fill: #fff;
+    stroke: #fff;
+    stroke-width: 0.55;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    fill-opacity: 0;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  .caption {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+    font-size: 12px;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    color: var(--muted);
+    opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+  .caption.show { opacity: 1; }
+  .caption .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--brand-soft); }
+
+  .controls { display: flex; gap: 12px; }
+  button {
+    font: inherit;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    background: var(--btn-bg);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 9px 20px;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
+  }
+  button:hover { background: rgba(111,41,255,0.20); border-color: var(--brand-soft); }
+  button:active { transform: translateY(1px); }
+  button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+  button:focus-visible { outline: 2px solid var(--brand-soft); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ribbon { fill-opacity: 1; stroke-opacity: 0; stroke-dashoffset: 0; }
+    .caption { opacity: 1; }
+  }
+</style>
+
+<div class="stage">
+  <div class="art">
+    <svg viewBox="0 0 48 48" fill="none" role="img" aria-label="Autheon logo assembling">
+      <rect class="tile" width="48" height="48" rx="10" fill="#6F29FF"/>
+      <g transform="translate(0 8)">
+        <path class="ribbon" pathLength="1" d="M28.7452 0.0499943C29.3687 -0.0214756 30.9431 0.0174098 31.6381 0.0180174C33.6279 0.0329038 35.6176 0.0269789 37.6073 0.000244141C37.9458 1.15288 38.4111 2.45984 38.7891 3.62569L41.1318 10.8437C38.7802 10.9527 36.152 10.7687 33.7703 10.8188C32.0193 10.8557 30.1961 10.7226 28.4612 11.2014C22.0467 12.9713 19.8914 18.3673 16.7499 23.549C15.1759 26.1455 13.6026 28.6479 12.0805 31.2103L11.6666 31.9194C10.5996 31.9722 9.42407 31.9176 8.34659 31.9306C5.58855 31.964 2.75097 31.8662 0 31.9517C0.997865 30.5292 2.50586 27.8959 3.46749 26.3335L10.5896 14.7129C12.8592 10.9904 14.5347 7.73199 17.8721 4.82268C21.2443 1.883 24.3891 0.573297 28.7452 0.0499943Z"/>
+        <path class="ribbon" pathLength="1" d="M38.3618 17.8626C38.3839 18.3225 39.4974 21.737 39.7447 22.4479C40.7885 25.4482 41.7117 29.0015 42.8468 31.9303C41.7937 31.9141 40.7088 31.9275 39.653 31.9275C38.8473 29.1833 37.9224 26.436 37.0768 23.7013C36.7626 22.685 35.9017 21.6732 34.9229 21.2676C33.7384 20.7767 32.2683 20.8416 31.0836 21.3173C30.3712 21.6337 29.7327 22.0982 29.2099 22.6805C28.5719 23.4055 27.1835 25.8009 26.6472 26.7238C25.6773 28.3928 24.4654 30.2545 23.5761 31.9292C22.505 31.9238 20.7214 31.8709 19.7114 31.9733C20.4259 30.5267 21.7266 28.4617 22.6104 27.09C25.1161 23.2008 26.6843 18.2008 31.9865 17.9032C32.4559 17.8373 33.7521 17.8563 34.2521 17.8566L38.3618 17.8626Z"/>
+        <path class="ribbon" pathLength="1" d="M30.693 13.1161C32.8075 12.965 36.2745 13.0789 38.499 13.0869C38.6766 14.0339 39.1326 15.2447 39.3859 16.2471C37.5936 16.3169 35.7941 16.2525 34.0053 16.2721C32.7015 16.2864 31.2113 16.1606 29.9673 16.5009C26.065 17.5685 24.7269 20.5448 22.8602 23.6919L19.7354 28.9582C19.1403 29.937 18.5601 30.9247 17.9947 31.9212C17.0191 31.9231 14.7918 31.8713 13.897 32.0002C14.6112 30.9063 15.3757 29.5605 16.0567 28.4225L19.6507 22.4045C22.4928 17.5959 24.5497 13.7028 30.693 13.1161Z"/>
+        <path class="ribbon" pathLength="1" d="M39.459 17.9398C40.5644 17.9793 41.8666 17.9475 42.9877 17.9492C43.1074 18.7702 43.924 21.0614 44.235 22.0024L47.622 31.9301L43.9359 31.9237C42.5317 27.2651 40.8029 22.6291 39.459 17.9398Z"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="caption" id="caption"><span class="dot"></span>Autheon</div>
+
+  <div class="controls">
+    <button id="replay" type="button">Replay</button>
+    <button id="slow" type="button" aria-pressed="false">Slow-mo</button>
+  </div>
+</div>
+
+<script>
+  const svg = document.querySelector('.art svg');
+  const tile = svg.querySelector('.tile');
+  const ribbons = [...svg.querySelectorAll('.ribbon')];
+  const caption = document.getElementById('caption');
+  const replayBtn = document.getElementById('replay');
+  const slowBtn = document.getElementById('slow');
+
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let slow = false;
+  let loop = true;
+  let anims = [];
+  let timer = null;
+
+  const EASE_DRAW = 'cubic-bezier(0.45, 0, 0.15, 1)';
+  const EASE_TILE = 'cubic-bezier(0.2, 0.75, 0.2, 1)';
+
+  function clearAll() {
+    anims.forEach(a => a.cancel());
+    anims = [];
+    if (timer) { clearTimeout(timer); timer = null; }
+  }
+
+  function reset() {
+    ribbons.forEach(p => {
+      p.style.strokeDashoffset = '1';
+      p.style.fillOpacity = '0';
+      p.style.strokeOpacity = '1';
+    });
+    tile.style.opacity = '0';
+    tile.style.transform = 'scale(0.9)';
+    caption.classList.remove('show');
+  }
+
+  function play() {
+    clearAll();
+    reset();
+    const k = slow ? 1.9 : 1;
+
+    anims.push(tile.animate(
+      [{ opacity: 0, transform: 'scale(0.9)' }, { opacity: 1, transform: 'scale(1)' }],
+      { duration: 520 * k, fill: 'forwards', easing: EASE_TILE }
+    ));
+
+    let end = 0;
+    ribbons.forEach((p, i) => {
+      const start = (420 + i * 440) * k;
+      const drawDur = 920 * k;
+      anims.push(p.animate(
+        [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }],
+        { duration: drawDur, delay: start, fill: 'forwards', easing: EASE_DRAW }
+      ));
+      const fillStart = start + drawDur * 0.62;
+      const fillDur = 520 * k;
+      anims.push(p.animate(
+        [{ fillOpacity: 0, strokeOpacity: 1 }, { fillOpacity: 1, strokeOpacity: 0.35 }],
+        { duration: fillDur, delay: fillStart, fill: 'forwards', easing: 'ease-out' }
+      ));
+      end = Math.max(end, fillStart + fillDur);
+    });
+
+    timer = setTimeout(() => caption.classList.add('show'), end);
+    if (loop) timer = setTimeout(play, end + 1700 * k);
+  }
+
+  if (reduce) {
+    caption.classList.add('show');
+  } else {
+    play();
+  }
+
+  replayBtn.addEventListener('click', () => { loop = true; play(); });
+  slowBtn.addEventListener('click', () => {
+    slow = !slow;
+    slowBtn.setAttribute('aria-pressed', String(slow));
+    loop = true;
+    play();
+  });
+</script>

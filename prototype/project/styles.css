@@ -953,6 +953,71 @@ textarea.input {
   font-weight: 700;
 }
 
+/* Animated Autheon mark for the active Marketplace tab — the white ribbons
+   draw themselves on, hold, and re-trace endlessly while the tab is active. */
+.phone-shell .tabbar-anim-mark path {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  animation: autheonTrace 3.6s ease-in-out infinite both;
+}
+.phone-shell .tabbar-anim-mark path:nth-of-type(1) {
+  animation-delay: 0s;
+}
+.phone-shell .tabbar-anim-mark path:nth-of-type(2) {
+  animation-delay: 0.13s;
+}
+.phone-shell .tabbar-anim-mark path:nth-of-type(3) {
+  animation-delay: 0.26s;
+}
+.phone-shell .tabbar-anim-mark path:nth-of-type(4) {
+  animation-delay: 0.39s;
+}
+@keyframes autheonTrace {
+  0%,
+  100% {
+    stroke-dashoffset: 0;
+    fill-opacity: 1;
+    stroke-opacity: 0;
+  } /* filled logo — visible most of the cycle */
+  56% {
+    stroke-dashoffset: 0;
+    fill-opacity: 1;
+    stroke-opacity: 0;
+  } /* hold */
+  64% {
+    stroke-dashoffset: 0;
+    fill-opacity: 0;
+    stroke-opacity: 0.9;
+  } /* unfill to a thin line */
+  74% {
+    stroke-dashoffset: 1;
+    fill-opacity: 0;
+    stroke-opacity: 0.9;
+  } /* retract the line */
+  88% {
+    stroke-dashoffset: 0;
+    fill-opacity: 0;
+    stroke-opacity: 0.9;
+  } /* re-trace the line */
+  96% {
+    stroke-dashoffset: 0;
+    fill-opacity: 1;
+    stroke-opacity: 0.2;
+  } /* fill back in */
+}
+@media (prefers-reduced-motion: reduce) {
+  .phone-shell .tabbar-anim-mark path {
+    animation: none;
+    fill-opacity: 1;
+    stroke-opacity: 0;
+    stroke-dashoffset: 0;
+  }
+}
+
 /* Header Redesign Styles */
 .phone-shell .pwa-header {
   padding: 16px 20px 14px;
@@ -2006,12 +2071,16 @@ textarea.input {
 /* Slide-to-confirm */
 .slide-confirm {
   position: relative;
-  height: 60px;
+  height: 56px;
   background: var(--paper-3);
-  border-radius: var(--r-2);
+  border: 1px solid var(--line-2);
+  border-radius: 9999px;
   overflow: hidden;
   user-select: none;
   touch-action: none;
+  transition:
+    background 0.3s ease,
+    border-color 0.3s ease;
 }
 .slide-confirm .track-text {
   position: absolute;
@@ -2019,40 +2088,80 @@ textarea.input {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text);
-  font-weight: 600;
+  padding-left: 52px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+  font-weight: 500;
   pointer-events: none;
 }
+/* Circular sliding handle — stays white in both states; the track fills
+   with brand purple on confirm and the arrow morphs into a check. */
 .slide-confirm .thumb {
   position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 92px;
-  background: var(--primary);
-  color: #fff;
+  top: 5px;
+  left: 5px;
+  bottom: 5px;
+  width: 46px;
+  background: #ffffff;
+  color: #4b5563;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: grab;
-  font-family: var(--font-mono);
-  font-size: 16px;
-  letter-spacing: 0.05em;
-  border-radius: var(--r-2);
+  border-radius: 9999px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.14),
+    0 4px 10px -4px rgba(0, 0, 0, 0.2);
+  will-change: transform;
 }
 .slide-confirm .thumb:active {
   cursor: grabbing;
 }
+.slide-handle-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+.slide-confirm.done {
+  background: var(--primary);
+  border-color: var(--primary);
+}
 .slide-confirm.done .thumb {
-  width: 100% !important;
-  background: var(--cta);
+  color: #1f2937;
 }
 .slide-confirm.done .track-text {
-  color: #fff;
+  color: #ffffff;
+  font-weight: 600;
+  padding-left: 0;
+  padding-right: 52px;
+}
+
+/* Progressive fill: a purple bar that grows from the left as the handle
+   advances (width is set inline to the drag distance). The white-text layer
+   is clipped to the same width so the label stays legible over the fill. */
+.slide-confirm .track-text {
+  z-index: 1;
+}
+.slide-confirm .slide-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: var(--primary);
+  border-radius: 9999px 0 0 9999px;
+  z-index: 2;
+  pointer-events: none;
+}
+.slide-confirm .track-text-fill {
+  z-index: 3;
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
+.slide-confirm .thumb {
+  z-index: 4;
 }
 
 .slide-confirm-wrap {
@@ -2096,15 +2205,113 @@ textarea.input {
   justify-content: flex-start;
 }
 .slide-confirm.disabled .thumb {
-  background: var(--line-2);
+  background: var(--paper-2);
   color: var(--muted);
   cursor: not-allowed;
   pointer-events: none;
   box-shadow: none;
-  width: 92px !important;
+  transform: none !important;
 }
 .slide-confirm.disabled .thumb:active {
   cursor: not-allowed;
+}
+
+/* ---- Slide-to-confirm: animation upgrade ---------------------------------
+   Adds spring physics on fill/release, an idle "drag me" invitation
+   (shimmering label + nudging chevrons + breathing thumb) and a success pop.
+   Brand colours (--primary / --cta) are unchanged. */
+
+/* Glide the handle as it springs back or settles, but track the finger 1:1
+   while actively dragging (the .dragging class removes the transition). */
+.slide-confirm .thumb {
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.slide-confirm.dragging .thumb {
+  transition: none;
+}
+
+/* Idle invitation, only while the control is ready (not done / disabled /
+   dragging): the arrow nudges rightward and the label shimmers purple. */
+.slide-confirm:not(.done):not(.disabled):not(.dragging) .slide-handle-icon {
+  animation: slideArrowNudge 1.5s ease-in-out infinite;
+}
+.slide-confirm:not(.done):not(.disabled):not(.dragging)
+  .track-text:not(.track-text-fill) {
+  background: linear-gradient(
+    100deg,
+    var(--muted) 0%,
+    var(--muted) 40%,
+    rgba(var(--primary-rgb), 0.95) 50%,
+    var(--muted) 60%,
+    var(--muted) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: slideShimmer 2.8s linear infinite;
+}
+
+/* Success moment: the check pops in and the label lands. */
+.slide-confirm.done .slide-handle-icon {
+  animation: slideCheckPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.slide-confirm.done .track-text {
+  animation: slideDonePop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideArrowNudge {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.65;
+  }
+  50% {
+    transform: translateX(3px);
+    opacity: 1;
+  }
+}
+@keyframes slideShimmer {
+  0% {
+    background-position: 130% 0;
+  }
+  100% {
+    background-position: -130% 0;
+  }
+}
+@keyframes slideCheckPop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes slideDonePop {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.4;
+  }
+  60% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide-handle-icon,
+  .slide-confirm .track-text,
+  .slide-confirm .thumb {
+    animation: none !important;
+  }
 }
 
 /* Radio cards */
