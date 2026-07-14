@@ -31,6 +31,7 @@
 | `correctionRequiredBadge` | Correction | Korrektur |
 | `customerLabel` | Customer | Kunde |
 | `dateWindow` | Date window | Datumsfenster |
+| `delivery` | Delivery | Übergabe |
 | `deliveryContact` | Delivery Contact | Ansprechpartner Lieferung |
 | `deliveryExample` | Delivery e.g. 10115 | Lieferung z.B. 10115 |
 | `deliveryTime` | Delivery Time | Lieferzeit |
@@ -109,6 +110,9 @@
 | `invoiceUploadNotYourTour` | You can only upload invoices for tours assigned to you. | Rechnungen können nur für Ihnen zugewiesene Touren hochgeladen werden. |
 | `invoiceUploadRestricted` | Uploads are unavailable while your account is restricted. | Upload nicht möglich, solange das Konto eingeschränkt ist. |
 | `invoiceUploadTourRequired` | Invoice upload must be linked to a valid tour. | Der Upload muss einer gültigen Tour zugeordnet sein. |
+| `kpiAvailableJobs` | Available | Verf\u00fcgbar |
+| `kpiBookedJobs` | Booked | Gebucht |
+| `kpiOpenDocuments` | Open documents | Offene Nachweise |
 | `legal` | Legal | Rechtliches |
 | `legalSub` | Terms · privacy · imprint | AGB · Datenschutz · Impressum |
 | `licensePlate` | License plate | Kennzeichen |
@@ -278,6 +282,11 @@
 | `untilDateChip` | Until {date} | Bis {date} |
 | `vatBankingReadonly` | Address · VAT · banking | Adresse · USt. · Bankdaten |
 | `vehicle` | Vehicle | Fahrzeug |
+| `vehicleInfoDeregistered` | Deregistered | Abgemeldet |
+| `vehicleInfoElectric` | E-vehicle | E-Fahrzeug |
+| `vehicleInfoLabel` | Important vehicle info | Wichtige Fahrzeug-Info |
+| `vehicleInfoRedPlates` | Red plates | Rote Kennzeichen |
+| `vehicleInfoRegistered` | Registered | Zugelassen |
 | `vehicleType` | Vehicle type | Fahrzeugtyp |
 | `view` | View | Ansehen |
 | `viewDriverPolicy` | View driver policy | Fahrerrichtlinie ansehen |

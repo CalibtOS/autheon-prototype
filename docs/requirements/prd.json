@@ -1,6 +1,6 @@
 {
   "feature": "Vehicle Transport Platform Phase 1 - working app name configurable",
-  "version": "PRD v2.0 - probation-only driver UI (legacy limit-request UI removed); automatic immutable sequential driver IDs; same-day per-leg time-window validation; Infopoint separate View/Download actions; branding pack, driver-ID format, Report Problem timing, and production domain flagged for decision (2026-07-10)",
+  "version": "PRD v2.1 - important vehicle info metadata (registration status, electric vehicle, red license plates) added as optional job fields per Design Direction Board 07/2026 (2026-07-14); probation-only driver UI (legacy limit-request UI removed); automatic immutable sequential driver IDs; same-day per-leg time-window validation; Infopoint separate View/Download actions; branding pack, driver-ID format, Report Problem timing, and production domain flagged for decision (2026-07-10)",
   "goal": "Replace manual vehicle transport dispatch with a contract-driven Version 1 platform focused on operational order creation, marketplace job distribution, direct assignment, binding driver acceptance, clear Report Problem cancellation and special case flows, external map navigation, address master data, simple push notifications for drivers, admin email alerts for critical events, optional tour-linked document and driver invoice handling, auditability, and a controlled rollout from zero without historical Excel tour migration.",
   "product_context": {
     "platform_type": "Vehicle transport / vehicle relocation operations platform",
@@ -151,6 +151,9 @@
       "license plate",
       "VIN",
       "axle type: driven on own wheels / third-party axle",
+      "vehicle registration status: registered / deregistered (optional, nullable = not specified; Design Direction Board 07/2026)",
+      "electric vehicle flag (optional boolean, default false)",
+      "red license plates flag (optional boolean, default false)",
       "price/revenue if operationally needed",
       "driver offer if operationally needed",
       "expenses if operationally needed",
@@ -508,7 +511,7 @@
         "Optional contact fields (alternate contact, second phone, email, info notes) are hidden behind progressive disclosure such as Add another contact or Show additional contact details.",
         "Admin may attach additional self-created documents when creating or editing a draft job, including optional images such as a vehicle photo; attached documents are stored alongside or as a substitute for the auto-generated transport-order document.",
         "Customer/address master-data notes do not automatically become order-specific notes; admin must explicitly apply, edit, or enter driver-visible/internal notes for the tour.",
-        "If registered/not registered is confirmed for V1, it is added as an explicit vehicle/job field; until confirmed it remains a production open question, not an implicit backend requirement.",
+        "Important vehicle info is captured in the Vehicle section as optional announcement metadata (Design Direction Board 07/2026, resolved 2026-07-14): registration status (registered/deregistered, nullable), electric vehicle flag, red license plates flag. None of these fields is required for Save Draft, Publish, or Direct Assign, and no V1 marketplace filter uses them.",
         "If by-latest scheduling is confirmed for V1, it is represented explicitly rather than overloading pickup/delivery time-window fields."
       ],
       "status": "pending",
@@ -552,7 +555,7 @@
       "story": "As a driver, I want to browse available published jobs with filters and refresh behavior so I can find relevant transports.",
       "acceptance": [
         "Marketplace displays only jobs with status Published.",
-        "Job cards show reduced data: rough pickup region/postal code, rough delivery region/postal code, distance, relevant date/time window, vehicle type, axle type, and driver offer and customer price where applicable.",
+        "Job cards show reduced data: rough pickup region/postal code, rough delivery region/postal code, distance, relevant date/time window, vehicle type, axle type, important vehicle info tags (registered/deregistered, electric vehicle, red license plates) where set, and driver offer and customer price where applicable.",
         "Before acceptance, full addresses, contact persons, phone numbers, VIN, license plate, internal notes, and sensitive instructions are not returned to the driver client.",
         "Filters include postal code or location, date or date range, vehicle type, and driven on own wheels versus third-party axle where applicable.",
         "German postal code prefix filtering supports at least one-digit and two-digit prefix filters such as 4, 40, or 41.",
@@ -1277,6 +1280,7 @@
       "Oldtimer"
     ],
     "vehicle_csv_role": "Glossary/reference only; not operational import data.",
+    "vehicle_important_info_v1": "Resolved 2026-07-14 via Design Direction Board (July 2026) \u00a75 and client direction: jobs carry optional important-vehicle-info metadata \u2014 vehicle_registration_status enum (registered | deregistered, nullable = not specified), electric_vehicle boolean (default false), red_license_plates boolean (default false). Captured in the admin job form Vehicle section; rendered as text-labelled tags on driver marketplace cards and in job/vehicle detail (driver and admin). Announcement metadata only: not required for Save Draft/Publish/Direct Assign, no marketplace filter dimension in V1, no acceptance or settlement rule depends on it, and red plates stay order-level metadata (no separate vehicle entity in V1).",
     "app_display_name": "Configurable; default Transport Portal until client provides final name.",
     "tablet_ipad_v1": "Phone-first; iPad best-effort responsive.",
     "audit_log_language_v1": "English action keys; UI localized EN/DE.",
@@ -1379,7 +1383,7 @@
     "Post-v1.9 meeting 2026-07-10 (F-07): what final production domain, legal/market clearance outcome, and hosting provider/responsibility should be used (likely .com domain and Hetzner hosting if approved)?",
     "Confirm production UI labels for special case administrative close vs cancel order (avoid ambiguous Close).",
     "Meeting 2026-06-29: confirm whether driver blocking must be granular so a driver can be blocked from marketplace/accepting new jobs while still correcting invoices or documents on existing tours, or whether V1 keeps coarse Blocked behavior.",
-    "Meeting 2026-06-29: confirm whether zugelassen / nicht zugelassen (registered / not registered) is a required job or vehicle field for V1 or deferred out of scope.",
+    "RESOLVED 2026-07-14 (Design Direction Board July 2026 \u00a75 + client direction): zugelassen/abgemeldet (registered/deregistered) plus electric-vehicle and red-license-plate flags are V1 job fields \u2014 optional announcement metadata, never required for publish; see resolved_defaults.vehicle_important_info_v1.",
     "Meeting 2026-06-29: confirm final policy for manual direct assignment: when admin direct assign is allowed, whether it is exception-only, and what external proof (phone, email, confirmation note) must be stored.",
     "CONFLICT — Post-v1.8 meeting (F-02): should PRD be changed to allow an optional driver workflow email after booking (booking-confirmation email, potentially including the order and attached PDFs/documents), or should driver workflow email remain prohibited (PWA/push only)? This contradicts the standing global rule that drivers receive no workflow emails; the prohibition stays in force until this is decided. NEEDS HUMAN DECISION.",
     "Post-v1.8 meeting (F-04): after what inactivity period should a service partner / driver be warned, contacted, blocked, set inactive, or archived, and should this be automatic or admin-reviewed?",
@@ -1458,7 +1462,7 @@
       "Sophisticated driver scheduling: time-span overlap, geolocation, and travel-time-based acceptance blocking",
       "Credit-note workflow and credit-note generation; meeting 2026-06-29 treated this as eventual/future scope, not V1.",
       "Scanner or AI-based document quality validation beyond file malware scanning and manual admin review.",
-      "Vehicle type icons on marketplace cards unless separately approved for V1.",
+      "Decorative marketplace-card iconography beyond the small supporting icons approved by the Design Direction Board 07/2026 (vehicle glyph, pin, vehicle-info tag icons).",
       "Explicit by-latest scheduling mode if the client confirms it is needed beyond date plus time-window fields.",
       "Service-partner company model with multiple sub-drivers and structured company/sub-driver management; meeting 2026-07-10 (F-08) confirmed V1 keeps individual driver profiles and defers this to Version 2."
     ]

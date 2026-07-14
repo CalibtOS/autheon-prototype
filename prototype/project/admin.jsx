@@ -1600,6 +1600,40 @@ const AdminDetail = ({
                 </div>
               </div>
             </div>
+            {job.registrationStatus || job.electricVehicle || job.redPlates ? (
+              <div style={{ marginTop: 16 }}>
+                <div className="label">{t("vehicleInfoLabel")}</div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    marginTop: 6,
+                  }}
+                >
+                  {job.registrationStatus === "registered" ? (
+                    <span className="pill outline no-dot">
+                      {t("vehicleInfoRegistered")}
+                    </span>
+                  ) : null}
+                  {job.registrationStatus === "deregistered" ? (
+                    <span className="pill outline no-dot">
+                      {t("vehicleInfoDeregistered")}
+                    </span>
+                  ) : null}
+                  {job.electricVehicle ? (
+                    <span className="pill outline no-dot">
+                      {t("vehicleInfoElectric")}
+                    </span>
+                  ) : null}
+                  {job.redPlates ? (
+                    <span className="pill outline no-dot">
+                      {t("vehicleInfoRedPlates")}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </section>
 
           {/* Contacts */}
@@ -2095,6 +2129,9 @@ const EMPTY_NEW_ORDER_FORM = {
   notes: "",
   notesDriver: "",
   axle: "Eigenachse",
+  registrationStatus: "",
+  electricVehicle: false,
+  redPlates: false,
   pickupLocationId: "",
   deliveryLocationId: "",
   savePickupToMaster: false,
@@ -2814,6 +2851,59 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   </button>
                 ))}
               </div>
+            </div>
+            {/* Important vehicle info — optional announcement metadata
+                (Design Direction Board §5; prd.json vehicle_important_info_v1) */}
+            <div style={{ marginTop: 14 }}>
+              <label className="field-label">{t("vehicleInfoLabel")}</label>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                }}
+              >
+                <div
+                  className="seg"
+                  style={{ display: "inline-grid", gridAutoFlow: "column" }}
+                >
+                  {[
+                    ["", t("newOrderRegistrationNone")],
+                    ["registered", t("vehicleInfoRegistered")],
+                    ["deregistered", t("vehicleInfoDeregistered")],
+                  ].map(([val, label]) => (
+                    <button
+                      key={val || "none"}
+                      type="button"
+                      className={
+                        (form.registrationStatus || "") === val ? "on" : ""
+                      }
+                      onClick={() => set("registrationStatus", val)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <span
+                  className={"chip " + (form.electricVehicle ? "on" : "")}
+                  onClick={() => set("electricVehicle", !form.electricVehicle)}
+                >
+                  {t("vehicleInfoElectric")}
+                </span>
+                <span
+                  className={"chip " + (form.redPlates ? "on" : "")}
+                  onClick={() => set("redPlates", !form.redPlates)}
+                >
+                  {t("vehicleInfoRedPlates")}
+                </span>
+              </div>
+              <p
+                className="label"
+                style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}
+              >
+                {t("newOrderVehicleInfoHint")}
+              </p>
             </div>
           </section>
 

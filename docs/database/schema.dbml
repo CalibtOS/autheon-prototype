@@ -97,6 +97,14 @@ Enum cancellation_actor {
   customer
 }
 
+// Important vehicle info (Design Direction Board 07/2026 §5; resolved 2026-07-14
+// via prd.json resolved_defaults.vehicle_important_info_v1). Nullable on jobs —
+// null means "not specified"; never required for publish/direct assign.
+Enum vehicle_registration_status {
+  registered
+  deregistered
+}
+
 Enum master_data_change_type {
   bank_details
   address
@@ -209,6 +217,11 @@ Table jobs {
   licenseplate varchar(32)
   vin varchar(17)
   axle_type varchar(32) [not null]
+  // Important vehicle info — optional announcement metadata (DDB 07/2026 §5);
+  // shown as text tags on marketplace cards/detail; no filter dimension in V1
+  vehicle_registration_status vehicle_registration_status // nullable = not specified
+  electric_vehicle boolean [not null, default: false]
+  red_license_plates boolean [not null, default: false]
   internal_notes text
   driver_visible_notes text
   // Determines publish flow and notification strategy

@@ -1,7 +1,7 @@
 # AUTHEON — Design Direction Board Prototype Remediation
 
-> **Status:** v1.0 — 2026-07-14. Implementation pass following [`design-direction-board-audit.md`](design-direction-board-audit.md).
-> **Scope:** presentation-only changes to `prototype/project/` (`styles.css`, `driver.jsx`, `admin.jsx`, `AUTHEON Prototype.html`, `manifest.webmanifest`, two i18n casing strings). `store.js`, workflows, statuses, permissions, and PRD behavior untouched — verified by `_audit-prototype.mjs` (AUDIT PASS) and `_verify-seed.mjs` (all checks passed) after the change.
+> **Status:** v1.1 — 2026-07-14. Implementation pass following [`design-direction-board-audit.md`](design-direction-board-audit.md); rows R17–R21 added the same day after the client PDF arrived (reference card layout, important-vehicle-info fields, header KPIs).
+> **Scope:** R1–R16 are presentation-only. R18/R19 additionally add the **client-directed optional vehicle-info fields** (`registrationStatus`, `electricVehicle`, `redPlates`) to the prototype store seeds/form mapping, mirrored in `prd.json` (`resolved_defaults.vehicle_important_info_v1`), `schema.dbml`, and `logical-model.md`. Workflows, statuses, permissions, and all other PRD behavior untouched — verified by `_audit-prototype.mjs` (AUDIT PASS) and `_verify-seed.mjs` (all checks passed) after every change.
 > **Evidence:** [`audit-2026-07-14/before/`](audit-2026-07-14/before/) vs [`audit-2026-07-14/after/`](audit-2026-07-14/after/) — driver = phone frame (392×800) light+dark, admin = 1440px light+dark, captured with `prototype/project/_capture-design-audit.mjs`.
 
 ## Change log
@@ -24,6 +24,11 @@
 | R14 | Both | `styles.css` `.scroll-body`, `.pwa-detail-body`, `.admin` | §E canvas `#F5F5F7` | Detail/list/admin canvases used `#f1f5f9` | Unified on `--canvas` `#F5F5F7`; `--paper-2` reserved for inset panels | `after/driver-job-unlocked-light.png`, `after/admin-overview-light-1440.png` | |
 | R15 | Driver (PWA chrome) | `AUTHEON Prototype.html` meta, `manifest.webmanifest` | §B no large purple surfaces | `theme_color #6F29FF` painted browser/OS chrome purple | Light `theme_color` → `#FFFFFF` (dark stays `#1C1C1E`) | — (OS-level) | Brand purple stays in the app icon itself |
 | R16 | Driver | `styles.css` labels (`.bottom-price-info .label`, `.price-label`, `.contact-role`, `.cancellation-card-title`, `.category-group-label`, `.list-end`, `.toast .sub`, `.sort-dropdown-head`, `.mdr-*`, `.dash-area`, `.label.pill-muted`, disabled slide track), `driver.jsx` correction chip | §D uppercase/mono only for data | Assorted uppercase/mono micro-labels | Sentence-case sans captions, weight 500 | `after/driver-job-locked-light.png`, `after/driver-profile-light.png` | Retained uppercase set: admin nav eyebrow/section, tiny "New" tag, demo chrome tags |
+| R17 | Marketplace + My Jobs | `driver.jsx` (`JobCardBody`), `styles.css` | PDF p.5–6 reference card; §5 route text line | Vertical timeline card with times column | Client reference layout: `City → City` route line with PLZ beneath, distance under the arrow, two-column Pickup/Delivery legs (pin icon + `date · window`), footer `vehicle \| info tags \| axle chip \| price right` | `after/driver-marketplace-light.png`, `after/driver-myjobs-light.png` (+dark) | One shared body for both lists; old timeline CSS removed |
+| R18 | Marketplace, My Jobs, job detail, admin detail | `store.js`, `driver.jsx`, `admin.jsx`, `i18n.js` | §5 "Wichtige Info (Zugelassen / Abgemeldet / E-Fahrzeug / Rote Kennzeichen)" | No vehicle-info data or display anywhere | `registrationStatus`/`electricVehicle`/`redPlates` job fields (seeded on 0847/0844/0848); icon+text tags on cards (E-vehicle icon purple per reference), kv row in driver vehicle detail, pill row in admin detail | `after/driver-marketplace-light.png`, `after/driver-myjobs-light.png` | Resolved via `prd.json` `vehicle_important_info_v1` + `schema.dbml`; text label always present |
+| R19 | Admin job creation | `admin.jsx` (Vehicle section 04), `i18n.js` | §5 + client direction: announce vehicle info at creation | No way to capture vehicle info | "Important vehicle info" block: Not specified / Registered / Deregistered segmented control + E-vehicle and Red plates toggle chips + helper hint; flows through `saveDraft`/`jobToDraftForm` | `after/admin-new-order-vehicle-light-1440.png` | Optional — never blocks Save Draft/Publish/Assign |
+| R20 | Marketplace header | `driver.jsx` (Portal), `styles.css` `.kpi-row/.kpi-chip`, `i18n.js` | PDF §4 reduced dashboard character | No KPIs | Quiet chip row: Available / Booked / Open documents (`--canvas` chips, 600 numbers) | `after/driver-marketplace-light.png` | Counts derived from existing store data |
+| R21 | Evidence tooling | `prototype/project/_capture-design-audit.mjs` | Evidence coverage | — | Capture script extended with the admin job-creation Vehicle-section shot | `after/admin-new-order-vehicle-light-1440.png` | — |
 
 ## UI/UX quality checklist (per adjusted screen)
 
@@ -51,12 +56,13 @@ Checked against the rendered `after/` captures:
 
 ## Intentionally NOT changed (client / PRD decisions)
 
-1. **Fixed vs floating bottom nav** — floating geometry preserved, restyled only.
-2. **Registered/deregistered, EV, red-plate card tags** — no domain data; PRD open question; not invented.
+*(Updated 2026-07-14 after the client PDF arrived: former items "registered/deregistered tags" and "header KPI row" are now implemented — see R18–R20.)*
+
+1. **Fixed vs floating bottom nav** — floating geometry preserved, restyled only (PDF §6: to be decided together in the first looks).
+2. **Primary button color** — the PDF button board (p.6) shows a near-black Primär button; §2 allows purple for primary CTAs. Purple kept until the client decides.
 3. **Orange `--cta` binding treatment vs purple primaries** — inconsistent state documented in brand-tokens; not unified without client approval.
 4. **Animated Autheon mark** in the active nav tab — deliberate recent addition; infinite decorative motion flagged (audit #29) but kept pending review. It adapts to the new neutral active colors and stops under `prefers-reduced-motion`.
-5. **Header KPI row** — optional per board; not added.
-6. **Retained uppercase set** (admin nav eyebrow/section, "New" tag, demo chrome) — pending client confirmation of the permitted list.
+5. **Retained uppercase set** (admin nav eyebrow/section, "New" tag, demo chrome) — pending client confirmation of the permitted list.
 
 ## Remaining visual risks
 

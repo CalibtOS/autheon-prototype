@@ -23,10 +23,10 @@ Standard viewports/themes — every capture states both:
 | `marketplace-light.png` / `marketplace-dark.png` | Driver → Marketplace tab | default card content, white card on `#F5F5F7`, compensation right, filters/sort at top, bottom nav inactive+active |
 | `marketplace-long-cities-light.png` | Marketplace with the longest seeded city names | truncation/wrapping of route lines |
 | `marketplace-diff-dates-light.png` | Card whose pickup/delivery dates differ (e.g. 23.04. → 24.04.) | both dates + windows visible |
-| `marketplace-metadata-light.png` | Card with all supported metadata (vehicle, model, axle; conditional flags only if data exists) | metadata tag row |
+| `marketplace-metadata-light.png` | Card with important-vehicle-info tags set (seed tours 0847/0844: Registered · Deregistered + Red plates; My Jobs 0848: Registered + E-vehicle) | vehicle model, info tags, axle chip |
 | `marketplace-status-light.png` | Any marketplace card | status pill with text label |
 | `filters-sheet-light.png` | Marketplace → filter button (top) | filter sheet, top-of-screen entry point |
-| `header-kpi-light.png` | Marketplace header | restrained header; KPI row only if client-approved |
+| `header-kpi-light.png` | Marketplace header | restrained KPI chip row (Available / Booked / Open documents) |
 | `job-locked-light.png` | Marketplace → tap published job | locked detail, masked data, secondary buttons |
 | `job-unlocked-light.png` | My Jobs → active job | unlocked detail, contacts, docs, status pill |
 | `slide-confirm-light.png` | Job locked → Accept | slide-to-confirm resting state |
@@ -65,5 +65,6 @@ Dark captures are required wherever a screen has dark-specific styling; otherwis
 ## Open design decisions affecting baselines
 
 - Fixed vs floating bottom navigation (currently floating) — re-baseline `bottomnav-*` when decided.
-- Registered/deregistered as V1 data — `marketplace-metadata-*` gains those tags only after the PRD decision.
-- Header KPI row — capture only if the client requests KPIs.
+- Primary button color (dark per PDF button board vs purple per §2) — re-baseline detail/footer CTAs when decided.
+
+Admin captures also include `admin-new-order-vehicle-light-1440.png` (job-creation Vehicle section with the important-vehicle-info controls).

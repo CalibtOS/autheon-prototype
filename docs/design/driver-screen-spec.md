@@ -38,29 +38,34 @@ Rules (Design Direction Board §H):
 
 ---
 
-## Marketplace job card (required content)
+## Marketplace job card (client reference layout — DDB p.5–6)
 
-Where the underlying data exists, each card makes directly visible:
+Implemented as `JobCardBody` (`driver.jsx`), shared by Marketplace and My Jobs:
+
+1. **Header row** — `Tour #…` (muted) + text-labelled status pill (board §4 requires status in lists).
+2. **Route line** — `München → Berlin` as a plain text line (17px/600), PLZ beneath each city, distance small and muted under the arrow.
+3. **Legs** — two columns *Pickup / Delivery*: purple pin icon + 500-weight label, then `date · window` (`Flexible` fallback) in tabular figures.
+4. **Footer** — vehicle icon + model · **important vehicle info tags** · axle chip (gray, `--canvas`) · **price right** (19px/600, factual).
 
 | Slot | Content | Source |
 |------|---------|--------|
-| Route | Pickup city + PLZ ↕ delivery city + PLZ, immediately readable (`München → Berlin` reading order) | `startCity/startPlz/endCity/endPlz` |
-| Schedule | Pickup date + time window, delivery date + time window (`Flexible` fallback) | `pickup/delivery` |
-| Vehicle | Vehicle type + model, axle type | `vehicle/vehicleModel/axle` |
-| Status | Operational status as a **text-labelled** pill (marketplace cards: `Published`) | `status` |
-| Compensation | Driver offer, prominent, factual (no promotional styling), placed **right / center-right** | `driverOffer` |
-| Conditional flags | Registered/deregistered, electric vehicle, red license plates — **only if the domain model provides the data** | — (see scope guard) |
+| Route | Pickup city + PLZ → delivery city + PLZ | `startCity/startPlz/endCity/endPlz` |
+| Schedule | Pickup date + window, delivery date + window | `pickup/delivery` |
+| Vehicle | Model (icon carries type), axle chip | `vehicleModel/vehicle/axle` |
+| Status | Text-labelled pill (`Published` on marketplace) | `status` |
+| Compensation | Driver offer, right-placed, premium/factual | `driverOffer` |
+| Important vehicle info | `Registered` / `Deregistered` / `E-vehicle` / `Red plates` — icon + text tags, rendered only when set | `registrationStatus/electricVehicle/redPlates` |
 
-**Scope guard:** the PRD tracks registered/deregistered as an open V1 question. Do not add backend fields, persistence, filters, or acceptance criteria for these flags; they are conditional UI metadata pending the PRD decision. There is no red-license-plate domain field — treat as conditional vehicle/order metadata only when supported by existing data.
+**Vehicle info fields (resolved 2026-07-14):** `registrationStatus` (`registered`\|`deregistered`\|null), `electricVehicle`, `redPlates` are optional V1 job fields per `prd.json` → `resolved_defaults.vehicle_important_info_v1` (client DDB §5 + direction). They are announcement metadata: set in the admin job form Vehicle section, shown on cards and in the vehicle detail (driver + admin), never required for publish and never a filter dimension in V1. Text label always present — the icon supports, it never replaces the label.
 
-Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline and/or very subtle shadow, calm spacing with useful density; small supporting icons allowed where they aid comprehension; cards (not a desktop table) are the marketplace idiom.
+Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline and/or very subtle shadow, calm spacing with useful density; small supporting icons only where they aid comprehension; cards (not a desktop table) are the marketplace idiom.
 
 ---
 
 ## Header & KPIs
 
 - Marketplace header: greeting/avatar, notifications bell, screen title, sort + filter controls, applied-filter chips. Restrained — orientation without dashboard weight.
-- The board *permits* (does not require) small KPIs (available jobs, booked jobs, open supporting documents). Currently not implemented; add only on client request and keep them small and quiet.
+- **KPI row (implemented per PDF §4 — "reduzierter Dashboard-Charakter"):** three quiet chips — Available (published jobs), Booked (own assigned/accepted), Open documents (tours needing document correction). `--canvas` chips, 12px labels, 600-weight numbers; never dominant.
 
 ---
 

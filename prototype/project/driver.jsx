@@ -750,17 +750,129 @@ const TabBar = ({ tab, setTab }) => {
   );
 };
 
-const renderTimeDate = (loc, t) => {
-  if (!loc) return null;
-  const time = loc.windowFlex
-    ? t("flexible")
-    : loc.windowFrom || loc.windowTo || "";
+// Compact leg line for job cards: "23.04. · 08:00–12:00" (or "Flexible")
+const legWhen = (loc, t) => {
+  if (!loc) return "—";
   const date = loc.date || "";
+  const win = loc.windowFlex
+    ? t("flexible")
+    : [loc.windowFrom, loc.windowTo].filter(Boolean).join("–");
+  return [date, win].filter(Boolean).join(" · ") || "—";
+};
+
+// Small supporting icons for the important-vehicle-info tags (board §5)
+const FlagIc = {
+  Bolt: () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2z" />
+    </svg>
+  ),
+  CheckCircle: () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path d="m8.2 12.4 2.6 2.6 5-5.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  Slash: () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M6 6l12 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  ),
+  Plate: () => (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="2.5" y="8" width="19" height="8.5" rx="2" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M6.5 11v2.6M10 11v2.6M13.5 11v2.6M17 11v2.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  ),
+};
+
+// Important vehicle info (registered / deregistered / e-vehicle / red plates).
+// Optional announcement metadata — renders nothing when unset.
+const vehicleInfoFlags = (job, t) => {
+  const flags = [];
+  if (job.registrationStatus === "registered")
+    flags.push({ key: "registered", Icon: FlagIc.CheckCircle, label: t("vehicleInfoRegistered") });
+  if (job.registrationStatus === "deregistered")
+    flags.push({ key: "deregistered", Icon: FlagIc.Slash, label: t("vehicleInfoDeregistered") });
+  if (job.electricVehicle)
+    flags.push({ key: "electric", Icon: FlagIc.Bolt, label: t("vehicleInfoElectric") });
+  if (job.redPlates)
+    flags.push({ key: "redPlates", Icon: FlagIc.Plate, label: t("vehicleInfoRedPlates") });
+  return flags;
+};
+
+const VehicleFlagTags = ({ job }) => {
+  const { t } = useI18n();
+  const flags = vehicleInfoFlags(job, t);
+  if (!flags.length) return null;
   return (
-    <div className="jobcard-time-row">
-      <div className="time-val">{time}</div>
-      <div className="date-val">{date}</div>
-    </div>
+    <>
+      {flags.map(({ key, Icon, label }) => (
+        <span key={key} className={`vehicle-flag ${key}`}>
+          <Icon /> {label}
+        </span>
+      ))}
+    </>
+  );
+};
+
+// Shared card body (marketplace + My Jobs) — client reference layout
+// (Design Direction Board p.5): route line, pickup/delivery legs,
+// footer meta + price right.
+const JobCardBody = ({ job }) => {
+  const { t } = useI18n();
+  return (
+    <>
+      <div className="jobcard-route-line">
+        <div className="route-city start">
+          <div className="route-city-name">{job.startCity}</div>
+          <div className="route-city-plz">{job.startPlz}</div>
+        </div>
+        <div className="route-mid" aria-hidden="true">
+          <span className="route-arrow">→</span>
+          {job.distanceKm ? (
+            <span className="route-distance">{job.distanceKm} km</span>
+          ) : null}
+        </div>
+        <div className="route-city end">
+          <div className="route-city-name">{job.endCity}</div>
+          <div className="route-city-plz">{job.endPlz}</div>
+        </div>
+      </div>
+      <div className="jobcard-legs">
+        <div className="jobcard-leg">
+          <span className="leg-label">
+            <Ic.Map /> {t("pickup")}
+          </span>
+          <div className="leg-when">{legWhen(job.pickup, t)}</div>
+        </div>
+        <div className="jobcard-leg">
+          <span className="leg-label">
+            <Ic.Map /> {t("delivery")}
+          </span>
+          <div className="leg-when">{legWhen(job.delivery, t)}</div>
+        </div>
+      </div>
+      <hr className="jobcard-divider" />
+      <div className="jobcard-footer">
+        <div className="jobcard-meta">
+          <span className="vehicle-meta">
+            {job.vehicle === "Light truck <3.5t" ? <Ic.Truck /> : <Ic.Van />}
+            {job.vehicleModel && job.vehicleModel !== "—"
+              ? job.vehicleModel
+              : displayVehicle(job.vehicle, t)}
+          </span>
+          <VehicleFlagTags job={job} />
+          <span className="axle-chip">{displayAxle(job.axle, t)}</span>
+        </div>
+        <div className="jobcard-price tnum">
+          {F().formatMoney
+            ? F().formatMoney(fmtDriverOffer(job))
+            : `€ ${fmtDriverOffer(job).toFixed(2)}`}
+        </div>
+      </div>
+    </>
   );
 };
 
@@ -768,68 +880,14 @@ const renderTimeDate = (loc, t) => {
 // PORTAL (job list)
 // =========================================================================
 const JobCard = ({ job, onOpen }) => {
-  const { t } = useI18n();
-
   return (
-    <button
-      type="button"
-      className="jobcard-btn"
-      onClick={() => onOpen(job)}
-    >
-      {/* Board §F: operational status is directly visible on the card
-          (text-labelled pill from existing job.status — no new data) */}
+    <button type="button" className="jobcard-btn" onClick={() => onOpen(job)}>
+      {/* Board §F/§4: tour identity + text-labelled operational status */}
       <div className="jobcard-header-row">
         <span className="jobcard-tour-num">Tour #{job.tour}</span>
         <Pill status={job.status} />
       </div>
-      <div className="jobcard-main-grid">
-        <div className="jobcard-route-col">
-          <div className="jobcard-timeline">
-            <span className="timeline-dot start"></span>
-            <span className="timeline-line"></span>
-            <span className="timeline-dot end"></span>
-          </div>
-          <div className="jobcard-cities">
-            <div className="city-row">
-              <div className="city-name">{job.startCity}</div>
-              <div className="city-pc">
-                {t("postalCodeAbbr")}: {job.startPlz}
-              </div>
-            </div>
-            <div className="distance-row">{job.distanceKm}km</div>
-            <div className="city-row">
-              <div className="city-name">{job.endCity}</div>
-              <div className="city-pc">
-                {t("postalCodeAbbr")}: {job.endPlz}
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="jobcard-times-col">
-          {renderTimeDate(job.pickup, t)}
-          <div className="jobcard-time-spacer"></div>
-          {renderTimeDate(job.delivery, t)}
-        </div>
-      </div>
-      <hr className="jobcard-divider" />
-      <div className="jobcard-footer">
-        <div className="jobcard-vehicle">
-          <div className="vehicle-icon-wrapper">
-            {job.vehicle === "Light truck <3.5t" ? <Ic.Truck /> : <Ic.Van />}
-          </div>
-          <div>
-            <div className="vehicle-desc">
-              {displayVehicle(job.vehicle, t)} • {job.vehicleModel}
-            </div>
-            <div className="vehicle-axle">{displayAxle(job.axle, t)}</div>
-          </div>
-        </div>
-        <div className="jobcard-price-pill">
-          {F().formatMoney
-            ? F().formatMoney(fmtDriverOffer(job))
-            : `€ ${fmtDriverOffer(job).toFixed(2)}`}
-        </div>
-      </div>
+      <JobCardBody job={job} />
     </button>
   );
 };
@@ -931,6 +989,13 @@ const Portal = ({
   const unreadNotif = store.getDriverNotificationUnreadCount();
   const all = store.getJobs().filter((j) => j.status === "published");
   const filtered = all.filter((j) => jobMatchesDriverFilters(j, filters));
+  const mineJobs = store.getJobs().filter((j) => store.isMineJob(j));
+  const bookedCount = mineJobs.filter((j) =>
+    ["assigned", "accepted"].includes(j.status),
+  ).length;
+  const openDocsCount = mineJobs.filter((j) =>
+    jobNeedsDocCorrection(j, store),
+  ).length;
 
   const ordered = filtered.slice().sort((a, b) => {
     if (sortBy === "date_asc") {
@@ -1062,6 +1127,22 @@ const Portal = ({
                 </span>
               ) : null}
             </button>
+          </div>
+        </div>
+
+        {/* Restrained header KPIs — reduced dashboard character (board §4) */}
+        <div className="kpi-row">
+          <div className="kpi-chip">
+            <span className="kpi-num tnum">{all.length}</span>
+            <span className="kpi-label">{t("kpiAvailableJobs")}</span>
+          </div>
+          <div className="kpi-chip">
+            <span className="kpi-num tnum">{bookedCount}</span>
+            <span className="kpi-label">{t("kpiBookedJobs")}</span>
+          </div>
+          <div className="kpi-chip">
+            <span className="kpi-num tnum">{openDocsCount}</span>
+            <span className="kpi-label">{t("kpiOpenDocuments")}</span>
           </div>
         </div>
 
@@ -1461,6 +1542,14 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
               <div className="label">{t("axle")}</div>
               <div className="value">{displayAxle(job.axle, t)}</div>
             </div>
+            {vehicleInfoFlags(job, t).length ? (
+              <div className="detail-kv-row">
+                <div className="label">{t("vehicleInfoLabel")}</div>
+                <div className="value jobcard-meta">
+                  <VehicleFlagTags job={job} />
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -2416,6 +2505,14 @@ const JobUnlocked = ({
               <div className="label">{t("axle")}</div>
               <div className="value">{displayAxle(job.axle, t)}</div>
             </div>
+            {vehicleInfoFlags(job, t).length ? (
+              <div className="detail-kv-row">
+                <div className="label">{t("vehicleInfoLabel")}</div>
+                <div className="value jobcard-meta">
+                  <VehicleFlagTags job={job} />
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -2798,74 +2895,22 @@ const MyJobs = ({ onOpen }) => {
                 )}
               </div>
             </div>
-            <div className="jobcard-main-grid">
-              <div className="jobcard-route-col">
-                <div className="jobcard-timeline">
-                  <span className="timeline-dot start"></span>
-                  <span className="timeline-line"></span>
-                  <span className="timeline-dot end"></span>
-                </div>
-                <div className="jobcard-cities">
-                  <div className="city-row">
-                    <div className="city-name">{job.startCity}</div>
-                    <div className="city-address">
-                      {job.startStreet} · {job.startPlz} {job.startCity}
-                    </div>
-                  </div>
-                  <div className="distance-row">{job.distanceKm}km</div>
-                  <div className="city-row">
-                    <div className="city-name">{job.endCity}</div>
-                    <div className="city-address">
-                      {job.endStreet} · {job.endPlz} {job.endCity}
-                    </div>
-                  </div>
-                </div>
+            <JobCardBody job={job} />
+            {jobNeedsDocCorrection(job, store) ? (
+              <div className="stack-8">
+                <span
+                  className="chip"
+                  style={{
+                    borderColor: "var(--st-cancelled)",
+                    color: "var(--st-cancelled)",
+                    fontSize: 11,
+                    padding: "1px 6px",
+                  }}
+                >
+                  {t("correctionRequiredBadge")}
+                </span>
               </div>
-              <div className="jobcard-times-col">
-                {renderTimeDate(job.pickup, t)}
-                <div className="jobcard-time-spacer"></div>
-                {renderTimeDate(job.delivery, t)}
-              </div>
-            </div>
-            <hr className="jobcard-divider" />
-            <div className="jobcard-footer">
-              <div className="jobcard-vehicle">
-                <div className="vehicle-icon-wrapper">
-                  {job.vehicle === "Light truck <3.5t" ? (
-                    <Ic.Truck />
-                  ) : (
-                    <Ic.Van />
-                  )}
-                </div>
-                <div>
-                  <div className="vehicle-desc">
-                    {displayVehicle(job.vehicle, t)} • {job.vehicleModel}
-                  </div>
-                  <div className="vehicle-axle">
-                    {displayAxle(job.axle, t)}
-                    {jobNeedsDocCorrection(job, store) ? (
-                      <span
-                        className="chip"
-                        style={{
-                          borderColor: "var(--st-cancelled)",
-                          color: "var(--st-cancelled)",
-                          marginLeft: 6,
-                          fontSize: 11,
-                          padding: "1px 6px",
-                        }}
-                      >
-                        {t("correctionRequiredBadge")}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-              <div className="jobcard-price-pill">
-                {F().formatMoney
-                  ? F().formatMoney(fmtDriverOffer(job))
-                  : `€ ${fmtDriverOffer(job).toFixed(2)}`}
-              </div>
-            </div>
+            ) : null}
           </button>
         ))}
         {filteredList.length > 0 ? (

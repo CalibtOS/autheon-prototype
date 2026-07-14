@@ -112,6 +112,15 @@ for (const theme of ["light", "dark"]) {
     await page.locator(".tbl tr.row").first().click();
     await page.waitForTimeout(600);
     await shotFull(page, `admin-job-detail-${theme}-1440.png`);
+
+    // Admin job creation — Vehicle section (important vehicle info controls)
+    await page.locator(".admin-nav .nav-item").first().click(); // back to Jobs overview
+    await page.waitForTimeout(500);
+    await page.getByRole("button", { name: /New job/i }).click();
+    await page.waitForTimeout(600);
+    await page.locator("#sec-04").scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
+    await shotFull(page, `admin-new-order-vehicle-${theme}-1440.png`);
   }
 
   await ctx.close();

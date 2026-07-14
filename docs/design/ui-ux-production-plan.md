@@ -26,7 +26,8 @@ Canonical sections (do not duplicate the rules — reference them):
 | Baseline captures + visual assertions | [`screenshots/README.md`](screenshots/README.md) |
 | Item-by-item compliance status & open client decisions | [`design-direction-board-audit.md`](design-direction-board-audit.md) |
 
-**Open client decisions** (do not resolve silently): fixed vs floating bottom nav · permitted uppercase meta labels · registered/deregistered as V1 field (PRD) · orange `--cta` binding treatment · animated nav logo mark · optional header KPIs.
+**Open client decisions** (do not resolve silently): fixed vs floating bottom nav · permitted uppercase meta labels · **primary button color (dark per PDF button board vs purple per §2)** · orange `--cta` binding treatment · animated nav logo mark.
+**Resolved 2026-07-14:** registered/deregistered + e-vehicle + red plates = optional V1 job fields (`prd.json` `vehicle_important_info_v1`); header KPI row implemented per PDF §4. The client PDF lives at [`../../Design Direction Board.pdf`](../../Design%20Direction%20Board.pdf).
 
 ---
 
@@ -293,7 +294,8 @@ Per §5: all 4 tab items labeled (Marketplace / My jobs / Info / Profile), `aria
 19. Navigation: neutral driver tab-bar surface + active marker; neutral admin sidebar active (audit #7–9). ✅ 2026-07-14
 20. Surfaces: unified `--canvas` app background, neutral hover wash/shadows/toast, moderate radii, gray secondary-button outline (audit #6, 12–14, 27). ✅ 2026-07-14
 21. Marketplace card: status pill + tour number from existing data; conditional metadata stays pending PRD (audit #15/17/19). ✅ 2026-07-14
-22. Items intentionally **not** implemented pending client/PRD decisions: §0 list (fixed/floating nav, uppercase set, registered/deregistered, `--cta` orange, animated nav mark, KPIs).
+22. Items intentionally **not** implemented pending client/PRD decisions: §0 open-decision list (fixed/floating nav, uppercase set, primary-button color, `--cta` orange, animated nav mark).
+23. Client PDF received (same day): marketplace/My-Jobs cards rebuilt to the reference layout (route text line, pickup/delivery legs, footer meta + right price); important-vehicle-info tags implemented end-to-end (PRD/schema resolved, admin form controls, card + detail rendering); restrained header KPI row added. ✅ 2026-07-14
 
 **Functionality guarantee:** every W-item is a presentation/markup change on top of the existing store logic (`store.js` untouched); flows, business rules, and i18n keys are preserved — copy changes go through `i18n.js` (EN+DE) only. Re-run `node project/_audit-prototype.mjs` + `_verify-seed.mjs` after each phase to prove PRD behavior is intact.
 

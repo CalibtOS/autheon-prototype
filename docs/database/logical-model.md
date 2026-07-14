@@ -157,6 +157,10 @@ Keycloak is the identity source of truth for authentication. Application service
 
 Marketplace queries must project a deliberately reduced view. They must not return full locations, contacts, vehicle identifiers, customer details, internal notes, or PDFs before acceptance. The base `jobs` and `job_locations` tables are never exposed directly to an untrusted driver client.
 
+## Important vehicle info (Design Direction Board 07/2026)
+
+`jobs.vehicle_registration_status` (`registered` | `deregistered`, nullable = not specified), `jobs.electric_vehicle` (boolean, default false), and `jobs.red_license_plates` (boolean, default false) are optional announcement metadata, resolved 2026-07-14 (see `prd.json` → `resolved_defaults.vehicle_important_info_v1`). They are captured in the admin job form's Vehicle section and — unlike VIN and license plate — are **included in the reduced marketplace projection** pre-acceptance: they are decision-relevant for service partners and non-sensitive. They drive no marketplace filter, publish validation, or acceptance rule in V1, and red plates remain order-level metadata (no separate vehicle entity).
+
 ## Open decisions that affect the physical schema
 
 | Decision                | Current schema position                                                                                                                                             | Approval needed                                                                                                  |

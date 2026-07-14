@@ -735,141 +735,181 @@ textarea.input {
   /* Driver uses same brand tokens as :root */
 }
 
-/* JobCard Redesign Styles */
+/* Job card — client reference layout (Design Direction Board §5, p.5–6):
+   route text line "City → City" with PLZ beneath, two-column pickup/delivery
+   legs, footer with vehicle · important-info tags · axle chip · price right. */
 .phone-shell .jobcard {
   border-radius: var(--r-4); /* moderate rounding (board §E) */
 }
-.phone-shell .jobcard-main-grid {
+.phone-shell .jobcard-route-line {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto 1fr;
   gap: 12px;
   align-items: start;
+  margin-top: 2px;
 }
-.phone-shell .jobcard-route-col {
-  display: flex;
-  gap: 12px;
-  position: relative;
+.phone-shell .jobcard-route-line .route-city.end {
+  text-align: right;
 }
-.phone-shell .jobcard-timeline {
+.phone-shell .jobcard-route-line .route-city-name {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.phone-shell .jobcard-route-line .route-city-plz {
+  font-size: var(--text-caption);
+  color: var(--muted);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.phone-shell .jobcard-route-line .route-mid {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding: 4px 0;
-  width: 10px;
+  gap: 2px;
+  padding-top: 3px;
+}
+.phone-shell .jobcard-route-line .route-arrow {
+  font-size: 16px;
+  color: var(--text);
+  line-height: 1;
+}
+.phone-shell .jobcard-route-line .route-distance {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.phone-shell .jobcard-legs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+.phone-shell .jobcard-leg .leg-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-caption);
+  font-weight: 500;
+  color: var(--text);
+}
+.phone-shell .jobcard-leg .leg-label svg {
+  color: var(--primary); /* small supporting icon (board §5) */
   flex-shrink: 0;
 }
-.phone-shell .jobcard-timeline .timeline-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-.phone-shell .jobcard-timeline .timeline-dot.start {
-  background: var(--primary);
-}
-.phone-shell .jobcard-timeline .timeline-dot.end {
-  background: var(--ink);
-}
-.phone-shell .jobcard-timeline .timeline-line {
-  flex: 1;
-  width: 0;
-  border-left: 2px dashed var(--line);
-  margin: 6px 0;
-}
-.phone-shell .jobcard-cities {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-.phone-shell .jobcard-cities .city-row {
-  display: flex;
-  flex-direction: column;
-}
-.phone-shell .jobcard-cities .city-name {
-  font-size: 14px;
-  font-weight: 600;
+.phone-shell .jobcard-leg .leg-when {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text);
+  font-variant-numeric: tabular-nums;
   line-height: 1.4;
-}
-.phone-shell .jobcard-cities .city-pc {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.3;
-}
-.phone-shell .jobcard-cities .distance-row {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text);
-  margin: -4px 0;
-}
-.phone-shell .jobcard-times-col {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  text-align: right;
-  gap: 32px;
-}
-.phone-shell .jobcard-time-row {
-  display: flex;
-  flex-direction: column;
-}
-.phone-shell .jobcard-time-row .time-val {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1.4;
-}
-.phone-shell .jobcard-time-row .date-val {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.3;
-}
-.phone-shell .jobcard-time-spacer {
-  height: 0;
 }
 .phone-shell .jobcard-divider {
   border: 0;
   border-top: 1px solid var(--line);
-  margin: 16px 0;
+  margin: 14px 0 12px;
 }
 .phone-shell .jobcard-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
 }
-.phone-shell .jobcard-vehicle {
+.phone-shell .jobcard-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+  row-gap: 6px;
+  min-width: 0;
 }
-.phone-shell .jobcard-vehicle .vehicle-icon-wrapper {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+.phone-shell .vehicle-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.phone-shell .vehicle-meta svg {
+  color: var(--text);
+  flex-shrink: 0;
+}
+/* Important vehicle info tag (Registered / Deregistered / E-vehicle / Red
+   plates) — text label always present; icon supports, never replaces it. */
+.phone-shell .vehicle-flag:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+.phone-shell .vehicle-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  padding-left: 8px;
+  border-left: 1px solid var(--line);
+}
+.phone-shell .vehicle-flag svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.phone-shell .vehicle-flag.electric svg {
+  color: var(--primary); /* restrained accent per client reference card */
+}
+.phone-shell .axle-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
   background: var(--canvas);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text);
+  border-radius: var(--r-2);
+  padding: 4px 9px;
+  white-space: nowrap;
 }
-.phone-shell .jobcard-vehicle .vehicle-desc {
-  font-size: 14px;
+.phone-shell .jobcard-price {
+  font-size: 19px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--text);
-  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
-.phone-shell .jobcard-vehicle .vehicle-axle {
+
+/* Header KPI row — reduced dashboard character (board §4) */
+.phone-shell .kpi-row {
+  display: flex;
+  gap: 8px;
+}
+.phone-shell .kpi-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  background: var(--canvas);
+  border-radius: 10px;
+  padding: 6px 10px;
   font-size: 12px;
   color: var(--muted);
-  line-height: 1.3;
+  white-space: nowrap;
+  min-width: 0;
 }
-.phone-shell .jobcard-price-pill {
-  background: var(--canvas);
-  color: var(--text);
+.phone-shell .kpi-chip .kpi-num {
   font-size: 14px;
   font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 9999px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.phone-shell .kpi-chip .kpi-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Tabbar Redesign Styles */
@@ -1452,20 +1492,6 @@ textarea.input {
 .phone-shell .unlocked-route-timeline .city-address {
   font-size: 12px;
   color: var(--muted);
-}
-/* JobCard address sublines truncate — full address lives in the
-   detail view; wrapping orphaned the city under the timeline (§7.2) */
-.phone-shell .jobcard-cities,
-.phone-shell .jobcard-cities .city-row {
-  min-width: 0;
-}
-.phone-shell .jobcard-cities .city-address {
-  font-size: var(--text-caption);
-  font-weight: 400;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .phone-shell .unlocked-route-timeline .map-link {
   font-size: 12px;

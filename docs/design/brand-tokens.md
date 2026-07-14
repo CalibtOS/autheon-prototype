@@ -73,6 +73,10 @@ These map 1:1 in `styles.css`:
 | `--line` | `#E5E5EA` | [CLIENT] | Default border |
 | `--cta` | `#EA580C` | [INTERNAL] | Binding actions — **status: under client review**, see below |
 
+### Button hierarchy (client button board, PDF p.6)
+
+Primär (filled) · Sekundär (white + fine gray outline) · Tertiär (text) · Deaktiviert · Mit-Icon variants. The board renders the **Primär button near-black**, while §2 permits `#6F29FF` for primary CTAs — the prototype keeps purple primaries until the client decides (**open decision: dark vs purple primary**). Secondary/tertiary/disabled treatments match the board.
+
 ### `--cta` orange — under review [INTERNAL]
 
 The orange binding-action rule is a **prototype invention** (functional semantic), not a Design Direction Board color. Implementation is currently inconsistent (accept / mark-performed render as purple primaries; only the overlap-confirm uses orange). It is *compatible* with the board (functional, restrained, text-labelled) but requires explicit client approval as the binding-CTA treatment. Until decided: keep the token, do not extend its use, do not present it as client-selected.

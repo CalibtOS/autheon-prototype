@@ -154,6 +154,11 @@ window.AuthStore = (() => {
       plate: "",
       vin: "",
       axle: AXLE_OWN,
+      // Important vehicle info (Design Direction Board §5 — optional metadata;
+      // PRD decision on required V1 persistence still open)
+      registrationStatus: null, // "registered" | "deregistered" | null
+      electricVehicle: false,
+      redPlates: false,
 
       revenue: null,
       driverOffer: null,
@@ -812,6 +817,7 @@ window.AuthStore = (() => {
         plate: "M-AB 1234",
         vin: "WVGZZZ5NZKW123456",
         axle: AXLE_OWN,
+        registrationStatus: "registered",
 
         revenue: 340,
         netAmount: 285.71,
@@ -852,6 +858,8 @@ window.AuthStore = (() => {
         plate: "HB-NF 848",
         vin: "TMBJH7NP8P0123848",
         axle: AXLE_OWN,
+        registrationStatus: "registered",
+        electricVehicle: true,
 
         revenue: 185,
         driverOffer: 145,
@@ -989,6 +997,8 @@ window.AuthStore = (() => {
         plate: "HH-MA 88",
         vin: "WVWZZZ6RZKY098765",
         axle: AXLE_THIRD,
+        registrationStatus: "deregistered",
+        redPlates: true,
         driverOffer: 165,
         revenue: 198,
         notes: "Marketplace preview tour Hamburg → Hannover.",
@@ -2283,6 +2293,9 @@ window.AuthStore = (() => {
       model: "",
       plate: job.plate || "",
       vin: job.vin || "",
+      registrationStatus: job.registrationStatus || "",
+      electricVehicle: !!job.electricVehicle,
+      redPlates: !!job.redPlates,
       cName1: pu.contactPerson || "",
       cPhone1: pu.phone || "",
       cName2: del.contactPerson || "",
@@ -2388,6 +2401,13 @@ window.AuthStore = (() => {
       plate: form.plate,
       vin: form.vin,
       axle: normalizeAxle(form.axle),
+      registrationStatus:
+        form.registrationStatus === "registered" ||
+        form.registrationStatus === "deregistered"
+          ? form.registrationStatus
+          : null,
+      electricVehicle: !!form.electricVehicle,
+      redPlates: !!form.redPlates,
       driverOffer: driverOffer,
       expenses:
         parseFloat(String(form.expenses || "").replace(",", ".")) || null,
