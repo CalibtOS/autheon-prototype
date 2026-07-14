@@ -1,5 +1,7 @@
 # AUTHEON database logical model
 
+> **Status override:** Updated 2026-07-14 - canonical job distance is stored only in `jobs.distance_km`. A manual override replaces that value and is preserved as an event in `job_distance_estimates`; it is not a second current column. The application source vocabulary is limited to `manual` or `calculated`. Recalculation is a command/history event and does not create a third status.
+
 > **Status override:** Updated 2026-07-10 - PRD v2.0: no structural schema change. `drivers.driver_code` is now documented as system-assigned, immutable, and never reused (F-03); per-leg time windows are same-day only with no cross-midnight window (F-04). Probation-only driver UI, Infopoint View/Download actions, and branding/domain/Report-Problem-timing are UI or open-question items with no data-model impact.
 
 > **Status override:** Updated 2026-07-09 - PRD v1.9 (F-01): driver acceptance limits changed from a per-calendar-day quota to a one-time probation model. `drivers.daily_job_limit` is replaced by `probation_job_limit` + `probation_cleared_at`; the `master_data_change_type.daily_limit_override` request flow is removed; the `app_settings` key `driver.acceptance.defaultDailyJobLimit` is renamed to `driver.acceptance.probationJobCount`, whose value is copied into `drivers.probation_job_limit` at driver creation.
@@ -67,6 +69,25 @@ The following maps every persisted prototype collection in `prototype/project/st
 No production table represents the prototype's former return-request/return-window flow. That is intentional: the current PRD replaces it with `job_problem_reports` for cancellation and not-performable handling.
 
 ## Tour data and historical truth
+
+### Canonical job distance
+
+`jobs.distance_km` is the single current distance consumed by job detail,
+marketplace and driver projections, exports, and generated transport orders.
+`jobs.distance_estimate_source` identifies only whether that current value was
+entered manually or calculated by a routing provider.
+
+Manual override and recalculation are commands, not parallel state. A manual
+override replaces `jobs.distance_km`; a later calculation may replace it only
+when explicitly requested. Both initial and repeated provider calculations use
+the source `calculated`. Each calculation or manual replacement appends a
+`job_distance_estimates` row with provider/profile, actor, timestamp, distance,
+and `is_manual_override`, which provides history without duplicating current
+state.
+
+The prototype's `distanceManualOverride` property remains demo UI state and is
+not a production database column. Production clients send a write-only manual
+override command and read only the canonical distance and source.
 
 ### Master-data references plus snapshots
 

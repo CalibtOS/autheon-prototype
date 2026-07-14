@@ -1,5 +1,6 @@
 ﻿// AUTHEON Version 1 database draft — PostgreSQL target.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
+// 2026-07-14 — unified current job distance in jobs.distance_km; manual override is a command/history event, not a second current column. Distance source is manual or calculated; recalculation remains a calculation event, not a separate status.
 // 2026-07-13 (PRD v2.0, F-01) — removed deprecated master_data_change_type.daily_limit_override enum value. Documented that drivers.probation_job_limit is a per-driver snapshot seeded at creation from app_settings 'driver.acceptance.probationJobCount' (application-layer default, literal column default is a fallback only); no structural change to columns.
 // Last updated: 2026-07-10 (PRD v2.0) — no structural change. Annotated drivers.driver_code semantics (F-03: system-assigned, immutable, never reused) and documented same-day per-leg time-window rule (F-04) in logical-model.md. Probation UI, Infopoint View/Download, branding/domain/Report-Problem-timing are UI/open items with no schema impact.
 // 2026-07-09 (PRD v1.9, F-01) — replaced drivers.daily_job_limit with the one-time probation model (probation_job_limit + probation_cleared_at); removed master_data_change_type.daily_limit_override; renamed app_settings key driver.acceptance.defaultDailyJobLimit -> driver.acceptance.probationJobCount.
@@ -203,8 +204,7 @@ Table jobs {
   operational_status job_status [not null, default: 'draft']
   current_driver_id uuid
   distance_km numeric(10,2)
-  distance_manual_override_km numeric(10,2)
-  distance_estimate_source varchar(100)
+  distance_estimate_source varchar(100) // nullable; allowed application values: manual, calculated
   vehicle_manufacturer varchar(128)
   vehicle_model varchar(255) [not null]
   vehicle_type varchar(100) [not null]
