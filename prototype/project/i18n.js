@@ -1087,8 +1087,8 @@ window.I18n = (() => {
       partnerTermsApply: "Driver terms apply.",
       partnerPolicyAlert:
         "Demo document: Driver terms are available in the Driver Info area and admin Documents module.",
-      slideAccepted: "ACCEPTED",
-      slideToConfirm: "SLIDE TO CONFIRM →",
+      slideAccepted: "Accepted",
+      slideToConfirm: "Slide to confirm →",
       operationalInstructions: "Operational instructions",
       noDriverAddons: "No driver-facing add-ons.",
       dispatchNotes: "Dispatch notes",
@@ -2297,8 +2297,8 @@ window.I18n = (() => {
       partnerTermsApply: "Es gelten die Fahrerbedingungen.",
       partnerPolicyAlert:
         "Demo-Dokument: Fahrerbedingungen sind im Fahrer-Infobereich und im Admin-Dokumentenmodul verfügbar.",
-      slideAccepted: "ANGENOMMEN",
-      slideToConfirm: "ZUM BESTÄTIGEN SCHIEBEN →",
+      slideAccepted: "Angenommen",
+      slideToConfirm: "Zum Bestätigen schieben →",
       operationalInstructions: "Operative Hinweise",
       noDriverAddons: "Keine fahrerseitigen Zusatzhinweise.",
       dispatchNotes: "Hinweise der Disposition",

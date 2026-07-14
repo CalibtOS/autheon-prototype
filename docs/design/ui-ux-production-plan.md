@@ -1,14 +1,38 @@
 # AUTHEON — Driver PWA Design: Source of Truth & Remediation Plan
 
-> **Status:** v2.0 — 2026-07-10. The prototype (`prototype/project/`) is the **design source of truth for the driver PWA**. This document (a) locks the design decisions the prototype must embody, and (b) lists the concrete fixes to bring the prototype itself to that standard, so production implements a consistent reference — not today's drift.
-> **Evidence:** Code audit of `prototype/project/*` (12k+ lines JSX, 3.2k lines CSS) + visual audit screenshots in [`audit-2026-07-10/`](audit-2026-07-10/).
+> **Status:** v3.0 — 2026-07-14, incorporating the **Design Direction Board — AUTHEON GmbH, July 2026**.
+> **Authority hierarchy (§0):**
+> 1. **PRD** (`../requirements/prd.json`) — behavioral authority: workflow, permissions, data, scope.
+> 2. **Design Direction Board (July 2026)** — client visual authority: typography, colors, cards, navigation appearance, interaction style.
+> 3. **Prototype** (`prototype/project/`) — implementation reference; it must comply with both authorities and is corrected wherever it conflicts.
+> 4. **Design documentation** (this file, [`brand-tokens.md`](brand-tokens.md), [`driver-screen-spec.md`](driver-screen-spec.md), [`screenshots/README.md`](screenshots/README.md), [`driver-i18n-index.md`](driver-i18n-index.md)) — the implementation contract derived from those authorities.
+>
+> Internal design choices remain only where they do not conflict with the PRD or the board.
+> **Evidence:** Code audit of `prototype/project/*` + board-compliance audit [`design-direction-board-audit.md`](design-direction-board-audit.md) with rendered screenshots in [`audit-2026-07-14/`](audit-2026-07-14/) (earlier visual audit: `audit-2026-07-10/`).
 > **Companion:** `../design-system.md` stays as the short component reference; Appendix A here covers the later production (Next.js/shadcn) mapping.
+
+---
+
+## 0. Design Direction Board — canonical requirements
+
+The board's visual direction is **serious, modern, premium, minimalist, business-oriented** — banking/SaaS/Apple-style business software, efficient and quickly scannable; decorative effects must never reduce readability or hide operational information.
+
+Canonical sections (do not duplicate the rules — reference them):
+
+| Topic | Canonical location |
+|-------|--------------------|
+| Brand palette, accent rules, "no dominant purple navigation", typography (Inter Tight, 400/500/600, no default uppercase), surfaces/radius/elevation, gradients & motion restraint, status-color conditions, `--cta` review status | [`brand-tokens.md`](brand-tokens.md) |
+| Marketplace card content (route, PLZ+city, dates, windows, vehicle, axle, status, compensation right/center-right, conditional registered/deregistered/red-plate metadata with PRD scope guard), navigation IA + active-state rules, header/KPI restraint, filter/sort placement, buttons, slide-to-confirm quality | [`driver-screen-spec.md`](driver-screen-spec.md) |
+| Baseline captures + visual assertions | [`screenshots/README.md`](screenshots/README.md) |
+| Item-by-item compliance status & open client decisions | [`design-direction-board-audit.md`](design-direction-board-audit.md) |
+
+**Open client decisions** (do not resolve silently): fixed vs floating bottom nav · permitted uppercase meta labels · registered/deregistered as V1 field (PRD) · orange `--cta` binding treatment · animated nav logo mark · optional header KPIs.
 
 ---
 
 ## 1. Executive Summary
 
-The prototype has a good foundation (semantic tokens, logistics palette "tracking blue + delivery orange", Plus Jakarta Sans + JetBrains Mono, 7-status color system) but **execution drifted away from it almost everywhere**. If the prototype is the source of truth, these drifts become production bugs by contract — so they get fixed **in the prototype first**. The measurable root causes:
+The prototype has a good foundation (semantic tokens, client Farbgebung, 7-status color system, JetBrains Mono for data) but **execution drifted away from it almost everywhere**, and the July 2026 Design Direction Board supersedes several earlier internal choices: **Inter Tight replaces Plus Jakarta Sans** as the primary UI font, 700-weight titles give way to a 400/500/600 hierarchy, and the purple active-navigation capsule is prohibited. Drifts and superseded choices get fixed **in the prototype first**. The measurable root causes:
 
 | #   | Root cause                                                                                                                                                                                                                                                                                                                                                | Evidence                                                                      |
 | --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
@@ -27,7 +51,9 @@ These are the decisions the prototype must embody. Everything in §4–§8 follo
 1. **Unified brand = client Farbgebung (2026-07-11).** Primary accent `#6F29FF` applies to **driver PWA, admin console, and demo chrome** via `:root` tokens in `styles.css`. Text `#111111` / `#6E6E73` · canvas `#F5F5F7` · surface `#FFFFFF` · border `#E5E5EA`. Dark mode: `#1C1C1E` / `#2C2C2E` canvas/surface, accent `#8F5BFF`. Canonical reference: [`brand-tokens.md`](brand-tokens.md).
 2. **Status colors are frozen semantics**, identical on every surface: draft `#64748B` · published `#2563EB` (logistics blue — **not** brand accent) · assigned `#C2410C` · accepted `#059669` · special-case `#9333EA` (shifted from `#A855F7` to avoid brand collision) · performed `#0F172A` · cancelled `#DC2626` · warn `#EA580C`. Never color-only: pill always carries the text label.
 3. **One dark theme token set** via `[data-theme="dark"]` — brand-consistent Apple-like neutrals; admin uses denser table surfaces but same accent/text tokens.
-4. **7 type sizes replace 20** (§4.2). Body = 16px on mobile. JetBrains Mono only for data identifiers (tour no., PLZ, VIN, timestamps, money) — never for labels, nav, buttons, headings.
+4. **7 type sizes replace 20** (§4.2), set in **Inter Tight** (Design Direction Board) with a **400 body / 500 label / 600 selective-emphasis** weight system — 700+ only as an explicitly justified exception, never the default for titles or headings. No default-uppercase headings or labels (sparing meta markers only, per brand-tokens). Body = 16px on mobile. JetBrains Mono is an internal data font only (tour no., PLZ, VIN, timestamps, money) — never for labels, nav, buttons, headings, table headers.
+4b. **Navigation appearance (board §H).** Bottom nav on white surface; active items via black/white/gray contrast, darker text, filled icon, or a subtle neutral marker. **No dominant purple navigation** in driver tab bar or admin sidebar. Fixed-vs-floating stays an open client decision.
+4c. **Cards & compensation (board §F).** Marketplace card content, compensation prominence/right-placement, route line, conditional registered/deregistered/red-plate metadata (PRD scope guard), restrained header KPIs, top-positioned filter/sort: per [`driver-screen-spec.md`](driver-screen-spec.md). Moderate radius (cards ≤16px, sheets ≤24px), fine borders, subtle neutral elevation, restrained gradients, minimal transform/opacity micro-animations.
 5. **4-pt spacing scale** (§4.3). No off-scale values.
 6. **One feedback hierarchy** (§6.2): Toast / InlineAlert / confirm-Sheet / app Banner — and `window.confirm` (20 call sites) is banned.
 7. **Every interactive element**: real `<button>`/`<a>`, ≥44px target, visible focus, accessible name. Icon-only controls always get `aria-label`.
@@ -94,19 +120,21 @@ Keep the existing var names (they're good); fix values and enforce usage. Produc
 - Kill the remaining off-token hexes: map each to the nearest token or delete the rule.
 - Admin `--canvas` → neutral `#F8FAFC` ✅ (PWA canvas stays brand `#F5F5F7`).
 
-### 4.2 Typography (7 sizes, rem)
+### 4.2 Typography (7 sizes, rem — Inter Tight)
+
+Primary font **Inter Tight** (board-mandated; replaces Plus Jakarta Sans). Weight ceiling is **600**; 700+ requires an explicit, documented exception.
 
 | Token             | Size / weight                                   | Use                                                              |
 | ----------------- | ----------------------------------------------- | ---------------------------------------------------------------- |
-| `--text-display`  | `clamp(1.75rem, 1.2rem + 1.2vw, 2.25rem)` / 700 | Page titles                                                      |
-| `--text-title`    | 1.25rem / 700                                   | Screen titles ("Marketplace"), sheet/dialog titles               |
+| `--text-display`  | `clamp(1.75rem, 1.2rem + 1.2vw, 2.25rem)` / 600 | Page titles                                                      |
+| `--text-title`    | 1.25rem / 600                                   | Screen titles ("Marketplace"), sheet/dialog titles               |
 | `--text-heading`  | 1.0625rem / 600                                 | Card titles, section headings                                    |
 | `--text-body`     | **1rem / 400–500**                              | Default — mobile minimum honored                                 |
 | `--text-body-sm`  | 0.875rem / 400–500                              | Dense table cells, secondary text                                |
 | `--text-caption`  | 0.8125rem / 500                                 | Meta, helper/error text                                          |
-| `--text-overline` | 0.6875rem / 600 / +0.06em / uppercase           | Eyebrow labels only — max one level per card, **sans, not mono** |
+| `--text-overline` | 0.6875rem / 600 / +0.06em / uppercase           | **Restricted**: only the approved sparing meta markers (brand-tokens list) — max one level per card, **sans, not mono** |
 
-Line-height 1.5 body / 1.3 headings. Every current 9–11px mono label becomes `caption` (sentence case) or `overline`, or is deleted.
+Line-height 1.5 body / 1.3 headings. Every current 9–11px mono label becomes `caption` (sentence case) or — only if on the approved meta-marker list — `overline`, or is deleted. Status pills, table headers, price/contact labels are sentence-case sans (not uppercase, not mono).
 
 ### 4.3 Spacing, radius, elevation, z-index, motion, touch
 
@@ -127,7 +155,7 @@ Line-height 1.5 body / 1.3 headings. Every current 9–11px mono label becomes `
 | Badge (new)                                                                                       | One numeric badge component: pill radius, 99+ cap, `--cta`/`--destructive` only for action-required, `--primary` otherwise. Dot-only allowed solely on the bell. Replaces the 3 dialects (bell dot / tab numeral / sidebar pill).                                                 |
 | `.btn`                                                                                            | Variants: `primary · cta · secondary · ghost · destructive · icon`; sizes `sm 40px · md 44px · lg 48px`; text never below `body-sm`. All `<div onClick>` (~34) converted to `<button>`. Icon variant requires `aria-label`.                                                       |
 | `JobCard`                                                                                         | Keep the route-timeline layout (it's good). Normalize: padding 16, radius `r-3`, `--sh-1`; city names `heading`, PLZ mono `caption`, times mono `body-sm` right-aligned, price pill mono `body` semibold. One date/time formatter (`inputFormatters.js` grows into `formatters`). |
-| `TabBar`                                                                                          | `<nav>`; ALL items show icon + label (not just active); `aria-current="page"`; numeric Badge (not red dot); safe-area `env(safe-area-inset-bottom)`; the active-item purple capsule becomes `--primary`.                                                                          |
+| `TabBar`                                                                                          | `<nav>`; ALL items show icon + label (not just active); `aria-current="page"`; numeric Badge (not red dot); safe-area `env(safe-area-inset-bottom)`; **white bar surface, fine border, subtle shadow; active item = darker text + filled icon + subtle neutral marker — no purple capsule (board §H)**; fixed-vs-floating = open client decision.                                                                          |
 | `FilterSheet`                                                                                     | See §6.1.                                                                                                                                                                                                                                                                         |
 | Sheets (`ReportProblemSheet`, `DailyLimitRequestSheet`, `SameDayOverlapSheet`, `AcceptanceModal`) | One sheet primitive: `r-4` top radius, drag handle + close button, title `title`, sticky footer (Cancel ghost left / primary right — order never flips), focus trap + ESC + scroll-lock, `role="dialog"` + `aria-labelledby`.                                                     |
 | `InlineAlert`, `banner`, `PendingNotice`                                                          | Collapse into ONE `InlineAlert` (`info/success/warn/error`, dismissible, `role="alert"` for errors) + ONE app `Banner` slot (offline/preview/update — never stacks).                                                                                                              |
@@ -185,7 +213,7 @@ Every list/detail: skeleton (mirrors final layout, no spinners for content areas
 ### 7.3 Job detail — locked (`JobLocked`) & unlocked (`JobUnlocked`)
 
 **Current (good bones):** sticky footer actions, Route card with map links, execution-hint banner. Issues: pickup/delivery time values wrap mid-range ("09:00–12:00" split across lines) in half-width columns; "View on map" purple chips; PICKUP/DELIVERY TIME mono overlines; two purple primaries visible at once (Upload + Mark as performed); locked view relies on wordy paragraph to explain masking.
-**Target:** times section becomes two stacked rows (label left / `Fr. 08.05.2026` + `09:00–12:00` mono right, never wrapping); "View on map" = ghost buttons with map-pin icon, primary color; exactly ONE primary per screen: `Mark as performed` (CTA orange, 48px) in sticky footer, `Report problem` = secondary outline, Upload = secondary inside its card; locked view masks address rows with a lock icon + one-line caption ("Full addresses visible after acceptance"); status pill in header per §5.
+**Target:** times section becomes two stacked rows (label left / `Fr. 08.05.2026` + `09:00–12:00` mono right, never wrapping); "View on map" = ghost buttons with map-pin icon, primary color; exactly ONE primary per screen: `Mark as performed` (48px) in sticky footer — its color treatment (orange `--cta` vs restrained purple primary) is an **open client decision** (see §0/brand-tokens); `Report problem` = secondary outline, Upload = secondary inside its card; locked view masks address rows with a lock icon + one-line caption ("Full addresses visible after acceptance"); status pill in header per §5.
 
 ### 7.4 Tour documents (`JobTourDocuments`, `JobOfficialTourDocuments`)
 
@@ -221,7 +249,7 @@ Per §6.2 — full-height page replaces the popover. Layout: day group headers (
 
 ### 7.9 App chrome (`TabBar`, header, `PhoneStatusBar`)
 
-Per §5: all 4 tab items labeled (Marketplace / My jobs / Info / Profile), `aria-current`, numeric badges; active capsule `--primary`; welcome header (avatar, greeting, bell) only on Marketplace — other tabs use plain title header (current behavior is right, formalize it); `PhoneStatusBar` excluded from the design contract.
+Per §5: all 4 tab items labeled (Marketplace / My jobs / Info / Profile), `aria-current`, numeric badges; active state = neutral contrast marker (no purple capsule — board §H); welcome header (avatar, greeting, bell) only on Marketplace — other tabs use plain title header (current behavior is right, formalize it); optional restrained KPI row only on client request; `PhoneStatusBar` excluded from the design contract.
 
 ---
 
@@ -259,6 +287,14 @@ Per §5: all 4 tab items labeled (Marketplace / My jobs / Info / Profile), `aria
 16. Extend `_audit-prototype.mjs` with design-consistency checks: fail on raw hex outside tokens, px font sizes, inline-style regression, unlabeled icon buttons, `window.confirm`. (Governance gate — the script already audits the PRD; now it guards the design contract.)
 17. Visual QA (375/1440, both themes) + keyboard pass: marketplace→filter→accept, detail→report problem, notifications, profile.
 
+**W6 — Design Direction Board remediation (2026-07-14 audit)** — reframes the remaining visual work around [`design-direction-board-audit.md`](design-direction-board-audit.md):
+
+18. Typography source: Inter Tight loaded + `--font-sans`; weight normalization to ≤600; de-uppercase pills/table headers/labels/slide copy (audit #1–4). ✅ 2026-07-14
+19. Navigation: neutral driver tab-bar surface + active marker; neutral admin sidebar active (audit #7–9). ✅ 2026-07-14
+20. Surfaces: unified `--canvas` app background, neutral hover wash/shadows/toast, moderate radii, gray secondary-button outline (audit #6, 12–14, 27). ✅ 2026-07-14
+21. Marketplace card: status pill + tour number from existing data; conditional metadata stays pending PRD (audit #15/17/19). ✅ 2026-07-14
+22. Items intentionally **not** implemented pending client/PRD decisions: §0 list (fixed/floating nav, uppercase set, registered/deregistered, `--cta` orange, animated nav mark, KPIs).
+
 **Functionality guarantee:** every W-item is a presentation/markup change on top of the existing store logic (`store.js` untouched); flows, business rules, and i18n keys are preserved — copy changes go through `i18n.js` (EN+DE) only. Re-run `node project/_audit-prototype.mjs` + `_verify-seed.mjs` after each phase to prove PRD behavior is intact.
 
 ---
@@ -291,3 +327,10 @@ _For when the prototype design contract is implemented as the real driver PWA. S
 - Production: ESLint `react/forbid-dom-props` (style), stylelint raw-hex/px bans, `eslint-plugin-jsx-a11y` strict, Playwright screenshot diffs (6 core screens × 2 themes × 375/1440px).
 - Rule: a change that needs a new color/size adds a token _and_ updates this doc — or it doesn't merge.
 - Definition of Done per screen: all async states, keyboard pass, both themes, DE strings, axe clean.
+
+---
+
+## Changelog
+
+- **v3.0 — 2026-07-14.** Incorporated the client **Design Direction Board (AUTHEON GmbH, July 2026)**: authority hierarchy rewritten (§0 — PRD behavior / board visuals / prototype as compliant reference / docs as contract); Inter Tight replaces Plus Jakarta Sans as primary UI font; typography re-based on 400/500/600 with 700+ as exception-only; purple active-navigation capsule requirement removed and replaced by the client's black/white/gray navigation direction ("no dominant purple navigation"); marketplace-card content, compensation placement, route line, conditional registered/deregistered/red-plate metadata (PRD scope guard), restrained KPI/header, restrained gradients, minimal micro-animations, moderate radius + subtle elevation added via canonical sections in brand-tokens/driver-screen-spec; status colors confirmed text-labelled and restrained; W6 remediation phase added from `design-direction-board-audit.md`. Accessibility, tokenization, reusable-component, async-state and visual-regression work from v2.0 is preserved; dark theme remains an internal extension that must not redefine the client's light-theme direction.
+- **v2.0 — 2026-07-10.** Original source-of-truth contract + prototype remediation plan (W1–W5).

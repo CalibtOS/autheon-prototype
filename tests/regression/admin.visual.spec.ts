@@ -21,7 +21,8 @@ const NAV = {
   jobs: /^Jobs$/i,
   notifications: /Notification feed|Benachrichtigungs/i,
   masterData: /Profile change requests|Profiländerungen/i,
-  users: /^Users$|^Benutzer$/i,
+  drivers: /^Drivers$|^Fahrer$/i,
+  staff: /^Staff$|^Personal$/i,
   customers: /^Customers$|^Kunden$/i,
   addresses: /^Addresses$|^Adressen$/i,
   infopoint: /^Infopoint$/i,
@@ -94,10 +95,16 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
     await expect(page).toHaveScreenshot('admin-masterdata-list.png', { fullPage: true });
   });
 
-  test('users screen', async ({ page }) => {
+  test('drivers screen', async ({ page }) => {
     await prepareAdminVisual(page);
-    await openAdminSection(page, NAV.users);
-    await expect(page).toHaveScreenshot('admin-users.png', { fullPage: true });
+    await openAdminSection(page, NAV.drivers);
+    await expect(page).toHaveScreenshot('admin-drivers.png', { fullPage: true });
+  });
+
+  test('staff screen', async ({ page }) => {
+    await prepareAdminVisual(page);
+    await openAdminSection(page, NAV.staff);
+    await expect(page).toHaveScreenshot('admin-staff.png', { fullPage: true });
   });
 
   test('customers screen', async ({ page }) => {
@@ -172,7 +179,7 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
 
   test('new driver modal', async ({ page }) => {
     await prepareAdminVisual(page);
-    await openAdminSection(page, NAV.users);
+    await openAdminSection(page, NAV.drivers);
     await prototypeFrame(page)
       .getByRole('button', { name: /New driver|Neuer Fahrer/i })
       .click();
@@ -180,19 +187,19 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
     await expect(page).toHaveScreenshot('admin-new-driver-modal.png', { fullPage: true });
   });
 
-  test('new admin modal', async ({ page }) => {
+  test('new staff modal', async ({ page }) => {
     await prepareAdminVisual(page);
-    await openAdminSection(page, NAV.users);
+    await openAdminSection(page, NAV.staff);
     await prototypeFrame(page)
-      .getByRole('button', { name: /New admin|Neuer Admin/i })
+      .getByRole('button', { name: /New staff|Neues Personal/i })
       .click();
     await waitForOpenDialog(page);
-    await expect(page).toHaveScreenshot('admin-new-admin-modal.png', { fullPage: true });
+    await expect(page).toHaveScreenshot('admin-new-staff-modal.png', { fullPage: true });
   });
 
   test('account access dialog (generated credentials)', async ({ page }) => {
     await prepareAdminVisual(page);
-    await openAdminSection(page, NAV.users);
+    await openAdminSection(page, NAV.drivers);
     await prototypeFrame(page)
       .getByRole('button', { name: /New driver|Neuer Fahrer/i })
       .click();

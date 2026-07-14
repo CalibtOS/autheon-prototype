@@ -75,6 +75,7 @@
 | `driverDailyLimitRequestedLabel` | Requested daily limit | Gewünschtes Tageslimit |
 | `driverNotifInfopointHint` | Also in Infopoint → New messages | Auch unter Infopoint → Neue Nachrichten |
 | `driverNotifications` | Notifications | Benachrichtigungen |
+| `driverNotificationsAllRead` | All caught up | Alles gelesen |
 | `driverNotificationsEmpty` | No notifications yet. | Noch keine Benachrichtigungen. |
 | `driverNotificationsSub` | Tour and document updates | Tour- und Dokument-Updates |
 | `driverOffer` | Driver offer | Fahrerangebot |
@@ -92,7 +93,6 @@
 | `from` | From | Von |
 | `fromDateChip` | From {date} | Ab {date} |
 | `fullAddresses` | Full pickup and delivery addresses | Vollständige Abhol- und Lieferadressen |
-| `helpAndSupport` | Help & support | Hilfe & Support |
 | `helpSupportIntro` | Contact dispatch if you need help on the road. | Wende dich an die Disposition, wenn du unterwegs Hilfe brauchst. |
 | `helpSupportTitle` | Help & support | Hilfe & Support |
 | `infopoint` | Infopoint | Infopoint |
@@ -175,6 +175,7 @@
 | `profileMasterData` | Read-only master data | Stammdaten (nur lesbar) |
 | `profileSubtitle` | Manage your account, limits and preferences | Verwalten Sie Ihr Konto, Limits und Einstellungen |
 | `profileTitle` | Profile | Profil |
+| `profileVerifiedAccount` | Verified account | Verifiziertes Konto |
 | `pushEnabledMaster` | Enable push notifications | Push-Benachrichtigungen aktivieren |
 | `pushNotifyNewPublished` | Newly published orders | Neu veröffentlichte Aufträge |
 | `pushNotifyPostalPrefix` | Orders in pickup postal code area | Aufträge im Abhol-PLZ-Gebiet |
@@ -223,11 +224,11 @@
 | `showResults` | Show {count} results | {count} Ergebnisse anzeigen |
 | `signOut` | Sign out | Abmelden |
 | `signOutAlert` | Demo sign out: authentication will be implemented in production. | Demo-Abmeldung: Authentifizierung wird in der Produktion implementiert. |
-| `slideAccepted` | ACCEPTED | ANGENOMMEN |
+| `slideAccepted` | Accepted | Angenommen |
 | `slideToCancelOrder` | Slide to cancel order | Zum Stornieren wischen |
 | `slideToCancelOrderHint` | Enter at least 10 characters in the explanation above to unlock the slider. | Geben Sie oben mindestens 10 Zeichen in die Erklärung ein, um den Schieberegler freizuschalten. |
 | `slideToCancelOrderLocked` | Slider locked | Schieberegler gesperrt |
-| `slideToConfirm` | SLIDE TO CONFIRM → | ZUM BESTÄTIGEN SCHIEBEN → |
+| `slideToConfirm` | Slide to confirm → | Zum Bestätigen schieben → |
 | `sortDateAsc` | Oldest first | Älteste zuerst |
 | `sortDateDesc` | Newest first | Neueste zuerst |
 | `sortDistAsc` | Shortest distance | Kürzeste Strecke |

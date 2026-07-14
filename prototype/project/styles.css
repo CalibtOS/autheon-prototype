@@ -19,7 +19,9 @@
   --canvas: var(--brand-canvas);
   --paper: var(--brand-surface);
   --paper-2: #f1f5f9;
-  --paper-3: rgba(111, 41, 255, 0.06);
+  /* Neutral hover/selected wash — was a purple tint; board limits purple to
+     sparse accents, so interaction washes stay gray. */
+  --paper-3: rgba(17, 17, 17, 0.04);
   --ink: var(--brand-text);
   --ink-2: var(--brand-text-secondary);
   --ink-3: #8e8e93;
@@ -71,11 +73,13 @@
 
   --sh-1: 0 1px 2px rgba(15, 23, 42, 0.06);
   --sh-2:
-    0 10px 40px rgba(var(--primary-rgb), 0.08), 0 1px 2px rgba(15, 23, 42, 0.05);
+    0 8px 24px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.05);
   --sh-3: 0 24px 64px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(15, 23, 42, 0.08);
   --sh-inset: inset 0 0 0 1px var(--line);
 
-  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  /* Design Direction Board (07/2026): Inter Tight is the client's primary UI
+     font. JetBrains Mono stays as an internal data-identifier font only. */
+  --font-sans: "Inter Tight", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* Type scale — 7 sizes, rem-based (plan §4.2). Mono is reserved for data
@@ -211,7 +215,7 @@ a {
   align-items: center;
   gap: 10px;
   font-family: var(--font-mono);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.18em;
   font-size: 13px;
 }
@@ -326,7 +330,8 @@ hr.line {
   gap: 8px;
   background: var(--paper);
   color: var(--text);
-  border: 1px solid var(--line-3);
+  /* Secondary = white surface + fine gray outline (board §I) */
+  border: 1px solid var(--line-2);
   border-radius: var(--r-2);
   padding: 11px 18px;
   font-size: 14px;
@@ -447,11 +452,13 @@ textarea.input {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 3px 8px 3px 8px;
+  /* Sentence-case sans label (board §D: no default uppercase; mono is for
+     data identifiers only). Text label is always present — never color-only. */
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 3px 9px 3px 8px;
   border-radius: var(--r-pill);
   background: var(--paper-3);
   color: var(--text);
@@ -488,8 +495,14 @@ textarea.input {
   color: var(--st-accepted);
 }
 .pill.performed {
-  background: var(--st-performed);
-  color: #fff;
+  /* Tinted bg + dark text — the solid near-black chip was the one heavy
+     status fill (board §C: restrained status colors). */
+  background: rgba(15, 23, 42, 0.08);
+  color: var(--st-performed);
+}
+[data-theme="dark"] .pill.performed {
+  background: rgba(248, 250, 252, 0.14);
+  color: #e2e8f0;
 }
 .pill.special_case {
   background: var(--st-special-bg);
@@ -703,7 +716,7 @@ textarea.input {
 }
 .route .city {
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.015em;
   line-height: 1.05;
 }
@@ -724,7 +737,7 @@ textarea.input {
 
 /* JobCard Redesign Styles */
 .phone-shell .jobcard {
-  border-radius: 24px;
+  border-radius: var(--r-4); /* moderate rounding (board §E) */
 }
 .phone-shell .jobcard-main-grid {
   display: grid;
@@ -774,7 +787,7 @@ textarea.input {
 }
 .phone-shell .jobcard-cities .city-name {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   line-height: 1.4;
 }
@@ -785,7 +798,7 @@ textarea.input {
 }
 .phone-shell .jobcard-cities .distance-row {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   margin: -4px 0;
 }
@@ -802,7 +815,7 @@ textarea.input {
 }
 .phone-shell .jobcard-time-row .time-val {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   line-height: 1.4;
 }
@@ -841,7 +854,7 @@ textarea.input {
 }
 .phone-shell .jobcard-vehicle .vehicle-desc {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   line-height: 1.4;
 }
@@ -854,7 +867,7 @@ textarea.input {
   background: var(--canvas);
   color: var(--text);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 8px 16px;
   border-radius: 9999px;
 }
@@ -867,18 +880,23 @@ textarea.input {
   position: relative;
   z-index: 40;
 }
+/* Board §H: white nav surface, fine border, subtle shadow; active/inactive
+   through black/gray contrast — dominant purple navigation is prohibited.
+   Floating vs fixed geometry remains an open client decision (kept floating). */
 .phone-shell .tabbar-capsule {
   display: flex;
   align-items: stretch;
-  background: #1c2533;
-  border-radius: 9999px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 24px;
   padding: 6px 8px;
   box-shadow:
-    0 12px 30px rgba(0, 0, 0, 0.18),
-    0 2px 8px rgba(0, 0, 0, 0.12);
+    0 6px 20px rgba(15, 23, 42, 0.08),
+    0 1px 2px rgba(15, 23, 42, 0.05);
 }
 [data-theme="dark"] .phone-shell .tabbar-capsule {
-  background: #0e121a;
+  background: var(--paper);
+  border-color: var(--line);
 }
 .phone-shell .tabbar-item {
   background: transparent;
@@ -890,9 +908,9 @@ textarea.input {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--muted);
   padding: 8px 4px;
-  border-radius: 9999px;
+  border-radius: 18px;
   transition:
     background 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
     color 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -901,10 +919,12 @@ textarea.input {
   font: inherit;
 }
 .phone-shell .tabbar-item.active {
-  background: var(--primary);
-  color: #ffffff;
-  font-weight: 700;
-  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.22);
+  background: var(--canvas);
+  color: var(--text);
+  font-weight: 600;
+}
+[data-theme="dark"] .phone-shell .tabbar-item.active {
+  background: rgba(255, 255, 255, 0.09);
 }
 .phone-shell .tabbar-icon-wrap {
   position: relative;
@@ -923,7 +943,7 @@ textarea.input {
   color: #ffffff;
   font-family: var(--font-mono);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 600;
   border-radius: 9999px;
   min-width: 14px;
   height: 14px;
@@ -931,11 +951,11 @@ textarea.input {
   align-items: center;
   justify-content: center;
   padding: 0 3px;
-  border: 1.5px solid #1c2533;
+  border: 1.5px solid var(--paper);
   line-height: 1;
 }
 [data-theme="dark"] .phone-shell .tabbar-badge {
-  border-color: #0e121a;
+  border-color: var(--paper);
 }
 .phone-shell .tabbar-label {
   font-family: var(--font-sans);
@@ -950,7 +970,8 @@ textarea.input {
   text-align: center;
 }
 .phone-shell .tabbar-item.active .tabbar-label {
-  font-weight: 700;
+  font-weight: 600;
+  color: var(--text);
 }
 
 /* Animated Autheon mark for the active Marketplace tab — the white ribbons
@@ -1041,13 +1062,13 @@ textarea.input {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--primary);
-  color: #fff;
+  background: rgba(var(--primary-rgb), 0.12);
+  color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
 }
 .phone-shell .welcome-text {
@@ -1061,7 +1082,7 @@ textarea.input {
 }
 .phone-shell .welcome-name {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   line-height: 1.3;
 }
@@ -1097,7 +1118,7 @@ textarea.input {
 .phone-shell .header-title {
   margin: 0;
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   line-height: 1.2;
 }
@@ -1168,14 +1189,14 @@ textarea.input {
 .phone-shell .detail-header-title {
   margin: 0;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   text-align: center;
   flex: 1;
 }
 .phone-shell .pwa-detail-body {
   padding: 16px 16px 24px;
-  background: var(--paper-2);
+  background: var(--canvas); /* client canvas #F5F5F7 (board §E) */
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1192,14 +1213,14 @@ textarea.input {
 }
 .phone-shell .detail-card.info-card {
   background: var(--st-published-bg);
-  border-color: rgba(var(--primary-rgb), 0.2);
+  border-color: var(--line);
 }
 .phone-shell .detail-section-title {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
 }
 .phone-shell .detail-route-row {
@@ -1222,7 +1243,7 @@ textarea.input {
 }
 .phone-shell .detail-route-city .city-name {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
 }
 .phone-shell .detail-route-city .city-pc {
@@ -1249,7 +1270,7 @@ textarea.input {
 }
 .phone-shell .detail-route-info .dist {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
 }
 .phone-shell .detail-route-info .time {
@@ -1304,7 +1325,7 @@ textarea.input {
 }
 .phone-shell .detail-kv-row .value {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
 }
 .phone-shell .detail-check-list {
@@ -1324,7 +1345,7 @@ textarea.input {
 }
 .phone-shell .detail-check-list .check-icon {
   color: var(--primary);
-  font-weight: 700;
+  font-weight: 600;
 }
 .phone-shell .pwa-detail-bottom {
   padding: 16px 20px 24px;
@@ -1342,19 +1363,18 @@ textarea.input {
 .phone-shell .bottom-price-info .label {
   font-size: 12px;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 500;
 }
 .phone-shell .bottom-price-info .price {
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
 }
 .phone-shell .lg-cta {
   padding: 12px 32px;
-  border-radius: 9999px;
+  border-radius: var(--r-3); /* moderate — no pill buttons (board §I) */
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   min-width: 140px;
 }
 
@@ -1373,7 +1393,7 @@ textarea.input {
 }
 .phone-shell .customer-name {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
 }
 .phone-shell .unlocked-route-timeline {
@@ -1426,7 +1446,7 @@ textarea.input {
 }
 .phone-shell .unlocked-route-timeline .city-name {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
 }
 .phone-shell .unlocked-route-timeline .city-address {
@@ -1468,7 +1488,7 @@ textarea.input {
 }
 .phone-shell .unlocked-route-timeline .info-badge {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   background: var(--canvas);
   padding: 4px 8px;
@@ -1476,7 +1496,7 @@ textarea.input {
 }
 .phone-shell .plate-badge {
   font-family: var(--font-mono);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 13px;
   color: var(--text);
   background: var(--canvas);
@@ -1498,14 +1518,13 @@ textarea.input {
   border-radius: 12px;
 }
 .phone-shell .contact-role {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 500;
 }
 .phone-shell .contact-name {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   margin: 2px 0 4px;
 }
@@ -1666,7 +1685,7 @@ textarea.input {
 .phone-shell .price-label {
   font-size: 12px;
   color: var(--muted);
-  text-transform: uppercase;
+  font-weight: 500;
 }
 .phone-shell .price-meta {
   font-size: 12px;
@@ -1676,7 +1695,7 @@ textarea.input {
 }
 .phone-shell .price-val {
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
 }
 .phone-shell .pwa-unlocked-bottom {
@@ -1696,8 +1715,8 @@ textarea.input {
 
 /* Sheet (Filters) Redesign Styles */
 .phone-shell .sheet {
-  border-top-left-radius: 32px;
-  border-top-right-radius: 32px;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
   border: 1px solid var(--line);
   border-bottom: 0;
   box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15);
@@ -1716,7 +1735,7 @@ textarea.input {
 }
 .phone-shell .sheet-head h2 {
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
 }
 .phone-shell .sheet-body {
@@ -1732,7 +1751,7 @@ textarea.input {
 }
 .phone-shell .sheet-body .field-label {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   margin-top: 20px;
   margin-bottom: 8px;
@@ -1766,7 +1785,6 @@ textarea.input {
   background: var(--primary);
   color: #fff;
   border-color: var(--primary);
-  box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.2);
 }
 .phone-shell .sheet-body .seg.full {
   display: flex;
@@ -1950,7 +1968,7 @@ textarea.input {
 }
 .jobcard .driver-offer {
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.015em;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -1969,9 +1987,9 @@ textarea.input {
   border-radius: var(--r-2);
   padding: 14px;
   color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.05em;
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  line-height: 1.5;
 }
 
 /* Sheets */
@@ -2052,7 +2070,7 @@ textarea.input {
 .sheet-head h2 {
   margin: 0;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 .sheet-body {
@@ -2198,8 +2216,8 @@ textarea.input {
 }
 .slide-confirm.disabled .track-text {
   color: var(--muted);
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
+  font-size: 12px;
+  letter-spacing: 0.01em;
   padding: 0 12px 0 100px;
   text-align: left;
   justify-content: flex-start;
@@ -2371,7 +2389,7 @@ textarea.input {
   display: grid;
   grid-template-columns: 248px 1fr;
   height: 100%;
-  background: var(--paper-2);
+  background: var(--canvas); /* client canvas #F5F5F7 (board §E) */
   font-family: var(--font-sans);
 }
 .admin-nav {
@@ -2384,16 +2402,18 @@ textarea.input {
   padding: 22px 22px 22px;
   border-bottom: 1px solid var(--line);
 }
+/* Retained uppercase meta markers (board §D sparing-use list — pending
+   client confirmation, see design-direction-board-audit.md) */
 .admin-nav .nav-eyebrow {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted);
   margin-bottom: 6px;
 }
 .admin-nav .nav-brand {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 19px;
   letter-spacing: 0.04em;
   display: inline-flex;
@@ -2407,8 +2427,8 @@ textarea.input {
   gap: 1px;
 }
 .admin-nav .nav-section {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted);
@@ -2435,10 +2455,12 @@ textarea.input {
 .nav-item:hover {
   background: var(--paper-3);
 }
+/* Board §H: no dominant purple navigation — active sidebar item uses a
+   neutral fill + darker text instead of a purple capsule. */
 .nav-item.on {
-  background: var(--primary);
-  color: #fff;
-  font-weight: 500;
+  background: var(--paper-2);
+  color: var(--text);
+  font-weight: 600;
 }
 .nav-item .ic {
   width: 16px;
@@ -2455,7 +2477,7 @@ textarea.input {
   color: var(--muted);
 }
 .nav-item.on .count {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--muted);
 }
 .admin-nav .nav-foot {
   margin-top: auto;
@@ -2476,14 +2498,14 @@ textarea.input {
   background: var(--paper-3);
 }
 [data-theme="dark"] .nav-item.on {
-  background: var(--primary);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text);
 }
 [data-theme="dark"] .nav-item .count {
   color: var(--muted);
 }
 [data-theme="dark"] .nav-item.on .count {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--muted);
 }
 .avatar {
   width: 34px;
@@ -2583,7 +2605,7 @@ textarea.input {
 }
 .stat .num {
   font-size: 30px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -2612,10 +2634,10 @@ textarea.input {
 }
 .tbl th {
   text-align: left;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--muted);
   font-weight: 500;
   padding: 12px 16px;
@@ -2665,7 +2687,7 @@ textarea.input {
 .page-title {
   margin: 0;
   font-size: var(--text-display);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 .toolbar {
@@ -2717,9 +2739,10 @@ textarea.input {
   font-weight: 600;
 }
 .tbl .new-tag {
+  /* Tiny "New" marker — retained uppercase meta label (board §D sparing use) */
   display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-family: var(--font-sans);
+  font-size: 10px;
   letter-spacing: 0.12em;
   margin-top: 4px;
   color: var(--st-warn);
@@ -2732,7 +2755,8 @@ textarea.input {
   position: absolute;
   bottom: 72px;
   right: 28px;
-  background: var(--primary-ink);
+  /* Neutral dark surface — purple is not a feedback-surface color (board §B) */
+  background: var(--chrome-header-bg);
   color: #f8fafc;
   padding: 14px 18px;
   border-radius: var(--r-3);
@@ -2766,11 +2790,9 @@ textarea.input {
   font-size: 11px;
 }
 .toast .sub {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
+  font-family: var(--font-sans);
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.65);
-  text-transform: uppercase;
   margin-top: 3px;
 }
 
@@ -2799,7 +2821,7 @@ textarea.input {
 .sec-head h3 {
   margin: 0;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.005em;
 }
 .sec-head h3 .num {
@@ -2812,12 +2834,10 @@ textarea.input {
 /* Misc */
 .list-end {
   text-align: center;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
   color: var(--muted);
   padding: 22px 0 14px;
-  text-transform: uppercase;
 }
 
 .kbd {
@@ -2929,9 +2949,7 @@ textarea.input {
   border-color: var(--line-3);
 }
 .label.pill-muted {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 12px;
   color: var(--muted);
 }
 .tbl.compact th,
@@ -2985,12 +3003,10 @@ textarea.input {
   background: rgba(var(--primary-rgb), 0.04);
 }
 .mdr-field-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 12px;
   color: var(--muted);
   padding-top: 3px;
-  font-weight: 600;
+  font-weight: 500;
 }
 .mdr-field-body {
   min-width: 0;
@@ -3015,10 +3031,8 @@ textarea.input {
 .mdr-field-badge {
   display: inline-flex;
   align-items: center;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
   padding: 2px 8px;
   border-radius: var(--r-pill);
   background: var(--st-warn-bg);
@@ -3054,10 +3068,8 @@ textarea.input {
 }
 .mdr-compare-header {
   background: var(--paper-2);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--muted);
 }
 .mdr-compare-row:last-child {
@@ -3147,7 +3159,7 @@ textarea.input {
 .req-panel-head h4 {
   margin: 0;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 .req-panel-desc {
@@ -3276,10 +3288,8 @@ textarea.input {
 }
 .cancellation-card-title {
   margin: 0 0 8px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--st-cancelled);
 }
 .cancellation-card-reason {
@@ -3296,7 +3306,7 @@ textarea.input {
 .confirm-sheet h2 {
   margin: 6px 0 10px;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.015em;
 }
 .confirm-sheet p {
@@ -3352,11 +3362,9 @@ textarea.input {
   margin-top: 14px;
 }
 .phone-shell .category-group-label {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
   margin-bottom: 4px;
   margin-left: 4px;
 }
@@ -3424,7 +3432,7 @@ textarea.input {
   color: var(--muted);
 }
 .limit-meter-count {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 15px;
   color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -3519,7 +3527,7 @@ textarea.input {
   border-radius: 10px;
   background: var(--canvas);
   color: var(--muted);
-  font-weight: 700;
+  font-weight: 600;
   margin-left: 4px;
 }
 .phone-shell .myjobs-tab-pill.active .pill-badge {
@@ -3628,7 +3636,7 @@ textarea.input {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 10px;
   flex-shrink: 0;
 }
@@ -3717,13 +3725,13 @@ textarea.input {
 }
 .phone-shell .jobcard-tour-num {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--muted);
 }
 .phone-shell .jobcard-header-row .pill {
-  font-size: 10px;
+  font-size: 11px;
   padding: 3px 8px;
-  font-weight: 600;
+  font-weight: 500;
   border-radius: var(--r-pill);
 }
 .phone-shell .jobcard-header-row .chip.correction-required {
@@ -3799,7 +3807,7 @@ textarea.input {
 .phone-shell .notifications-dropdown-header h3 {
   margin: 0;
   font-size: var(--text-title);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 .phone-shell .notifications-dropdown-header .label {
@@ -3906,7 +3914,7 @@ textarea.input {
 }
 .phone-shell .mdr-field-value.is-new {
   color: var(--st-accepted) !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
 }
 .phone-shell .mdr-field-old {
   text-decoration: line-through;
@@ -3920,7 +3928,7 @@ textarea.input {
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 6px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* Premium iOS Switch Toggle */
@@ -4028,13 +4036,13 @@ textarea.input {
    =============================================== */
 .text-display {
   font-size: var(--text-display);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.015em;
 }
 .text-title {
   font-size: var(--text-title);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.3;
   letter-spacing: -0.01em;
 }
@@ -4199,7 +4207,7 @@ textarea.input {
 }
 .phone-shell .profile-identity-name {
   font-size: var(--text-heading);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   display: flex;
   align-items: center;
@@ -4301,7 +4309,7 @@ textarea.input {
   padding: 0 5px;
   border-radius: var(--r-pill);
   font-size: var(--text-overline);
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
@@ -4401,9 +4409,7 @@ textarea.input {
   flex-shrink: 0;
   padding: 12px 14px 8px;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 500;
   color: var(--muted);
   border-bottom: 1px solid var(--line);
   background: var(--paper-2);
@@ -4492,7 +4498,7 @@ textarea.input {
 }
 .scroll-body {
   padding: 16px 18px 24px;
-  background: var(--paper-2);
+  background: var(--canvas); /* client canvas #F5F5F7 (board §E) */
   flex: 1;
 }
 
@@ -4651,7 +4657,7 @@ textarea.input {
 .notifications-pane-title {
   margin: 0;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .notifications-pane-actions {
   display: flex;
@@ -4737,11 +4743,11 @@ button.notifications-dropdown-backdrop {
   color: var(--muted);
 }
 .text-strong-lg {
-  font-weight: 700;
+  font-weight: 600;
   font-size: var(--text-body);
 }
 .mono-strong {
-  font-weight: 700;
+  font-weight: 600;
   font-size: var(--text-body);
 }
 .para-intro {
@@ -4779,7 +4785,7 @@ button.notifications-dropdown-backdrop {
 .profile-header-title {
   margin: 0;
   font-size: var(--text-title);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* Layout utilities (replace inline flex/grid/margin in driver.jsx) */

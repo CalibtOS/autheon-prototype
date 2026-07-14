@@ -776,6 +776,12 @@ const JobCard = ({ job, onOpen }) => {
       className="jobcard-btn"
       onClick={() => onOpen(job)}
     >
+      {/* Board §F: operational status is directly visible on the card
+          (text-labelled pill from existing job.status — no new data) */}
+      <div className="jobcard-header-row">
+        <span className="jobcard-tour-num">Tour #{job.tour}</span>
+        <Pill status={job.status} />
+      </div>
       <div className="jobcard-main-grid">
         <div className="jobcard-route-col">
           <div className="jobcard-timeline">
@@ -1558,7 +1564,7 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
           style={{
             margin: "6px 0 18px",
             fontSize: 24,
-            fontWeight: 700,
+            fontWeight: 600,
             letterSpacing: "-0.015em",
           }}
         >
@@ -1584,7 +1590,7 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
             {job.vehicle} · {job.axle}
           </div>
           <div
-            style={{ fontSize: 18, fontWeight: 700, marginTop: 10 }}
+            style={{ fontSize: 18, fontWeight: 600, marginTop: 10 }}
             className="tnum"
           >
             € {fmtDriverOffer(job).toFixed(2)}
@@ -2553,9 +2559,8 @@ const JobUnlocked = ({
             disabled={!canPerform}
             style={{
               padding: "12px 24px",
-              borderRadius: 9999,
               fontSize: 15,
-              fontWeight: 700,
+              fontWeight: 600,
             }}
           >
             {t("markPerformed")}
@@ -2570,7 +2575,6 @@ const JobUnlocked = ({
               justifyContent: "center",
               gap: 8,
               padding: "12px 24px",
-              borderRadius: 9999,
               fontSize: 15,
               fontWeight: 600,
             }}
@@ -2841,13 +2845,13 @@ const MyJobs = ({ onOpen }) => {
                     {displayAxle(job.axle, t)}
                     {jobNeedsDocCorrection(job, store) ? (
                       <span
-                        className="chip mono"
+                        className="chip"
                         style={{
                           borderColor: "var(--st-cancelled)",
                           color: "var(--st-cancelled)",
                           marginLeft: 6,
-                          fontSize: 10,
-                          padding: "1px 4px",
+                          fontSize: 11,
+                          padding: "1px 6px",
                         }}
                       >
                         {t("correctionRequiredBadge")}
@@ -3364,7 +3368,7 @@ const PendingNotice = ({ onClose, kind }) => {
             />
           </svg>
         </div>
-        <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 700 }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 600 }}>
           {t("requestSent")}
         </h3>
         <p
@@ -3399,7 +3403,7 @@ const ProfilePane = () => {
   const [signOutNotice, setSignOutNotice] = useState(false);
   return (
     <div className="scroll" style={{ padding: "10px 22px" }}>
-      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
+      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>
         {t("profileTitle")}
       </h1>
       <div
@@ -4239,7 +4243,7 @@ const Infopoint = () => {
           style={{
             margin: 0,
             fontSize: 24,
-            fontWeight: 700,
+            fontWeight: 600,
             letterSpacing: "-0.015em",
             lineHeight: 1.2,
           }}
@@ -4301,7 +4305,7 @@ const Infopoint = () => {
                     <Ic.Pdf />
                   </div>
                   <div className="flex-1-min-0">
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>
                       {displayDocTitle(d, t)}
                     </div>
                     {d.description ? (
@@ -4435,7 +4439,7 @@ const Infopoint = () => {
                         >
                           <div
                             style={{
-                              fontWeight: unread ? 750 : 600,
+                              fontWeight: unread ? 600 : 500,
                               fontSize: 14,
                               color: "var(--text)",
                             }}
