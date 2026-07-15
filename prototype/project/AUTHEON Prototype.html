@@ -19,7 +19,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=19" />
+    <link rel="stylesheet" href="styles.css?v=20" />
   </head>
   <body>
     <div id="root"></div>
@@ -66,6 +66,7 @@
         const [acceptModal, setAcceptModal] = useState(null);
         const [reportProblemJob, setReportProblemJob] = useState(null);
         const [pendingNotice, setPendingNotice] = useState(null);
+        const [performedNotice, setPerformedNotice] = useState(null);
         const [probationLimitModal, setProbationLimitModal] = useState(null);
         const [overlapConfirm, setOverlapConfirm] = useState(null);
         const [banner, setBanner] = useState(null);
@@ -112,7 +113,13 @@
                 onPerform={() => {
                   const r = store.markPerformed(job.id);
                   if (!r.ok) setBanner(t("completionBlocked"));
-                  else setActiveJob({ id: job.id, mode: "unlocked" });
+                  else {
+                    setActiveJob({ id: job.id, mode: "unlocked" });
+                    setPerformedNotice({
+                      hasDocs:
+                        store.getDriverTourDocumentsForJob(job.id).length > 0,
+                    });
+                  }
                 }}
               />
             );
@@ -268,6 +275,12 @@
                   <PendingNotice
                     kind={pendingNotice}
                     onClose={() => setPendingNotice(null)}
+                  />
+                )}
+                {performedNotice && (
+                  <PerformedNotice
+                    hasDocs={performedNotice.hasDocs}
+                    onClose={() => setPerformedNotice(null)}
                   />
                 )}
                 {probationLimitModal && (

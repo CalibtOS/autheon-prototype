@@ -46,6 +46,27 @@ const displayVehicle = (value, t) =>
     "Light truck <3.5t": t("lightTruck"),
   })[value] || value;
 
+// Vehicle values come from two sources: seed data (SUV, PKW, Van,
+// Light truck <3.5t) and the admin New Order form (SUV, PKW, Transporter,
+// LKW < 3,5t, Oldtimer) — map both to one icon per type.
+const vehicleTypeIcon = (vehicle) => {
+  switch (vehicle) {
+    case "SUV":
+      return <Ic.VehicleSuv />;
+    case "Van":
+    case "Transporter":
+      return <Ic.VehicleVan />;
+    case "Light truck <3.5t":
+    case "LKW < 3,5t":
+      return <Ic.VehicleLightTruck />;
+    case "Oldtimer":
+    case "Classic":
+      return <Ic.VehicleClassic />;
+    default:
+      return <Ic.VehicleCar />;
+  }
+};
+
 const displayDriverStatus = (value, t) =>
   ({
     Active: t("driverStatusActive"),
@@ -254,24 +275,15 @@ const SlideLockIcon = () => (
 );
 
 const Ic = {
-  Truck: () => (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="1" y="3" width="15" height="13" rx="2" ry="2" />
-      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-      <circle cx="5.5" cy="18.5" r="2.5" />
-      <circle cx="18.5" cy="18.5" r="2.5" />
+  // Vehicle type icons — mdi:car-suv (Apache-2.0), tabler:car (MIT),
+  // lucide:van (ISC), hugeicons:delivery-truck-01 (MIT),
+  // mdi:car-convertible (Apache-2.0)
+  VehicleSuv: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M3 6h13l3 4h2c1.11 0 2 .89 2 2v3h-2a3 3 0 0 1-3 3a3 3 0 0 1-3-3H9a3 3 0 0 1-3 3a3 3 0 0 1-3-3H1V8c0-1.11.89-2 2-2m-.5 1.5V10h8V7.5zm9.5 0V10h5.14l-1.89-2.5zm-6 6A1.5 1.5 0 0 0 4.5 15A1.5 1.5 0 0 0 6 16.5A1.5 1.5 0 0 0 7.5 15A1.5 1.5 0 0 0 6 13.5m12 0a1.5 1.5 0 0 0-1.5 1.5a1.5 1.5 0 0 0 1.5 1.5a1.5 1.5 0 0 0 1.5-1.5a1.5 1.5 0 0 0-1.5-1.5" />
     </svg>
   ),
-  Van: () => (
+  VehicleCar: () => (
     <svg
       width="20"
       height="20"
@@ -282,10 +294,45 @@ const Ic = {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M14 18H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" />
-      <path d="M18 12h4l2 3v3h-4" />
-      <circle cx="7.5" cy="18.5" r="2.5" />
-      <circle cx="18.5" cy="18.5" r="2.5" />
+      <path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0-4 0m10 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0" />
+      <path d="M5 17H3v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0H9m-6-6h15m-6 0V6" />
+    </svg>
+  ),
+  VehicleVan: () => (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M13 6v5a1 1 0 0 0 1 1h6.102a1 1 0 0 1 .712.298l.898.91a1 1 0 0 1 .288.702V17a1 1 0 0 1-1 1h-3" />
+      <path d="M5 18H3a1 1 0 0 1-1-1V8a2 2 0 0 1 2-2h12c1.1 0 2.1.8 2.4 1.8l1.176 4.2M9 18h5" />
+      <circle cx="16" cy="18" r="2" />
+      <circle cx="7" cy="18" r="2" />
+    </svg>
+  ),
+  VehicleLightTruck: () => (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M19.5 17.5a2.5 2.5 0 1 1-5 0a2.5 2.5 0 0 1 5 0Zm-10 0a2.5 2.5 0 1 1-5 0a2.5 2.5 0 0 1 5 0Z" />
+      <path d="M14.5 17.5h-5m10 0h.763c.22 0 .33 0 .422-.012a1.5 1.5 0 0 0 1.303-1.302c.012-.093.012-.203.012-.423V13a6.5 6.5 0 0 0-6.5-6.5M2 4h10c1.414 0 2.121 0 2.56.44C15 4.878 15 5.585 15 7v8.5M2 12.75V15c0 .935 0 1.402.201 1.75a1.5 1.5 0 0 0 .549.549c.348.201.815.201 1.75.201M2 7h6m-6 3h4" />
+    </svg>
+  ),
+  VehicleClassic: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="m16 6l-1 .75L17.5 10h-4V8.5H12V10H3c-1.11 0-2 .89-2 2v3h2a3 3 0 0 0 3 3a3 3 0 0 0 3-3h6a3 3 0 0 0 3 3a3 3 0 0 0 3-3h2v-3c0-1.11-.89-2-2-2h-2zM6 13.5A1.5 1.5 0 0 1 7.5 15A1.5 1.5 0 0 1 6 16.5A1.5 1.5 0 0 1 4.5 15A1.5 1.5 0 0 1 6 13.5m12 0a1.5 1.5 0 0 1 1.5 1.5a1.5 1.5 0 0 1-1.5 1.5a1.5 1.5 0 0 1-1.5-1.5a1.5 1.5 0 0 1 1.5-1.5" />
     </svg>
   ),
   Filter: () => (
@@ -870,7 +917,7 @@ const JobCardBody = ({ job }) => {
       <hr className="jobcard-divider" />
       <div className="jobcard-footer">
         <span className="vehicle-meta">
-          {job.vehicle === "Light truck <3.5t" ? <Ic.Truck /> : <Ic.Van />}
+          {vehicleTypeIcon(job.vehicle)}
           {job.vehicleModel && job.vehicleModel !== "—"
             ? job.vehicleModel
             : displayVehicle(job.vehicle, t)}
@@ -3524,6 +3571,76 @@ const PendingNotice = ({ onClose, kind }) => {
   );
 };
 
+const PerformedNotice = ({ onClose, hasDocs }) => {
+  const { t } = useI18n();
+  return (
+    <div className="sheet-backdrop center" onClick={onClose}>
+      <div
+        className="sheet modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="performed-notice-title"
+        style={{ padding: 26, textAlign: "center", maxWidth: 320 }}
+      >
+        <div
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: "50%",
+            background: "var(--st-accepted-bg)",
+            margin: "0 auto 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <svg
+            width="26"
+            height="26"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden
+          >
+            <path
+              d="M6 12l4 4 8-9"
+              stroke="var(--st-accepted)"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+        <h3
+          id="performed-notice-title"
+          style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 600 }}
+        >
+          {t("performedNoticeTitle")}
+        </h3>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 13.5,
+            color: "var(--muted)",
+            lineHeight: 1.55,
+          }}
+        >
+          {hasDocs
+            ? t("performedNoticeBodyReview")
+            : t("performedNoticeBodyUpload")}
+        </p>
+        <button
+          type="button"
+          className="btn block primary mt-20"
+          onClick={onClose}
+        >
+          {t("performedNoticeCta")}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // =========================================================================
 // SIMPLE PROFILE / INFO
 // =========================================================================
@@ -4670,6 +4787,7 @@ Object.assign(window, {
   MyJobs,
   ReportProblemSheet,
   PendingNotice,
+  PerformedNotice,
   ProbationLimitSheet,
   DocumentPreviewSheet,
   SameDayOverlapSheet,
