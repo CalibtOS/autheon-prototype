@@ -46,6 +46,27 @@ const displayVehicle = (value, t) =>
     "Light truck <3.5t": t("lightTruck"),
   })[value] || value;
 
+// Vehicle values come from two sources: seed data (SUV, PKW, Van,
+// Light truck <3.5t) and the admin New Order form (SUV, PKW, Transporter,
+// LKW < 3,5t, Oldtimer) — map both to one icon per type.
+const vehicleTypeIcon = (vehicle) => {
+  switch (vehicle) {
+    case "SUV":
+      return <Ic.VehicleSuv />;
+    case "Van":
+    case "Transporter":
+      return <Ic.VehicleVan />;
+    case "Light truck <3.5t":
+    case "LKW < 3,5t":
+      return <Ic.VehicleLightTruck />;
+    case "Oldtimer":
+    case "Classic":
+      return <Ic.VehicleClassic />;
+    default:
+      return <Ic.VehicleCar />;
+  }
+};
+
 const displayDriverStatus = (value, t) =>
   ({
     Active: t("driverStatusActive"),
@@ -254,24 +275,15 @@ const SlideLockIcon = () => (
 );
 
 const Ic = {
-  Truck: () => (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="1" y="3" width="15" height="13" rx="2" ry="2" />
-      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-      <circle cx="5.5" cy="18.5" r="2.5" />
-      <circle cx="18.5" cy="18.5" r="2.5" />
+  // Vehicle type icons — mdi:car-suv (Apache-2.0), tabler:car (MIT),
+  // lucide:van (ISC), hugeicons:delivery-truck-01 (MIT),
+  // mdi:car-convertible (Apache-2.0)
+  VehicleSuv: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M3 6h13l3 4h2c1.11 0 2 .89 2 2v3h-2a3 3 0 0 1-3 3a3 3 0 0 1-3-3H9a3 3 0 0 1-3 3a3 3 0 0 1-3-3H1V8c0-1.11.89-2 2-2m-.5 1.5V10h8V7.5zm9.5 0V10h5.14l-1.89-2.5zm-6 6A1.5 1.5 0 0 0 4.5 15A1.5 1.5 0 0 0 6 16.5A1.5 1.5 0 0 0 7.5 15A1.5 1.5 0 0 0 6 13.5m12 0a1.5 1.5 0 0 0-1.5 1.5a1.5 1.5 0 0 0 1.5 1.5a1.5 1.5 0 0 0 1.5-1.5a1.5 1.5 0 0 0-1.5-1.5" />
     </svg>
   ),
-  Van: () => (
+  VehicleCar: () => (
     <svg
       width="20"
       height="20"
@@ -282,10 +294,45 @@ const Ic = {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M14 18H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" />
-      <path d="M18 12h4l2 3v3h-4" />
-      <circle cx="7.5" cy="18.5" r="2.5" />
-      <circle cx="18.5" cy="18.5" r="2.5" />
+      <path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0-4 0m10 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0" />
+      <path d="M5 17H3v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0H9m-6-6h15m-6 0V6" />
+    </svg>
+  ),
+  VehicleVan: () => (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M13 6v5a1 1 0 0 0 1 1h6.102a1 1 0 0 1 .712.298l.898.91a1 1 0 0 1 .288.702V17a1 1 0 0 1-1 1h-3" />
+      <path d="M5 18H3a1 1 0 0 1-1-1V8a2 2 0 0 1 2-2h12c1.1 0 2.1.8 2.4 1.8l1.176 4.2M9 18h5" />
+      <circle cx="16" cy="18" r="2" />
+      <circle cx="7" cy="18" r="2" />
+    </svg>
+  ),
+  VehicleLightTruck: () => (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M19.5 17.5a2.5 2.5 0 1 1-5 0a2.5 2.5 0 0 1 5 0Zm-10 0a2.5 2.5 0 1 1-5 0a2.5 2.5 0 0 1 5 0Z" />
+      <path d="M14.5 17.5h-5m10 0h.763c.22 0 .33 0 .422-.012a1.5 1.5 0 0 0 1.303-1.302c.012-.093.012-.203.012-.423V13a6.5 6.5 0 0 0-6.5-6.5M2 4h10c1.414 0 2.121 0 2.56.44C15 4.878 15 5.585 15 7v8.5M2 12.75V15c0 .935 0 1.402.201 1.75a1.5 1.5 0 0 0 .549.549c.348.201.815.201 1.75.201M2 7h6m-6 3h4" />
+    </svg>
+  ),
+  VehicleClassic: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="m16 6l-1 .75L17.5 10h-4V8.5H12V10H3c-1.11 0-2 .89-2 2v3h2a3 3 0 0 0 3 3a3 3 0 0 0 3-3h6a3 3 0 0 0 3 3a3 3 0 0 0 3-3h2v-3c0-1.11-.89-2-2-2h-2zM6 13.5A1.5 1.5 0 0 1 7.5 15A1.5 1.5 0 0 1 6 16.5A1.5 1.5 0 0 1 4.5 15A1.5 1.5 0 0 1 6 13.5m12 0a1.5 1.5 0 0 1 1.5 1.5a1.5 1.5 0 0 1-1.5 1.5a1.5 1.5 0 0 1-1.5-1.5a1.5 1.5 0 0 1 1.5-1.5" />
     </svg>
   ),
   Filter: () => (
@@ -763,6 +810,17 @@ const TabBar = ({ tab, setTab }) => {
   );
 };
 
+// Rough drive-time estimate for display (~75 km/h average, 5-min steps).
+// The prototype has no routing service; production replaces this with the
+// real route duration.
+const estimateDriveTime = (km) => {
+  if (!km) return null;
+  const mins = Math.max(5, Math.round(((km / 75) * 60) / 5) * 5);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+};
+
 // Compact leg line for job cards: "23.04. · 08:00–12:00" (or "Flexible")
 const legWhen = (loc, t) => {
   if (!loc) return "—";
@@ -870,7 +928,7 @@ const JobCardBody = ({ job }) => {
       <hr className="jobcard-divider" />
       <div className="jobcard-footer">
         <span className="vehicle-meta">
-          {job.vehicle === "Light truck <3.5t" ? <Ic.Truck /> : <Ic.Van />}
+          {vehicleTypeIcon(job.vehicle)}
           {job.vehicleModel && job.vehicleModel !== "—"
             ? job.vehicleModel
             : displayVehicle(job.vehicle, t)}
@@ -1501,20 +1559,27 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
           </div>
           <div className="detail-route-row">
             <div className="detail-route-city start">
-              <div className="city-name">{job.startCity}</div>
+              <div className="city-top">
+                <span className="city-name">{job.startCity}</span>
+                <span className="route-point start" aria-hidden="true"></span>
+              </div>
               <div className="city-pc">
                 {t("postalCodeAbbr")}: {job.startPlz}
               </div>
             </div>
-            <div className="detail-route-line-wrap">
-              <div className="detail-route-line"></div>
-              <div className="detail-route-info">
-                <div className="dist">{job.distanceKm}km</div>
-                <div className="time">5h 30m</div>
+            <div className="detail-route-dash" aria-hidden="true"></div>
+            <div className="detail-route-info">
+              <div className="dist">{job.distanceKm}km</div>
+              <div className="time">
+                {estimateDriveTime(job.distanceKm) || "—"}
               </div>
             </div>
+            <div className="detail-route-dash" aria-hidden="true"></div>
             <div className="detail-route-city end">
-              <div className="city-name">{job.endCity}</div>
+              <div className="city-top">
+                <span className="route-point end" aria-hidden="true"></span>
+                <span className="city-name">{job.endCity}</span>
+              </div>
               <div className="city-pc">
                 {t("postalCodeAbbr")}: {job.endPlz}
               </div>
@@ -1609,10 +1674,10 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
 };
 
 // =========================================================================
-// ACCEPTANCE MODAL — slide to confirm
+// SLIDE TO CONFIRM — shared control for binding actions (acceptance,
+// mark-performed). Deliberate gesture prevents accidental taps.
 // =========================================================================
-const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
-  const { t } = useI18n();
+const SlideToConfirm = ({ text, doneText, onConfirm }) => {
   const [pos, setPos] = useState(0);
   const [done, setDone] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -1654,6 +1719,41 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
     window.addEventListener("touchmove", move, { passive: false });
     window.addEventListener("touchend", up);
   };
+
+  return (
+    <div
+      ref={trackRef}
+      className={
+        "slide-confirm " +
+        (done ? "done" : "") +
+        (dragging ? " dragging" : "")
+      }
+    >
+      <div className="track-text">{done ? doneText : text}</div>
+      <div className="slide-fill" style={{ width: pos }} />
+      <div
+        className="track-text track-text-fill"
+        style={{ clipPath: `inset(0 calc(100% - ${pos}px) 0 0)` }}
+      >
+        {done ? doneText : text}
+      </div>
+      <div
+        className="thumb"
+        style={{ transform: `translateX(${pos}px)` }}
+        onMouseDown={onStart}
+        onTouchStart={onStart}
+      >
+        {done ? <SlideCheckIcon /> : <SlideArrowIcon />}
+      </div>
+    </div>
+  );
+};
+
+// =========================================================================
+// ACCEPTANCE MODAL — slide to confirm
+// =========================================================================
+const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
+  const { t } = useI18n();
 
   return (
     <div className="sheet-backdrop center" onClick={onCancel}>
@@ -1707,33 +1807,11 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
           <PolicyDisclosure />
         </div>
 
-        <div
-          ref={trackRef}
-          className={
-            "slide-confirm " +
-            (done ? "done" : "") +
-            (dragging ? " dragging" : "")
-          }
-        >
-          <div className="track-text">
-            {done ? t("slideAccepted") : t("slideToConfirm")}
-          </div>
-          <div className="slide-fill" style={{ width: pos }} />
-          <div
-            className="track-text track-text-fill"
-            style={{ clipPath: `inset(0 calc(100% - ${pos}px) 0 0)` }}
-          >
-            {done ? t("slideAccepted") : t("slideToConfirm")}
-          </div>
-          <div
-            className="thumb"
-            style={{ transform: `translateX(${pos}px)` }}
-            onMouseDown={onStart}
-            onTouchStart={onStart}
-          >
-            {done ? <SlideCheckIcon /> : <SlideArrowIcon />}
-          </div>
-        </div>
+        <SlideToConfirm
+          text={t("slideToConfirm")}
+          doneText={t("slideAccepted")}
+          onConfirm={onConfirm}
+        />
         <button
           type="button"
           className="btn block"
@@ -1996,6 +2074,243 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
   );
 };
 
+// Document-type chooser — used by the tour-documents card and the
+// mark-performed success screen. Grouped per client feedback: core /
+// operational / other.
+const TourDocCategoryModal = ({ open, onClose, onPick }) => {
+  const { t } = useI18n();
+  if (!open) return null;
+  return (
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div
+        className="sheet modal"
+        onClick={(e) => e.stopPropagation()}
+        style={{ padding: 20 }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tour-doc-category-title"
+      >
+        <Lbl id="tour-doc-category-title">{t("tourDocChooseCategory")}</Lbl>
+        <div className="category-picker">
+          {/* Group 1: Core Documents */}
+          <div>
+            <div className="category-group-label">
+              {t("tourDocGroupCore")}
+            </div>
+            <div className="category-group">
+              <button
+                type="button"
+                className="category-group-item touch-target"
+                onClick={() => onPick("invoice")}
+              >
+                {displayTourDocType("invoice", t)}
+              </button>
+              <button
+                type="button"
+                className="category-group-item touch-target"
+                onClick={() => onPick("fuel_receipt")}
+              >
+                {displayTourDocType("fuel_receipt", t)}
+              </button>
+            </div>
+            <p className="category-picker-desc">{t("tourDocHelperFuel")}</p>
+          </div>
+
+          {/* Group 2: Operational Documents */}
+          <div>
+            <div className="category-group-label">
+              {t("tourDocGroupOperational")}
+            </div>
+            <div className="category-group">
+              <button
+                type="button"
+                className="category-group-item touch-target"
+                onClick={() => onPick("toll_receipt")}
+              >
+                {displayTourDocType("toll_receipt", t)}
+              </button>
+              <button
+                type="button"
+                className="category-group-item touch-target"
+                onClick={() => onPick("delivery_note")}
+              >
+                {displayTourDocType("delivery_note", t)}
+              </button>
+              <button
+                type="button"
+                className="category-group-item touch-target"
+                onClick={() => onPick("waiting_time_evidence")}
+              >
+                {displayTourDocType("waiting_time_evidence", t)}
+              </button>
+            </div>
+            <p className="category-picker-desc">
+              {t("tourDocHelperWaiting")}
+            </p>
+          </div>
+
+          {/* Group 3: Other Documents */}
+          <div>
+            <div className="category-group-label">
+              {t("tourDocGroupOther")}
+            </div>
+            <div className="category-group">
+              <button
+                type="button"
+                className="category-group-item touch-target"
+                onClick={() => onPick("other_receipt")}
+              >
+                {displayTourDocType("other_receipt", t)}
+              </button>
+              <button
+                type="button"
+                className="category-group-item touch-target"
+                onClick={() => onPick("other_proof")}
+              >
+                {displayTourDocType("other_proof", t)}
+              </button>
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="btn block touch-target mt-20"
+          onClick={onClose}
+        >
+          {t("cancel")}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// File-extension badge (Figma 8:2387) — folded-corner file shape with
+// the uppercase extension.
+const fileExt = (name) => {
+  const m = /\.([a-z0-9]+)$/i.exec(String(name || ""));
+  return m ? m[1].toUpperCase().slice(0, 4) : "FILE";
+};
+
+const FileTypeBadge = ({ fileName }) => (
+  <span className="doc-file-badge" aria-hidden="true">
+    {fileExt(fileName)}
+  </span>
+);
+
+// Driver document row (Figma 8:2387): ext badge · name + size ·
+// type right-aligned · remove (only while the upload is not yet reviewed).
+const MyDocRow = ({ doc, onRemove, t }) => (
+  <div className="mydoc-row">
+    <FileTypeBadge fileName={doc.fileName} />
+    <div className="mydoc-main">
+      <div className="mydoc-name" title={doc.fileName}>
+        {doc.fileName}
+      </div>
+      <div className="mydoc-size">{F().formatFileSize(doc.sizeBytes)}</div>
+    </div>
+    <div className="mydoc-side">
+      <div className="mydoc-type">
+        {displayTourDocType(doc.documentType, t)}
+      </div>
+      {doc.reviewStatus !== "uploaded" ? (
+        <Pill
+          status={tourDocReviewPillStatus(doc.reviewStatus)}
+          className="no-dot"
+        >
+          {displayDocReviewStatus(doc.reviewStatus, t)}
+        </Pill>
+      ) : null}
+    </div>
+    {onRemove ? (
+      <button
+        type="button"
+        className="mydoc-remove touch-target"
+        onClick={onRemove}
+        aria-label={t("removeDocTitle")}
+      >
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+      </button>
+    ) : null}
+  </div>
+);
+
+// Remove-document confirmation (Figma 8:2545).
+const RemoveDocModal = ({ open, onCancel, onConfirm }) => {
+  const { t } = useI18n();
+  if (!open) return null;
+  return (
+    <div className="sheet-backdrop center" onClick={onCancel}>
+      <div
+        className="sheet modal remove-doc-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="remove-doc-title"
+      >
+        <button
+          type="button"
+          className="remove-doc-close touch-target"
+          onClick={onCancel}
+          aria-label={t("cancel")}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
+        <div className="remove-doc-icon" aria-hidden="true">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M3 6h18" />
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+            <path d="M10 11v6M14 11v6" />
+          </svg>
+        </div>
+        <h3 id="remove-doc-title" className="remove-doc-title">
+          {t("removeDocTitle")}
+        </h3>
+        <p className="remove-doc-body">{t("removeDocBody")}</p>
+        <div className="remove-doc-actions">
+          <button type="button" className="btn" onClick={onCancel}>
+            {t("cancel")}
+          </button>
+          <button type="button" className="btn danger" onClick={onConfirm}>
+            {t("removeDocConfirm")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const TourDocumentRow = ({
   fileName,
   metaLine,
@@ -2250,108 +2565,11 @@ const JobTourDocuments = ({ job, onPreview }) => {
           <p className="tour-doc-empty-title">{t("tourDocUploadEmpty")}</p>
         </div>
       )}
-      {categoryModal ? (
-        <div className="sheet-backdrop" onClick={() => setCategoryModal(false)}>
-          <div
-            className="sheet modal"
-            onClick={(e) => e.stopPropagation()}
-            style={{ padding: 20 }}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="tour-doc-category-title"
-          >
-            <Lbl id="tour-doc-category-title">{t("tourDocChooseCategory")}</Lbl>
-            <div className="category-picker">
-              {/* Group 1: Core Documents */}
-              <div>
-                <div className="category-group-label">
-                  {t("tourDocGroupCore")}
-                </div>
-                <div className="category-group">
-                  <button
-                    type="button"
-                    className="category-group-item touch-target"
-                    onClick={() => startUpload("invoice")}
-                  >
-                    {displayTourDocType("invoice", t)}
-                  </button>
-                  <button
-                    type="button"
-                    className="category-group-item touch-target"
-                    onClick={() => startUpload("fuel_receipt")}
-                  >
-                    {displayTourDocType("fuel_receipt", t)}
-                  </button>
-                </div>
-                <p className="category-picker-desc">{t("tourDocHelperFuel")}</p>
-              </div>
-
-              {/* Group 2: Operational Documents */}
-              <div>
-                <div className="category-group-label">
-                  {t("tourDocGroupOperational")}
-                </div>
-                <div className="category-group">
-                  <button
-                    type="button"
-                    className="category-group-item touch-target"
-                    onClick={() => startUpload("toll_receipt")}
-                  >
-                    {displayTourDocType("toll_receipt", t)}
-                  </button>
-                  <button
-                    type="button"
-                    className="category-group-item touch-target"
-                    onClick={() => startUpload("delivery_note")}
-                  >
-                    {displayTourDocType("delivery_note", t)}
-                  </button>
-                  <button
-                    type="button"
-                    className="category-group-item touch-target"
-                    onClick={() => startUpload("waiting_time_evidence")}
-                  >
-                    {displayTourDocType("waiting_time_evidence", t)}
-                  </button>
-                </div>
-                <p className="category-picker-desc">
-                  {t("tourDocHelperWaiting")}
-                </p>
-              </div>
-
-              {/* Group 3: Other Documents */}
-              <div>
-                <div className="category-group-label">
-                  {t("tourDocGroupOther")}
-                </div>
-                <div className="category-group">
-                  <button
-                    type="button"
-                    className="category-group-item touch-target"
-                    onClick={() => startUpload("other_receipt")}
-                  >
-                    {displayTourDocType("other_receipt", t)}
-                  </button>
-                  <button
-                    type="button"
-                    className="category-group-item touch-target"
-                    onClick={() => startUpload("other_proof")}
-                  >
-                    {displayTourDocType("other_proof", t)}
-                  </button>
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="btn block touch-target mt-20"
-              onClick={() => setCategoryModal(false)}
-            >
-              {t("cancel")}
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <TourDocCategoryModal
+        open={categoryModal}
+        onClose={() => setCategoryModal(false)}
+        onPick={startUpload}
+      />
     </div>
   );
 };
@@ -2392,6 +2610,45 @@ const JobUnlocked = ({
     job.endCity,
   );
   const [docPreview, setDocPreview] = useState(null);
+  // Performed tours split into two tabs (Figma 8:2268 / 8:2387): job
+  // details and the driver's own tour documents.
+  const [detailTab, setDetailTab] = useState("details");
+  const docs = store.getDriverTourDocumentsForJob(job.id);
+  const docCount = docs.length;
+  const showDocsTab = isPerformed && detailTab === "documents";
+  // My-documents tab: upload + remove state
+  const [docsCategoryOpen, setDocsCategoryOpen] = useState(false);
+  const [docsPendingType, setDocsPendingType] = useState(null);
+  const [docsFeedback, setDocsFeedback] = useState(null);
+  const [removeDocId, setRemoveDocId] = useState(null);
+  const docsInputRef = useRef(null);
+
+  const docsPickType = (documentType) => {
+    setDocsCategoryOpen(false);
+    setDocsPendingType(documentType);
+    docsInputRef.current?.click();
+  };
+  const docsOnFile = (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f || !docsPendingType) return;
+    const r = store.addTourDocument(f, {
+      jobId: job.id,
+      documentType: docsPendingType,
+    });
+    setDocsPendingType(null);
+    setDocsFeedback(
+      r.ok
+        ? { tone: "success", message: t("tourDocUploadSuccess") }
+        : { tone: "error", message: tourDocUploadErrorMessage(r.reason, t) },
+    );
+  };
+  const docsConfirmRemove = () => {
+    const r = store.removeDriverTourDocument(removeDocId);
+    setRemoveDocId(null);
+    if (!r.ok)
+      setDocsFeedback({ tone: "error", message: t("removeDocBlocked") });
+  };
 
   return (
     <>
@@ -2436,8 +2693,58 @@ const JobUnlocked = ({
         <div className="w-40-spacer"></div>
       </div>
 
+      {/* Performed tours: details / my documents tab pills (Figma 8:2387) */}
+      {isPerformed ? (
+        <div className="detail-tabs-row">
+          <button
+            type="button"
+            className={`detail-tab-pill ${detailTab === "details" ? "active" : ""}`}
+            onClick={() => setDetailTab("details")}
+          >
+            <span>{t("jobDetailsTab")}</span>
+          </button>
+          <button
+            type="button"
+            className={`detail-tab-pill ${detailTab === "documents" ? "active" : ""}`}
+            onClick={() => setDetailTab("documents")}
+          >
+            <span>{t("myDocumentsTab")}</span>
+            <span className="detail-tab-count">{docCount}</span>
+          </button>
+        </div>
+      ) : null}
+
       {/* Main Content Area */}
       <div className="scroll pwa-detail-body">
+        {showDocsTab ? (
+          <div className="mydocs-list">
+            <InlineAlert
+              tone={docsFeedback?.tone}
+              message={docsFeedback?.message}
+              onDismiss={() => setDocsFeedback(null)}
+            />
+            {docs.length === 0 ? (
+              <EmptyState
+                title={t("tourDocEmptyTitle")}
+                description={t("tourDocUploadEmpty")}
+              />
+            ) : (
+              docs.map((u) => (
+                <MyDocRow
+                  key={u.id}
+                  doc={u}
+                  t={t}
+                  onRemove={
+                    u.reviewStatus === "uploaded"
+                      ? () => setRemoveDocId(u.id)
+                      : null
+                  }
+                />
+              ))
+            )}
+          </div>
+        ) : (
+        <>
         {inExecution && !isCancelled && !isPerformed ? (
           <div
             className="banner banner-success"
@@ -2511,7 +2818,9 @@ const JobUnlocked = ({
             </div>
             <div className="timeline-item-middle">
               <span className="info-badge">🚙 {job.distanceKm} km</span>
-              <span className="info-badge">⏱ 5h 30m</span>
+              <span className="info-badge">
+                ⏱ {estimateDriveTime(job.distanceKm) || "—"}
+              </span>
             </div>
             <div className="timeline-item">
               <div className="timeline-marker">
@@ -2713,8 +3022,11 @@ const JobUnlocked = ({
         {/* Official Documents Component */}
         <JobOfficialTourDocuments job={job} onPreview={setDocPreview} />
 
-        {/* Tour Documents Component */}
-        <JobTourDocuments job={job} onPreview={setDocPreview} />
+        {/* Tour Documents Component — performed tours show these in the
+            dedicated My documents tab instead */}
+        {!isPerformed && (
+          <JobTourDocuments job={job} onPreview={setDocPreview} />
+        )}
 
         {/* Financial Offer summary */}
         <div className="detail-card price-summary-card">
@@ -2728,6 +3040,8 @@ const JobUnlocked = ({
             <div className="price-val">€ {fmtDriverOffer(job).toFixed(2)}</div>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* Bottom Bar */}
@@ -2764,6 +3078,42 @@ const JobUnlocked = ({
             {t("reportProblem")}
           </button>
         </div>
+      )}
+
+      {/* My documents tab: fixed bottom upload bar (Figma 8:2387) */}
+      {showDocsTab && (
+        <div className="pwa-unlocked-bottom mydocs-upload-bar">
+          <button
+            type="button"
+            className="btn primary"
+            onClick={() => setDocsCategoryOpen(true)}
+          >
+            {t("tourDocUploadButton")} <UploadTrayIcon />
+          </button>
+          <p className="mydocs-upload-hint">{t("myDocsUploadHint")}</p>
+        </div>
+      )}
+      {showDocsTab && (
+        <>
+          <input
+            ref={docsInputRef}
+            type="file"
+            capture="environment"
+            accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
+            className="hidden"
+            onChange={docsOnFile}
+          />
+          <TourDocCategoryModal
+            open={docsCategoryOpen}
+            onClose={() => setDocsCategoryOpen(false)}
+            onPick={docsPickType}
+          />
+          <RemoveDocModal
+            open={!!removeDocId}
+            onCancel={() => setRemoveDocId(null)}
+            onConfirm={docsConfirmRemove}
+          />
+        </>
       )}
     </>
   );
@@ -3525,6 +3875,237 @@ const PendingNotice = ({ onClose, kind }) => {
 };
 
 // =========================================================================
+// MARK PERFORMED — deliberate two-stage flow (Figma 07/2026):
+//   1. slide-to-confirm (same binding gesture as acceptance; a plain tap
+//      could be accidental — Cancel backs out without any state change)
+//   2. success screen with optional document upload (invoice, receipts…)
+//      reusing the tour-document type chooser; documents can also be added
+//      later from the tour's documents tab.
+// =========================================================================
+const UploadTrayIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M12 15V4m0 0 4 4m-4-4-4 4" />
+    <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+  </svg>
+);
+
+const MarkPerformedSheet = ({ job, onClose }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const [stage, setStage] = useState("confirm"); // confirm | success
+  const [error, setError] = useState(null);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [pendingType, setPendingType] = useState(null);
+  const [uploadFeedback, setUploadFeedback] = useState(null);
+  const [removeId, setRemoveId] = useState(null);
+  const inputRef = useRef(null);
+  const uploads = store.getDriverTourDocumentsForJob(job.id);
+
+  const confirmRemove = () => {
+    const r = store.removeDriverTourDocument(removeId);
+    setRemoveId(null);
+    if (!r.ok)
+      setUploadFeedback({ tone: "error", message: t("removeDocBlocked") });
+  };
+
+  const onSlideConfirm = () => {
+    const r = store.markPerformed(job.id);
+    if (!r.ok) {
+      setError(t("completionBlocked"));
+      return;
+    }
+    setStage("success");
+  };
+
+  const pickType = (documentType) => {
+    setCategoryOpen(false);
+    setPendingType(documentType);
+    inputRef.current?.click();
+  };
+
+  const onPickFile = (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f || !pendingType) return;
+    const r = store.addTourDocument(f, {
+      jobId: job.id,
+      documentType: pendingType,
+    });
+    setPendingType(null);
+    setUploadFeedback(
+      r.ok
+        ? { tone: "success", message: t("tourDocUploadSuccess") }
+        : { tone: "error", message: tourDocUploadErrorMessage(r.reason, t) },
+    );
+  };
+
+  if (stage === "confirm") {
+    return (
+      <div className="sheet-backdrop center" onClick={onClose}>
+        <div
+          className="sheet modal"
+          onClick={(e) => e.stopPropagation()}
+          style={{ padding: 24 }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mark-performed-title"
+        >
+          <Lbl>{t("markPerformed")}</Lbl>
+          <h2
+            id="mark-performed-title"
+            style={{
+              margin: "6px 0 14px",
+              fontSize: 24,
+              fontWeight: 600,
+              letterSpacing: "-0.015em",
+            }}
+          >
+            {t("markPerformedConfirmTitle")}
+          </h2>
+          <div
+            style={{
+              border: "1px solid var(--line)",
+              borderRadius: "var(--r-2)",
+              padding: 14,
+              background: "var(--paper-2)",
+            }}
+          >
+            <div className="label" style={{ marginBottom: 8 }}>
+              Tour #{job.id}
+            </div>
+            <div className="mono mono-strong">
+              {job.startPlz} → {job.endPlz} · {job.distanceKm} km
+            </div>
+          </div>
+          <p className="para-intro">{t("markPerformedConfirmBody")}</p>
+          <InlineAlert
+            tone="error"
+            message={error}
+            onDismiss={() => setError(null)}
+          />
+          <SlideToConfirm
+            text={t("slideToConfirm")}
+            doneText={t("slidePerformed")}
+            onConfirm={onSlideConfirm}
+          />
+          <button
+            type="button"
+            className="btn block"
+            style={{ marginTop: 12 }}
+            onClick={onClose}
+          >
+            {t("cancel")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="sheet-backdrop center">
+      <div
+        className="sheet modal performed-success-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="performed-success-title"
+      >
+        <div className="performed-success-scroll">
+          <div className="performed-success-check" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M6 12l4 4 8-9"
+                stroke="#fff"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <h3 id="performed-success-title" className="performed-success-title">
+            {t("performedSuccessTitle")}
+          </h3>
+          <p className="performed-success-body">{t("performedSuccessBody")}</p>
+          <button
+            type="button"
+            className="performed-upload-drop touch-target"
+            onClick={() => setCategoryOpen(true)}
+          >
+            <span className="performed-upload-icn">
+              <UploadTrayIcon />
+            </span>
+            <span className="performed-upload-cta">
+              {t("performedUploadCta")}
+            </span>
+            <span className="performed-upload-hint">
+              {uploads.length
+                ? t("myDocsUploadHint")
+                : t("performedUploadHintEmpty")}
+            </span>
+          </button>
+          <InlineAlert
+            tone={uploadFeedback?.tone}
+            message={uploadFeedback?.message}
+            onDismiss={() => setUploadFeedback(null)}
+          />
+          {uploads.length > 0 ? (
+            <div className="mydocs-list performed-success-list">
+              {uploads.map((u) => (
+                <MyDocRow
+                  key={u.id}
+                  doc={u}
+                  t={t}
+                  onRemove={
+                    u.reviewStatus === "uploaded"
+                      ? () => setRemoveId(u.id)
+                      : null
+                  }
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className="btn block primary mt-16"
+          onClick={onClose}
+        >
+          {t("performedDone")}
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          capture="environment"
+          accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
+          className="hidden"
+          onChange={onPickFile}
+        />
+        <TourDocCategoryModal
+          open={categoryOpen}
+          onClose={() => setCategoryOpen(false)}
+          onPick={pickType}
+        />
+        <RemoveDocModal
+          open={!!removeId}
+          onCancel={() => setRemoveId(null)}
+          onConfirm={confirmRemove}
+        />
+      </div>
+    </div>
+  );
+};
+
+// =========================================================================
 // SIMPLE PROFILE / INFO
 // =========================================================================
 const ProfilePane = () => {
@@ -3741,12 +4322,24 @@ const DriverNotificationsPane = ({ onClose, onBack, onOpenJob, onOpenInfopoint }
         aria-modal="true"
         aria-labelledby={titleId}
       >
+        {/* Two-row header: long DE strings ("Benachrichtigungen",
+            "Alle als gelesen markieren") cannot share one row on
+            phone widths without colliding. */}
         <div className="notifications-dropdown-header">
-          <div className="notifications-pane-head-text">
+          <div className="notifications-pane-head-row">
             <h3 id={titleId}>{t("driverNotifications")}</h3>
-            <div className="label">{t("driverNotificationsSub")}</div>
+            <button
+              type="button"
+              onClick={close}
+              className="btn icon sm notifications-close-btn"
+              aria-label={t("dismiss")}
+              title={t("dismiss")}
+            >
+              <Ic.X />
+            </button>
           </div>
-          <div className="notifications-pane-actions">
+          <div className="notifications-pane-sub-row">
+            <div className="label">{t("driverNotificationsSub")}</div>
             {unreadCount > 0 ? (
               <button
                 type="button"
@@ -3763,15 +4356,6 @@ const DriverNotificationsPane = ({ onClose, onBack, onOpenJob, onOpenInfopoint }
                 {t("driverNotificationsAllRead")}
               </span>
             )}
-            <button
-              type="button"
-              onClick={close}
-              className="btn icon sm notifications-close-btn"
-              aria-label={t("dismiss")}
-              title={t("dismiss")}
-            >
-              <Ic.X />
-            </button>
           </div>
         </div>
         <div className="notifications-dropdown-body scroll">
@@ -4670,6 +5254,7 @@ Object.assign(window, {
   MyJobs,
   ReportProblemSheet,
   PendingNotice,
+  MarkPerformedSheet,
   ProbationLimitSheet,
   DocumentPreviewSheet,
   SameDayOverlapSheet,

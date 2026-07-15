@@ -4358,6 +4358,30 @@ window.AuthStore = (() => {
       return { ok: true, id: row.id };
     },
 
+    // Driver removes an own upload before dispatch has reviewed it
+    // (Figma 8:2545). Reviewed documents (checked/accepted/rejected) are
+    // audit-relevant and can only be replaced, not removed.
+    removeDriverTourDocument(id) {
+      const idx = tourDocuments.findIndex((x) => x.id === id);
+      if (idx === -1) return { ok: false, reason: "not_found" };
+      const doc = tourDocuments[idx];
+      const d = api.getCurrentDriver();
+      if (!d || doc.driverId !== d.id)
+        return { ok: false, reason: "not_owner" };
+      if (normalizeTourDocumentReviewStatus(doc.reviewStatus) !== "uploaded")
+        return { ok: false, reason: "already_in_review" };
+      tourDocuments.splice(idx, 1);
+      reconcileDocumentReviewSummary(doc.jobId);
+      log(
+        "tour_document_removed",
+        d.name,
+        doc.fileName,
+        `${doc.jobId} · ${doc.documentType}`,
+      );
+      emit();
+      return { ok: true };
+    },
+
     acceptTourDocument(id, opts = {}) {
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false, reason: "not_found" };

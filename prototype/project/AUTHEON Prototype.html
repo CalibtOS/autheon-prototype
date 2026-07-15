@@ -19,7 +19,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=19" />
+    <link rel="stylesheet" href="styles.css?v=21" />
   </head>
   <body>
     <div id="root"></div>
@@ -46,7 +46,7 @@
     <script src="inputFormatters.js"></script>
     <script src="store.js"></script>
     <script type="text/babel" src="driver-ui.jsx"></script>
-    <script type="text/babel" src="driver.jsx?v=7"></script>
+    <script type="text/babel" src="driver.jsx?v=8"></script>
     <script type="text/babel" src="admin.jsx"></script>
 
     <script type="text/babel" data-presets="env,react">
@@ -66,6 +66,7 @@
         const [acceptModal, setAcceptModal] = useState(null);
         const [reportProblemJob, setReportProblemJob] = useState(null);
         const [pendingNotice, setPendingNotice] = useState(null);
+        const [markPerformedJobId, setMarkPerformedJobId] = useState(null);
         const [probationLimitModal, setProbationLimitModal] = useState(null);
         const [overlapConfirm, setOverlapConfirm] = useState(null);
         const [banner, setBanner] = useState(null);
@@ -109,11 +110,7 @@
                 onBack={back}
                 onBackToMarketplace={backToMarketplace}
                 onReportProblem={() => setReportProblemJob(job)}
-                onPerform={() => {
-                  const r = store.markPerformed(job.id);
-                  if (!r.ok) setBanner(t("completionBlocked"));
-                  else setActiveJob({ id: job.id, mode: "unlocked" });
-                }}
+                onPerform={() => setMarkPerformedJobId(job.id)}
               />
             );
           }
@@ -268,6 +265,12 @@
                   <PendingNotice
                     kind={pendingNotice}
                     onClose={() => setPendingNotice(null)}
+                  />
+                )}
+                {markPerformedJobId && store.getJob(markPerformedJobId) && (
+                  <MarkPerformedSheet
+                    job={store.getJob(markPerformedJobId)}
+                    onClose={() => setMarkPerformedJobId(null)}
                   />
                 )}
                 {probationLimitModal && (

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!--
+      Base = the prototype app directory. The shared driver code fetches
+      page-relative assets (e.g. store.js -> "assets/transport-order-sample.pdf");
+      with this base they resolve to /prototype/project/assets/... exactly as
+      on the prototype page. /pwa-local files are referenced via ../../pwa/.
+    -->
+    <base href="../prototype/project/" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
+    <title>Transport Portal — Driver PWA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=21" />
+    <link rel="stylesheet" href="../../pwa/pwa.css?v=1" />
+    <script>
+      // Apply theme before first paint: persisted prototype choice first,
+      // then the device preference. Same key as the client-preview page.
+      try {
+        var t =
+          localStorage.getItem("autheon-theme") ||
+          (window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light");
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {
+        /* no-op */
+      }
+    </script>
+  </head>
+  <body class="pwa-page">
+    <div id="root"></div>
+
+    <!--
+      Branded loading splash: runs while React/Babel download and compile,
+      dispatches `autheon-splash-complete` on window, then removes itself.
+      Must load before the CDN bundles so the animation starts immediately.
+    -->
+    <script src="../../pwa/splash.js?v=1"></script>
+
+    <script
+      src="https://unpkg.com/react@18.3.1/umd/react.development.js"
+      integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"
+      integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"
+      integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y"
+      crossorigin="anonymous"
+    ></script>
+
+    <script>
+      // pdf.js resolves the relative sample-PDF URL against window.location
+      // (it ignores <base>), which lands on /pwa/assets/… (404). Reroute those
+      // requests to the real asset directory so /pwa keeps a single source of
+      // truth in prototype/project/assets. Applies to fetch and XHR (pdf.js
+      // uses either depending on browser capabilities).
+      (() => {
+        var MISS = "/pwa/assets/";
+        var REAL = "/prototype/project/assets/";
+        var fix = function (u) {
+          return typeof u === "string" && u.indexOf(MISS) !== -1
+            ? u.replace(MISS, REAL)
+            : u;
+        };
+        var origFetch = window.fetch;
+        window.fetch = function (input, init) {
+          if (typeof input === "string") input = fix(input);
+          else if (input && input.url && input.url.indexOf(MISS) !== -1)
+            input = new Request(fix(input.url), input);
+          return origFetch.call(this, input, init);
+        };
+        var origOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function (method, url) {
+          arguments[1] = fix(url);
+          return origOpen.apply(this, arguments);
+        };
+      })();
+    </script>
+    <script src="feature-flags.js"></script>
+    <script src="i18n.js"></script>
+    <script src="formatters.js"></script>
+    <script src="inputFormatters.js"></script>
+    <script src="store.js"></script>
+    <script type="text/babel" src="driver-ui.jsx"></script>
+    <script type="text/babel" src="driver.jsx?v=8"></script>
+    <script type="text/babel" src="../../pwa/pwa-app.jsx?v=2"></script>
+
+    <script type="text/babel" data-presets="env,react">
+      // /pwa — responsive Driver PWA preview. Renders the same driver
+      // application components as the client-preview prototype, in
+      // real-viewport mode: no phone bezel, no fake status bar, real device
+      // safe areas. Locale follows the persisted prototype choice or the
+      // browser language (see i18n.js).
+      ReactDOM.createRoot(document.getElementById("root")).render(
+        <PwaDriverApp />,
+      );
+    </script>
+  </body>
+</html>

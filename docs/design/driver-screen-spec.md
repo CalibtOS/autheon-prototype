@@ -57,7 +57,7 @@ Implemented as `JobCardBody` (`driver.jsx`), shared by Marketplace and My Jobs:
 | Compensation | Driver offer, right-placed, premium/factual | `driverOffer` |
 | Important vehicle info | `Registered` / `Deregistered` / `E-vehicle` / `Red plates` — icon + text tags, rendered only when set | `registrationStatus/electricVehicle/redPlates` |
 
-**Vehicle info fields (resolved 2026-07-14):** `registrationStatus` (`registered`\|`deregistered`\|null), `electricVehicle`, `redPlates`, `redPlateNumber` per `prd.json` → `resolved_defaults.vehicle_important_info_v1` (client DDB §5 + direction). Set in the admin job form Vehicle section with conditional rules: regular plate required when registered/unspecified, hidden+cleared when deregistered, red-plate number (§ 16 FZV `K-06 1234` format) required when the red-plates flag is set. Shown as chips on cards; in the detail Vehicle card the flags render as an ordered block (label line, chip row beneath), the plate row hides when no plate exists, and a red-styled `Red plate no.` row appears when set (unlocked view only). Text label always present — the icon supports, it never replaces the label.
+**Vehicle info fields (resolved 2026-07-14, revised 2026-07-15):** `registrationStatus` (`registered`\|`deregistered`\|null), `electricVehicle`, `redPlates`, `redPlateNumber` per `prd.json` → `resolved_defaults.vehicle_important_info_v1` (client DDB §5 + direction). **Registration is one exclusive choice** in the admin job form: a four-option segment `Not specified | Registered | Deregistered | Red plates` (red plates legally require a deregistered vehicle — § 16 FZV — so selecting it stores `deregistered + redPlates`; a Registered + red-plates combination is impossible). E-vehicle remains a separate combinable chip. Conditional fields: Brand/Model/VIN always; regular plate only for Not specified/Registered (hidden+cleared otherwise); red-plate number (`K-06 1234` format) required only in the Red plates state. Shown as chips on cards; in the detail Vehicle card the flags render as an ordered block (label line, chip row beneath), the plate row hides when no plate exists, and a red-styled `Red plate no.` row appears when set (unlocked view only). Text label always present — the icon supports, it never replaces the label.
 
 **In-app document viewer:** `DocumentPreviewSheet` is a full-height in-phone page rendering the seeded real 2-page PDF (`prototype/project/assets/transport-order-sample.pdf`) via pdf.js canvases (iframe fallback), with functional Download/Share/Print. All transport-order, tour-document, and Infopoint views/downloads serve this PDF — production streams the real file to the same surface.
 
@@ -78,10 +78,13 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 |--------|-----------|-----------------|-------------|
 | Marketplace | `Portal` | default, filtered, empty, loading, blocked driver | Filter / open job |
 | My Jobs | `MyJobs` | 4 tabs × empty / loading / populated | Open job |
-| Job detail (locked) | `JobLocked` | masked addresses | Accept (opens sheet) |
-| Job detail (unlocked) | `JobUnlocked` | route, contacts, docs, cancellation | Mark performed |
-| Tour documents | `JobTourDocuments` | empty, uploading, failed, review | Upload |
+| Job detail (locked) | `JobLocked` | masked addresses, dashed route card | Accept (opens sheet) |
+| Job detail (unlocked) | `JobUnlocked` | route, contacts, docs, cancellation; performed → `Job details / My documents` tab pills | Mark performed |
+| Tour documents (active tours) | `JobTourDocuments` | empty, uploading, review | Upload |
+| My documents tab (performed) | `MyDocRow` list in `JobUnlocked` | empty, populated, review states, remove | Upload document (fixed bottom bar) |
 | Accept flow | `AcceptanceModal` | valid / invalid, daily limit hint | Accept bindingly (slide-to-confirm) |
+| Mark performed flow | `MarkPerformedSheet` | confirm (slide), success empty, success + uploads | Slide to confirm → Done |
+| Remove document | `RemoveDocModal` | confirm; blocked once in review | Remove (outline danger) |
 | Report problem | `ReportProblemSheet` | 7 codes, min 10 chars, evidence | Submit |
 | Notifications | `DriverNotificationsPane` | grouped by day, unread, empty | Deep link |
 | Profile | `ProfilePaneFull` | view, edit MDR, pending | Request changes |
@@ -95,7 +98,21 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 - **Secondary actions** (Cancel, Back, View terms, Open details): white surface with **fine gray outline** (`--line-2`) or restrained text/ghost button. Never heavy or colorful.
 - Moderate button rounding (`--r-2`/`--r-3`); no pill-shaped primary buttons.
 - Tap feedback: subtle opacity/scale/pressed states; micro-animations minimal, transform/opacity only, `prefers-reduced-motion` respected.
-- **Slide-to-confirm** (binding acceptance, binding cancellation): must clearly prevent accidental booking — full-width deliberate drag, locked until preconditions are met (e.g. 10-char reason), clear track label (sentence case), performant transform-only feedback.
+- **Slide-to-confirm** (binding acceptance, binding cancellation, **mark performed**): must clearly prevent accidental actions — full-width deliberate drag, locked until preconditions are met (e.g. 10-char reason), clear track label (sentence case), performant transform-only feedback. Shared control: `SlideToConfirm` (`driver.jsx`).
+
+---
+
+## Performed flow & My documents (Figma "Autheon RELOADED", 2026-07-15)
+
+Source of truth: Figma file `CgaMrN7nmXS8xub0RxyzsJ` — nodes `8:2268` (details tab), `8:2387` (My documents tab), `8:2545` (remove confirmation), `8:2663`/`8:2567` (performed success, empty / with uploads).
+
+- **Mark performed** opens `MarkPerformedSheet`: slide-to-confirm stage (tour summary card, protective copy, Cancel) → on slide, the store transition runs and the **success stage** appears: green disc check (`--st-accepted` disc, white check, `--st-accepted-bg` ring), "Tour performed successfully.", upload guidance with explicit skip option, dashed **Click to upload** dropzone (hint: `Max file size: 25 MB` when empty, file-type hint once uploads exist), document rows, Done.
+- **Performed tour detail** gets tab pills under the header: inactive = white pill, fine `--line` outline; active = `--ink` fill with `--paper` text (board §H contrast, no purple); My documents carries a count badge.
+- **My documents tab**: clean rows — `FileTypeBadge` (40×48, `--muted-2` file shape with folded corner, uppercase extension), filename + size, document type right-aligned, review-status pill only when the document left the `uploaded` state, × remove. Fixed bottom action bar with `Upload document` (design-system `btn primary`, radius `--r-2` — **not** the Figma pill shape) + file-type hint. Upload reuses the grouped `TourDocCategoryModal`.
+- **Remove document** (`RemoveDocModal`): red-tinted trash icon (`--st-cancelled-bg`/`--st-cancelled`), title/body copy, Cancel + Remove. Remove follows the app's **outline danger** convention (board §I) instead of Figma's filled red. Store rule: `removeDriverTourDocument` allows removal only while `reviewStatus === "uploaded"` — reviewed documents are audit-relevant and can only be replaced.
+- **Marketplace preview Route card** (locked detail): city + 8px dot (`--primary` start, `--ink` end), dashed `--line-dash` connectors both sides of a centered distance (14/600) over estimated duration (12, muted), PLZ beneath each city. Marketplace **cards** keep the original arrow route line.
+- Deliberate deviations from the Figma mocks: no `docx` in the accepted-types hint (store accepts PDF + images only), no simulated failed-upload/Retry row (prototype uploads resolve synchronously), review-status pills added to rows (PRD requires visible correction needs).
+- **DE length hardening (2026-07-15):** the notifications pane header is two rows (title + close, then subtitle + mark-all-read) because "Benachrichtigungen" / "Alle als gelesen markieren" cannot share one row on phone widths; the detail tab-pill row degrades to horizontal scroll (never clips) for long DE labels at ≤360px.
 
 ---
 

@@ -436,6 +436,21 @@ textarea.input {
   min-height: 92px;
   resize: vertical;
 }
+/* Custom select chevron — replaces the native arrow, which macOS draws
+   flush against the border; keep it 14px off the right edge. */
+select.input {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236e6e73' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px 16px;
+  padding-right: 42px;
+  cursor: pointer;
+}
+[data-theme="dark"] select.input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aeaeb2' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
 .field-label {
   font-family: var(--font-sans);
   font-size: var(--text-caption);
@@ -1286,10 +1301,13 @@ textarea.input {
   font-weight: 600;
   color: var(--text);
 }
+/* Marketplace-preview Route card (Figma 07/2026): city + dot — dashed
+   connector — distance over duration — dashed connector — dot + city.
+   Figma colors mapped to tokens: #2563EB→--primary, #1E293B→--ink,
+   #CBD5E1→--line-dash, #6B7280→--muted, #111827/#1F2937→--text. */
 .phone-shell .detail-route-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
   gap: 8px;
   margin: 4px 0;
 }
@@ -1297,6 +1315,7 @@ textarea.input {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  min-width: 0;
 }
 .phone-shell .detail-route-city.start {
   align-items: flex-start;
@@ -1304,41 +1323,59 @@ textarea.input {
 .phone-shell .detail-route-city.end {
   align-items: flex-end;
 }
+.phone-shell .detail-route-city .city-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+}
 .phone-shell .detail-route-city .city-name {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.phone-shell .detail-route-city .route-point {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.phone-shell .detail-route-city .route-point.start {
+  background: var(--primary);
+}
+.phone-shell .detail-route-city .route-point.end {
+  background: var(--ink);
 }
 .phone-shell .detail-route-city .city-pc {
   font-size: 12px;
   color: var(--muted);
 }
-.phone-shell .detail-route-line-wrap {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  padding: 0 8px;
-}
-.phone-shell .detail-route-line {
-  width: 100%;
-  border-top: 2px dashed var(--line-2);
-  margin: 6px 0;
+.phone-shell .detail-route-dash {
+  flex: 1 1 16px;
+  min-width: 12px;
+  border-top: 1px dashed var(--line-dash);
+  margin-top: 10px;
 }
 .phone-shell .detail-route-info {
   display: flex;
   flex-direction: column;
   align-items: center;
+  flex-shrink: 0;
 }
 .phone-shell .detail-route-info .dist {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 20px;
   color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 .phone-shell .detail-route-info .time {
-  font-size: 10px;
+  font-size: 12px;
+  line-height: 16px;
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 .phone-shell .detail-card-divider {
   border: 0;
@@ -1365,7 +1402,7 @@ textarea.input {
   letter-spacing: 0;
 }
 .phone-shell .detail-route-times .time-val {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-caption);
   font-weight: 600;
@@ -3352,6 +3389,299 @@ textarea.input {
   color: var(--text);
 }
 
+/* Mark performed — success modal with document upload (Figma 07/2026) */
+.phone-shell .performed-success-modal {
+  padding: 24px 22px 22px;
+  text-align: center;
+}
+.phone-shell .performed-success-scroll {
+  overflow-y: auto;
+  min-height: 0;
+}
+.phone-shell .performed-success-check {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--st-accepted);
+  box-shadow: 0 0 0 8px var(--st-accepted-bg);
+  margin: 10px auto 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.phone-shell .performed-success-title {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.phone-shell .performed-success-body {
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.phone-shell .performed-upload-drop {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 14px;
+  border: 1px dashed var(--line-dash);
+  border-radius: var(--r-3);
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.phone-shell .performed-upload-drop:hover {
+  background: var(--paper-2);
+}
+.phone-shell .performed-upload-icn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--canvas);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+}
+.phone-shell .performed-upload-cta {
+  font-size: 14px;
+  font-weight: 600;
+}
+.phone-shell .performed-upload-hint {
+  font-size: 11.5px;
+  color: var(--muted-2);
+}
+.phone-shell .performed-success-list {
+  text-align: left;
+  margin-top: 12px;
+}
+
+/* Performed tour detail — tab pills (Figma 8:2387). Active/inactive via
+   ink/paper contrast per Design Direction Board §H (no purple nav). */
+.phone-shell .detail-tabs-row {
+  display: flex;
+  gap: 10px;
+  padding: 8px 16px 10px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  /* Long DE labels ("Auftragsdetails" + "Meine Dokumente") may exceed
+     narrow widths — degrade to horizontal scroll, never clip */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.phone-shell .detail-tabs-row::-webkit-scrollbar {
+  display: none;
+}
+.phone-shell .detail-tab-pill {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.phone-shell .detail-tab-pill.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.phone-shell .detail-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 16px;
+  background: var(--canvas);
+  color: var(--muted);
+}
+.phone-shell .detail-tab-pill.active .detail-tab-count {
+  background: rgba(127, 127, 127, 0.4);
+  color: var(--paper);
+}
+
+/* My documents rows (Figma 8:2387) */
+.phone-shell .mydocs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.phone-shell .mydoc-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--sh-1);
+}
+.phone-shell .doc-file-badge {
+  position: relative;
+  width: 40px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: var(--muted-2);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 9px;
+  overflow: hidden;
+}
+.phone-shell .doc-file-badge::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.12);
+  border-bottom-left-radius: 4px;
+}
+.phone-shell .mydoc-main {
+  flex: 1;
+  min-width: 0;
+}
+.phone-shell .mydoc-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.phone-shell .mydoc-size {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.phone-shell .mydoc-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  max-width: 45%;
+}
+.phone-shell .mydoc-type {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: right;
+}
+.phone-shell .mydoc-remove {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 0 -6px 0 -4px;
+}
+.phone-shell .mydoc-remove:hover {
+  color: var(--text);
+  background: var(--canvas);
+}
+
+/* My documents tab — fixed bottom upload bar (Figma 8:2387) */
+.phone-shell .mydocs-upload-bar {
+  gap: 8px;
+}
+/* Button geometry follows the design-system .btn rules (radius --r-2,
+   board §I) — only sizing matches the sibling detail bottom-bar buttons. */
+.phone-shell .mydocs-upload-bar .btn.primary {
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.phone-shell .mydocs-upload-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Remove document confirmation (Figma 8:2545) */
+.phone-shell .remove-doc-modal {
+  padding: 26px 22px 22px;
+  text-align: center;
+  position: relative;
+}
+.phone-shell .remove-doc-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.phone-shell .remove-doc-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--st-cancelled-bg);
+  color: var(--st-cancelled);
+  margin: 6px auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.phone-shell .remove-doc-title {
+  margin: 0 0 8px;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.phone-shell .remove-doc-body {
+  margin: 0 0 18px;
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.phone-shell .remove-doc-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .confirm-sheet h2 {
   margin: 6px 0 10px;
   font-size: 20px;
@@ -3609,7 +3939,9 @@ textarea.input {
 .phone-shell select.input {
   border-radius: 12px;
   border: 1px solid var(--line);
-  background: var(--paper);
+  /* background-color, not the shorthand — select.input carries the
+     custom chevron as a background-image */
+  background-color: var(--paper);
   color: var(--text);
   padding: 10px 14px;
   font-size: 14px;
@@ -3624,6 +3956,7 @@ textarea.input {
 }
 .phone-shell select.input {
   cursor: pointer;
+  padding-right: 42px;
 }
 
 /* Toggle segment selectors */
@@ -3841,16 +4174,33 @@ textarea.input {
 }
 .phone-shell .notifications-dropdown-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  flex-direction: column;
+  gap: 6px;
   padding: 16px max(20px, var(--phone-chrome-right)) 14px
     max(20px, var(--phone-chrome-left));
   border-bottom: 1px solid var(--line);
   background: var(--paper);
 }
-.phone-shell .notifications-pane-head-text {
+.phone-shell .notifications-pane-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.phone-shell .notifications-pane-head-row h3 {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.phone-shell .notifications-pane-sub-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px 12px;
+  flex-wrap: wrap;
+}
+.phone-shell .notifications-pane-sub-row .label {
+  flex: 1 1 160px;
   min-width: 0;
 }
 .phone-shell .notifications-dropdown-header h3 {

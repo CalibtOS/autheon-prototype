@@ -164,6 +164,25 @@ window.I18n = (() => {
       requestSent: "Request sent",
       awaitingDispatch: "Awaiting dispatch",
       markPerformed: "Mark as performed",
+      markPerformedConfirmTitle: "Mark this tour as performed?",
+      markPerformedConfirmBody:
+        "This confirms the vehicle was handed over at the destination. Slide to confirm — or cancel if this was tapped by mistake.",
+      slidePerformed: "Marked as performed",
+      performedSuccessTitle: "Tour performed successfully.",
+      performedSuccessBody:
+        "Upload your invoice and related documents so payment can be processed. You can skip this step and add them later in the tour's My documents tab.",
+      performedUploadCta: "Click to upload",
+      performedUploadHintEmpty: "Max file size: 25 MB",
+      performedDone: "Done",
+      jobDetailsTab: "Job details",
+      myDocumentsTab: "My documents",
+      myDocsUploadHint: "JPG, PNG or PDF (max. 25 MB)",
+      removeDocTitle: "Remove document?",
+      removeDocBody:
+        "This will permanently remove the file from this tour. Upload a replacement if this document is required for processing.",
+      removeDocConfirm: "Remove",
+      removeDocBlocked:
+        "Documents already in review can't be removed. Contact dispatch if needed.",
       reportProblem: "Report problem",
       openInMaps: "Open in maps",
       refreshDemo: "Refresh",
@@ -1376,6 +1395,25 @@ window.I18n = (() => {
       requestSent: "Anfrage gesendet",
       awaitingDispatch: "Warten auf Disposition",
       markPerformed: "Als durchgeführt markieren",
+      markPerformedConfirmTitle: "Tour als durchgeführt markieren?",
+      markPerformedConfirmBody:
+        "Damit wird bestätigt, dass das Fahrzeug am Ziel übergeben wurde. Zum Bestätigen schieben – oder abbrechen, falls versehentlich getippt.",
+      slidePerformed: "Als durchgeführt markiert",
+      performedSuccessTitle: "Tour erfolgreich durchgeführt.",
+      performedSuccessBody:
+        "Rechnung und zugehörige Dokumente hochladen, damit die Auszahlung bearbeitet werden kann. Dieser Schritt kann übersprungen und die Dokumente später im Tab „Meine Dokumente“ hinzugefügt werden.",
+      performedUploadCta: "Zum Hochladen tippen",
+      performedUploadHintEmpty: "Max. Dateigröße: 25 MB",
+      performedDone: "Fertig",
+      jobDetailsTab: "Auftragsdetails",
+      myDocumentsTab: "Meine Dokumente",
+      myDocsUploadHint: "JPG, PNG oder PDF (max. 25 MB)",
+      removeDocTitle: "Dokument entfernen?",
+      removeDocBody:
+        "Die Datei wird dauerhaft von dieser Tour entfernt. Falls das Dokument für die Abrechnung erforderlich ist, muss ein Ersatz hochgeladen werden.",
+      removeDocConfirm: "Entfernen",
+      removeDocBlocked:
+        "Dokumente in Prüfung können nicht entfernt werden. Bei Bedarf Disposition kontaktieren.",
       reportProblem: "Problem melden",
       openInMaps: "In Karten öffnen",
       refreshDemo: "Aktualisieren",
