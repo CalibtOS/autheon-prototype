@@ -1,0 +1,132 @@
+/* ===============================================================
+   /pwa — REAL-VIEWPORT MODE for the Driver PWA preview
+   ---------------------------------------------------------------
+   Loaded AFTER prototype/project/styles.css, only on /pwa.
+   The DOM keeps the .phone-shell / .phone / .phone-screen classes
+   so the ~300 shared component selectors in styles.css keep
+   applying; this file only neutralizes the decorative phone-frame
+   geometry and adds viewport-responsive behavior.
+
+   Breakpoint strategy (small number, meaningful):
+     ≤ 360px   compact phones  — tighter chrome, smaller nav capsule
+     361–719px default phones  — base layout, fluid
+     ≥ 720px   tablets/desktop — centered app column, sized dialogs
+   =============================================================== */
+
+body.pwa-page {
+  margin: 0;
+  background: var(--paper);
+  overscroll-behavior-y: none;
+}
+
+/* ---- Frame neutralization -------------------------------------- */
+.phone-shell.pwa-viewport {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh; /* fallback */
+  height: 100dvh; /* tracks mobile browser chrome expanding/collapsing */
+  display: grid;
+  place-items: stretch;
+  padding: 0;
+  overflow: hidden;
+  background: var(--canvas);
+}
+.phone-shell.pwa-viewport .phone {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  margin-inline: auto;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.phone-shell.pwa-viewport .phone-screen {
+  /* Real device safe areas replace the mockup status bar (44px). */
+  --phone-chrome-top: env(safe-area-inset-top, 0px);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* ---- Bottom navigation & sheets vs. home indicator ------------- */
+.phone-shell.pwa-viewport .tabbar-container {
+  padding-bottom: max(16px, calc(8px + env(safe-area-inset-bottom, 0px)));
+}
+.phone-shell.pwa-viewport .sheet-foot {
+  padding-bottom: max(22px, calc(14px + env(safe-area-inset-bottom, 0px)));
+}
+/* Keep sheets inside short viewports (landscape phones, split view) */
+.phone-shell.pwa-viewport .sheet {
+  max-height: min(92%, calc(100dvh - 24px));
+}
+
+/* ---- Compact phones (≤360px, e.g. iPhone SE 1st gen / 320px) --- */
+@media (max-width: 360px) {
+  .phone-shell.pwa-viewport .pwa-header {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .phone-shell.pwa-viewport .tabbar-container {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .phone-shell.pwa-viewport .tabbar-capsule {
+    padding: 4px 4px;
+  }
+  .phone-shell.pwa-viewport .sheet-head,
+  .phone-shell.pwa-viewport .sheet-body,
+  .phone-shell.pwa-viewport .sheet-foot {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  /* Paired inputs (filter postal codes / date window): stack instead of
+     shrinking below the native date-input minimum width */
+  .phone-shell.pwa-viewport .grid-2-col-10 {
+    grid-template-columns: 1fr;
+  }
+  /* Marketplace KPI chips: wrap to a second line instead of
+     ellipsizing the labels ("Availa…", "Open docume…") */
+  .phone-shell.pwa-viewport .kpi-row {
+    flex-wrap: wrap;
+  }
+  .phone-shell.pwa-viewport .kpi-chip {
+    flex: 0 0 auto;
+  }
+  /* Long DE tab labels ("Meine Aufträge") at 320px */
+  .phone-shell.pwa-viewport .tabbar-label {
+    font-size: 10px;
+    letter-spacing: -0.01em;
+  }
+  .phone-shell.pwa-viewport .tabbar-item {
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+}
+
+/* Inputs inside grids/flex rows may shrink with their track */
+.phone-shell.pwa-viewport .input {
+  min-width: 0;
+}
+
+/* ---- Tablets & desktop (≥720px): centered mobile-first column -- */
+@media (min-width: 720px) {
+  .phone-shell.pwa-viewport .phone {
+    max-width: 720px;
+    border-inline: 1px solid var(--line);
+  }
+  /* Dialogs sized like dialogs, not full-column strips */
+  .phone-shell.pwa-viewport .sheet-backdrop.center {
+    padding: 0 24px;
+  }
+  .phone-shell.pwa-viewport .sheet.modal {
+    width: 100%;
+    max-width: 440px;
+    margin-inline: auto;
+  }
+  /* Bottom sheets float as a centered card instead of edge-to-edge */
+  .phone-shell.pwa-viewport .sheet:not(.modal) {
+    width: 100%;
+    max-width: 640px;
+    margin-inline: auto;
+  }
+}
