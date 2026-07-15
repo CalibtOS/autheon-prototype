@@ -15,6 +15,17 @@
     <meta name="apple-mobile-web-app-title" content="AUTHEON" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!--
+      iOS Add to Home Screen ignores the web manifest and uses apple-touch-icon.
+      Declare these BEFORE <base> — WebKit has historically resolved touch-icon
+      hrefs against <base>, which would miss /pwa/icons/*. Also ship root
+      /apple-touch-icon.png because Safari probes the origin root as a fallback.
+    -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/pwa/icons/icon-192.png" />
+    <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon-precomposed.png" />
+    <link rel="icon" href="/pwa/favicon.svg" type="image/svg+xml" />
+    <!--
       Base = the prototype app directory. The shared driver code fetches
       page-relative assets (e.g. store.js -> "assets/transport-order-sample.pdf");
       with this base they resolve to /prototype/project/assets/... exactly as
@@ -24,12 +35,6 @@
     <base href="../prototype/project/" />
     <link rel="manifest" href="/pwa/manifest.json" />
     <link rel="manifest" href="/pwa/manifest.webmanifest" />
-    <!-- Absolute /pwa/ icon URLs — ignore <base href>, stay inside SW scope,
-         and work for iOS Add to Home Screen (uses apple-touch-icon, not manifest). -->
-    <link rel="icon" href="/pwa/favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/pwa/icons/icon-180.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/pwa/icons/icon-180.png" />
-    <link rel="apple-touch-icon" sizes="192x192" href="/pwa/icons/icon-192.png" />
     <title>AUTHEON Driver</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
