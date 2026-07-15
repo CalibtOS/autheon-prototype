@@ -14,8 +14,11 @@ function useAutheonPwa() {
       : {
           isStandalone: false,
           isIos: false,
+          isChromium: false,
           canInstall: false,
           installed: false,
+          swReady: false,
+          swControlling: false,
         },
   );
   useEffect(() => {
@@ -29,7 +32,7 @@ function PwaDriverApp() {
   const store = useAuthStore();
   const { t } = useI18n();
   const pwa = useAutheonPwa();
-  const [iosHintOpen, setIosHintOpen] = useState(false);
+  const [installHintOpen, setInstallHintOpen] = useState(false);
   const [tab, setTab] = useState(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -126,28 +129,30 @@ function PwaDriverApp() {
         <div className="pwa-mode-bar" role="region" aria-label={t("pwaInstallRegion")}>
           <div className="pwa-mode-bar-copy">
             <strong>{t("pwaInstallTitle")}</strong>
-            <span>{t("pwaInstallSub")}</span>
+            <span>
+              {pwa.canInstall
+                ? t("pwaInstallSub")
+                : pwa.swControlling
+                  ? t("pwaInstallSubManual")
+                  : t("pwaInstallSubPreparing")}
+            </span>
           </div>
           <div className="pwa-mode-bar-actions">
-            {pwa.canInstall ? (
-              <button
-                type="button"
-                className="btn primary xs"
-                onClick={() => {
-                  void window.AutheonPwa?.promptInstall();
-                }}
-              >
-                {t("pwaInstallAction")}
-              </button>
-            ) : pwa.isIos ? (
-              <button
-                type="button"
-                className="btn xs"
-                onClick={() => setIosHintOpen(true)}
-              >
-                {t("pwaInstallIosAction")}
-              </button>
-            ) : null}
+            <button
+              type="button"
+              className="btn primary xs"
+              onClick={() => {
+                void (async () => {
+                  if (pwa.canInstall) {
+                    const result = await window.AutheonPwa?.promptInstall();
+                    if (result && result.ok) return;
+                  }
+                  setInstallHintOpen(true);
+                })();
+              }}
+            >
+              {t("pwaInstallAction")}
+            </button>
             <a
               className="pwa-mode-bar-link"
               href="/"
@@ -160,24 +165,36 @@ function PwaDriverApp() {
         </div>
       ) : null}
 
-      {iosHintOpen ? (
+      {installHintOpen ? (
         <div
           className="pwa-ios-sheet"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="pwa-ios-title"
+          aria-labelledby="pwa-install-title"
         >
           <div className="pwa-ios-sheet-card">
-            <h2 id="pwa-ios-title">{t("pwaInstallIosTitle")}</h2>
+            <h2 id="pwa-install-title">
+              {pwa.isIos ? t("pwaInstallIosTitle") : t("pwaInstallManualTitle")}
+            </h2>
             <ol>
-              <li>{t("pwaInstallIosStep1")}</li>
-              <li>{t("pwaInstallIosStep2")}</li>
-              <li>{t("pwaInstallIosStep3")}</li>
+              {pwa.isIos ? (
+                <>
+                  <li>{t("pwaInstallIosStep1")}</li>
+                  <li>{t("pwaInstallIosStep2")}</li>
+                  <li>{t("pwaInstallIosStep3")}</li>
+                </>
+              ) : (
+                <>
+                  <li>{t("pwaInstallManualStep1")}</li>
+                  <li>{t("pwaInstallManualStep2")}</li>
+                  <li>{t("pwaInstallManualStep3")}</li>
+                </>
+              )}
             </ol>
             <button
               type="button"
               className="btn primary"
-              onClick={() => setIosHintOpen(false)}
+              onClick={() => setInstallHintOpen(false)}
             >
               {t("dismiss")}
             </button>

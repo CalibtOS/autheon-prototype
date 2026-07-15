@@ -1941,10 +1941,7 @@ select.input {
   text-decoration: none;
   max-width: min(280px, calc(100vw - 48px));
   line-height: 1.35;
-}
-.phone-shell a.pwa-tag:hover {
-  color: var(--text);
-  text-decoration: underline;
+  pointer-events: none;
 }
 .phone {
   width: min(392px, calc(100vw - 32px));

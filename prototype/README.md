@@ -26,7 +26,7 @@ On GitHub Pages (root custom domain): `https://autheon.calibtos.com/` and `https
 | Client preview → **Driver PWA** | Phone-framed mock inside the prototype shell |
 | `/pwa/` | **Installable driver PWA** — full viewport, manifest + service worker |
 
-In the client preview header use **Open driver PWA**. On `/pwa/` use **Install app** (Chrome/Edge) or **Add to Home Screen** (iOS). **Framed preview** returns to `/`. After install, the app launches standalone without the install chrome.
+In the client preview header use **Open driver PWA** (the only entry to `/pwa`). The phone-mock caption is a label only, not a second link. On `/pwa/` use **Install app** (Chrome/Edge) or **Add to Home Screen** (iOS). **Framed preview** returns to `/`. After install, the app launches standalone without the install chrome.
 
 ## Developer workflow (implementing in autheon-fe)
 

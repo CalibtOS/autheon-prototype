@@ -13,8 +13,8 @@ window.I18n = (() => {
       dismiss: "Dismiss",
       openPwaViewport: "Open driver PWA",
       openPwaViewportTitle:
-        "Open the installable full-viewport driver PWA at /pwa",
-      pwaTag: "Phone mock · open /pwa to install the driver app",
+        "Open the installable full-viewport driver app at /pwa",
+      pwaTag: "Phone mock · framed client preview",
       pwaModeNote:
         "Driver PWA · install to your home screen for the full app experience",
       pwaBackToPrototype: "Framed preview",
@@ -22,13 +22,25 @@ window.I18n = (() => {
         "Driver PWA is at /pwa/.\n\nServe from the Autheon repo root (not prototype/project):\n\n  cd Autheon\n  npx serve . -p 3000\n\nThen open http://localhost:3000/pwa/",
       pwaInstallRegion: "Install driver app",
       pwaInstallTitle: "AUTHEON Driver",
-      pwaInstallSub: "Install for home-screen access and a cleaner full-screen experience.",
+      pwaInstallSub:
+        "Install for home-screen access and a cleaner full-screen experience.",
       pwaInstallAction: "Install app",
       pwaInstallIosAction: "Add to Home Screen",
       pwaInstallIosTitle: "Install on iPhone",
       pwaInstallIosStep1: "Tap the Share button in Safari.",
-      pwaInstallIosStep2: "Choose “Add to Home Screen”.",
+      pwaInstallIosStep2: "Choose \"Add to Home Screen\".",
       pwaInstallIosStep3: "Confirm Add — AUTHEON opens like a native app.",
+      pwaInstallSubPreparing:
+        "Preparing install… the page may reload once so Chrome can offer Install.",
+      pwaInstallSubManual:
+        "Use Install app — if Chrome has no prompt yet, follow the short steps.",
+      pwaInstallManualTitle: "Install AUTHEON Driver",
+      pwaInstallManualStep1:
+        "In Chrome or Edge, open the browser menu (⋮).",
+      pwaInstallManualStep2:
+        "Choose \"Install app\" / \"Install Autheon\" / \"Cast, save, and share\" → Install page.",
+      pwaInstallManualStep3:
+        "Confirm Install. AUTHEON opens in its own window without the browser bar.",
       navJobs: "Jobs",
       navNewJob: "New job",
       navUsers: "Users",
@@ -1260,8 +1272,8 @@ window.I18n = (() => {
       dismiss: "Schließen",
       openPwaViewport: "Fahrer-PWA öffnen",
       openPwaViewportTitle:
-        "Installierbare Fahrer-PWA unter /pwa im Vollbild öffnen",
-      pwaTag: "Handy-Mock · /pwa öffnen zum Installieren",
+        "Installierbare Fahrer-App unter /pwa im Vollbild öffnen",
+      pwaTag: "Handy-Mock · gerahmte Kundenvorschau",
       pwaModeNote:
         "Fahrer-PWA · zum Homescreen hinzufügen für das volle App-Erlebnis",
       pwaBackToPrototype: "Gerahmte Vorschau",
@@ -1275,8 +1287,20 @@ window.I18n = (() => {
       pwaInstallIosAction: "Zum Home-Bildschirm",
       pwaInstallIosTitle: "Auf dem iPhone installieren",
       pwaInstallIosStep1: "Tippe in Safari auf Teilen.",
-      pwaInstallIosStep2: "Wähle „Zum Home-Bildschirm“.",
-      pwaInstallIosStep3: "Bestätige Hinzufügen — AUTHEON öffnet sich wie eine App.",
+      pwaInstallIosStep2: "Wähle \"Zum Home-Bildschirm\".",
+      pwaInstallIosStep3:
+        "Bestätige Hinzufügen — AUTHEON öffnet sich wie eine App.",
+      pwaInstallSubPreparing:
+        "Installation wird vorbereitet… die Seite lädt ggf. einmal neu, damit Chrome Installieren anbieten kann.",
+      pwaInstallSubManual:
+        "Nutze App installieren — wenn Chrome noch keinen Dialog zeigt, folge den kurzen Schritten.",
+      pwaInstallManualTitle: "AUTHEON Driver installieren",
+      pwaInstallManualStep1:
+        "Öffne in Chrome oder Edge das Browser-Menü (⋮).",
+      pwaInstallManualStep2:
+        "Wähle \"App installieren\" / \"Autheon installieren\" / \"Übertragen, speichern und teilen\" → Seite installieren.",
+      pwaInstallManualStep3:
+        "Bestätige Installieren. AUTHEON öffnet sich ohne Browserleiste.",
       navJobs: "Aufträge",
       navNewJob: "Neuer Auftrag",
       navUsers: "Benutzer",

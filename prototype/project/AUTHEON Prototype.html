@@ -19,7 +19,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=21" />
+    <link rel="stylesheet" href="styles.css?v=22" />
   </head>
   <body>
     <div id="root"></div>
@@ -41,7 +41,7 @@
     ></script>
 
     <script src="feature-flags.js"></script>
-    <script src="i18n.js"></script>
+    <script src="i18n.js?v=23"></script>
     <script src="formatters.js"></script>
     <script src="inputFormatters.js"></script>
     <script src="store.js"></script>
@@ -168,16 +168,7 @@
 
         return (
           <div className="phone-shell">
-            <a
-              className="pwa-tag"
-              href="/pwa/"
-              target="_top"
-              rel="noopener"
-              title={t("openPwaViewportTitle")}
-              onClick={(e) => openPwaSurface(e, t)}
-            >
-              {t("pwaTag")}
-            </a>
+            <div className="pwa-tag">{t("pwaTag")}</div>
             <div className="phone">
               <div className="notch"></div>
               <div className="phone-screen">
