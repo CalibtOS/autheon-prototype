@@ -1,28 +1,46 @@
 /* global React, AuthStore, useAuthStore, useI18n, TabBar, Portal, MyJobs, Infopoint, ProfilePaneFull, JobLocked, JobUnlocked, AcceptanceModal, ReportProblemSheet, PendingNotice, MarkPerformedSheet, ProbationLimitSheet, SameDayOverlapSheet, FilterSheet, DriverNotificationsPane */
 /**
- * PwaDriverApp — real-viewport shell for the /pwa responsive preview.
+ * PwaDriverApp — real-viewport driver PWA shell for /pwa.
  *
- * This is the same application wiring as the DriverApp inside
- * `prototype/project/AUTHEON Prototype.html` (kept deliberately in sync),
- * minus the decorative phone-mockup chrome: no pwa-tag, no bezel notch,
- * no fake status bar. The device/browser provides the real viewport and
- * safe areas. All screens, components, state and business logic are the
- * shared window-exported components from driver.jsx / driver-ui.jsx —
- * nothing is reimplemented here.
- *
- * Layout differences live in pwa.css under `.phone-shell.pwa-viewport`.
- * The `.phone-shell` / `.phone` / `.phone-screen` class names are kept so
- * the ~300 shared component selectors in styles.css keep applying.
- *
- * NOTE: if the prototype's inline DriverApp gains new flows/modals,
- * mirror the change here.
+ * Same application wiring as DriverApp in AUTHEON Prototype.html, without
+ * phone-mock chrome. Supports installable standalone display via manifest + SW.
  */
-const { useState } = React;
+const { useState, useEffect } = React;
+
+function useAutheonPwa() {
+  const [pwa, setPwa] = useState(() =>
+    window.AutheonPwa
+      ? window.AutheonPwa.getState()
+      : {
+          isStandalone: false,
+          isIos: false,
+          canInstall: false,
+          installed: false,
+        },
+  );
+  useEffect(() => {
+    if (!window.AutheonPwa) return undefined;
+    return window.AutheonPwa.subscribe(setPwa);
+  }, []);
+  return pwa;
+}
 
 function PwaDriverApp() {
   const store = useAuthStore();
   const { t } = useI18n();
-  const [tab, setTab] = useState("portal");
+  const pwa = useAutheonPwa();
+  const [iosHintOpen, setIosHintOpen] = useState(false);
+  const [tab, setTab] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get("tab");
+      return next === "mine" || next === "info" || next === "profile" || next === "portal"
+        ? next
+        : "portal";
+    } catch (_) {
+      return "portal";
+    }
+  });
   const [filters, setFilters] = useState({});
   const [showFilter, setShowFilter] = useState(false);
   const [activeJob, setActiveJob] = useState(null); // {id, mode}
@@ -104,6 +122,69 @@ function PwaDriverApp() {
 
   return (
     <div className="phone-shell pwa-viewport">
+      {!pwa.isStandalone ? (
+        <div className="pwa-mode-bar" role="region" aria-label={t("pwaInstallRegion")}>
+          <div className="pwa-mode-bar-copy">
+            <strong>{t("pwaInstallTitle")}</strong>
+            <span>{t("pwaInstallSub")}</span>
+          </div>
+          <div className="pwa-mode-bar-actions">
+            {pwa.canInstall ? (
+              <button
+                type="button"
+                className="btn primary xs"
+                onClick={() => {
+                  void window.AutheonPwa?.promptInstall();
+                }}
+              >
+                {t("pwaInstallAction")}
+              </button>
+            ) : pwa.isIos ? (
+              <button
+                type="button"
+                className="btn xs"
+                onClick={() => setIosHintOpen(true)}
+              >
+                {t("pwaInstallIosAction")}
+              </button>
+            ) : null}
+            <a
+              className="pwa-mode-bar-link"
+              href="/"
+              target="_top"
+              rel="noopener"
+            >
+              {t("pwaBackToPrototype")}
+            </a>
+          </div>
+        </div>
+      ) : null}
+
+      {iosHintOpen ? (
+        <div
+          className="pwa-ios-sheet"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pwa-ios-title"
+        >
+          <div className="pwa-ios-sheet-card">
+            <h2 id="pwa-ios-title">{t("pwaInstallIosTitle")}</h2>
+            <ol>
+              <li>{t("pwaInstallIosStep1")}</li>
+              <li>{t("pwaInstallIosStep2")}</li>
+              <li>{t("pwaInstallIosStep3")}</li>
+            </ol>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => setIosHintOpen(false)}
+            >
+              {t("dismiss")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="phone">
         <div className="phone-screen">
           <div

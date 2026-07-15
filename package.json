@@ -4,7 +4,9 @@
   "private": true,
   "description": "Static AUTHEON frontend prototype with Playwright E2E and regression tests.",
   "scripts": {
+    "serve": "npx --yes serve . -l 3000",
     "dev": "http-server . -a 127.0.0.1 -p 4173 -c-1",
+    "dev:3000": "http-server . -a 127.0.0.1 -p 3000 -c-1",
     "test:e2e": "playwright test tests/e2e --project=chromium",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",

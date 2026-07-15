@@ -26,3 +26,12 @@ This repository is the shared home for AUTHEON documentation, research, meeting 
 - [Prototype export](prototype/project/AUTHEON%20Prototype.html)
 
 The GitHub Pages entry point is [index.html](index.html).
+
+Driver installable PWA: [`/pwa/`](pwa/) (manifest + service worker).
+
+```bash
+# Serve from this repo root (required for / and /pwa)
+npm run serve
+# http://localhost:3000/      → framed client preview
+# http://localhost:3000/pwa/  → installable driver PWA
+```

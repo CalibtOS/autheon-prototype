@@ -66,6 +66,9 @@ export async function expectPrototypeShellVisible(page: Page): Promise<void> {
   ).toBeVisible();
   await expect(header.getByRole('button', { name: /Driver\s*PWA|Fahrer App/i })).toBeVisible();
   await expect(header.getByRole('button', { name: /Admin Backend/i })).toBeVisible();
+  await expect(
+    header.getByRole('link', { name: /Open driver PWA|Fahrer-PWA öffnen|Open \/pwa|Öffne \/pwa/i }),
+  ).toBeVisible();
   await expect(header.locator('.locale-switch').getByRole('button', { name: 'EN' })).toBeVisible();
   await expect(header.locator('.locale-switch').getByRole('button', { name: 'DE' })).toBeVisible();
   await expect(header.locator('.theme-switch').getByRole('button', { name: /Light|Hell/i })).toBeVisible();
@@ -90,7 +93,7 @@ export async function expectCurrentSurface(
   await expect(driverSurface(page)).toBeHidden();
   await expect(
     prototypeFrame(page).getByRole('heading', {
-      name: /Job overview|Auftrags/i,
+      name: /Jobs|Aufträge|Job overview|Auftrags/i,
     }),
   ).toBeVisible();
 }

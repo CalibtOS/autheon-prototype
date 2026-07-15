@@ -4,11 +4,29 @@
 
 ## Quick start
 
+**Important:** always serve from the **Autheon repo root** (the folder that contains both `pwa/` and `prototype/`). Serving only `prototype/project` makes `/pwa/` return 404.
+
 ```bash
 # From Autheon repo root
-npx serve .
-# Open http://localhost:3000/prototype/project/AUTHEON%20Prototype.html
+npm run serve
+# or: npx serve . -l 3000
+
+# Client preview (framed phone + admin):
+#   http://localhost:3000/
+# Installable driver PWA (full viewport):
+#   http://localhost:3000/pwa/
 ```
+
+On GitHub Pages (root custom domain): `https://autheon.calibtos.com/` and `https://autheon.calibtos.com/pwa/`.
+
+**Two driver surfaces**
+
+| Route | What it is |
+| --- | --- |
+| Client preview → **Driver PWA** | Phone-framed mock inside the prototype shell |
+| `/pwa/` | **Installable driver PWA** — full viewport, manifest + service worker |
+
+In the client preview header use **Open driver PWA**. On `/pwa/` use **Install app** (Chrome/Edge) or **Add to Home Screen** (iOS). **Framed preview** returns to `/`. After install, the app launches standalone without the install chrome.
 
 ## Developer workflow (implementing in autheon-fe)
 

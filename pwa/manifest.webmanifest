@@ -1,0 +1,62 @@
+{
+  "id": "/pwa/",
+  "name": "AUTHEON Driver",
+  "short_name": "AUTHEON",
+  "description": "Vehicle transport driver app — jobs, documents, and tour status.",
+  "lang": "de",
+  "dir": "ltr",
+  "start_url": "/pwa/",
+  "scope": "/pwa/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#F5F5F7",
+  "theme_color": "#FFFFFF",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/prototype/project/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/prototype/project/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/prototype/project/icons/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/prototype/project/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/prototype/project/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "My Jobs",
+      "short_name": "My Jobs",
+      "url": "/pwa/?tab=mine",
+      "icons": [
+        {
+          "src": "/prototype/project/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

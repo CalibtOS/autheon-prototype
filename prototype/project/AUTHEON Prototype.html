@@ -53,6 +53,33 @@
       const { useState, useEffect } = React;
       const demoDriver = () => AuthStore.DEMO_DRIVER;
 
+      function resolvePwaHref() {
+        return "/pwa/";
+      }
+
+      async function openPwaSurface(event, t) {
+        if (event) event.preventDefault();
+        const origin = window.location.origin;
+        const candidates = [
+          `${origin}/pwa/`,
+          new URL("../../pwa/", window.location.href).href,
+        ];
+        for (const raw of candidates) {
+          try {
+            const href = raw.endsWith("/") ? raw : `${raw}/`;
+            const probe = new URL("manifest.webmanifest", href).href;
+            const res = await fetch(probe, { cache: "no-store" });
+            if (res.ok) {
+              (window.top || window).location.href = href;
+              return;
+            }
+          } catch (_) {
+            /* try next candidate */
+          }
+        }
+        window.alert(t("pwaServeFromRootHint"));
+      }
+
       // =====================================================================
       // DRIVER PWA APP
       // =====================================================================
@@ -141,7 +168,16 @@
 
         return (
           <div className="phone-shell">
-            <div className="pwa-tag">{t("pwaTag")}</div>
+            <a
+              className="pwa-tag"
+              href="/pwa/"
+              target="_top"
+              rel="noopener"
+              title={t("openPwaViewportTitle")}
+              onClick={(e) => openPwaSurface(e, t)}
+            >
+              {t("pwaTag")}
+            </a>
             <div className="phone">
               <div className="notch"></div>
               <div className="phone-screen">
@@ -921,6 +957,7 @@
           localStorage.getItem("autheon-theme") || "light",
         );
         const { locale, setLocale, t } = useI18n();
+        const pwaHref = resolvePwaHref();
 
         useEffect(() => {
           document.documentElement.setAttribute("data-theme", theme);
@@ -959,6 +996,16 @@
                     {t("adminBackend")}
                   </button>
                 </div>
+                <a
+                  className="pwa-entry"
+                  href={pwaHref}
+                  target="_top"
+                  rel="noopener"
+                  title={t("openPwaViewportTitle")}
+                  onClick={(e) => openPwaSurface(e, t)}
+                >
+                  {t("openPwaViewport")}
+                </a>
                 <div className="switcher locale-switch">
                   <button
                     className={locale === "en" ? "on" : ""}

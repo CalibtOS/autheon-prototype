@@ -8,18 +8,24 @@
     />
     <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="AUTHEON Driver — vehicle transport jobs, documents, and tour status." />
+    <meta name="application-name" content="AUTHEON" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="AUTHEON" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!--
       Base = the prototype app directory. The shared driver code fetches
       page-relative assets (e.g. store.js -> "assets/transport-order-sample.pdf");
       with this base they resolve to /prototype/project/assets/... exactly as
-      on the prototype page. /pwa-local files are referenced via ../../pwa/.
+      on the prototype page. /pwa files are referenced via absolute /pwa/ paths
+      or ../../pwa/ relative escapes.
     -->
     <base href="../prototype/project/" />
+    <link rel="manifest" href="/pwa/manifest.webmanifest" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
-    <title>Transport Portal — Driver PWA</title>
+    <title>AUTHEON Driver</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -27,7 +33,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=21" />
-    <link rel="stylesheet" href="../../pwa/pwa.css?v=1" />
+    <link rel="stylesheet" href="../../pwa/pwa.css?v=4" />
     <script>
       // Apply theme before first paint: persisted prototype choice first,
       // then the device preference. Same key as the client-preview page.
@@ -38,6 +44,12 @@
             ? "dark"
             : "light");
         document.documentElement.setAttribute("data-theme", t);
+        if (
+          window.matchMedia("(display-mode: standalone)").matches ||
+          window.navigator.standalone
+        ) {
+          document.documentElement.classList.add("pwa-standalone");
+        }
       } catch (e) {
         /* no-op */
       }
@@ -52,6 +64,7 @@
       Must load before the CDN bundles so the animation starts immediately.
     -->
     <script src="../../pwa/splash.js?v=1"></script>
+    <script src="/pwa/pwa-install.js?v=1"></script>
 
     <script
       src="https://unpkg.com/react@18.3.1/umd/react.development.js"
@@ -104,14 +117,11 @@
     <script src="store.js"></script>
     <script type="text/babel" src="driver-ui.jsx"></script>
     <script type="text/babel" src="driver.jsx?v=8"></script>
-    <script type="text/babel" src="../../pwa/pwa-app.jsx?v=2"></script>
+    <script type="text/babel" src="../../pwa/pwa-app.jsx?v=5"></script>
 
     <script type="text/babel" data-presets="env,react">
-      // /pwa — responsive Driver PWA preview. Renders the same driver
-      // application components as the client-preview prototype, in
-      // real-viewport mode: no phone bezel, no fake status bar, real device
-      // safe areas. Locale follows the persisted prototype choice or the
-      // browser language (see i18n.js).
+      // /pwa — installable Driver PWA (standalone + service worker).
+      // Same driver components as the framed client preview, full viewport.
       ReactDOM.createRoot(document.getElementById("root")).render(
         <PwaDriverApp />,
       );
