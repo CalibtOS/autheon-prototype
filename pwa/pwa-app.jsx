@@ -130,15 +130,6 @@ function PwaDriverApp() {
         <div className="pwa-mode-bar" role="region" aria-label={t("pwaInstallRegion")}>
           <div className="pwa-mode-bar-copy">
             <strong>{t("pwaInstallTitle")}</strong>
-            <span>
-              {pwa.canInstall
-                ? t("pwaInstallSub")
-                : pwa.installBlockedHint
-                  ? t("pwaInstallSubAuthBlocked")
-                  : pwa.swControlling
-                    ? t("pwaInstallSubManual")
-                    : t("pwaInstallSubPreparing")}
-            </span>
           </div>
           <div className="pwa-mode-bar-actions">
             <button
