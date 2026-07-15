@@ -3402,8 +3402,9 @@ select.input {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: var(--st-accepted-bg);
-  margin: 4px auto 16px;
+  background: var(--st-accepted);
+  box-shadow: 0 0 0 8px var(--st-accepted-bg);
+  margin: 10px auto 18px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3460,10 +3461,225 @@ select.input {
   margin-top: 12px;
 }
 
-/* Performed tour detail — details / my documents tabs */
-.phone-shell .detail-tabs {
-  justify-content: flex-start;
-  gap: 18px;
+/* Performed tour detail — tab pills (Figma 8:2387). Active/inactive via
+   ink/paper contrast per Design Direction Board §H (no purple nav). */
+.phone-shell .detail-tabs-row {
+  display: flex;
+  gap: 10px;
+  padding: 8px 16px 10px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  /* Long DE labels ("Auftragsdetails" + "Meine Dokumente") may exceed
+     narrow widths — degrade to horizontal scroll, never clip */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.phone-shell .detail-tabs-row::-webkit-scrollbar {
+  display: none;
+}
+.phone-shell .detail-tab-pill {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.phone-shell .detail-tab-pill.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.phone-shell .detail-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 16px;
+  background: var(--canvas);
+  color: var(--muted);
+}
+.phone-shell .detail-tab-pill.active .detail-tab-count {
+  background: rgba(127, 127, 127, 0.4);
+  color: var(--paper);
+}
+
+/* My documents rows (Figma 8:2387) */
+.phone-shell .mydocs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.phone-shell .mydoc-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--sh-1);
+}
+.phone-shell .doc-file-badge {
+  position: relative;
+  width: 40px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: var(--muted-2);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 9px;
+  overflow: hidden;
+}
+.phone-shell .doc-file-badge::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.12);
+  border-bottom-left-radius: 4px;
+}
+.phone-shell .mydoc-main {
+  flex: 1;
+  min-width: 0;
+}
+.phone-shell .mydoc-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.phone-shell .mydoc-size {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.phone-shell .mydoc-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  max-width: 45%;
+}
+.phone-shell .mydoc-type {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: right;
+}
+.phone-shell .mydoc-remove {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 0 -6px 0 -4px;
+}
+.phone-shell .mydoc-remove:hover {
+  color: var(--text);
+  background: var(--canvas);
+}
+
+/* My documents tab — fixed bottom upload bar (Figma 8:2387) */
+.phone-shell .mydocs-upload-bar {
+  gap: 8px;
+}
+/* Button geometry follows the design-system .btn rules (radius --r-2,
+   board §I) — only sizing matches the sibling detail bottom-bar buttons. */
+.phone-shell .mydocs-upload-bar .btn.primary {
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.phone-shell .mydocs-upload-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Remove document confirmation (Figma 8:2545) */
+.phone-shell .remove-doc-modal {
+  padding: 26px 22px 22px;
+  text-align: center;
+  position: relative;
+}
+.phone-shell .remove-doc-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.phone-shell .remove-doc-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--st-cancelled-bg);
+  color: var(--st-cancelled);
+  margin: 6px auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.phone-shell .remove-doc-title {
+  margin: 0 0 8px;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.phone-shell .remove-doc-body {
+  margin: 0 0 18px;
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.phone-shell .remove-doc-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 .confirm-sheet h2 {
@@ -3958,16 +4174,33 @@ select.input {
 }
 .phone-shell .notifications-dropdown-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  flex-direction: column;
+  gap: 6px;
   padding: 16px max(20px, var(--phone-chrome-right)) 14px
     max(20px, var(--phone-chrome-left));
   border-bottom: 1px solid var(--line);
   background: var(--paper);
 }
-.phone-shell .notifications-pane-head-text {
+.phone-shell .notifications-pane-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.phone-shell .notifications-pane-head-row h3 {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.phone-shell .notifications-pane-sub-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px 12px;
+  flex-wrap: wrap;
+}
+.phone-shell .notifications-pane-sub-row .label {
+  flex: 1 1 160px;
   min-width: 0;
 }
 .phone-shell .notifications-dropdown-header h3 {

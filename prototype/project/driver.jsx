@@ -2184,6 +2184,133 @@ const TourDocCategoryModal = ({ open, onClose, onPick }) => {
   );
 };
 
+// File-extension badge (Figma 8:2387) — folded-corner file shape with
+// the uppercase extension.
+const fileExt = (name) => {
+  const m = /\.([a-z0-9]+)$/i.exec(String(name || ""));
+  return m ? m[1].toUpperCase().slice(0, 4) : "FILE";
+};
+
+const FileTypeBadge = ({ fileName }) => (
+  <span className="doc-file-badge" aria-hidden="true">
+    {fileExt(fileName)}
+  </span>
+);
+
+// Driver document row (Figma 8:2387): ext badge · name + size ·
+// type right-aligned · remove (only while the upload is not yet reviewed).
+const MyDocRow = ({ doc, onRemove, t }) => (
+  <div className="mydoc-row">
+    <FileTypeBadge fileName={doc.fileName} />
+    <div className="mydoc-main">
+      <div className="mydoc-name" title={doc.fileName}>
+        {doc.fileName}
+      </div>
+      <div className="mydoc-size">{F().formatFileSize(doc.sizeBytes)}</div>
+    </div>
+    <div className="mydoc-side">
+      <div className="mydoc-type">
+        {displayTourDocType(doc.documentType, t)}
+      </div>
+      {doc.reviewStatus !== "uploaded" ? (
+        <Pill
+          status={tourDocReviewPillStatus(doc.reviewStatus)}
+          className="no-dot"
+        >
+          {displayDocReviewStatus(doc.reviewStatus, t)}
+        </Pill>
+      ) : null}
+    </div>
+    {onRemove ? (
+      <button
+        type="button"
+        className="mydoc-remove touch-target"
+        onClick={onRemove}
+        aria-label={t("removeDocTitle")}
+      >
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+      </button>
+    ) : null}
+  </div>
+);
+
+// Remove-document confirmation (Figma 8:2545).
+const RemoveDocModal = ({ open, onCancel, onConfirm }) => {
+  const { t } = useI18n();
+  if (!open) return null;
+  return (
+    <div className="sheet-backdrop center" onClick={onCancel}>
+      <div
+        className="sheet modal remove-doc-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="remove-doc-title"
+      >
+        <button
+          type="button"
+          className="remove-doc-close touch-target"
+          onClick={onCancel}
+          aria-label={t("cancel")}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
+        <div className="remove-doc-icon" aria-hidden="true">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M3 6h18" />
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+            <path d="M10 11v6M14 11v6" />
+          </svg>
+        </div>
+        <h3 id="remove-doc-title" className="remove-doc-title">
+          {t("removeDocTitle")}
+        </h3>
+        <p className="remove-doc-body">{t("removeDocBody")}</p>
+        <div className="remove-doc-actions">
+          <button type="button" className="btn" onClick={onCancel}>
+            {t("cancel")}
+          </button>
+          <button type="button" className="btn danger" onClick={onConfirm}>
+            {t("removeDocConfirm")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const TourDocumentRow = ({
   fileName,
   metaLine,
@@ -2483,11 +2610,45 @@ const JobUnlocked = ({
     job.endCity,
   );
   const [docPreview, setDocPreview] = useState(null);
-  // Performed tours split into two tabs (Figma 07/2026): job details and
-  // the driver's own tour documents.
+  // Performed tours split into two tabs (Figma 8:2268 / 8:2387): job
+  // details and the driver's own tour documents.
   const [detailTab, setDetailTab] = useState("details");
-  const docCount = store.getDriverTourDocumentsForJob(job.id).length;
+  const docs = store.getDriverTourDocumentsForJob(job.id);
+  const docCount = docs.length;
   const showDocsTab = isPerformed && detailTab === "documents";
+  // My-documents tab: upload + remove state
+  const [docsCategoryOpen, setDocsCategoryOpen] = useState(false);
+  const [docsPendingType, setDocsPendingType] = useState(null);
+  const [docsFeedback, setDocsFeedback] = useState(null);
+  const [removeDocId, setRemoveDocId] = useState(null);
+  const docsInputRef = useRef(null);
+
+  const docsPickType = (documentType) => {
+    setDocsCategoryOpen(false);
+    setDocsPendingType(documentType);
+    docsInputRef.current?.click();
+  };
+  const docsOnFile = (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f || !docsPendingType) return;
+    const r = store.addTourDocument(f, {
+      jobId: job.id,
+      documentType: docsPendingType,
+    });
+    setDocsPendingType(null);
+    setDocsFeedback(
+      r.ok
+        ? { tone: "success", message: t("tourDocUploadSuccess") }
+        : { tone: "error", message: tourDocUploadErrorMessage(r.reason, t) },
+    );
+  };
+  const docsConfirmRemove = () => {
+    const r = store.removeDriverTourDocument(removeDocId);
+    setRemoveDocId(null);
+    if (!r.ok)
+      setDocsFeedback({ tone: "error", message: t("removeDocBlocked") });
+  };
 
   return (
     <>
@@ -2532,23 +2693,23 @@ const JobUnlocked = ({
         <div className="w-40-spacer"></div>
       </div>
 
-      {/* Performed tours: details / my documents tabs */}
+      {/* Performed tours: details / my documents tab pills (Figma 8:2387) */}
       {isPerformed ? (
-        <div className="myjobs-tabs-slider detail-tabs">
+        <div className="detail-tabs-row">
           <button
             type="button"
-            className={`myjobs-tab-pill ${detailTab === "details" ? "active" : ""}`}
+            className={`detail-tab-pill ${detailTab === "details" ? "active" : ""}`}
             onClick={() => setDetailTab("details")}
           >
             <span>{t("jobDetailsTab")}</span>
           </button>
           <button
             type="button"
-            className={`myjobs-tab-pill ${detailTab === "documents" ? "active" : ""}`}
+            className={`detail-tab-pill ${detailTab === "documents" ? "active" : ""}`}
             onClick={() => setDetailTab("documents")}
           >
             <span>{t("myDocumentsTab")}</span>
-            <span className="pill-badge">{docCount}</span>
+            <span className="detail-tab-count">{docCount}</span>
           </button>
         </div>
       ) : null}
@@ -2556,7 +2717,32 @@ const JobUnlocked = ({
       {/* Main Content Area */}
       <div className="scroll pwa-detail-body">
         {showDocsTab ? (
-          <JobTourDocuments job={job} onPreview={setDocPreview} />
+          <div className="mydocs-list">
+            <InlineAlert
+              tone={docsFeedback?.tone}
+              message={docsFeedback?.message}
+              onDismiss={() => setDocsFeedback(null)}
+            />
+            {docs.length === 0 ? (
+              <EmptyState
+                title={t("tourDocEmptyTitle")}
+                description={t("tourDocUploadEmpty")}
+              />
+            ) : (
+              docs.map((u) => (
+                <MyDocRow
+                  key={u.id}
+                  doc={u}
+                  t={t}
+                  onRemove={
+                    u.reviewStatus === "uploaded"
+                      ? () => setRemoveDocId(u.id)
+                      : null
+                  }
+                />
+              ))
+            )}
+          </div>
         ) : (
         <>
         {inExecution && !isCancelled && !isPerformed ? (
@@ -2892,6 +3078,42 @@ const JobUnlocked = ({
             {t("reportProblem")}
           </button>
         </div>
+      )}
+
+      {/* My documents tab: fixed bottom upload bar (Figma 8:2387) */}
+      {showDocsTab && (
+        <div className="pwa-unlocked-bottom mydocs-upload-bar">
+          <button
+            type="button"
+            className="btn primary"
+            onClick={() => setDocsCategoryOpen(true)}
+          >
+            {t("tourDocUploadButton")} <UploadTrayIcon />
+          </button>
+          <p className="mydocs-upload-hint">{t("myDocsUploadHint")}</p>
+        </div>
+      )}
+      {showDocsTab && (
+        <>
+          <input
+            ref={docsInputRef}
+            type="file"
+            capture="environment"
+            accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
+            className="hidden"
+            onChange={docsOnFile}
+          />
+          <TourDocCategoryModal
+            open={docsCategoryOpen}
+            onClose={() => setDocsCategoryOpen(false)}
+            onPick={docsPickType}
+          />
+          <RemoveDocModal
+            open={!!removeDocId}
+            onCancel={() => setRemoveDocId(null)}
+            onConfirm={docsConfirmRemove}
+          />
+        </>
       )}
     </>
   );
@@ -3685,8 +3907,16 @@ const MarkPerformedSheet = ({ job, onClose }) => {
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [pendingType, setPendingType] = useState(null);
   const [uploadFeedback, setUploadFeedback] = useState(null);
+  const [removeId, setRemoveId] = useState(null);
   const inputRef = useRef(null);
   const uploads = store.getDriverTourDocumentsForJob(job.id);
+
+  const confirmRemove = () => {
+    const r = store.removeDriverTourDocument(removeId);
+    setRemoveId(null);
+    if (!r.ok)
+      setUploadFeedback({ tone: "error", message: t("removeDocBlocked") });
+  };
 
   const onSlideConfirm = () => {
     const r = store.markPerformed(job.id);
@@ -3795,8 +4025,8 @@ const MarkPerformedSheet = ({ job, onClose }) => {
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
               <path
                 d="M6 12l4 4 8-9"
-                stroke="var(--st-accepted)"
-                strokeWidth="2.2"
+                stroke="#fff"
+                strokeWidth="2.4"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -3818,7 +4048,9 @@ const MarkPerformedSheet = ({ job, onClose }) => {
               {t("performedUploadCta")}
             </span>
             <span className="performed-upload-hint">
-              {t("performedUploadHint")}
+              {uploads.length
+                ? t("myDocsUploadHint")
+                : t("performedUploadHintEmpty")}
             </span>
           </button>
           <InlineAlert
@@ -3827,12 +4059,17 @@ const MarkPerformedSheet = ({ job, onClose }) => {
             onDismiss={() => setUploadFeedback(null)}
           />
           {uploads.length > 0 ? (
-            <div className="tour-doc-list performed-success-list">
+            <div className="mydocs-list performed-success-list">
               {uploads.map((u) => (
-                <TourDocumentRow
+                <MyDocRow
                   key={u.id}
-                  fileName={u.fileName}
-                  metaLine={`${displayTourDocType(u.documentType, t)} · ${F().formatFileSize(u.sizeBytes)}`}
+                  doc={u}
+                  t={t}
+                  onRemove={
+                    u.reviewStatus === "uploaded"
+                      ? () => setRemoveId(u.id)
+                      : null
+                  }
                 />
               ))}
             </div>
@@ -3857,6 +4094,11 @@ const MarkPerformedSheet = ({ job, onClose }) => {
           open={categoryOpen}
           onClose={() => setCategoryOpen(false)}
           onPick={pickType}
+        />
+        <RemoveDocModal
+          open={!!removeId}
+          onCancel={() => setRemoveId(null)}
+          onConfirm={confirmRemove}
         />
       </div>
     </div>
@@ -4080,12 +4322,24 @@ const DriverNotificationsPane = ({ onClose, onBack, onOpenJob, onOpenInfopoint }
         aria-modal="true"
         aria-labelledby={titleId}
       >
+        {/* Two-row header: long DE strings ("Benachrichtigungen",
+            "Alle als gelesen markieren") cannot share one row on
+            phone widths without colliding. */}
         <div className="notifications-dropdown-header">
-          <div className="notifications-pane-head-text">
+          <div className="notifications-pane-head-row">
             <h3 id={titleId}>{t("driverNotifications")}</h3>
-            <div className="label">{t("driverNotificationsSub")}</div>
+            <button
+              type="button"
+              onClick={close}
+              className="btn icon sm notifications-close-btn"
+              aria-label={t("dismiss")}
+              title={t("dismiss")}
+            >
+              <Ic.X />
+            </button>
           </div>
-          <div className="notifications-pane-actions">
+          <div className="notifications-pane-sub-row">
+            <div className="label">{t("driverNotificationsSub")}</div>
             {unreadCount > 0 ? (
               <button
                 type="button"
@@ -4102,15 +4356,6 @@ const DriverNotificationsPane = ({ onClose, onBack, onOpenJob, onOpenInfopoint }
                 {t("driverNotificationsAllRead")}
               </span>
             )}
-            <button
-              type="button"
-              onClick={close}
-              className="btn icon sm notifications-close-btn"
-              aria-label={t("dismiss")}
-              title={t("dismiss")}
-            >
-              <Ic.X />
-            </button>
           </div>
         </div>
         <div className="notifications-dropdown-body scroll">

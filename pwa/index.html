@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="utf-8" />
     <meta
@@ -45,6 +45,13 @@
   </head>
   <body class="pwa-page">
     <div id="root"></div>
+
+    <!--
+      Branded loading splash: runs while React/Babel download and compile,
+      dispatches `autheon-splash-complete` on window, then removes itself.
+      Must load before the CDN bundles so the animation starts immediately.
+    -->
+    <script src="../../pwa/splash.js?v=1"></script>
 
     <script
       src="https://unpkg.com/react@18.3.1/umd/react.development.js"

@@ -170,12 +170,19 @@ window.I18n = (() => {
       slidePerformed: "Marked as performed",
       performedSuccessTitle: "Tour performed successfully.",
       performedSuccessBody:
-        "Upload your invoice and related documents so payment can be processed. You can also add them later in the tour's My documents tab.",
+        "Upload your invoice and related documents so payment can be processed. You can skip this step and add them later in the tour's My documents tab.",
       performedUploadCta: "Click to upload",
-      performedUploadHint: "PDF or images · max 25 MB",
+      performedUploadHintEmpty: "Max file size: 25 MB",
       performedDone: "Done",
       jobDetailsTab: "Job details",
       myDocumentsTab: "My documents",
+      myDocsUploadHint: "JPG, PNG or PDF (max. 25 MB)",
+      removeDocTitle: "Remove document?",
+      removeDocBody:
+        "This will permanently remove the file from this tour. Upload a replacement if this document is required for processing.",
+      removeDocConfirm: "Remove",
+      removeDocBlocked:
+        "Documents already in review can't be removed. Contact dispatch if needed.",
       reportProblem: "Report problem",
       openInMaps: "Open in maps",
       refreshDemo: "Refresh",
@@ -1394,12 +1401,19 @@ window.I18n = (() => {
       slidePerformed: "Als durchgeführt markiert",
       performedSuccessTitle: "Tour erfolgreich durchgeführt.",
       performedSuccessBody:
-        "Rechnung und zugehörige Dokumente hochladen, damit die Auszahlung bearbeitet werden kann. Dokumente können auch später im Tab „Meine Dokumente“ der Tour hinzugefügt werden.",
+        "Rechnung und zugehörige Dokumente hochladen, damit die Auszahlung bearbeitet werden kann. Dieser Schritt kann übersprungen und die Dokumente später im Tab „Meine Dokumente“ hinzugefügt werden.",
       performedUploadCta: "Zum Hochladen tippen",
-      performedUploadHint: "PDF oder Bilder · max. 25 MB",
+      performedUploadHintEmpty: "Max. Dateigröße: 25 MB",
       performedDone: "Fertig",
       jobDetailsTab: "Auftragsdetails",
       myDocumentsTab: "Meine Dokumente",
+      myDocsUploadHint: "JPG, PNG oder PDF (max. 25 MB)",
+      removeDocTitle: "Dokument entfernen?",
+      removeDocBody:
+        "Die Datei wird dauerhaft von dieser Tour entfernt. Falls das Dokument für die Abrechnung erforderlich ist, muss ein Ersatz hochgeladen werden.",
+      removeDocConfirm: "Entfernen",
+      removeDocBlocked:
+        "Dokumente in Prüfung können nicht entfernt werden. Bei Bedarf Disposition kontaktieren.",
       reportProblem: "Problem melden",
       openInMaps: "In Karten öffnen",
       refreshDemo: "Aktualisieren",
