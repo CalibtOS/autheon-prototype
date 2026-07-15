@@ -219,13 +219,6 @@ const Overview = ({ onOpen, freshId }) => {
 
   return (
     <>
-      <div className="page-head">
-        <h1 className="page-title">{t("jobOverview")}</h1>
-        <div className="label">
-          {filtered.length} / {all.length}
-        </div>
-      </div>
-
       <div className="statgrid" role="group" aria-label={t("jobOverview")}>
         {stats.map(([s, lbl]) => (
           <button
@@ -2369,27 +2362,10 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
 
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: 24,
-        }}
-      >
-        <div>
-          <div className="label">{t("newOrderSubtitle")}</div>
-          <h1
-            style={{
-              margin: "6px 0 0",
-              fontSize: 30,
-              fontWeight: 600,
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {editJobId ? t("adminEditDraft") : t("navNewJob")}
-          </h1>
-        </div>
+      <div className="pane-toolbar" style={{ marginBottom: 24 }}>
+        <p className="pane-lead" style={{ marginBottom: 0 }}>
+          {t("newOrderSubtitle")}
+        </p>
         <div
           className="card"
           style={{ padding: "10px 16px", textAlign: "right" }}
@@ -3275,20 +3251,11 @@ const Stub = ({ title, desc }) => {
   const { t } = useI18n();
   return (
     <div style={{ maxWidth: 680 }}>
-      <h1
-        style={{
-          margin: 0,
-          fontSize: 30,
-          fontWeight: 600,
-          letterSpacing: "-0.02em",
-        }}
-      >
-        {title}
-      </h1>
-      <p style={{ color: "var(--muted)", marginTop: 10, fontSize: 14 }}>{desc}</p>
+      <p className="pane-lead">{desc}</p>
       <div
         className="dash-area"
-        style={{ marginTop: 24, padding: 50, textAlign: "center" }}
+        style={{ padding: 50, textAlign: "center" }}
+        aria-label={title}
       >
         {t("adminStubBody")}
       </div>
@@ -3779,13 +3746,8 @@ const DriversPane = ({ showToast }) => {
 
   return (
     <div>
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
-        {t("adminDriversTitle")}
-      </h1>
-      <p style={{ color: "var(--muted)", marginTop: 8 }}>
-        {t("adminDriversDescLong")}
-      </p>
-      <section className="card" style={{ padding: 18, marginTop: 22 }}>
+      <p className="pane-lead">{t("adminDriversDescLong")}</p>
+      <section className="card" style={{ padding: 18 }}>
         <div className="sec-head">
           <h3>{t("adminUsersSectionDrivers")}</h3>
           <button className="btn xs primary" onClick={openNewDriver}>
@@ -4059,13 +4021,8 @@ const StaffPane = ({ showToast }) => {
 
   return (
     <div>
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
-        {t("adminStaffTitle")}
-      </h1>
-      <p style={{ color: "var(--muted)", marginTop: 8 }}>
-        {t("adminStaffDescLong")}
-      </p>
-      <section className="card" style={{ padding: 18, marginTop: 22 }}>
+      <p className="pane-lead">{t("adminStaffDescLong")}</p>
+      <section className="card" style={{ padding: 18 }}>
         <div className="sec-head">
           <h3>{t("adminUsersSectionAdmins")}</h3>
           <button className="btn xs primary" onClick={openNewAdmin}>
@@ -4654,27 +4611,13 @@ const CustomersPane = ({ showToast }) => {
 
   return (
     <div id="customers">
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 12,
-        }}
-      >
-        <div>
-          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
-            {t("navCustomers") || "Customers"}
-          </h1>
-          <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
-            {t("adminCustomersDesc")}
-          </p>
-        </div>
+      <div className="pane-toolbar">
+        <p className="pane-lead">{t("adminCustomersDesc")}</p>
         <button type="button" className="btn primary" onClick={openNew}>
           <Ic.Plus /> {t("adminCustomerAddTitle")}
         </button>
       </div>
-      <section className="card" style={{ padding: 18, marginTop: 22 }}>
+      <section className="card" style={{ padding: 18 }}>
         <table className="tbl">
           <thead>
             <tr>
@@ -4919,27 +4862,13 @@ const AddressesPane = ({ showToast }) => {
 
   return (
     <div id="addresses">
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 12,
-        }}
-      >
-        <div>
-          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
-            {t("navAddresses") || "Addresses"}
-          </h1>
-          <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
-            {t("adminAddressesDesc")}
-          </p>
-        </div>
+      <div className="pane-toolbar">
+        <p className="pane-lead">{t("adminAddressesDesc")}</p>
         <button type="button" className="btn primary" onClick={openNew}>
           <Ic.Plus /> {t("adminAddressAddTitle")}
         </button>
       </div>
-      <section className="card" style={{ padding: 18, marginTop: 22 }}>
+      <section className="card" style={{ padding: 18 }}>
         <table className="tbl">
           <thead>
             <tr>
@@ -5199,13 +5128,8 @@ const InfopointPane = ({ showToast }) => {
 
   return (
     <div id="infopoint">
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
-        {t("navInfopoint")}
-      </h1>
-      <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14, maxWidth: 720 }}>
-        {t("adminInfopointDesc")}
-      </p>
-      <div className="tabs" style={{ marginTop: 18 }}>
+      <p className="pane-lead">{t("adminInfopointDesc")}</p>
+      <div className="tabs">
         {[
           ["documents", t("adminInfopointDocsTab")],
           ["news", t("adminInfopointNewsTab")],
@@ -5853,15 +5777,10 @@ const TourBillingPane = ({
 
   return (
     <div>
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
-        {t("navTourBilling")}
-      </h1>
-      <p style={{ color: "var(--muted)", marginTop: 8, maxWidth: 720 }}>
-        {t("tourBillingDesc")}
-      </p>
+      <p className="pane-lead">{t("tourBillingDesc")}</p>
 
       {filterJobId && filterJob && (
-        <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ marginTop: -6, marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
           <button
             type="button"
             className="billing-filter-chip"
@@ -6774,10 +6693,7 @@ const FinancePane = ({
   const unpaid = jobs.filter((j) => j.paymentStatus !== "Paid").length;
   return (
     <div>
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
-        {t("adminFinanceTrackingTitle")}
-      </h1>
-      <div className="statgrid" style={{ marginTop: 22 }}>
+      <div className="statgrid">
         <div className="stat">
           <div className="label">{t("adminFinanceColRev")}</div>
           <div className="num">€ {totalRevenue.toFixed(0)}</div>
@@ -7070,18 +6986,8 @@ const AuditPane = ({ showToast }) => {
   const store = useAuthStore();
   return (
     <div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 16,
-          flexWrap: "wrap",
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
-          {t("navAuditLog")}
-        </h1>
+      <div className="pane-toolbar">
+        <p className="pane-lead">{t("auditDesc")}</p>
         <button
           type="button"
           className="btn"
@@ -7102,7 +7008,7 @@ const AuditPane = ({ showToast }) => {
           <Ic.Down /> {t("adminAuditDownloadCsv")}
         </button>
       </div>
-      <table className="tbl" style={{ marginTop: 18 }}>
+      <table className="tbl">
         <thead>
           <tr>
             <th>{t("adminAuditColTime")}</th>
@@ -7291,13 +7197,8 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
 
   return (
     <div style={{ maxWidth: 1040 }}>
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
-        {t("adminMdrTitle")}
-      </h1>
-      <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
-        {t("adminMdrSub")}
-      </p>
-      <div className="seg" style={{ marginTop: 18, display: "inline-flex" }}>
+      <p className="pane-lead">{t("adminMdrSub")}</p>
+      <div className="seg" style={{ display: "inline-flex", marginBottom: 18 }}>
         {[
           ["open", t("adminMdrFilterOpen")],
           ["approved", t("adminMdrFilterApproved")],
@@ -7501,13 +7402,8 @@ const NotificationFeedPane = ({ showToast, onOpenJob, onReviewMasterDataRequest 
   const rows = store.getAdminEmailQueue();
   return (
     <div style={{ maxWidth: 900 }}>
-      <h1 style={{ margin: 0, fontSize: 30, fontWeight: 600 }}>
-        {t("adminNotificationFeed")}
-      </h1>
-      <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
-        {t("adminNotificationFeedSub")}
-      </p>
-      <section className="card" style={{ padding: 0, marginTop: 22 }}>
+      <p className="pane-lead">{t("adminNotificationFeedSub")}</p>
+      <section className="card" style={{ padding: 0 }}>
         {rows.length === 0 ? (
           <div style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>
             {t("adminNotificationEmpty")}
@@ -7691,18 +7587,7 @@ const FeaturesPane = ({ showToast }) => {
 
   return (
     <div style={{ maxWidth: 680 }}>
-      <h1
-        style={{
-          margin: 0,
-          fontSize: 30,
-          fontWeight: 600,
-          letterSpacing: "-0.02em",
-        }}
-      >
-        {t("adminSettingsTitle")}
-      </h1>
-
-      <section className="card" style={{ padding: 22, marginTop: 22 }}>
+      <section className="card" style={{ padding: 22 }}>
         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
           {t("adminBrandingTitle")}
         </h2>

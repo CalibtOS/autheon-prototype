@@ -2617,23 +2617,73 @@ select.input {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 28px;
+  gap: 16px;
+  min-height: 64px;
+  padding: 14px 28px;
   border-bottom: 1px solid var(--line);
   background: var(--paper);
   flex-shrink: 0;
 }
+/* Single page title lives in chrome — content panes must not repeat it */
+.admin-top .admin-page-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  line-height: 1.25;
+}
 .admin-top .crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  min-width: 0;
   color: var(--muted);
   font-size: 13px;
   letter-spacing: 0.01em;
 }
-.admin-top .crumbs strong {
+.admin-top .crumbs .crumb-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.admin-top .crumbs .crumb-link:hover {
   color: var(--text);
-  font-weight: 600;
+}
+.admin-top .crumbs .admin-page-title {
+  font-size: 18px;
 }
 .admin-top .crumbs .sep {
   margin: 0 8px;
   opacity: 0.5;
+}
+.admin-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+/* Supporting copy under chrome title (not a second heading) */
+.pane-lead {
+  margin: 0 0 18px;
+  max-width: 720px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.pane-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.pane-toolbar .pane-lead {
+  margin-bottom: 0;
 }
 .admin-content {
   flex: 1;

@@ -458,48 +458,68 @@
           onBack();
         };
 
-        // crumbs
-        const crumbs = (() => {
+        // Chrome owns the single page title. Breadcrumbs only for drill-down.
+        const sectionTitle = {
+          overview: t("navJobs"),
+          notifications: t("adminNotificationFeed"),
+          masterdata: t("navMasterDataRequests"),
+          drivers: t("navDrivers"),
+          staff: t("navStaff"),
+          customers: t("navCustomers"),
+          addresses: t("navAddresses"),
+          infopoint: t("navInfopoint"),
+          invoices: t("navTourBilling"),
+          finance: t("navFinance"),
+          audit: t("navAuditLog"),
+          features: t("navFeatures"),
+        };
+        const pageChrome = (() => {
           if (section === "new") {
             const editTour = editingJobId
               ? store.getJob(editingJobId)?.tour
               : null;
             return (
-              <>
-                <span style={{ cursor: "pointer" }} onClick={cancelNewOrder}>
+              <nav className="crumbs" aria-label="Breadcrumb">
+                <button
+                  type="button"
+                  className="crumb-link"
+                  onClick={cancelNewOrder}
+                >
                   {t("navJobs")}
-                </span>
+                </button>
                 <span className="sep">/</span>
-                <strong>
+                <h1 className="admin-page-title">
                   {editTour
                     ? `${t("adminEditDraft")} · ${editTour}`
                     : t("navNewJob")}
-                </strong>
-              </>
+                </h1>
+              </nav>
             );
           }
           if (section === "detail" && activeJob)
             return (
-              <>
-                <span style={{ cursor: "pointer" }} onClick={onBack}>
+              <nav className="crumbs" aria-label="Breadcrumb">
+                <button type="button" className="crumb-link" onClick={onBack}>
                   {t("navJobs")}
-                </span>
+                </button>
                 <span className="sep">/</span>
-                <strong>
+                <h1 className="admin-page-title">
                   {t("tourNo")} {activeJob.tour}
-                </strong>
-              </>
+                </h1>
+              </nav>
             );
-          if (section === "invoices")
-            return <strong>{t("navTourBilling")}</strong>;
-          return <strong>{t("navJobs")}</strong>;
+          return (
+            <h1 className="admin-page-title">
+              {sectionTitle[section] || t("navJobs")}
+            </h1>
+          );
         })();
 
-        // top right
+        // Section actions stay in chrome (Jobs only for now)
         const topRight = (() => {
           if (section === "overview")
             return (
-              <div style={{ display: "flex", gap: 10 }}>
+              <div className="admin-top-actions">
                 <button
                   type="button"
                   className="btn"
@@ -837,7 +857,7 @@
             />
             <div className="admin-main">
               <div className="admin-top">
-                <div className="crumbs">{crumbs}</div>
+                {pageChrome}
                 {topRight}
               </div>
               <div className="admin-content">{body}</div>
