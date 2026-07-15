@@ -1,4 +1,4 @@
-/* global React, AuthStore, useAuthStore, useI18n, TabBar, Portal, MyJobs, Infopoint, ProfilePaneFull, JobLocked, JobUnlocked, AcceptanceModal, ReportProblemSheet, PendingNotice, PerformedNotice, ProbationLimitSheet, SameDayOverlapSheet, FilterSheet, DriverNotificationsPane */
+/* global React, AuthStore, useAuthStore, useI18n, TabBar, Portal, MyJobs, Infopoint, ProfilePaneFull, JobLocked, JobUnlocked, AcceptanceModal, ReportProblemSheet, PendingNotice, MarkPerformedSheet, ProbationLimitSheet, SameDayOverlapSheet, FilterSheet, DriverNotificationsPane */
 /**
  * PwaDriverApp — real-viewport shell for the /pwa responsive preview.
  *
@@ -29,7 +29,7 @@ function PwaDriverApp() {
   const [acceptModal, setAcceptModal] = useState(null);
   const [reportProblemJob, setReportProblemJob] = useState(null);
   const [pendingNotice, setPendingNotice] = useState(null);
-  const [performedNotice, setPerformedNotice] = useState(null);
+  const [markPerformedJobId, setMarkPerformedJobId] = useState(null);
   const [probationLimitModal, setProbationLimitModal] = useState(null);
   const [overlapConfirm, setOverlapConfirm] = useState(null);
   const [banner, setBanner] = useState(null);
@@ -73,17 +73,7 @@ function PwaDriverApp() {
           onBack={back}
           onBackToMarketplace={backToMarketplace}
           onReportProblem={() => setReportProblemJob(job)}
-          onPerform={() => {
-            const r = store.markPerformed(job.id);
-            if (!r.ok) setBanner(t("completionBlocked"));
-            else {
-              setActiveJob({ id: job.id, mode: "unlocked" });
-              setPerformedNotice({
-                hasDocs:
-                  store.getDriverTourDocumentsForJob(job.id).length > 0,
-              });
-            }
-          }}
+          onPerform={() => setMarkPerformedJobId(job.id)}
         />
       );
     }
@@ -237,10 +227,10 @@ function PwaDriverApp() {
               onClose={() => setPendingNotice(null)}
             />
           )}
-          {performedNotice && (
-            <PerformedNotice
-              hasDocs={performedNotice.hasDocs}
-              onClose={() => setPerformedNotice(null)}
+          {markPerformedJobId && store.getJob(markPerformedJobId) && (
+            <MarkPerformedSheet
+              job={store.getJob(markPerformedJobId)}
+              onClose={() => setMarkPerformedJobId(null)}
             />
           )}
           {probationLimitModal && (

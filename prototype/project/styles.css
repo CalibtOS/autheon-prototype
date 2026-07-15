@@ -1301,10 +1301,13 @@ select.input {
   font-weight: 600;
   color: var(--text);
 }
+/* Marketplace-preview Route card (Figma 07/2026): city + dot — dashed
+   connector — distance over duration — dashed connector — dot + city.
+   Figma colors mapped to tokens: #2563EB→--primary, #1E293B→--ink,
+   #CBD5E1→--line-dash, #6B7280→--muted, #111827/#1F2937→--text. */
 .phone-shell .detail-route-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
   gap: 8px;
   margin: 4px 0;
 }
@@ -1312,6 +1315,7 @@ select.input {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  min-width: 0;
 }
 .phone-shell .detail-route-city.start {
   align-items: flex-start;
@@ -1319,41 +1323,59 @@ select.input {
 .phone-shell .detail-route-city.end {
   align-items: flex-end;
 }
+.phone-shell .detail-route-city .city-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+}
 .phone-shell .detail-route-city .city-name {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.phone-shell .detail-route-city .route-point {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.phone-shell .detail-route-city .route-point.start {
+  background: var(--primary);
+}
+.phone-shell .detail-route-city .route-point.end {
+  background: var(--ink);
 }
 .phone-shell .detail-route-city .city-pc {
   font-size: 12px;
   color: var(--muted);
 }
-.phone-shell .detail-route-line-wrap {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  padding: 0 8px;
-}
-.phone-shell .detail-route-line {
-  width: 100%;
-  border-top: 2px dashed var(--line-2);
-  margin: 6px 0;
+.phone-shell .detail-route-dash {
+  flex: 1 1 16px;
+  min-width: 12px;
+  border-top: 1px dashed var(--line-dash);
+  margin-top: 10px;
 }
 .phone-shell .detail-route-info {
   display: flex;
   flex-direction: column;
   align-items: center;
+  flex-shrink: 0;
 }
 .phone-shell .detail-route-info .dist {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 20px;
   color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 .phone-shell .detail-route-info .time {
-  font-size: 10px;
+  font-size: 12px;
+  line-height: 16px;
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 .phone-shell .detail-card-divider {
   border: 0;
@@ -1380,7 +1402,7 @@ select.input {
   letter-spacing: 0;
 }
 .phone-shell .detail-route-times .time-val {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-caption);
   font-weight: 600;
@@ -3365,6 +3387,83 @@ select.input {
 .cancellation-card-message {
   margin-top: 6px;
   color: var(--text);
+}
+
+/* Mark performed — success modal with document upload (Figma 07/2026) */
+.phone-shell .performed-success-modal {
+  padding: 24px 22px 22px;
+  text-align: center;
+}
+.phone-shell .performed-success-scroll {
+  overflow-y: auto;
+  min-height: 0;
+}
+.phone-shell .performed-success-check {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--st-accepted-bg);
+  margin: 4px auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.phone-shell .performed-success-title {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.phone-shell .performed-success-body {
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.phone-shell .performed-upload-drop {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 14px;
+  border: 1px dashed var(--line-dash);
+  border-radius: var(--r-3);
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.phone-shell .performed-upload-drop:hover {
+  background: var(--paper-2);
+}
+.phone-shell .performed-upload-icn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--canvas);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+}
+.phone-shell .performed-upload-cta {
+  font-size: 14px;
+  font-weight: 600;
+}
+.phone-shell .performed-upload-hint {
+  font-size: 11.5px;
+  color: var(--muted-2);
+}
+.phone-shell .performed-success-list {
+  text-align: left;
+  margin-top: 12px;
+}
+
+/* Performed tour detail — details / my documents tabs */
+.phone-shell .detail-tabs {
+  justify-content: flex-start;
+  gap: 18px;
 }
 
 .confirm-sheet h2 {

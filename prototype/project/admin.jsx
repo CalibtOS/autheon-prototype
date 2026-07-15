@@ -2895,6 +2895,10 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   alignItems: "center",
                 }}
               >
+                {/* Registration is one exclusive choice. Red plates legally
+                    require a deregistered vehicle (§16 FZV), so "Red plates"
+                    lives inside the segment instead of being a combinable
+                    chip — selecting it stores deregistered + redPlates. */}
                 <div
                   className="seg"
                   style={{ display: "inline-grid", gridAutoFlow: "column" }}
@@ -2903,14 +2907,28 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                     ["", t("newOrderRegistrationNone")],
                     ["registered", t("vehicleInfoRegistered")],
                     ["deregistered", t("vehicleInfoDeregistered")],
+                    ["red_plates", t("vehicleInfoRedPlates")],
                   ].map(([val, label]) => (
                     <button
                       key={val || "none"}
                       type="button"
                       className={
-                        (form.registrationStatus || "") === val ? "on" : ""
+                        (form.redPlates
+                          ? "red_plates"
+                          : form.registrationStatus || "") === val
+                          ? "on"
+                          : ""
                       }
-                      onClick={() => set("registrationStatus", val)}
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          registrationStatus:
+                            val === "red_plates" ? "deregistered" : val,
+                          redPlates: val === "red_plates",
+                          redPlateNumber:
+                            val === "red_plates" ? f.redPlateNumber : "",
+                        }))
+                      }
                     >
                       {label}
                     </button>
@@ -2921,12 +2939,6 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   onClick={() => set("electricVehicle", !form.electricVehicle)}
                 >
                   {t("vehicleInfoElectric")}
-                </span>
-                <span
-                  className={"chip " + (form.redPlates ? "on" : "")}
-                  onClick={() => set("redPlates", !form.redPlates)}
-                >
-                  {t("vehicleInfoRedPlates")}
                 </span>
               </div>
               {form.redPlates ? (

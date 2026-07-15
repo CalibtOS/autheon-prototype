@@ -164,12 +164,18 @@ window.I18n = (() => {
       requestSent: "Request sent",
       awaitingDispatch: "Awaiting dispatch",
       markPerformed: "Mark as performed",
-      performedNoticeTitle: "Tour performed",
-      performedNoticeBodyUpload:
-        "Well done — the transport is recorded as performed. Next, upload your tour documents (delivery note, receipts, or other proof). Dispatch will review them and complete the tour.",
-      performedNoticeBodyReview:
-        "Well done — the transport is recorded as performed. Dispatch will now review your tour documents and complete the tour. You can add more documents at any time.",
-      performedNoticeCta: "Got it",
+      markPerformedConfirmTitle: "Mark this tour as performed?",
+      markPerformedConfirmBody:
+        "This confirms the vehicle was handed over at the destination. Slide to confirm — or cancel if this was tapped by mistake.",
+      slidePerformed: "Marked as performed",
+      performedSuccessTitle: "Tour performed successfully.",
+      performedSuccessBody:
+        "Upload your invoice and related documents so payment can be processed. You can also add them later in the tour's My documents tab.",
+      performedUploadCta: "Click to upload",
+      performedUploadHint: "PDF or images · max 25 MB",
+      performedDone: "Done",
+      jobDetailsTab: "Job details",
+      myDocumentsTab: "My documents",
       reportProblem: "Report problem",
       openInMaps: "Open in maps",
       refreshDemo: "Refresh",
@@ -1382,12 +1388,18 @@ window.I18n = (() => {
       requestSent: "Anfrage gesendet",
       awaitingDispatch: "Warten auf Disposition",
       markPerformed: "Als durchgeführt markieren",
-      performedNoticeTitle: "Tour durchgeführt",
-      performedNoticeBodyUpload:
-        "Gut gemacht – der Transport ist als durchgeführt erfasst. Jetzt noch die Tour-Dokumente hochladen (Lieferschein, Belege oder sonstige Nachweise). Die Disposition prüft sie und schließt die Tour ab.",
-      performedNoticeBodyReview:
-        "Gut gemacht – der Transport ist als durchgeführt erfasst. Die Disposition prüft nun die Tour-Dokumente und schließt die Tour ab. Weitere Dokumente können jederzeit hinzugefügt werden.",
-      performedNoticeCta: "Verstanden",
+      markPerformedConfirmTitle: "Tour als durchgeführt markieren?",
+      markPerformedConfirmBody:
+        "Damit wird bestätigt, dass das Fahrzeug am Ziel übergeben wurde. Zum Bestätigen schieben – oder abbrechen, falls versehentlich getippt.",
+      slidePerformed: "Als durchgeführt markiert",
+      performedSuccessTitle: "Tour erfolgreich durchgeführt.",
+      performedSuccessBody:
+        "Rechnung und zugehörige Dokumente hochladen, damit die Auszahlung bearbeitet werden kann. Dokumente können auch später im Tab „Meine Dokumente“ der Tour hinzugefügt werden.",
+      performedUploadCta: "Zum Hochladen tippen",
+      performedUploadHint: "PDF oder Bilder · max. 25 MB",
+      performedDone: "Fertig",
+      jobDetailsTab: "Auftragsdetails",
+      myDocumentsTab: "Meine Dokumente",
       reportProblem: "Problem melden",
       openInMaps: "In Karten öffnen",
       refreshDemo: "Aktualisieren",
