@@ -149,13 +149,13 @@ Source of truth: Figma file `CgaMrN7nmXS8xub0RxyzsJ` — nodes `8:2268` (details
 | `--brand-accent` `#6F29FF` | `brand-600` / `brand-500` | aligned |
 | `--brand-text` `#111111` | `text-primary` | aligned |
 | `--brand-canvas` `#F5F5F7` | `surface-muted` | aligned |
-| **Inter Tight** | `font-sans` | **update required** — replace the `plus-jakarta` preset with an Inter Tight preset |
+| **Inter Tight** | `font-sans` | aligned — Inter Tight preset shipped (`packages/config`), loaded in both apps |
 | `--st-*` status tokens | `status-*` Tailwind namespace | aligned |
 | `--cta` `#EA580C` | `cta` / `cta-hover` | pending client decision (see brand-tokens) |
 | 7-step type scale | `text-display` … `text-overline` | aligned; weights re-mapped to 400/500/600 |
 | 4pt spacing | `spacing` 1–9 | aligned |
 | Light + dark `[data-theme]` | `ThemeProvider` + shared CSS | aligned (web + admin) |
-| Bottom tab IA | `(driver)` route group + `BottomTabBar` | **Step 2** — fixed-vs-floating unresolved |
+| Bottom tab IA | `(driver)` route group + `BottomTabBar` | `BottomTabBar` + `DriverShell` shipped (neutral active, no purple capsule); floating default, `variant` flag — fixed-vs-floating still an open client decision |
 
 Implementation of autheon-fe driver routes is a **separate plan**; this spec is the visual/UX contract.
 

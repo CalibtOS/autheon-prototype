@@ -1,5 +1,5 @@
 /* Autheon /pwa service worker — installable shell + stale-while-revalidate assets */
-const CACHE_VERSION = "autheon-pwa-v6";
+const CACHE_VERSION = "autheon-pwa-v8";
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -11,7 +11,13 @@ const PRECACHE_URLS = [
   "/pwa/pwa.css?v=4",
   "/pwa/pwa-app.jsx?v=8",
   "/pwa/pwa-install.js?v=3",
-  "/pwa/splash.js?v=1",
+  "/pwa/splash.js?v=2",
+  "/pwa/favicon.svg",
+  "/pwa/icons/icon-180.png",
+  "/pwa/icons/icon-192.png",
+  "/pwa/icons/icon-512.png",
+  "/pwa/icons/icon-192-maskable.png",
+  "/pwa/icons/icon-512-maskable.png",
   "/prototype/project/styles.css?v=22",
   "/prototype/project/feature-flags.js",
   "/prototype/project/i18n.js?v=24",
@@ -20,12 +26,6 @@ const PRECACHE_URLS = [
   "/prototype/project/store.js",
   "/prototype/project/driver-ui.jsx",
   "/prototype/project/driver.jsx?v=8",
-  "/prototype/project/favicon.svg",
-  "/prototype/project/icons/icon-180.png",
-  "/prototype/project/icons/icon-192.png",
-  "/prototype/project/icons/icon-512.png",
-  "/prototype/project/icons/icon-192-maskable.png",
-  "/prototype/project/icons/icon-512-maskable.png",
   "https://unpkg.com/react@18.3.1/umd/react.development.js",
   "https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js",
   "https://unpkg.com/@babel/standalone@7.29.0/babel.min.js",

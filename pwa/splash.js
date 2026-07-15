@@ -22,20 +22,52 @@
     z-index: 9999;
     overflow: hidden;
     isolation: isolate;
+    contain: strict;
+    touch-action: none;
     background:
-      radial-gradient(circle at 50% 45%, rgba(111, 41, 255, .09), transparent 31%),
+      radial-gradient(circle at 50% 42%, rgba(111, 41, 255, .11), transparent 36%),
       #0e0a17;
     opacity: 1;
     transition: opacity .45s ease;
   }
   #autheonSplash.splash-done { opacity: 0; pointer-events: none; }
 
-  #autheonSplash .splash-world {
+  /* Center a content-tight stage so phone, landscape, and desktop all keep
+     the brand optically centered without cropping (old 390×844 + slice). */
+  #autheonSplash .splash-stage {
     position: absolute;
     inset: 0;
-    width: 100%;
-    height: 100%;
+    display: grid;
+    place-items: center;
+    padding:
+      max(1.25rem, env(safe-area-inset-top, 0px))
+      max(1rem, env(safe-area-inset-right, 0px))
+      max(1.25rem, env(safe-area-inset-bottom, 0px))
+      max(1rem, env(safe-area-inset-left, 0px));
+  }
+
+  #autheonSplash .splash-world {
+    position: relative;
     display: block;
+    width: min(92vw, 28rem, calc(72dvh * 460 / 300));
+    aspect-ratio: 460 / 300;
+    max-height: min(72dvh, 100%);
+    height: auto;
+    overflow: visible;
+    transform: translateZ(0);
+  }
+
+  @media (orientation: landscape) and (max-height: 480px) {
+    #autheonSplash .splash-world {
+      width: min(70vw, 22rem, calc(88dvh * 460 / 300));
+      max-height: min(88dvh, 100%);
+    }
+  }
+
+  @media (min-width: 900px) {
+    #autheonSplash .splash-world {
+      width: min(32rem, calc(64dvh * 460 / 300));
+    }
   }
 
   #autheonSplash #logoTile,
@@ -46,6 +78,7 @@
   #autheonSplash #carBodyGroup,
   #autheonSplash #wordmark {
     transform-box: fill-box;
+    backface-visibility: hidden;
   }
 
   #autheonSplash #logoTile,
@@ -130,12 +163,9 @@
   `;
 
   const MARKUP = `
-  <svg class="splash-world" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Autheon is loading">
+  <div class="splash-stage">
+  <svg class="splash-world" viewBox="-35 250 460 300" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Autheon is loading">
     <defs>
-      <filter id="softLogoShadow" x="-40%" y="-40%" width="180%" height="180%">
-        <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#6F29FF" flood-opacity=".15"/>
-      </filter>
-
       <mask id="roadMask1" maskUnits="userSpaceOnUse" x="-8" y="-8" width="118" height="55">
         <rect x="-8" y="-8" width="118" height="55" fill="black"/>
         <path id="routeMask1" class="route-mask" pathLength="1" d="M38.7 4.8 C27.6 3.2 21.5 3.9 16.5 10.5 C10 19.5 5 29 0 31.95"/>
@@ -159,7 +189,7 @@
       </mask>
     </defs>
 
-    <g id="brandLockup" filter="url(#softLogoShadow)">
+    <g id="brandLockup">
       <g id="logoAssembly" transform="translate(123 290) scale(3)">
         <rect id="logoTile" width="48" height="48" rx="10" fill="#6F29FF" opacity="0"/>
 
@@ -221,6 +251,7 @@
       </g>
     </g>
   </svg>
+  </div>
   `;
 
   const style = document.createElement("style");
@@ -263,8 +294,21 @@
     settle: "cubic-bezier(.16,.84,.26,1)"
   };
 
+  const running = [];
+
   function animate(el, keyframes, delay, duration, easing = EASE.soft) {
-    el.animate(keyframes, { delay, duration, fill: "forwards", easing });
+    // Prefer compositor-friendly props; WAAPI still drives SVG stroke work on
+    // the main thread, so keep the timeline lean and avoid filters.
+    const anim = el.animate(keyframes, {
+      delay,
+      duration,
+      fill: "forwards",
+      easing,
+      // Composite replace avoids stacking work when phases hand off.
+      composite: "replace"
+    });
+    running.push(anim);
+    return anim;
   }
 
   function finish(atMs) {
@@ -274,6 +318,9 @@
       }));
       shell.classList.add("splash-done");
       setTimeout(() => {
+        running.forEach((anim) => {
+          try { anim.cancel(); } catch (_) { /* already finished */ }
+        });
         shell.remove();
         style.remove();
       }, 500);

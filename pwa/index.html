@@ -24,8 +24,12 @@
     <base href="../prototype/project/" />
     <link rel="manifest" href="/pwa/manifest.json" />
     <link rel="manifest" href="/pwa/manifest.webmanifest" />
-    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
+    <!-- Absolute /pwa/ icon URLs — ignore <base href>, stay inside SW scope,
+         and work for iOS Add to Home Screen (uses apple-touch-icon, not manifest). -->
+    <link rel="icon" href="/pwa/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/pwa/icons/icon-180.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/pwa/icons/icon-180.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/pwa/icons/icon-192.png" />
     <title>AUTHEON Driver</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -64,68 +68,197 @@
       dispatches `autheon-splash-complete` on window, then removes itself.
       Must load before the CDN bundles so the animation starts immediately.
     -->
-    <script src="../../pwa/splash.js?v=1"></script>
+    <script src="../../pwa/splash.js?v=2"></script>
     <script src="/pwa/pwa-install.js?v=3"></script>
 
-    <script
-      src="https://unpkg.com/react@18.3.1/umd/react.development.js"
-      integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L"
-      crossorigin="anonymous"
-    ></script>
-    <script
-      src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"
-      integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm"
-      crossorigin="anonymous"
-    ></script>
-    <script
-      src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"
-      integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y"
-      crossorigin="anonymous"
-    ></script>
-
     <script>
-      // pdf.js resolves the relative sample-PDF URL against window.location
-      // (it ignores <base>), which lands on /pwa/assets/… (404). Reroute those
-      // requests to the real asset directory so /pwa keeps a single source of
-      // truth in prototype/project/assets. Applies to fetch and XHR (pdf.js
-      // uses either depending on browser capabilities).
-      (() => {
-        var MISS = "/pwa/assets/";
-        var REAL = "/prototype/project/assets/";
-        var fix = function (u) {
-          return typeof u === "string" && u.indexOf(MISS) !== -1
-            ? u.replace(MISS, REAL)
-            : u;
-        };
-        var origFetch = window.fetch;
-        window.fetch = function (input, init) {
-          if (typeof input === "string") input = fix(input);
-          else if (input && input.url && input.url.indexOf(MISS) !== -1)
-            input = new Request(fix(input.url), input);
-          return origFetch.call(this, input, init);
-        };
-        var origOpen = XMLHttpRequest.prototype.open;
-        XMLHttpRequest.prototype.open = function (method, url) {
-          arguments[1] = fix(url);
-          return origOpen.apply(this, arguments);
-        };
-      })();
-    </script>
-    <script src="feature-flags.js"></script>
-    <script src="i18n.js?v=24"></script>
-    <script src="formatters.js"></script>
-    <script src="inputFormatters.js"></script>
-    <script src="store.js"></script>
-    <script type="text/babel" src="driver-ui.jsx"></script>
-    <script type="text/babel" src="driver.jsx?v=8"></script>
-    <script type="text/babel" src="../../pwa/pwa-app.jsx?v=8"></script>
+      // Stagger app boot so the splash can paint and animate without competing
+      // with sync CDN parse + Babel JSX compile on the main thread.
+      (function () {
+        var bootStartedAt = performance.now();
 
-    <script type="text/babel" data-presets="env,react">
-      // /pwa — installable Driver PWA (standalone + service worker).
-      // Same driver components as the framed client preview, full viewport.
-      ReactDOM.createRoot(document.getElementById("root")).render(
-        <PwaDriverApp />,
-      );
+        var REACT = [
+          {
+            src: "https://unpkg.com/react@18.3.1/umd/react.development.js",
+            integrity:
+              "sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L",
+          },
+          {
+            src: "https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js",
+            integrity:
+              "sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm",
+          },
+        ];
+
+        var BABEL_SRC = {
+          src: "https://unpkg.com/@babel/standalone@7.29.0/babel.min.js",
+          integrity:
+            "sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y",
+        };
+
+        // Absolute paths: fetch() ignores <base href>, unlike classic script src.
+        var PLAIN = [
+          "/prototype/project/feature-flags.js",
+          "/prototype/project/i18n.js?v=24",
+          "/prototype/project/formatters.js",
+          "/prototype/project/inputFormatters.js",
+          "/prototype/project/store.js",
+        ];
+
+        var JSX = [
+          "/prototype/project/driver-ui.jsx",
+          "/prototype/project/driver.jsx?v=8",
+          "/pwa/pwa-app.jsx?v=8",
+        ];
+
+        // Keep draw + flip phases free of Babel compile jank (~0–1.8s of splash).
+        var COMPILE_AFTER_MS = 1800;
+
+        function loadScript(entry) {
+          return new Promise(function (resolve, reject) {
+            var s = document.createElement("script");
+            var src = typeof entry === "string" ? entry : entry.src;
+            var integrity = typeof entry === "string" ? null : entry.integrity;
+            s.src = src;
+            if (integrity) {
+              s.integrity = integrity;
+              s.crossOrigin = "anonymous";
+            }
+            s.onload = function () {
+              resolve();
+            };
+            s.onerror = function () {
+              reject(new Error("Failed to load " + src));
+            };
+            document.body.appendChild(s);
+          });
+        }
+
+        function loadSequential(list) {
+          return list.reduce(function (chain, entry) {
+            return chain.then(function () {
+              return loadScript(entry);
+            });
+          }, Promise.resolve());
+        }
+
+        function fetchText(url) {
+          return fetch(url).then(function (res) {
+            if (!res.ok) throw new Error("Failed to fetch " + url);
+            return res.text();
+          });
+        }
+
+        function yieldToMain() {
+          return new Promise(function (resolve) {
+            setTimeout(resolve, 0);
+          });
+        }
+
+        function waitUntilSplashQuiet() {
+          var elapsed = performance.now() - bootStartedAt;
+          var remain = Math.max(0, COMPILE_AFTER_MS - elapsed);
+          return remain
+            ? new Promise(function (r) {
+                setTimeout(r, remain);
+              })
+            : Promise.resolve();
+        }
+
+        function compileAndRun(code, filename) {
+          var out = Babel.transform(code, {
+            presets: ["env", "react"],
+            filename: filename,
+          }).code;
+          var s = document.createElement("script");
+          s.textContent = out;
+          document.body.appendChild(s);
+        }
+
+        function installAssetRewrite() {
+          // pdf.js resolves the relative sample-PDF URL against window.location
+          // (it ignores <base>), which lands on /pwa/assets/… (404). Reroute those
+          // requests to the real asset directory so /pwa keeps a single source of
+          // truth in prototype/project/assets. Applies to fetch and XHR (pdf.js
+          // uses either depending on browser capabilities).
+          var MISS = "/pwa/assets/";
+          var REAL = "/prototype/project/assets/";
+          var fix = function (u) {
+            return typeof u === "string" && u.indexOf(MISS) !== -1
+              ? u.replace(MISS, REAL)
+              : u;
+          };
+          var origFetch = window.fetch;
+          window.fetch = function (input, init) {
+            if (typeof input === "string") input = fix(input);
+            else if (input && input.url && input.url.indexOf(MISS) !== -1)
+              input = new Request(fix(input.url), input);
+            return origFetch.call(this, input, init);
+          };
+          var origOpen = XMLHttpRequest.prototype.open;
+          XMLHttpRequest.prototype.open = function (method, url) {
+            arguments[1] = fix(url);
+            return origOpen.apply(this, arguments);
+          };
+        }
+
+        function bootApp() {
+          installAssetRewrite();
+
+          // Prefetch JSX over the network while React/plain JS load — compile later.
+          var jsxPrefetch = Promise.all(
+            JSX.map(function (src) {
+              return fetchText(src).then(function (code) {
+                return { src: src, code: code };
+              });
+            })
+          );
+
+          return loadSequential(REACT)
+            .then(function () {
+              return loadSequential(PLAIN);
+            })
+            .then(function () {
+              // Prefetch only — do not parse Babel until the quiet window ends.
+              return Promise.all([jsxPrefetch, waitUntilSplashQuiet()]);
+            })
+            .then(function (results) {
+              var files = results[0];
+              return loadScript(BABEL_SRC).then(function () {
+                return files;
+              });
+            })
+            .then(function (files) {
+              return files
+                .reduce(function (chain, file) {
+                  return chain
+                    .then(function () {
+                      compileAndRun(file.code, file.src);
+                    })
+                    .then(yieldToMain);
+                }, Promise.resolve())
+                .then(function () {
+                  compileAndRun(
+                    "ReactDOM.createRoot(document.getElementById('root')).render(<PwaDriverApp />);",
+                    "pwa-boot.jsx"
+                  );
+                });
+            })
+            .catch(function (err) {
+              if (typeof console !== "undefined" && console.error) {
+                console.error("[autheon-pwa] boot failed", err);
+              }
+            });
+        }
+
+        // Two rAFs = after first splash paint; short delay keeps early logo draw
+        // free of CDN main-thread work (a primary source of animation lag).
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            setTimeout(bootApp, 280);
+          });
+        });
+      })();
     </script>
   </body>
 </html>
