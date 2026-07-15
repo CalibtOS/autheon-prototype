@@ -43,7 +43,11 @@
     canInstall: false,
     installed: false,
     swReady: false,
-    swControlling: !!(navigator.serviceWorker && navigator.serviceWorker.controller),
+    swControlling: !!(
+      navigator.serviceWorker && navigator.serviceWorker.controller
+    ),
+    swError: null,
+    installBlockedHint: false,
     deferredPrompt: null,
   };
 
@@ -173,8 +177,13 @@
           }
         });
       })
-      .catch(function () {
+      .catch(function (err) {
         state.swReady = false;
+        state.swError = (err && err.message) || "register-failed";
+        // HTTP Basic Auth (Cloudflare) commonly blocks SW registration / PWA install.
+        if (window.location.protocol === "https:") {
+          state.installBlockedHint = true;
+        }
         notify();
       });
 
@@ -182,6 +191,24 @@
       state.swControlling = true;
       notify();
     });
+
+    // If SW is fine but Chrome never offers install on a hosted HTTPS origin,
+    // surface the Cloudflare Basic Auth limitation (localhost works; password gate does not).
+    window.setTimeout(function () {
+      if (
+        state.isStandalone ||
+        state.canInstall ||
+        state.isIos ||
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"
+      ) {
+        return;
+      }
+      if (window.location.protocol === "https:") {
+        state.installBlockedHint = true;
+        notify();
+      }
+    }, 4000);
   }
 
   // Register as soon as this script runs (after splash), do not wait for full load.

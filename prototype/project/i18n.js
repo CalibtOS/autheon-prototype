@@ -41,6 +41,15 @@ window.I18n = (() => {
         "Choose \"Install app\" / \"Install Autheon\" / \"Cast, save, and share\" → Install page.",
       pwaInstallManualStep3:
         "Confirm Install. AUTHEON opens in its own window without the browser bar.",
+      pwaInstallSubAuthBlocked:
+        "Hosted site is password-protected (Cloudflare Basic Auth). Browsers block PWA install behind HTTP auth — localhost works.",
+      pwaInstallAuthTitle: "Why install is blocked on GitHub Pages",
+      pwaInstallAuthStep1:
+        "autheon.calibtos.com is behind Cloudflare HTTP Basic Auth (browser login prompt).",
+      pwaInstallAuthStep2:
+        "Chrome/Edge will not show Install app for password-gated sites. Service workers often fail installability checks there.",
+      pwaInstallAuthStep3:
+        "Fix: in Cloudflare, bypass/disable Basic Auth for /pwa* (or the whole prototype). Then hard-refresh /pwa/ and Install appears.",
       navJobs: "Jobs",
       navNewJob: "New job",
       navUsers: "Users",
@@ -1301,6 +1310,15 @@ window.I18n = (() => {
         "Wähle \"App installieren\" / \"Autheon installieren\" / \"Übertragen, speichern und teilen\" → Seite installieren.",
       pwaInstallManualStep3:
         "Bestätige Installieren. AUTHEON öffnet sich ohne Browserleiste.",
+      pwaInstallSubAuthBlocked:
+        "Die gehostete Seite ist passwortgeschützt (Cloudflare Basic Auth). Browser blockieren PWA-Installation hinter HTTP-Auth — localhost funktioniert.",
+      pwaInstallAuthTitle: "Warum Installation auf GitHub Pages blockiert ist",
+      pwaInstallAuthStep1:
+        "autheon.calibtos.com liegt hinter Cloudflare HTTP Basic Auth (Browser-Login).",
+      pwaInstallAuthStep2:
+        "Chrome/Edge zeigen bei passwortgeschützten Seiten kein „App installieren“. Service Worker bestehen die Installierbarkeits-Checks dort oft nicht.",
+      pwaInstallAuthStep3:
+        "Lösung: In Cloudflare Basic Auth für /pwa* (oder die ganze Prototype-Site) umgehen/deaktivieren. Dann /pwa/ hart neu laden — Installieren erscheint.",
       navJobs: "Aufträge",
       navNewJob: "Neuer Auftrag",
       navUsers: "Benutzer",

@@ -19,6 +19,7 @@ function useAutheonPwa() {
           installed: false,
           swReady: false,
           swControlling: false,
+          installBlockedHint: false,
         },
   );
   useEffect(() => {
@@ -132,9 +133,11 @@ function PwaDriverApp() {
             <span>
               {pwa.canInstall
                 ? t("pwaInstallSub")
-                : pwa.swControlling
-                  ? t("pwaInstallSubManual")
-                  : t("pwaInstallSubPreparing")}
+                : pwa.installBlockedHint
+                  ? t("pwaInstallSubAuthBlocked")
+                  : pwa.swControlling
+                    ? t("pwaInstallSubManual")
+                    : t("pwaInstallSubPreparing")}
             </span>
           </div>
           <div className="pwa-mode-bar-actions">
@@ -174,7 +177,11 @@ function PwaDriverApp() {
         >
           <div className="pwa-ios-sheet-card">
             <h2 id="pwa-install-title">
-              {pwa.isIos ? t("pwaInstallIosTitle") : t("pwaInstallManualTitle")}
+              {pwa.isIos
+                ? t("pwaInstallIosTitle")
+                : pwa.installBlockedHint
+                  ? t("pwaInstallAuthTitle")
+                  : t("pwaInstallManualTitle")}
             </h2>
             <ol>
               {pwa.isIos ? (
@@ -182,6 +189,12 @@ function PwaDriverApp() {
                   <li>{t("pwaInstallIosStep1")}</li>
                   <li>{t("pwaInstallIosStep2")}</li>
                   <li>{t("pwaInstallIosStep3")}</li>
+                </>
+              ) : pwa.installBlockedHint ? (
+                <>
+                  <li>{t("pwaInstallAuthStep1")}</li>
+                  <li>{t("pwaInstallAuthStep2")}</li>
+                  <li>{t("pwaInstallAuthStep3")}</li>
                 </>
               ) : (
                 <>

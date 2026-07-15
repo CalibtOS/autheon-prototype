@@ -28,6 +28,12 @@ On GitHub Pages (root custom domain): `https://autheon.calibtos.com/` and `https
 
 In the client preview header use **Open driver PWA** (the only entry to `/pwa`). The phone-mock caption is a label only, not a second link. On `/pwa/` use **Install app** (Chrome/Edge) or **Add to Home Screen** (iOS). **Framed preview** returns to `/`. After install, the app launches standalone without the install chrome.
 
+### GitHub Pages / Cloudflare note
+
+`autheon.calibtos.com` is behind **Cloudflare HTTP Basic Auth**. Browsers **will not** offer PWA install on password-gated origins (that is why localhost works and the hosted site does not).
+
+To enable install on the hosted site: in Cloudflare, bypass or disable Basic Auth for `/pwa*` (or the whole prototype), deploy, then hard-refresh `/pwa/`.
+
 ## Developer workflow (implementing in autheon-fe)
 
 1. Read [`../docs/design/brand-tokens.md`](../docs/design/brand-tokens.md) for colors and usage rules
