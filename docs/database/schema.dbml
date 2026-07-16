@@ -327,19 +327,25 @@ Table job_distance_estimates {
 }
 
 Table job_financials {
-  job_id uuid [pk]
-  revenue_amount numeric(12,2)
-  driver_offer_amount numeric(12,2)
+  id uuid [note: 'BE surrogate PK; logical 1:1 with jobs']
+  job_id uuid [unique, not null]
+  // Operational V1 amounts (prototype + PRD)
+  revenue_amount numeric(12,2) [note: 'Customer revenue / price']
+  driver_offer_amount numeric(12,2) [note: 'Driver marketplace compensation']
   expenses_amount numeric(12,2)
-  currency_code char(3) [not null, default: 'EUR']
-  tax_rate numeric(5,2)
+  // Optional net/gross snapshot (BE + prototype)
+  total_net numeric(12,2)
+  total_gross numeric(12,2)
+  // BE property `currency` maps to this column name in design docs
+  currency_code char(3) [not null, default: 'EUR', note: 'BE column: currency']
+  // BE property `vatRate` / column vat_rate
+  tax_rate numeric(5,2) [note: 'BE column: vat_rate']
   invoice_received boolean [not null, default: false]
   admin_invoice_override boolean
   payment_status invoice_payment_status [not null, default: 'invoice_missing']
   notes text
   updated_at timestamptz [not null]
   updated_by_user_id uuid
-  // Settlement audit — who triggered settlement and when (compliance requirement)
   settlement_initiated_by uuid
   settlement_initiated_at timestamptz
 }

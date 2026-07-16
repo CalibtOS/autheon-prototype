@@ -1075,9 +1075,9 @@ const Portal = ({
       const bd = parseDdMm(b.date)?.getTime() || 0;
       return bd - ad;
     } else if (sortBy === "price_asc") {
-      return Number(a.price || 0) - Number(b.price || 0);
+      return Number(a.driverOffer || 0) - Number(b.driverOffer || 0);
     } else if (sortBy === "price_desc") {
-      return Number(b.price || 0) - Number(a.price || 0);
+      return Number(b.driverOffer || 0) - Number(a.driverOffer || 0);
     } else if (sortBy === "dist_asc") {
       return Number(a.distanceKm || 0) - Number(b.distanceKm || 0);
     } else if (sortBy === "dist_desc") {
