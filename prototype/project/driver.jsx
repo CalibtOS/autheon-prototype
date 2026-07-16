@@ -4525,15 +4525,65 @@ const HelpSupportContent = () => {
   );
 };
 
+const THEME_KEY = "autheon-theme";
+
+function readStoredTheme() {
+  try {
+    const stored = localStorage.getItem(THEME_KEY);
+    if (stored === "light" || stored === "dark") return stored;
+  } catch (_) {
+    /* no-op */
+  }
+  try {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  } catch (_) {
+    return "light";
+  }
+}
+
+function applyAppTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch (_) {
+    /* no-op */
+  }
+  const color = theme === "dark" ? "#1C1C1E" : "#FFFFFF";
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.setAttribute("content", color);
+    meta.removeAttribute("media");
+  });
+  const appleStatus = document.querySelector(
+    'meta[name="apple-mobile-web-app-status-bar-style"]',
+  );
+  if (appleStatus) {
+    appleStatus.setAttribute(
+      "content",
+      theme === "dark" ? "black-translucent" : "default",
+    );
+  }
+}
+
 const ProfilePaneFull = () => {
-  const { t } = useI18n();
+  const { t, locale, setLocale } = useI18n();
   const store = useAuthStore();
   const d = store.getCurrentDriver();
   const prefs = d?.prefs || {};
   const setPref = (patch) => store.updateDriverPrefs(patch);
   const [editingProfile, setEditingProfile] = useState(false);
   const [postalText, setPostalText] = useState("");
+  const [theme, setTheme] = useState(readStoredTheme);
   const postalAreas = prefs.postalAreas || [];
+  const isPwaSurface =
+    typeof document !== "undefined" &&
+    document.body.classList.contains("pwa-page");
+
+  useEffect(() => {
+    if (!isPwaSurface) return;
+    applyAppTheme(theme);
+  }, [theme, isPwaSurface]);
 
   const handleAddPostal = (val) => {
     const trimmed = val.trim();
@@ -4888,6 +4938,55 @@ const ProfilePaneFull = () => {
             <InlineAlert tone="info" message={t("pushSupportNotice")} />
           </div>
         </div>
+
+        {isPwaSurface ? (
+          <div className="section-card">
+            <h2 className="section-title">{t("appAppearance")}</h2>
+            <p className="section-hint">{t("appAppearanceHint")}</p>
+            <div className="stack-16">
+              <label className="field-label">{t("appLanguage")}</label>
+              <div className="seg full" role="group" aria-label={t("appLanguage")}>
+                <button
+                  type="button"
+                  className={locale === "en" ? "on" : ""}
+                  aria-pressed={locale === "en"}
+                  onClick={() => setLocale("en")}
+                >
+                  English
+                </button>
+                <button
+                  type="button"
+                  className={locale === "de" ? "on" : ""}
+                  aria-pressed={locale === "de"}
+                  onClick={() => setLocale("de")}
+                >
+                  Deutsch
+                </button>
+              </div>
+            </div>
+            <div className="stack-16">
+              <label className="field-label">{t("appTheme")}</label>
+              <div className="seg full" role="group" aria-label={t("appTheme")}>
+                <button
+                  type="button"
+                  className={theme === "light" ? "on" : ""}
+                  aria-pressed={theme === "light"}
+                  onClick={() => setTheme("light")}
+                >
+                  {t("themeLight")}
+                </button>
+                <button
+                  type="button"
+                  className={theme === "dark" ? "on" : ""}
+                  aria-pressed={theme === "dark"}
+                  onClick={() => setTheme("dark")}
+                >
+                  {t("themeDark")}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <button
           type="button"

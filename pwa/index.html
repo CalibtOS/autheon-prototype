@@ -43,7 +43,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=22" />
-    <link rel="stylesheet" href="../../pwa/pwa.css?v=4" />
+    <link rel="stylesheet" href="../../pwa/pwa.css?v=6" />
     <script>
       // Apply theme before first paint: persisted prototype choice first,
       // then the device preference. Same key as the client-preview page.
@@ -104,7 +104,7 @@
         // Absolute paths: fetch() ignores <base href>, unlike classic script src.
         var PLAIN = [
           "/prototype/project/feature-flags.js",
-          "/prototype/project/i18n.js?v=24",
+          "/prototype/project/i18n.js?v=26",
           "/prototype/project/formatters.js",
           "/prototype/project/inputFormatters.js",
           "/prototype/project/store.js",
@@ -112,8 +112,8 @@
 
         var JSX = [
           "/prototype/project/driver-ui.jsx",
-          "/prototype/project/driver.jsx?v=8",
-          "/pwa/pwa-app.jsx?v=8",
+          "/prototype/project/driver.jsx?v=9",
+          "/pwa/pwa-app.jsx?v=10",
         ];
 
         // Keep draw + flip phases free of Babel compile jank (~0–1.8s of splash).

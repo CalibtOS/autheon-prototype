@@ -128,6 +128,10 @@ window.I18n = (() => {
       },
       themeLight: "Light",
       themeDark: "Dark",
+      appAppearance: "Appearance",
+      appAppearanceHint: "Language and display preferences for this device.",
+      appLanguage: "Language",
+      appTheme: "Theme",
       blockedDriverTitle: "Marketplace unavailable",
       blockedDriverStatusFallback: "Restricted",
       blockedDriverBody:
@@ -1398,6 +1402,10 @@ window.I18n = (() => {
       },
       themeLight: "Hell",
       themeDark: "Dunkel",
+      appAppearance: "Erscheinungsbild",
+      appAppearanceHint: "Sprache und Anzeigeeinstellungen für dieses Gerät.",
+      appLanguage: "Sprache",
+      appTheme: "Design",
       blockedDriverTitle: "Marktplatz nicht verfügbar",
       blockedDriverStatusFallback: "Eingeschränkt",
       blockedDriverBody:
