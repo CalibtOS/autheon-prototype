@@ -21,6 +21,8 @@
     "pdf:render": "node tools/pdf/render-pdf.mjs visual-regression-artifacts/transport-order-pdf/png visual-regression-artifacts/transport-order-pdf/*.pdf",
     "pdf:refs": "node tools/pdf/render-pdf.mjs visual-regression-artifacts/reference-templates \"references/Maschinelle Auftragsvorlage_PKW.pdf\" \"references/Maschinelle Auftragsvorlage_LKW.pdf\"",
     "pdf:verify": "npm run pdf:generate && npm run pdf:render && playwright test tests/regression/transport-order-pdf --project=chromium",
+    "test:regression:visual:ci": "node scripts/visual-regression-ci.mjs",
+    "test:regression:visual:ci:strict": "node scripts/visual-regression-ci.mjs --strict",
     "test:report": "playwright show-report",
     "test:install-browsers": "playwright install chromium",
     "test:list": "playwright test --list",

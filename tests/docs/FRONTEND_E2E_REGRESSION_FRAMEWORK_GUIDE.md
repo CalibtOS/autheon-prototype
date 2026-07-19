@@ -336,6 +336,8 @@ Recommended scripts:
   "test:smoke": "playwright test --grep \"@smoke|@public-regression\" --project=chromium",
   "test:regression": "playwright test tests/regression",
   "test:regression:update": "playwright test tests/regression --update-snapshots",
+  "test:regression:visual:ci": "node scripts/visual-regression-ci.mjs",
+  "test:regression:visual:ci:strict": "node scripts/visual-regression-ci.mjs --strict",
   "test:regression:lab": "playwright test tests/regression/lab",
   "test:regression:lab:update": "playwright test tests/regression/lab --update-snapshots",
   "test:regression:network": "playwright test tests/regression/lab/signals/browser-network-regression.spec.ts",
@@ -356,6 +358,8 @@ Recommended scripts:
 | `test:smoke`                 | Fast smoke/public-regression gate    | PR CI and local              | PR safety check                                 |
 | `test:regression`            | Run regression suite                 | CI and local                 | Compare approved UI/browser behavior            |
 | `test:regression:update`     | Update approved regression baselines | Local only                   | After approved UI/behavior change               |
+| `test:regression:visual:ci`  | Run visual CI wrapper and archive    | CI and local artifact checks | Warn on visual diffs; fail execution failures    |
+| `test:regression:visual:ci:strict` | Run visual CI wrapper as a gate  | CI only when policy requires | Fail on visual diffs too                         |
 | `test:regression:lab`        | Run signal lab                       | Local and optional CI        | Validate framework signal examples              |
 | `test:regression:lab:update` | Update lab baselines                 | Local only                   | After approved lab baseline change              |
 | `test:regression:network`    | Run browser network signal           | Local and CI if stable       | Investigate network behavior                    |
@@ -393,6 +397,106 @@ A professional QA pipeline should:
 9. publish JUnit XML
 10. publish HTML report, traces, videos, screenshots, HAR files, and JSON evidence
 11. clean up containers and test environments
+
+### Visual Regression CI Wrapper
+
+Playwright correctly treats `toHaveScreenshot()` differences as failed test
+expectations. CI/CD often needs a different policy:
+
+```text
+Functional or technical test failure -> CI failure
+Missing approved baseline -> CI failure
+Visual difference with expected/actual/diff evidence -> CI warning
+Visual difference in strict mode -> CI failure
+```
+
+Use a small wrapper script around the visual suite instead of changing local
+Playwright assertions. The wrapper should:
+
+1. run the visual regression tests with the normal Playwright reporters
+2. read `test-results/results.json`
+3. classify screenshot mismatches separately from execution failures
+4. write a human summary and a machine-readable JSON summary
+5. append the human summary to `GITHUB_STEP_SUMMARY` when available
+6. print concise terminal log lines for Jenkins and other CI logs
+7. package one archive file for the CI artifact store
+8. exit `0` for non-strict visual differences, but non-zero for execution
+   failures or missing baselines
+
+Recommended archive shape:
+
+```text
+visual-regression-artifact/
+  README.md
+  visual-regression-summary/
+    summary.md
+    summary.json
+    manifest.json
+  playwright-report/
+    index.html
+    data/
+    trace/
+  test-results/
+    results.xml
+    results.json
+    ...
+  approved-baseline/
+    tests/regression/snapshots/
+```
+
+Keep the Playwright folders intact inside the archive. This preserves the HTML
+report's expected/current/diff, side-by-side, and slider views after the archive
+is extracted.
+
+For AUTHEON, the CI wrapper is:
+
+```bash
+npm run test:regression:visual:ci
+```
+
+It writes:
+
+```text
+visual-regression-artifacts/autheon-visual-regression-artifact.tar.gz
+visual-regression-artifacts/visual-regression-summary/summary.md
+visual-regression-artifacts/visual-regression-summary/summary.json
+visual-regression-artifacts/visual-regression-summary/manifest.json
+```
+
+The wrapper does not update approved snapshots. Approval still happens only by
+running the update command after human review and committing the changed
+baseline files.
+
+### Persistent Visual Baseline
+
+CI runners are temporary. Every visual run must start from an approved previous
+baseline through one of these mechanisms:
+
+```text
+Preferred for this prototype: committed snapshots under tests/regression/snapshots
+Alternative for larger products: restore a previously approved baseline artifact before running Playwright
+```
+
+Do not restore the current run's `actual` screenshots as the next baseline.
+Only a reviewed and approved baseline archive may be restored into
+`tests/regression/snapshots`.
+
+Example restore step when using an externally approved baseline archive:
+
+```bash
+tar -xzf approved-visual-baseline.tar.gz -C .
+test -d tests/regression/snapshots
+```
+
+The visual CI wrapper should fail before comparison if no approved visual
+baseline is available.
+
+Visual baselines are browser and platform specific when the snapshot path uses
+`{projectName}` and `{platform}`. Run CI on the same OS/browser used for the
+approved baseline, or create and approve a separate baseline for the CI platform
+before enabling that runner. For example, a repository with
+`*-chromium-darwin.png` baselines needs a macOS Chromium visual job unless
+Linux Chromium baselines have also been approved.
 
 ### Jenkins Stage Template
 
@@ -455,6 +559,12 @@ pipeline {
       }
     }
 
+    stage('Visual Regression Evidence') {
+      steps {
+        sh 'npm run test:regression:visual:ci'
+      }
+    }
+
     stage('Nightly Tests') {
       when {
         expression { env.RUN_NIGHTLY == 'true' }
@@ -474,7 +584,7 @@ pipeline {
       junit testResults: 'test-results/*.xml', allowEmptyResults: true
 
       archiveArtifacts(
-        artifacts: 'playwright-report/**, test-results/**',
+        artifacts: 'playwright-report/**, test-results/**, visual-regression-artifacts/*.tar.gz',
         allowEmptyArchive: true
       )
 
@@ -491,6 +601,7 @@ Always archive:
 ```text
 playwright-report/**
 test-results/**
+visual-regression-artifacts/*.tar.gz
 ```
 
 Those folders should contain:
@@ -508,12 +619,19 @@ Those folders should contain:
 - raw HAR files
 - normalized current/expected/comparison JSON
 
+The single visual archive should contain the same Playwright report and
+`test-results` structure plus `visual-regression-summary/summary.md` and
+`visual-regression-summary/summary.json`. CI systems can upload only the archive
+when they need one portable artifact, or upload both the expanded folders and
+the archive when their report viewer supports direct HTML publishing.
+
 ### Failure Diagnostics
 
 On failure, the pipeline should tell reviewers:
 
 ```text
 Open the Playwright HTML report.
+For visual diffs, open visual-regression-summary/summary.md first.
 Open the failed test folder in test-results.
 Read 00-failure-summary.md first.
 Open trace.zip for action/network/timing detail.
@@ -1276,15 +1394,23 @@ Run normally first:
 pnpm test:regression
 ```
 
+Run the CI visual wrapper when you need the same artifact and non-blocking
+classification policy used in pipelines:
+
+```bash
+npm run test:regression:visual:ci
+```
+
 If a baseline fails:
 
 1. open the HTML report
-2. read `00-failure-summary.md`
-3. inspect expected/current/diff evidence
-4. decide whether the change is expected
-5. update snapshots only if approved
-6. review the Git diff
-7. commit the updated baseline with a clear reason
+2. read `visual-regression-summary/summary.md` when the CI wrapper was used
+3. read `00-failure-summary.md` for execution failures
+4. inspect expected/current/diff evidence
+5. decide whether the change is expected
+6. update snapshots only if approved
+7. review the Git diff
+8. commit the updated baseline with a clear reason
 
 Update commands:
 
@@ -1302,6 +1428,11 @@ pnpm test:regression:har -- --update-snapshots
 
 Never blindly update snapshots. A snapshot update is an approval of changed
 behavior.
+
+Do not let CI run update commands automatically. Current-run `actual`
+screenshots may be archived as evidence, but they are not approved baselines
+until a person reviews the diff and commits or publishes the new baseline
+through the project's approval process.
 
 ## 13. Tags And Test Categories
 

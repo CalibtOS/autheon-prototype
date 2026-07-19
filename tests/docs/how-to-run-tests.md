@@ -64,6 +64,22 @@ Run regression tests:
 npm run test:regression
 ```
 
+Run visual regression in CI artifact mode:
+
+```bash
+npm run test:regression:visual:ci
+```
+
+This creates `visual-regression-artifacts/autheon-visual-regression-artifact.tar.gz`
+with the Playwright HTML report, `test-results`, approved baseline copy, and
+`visual-regression-summary/summary.md` / `summary.json`. Visual screenshot
+differences are reported as non-blocking findings; missing baselines or
+technical test failures still fail the command.
+
+The committed screenshot baselines currently use the `chromium-darwin` platform
+suffix. Run visual CI on the same platform or approve a separate baseline set
+for the CI runner platform.
+
 Update regression baselines after approved UI/accessibility changes:
 
 ```bash

@@ -40,6 +40,7 @@ export default defineConfig({
   reporter: [
     ['line'],
     ['junit', { outputFile: 'test-results/results.xml' }],
+    ['json', { outputFile: 'test-results/results.json' }],
     [
       'html',
       {
