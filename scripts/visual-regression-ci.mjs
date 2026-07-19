@@ -141,10 +141,21 @@ async function prepareOutputDirectories() {
   await Promise.all([
     fs.rm(paths.testResultsDir, { recursive: true, force: true }),
     fs.rm(paths.playwrightReportDir, { recursive: true, force: true }),
-    fs.rm(paths.artifactDir, { recursive: true, force: true }),
+    emptyDirectory(paths.artifactDir),
   ]);
 
   await fs.mkdir(paths.artifactDir, { recursive: true });
+}
+
+async function emptyDirectory(directoryPath) {
+  if (!fsSync.existsSync(directoryPath)) return;
+
+  const entries = await fs.readdir(directoryPath, { withFileTypes: true });
+  await Promise.all(
+    entries.map((entry) =>
+      fs.rm(path.join(directoryPath, entry.name), { recursive: true, force: true }),
+    ),
+  );
 }
 
 async function runPlaywright() {

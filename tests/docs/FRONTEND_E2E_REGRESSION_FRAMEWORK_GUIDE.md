@@ -432,6 +432,9 @@ visual-regression-artifact/
     summary.md
     summary.json
     manifest.json
+    notification-email.json
+    notification-email.html
+    visual-regression-report.pdf
   playwright-report/
     index.html
     data/
@@ -466,6 +469,92 @@ visual-regression-artifacts/visual-regression-summary/manifest.json
 The wrapper does not update approved snapshots. Approval still happens only by
 running the update command after human review and committing the changed
 baseline files.
+
+### Visual Regression Notification Report
+
+Upgrade notification from raw counters into a review report. The notification
+should be built from `visual-regression-summary/summary.json`; do not create a
+second parser that disagrees with the CI wrapper.
+
+Email status labels:
+
+```text
+PASS
+WARNING — VISUAL CHANGES DETECTED
+FAILURE — EXECUTION ERROR
+```
+
+For every screenshot difference, include:
+
+- snapshot name
+- spec file
+- complete Playwright test title
+- application area or route when it can be reliably inferred
+- browser/project
+- viewport or screenshot dimensions
+- changed pixel count
+- difference ratio
+- changed region coordinates when available
+- baseline modified state
+- expected, actual, and diff artifact paths
+
+The email comparison order should be:
+
+```text
+EXPECTED / APPROVED BASELINE
+ACTUAL / CURRENT RESULT
+VISUAL DIFFERENCE
+```
+
+Do not place local Docker filesystem paths in `<img>` URLs. Embed screenshots
+with normal email attachments referenced by CID/content-id:
+
+```js
+attachments: [
+  { filename: 'expected.png', path: expectedPath, cid: 'visual-regression-1-expected@project.local' },
+  { filename: 'actual.png', path: actualPath, cid: 'visual-regression-1-actual@project.local' },
+  { filename: 'diff.png', path: diffPath, cid: 'visual-regression-1-diff@project.local' }
+]
+```
+
+Then reference them from conservative responsive HTML:
+
+```html
+<img src="cid:visual-regression-1-expected@project.local" alt="Expected baseline">
+```
+
+The text part should still include the same test names, metrics, and artifact
+paths for clients that cannot render HTML.
+
+Generate a PDF report when a visual difference, missing baseline, or execution
+failure exists. A useful PDF structure is:
+
+1. executive summary with status, branch, commit, timestamp, environment,
+   browser/project, viewport, test counts, visual differences, missing
+   baselines, and execution failures
+2. one metadata page per visual difference
+3. large expected screenshot page
+4. large actual screenshot page
+5. large diff screenshot page
+6. execution failure pages with failing tests, errors, screenshot/trace
+   availability, and `npx playwright show-trace <trace-file>` commands
+
+State clearly in warning reports:
+
+```text
+Visual differences were detected, but CI execution succeeded.
+Approved baselines were NOT automatically updated.
+```
+
+Attach the PDF to warning and failure emails. Do not attach the full artifact
+archive by default because it can contain traces and videos and become large.
+Support an explicit opt-in size-limited archive attachment when a team wants
+that behavior locally:
+
+```text
+REGRESSION_ATTACH_ARCHIVE=true
+REGRESSION_ARCHIVE_ATTACHMENT_MAX_MB=10
+```
 
 ### Local Docker CI Simulation
 
@@ -530,6 +619,8 @@ REGRESSION_NOTIFICATION_EMAIL     recipient, default youssef.elkondakly@calibtos
 REGRESSION_NOTIFICATION_DRY_RUN   true writes notification-email.json without SMTP
 REGRESSION_NOTIFY_ON_SUCCESS      true sends success emails too
 REGRESSION_NOTIFICATION_REQUIRED  true makes notification send failure fail clean/warning runs
+REGRESSION_ATTACH_ARCHIVE         true attaches the tar.gz only under the max size
+REGRESSION_ARCHIVE_ATTACHMENT_MAX_MB  archive attachment max size, default 10
 ```
 
 Do not store SMTP credentials in the repository. Supply them through your shell,
