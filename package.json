@@ -18,6 +18,8 @@
     "test:regression:visual:update": "playwright test tests/regression --grep @visual-regression --update-snapshots --project=chromium",
     "test:regression:visual:ci": "node scripts/visual-regression-ci.mjs",
     "test:regression:visual:ci:strict": "node scripts/visual-regression-ci.mjs --strict",
+    "test:regression:visual:docker-ci": "node scripts/run-visual-regression-docker-ci.mjs",
+    "test:regression:visual:notify": "node scripts/notify-visual-regression.mjs",
     "test:report": "playwright show-report",
     "test:install-browsers": "playwright install chromium",
     "test:list": "playwright test --list",
@@ -28,6 +30,7 @@
     "@types/node": "^25.9.3",
     "dotenv": "^16.4.7",
     "http-server": "^14.1.1",
+    "nodemailer": "^9.0.3",
     "typescript": "^6.0.3"
   }
 }

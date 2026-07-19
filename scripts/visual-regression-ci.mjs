@@ -242,6 +242,25 @@ async function analyzeRun(playwrightExitCode, visualBaselineCount) {
     }
   }
 
+  if (
+    playwrightExitCode !== 0 &&
+    base.visualDifferences.length === 0 &&
+    base.missingBaselines.length === 0 &&
+    base.executionFailures.length === 0
+  ) {
+    base.executionFailures.push({
+      title: 'Playwright exited non-zero without a classified test failure',
+      file: settings.testDir,
+      project: settings.project,
+      status: 'failed',
+      durationMs: 0,
+      message:
+        tests.length === 0
+          ? 'Playwright did not find any matching tests. Check VISUAL_REGRESSION_TEST_DIR, VISUAL_REGRESSION_GREP, and project filters.'
+          : `Playwright exited with code ${playwrightExitCode}, but the JSON report did not contain a screenshot diff, missing baseline, or explicit failed test result.`,
+    });
+  }
+
   if (base.executionFailures.length > 0 || base.missingBaselines.length > 0) {
     base.status = 'failed';
   } else if (base.visualDifferences.length > 0) {
@@ -382,8 +401,19 @@ function toFailureRecord(testCase, result) {
     project: testCase.projectName,
     status: result?.status || testCase.status || 'unknown',
     durationMs: result?.duration || 0,
+    attachments: summarizeAttachments(result),
     message: compactErrorMessage(result),
   };
+}
+
+function summarizeAttachments(result) {
+  return (result?.attachments || [])
+    .filter((attachment) => attachment.path)
+    .map((attachment) => ({
+      name: attachment.name || path.basename(attachment.path),
+      contentType: attachment.contentType || 'application/octet-stream',
+      path: toWorkspacePath(attachment.path),
+    }));
 }
 
 function latestNonPassingResult(testCase) {

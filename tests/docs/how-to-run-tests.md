@@ -80,6 +80,63 @@ The committed screenshot baselines currently use the `chromium-darwin` platform
 suffix. Run visual CI on the same platform or approve a separate baseline set
 for the CI runner platform.
 
+Run the local Docker-based CI simulation:
+
+```bash
+REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:visual:docker-ci
+```
+
+This builds `autheon-visual-regression-ci:local`, installs dependencies with
+`npm ci` inside the image, runs `npm run test:regression:visual:ci`, sends or
+dry-runs the notification email, and preserves artifacts on the host under:
+
+```text
+visual-regression-artifacts/docker-ci/
+```
+
+Real SMTP email requires environment variables:
+
+```text
+SMTP_HOST
+SMTP_PORT
+SMTP_SECURE
+SMTP_USER
+SMTP_PASSWORD
+SMTP_FROM
+REGRESSION_NOTIFICATION_EMAIL
+```
+
+`REGRESSION_NOTIFICATION_EMAIL` defaults to
+`youssef.elkondakly@calibtos.com`. Use
+`REGRESSION_NOTIFICATION_DRY_RUN=true` to validate the notification path without
+sending mail; the generated email payload is written to
+`visual-regression-summary/notification-email.json`.
+
+The local runner loads `.env` automatically on the host and passes only the
+allowed SMTP/visual-regression variables into Docker with `--env`. `.env` is
+excluded from git and the Docker build context, so secrets are not baked into
+the image.
+
+Notification delivery failures are reported in the terminal but do not fail the
+CI simulation by default. Set `REGRESSION_NOTIFICATION_REQUIRED=true` if a clean
+or warning-only run should fail when email cannot be sent.
+
+The Dockerfile uses `node:24-bookworm-slim` by default and installs only
+Chromium. If Docker Hub access is unavailable locally, point
+`VISUAL_REGRESSION_DOCKER_BASE_IMAGE` at a compatible internal mirror.
+
+Safe local validation commands:
+
+```bash
+# Warning path: known visual differences should exit 0 and dry-run a warning email.
+REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:visual:docker-ci
+
+# Failure path: missing test dir simulates a real execution failure and exits non-zero.
+REGRESSION_NOTIFICATION_DRY_RUN=true \
+VISUAL_REGRESSION_TEST_DIR=tests/regression/__missing__ \
+npm run test:regression:visual:docker-ci
+```
+
 Update regression baselines after approved UI/accessibility changes:
 
 ```bash
