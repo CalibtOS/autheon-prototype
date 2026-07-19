@@ -110,7 +110,29 @@ REGRESSION_NOTIFICATION_EMAIL
 `youssef.elkondakly@calibtos.com`. Use
 `REGRESSION_NOTIFICATION_DRY_RUN=true` to validate the notification path without
 sending mail; the generated email payload is written to
-`visual-regression-summary/notification-email.json`.
+`visual-regression-summary/notification-email.json`, and the rendered HTML is
+written to `visual-regression-summary/notification-email.html`.
+
+Warning and failure notifications are report-style emails. For each visual
+difference, the HTML email embeds the expected, actual, and diff screenshots
+with CID-backed inline image attachments so email clients such as Gmail can
+render the comparison without relying on local filesystem URLs. When visual
+differences, missing baselines, or execution failures exist, the notifier also
+generates and attaches:
+
+```text
+visual-regression-summary/visual-regression-report.pdf
+```
+
+The PDF contains an executive summary and full-size expected, actual, and diff
+pages for every visual difference. The full `.tar.gz` artifact is not attached
+by default because it includes Playwright report data, traces, and videos and
+can grow large. To attach it only when it is below a size limit, set:
+
+```text
+REGRESSION_ATTACH_ARCHIVE=true
+REGRESSION_ARCHIVE_ATTACHMENT_MAX_MB=10
+```
 
 The local runner loads `.env` automatically on the host and passes only the
 allowed SMTP/visual-regression variables into Docker with `--env`. `.env` is
