@@ -467,6 +467,95 @@ The wrapper does not update approved snapshots. Approval still happens only by
 running the update command after human review and committing the changed
 baseline files.
 
+### Local Docker CI Simulation
+
+For local Jenkins-like validation, wrap the visual CI command in a disposable
+Docker environment:
+
+```bash
+REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:visual:docker-ci
+```
+
+The local Docker runner:
+
+1. builds `docker/visual-regression-ci.Dockerfile`
+2. installs dependencies inside the image with `npm ci`
+3. mounts the host artifact directory to `/app/visual-regression-artifacts`
+4. runs `npm run test:regression:visual:ci`
+5. sends or dry-runs notification email from `summary.json`
+6. exits with the visual CI wrapper's effective exit code
+
+The default host artifact directory is:
+
+```text
+visual-regression-artifacts/docker-ci/
+```
+
+Override it with:
+
+```bash
+VISUAL_REGRESSION_DOCKER_ARTIFACT_DIR=/absolute/or/repo-relative/path \
+REGRESSION_NOTIFICATION_DRY_RUN=true \
+npm run test:regression:visual:docker-ci
+```
+
+The Dockerfile defaults to `node:24-bookworm-slim` and installs only Chromium
+with Playwright. If local Docker Hub access is unavailable, use an internal
+mirror or a compatible cached base image:
+
+```bash
+VISUAL_REGRESSION_DOCKER_BASE_IMAGE=registry.example.com/node:24-bookworm-slim \
+REGRESSION_NOTIFICATION_DRY_RUN=true \
+npm run test:regression:visual:docker-ci
+```
+
+Docker runs Linux, while this prototype currently has committed
+`*-chromium-darwin.png` visual baselines. For local simulation only, the
+container aliases those approved Darwin PNGs to Linux snapshot names inside the
+disposable container workspace before Playwright runs. This does not modify host
+baselines and does not approve Linux baselines. Disable the aliasing with
+`VISUAL_BASELINE_SKIP_PLATFORM_ALIAS=true` when validating a real Linux-approved
+baseline set.
+
+Notification environment:
+
+```text
+SMTP_HOST                         required to send real email
+SMTP_PORT                         optional, default 587
+SMTP_SECURE                       optional true/false, default false
+SMTP_USER                         required to send real email
+SMTP_PASSWORD                     required to send real email
+SMTP_FROM                         optional, defaults to SMTP_USER
+REGRESSION_NOTIFICATION_EMAIL     recipient, default youssef.elkondakly@calibtos.com
+REGRESSION_NOTIFICATION_DRY_RUN   true writes notification-email.json without SMTP
+REGRESSION_NOTIFY_ON_SUCCESS      true sends success emails too
+REGRESSION_NOTIFICATION_REQUIRED  true makes notification send failure fail clean/warning runs
+```
+
+Do not store SMTP credentials in the repository. Supply them through your shell,
+`.env` for local runs, or the CI secret manager. The local Docker runner loads
+`.env` on the host and passes only allowed variables into Docker with `--env`;
+`.env` is excluded from git and the Docker build context, so secrets are not
+baked into the image.
+
+Notification failure policy: notification failures are non-blocking by default.
+The regression result remains authoritative because a mail outage should not
+turn a non-blocking visual warning into a broken test run. If the team wants
+notification delivery to be a hard requirement, set
+`REGRESSION_NOTIFICATION_REQUIRED=true`.
+
+Safe validation commands:
+
+```bash
+# Warning path: known visual differences should exit 0 and dry-run a warning email.
+REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:visual:docker-ci
+
+# Failure path: missing test dir simulates execution failure without editing specs.
+REGRESSION_NOTIFICATION_DRY_RUN=true \
+VISUAL_REGRESSION_TEST_DIR=tests/regression/__missing__ \
+npm run test:regression:visual:docker-ci
+```
+
 ### Persistent Visual Baseline
 
 CI runners are temporary. Every visual run must start from an approved previous
