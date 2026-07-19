@@ -19,6 +19,8 @@
     "test:regression:visual:ci": "node scripts/visual-regression-ci.mjs",
     "test:regression:visual:ci:strict": "node scripts/visual-regression-ci.mjs --strict",
     "test:regression:visual:docker-ci": "node scripts/run-visual-regression-docker-ci.mjs",
+    "test:regression:visual:baseline:docker": "node scripts/run-visual-regression-docker-ci.mjs --baseline",
+    "test:regression:visual:baseline:approve": "node scripts/approve-visual-baselines.mjs",
     "test:regression:visual:notify": "node scripts/notify-visual-regression.mjs",
     "test:report": "playwright show-report",
     "test:install-browsers": "playwright install chromium",

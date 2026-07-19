@@ -313,6 +313,19 @@ function attachInlineImages(model) {
     }
   }
 
+  for (const failure of [...model.executionFailures, ...model.missingBaselines]) {
+    const screenshotPath = failure.screenshot?.absolutePath;
+    if (!screenshotPath || !fsSync.existsSync(screenshotPath)) continue;
+    const cid = `execution-failure-${failure.classification.replace(/\s+/g, '-')}-${failure.index}@autheon.local`;
+    failure.screenshot.cid = cid;
+    attachments.push({
+      filename: `failure-${String(failure.index).padStart(2, '0')}-${path.basename(screenshotPath)}`,
+      path: screenshotPath,
+      cid,
+      contentType: 'image/png',
+    });
+  }
+
   return attachments;
 }
 
@@ -554,6 +567,7 @@ function renderHtmlEmail(model, reportArtifacts) {
             <tr>
               <td style="padding:20px 28px;">
                 ${renderHtmlMetrics(model)}
+                ${renderHtmlChangeGlance(model)}
                 <p style="margin:16px 0 0;padding:12px 14px;background:#fff8e1;border:1px solid #f4d06f;border-radius:6px;font-size:14px;line-height:20px;color:#3c4043;"><strong>Approved baselines were NOT automatically updated.</strong></p>
                 ${renderHtmlAttachmentSummary(model, reportArtifacts)}
               </td>
@@ -593,6 +607,49 @@ function renderHtmlMetrics(model) {
             </td>`,
           )
           .join('')}</tr>`,
+      )
+      .join('')}
+  </table>`;
+}
+
+function renderHtmlChangeGlance(model) {
+  const rows = [
+    ...model.visualDifferences.map((diff) => [
+      `#${diff.index}`,
+      diff.snapshot,
+      diff.applicationArea || '—',
+      'visual change',
+      `${formatNumber(diff.changedPixels)} px (${formatPercent(diff.changedRatio)})`,
+      formatBoundingBox(diff.changedRegion),
+    ]),
+    ...[...model.executionFailures, ...model.missingBaselines].map((failure) => [
+      `#${failure.index}`,
+      failure.title,
+      failure.applicationArea || '—',
+      failure.classification,
+      firstLine(failure.message).slice(0, 90),
+      '—',
+    ]),
+  ];
+
+  if (rows.length === 0) return '';
+
+  const header = ['', 'Snapshot / Test', 'Area', 'Kind', 'Impact', 'Changed region'];
+  const cellStyle =
+    'padding:6px 10px;border-bottom:1px solid #e8eaed;font-size:12px;line-height:17px;color:#202124;text-align:left;vertical-align:top;';
+
+  return `<h2 style="margin:18px 0 8px;font-size:16px;line-height:22px;color:#202124;">What changed at a glance</h2>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #dadce0;border-radius:6px;border-collapse:separate;overflow:hidden;">
+    <tr>${header
+      .map(
+        (label) =>
+          `<th style="${cellStyle}background:#f8fafd;color:#5f6368;font-weight:700;">${escapeHtml(label)}</th>`,
+      )
+      .join('')}</tr>
+    ${rows
+      .map(
+        (row) =>
+          `<tr>${row.map((value) => `<td style="${cellStyle}">${escapeHtml(String(value))}</td>`).join('')}</tr>`,
       )
       .join('')}
   </table>`;
@@ -736,6 +793,14 @@ function renderFailureCards(model) {
                 <pre style="white-space:pre-wrap;margin:12px 0 0;padding:12px;background:#f8fafd;border:1px solid #e8eaed;border-radius:6px;font-size:12px;line-height:18px;color:#3c4043;">${escapeHtml(
                   truncate(failure.message, 2200),
                 )}</pre>
+                ${
+                  failure.screenshot?.cid
+                    ? `<div style="margin:12px 0 0;">
+                        <div style="margin:0 0 8px;font-size:12px;line-height:16px;color:#5f6368;font-weight:700;">STATE AT FAILURE</div>
+                        <img src="cid:${failure.screenshot.cid}" alt="Screenshot at failure" style="display:block;width:100%;max-width:100%;height:auto;border:1px solid #dadce0;border-radius:4px;">
+                      </div>`
+                    : ''
+                }
               </td>
             </tr>
           </table>
@@ -805,6 +870,8 @@ async function renderPdfHtml(model) {
 
   for (const diff of model.visualDifferences) {
     visualSections.push(renderPdfDifferenceInfo(diff));
+    visualSections.push(await renderPdfSideBySidePage(diff));
+    visualSections.push(await renderPdfRegionZoomPage(diff));
     visualSections.push(await renderPdfImagePage(diff, 'expected', 'Expected / Approved Baseline'));
     visualSections.push(await renderPdfImagePage(diff, 'actual', 'Actual / Current Result'));
     visualSections.push(await renderPdfImagePage(diff, 'diff', 'Visual Difference'));
@@ -812,7 +879,7 @@ async function renderPdfHtml(model) {
 
   const failureSections =
     model.executionFailures.length > 0 || model.missingBaselines.length > 0
-      ? [renderPdfFailures([...model.executionFailures, ...model.missingBaselines])]
+      ? [await renderPdfFailures([...model.executionFailures, ...model.missingBaselines])]
       : [];
 
   return `<!doctype html>
@@ -839,6 +906,14 @@ async function renderPdfHtml(model) {
       .note { margin-top: 14px; padding: 10px 12px; border: 1px solid #f4d06f; background: #fff8e1; border-radius: 6px; }
       .image-page img { display: block; max-width: 100%; max-height: 235mm; width: auto; height: auto; margin: 0 auto; border: 1px solid #dadce0; }
       .caption { margin-bottom: 10px; color: #5f6368; }
+      .side-by-side { display: flex; gap: 8px; align-items: flex-start; }
+      .side-by-side figure { flex: 1 1 0; margin: 0; min-width: 0; }
+      .side-by-side figcaption { margin: 0 0 6px; font-size: 10px; line-height: 14px; font-weight: 700; color: #5f6368; }
+      .side-by-side img { display: block; width: 100%; height: auto; border: 1px solid #dadce0; }
+      .zoom-block { margin: 0 0 14px; }
+      .zoom-label { margin: 0 0 6px; font-size: 10px; line-height: 14px; font-weight: 700; color: #5f6368; }
+      .zoom-viewport { overflow: hidden; border: 1px solid #dadce0; }
+      .zoom-viewport img { display: block; max-width: none; }
       pre { white-space: pre-wrap; padding: 10px; border: 1px solid #e8eaed; background: #f8fafd; font-size: 10px; line-height: 15px; }
     </style>
   </head>
@@ -860,10 +935,135 @@ async function renderPdfHtml(model) {
         ['CI artifact URL', model.artifact.artifactUrl],
       ])}
     </section>
+    ${renderPdfOverview(model)}
     ${visualSections.join('')}
     ${failureSections.join('')}
   </body>
 </html>`;
+}
+
+function renderPdfOverview(model) {
+  const rows = [
+    ...model.visualDifferences.map((diff) => [
+      `#${diff.index}`,
+      'visual change',
+      diff.snapshot,
+      diff.applicationArea || '—',
+      `${formatNumber(diff.changedPixels)} px (${formatPercent(diff.changedRatio)})`,
+      formatBoundingBox(diff.changedRegion),
+    ]),
+    ...[...model.executionFailures, ...model.missingBaselines].map((failure) => [
+      `#${failure.index}`,
+      failure.classification,
+      failure.title,
+      failure.applicationArea || '—',
+      firstLine(failure.message).slice(0, 110),
+      '—',
+    ]),
+  ];
+
+  if (rows.length === 0) return '';
+
+  return `<section class="page">
+    <h2>What Changed — Overview</h2>
+    <p>${model.visualDifferences.length} visual difference(s), ${model.executionFailures.length} execution failure(s), ${
+      model.missingBaselines.length
+    } missing baseline(s). ${escapeHtml(String(model.metadata.passed ?? 'n/a'))} of ${escapeHtml(
+      String(model.metadata.totalTests ?? 'n/a'),
+    )} tests passed. Each finding below has a detail section with side-by-side, zoomed-region, and full-size evidence pages.</p>
+    <table>
+      <tr><th style="width:6%;">#</th><th style="width:14%;">Kind</th><th style="width:28%;">Snapshot / Test</th><th style="width:14%;">Area</th><th style="width:22%;">Impact</th><th style="width:16%;">Changed region</th></tr>
+      ${rows
+        .map(
+          (row) =>
+            `<tr>${row.map((value) => `<td>${escapeHtml(String(value))}</td>`).join('')}</tr>`,
+        )
+        .join('')}
+    </table>
+  </section>`;
+}
+
+async function renderPdfSideBySidePage(diff) {
+  const expected = diff.images.expected;
+  const actual = diff.images.actual;
+  if (!expected.exists || !actual.exists) return '';
+
+  const [expectedSrc, actualSrc] = await Promise.all([
+    imageDataUrl(expected.path),
+    imageDataUrl(actual.path),
+  ]);
+
+  return `<section class="page">
+    <h2>Side by Side — Expected vs Actual</h2>
+    <p class="caption">${escapeHtml(diff.snapshot)} · ${escapeHtml(diff.title)}</p>
+    <div class="side-by-side">
+      <figure>
+        <figcaption>EXPECTED / APPROVED BASELINE</figcaption>
+        <img src="${expectedSrc}" alt="Expected baseline">
+      </figure>
+      <figure>
+        <figcaption>ACTUAL / CURRENT RESULT</figcaption>
+        <img src="${actualSrc}" alt="Actual result">
+      </figure>
+    </div>
+  </section>`;
+}
+
+async function renderPdfRegionZoomPage(diff) {
+  const region = diff.changedRegion;
+  const dimensions = typeof diff.dimensions === 'string' ? diff.dimensions : null;
+  if (!region || !dimensions) return '';
+
+  const [imageWidth, imageHeight] = dimensions.split('x').map(Number);
+  if (!imageWidth || !imageHeight) return '';
+
+  const blocks = [];
+  for (const [kind, label] of [
+    ['expected', 'EXPECTED / APPROVED BASELINE'],
+    ['actual', 'ACTUAL / CURRENT RESULT'],
+    ['diff', 'VISUAL DIFFERENCE'],
+  ]) {
+    const image = diff.images[kind];
+    if (!image.exists) continue;
+    const src = await imageDataUrl(image.path);
+    blocks.push(renderPdfCrop(src, label, region, imageWidth, imageHeight));
+  }
+
+  if (blocks.length === 0) return '';
+
+  return `<section class="page">
+    <h2>Changed Region — Zoom</h2>
+    <p class="caption">${escapeHtml(diff.snapshot)} · region ${escapeHtml(
+      formatBoundingBox(region),
+    )} of ${escapeHtml(dimensions)}</p>
+    ${blocks.join('')}
+  </section>`;
+}
+
+function renderPdfCrop(src, label, region, imageWidth, imageHeight) {
+  const padding = 32;
+  const left = Math.max(0, region.x - padding);
+  const top = Math.max(0, region.y - padding);
+  const right = Math.min(imageWidth, region.x + region.width + padding);
+  const bottom = Math.min(imageHeight, region.y + region.height + padding);
+  const cropWidth = right - left;
+  const cropHeight = bottom - top;
+
+  // Fit within the printable A4 content box; magnify small regions up to 3x.
+  const scale = Math.min(3, 700 / cropWidth, 260 / cropHeight);
+
+  return `<div class="zoom-block">
+    <div class="zoom-label">${escapeHtml(label)} · ${scale.toFixed(2)}x</div>
+    <div class="zoom-viewport" style="width:${Math.round(cropWidth * scale)}px;height:${Math.round(
+      cropHeight * scale,
+    )}px;">
+      <img src="${src}" style="width:${Math.round(imageWidth * scale)}px;height:${Math.round(
+        imageHeight * scale,
+      )}px;margin-left:-${Math.round(left * scale)}px;margin-top:-${Math.round(top * scale)}px;" alt="${escapeHtml(
+        label,
+      )}">
+    </div>
+  </div>`;
 }
 
 function renderPdfDifferenceInfo(diff) {
@@ -906,30 +1106,45 @@ async function renderPdfImagePage(diff, kind, title) {
   </section>`;
 }
 
-function renderPdfFailures(failures) {
-  return `<section class="page">
-    <h2>Execution Failures / Missing Baselines</h2>
-    ${failures
-      .map(
-        (failure) => `<h3>${escapeHtml(titleCase(failure.classification))} #${failure.index}</h3>
-        ${renderPdfTable([
-          ['Test', failure.title],
-          ['Spec file', failure.file],
-          ['Application area', failure.applicationArea],
-          ['Browser/project', failure.browser],
-          ['Screenshot availability', failure.screenshot ? failure.screenshot.path : 'Not available'],
-          ['Trace availability', failure.trace ? failure.trace.path : 'Not available'],
-          [
-            'Trace command',
-            failure.trace ? `npx playwright show-trace ${failure.trace.path}` : null,
-          ],
-          ['Video', failure.video ? failure.video.path : null],
-          ['Error context', failure.errorContext ? failure.errorContext.path : null],
-        ])}
-        <pre>${escapeHtml(truncate(failure.message, 3500))}</pre>`,
-      )
-      .join('')}
-  </section>`;
+async function renderPdfFailures(failures) {
+  const sections = [];
+
+  for (const failure of failures) {
+    sections.push(`<section class="page">
+      <h2>${escapeHtml(titleCase(failure.classification))} #${failure.index}</h2>
+      ${renderPdfTable([
+        ['Test', failure.title],
+        ['Spec file', failure.file],
+        ['Application area', failure.applicationArea],
+        ['Browser/project', failure.browser],
+        ['Status', failure.status],
+        ['Duration', typeof failure.durationMs === 'number' ? `${Math.round(failure.durationMs)} ms` : null],
+        ['Screenshot availability', failure.screenshot ? failure.screenshot.path : 'Not available'],
+        ['Trace availability', failure.trace ? failure.trace.path : 'Not available'],
+        [
+          'Trace command',
+          failure.trace ? `npx playwright show-trace ${failure.trace.path}` : null,
+        ],
+        ['Video', failure.video ? failure.video.path : null],
+        ['Error context', failure.errorContext ? failure.errorContext.path : null],
+      ])}
+      <pre>${escapeHtml(truncate(failure.message, 3500))}</pre>
+    </section>`);
+
+    const screenshotPath = failure.screenshot?.absolutePath;
+    if (screenshotPath && fsSync.existsSync(screenshotPath)) {
+      const src = await imageDataUrl(screenshotPath);
+      sections.push(`<section class="page image-page">
+        <h2>State at Failure</h2>
+        <p class="caption">${escapeHtml(titleCase(failure.classification))} #${failure.index} · ${escapeHtml(
+          failure.title,
+        )}</p>
+        <img src="${src}" alt="Screenshot at failure">
+      </section>`);
+    }
+  }
+
+  return sections.join('');
 }
 
 function renderPdfTable(rows) {
