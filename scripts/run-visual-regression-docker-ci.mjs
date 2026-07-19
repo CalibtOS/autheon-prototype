@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,12 +19,22 @@ const args = process.argv.slice(2);
 const options = {
   help: args.includes('--help') || args.includes('-h'),
   noBuild: args.includes('--no-build'),
+  baseline: args.includes('--baseline'),
 };
 
 if (options.help) {
-  console.log(`Usage: npm run test:regression:visual:docker-ci -- [--no-build]
+  console.log(`Usage: npm run test:regression:visual:docker-ci -- [--no-build] [--baseline]
 
 Builds and runs the local Docker CI simulation for visual regression testing.
+Docker/Linux is the canonical visual-regression environment: comparisons run
+against approved *-linux.png baselines committed in tests/regression/snapshots.
+
+Modes:
+  (default)    Compare current Linux screenshots against approved Linux baselines.
+  --baseline   Generate Linux baseline CANDIDATES into
+               <artifact-dir>/baseline-candidates/ for manual review. Candidates
+               are never approved automatically; promote them explicitly with
+               "npm run test:regression:visual:baseline:approve".
 
 Useful environment:
   REGRESSION_NOTIFICATION_DRY_RUN=true  Write email payloads without SMTP.
@@ -33,6 +43,7 @@ Useful environment:
   VISUAL_REGRESSION_DOCKER_ARTIFACT_DIR Host artifact directory.
   VISUAL_REGRESSION_DOCKER_BASE_IMAGE   Docker base image, default node:24-bookworm-slim.
   VISUAL_REGRESSION_TEST_DIR            Override test dir for controlled failure simulation.
+  VISUAL_REGRESSION_RETRIES             Playwright retries for the visual suite, default 0.
 `);
   process.exit(0);
 }
@@ -65,6 +76,10 @@ if (!options.noBuild) {
 const dockerEnv = dockerEnvironment({
   REGRESSION_ARTIFACT_HOST_DIR: artifactHostDir,
   VISUAL_REGRESSION_ARTIFACT_DIR: '/app/visual-regression-artifacts',
+  ...(options.baseline ? { VISUAL_REGRESSION_MODE: 'baseline' } : {}),
+  // .git is excluded from the build context, so resolve git metadata on the
+  // host and hand it to the container for the notification report.
+  ...gitEnvironment(),
 });
 
 const runCode = await run('docker', [
@@ -96,9 +111,8 @@ function dockerEnvironment(extra) {
     'VISUAL_REGRESSION_PROJECT',
     'VISUAL_REGRESSION_STRICT',
     'VISUAL_REGRESSION_CI_ARGS',
-    'VISUAL_BASELINE_SOURCE_PLATFORM',
-    'VISUAL_BASELINE_TARGET_PLATFORM',
-    'VISUAL_BASELINE_SKIP_PLATFORM_ALIAS',
+    'VISUAL_REGRESSION_MODE',
+    'VISUAL_REGRESSION_RETRIES',
   ];
 
   const pairs = Object.entries(extra);
@@ -109,6 +123,25 @@ function dockerEnvironment(extra) {
   }
 
   return pairs.flatMap(([name, value]) => ['--env', `${name}=${value}`]);
+}
+
+function gitEnvironment() {
+  const env = {};
+  try {
+    env.GIT_BRANCH = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    env.GIT_COMMIT = execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    // Not a git checkout — the report simply omits branch/commit.
+  }
+  return env;
 }
 
 async function run(command, commandArgs) {
