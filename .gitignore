@@ -2,6 +2,9 @@
 .claude
 .playwright-cli
 .github
+.env
+.env.*
+!.env.example
 
 # =============================================================================
 # Design image binaries — keep on disk locally; do not commit to git
