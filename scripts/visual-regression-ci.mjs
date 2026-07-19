@@ -26,6 +26,10 @@ const settings = {
   testDir: process.env.VISUAL_REGRESSION_TEST_DIR || 'tests/regression',
   grep: process.env.VISUAL_REGRESSION_GREP || '@visual-regression',
   project: process.env.VISUAL_REGRESSION_PROJECT || 'chromium',
+  // Screenshot comparisons are deterministic: an unexpected diff reproduces
+  // identically on every retry, so retries only slow the suite down and
+  // triple the noise. Functional E2E projects keep their own retry policy.
+  retries: process.env.VISUAL_REGRESSION_RETRIES ?? '0',
   baselineDir: process.env.VISUAL_BASELINE_DIR || 'tests/regression/snapshots',
   testResultsDir: process.env.PLAYWRIGHT_TEST_OUTPUT_DIR || 'test-results',
   playwrightReportDir: process.env.PLAYWRIGHT_HTML_OUTPUT_DIR || 'playwright-report',
@@ -49,16 +53,19 @@ if (options.help) {
 }
 
 const startedAt = new Date();
-const command = [
-  relativeCommand(playwrightBinary()),
+const playwrightArgs = [
   'test',
   settings.testDir,
   '--grep',
   settings.grep,
   '--project',
   settings.project,
+  ...(passthroughArgs.some((arg) => arg.startsWith('--retries'))
+    ? []
+    : [`--retries=${settings.retries}`]),
   ...passthroughArgs,
-].join(' ');
+];
+const command = [relativeCommand(playwrightBinary()), ...playwrightArgs].join(' ');
 
 let playwrightExitCode = 0;
 let analysis;
@@ -68,19 +75,25 @@ let archivePath = path.resolve(paths.artifactDir, settings.archiveName);
 try {
   await prepareOutputDirectories();
 
+  // Baselines are platform-specific (snapshotPathTemplate includes
+  // {platform}), so only baselines approved for this OS count. Darwin PNGs
+  // are irrelevant to a Linux run and vice versa.
+  const platformSuffix = `-${process.platform}.png`;
   const visualBaselineCount = await countFiles(paths.baselineDir, (filePath) =>
-    filePath.endsWith('.png'),
+    filePath.endsWith(platformSuffix),
   );
 
   log(`Visual regression CI run started at ${startedAt.toISOString()}`);
   log(`Command: ${command}`);
-  log(`Baseline directory: ${settings.baselineDir} (${visualBaselineCount} PNG files)`);
+  log(
+    `Baseline directory: ${settings.baselineDir} (${visualBaselineCount} approved ${process.platform} PNG files)`,
+  );
   log(`Playwright report directory: ${settings.playwrightReportDir}`);
   log(`Test results directory: ${settings.testResultsDir}`);
 
   if (visualBaselineCount === 0) {
     analysis = createPreflightFailure(
-      'No approved visual baselines were found. Restore or commit tests/regression/snapshots before running CI comparison.',
+      `No approved visual baselines for platform "${process.platform}" were found in ${settings.baselineDir}. Generate candidates with "npm run test:regression:visual:baseline:docker", review them, then approve with "npm run test:regression:visual:baseline:approve" and commit the snapshots.`,
       visualBaselineCount,
     );
   } else {
@@ -125,6 +138,7 @@ packages one CI artifact archive without auto-updating approved baselines.
 Environment:
   VISUAL_REGRESSION_GREP          Playwright grep filter. Default: @visual-regression
   VISUAL_REGRESSION_PROJECT       Playwright project. Default: chromium
+  VISUAL_REGRESSION_RETRIES       Playwright retries for the visual suite. Default: 0
   VISUAL_BASELINE_DIR             Approved snapshots. Default: tests/regression/snapshots
   VISUAL_REGRESSION_ARTIFACT_DIR  Artifact output directory. Default: visual-regression-artifacts
   VISUAL_REGRESSION_STRICT        When true, visual diffs return exit code 1.
@@ -160,15 +174,6 @@ async function emptyDirectory(directoryPath) {
 
 async function runPlaywright() {
   const bin = playwrightBinary();
-  const playwrightArgs = [
-    'test',
-    settings.testDir,
-    '--grep',
-    settings.grep,
-    '--project',
-    settings.project,
-    ...passthroughArgs,
-  ];
 
   return await new Promise((resolve, reject) => {
     const child = spawn(bin, playwrightArgs, {

@@ -76,9 +76,45 @@ with the Playwright HTML report, `test-results`, approved baseline copy, and
 differences are reported as non-blocking findings; missing baselines or
 technical test failures still fail the command.
 
-The committed screenshot baselines currently use the `chromium-darwin` platform
-suffix. Run visual CI on the same platform or approve a separate baseline set
-for the CI runner platform.
+### Canonical visual environment: Docker/Linux
+
+Baselines are platform-specific (`*-chromium-darwin.png`, `*-chromium-linux.png`)
+because macOS and Linux rasterize fonts differently — the same page produces
+1–3% pixel differences across OSes with zero UI changes. CI visual regression
+therefore runs in Docker/Linux and compares only against approved
+`*-chromium-linux.png` baselines that were themselves rendered in that same
+Docker image. Darwin baselines are never renamed or aliased to Linux baselines.
+
+Baseline lifecycle:
+
+```text
+First-time platform setup:
+  npm run test:regression:visual:baseline:docker   # generate CANDIDATES
+  review visual-regression-artifacts/docker-ci/baseline-candidates/
+  npm run test:regression:visual:baseline:approve  # promote into tests/regression/snapshots
+  git commit the snapshot changes                  # approval is final only when committed
+
+Normal CI run:
+  npm run test:regression:visual:docker-ci         # compare against approved Linux baselines
+
+Intentional UI change:
+  review expected/actual/diff in the report, then regenerate candidates,
+  approve, and commit — never update baselines automatically in CI.
+
+Incorrect UI change:
+  fix the code; the baseline stays unchanged.
+```
+
+The candidate/approve split keeps four artifact types separate: approved
+baselines (committed snapshots), baseline candidates
+(`baseline-candidates/` in the artifact dir), actual screenshots
+(`test-results/**-actual.png`), and diff images (`test-results/**-diff.png`).
+
+For local development on macOS, run the visual suite through Docker
+(`npm run test:regression:visual:docker-ci`) so every comparison uses the one
+canonical rendering environment. Native `npm run test:regression:visual` runs
+on a Mac compare against `*-chromium-darwin.png` baselines and are only
+meaningful if that legacy Darwin baseline set is kept up to date.
 
 Run the local Docker-based CI simulation:
 
@@ -87,8 +123,11 @@ REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:visual:docker-ci
 ```
 
 This builds `autheon-visual-regression-ci:local`, installs dependencies with
-`npm ci` inside the image, runs `npm run test:regression:visual:ci`, sends or
-dry-runs the notification email, and preserves artifacts on the host under:
+`npm ci` inside the image, runs `npm run test:regression:visual:ci` (visual
+suite retries default to 0 — screenshot mismatches are deterministic, so
+retrying them only repeats the identical failure; override with
+`VISUAL_REGRESSION_RETRIES`), sends or dry-runs the notification email, and
+preserves artifacts on the host under:
 
 ```text
 visual-regression-artifacts/docker-ci/
@@ -162,6 +201,11 @@ npm run test:regression:visual:docker-ci
 Update regression baselines after approved UI/accessibility changes:
 
 ```bash
+# Canonical Docker/Linux visual baselines (candidates -> review -> approve -> commit):
+npm run test:regression:visual:baseline:docker
+npm run test:regression:visual:baseline:approve
+
+# Local-platform (non-visual or Darwin) baselines:
 npm run test:regression:update
 ```
 

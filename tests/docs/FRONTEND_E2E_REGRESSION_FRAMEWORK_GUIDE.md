@@ -598,13 +598,29 @@ REGRESSION_NOTIFICATION_DRY_RUN=true \
 npm run test:regression:visual:docker-ci
 ```
 
-Docker runs Linux, while this prototype currently has committed
-`*-chromium-darwin.png` visual baselines. For local simulation only, the
-container aliases those approved Darwin PNGs to Linux snapshot names inside the
-disposable container workspace before Playwright runs. This does not modify host
-baselines and does not approve Linux baselines. Disable the aliasing with
-`VISUAL_BASELINE_SKIP_PLATFORM_ALIAS=true` when validating a real Linux-approved
-baseline set.
+Docker/Linux is the canonical visual-regression environment. The container
+compares only against approved `*-chromium-linux.png` baselines that were
+rendered inside the same Docker image. Baselines from another OS are never
+renamed or aliased across platforms: macOS and Linux rasterize fonts
+differently, so a Darwin PNG compared against a Linux screenshot produces
+1–3% false pixel differences on every text-bearing screen.
+
+Creating or updating the Linux baseline is an explicit two-step operation,
+separate from normal CI:
+
+```bash
+# 1. Render baseline CANDIDATES inside the canonical Docker image.
+npm run test:regression:visual:baseline:docker
+# Candidates land in visual-regression-artifacts/docker-ci/baseline-candidates/
+# together with manifest.json. Nothing is approved automatically.
+
+# 2. After manual review, promote candidates into the approved baseline
+#    directory, then commit the diff to finalize the approval.
+npm run test:regression:visual:baseline:approve
+```
+
+If a run finds no approved baseline for its platform, the visual CI wrapper
+fails before comparison and points to the two commands above.
 
 Notification environment:
 
@@ -673,10 +689,14 @@ baseline is available.
 
 Visual baselines are browser and platform specific when the snapshot path uses
 `{projectName}` and `{platform}`. Run CI on the same OS/browser used for the
-approved baseline, or create and approve a separate baseline for the CI platform
-before enabling that runner. For example, a repository with
-`*-chromium-darwin.png` baselines needs a macOS Chromium visual job unless
-Linux Chromium baselines have also been approved.
+approved baseline — for this project that means Docker/Linux with approved
+`*-chromium-linux.png` baselines. Developers on macOS validate visual changes
+through the same Docker runner rather than against a separate Darwin baseline
+set, so there is exactly one rendering environment that decides what "changed"
+means. The visual suite runs with retries=0 by default: a screenshot mismatch
+is deterministic, and retrying it two more times reproduces the identical
+pixel diff while tripling runtime and log noise. Functional E2E projects keep
+their normal CI retry policy.
 
 ### Jenkins Stage Template
 

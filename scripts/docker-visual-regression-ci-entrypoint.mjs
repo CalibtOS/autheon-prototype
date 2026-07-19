@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
@@ -7,65 +8,125 @@ import path from 'node:path';
 const repoRoot = process.cwd();
 const artifactDir =
   process.env.VISUAL_REGRESSION_ARTIFACT_DIR || '/app/visual-regression-artifacts';
-const sourcePlatform = process.env.VISUAL_BASELINE_SOURCE_PLATFORM || 'darwin';
-const targetPlatform = process.env.VISUAL_BASELINE_TARGET_PLATFORM || process.platform;
+const mode = (process.env.VISUAL_REGRESSION_MODE || 'test').toLowerCase();
+const snapshotsDir = path.join(repoRoot, 'tests', 'regression', 'snapshots');
+const platformSuffix = `-${process.platform}.png`;
 
-const visualArgs = [
-  'run',
-  'test:regression:visual:ci',
-  '--',
-  ...splitArgs(process.env.VISUAL_REGRESSION_CI_ARGS),
-];
+const settings = {
+  testDir: process.env.VISUAL_REGRESSION_TEST_DIR || 'tests/regression',
+  grep: process.env.VISUAL_REGRESSION_GREP || '@visual-regression',
+  project: process.env.VISUAL_REGRESSION_PROJECT || 'chromium',
+};
 
 await fs.mkdir(artifactDir, { recursive: true });
 
-if (!isTruthy(process.env.VISUAL_BASELINE_SKIP_PLATFORM_ALIAS)) {
-  await hydratePlatformBaselines({
-    snapshotsDir: path.join(repoRoot, 'tests', 'regression', 'snapshots'),
-    sourcePlatform,
-    targetPlatform,
+if (mode === 'baseline') {
+  process.exit(await generateBaselineCandidates());
+} else if (mode === 'test') {
+  process.exit(await runVisualComparison());
+} else {
+  console.error(
+    `[docker-visual-ci] Unknown VISUAL_REGRESSION_MODE "${mode}". Use "test" (compare against approved baselines) or "baseline" (generate reviewable baseline candidates).`,
+  );
+  process.exit(2);
+}
+
+// Normal CI mode: compare current Linux screenshots against the approved
+// Linux baselines committed in tests/regression/snapshots. Baselines are
+// never created or modified here; a missing platform baseline is a blocking
+// failure reported by the visual CI wrapper.
+async function runVisualComparison() {
+  const visualExitCode = await run('npm', [
+    'run',
+    'test:regression:visual:ci',
+    '--',
+    ...splitArgs(process.env.VISUAL_REGRESSION_CI_ARGS),
+  ]);
+
+  const notificationExitCode = await run('node', ['scripts/notify-visual-regression.mjs'], {
+    REGRESSION_CI_EXIT_CODE: String(visualExitCode),
   });
+
+  if (visualExitCode !== 0) return visualExitCode;
+  if (notificationExitCode !== 0 && isTruthy(process.env.REGRESSION_NOTIFICATION_REQUIRED)) {
+    return notificationExitCode;
+  }
+  return 0;
 }
 
-const visualExitCode = await run('npm', visualArgs);
-const notificationExitCode = await run('node', ['scripts/notify-visual-regression.mjs'], {
-  REGRESSION_CI_EXIT_CODE: String(visualExitCode),
-});
+// Baseline mode: render every visual snapshot in this container's
+// deterministic Linux environment and export the resulting PNGs as
+// *candidates* into the mounted artifact directory. Nothing is approved
+// here: the container workspace is disposable, the repository snapshots on
+// the host are untouched, and promotion into tests/regression/snapshots
+// requires the separate, explicit approval command on the host.
+async function generateBaselineCandidates() {
+  console.log(
+    `[docker-visual-ci] Baseline mode: generating ${process.platform} baseline CANDIDATES. Approved baselines are not modified.`,
+  );
 
-if (visualExitCode !== 0) {
-  process.exit(visualExitCode);
-}
+  const playwrightExitCode = await run(path.join('node_modules', '.bin', 'playwright'), [
+    'test',
+    settings.testDir,
+    '--grep',
+    settings.grep,
+    '--project',
+    settings.project,
+    '--update-snapshots',
+    '--retries=0',
+    ...splitArgs(process.env.VISUAL_REGRESSION_CI_ARGS),
+  ]);
 
-if (notificationExitCode !== 0 && isTruthy(process.env.REGRESSION_NOTIFICATION_REQUIRED)) {
-  process.exit(notificationExitCode);
-}
+  const candidateRoot = path.join(artifactDir, 'baseline-candidates');
+  await fs.rm(candidateRoot, { recursive: true, force: true });
 
-process.exit(0);
+  const candidates = [];
+  if (fsSync.existsSync(snapshotsDir)) {
+    for await (const filePath of walk(snapshotsDir)) {
+      if (!filePath.endsWith(platformSuffix)) continue;
 
-async function hydratePlatformBaselines({ snapshotsDir, sourcePlatform, targetPlatform }) {
-  if (sourcePlatform === targetPlatform || !fsSync.existsSync(snapshotsDir)) {
-    return;
+      const relative = path.relative(repoRoot, filePath);
+      const targetPath = path.join(candidateRoot, relative);
+      await fs.mkdir(path.dirname(targetPath), { recursive: true });
+      await fs.copyFile(filePath, targetPath);
+      candidates.push({ file: relative.split(path.sep).join('/'), sha256: await sha256File(filePath) });
+    }
   }
 
-  let copied = 0;
-  const suffix = `-${sourcePlatform}.png`;
-  const targetSuffix = `-${targetPlatform}.png`;
+  await fs.mkdir(candidateRoot, { recursive: true });
+  await fs.writeFile(
+    path.join(candidateRoot, 'manifest.json'),
+    `${JSON.stringify(
+      {
+        createdAt: new Date().toISOString(),
+        platform: process.platform,
+        project: settings.project,
+        grep: settings.grep,
+        playwrightExitCode,
+        approved: false,
+        candidateCount: candidates.length,
+        candidates,
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
 
-  for await (const filePath of walk(snapshotsDir)) {
-    if (!filePath.endsWith(suffix)) continue;
+  console.log(
+    `[docker-visual-ci] Exported ${candidates.length} ${process.platform} baseline candidate(s) to the artifact directory under baseline-candidates/.`,
+  );
+  console.log(
+    '[docker-visual-ci] Candidates are NOT approved. Review them, then run "npm run test:regression:visual:baseline:approve" on the host and commit the changes.',
+  );
 
-    const targetPath = `${filePath.slice(0, -suffix.length)}${targetSuffix}`;
-    if (fsSync.existsSync(targetPath)) continue;
-
-    await fs.copyFile(filePath, targetPath);
-    copied += 1;
-  }
-
-  if (copied > 0) {
-    console.log(
-      `[docker-visual-ci] Hydrated ${copied} ${targetPlatform} baseline alias(es) from approved ${sourcePlatform} snapshots inside the disposable container workspace.`,
+  if (playwrightExitCode !== 0) {
+    console.error(
+      `[docker-visual-ci] Playwright exited with code ${playwrightExitCode} while generating candidates. Inspect the run before approving anything.`,
     );
   }
+
+  return playwrightExitCode;
 }
 
 async function* walk(root) {
@@ -78,6 +139,12 @@ async function* walk(root) {
       yield entryPath;
     }
   }
+}
+
+async function sha256File(filePath) {
+  const hash = crypto.createHash('sha256');
+  hash.update(await fs.readFile(filePath));
+  return hash.digest('hex');
 }
 
 async function run(command, args, extraEnv = {}) {
@@ -104,4 +171,3 @@ function splitArgs(value) {
 function isTruthy(value) {
   return ['1', 'true', 'yes', 'on'].includes(String(value || '').toLowerCase());
 }
-
