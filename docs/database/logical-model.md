@@ -117,6 +117,19 @@ Status transitions belong in a transaction/service layer, not an unconstrained c
 
 `reviewed_by_user_id` and `reviewed_at` record the reviewing admin independently of `resolved_by_user_id`, which allows a future multi-step flow where a reviewer and an approver may differ.
 
+**Email is not a master-data change type (T1, 2026-07-20).** The driver's sign-in email (`users.email`) is a credential the driver owns, not ops-managed master data, so it is never carried in a `master_data_change_request`. The `contact` type covers company/phone/contact details only.
+
+### Driver self-service email change (T1)
+
+Email changes follow a *verify, don't approve* model with no operations/admin step, recorded in `email_change_requests`:
+
+- **Ownership proof, not approval.** On request the system generates a 6-digit code, stores only its **hash** (`code_hash`), and sends the plaintext to the **new** address. `users.email` is unchanged until the driver submits the matching code — the **old address stays valid for sign-in** throughout, and is notified (in-app/push, and email in production) once the change is confirmed.
+- **One pending change per account.** Partial unique index on `email_change_requests(user_id) where status = 'pending'`. Starting a new request supersedes/cancels any prior pending one for that user.
+- **Expiry, attempts, resend throttle.** `expires_at` bounds code validity (10 min in the prototype); an expired or mismatched code errors without changing the address. `attempts` caps guesses; `resend_count` + a minimum resend interval (30s in the prototype) throttle re-sends. These live in the application layer.
+- **Uniqueness.** `new_email` must be a valid address, different from the current one, and not already used by another account — re-checked at both request and confirm time (a race where another account claims it between steps fails the confirm).
+- **Atomic confirm.** On success, within one transaction: set `email_change_requests.status = 'confirmed'` + `confirmed_at`, update `users.email`, and set `users.email_verified = true`.
+- **Audit.** `driver_email_change_requested` (request/resend) and `driver_email_changed` (confirm, with old → new) are appended to the audit log.
+
 ## Documents and object storage
 
 Files are not stored in PostgreSQL blobs. `upload_assets` is the core binary metadata table and is the source of truth for storage key, checksum, MIME type, size, access, generic technical upload profile, and deletion state. Feature tables reference `upload_asset_id` and enforce business authorization and meaning.
@@ -141,6 +154,7 @@ The SQL implementation must include at least these controls:
 - Unique active assignment per job: partial unique index on `job_assignments(job_id) where ended_at is null`.
 - One `pickup` and one `delivery` row per job: unique `(job_id, location_role)`.
 - One open master-data change request per driver: partial unique index on `master_data_change_requests(driver_id) where status = 'open'`.
+- One pending email change per account (T1): partial unique index on `email_change_requests(user_id) where status = 'pending'`. Code stored as hash only; `expires_at` enforced server-side; `users.email` updated only on confirm.
 - Draft-only hard deletion enforced by a stored procedure/service transaction. Non-draft jobs are never hard-deleted.
 - `delivery_date >= pickup_date` where both values are present; time-window sanity checks at service level because flexible windows are allowed. Each leg's window is same-day only: `window_end >= window_start` with no cross-midnight window (F-04); pickup and delivery legs may still have different `scheduled_date`.
 - Active marketplace index: `(operational_status, pickup_postal_code, pickup_date)` for published tours.

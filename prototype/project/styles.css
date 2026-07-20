@@ -4842,6 +4842,95 @@ select.input {
   color: var(--muted);
   margin-top: 3px;
 }
+/* Account & sign-in — driver-owned credential card (Task 1) */
+.phone-shell .account-signin-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.phone-shell .account-signin-key {
+  font-size: 15px;
+  line-height: 1;
+}
+.phone-shell .account-email-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0 2px;
+}
+.phone-shell .account-email-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.phone-shell .account-email-address {
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.phone-shell .account-email-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--st-ok, #1f9d55);
+  white-space: nowrap;
+}
+.phone-shell .account-email-verified .dot {
+  font-size: 9px;
+  line-height: 1;
+}
+.phone-shell .account-email-badge {
+  flex-shrink: 0;
+}
+/* Change-email sheet */
+.phone-shell .change-email-current {
+  font-size: var(--text-body-sm);
+  color: var(--muted);
+}
+.phone-shell .code-input-row {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.phone-shell .code-input-box {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+}
+.phone-shell .code-input-box:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+}
+.phone-shell .change-email-resend-row {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+}
+.phone-shell .change-email-success-check {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  background: rgba(var(--primary-rgb), 0.12);
+  color: var(--primary);
+}
 .phone-shell .switch-row {
   display: flex;
   align-items: center;

@@ -4461,17 +4461,18 @@ const DriverNotificationsPane = ({ onClose, onBack, onOpenJob, onOpenInfopoint }
   );
 };
 
+// Email intentionally excluded — it is the driver's own sign-in credential
+// and is managed self-serve in the Account & sign-in card, not through the
+// ops-approval master-data flow.
 const PROFILE_MDR_FIELDS = [
   { key: "company", required: true },
   { key: "address" },
-  { key: "email", required: true, type: "email" },
   { key: "phone" },
 ];
 
 const emptyMasterDataChangeForm = (driver) => ({
   company: driver?.company || "",
   address: driver?.address || "",
-  email: driver?.email || "",
   phone: driver?.phone || "",
 });
 
@@ -4481,6 +4482,267 @@ const fieldChanged = (before, after) =>
 const formatCalendarDayLabel = (dayKey) => {
   const m = String(dayKey || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return m ? `${m[3]}.${m[2]}.${m[1]}` : dayKey || "—";
+};
+
+// 6-digit confirmation-code entry (auto-advance + paste support).
+const CODE_LEN = 6;
+const CodeInput = ({ value, onChange, disabled }) => {
+  const refs = useRef([]);
+  const digits = String(value || "")
+    .padEnd(CODE_LEN, " ")
+    .slice(0, CODE_LEN)
+    .split("")
+    .map((c) => (c === " " ? "" : c));
+
+  const setDigit = (idx, ch) => {
+    const clean = ch.replace(/\D/g, "");
+    const next = digits.slice();
+    if (clean.length > 1) {
+      // paste / multiple chars: fill forward from idx
+      for (let i = 0; i < clean.length && idx + i < CODE_LEN; i++) {
+        next[idx + i] = clean[i];
+      }
+      onChange(next.join("").trim());
+      const landing = Math.min(idx + clean.length, CODE_LEN - 1);
+      refs.current[landing]?.focus();
+      return;
+    }
+    next[idx] = clean;
+    onChange(next.join(""));
+    if (clean && idx < CODE_LEN - 1) refs.current[idx + 1]?.focus();
+  };
+
+  const onKeyDown = (idx, e) => {
+    if (e.key === "Backspace" && !digits[idx] && idx > 0) {
+      refs.current[idx - 1]?.focus();
+    }
+  };
+
+  return (
+    <div className="code-input-row" role="group" aria-label={CODE_LEN + "-digit code"}>
+      {Array.from({ length: CODE_LEN }, (_, i) => (
+        <input
+          key={i}
+          ref={(el) => (refs.current[i] = el)}
+          className="code-input-box"
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={1}
+          disabled={disabled}
+          value={digits[i]}
+          aria-label={`Digit ${i + 1}`}
+          onChange={(e) => setDigit(i, e.target.value)}
+          onKeyDown={(e) => onKeyDown(i, e)}
+          onFocus={(e) => e.target.select()}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Self-serve email change — a single bottom sheet advancing through
+// enter-new-address → confirm-with-code → updated. The address only becomes
+// active after the code sent to the NEW inbox is confirmed; the old inbox
+// stays live until then and is notified on success. No ops approval.
+const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const [step, setStep] = useState("enter"); // enter | code | done
+  const [newEmail, setNewEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [demoCode, setDemoCode] = useState("");
+  const [confirmedEmail, setConfirmedEmail] = useState("");
+  const [resendLeft, setResendLeft] = useState(0);
+
+  // Reset everything whenever the sheet opens.
+  useEffect(() => {
+    if (open) {
+      setStep("enter");
+      setNewEmail("");
+      setCode("");
+      setError("");
+      setDemoCode("");
+      setConfirmedEmail("");
+      setResendLeft(0);
+    }
+  }, [open]);
+
+  // Resend cooldown countdown.
+  useEffect(() => {
+    if (resendLeft <= 0) return undefined;
+    const id = setInterval(() => setResendLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(id);
+  }, [resendLeft]);
+
+  const errKey = {
+    invalid_email: "changeEmailErrInvalid",
+    same_email: "changeEmailErrSame",
+    duplicate_email: "changeEmailErrDuplicate",
+    invalid_code: "changeEmailErrCodeInvalid",
+    expired: "changeEmailErrCodeExpired",
+    restricted: "changeEmailErrRestricted",
+  };
+  const mapErr = (reason) => t(errKey[reason] || "changeEmailErrGeneric");
+
+  const close = () => {
+    if (step !== "done") store.cancelDriverEmailChange();
+    onClose();
+  };
+
+  const sendCode = () => {
+    const r = store.startDriverEmailChange(newEmail);
+    if (!r.ok) {
+      setError(mapErr(r.reason));
+      return;
+    }
+    setError("");
+    setCode("");
+    setDemoCode(r.code);
+    setResendLeft(30);
+    setStep("code");
+  };
+
+  const resend = () => {
+    if (resendLeft > 0) return;
+    const r = store.resendDriverEmailCode();
+    if (!r.ok) {
+      setError(mapErr(r.reason));
+      return;
+    }
+    setError("");
+    setCode("");
+    setDemoCode(r.code);
+    setResendLeft(30);
+  };
+
+  const confirm = () => {
+    const r = store.confirmDriverEmailChange(code);
+    if (!r.ok) {
+      setError(mapErr(r.reason));
+      return;
+    }
+    setConfirmedEmail(r.email);
+    setError("");
+    setStep("done");
+  };
+
+  const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+  let title = t("changeEmailTitle");
+  let body = null;
+  let footer = null;
+
+  if (step === "enter") {
+    body = (
+      <div className="stack-4" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="change-email-current">
+          {t("changeEmailCurrentPrefix")} · <span className="mono">{currentEmail}</span>
+        </div>
+        <div>
+          <label className="field-label" htmlFor="change-email-new">
+            {t("changeEmailNewLabel")}
+          </label>
+          <input
+            id="change-email-new"
+            className="input"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder={t("changeEmailNewPlaceholder")}
+            value={newEmail}
+            onChange={(e) => {
+              setNewEmail(e.target.value);
+              if (error) setError("");
+            }}
+          />
+        </div>
+        <p className="section-hint" style={{ margin: 0 }}>
+          {t("changeEmailCodeNotice")}
+        </p>
+        {error ? <InlineAlert tone="error" message={error} /> : null}
+      </div>
+    );
+    footer = (
+      <button
+        type="button"
+        className="btn primary block"
+        disabled={!newEmail.trim()}
+        onClick={sendCode}
+      >
+        {t("changeEmailSendCode")}
+      </button>
+    );
+  } else if (step === "code") {
+    title = t("changeEmailCodeTitle");
+    body = (
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="change-email-current">
+          {t("changeEmailCodeSentTo", { email: newEmail })}
+        </div>
+        <CodeInput value={code} onChange={(v) => { setCode(v); if (error) setError(""); }} />
+        <div className="change-email-resend-row">
+          {resendLeft > 0 ? (
+            <span className="section-hint">
+              {t("changeEmailResendIn", { time: mmss(resendLeft) })}
+            </span>
+          ) : (
+            <button type="button" className="btn ghost xs" onClick={resend}>
+              {t("changeEmailResend")}
+            </button>
+          )}
+        </div>
+        {demoCode ? (
+          <InlineAlert tone="info" message={t("changeEmailDemoHint", { code: demoCode })} />
+        ) : null}
+        {error ? <InlineAlert tone="error" message={error} /> : null}
+      </div>
+    );
+    footer = (
+      <>
+        <button
+          type="button"
+          className="btn ghost"
+          onClick={() => {
+            setStep("enter");
+            setError("");
+          }}
+        >
+          {t("changeEmailBack")}
+        </button>
+        <button
+          type="button"
+          className="btn primary"
+          disabled={code.replace(/\D/g, "").length !== CODE_LEN}
+          onClick={confirm}
+        >
+          {t("changeEmailConfirm")}
+        </button>
+      </>
+    );
+  } else {
+    title = t("changeEmailSuccessTitle");
+    body = (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", textAlign: "center" }}>
+        <span className="change-email-success-check" aria-hidden="true">✓</span>
+        <p style={{ margin: 0 }}>
+          {t("changeEmailSuccessBody", { email: confirmedEmail })}
+        </p>
+      </div>
+    );
+    footer = (
+      <button type="button" className="btn primary block" onClick={onClose}>
+        {t("changeEmailDone")}
+      </button>
+    );
+  }
+
+  return (
+    <Sheet open={open} onClose={close} title={title} footer={footer}>
+      {body}
+    </Sheet>
+  );
 };
 
 const DriverProbationCard = () => {
@@ -4719,6 +4981,8 @@ const ProfilePaneFull = () => {
   };
   const [mdFeedback, setMdFeedback] = useState(null); // {tone, message}
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [emailSheetOpen, setEmailSheetOpen] = useState(false);
+  const emailChange = store.getDriverEmailChange();
   const submitMasterDataRequest = () => {
     const r = store.requestMasterDataChange(mdForm);
     if (r.ok) {
@@ -4784,6 +5048,42 @@ const ProfilePaneFull = () => {
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Account & sign-in — driver-owned credential, directly under the
+            identity block. Self-serve email change (verify, don't approve). */}
+        <div className="section-card account-signin-card">
+          <h2 className="section-title account-signin-title">
+            <span className="account-signin-key" aria-hidden="true">
+              🔑
+            </span>
+            {t("accountSigninTitle")}
+          </h2>
+          <div className="account-email-row">
+            <div className="mdr-field-label">{t("accountEmailLabel")}</div>
+            <div className="account-email-value">
+              <span className="account-email-address">{d?.email || "—"}</span>
+              {emailChange?.pending ? (
+                <span className="pill assigned account-email-badge">
+                  {t("accountEmailPending")}
+                </span>
+              ) : (
+                <span className="account-email-verified">
+                  <span className="dot" aria-hidden="true">
+                    ●
+                  </span>{" "}
+                  {t("accountEmailVerified")}
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn block stack-16"
+            onClick={() => setEmailSheetOpen(true)}
+          >
+            {t("accountEmailChangeBtn")}
+          </button>
         </div>
 
         {/* Probation progress card (hidden after release) */}
@@ -5092,6 +5392,12 @@ const ProfilePaneFull = () => {
           <Ic.Logout /> {t("signOut")}
         </button>
       </div>
+
+      <ChangeEmailSheet
+        open={emailSheetOpen}
+        onClose={() => setEmailSheetOpen(false)}
+        currentEmail={d?.email || ""}
+      />
 
       <ConfirmSheet
         open={signOutOpen}

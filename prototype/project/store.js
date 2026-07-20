@@ -1242,6 +1242,8 @@ window.AuthStore = (() => {
         driverCode: "AU-41-0228",
         address: "Landsberger Str. 22, 80339 Munchen",
         email: "jordan.blake@example.com",
+        emailVerified: true,
+        pendingEmailChange: null,
         phone: "+49 170 4400228",
         notes: "",
         status: "Active",
@@ -3348,25 +3350,23 @@ window.AuthStore = (() => {
       if (api.getOpenMasterDataChangeRequestForDriver(d.id)) {
         return { ok: false, reason: "open_request_exists" };
       }
+      // Email is no longer part of ops-managed master data — the driver owns
+      // it via the self-serve Account & sign-in flow (verify, don't approve).
+      // It is preserved unchanged here so an approval never rewrites it.
       const p = {
         company: String(proposed?.company ?? "").trim(),
         address: String(proposed?.address ?? "").trim(),
-        email: String(proposed?.email ?? "").trim(),
+        email: d.email || "",
         phone: String(proposed?.phone ?? "").trim(),
       };
       if (!p.company) return { ok: false, reason: "company_required" };
-      if (!p.email) return { ok: false, reason: "email_required" };
-      if (!isValidEmail(p.email)) return { ok: false, reason: "invalid_email" };
-      if (drivers.some((x) => x.id !== d.id && x.email === p.email)) {
-        return { ok: false, reason: "duplicate_email" };
-      }
       const snapshot = {
         company: d.company || "",
         address: d.address || "",
         email: d.email || "",
         phone: d.phone || "",
       };
-      const changedFields = ["company", "address", "email", "phone"].filter(
+      const changedFields = ["company", "address", "phone"].filter(
         (k) => p[k] !== snapshot[k],
       );
       if (!changedFields.length) return { ok: false, reason: "no_changes" };
@@ -3413,6 +3413,144 @@ window.AuthStore = (() => {
       });
       emit();
       return { ok: true, id: reqId, request: row };
+    },
+
+    // ---- Driver self-service email change (verify, don't approve) --------
+    // The driver owns their sign-in email. A change is confirmed by a
+    // 6-digit code sent to the NEW address; the OLD address stays live until
+    // the code is confirmed. No operations approval, ever. Backend delivery
+    // of the code, real persistence, and rate limiting are simulated here and
+    // captured as requirements for the dev team.
+    EMAIL_CODE_TTL_MS: 10 * 60 * 1000,
+    EMAIL_CODE_RESEND_MS: 30 * 1000,
+
+    getDriverEmailChange() {
+      const d = api.getCurrentDriver();
+      if (!d) return null;
+      return {
+        email: d.email || "",
+        emailVerified: d.emailVerified !== false,
+        pending: d.pendingEmailChange || null,
+      };
+    },
+
+    startDriverEmailChange(newEmailRaw) {
+      if (!api.isCurrentDriverActive())
+        return { ok: false, reason: "restricted" };
+      const d = api.getCurrentDriver();
+      if (!d) return { ok: false, reason: "no_driver" };
+      const newEmail = String(newEmailRaw || "").trim();
+      if (!isValidEmail(newEmail)) return { ok: false, reason: "invalid_email" };
+      if (newEmail.toLowerCase() === String(d.email || "").toLowerCase())
+        return { ok: false, reason: "same_email" };
+      if (
+        drivers.some(
+          (x) =>
+            x.id !== d.id &&
+            String(x.email || "").toLowerCase() === newEmail.toLowerCase(),
+        )
+      )
+        return { ok: false, reason: "duplicate_email" };
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const now = Date.now();
+      d.pendingEmailChange = {
+        newEmail,
+        code,
+        createdAt: nowStamp(),
+        sentAt: now,
+        expiresAt: now + api.EMAIL_CODE_TTL_MS,
+        attempts: 0,
+        resendCount: 0,
+      };
+      // Code is delivered to the NEW inbox only (proof of ownership).
+      log(
+        "driver_email_change_requested",
+        d.name || DEMO_DRIVER,
+        "account",
+        `${d.email || "—"} → ${newEmail}`,
+      );
+      emit();
+      return { ok: true, newEmail, code, expiresInSec: api.EMAIL_CODE_TTL_MS / 1000 };
+    },
+
+    resendDriverEmailCode() {
+      const d = api.getCurrentDriver();
+      if (!d || !d.pendingEmailChange)
+        return { ok: false, reason: "no_pending" };
+      const now = Date.now();
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const pending = d.pendingEmailChange;
+      pending.code = code;
+      pending.sentAt = now;
+      pending.expiresAt = now + api.EMAIL_CODE_TTL_MS;
+      pending.attempts = 0;
+      pending.resendCount = (pending.resendCount || 0) + 1;
+      log(
+        "driver_email_change_requested",
+        d.name || DEMO_DRIVER,
+        "account",
+        `resend · ${pending.newEmail}`,
+      );
+      emit();
+      return { ok: true, newEmail: pending.newEmail, code };
+    },
+
+    confirmDriverEmailChange(codeRaw) {
+      const d = api.getCurrentDriver();
+      if (!d || !d.pendingEmailChange)
+        return { ok: false, reason: "no_pending" };
+      const pending = d.pendingEmailChange;
+      if (Date.now() > pending.expiresAt) {
+        return { ok: false, reason: "expired" };
+      }
+      const code = String(codeRaw || "").trim();
+      if (code !== pending.code) {
+        pending.attempts = (pending.attempts || 0) + 1;
+        emit();
+        return { ok: false, reason: "invalid_code" };
+      }
+      const oldEmail = d.email || "";
+      const newEmail = pending.newEmail;
+      // Re-check uniqueness at confirm time (another account may have taken it).
+      if (
+        drivers.some(
+          (x) =>
+            x.id !== d.id &&
+            String(x.email || "").toLowerCase() === newEmail.toLowerCase(),
+        )
+      ) {
+        return { ok: false, reason: "duplicate_email" };
+      }
+      d.email = newEmail;
+      d.emailVerified = true;
+      d.pendingEmailChange = null;
+      log(
+        "driver_email_changed",
+        d.name || DEMO_DRIVER,
+        "account",
+        `${oldEmail || "—"} → ${newEmail}`,
+      );
+      // Notify the OLD inbox that the sign-in address changed (security).
+      pushDriverNotification({
+        type: "email_changed",
+        title: window.I18n
+          ? window.I18n.t("emailChangedNotifyTitle")
+          : "Sign-in email changed",
+        body: window.I18n
+          ? window.I18n.t("emailChangedNotifyBody", { email: newEmail })
+          : `Your sign-in email was changed to ${newEmail}.`,
+        driverId: d.id,
+      });
+      emit();
+      return { ok: true, email: newEmail, previousEmail: oldEmail };
+    },
+
+    cancelDriverEmailChange() {
+      const d = api.getCurrentDriver();
+      if (!d) return { ok: false, reason: "no_driver" };
+      d.pendingEmailChange = null;
+      emit();
+      return { ok: true };
     },
 
     requestDailyLimitIncrease() {

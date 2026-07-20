@@ -1,6 +1,6 @@
 {
   "feature": "Vehicle Transport Platform Phase 1 - working app name configurable",
-  "version": "PRD v2.2 - Admin Create/Edit Job: left form-section navigation and right live-summary sidebars are sticky within the internally-scrolling form on wide layouts, with independent overflow scroll and a stacked non-sticky fallback below the three-column breakpoint; app shell fixed-height so admin content scrolls internally instead of growing the document (2026-07-20). [v2.1] important vehicle info metadata (registration status, electric vehicle, red license plates) added as optional job fields per Design Direction Board 07/2026 (2026-07-14); probation-only driver UI (legacy limit-request UI removed); automatic immutable sequential driver IDs; same-day per-leg time-window validation; Infopoint separate View/Download actions; branding pack, driver-ID format, Report Problem timing, and production domain flagged for decision (2026-07-10)",
+  "version": "PRD v2.3 - Driver self-service email change (T1): email moves out of ops-managed master data into a driver-owned 'Account & sign-in' card; changed self-serve with no ops approval, gated by a 6-digit code sent to the new address (verify, don't approve) — old address stays live until confirmed and is notified on success; verification state + email_change_requests model + driver_email_change_requested/driver_email_changed audit actions added (2026-07-20). [v2.2] Admin Create/Edit Job: left form-section navigation and right live-summary sidebars are sticky within the internally-scrolling form on wide layouts, with independent overflow scroll and a stacked non-sticky fallback below the three-column breakpoint; app shell fixed-height so admin content scrolls internally instead of growing the document (2026-07-20). [v2.1] important vehicle info metadata (registration status, electric vehicle, red license plates) added as optional job fields per Design Direction Board 07/2026 (2026-07-14); probation-only driver UI (legacy limit-request UI removed); automatic immutable sequential driver IDs; same-day per-leg time-window validation; Infopoint separate View/Download actions; branding pack, driver-ID format, Report Problem timing, and production domain flagged for decision (2026-07-10)",
   "goal": "Replace manual vehicle transport dispatch with a contract-driven Version 1 platform focused on operational order creation, marketplace job distribution, direct assignment, binding driver acceptance, clear Report Problem cancellation and special case flows, external map navigation, address master data, simple push notifications for drivers, admin email alerts for critical events, optional tour-linked document and driver invoice handling, auditability, and a controlled rollout from zero without historical Excel tour migration.",
   "product_context": {
     "platform_type": "Vehicle transport / vehicle relocation operations platform",
@@ -42,7 +42,7 @@
       "Full finance dashboards, accounting integration, vehicle condition documentation, historical Excel tour migration, CSV mass import, and complex tour chains are out of Version 1 unless separately approved.",
       "The final app display name should be configurable because the client does not want the program to be named AUTHEON in the UI.",
       "Draft jobs may be permanently deleted; they are not cancelled. Cancel Order in the driver PWA requires a minimum-length explanation before slide-to-confirm unlocks.",
-      "Driver profile master data (company, address, email, phone, driver ID) is maintained by admin/dispatching. Drivers do not self-edit those fields in V1; they submit change requests. At most one open request per driver until admin approves or rejects.",
+      "Driver profile master data (company, address, phone, driver ID) is maintained by admin/dispatching. Drivers do not self-edit those fields in V1; they submit change requests. At most one open request per driver until admin approves or rejects. Email is the ONE exception (T1, 2026-07-20): it is the driver's own sign-in credential, so it lives in a driver-owned 'Account & sign-in' card and is changed self-serve (no ops approval) — gated by a 6-digit code sent to the new address (verify, don't approve). The old address stays active until the code is confirmed, and is notified once the change succeeds.",
       "Cancel Order shows binding-cost warning and link to driver terms before slide-to-confirm. Not Performable may attach evidence files (photos/PDF) visible to admin on the special-case panel.",
       "Tour-linked document upload is available before job completion as well as after Performed; it is not restricted to post-completion only.",
       "Vehicle color and car photos are not required in Version 1. Free-text notes may capture vehicle appearance when needed.",
@@ -870,10 +870,16 @@
       "id": 19,
       "epic": "Driver Profile & Notification Settings",
       "priority": 19,
-      "story": "As a driver, I want to view my profile and manage simple notification preferences.",
+      "story": "As a driver, I want to view my profile, manage my own sign-in email, and manage simple notification preferences.",
       "acceptance": [
-        "Profile shows read-only name, company, driver ID, address, email, phone/mobile, and account status where applicable.",
-        "Profile explains that master-data changes must be requested through the operator/admin and cannot be edited directly in the PWA.",
+        "Profile shows read-only name, company, driver ID, address, phone/mobile, and account status where applicable (email is not part of read-only master data — see the Account & sign-in card below).",
+        "Profile explains that master-data changes (company, address, phone) must be requested through the operator/admin and cannot be edited directly in the PWA.",
+        "Account & sign-in (T1, 2026-07-20): email is presented in a dedicated driver-owned 'Account & sign-in' card directly under the identity block, with a Verified indicator and a Change action — NOT inside the ops-managed read-only master-data card.",
+        "Changing the sign-in email is self-serve with no operations approval, ever. It is gated by verification of the new mailbox: the driver enters a new address, the system sends a 6-digit code to that new address, and the address only becomes active after the driver enters the correct code.",
+        "The flow advances through a single sheet (enter new address → confirm with code → updated) so the driver never loses context. The old address stays active and usable for sign-in until the new address is confirmed.",
+        "Fail-safe rules: a wrong or expired code errors inline and does not change the address; the new address must be a valid, non-duplicate email different from the current one; the code can be resent (throttled); and once the change succeeds the OLD address receives a security notification that the sign-in email was changed.",
+        "A pending email change is surfaced on the card (e.g. a 'change pending' indicator) and never blocks sign-in with the current address.",
+        "Verification state is tracked (email verified/unverified; at most one pending email-change request per account) and both the request and the completed change are written to the audit log (driver_email_change_requested, driver_email_changed).",
         "While a driver is on probation, the profile shows a probation status/progress card (current probation progress toward release); it must not show a daily-limit usage meter or a 'request higher limit' action (F-02).",
         "Once the driver is released from probation, the probation card is hidden on the next profile load.",
         "Drivers can enable or disable push notifications without requiring prior admin activation.",
@@ -888,8 +894,12 @@
       "status": "pending",
       "files": [
         "apps/driver-pwa/src/profile/",
+        "apps/driver-pwa/src/account/email-change/",
         "services/notifications/preferences.ts",
-        "apps/admin/src/settings/feature-flags.ts"
+        "services/account/email-change.ts",
+        "apps/admin/src/settings/feature-flags.ts",
+        "prototype/project/driver.jsx",
+        "prototype/project/store.js"
       ]
     },
     {

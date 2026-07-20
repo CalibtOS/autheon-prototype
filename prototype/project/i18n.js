@@ -1191,6 +1191,46 @@ window.I18n = (() => {
       accountStatus: "Account status",
       masterDataChangeNotice:
         "These details are managed by operations. Tap Request changes to propose updates.",
+      accountSigninTitle: "Account & sign-in",
+      accountSigninHint:
+        "This is your sign-in email. You control it — no operations approval needed.",
+      accountEmailLabel: "Email",
+      accountEmailVerified: "Verified",
+      accountEmailPending: "Change pending",
+      accountEmailChangeBtn: "Change",
+      changeEmailTitle: "Change email address",
+      changeEmailCurrentPrefix: "Current",
+      changeEmailNewLabel: "New email address",
+      changeEmailNewPlaceholder: "name@company.com",
+      changeEmailCodeNotice:
+        "We'll send a 6-digit code to your new address to confirm it's yours.",
+      changeEmailSendCode: "Send code",
+      changeEmailCodeTitle: "Enter confirmation code",
+      changeEmailCodeSentTo: "Sent to {email}",
+      changeEmailResendIn: "Resend in {time}",
+      changeEmailResend: "Resend code",
+      changeEmailBack: "Change address",
+      changeEmailConfirm: "Confirm change",
+      changeEmailSuccessTitle: "Email updated",
+      changeEmailSuccessBody:
+        "Your sign-in email is now {email}. Use it the next time you sign in.",
+      changeEmailDone: "Done",
+      changeEmailDemoHint:
+        "Prototype: the 6-digit code sent to your new address is {code}.",
+      changeEmailErrInvalid: "Enter a valid email address.",
+      changeEmailErrSame: "This is already your sign-in email.",
+      changeEmailErrDuplicate:
+        "That email is already in use by another account.",
+      changeEmailErrCodeInvalid:
+        "That code isn't correct. Check it and try again.",
+      changeEmailErrCodeExpired:
+        "That code has expired. Send a new one.",
+      changeEmailErrRestricted:
+        "Your account can't change its email right now.",
+      changeEmailErrGeneric: "Something went wrong. Please try again.",
+      emailChangedNotifyTitle: "Sign-in email changed",
+      emailChangedNotifyBody:
+        "Your sign-in email was changed to {email}. If this wasn't you, contact operations immediately.",
       notificationPreferences: "Notification preferences",
       pickupPostalArea: "Pickup postal area",
       pushNotificationsEnabled: "Push notifications enabled",
@@ -2483,6 +2523,47 @@ window.I18n = (() => {
       accountStatus: "Kontostatus",
       masterDataChangeNotice:
         "Diese Daten verwaltet der Betrieb. Tippen Sie auf Änderung anfragen, um Updates vorzuschlagen.",
+      accountSigninTitle: "Konto & Anmeldung",
+      accountSigninHint:
+        "Das ist Ihre Anmelde-E-Mail. Sie verwalten sie selbst — keine Freigabe durch den Betrieb nötig.",
+      accountEmailLabel: "E-Mail",
+      accountEmailVerified: "Bestätigt",
+      accountEmailPending: "Änderung ausstehend",
+      accountEmailChangeBtn: "Ändern",
+      changeEmailTitle: "E-Mail-Adresse ändern",
+      changeEmailCurrentPrefix: "Aktuell",
+      changeEmailNewLabel: "Neue E-Mail-Adresse",
+      changeEmailNewPlaceholder: "name@firma.de",
+      changeEmailCodeNotice:
+        "Wir senden einen 6-stelligen Code an Ihre neue Adresse, um zu bestätigen, dass sie Ihnen gehört.",
+      changeEmailSendCode: "Code senden",
+      changeEmailCodeTitle: "Bestätigungscode eingeben",
+      changeEmailCodeSentTo: "Gesendet an {email}",
+      changeEmailResendIn: "Erneut senden in {time}",
+      changeEmailResend: "Code erneut senden",
+      changeEmailBack: "Adresse ändern",
+      changeEmailConfirm: "Änderung bestätigen",
+      changeEmailSuccessTitle: "E-Mail aktualisiert",
+      changeEmailSuccessBody:
+        "Ihre Anmelde-E-Mail lautet jetzt {email}. Verwenden Sie sie bei Ihrer nächsten Anmeldung.",
+      changeEmailDone: "Fertig",
+      changeEmailDemoHint:
+        "Prototyp: Der an Ihre neue Adresse gesendete 6-stellige Code lautet {code}.",
+      changeEmailErrInvalid: "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+      changeEmailErrSame: "Das ist bereits Ihre Anmelde-E-Mail.",
+      changeEmailErrDuplicate:
+        "Diese E-Mail wird bereits von einem anderen Konto verwendet.",
+      changeEmailErrCodeInvalid:
+        "Der Code ist nicht korrekt. Bitte prüfen Sie ihn und versuchen Sie es erneut.",
+      changeEmailErrCodeExpired:
+        "Der Code ist abgelaufen. Bitte fordern Sie einen neuen an.",
+      changeEmailErrRestricted:
+        "Ihr Konto kann derzeit die E-Mail-Adresse nicht ändern.",
+      changeEmailErrGeneric:
+        "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+      emailChangedNotifyTitle: "Anmelde-E-Mail geändert",
+      emailChangedNotifyBody:
+        "Ihre Anmelde-E-Mail wurde zu {email} geändert. Falls Sie das nicht waren, kontaktieren Sie bitte umgehend die Disposition.",
       notificationPreferences: "Benachrichtigungseinstellungen",
       pickupPostalArea: "Abhol-PLZ-Gebiet",
       pushNotificationsEnabled: "Push-Benachrichtigungen aktiviert",

@@ -1,5 +1,6 @@
 ﻿// AUTHEON Version 1 database draft — PostgreSQL target.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
+// 2026-07-20 (PRD v2.3, T1) — driver self-service email change (verify, don't approve): added email_change_requests table (6-digit code sent to the NEW address, old address stays live until confirmed, no ops approval). Email is removed from the ops-managed master-data change scope — master_data_change_requests no longer carries email; users.email is changed only via a confirmed email_change_request. New audit actions driver_email_change_requested / driver_email_changed.
 // 2026-07-14 (PRD v2.1 follow-up, same version) — important-vehicle-info conditional rules: added jobs.red_license_plate_number (§16 FZV dealer transfer plate, operator-bound); documented that licenseplate is app-required when registered and null when deregistered.
 // 2026-07-13 (PRD v2.0, F-01) — removed deprecated master_data_change_type.daily_limit_override enum value. Documented that drivers.probation_job_limit is a per-driver snapshot seeded at creation from app_settings 'driver.acceptance.probationJobCount' (application-layer default, literal column default is a fallback only); no structural change to columns.
 // Last updated: 2026-07-10 (PRD v2.0) — no structural change. Annotated drivers.driver_code semantics (F-03: system-assigned, immutable, never reused) and documented same-day per-leg time-window rule (F-04) in logical-model.md. Probation UI, Infopoint View/Download, branding/domain/Report-Problem-timing are UI/open items with no schema impact.
@@ -111,7 +112,36 @@ Enum master_data_change_type {
   address
   vehicle_info
   license
-  contact
+  contact  // company/phone/contact details only — email is NOT part of master data (T1); it is driver-owned and changed via email_change_requests.
+}
+
+// Driver self-service email change (T1, "verify, don't approve"). The driver
+// owns their sign-in email (users.email). A change is proved by a 6-digit code
+// sent to the NEW address; the OLD address stays active until the code is
+// confirmed. No operations/admin approval is involved. Store a HASH of the
+// code, never the plaintext. Enforce: at most one pending request per user
+// (partial unique index on user_id where status = 'pending'); expiry, attempt
+// cap, and resend throttle live in the application/logical-model layer.
+Enum email_change_status {
+  pending
+  confirmed
+  expired
+  cancelled
+}
+
+Table email_change_requests {
+  id uuid [pk]
+  user_id uuid [not null]  // FK users.id — the account whose sign-in email changes
+  current_email varchar(255) [not null]  // snapshot of the old address at request time
+  new_email varchar(255) [not null]
+  code_hash varchar(255) [not null]  // hash of the 6-digit code; plaintext is only sent to new_email
+  status email_change_status [not null, default: 'pending']
+  attempts smallint [not null, default: 0]
+  resend_count smallint [not null, default: 0]
+  expires_at timestamptz [not null]
+  created_at timestamptz [not null]
+  confirmed_at timestamptz  // set on success; users.email + users.email_verified updated in the same transaction
+  cancelled_at timestamptz
 }
 
 Enum notification_channel {

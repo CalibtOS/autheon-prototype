@@ -7090,10 +7090,11 @@ const parseMasterDataRequestIdFromMeta = (meta) => {
   return m ? m[1] : "";
 };
 
+// Email is no longer part of ops-managed master data (driver self-serves it
+// via the Account & sign-in flow), so it is not a reviewable change field.
 const MASTER_DATA_CHANGE_FIELDS = [
   ["company", "company"],
   ["address", "address"],
-  ["email", "email"],
   ["phone", "phone"],
 ];
 
