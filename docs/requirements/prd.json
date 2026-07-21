@@ -1,6 +1,6 @@
 {
   "feature": "Vehicle Transport Platform Phase 1 - working app name configurable",
-  "version": "PRD v2.3 - Driver self-service email change (T1): email moves out of ops-managed master data into a driver-owned 'Account & sign-in' card; changed self-serve with no ops approval, gated by a 6-digit code sent to the new address (verify, don't approve) — old address stays live until confirmed and is notified on success; verification state + email_change_requests model + driver_email_change_requested/driver_email_changed audit actions added (2026-07-20). [v2.2] Admin Create/Edit Job: left form-section navigation and right live-summary sidebars are sticky within the internally-scrolling form on wide layouts, with independent overflow scroll and a stacked non-sticky fallback below the three-column breakpoint; app shell fixed-height so admin content scrolls internally instead of growing the document (2026-07-20). [v2.1] important vehicle info metadata (registration status, electric vehicle, red license plates) added as optional job fields per Design Direction Board 07/2026 (2026-07-14); probation-only driver UI (legacy limit-request UI removed); automatic immutable sequential driver IDs; same-day per-leg time-window validation; Infopoint separate View/Download actions; branding pack, driver-ID format, Report Problem timing, and production domain flagged for decision (2026-07-10)",
+  "version": "PRD v2.4 - Order cancellation & empty-run workflow (T2): separate service-partner Cancel-order and Report-empty-run flows (⚠ entry, 4/6 reasons, ≥30-char text, slide-to-confirm), admin empty-run review (Recognised/Not recognised), Autheon cancellation of booked/unbooked orders, internal admin notes, edit-active-order with partner notification of changed values, duplicate order, ⚠ availability rules, and full audit logging; status model = extended enum (cancelled_by_sp, cancelled_by_autheon, empty_run_reported, empty_run_recognised, empty_run_not_recognised) with board umbrella grouping + reason chip; German copy verbatim from Storno-Workflow-1.pdf; T&C link is a flagged placeholder (2026-07-21). [v2.3] Driver self-service email change (T1): email moves out of ops-managed master data into a driver-owned 'Account & sign-in' card; changed self-serve with no ops approval, gated by a 6-digit code sent to the new address (verify, don't approve) — old address stays live until confirmed and is notified on success; verification state + email_change_requests model + driver_email_change_requested/driver_email_changed audit actions added (2026-07-20). [v2.2] Admin Create/Edit Job: left form-section navigation and right live-summary sidebars are sticky within the internally-scrolling form on wide layouts, with independent overflow scroll and a stacked non-sticky fallback below the three-column breakpoint; app shell fixed-height so admin content scrolls internally instead of growing the document (2026-07-20). [v2.1] important vehicle info metadata (registration status, electric vehicle, red license plates) added as optional job fields per Design Direction Board 07/2026 (2026-07-14); probation-only driver UI (legacy limit-request UI removed); automatic immutable sequential driver IDs; same-day per-leg time-window validation; Infopoint separate View/Download actions; branding pack, driver-ID format, Report Problem timing, and production domain flagged for decision (2026-07-10)",
   "goal": "Replace manual vehicle transport dispatch with a contract-driven Version 1 platform focused on operational order creation, marketplace job distribution, direct assignment, binding driver acceptance, clear Report Problem cancellation and special case flows, external map navigation, address master data, simple push notifications for drivers, admin email alerts for critical events, optional tour-linked document and driver invoice handling, auditability, and a controlled rollout from zero without historical Excel tour migration.",
   "product_context": {
     "platform_type": "Vehicle transport / vehicle relocation operations platform",
@@ -1236,6 +1236,51 @@
         "services/platform/app-settings.ts",
         "services/jobs/operational-policy.ts"
       ]
+    },
+    {
+      "id": 32,
+      "epic": "Order Cancellation & Empty-Run Workflow (Storno)",
+      "priority": 12,
+      "story": "As a service partner or Autheon admin, I want clearly separated processes for cancelling an order, reporting an empty run, reviewing an empty-run report, cancelling from the backend, editing active orders, duplicating orders, and full audit logging — so contractual cancellations and non-executable orders are handled correctly and traceably. Source of truth for German copy: Storno-Workflow-1.pdf (2026-07-21). Refines tasks 12/13/14 for the service-partner split.",
+      "acceptance": [
+        "§1 Entry: on an already-booked order the service partner sees a warning/action button using the ⚠ symbol; selecting it opens a dialog/bottom-sheet with two options — Cancel order and Report empty run — that start SEPARATE workflows and must not share a resulting status or backend action.",
+        "§2 SP cancel: a warning dialog first states the order is contractually booked and cancellation costs up to the agreed remuneration may apply, with a link to the applicable terms/contractual conditions; actions Cancel and Continue cancellation.",
+        "§2.1 SP cancel input: exactly one reason required (Appointment cannot be met · Order booked accidentally · Execution is organisationally impossible · Other); a written explanation of at least 30 characters is mandatory; the final action is a slide-to-confirm labelled 'Auftrag stornieren'.",
+        "§2.2 SP cancel result: status Cancelled by service partner; order read-only; removed from the partner's active orders but kept in history; admin backend informed immediately; store reason, explanation, date, time, executing partner; recorded in audit log; NOT auto-republished; cancellation fees NOT processed in-system.",
+        "§2.3 SP cancel confirmation: show 'Auftrag storniert' / 'Der Auftrag wurde erfolgreich storniert und darf nicht mehr durchgeführt werden.'",
+        "§3 Empty run: an empty run means the ORDER cannot be executed (not a personal inability of the driver). Required reason (Vehicle technically not operational · not roadworthy · not present/not found at the location · not being released · key or required documents missing · Other).",
+        "§3.2 Empty run input: description of at least 30 characters; OPTIONAL photo/evidence upload that must never be required to submit.",
+        "§3.3 Empty run warning: before submission, explain Autheon will review the report, submitting does not automatically establish entitlement to recognition/payment, and advise phoning dispatch where possible; submit labelled 'Leerfahrt melden' (slide-to-confirm).",
+        "§3.4 Empty run result: status Empty run reported; partner cannot edit the submitted report; admin backend informed immediately; store reason, description, date, time, partner, any evidence; recorded in audit log; further partner processing prevented while review is pending.",
+        "§3.5 Empty run confirmation: show 'Leerfahrt gemeldet' / 'Ihre Meldung wurde an Autheon übermittelt und wird geprüft.'",
+        "§4 Admin review: orders with status Empty run reported appear in the backend as open review cases; the admin has exactly two decisions — Recognised / Not recognised — with no intermediate statuses.",
+        "§4.1 Recognised: status Empty run recognised; completed; read-only; push + in-app notification to the partner ('Leerfahrt anerkannt · Die gemeldete Leerfahrt für den Auftrag {tour} wurde durch Autheon anerkannt.').",
+        "§4.2 Not recognised: status Empty run not recognised; completed; read-only; push + in-app notification; does NOT reactivate the original order.",
+        "§5 Admin cancellation: admins can cancel unbooked and already-booked orders. §5.1 Unbooked: removed immediately from the marketplace, booking prevented, fully visible in the backend, status Cancelled by Autheon, read-only, audit-logged, never deleted. §5.2 Already booked: status Cancelled by Autheon, read-only, removed from the partner's active orders but kept in history, push + in-app notification to the partner ('Auftrag durch Autheon storniert · Der Auftrag {tour} wurde durch Autheon storniert und muss nicht mehr durchgeführt werden.'), audit-logged.",
+        "§6 Internal notes: every order in the backend has a general internal-note function visible to admins only, never shown in the service-partner frontend; optional; auto-stores the authoring admin's name + date/time; permanently attached to the order.",
+        "§7 Editing active orders: admins may edit all order data while the order is not cancelled/completed, including orders already booked by a partner. After save: persist immediately; push + in-app notification to the assigned partner including the actual changed values where possible; no partner re-confirmation required; store previous AND new values in the audit log; combine multiple simultaneous changes into one notification.",
+        "§8 Cancelled/completed behaviour: cancelled orders stay permanently cancelled — no reactivation, further editing, reset to a previous status, or direct republication; the order stays visible in the backend and in the affected partner's history.",
+        "§9 Duplicate order: reuse an existing/cancelled order via Duplicate order, primarily from the order's three-dot menu (right-click optional). It creates a new draft copying all data, generates a new order number, opens the new draft in the editing view, allows editing all copied data, is not shown in the marketplace until the admin explicitly Publishes, and leaves the original unchanged. No visible 'duplicated from' reference required.",
+        "§10 ⚠ availability: hide/disable the ⚠ action when status is Cancelled by service partner, Cancelled by Autheon, Empty run recognised, Empty run not recognised, Performed, or Completed; and for Empty run reported the partner cannot submit another cancellation or empty-run report while the admin decision is pending.",
+        "§11 Audit log: record at minimum SP cancellation, Autheon cancellation, empty-run report submission, empty-run recognition, empty-run rejection, subsequent order-data changes (previous + new values), order duplication, and publication of a duplicated order; each entry has acting user, timestamp, affected order, and relevant details.",
+        "Guard rails: SP cancellation and empty-run workflows are technically and status-wise separate; required reason + minimum text length validated before submission; final submissions cannot be triggered accidentally (slide-to-confirm); orders become read-only in all specified final states; concurrent/repeated submissions cannot create duplicate status changes, notifications, or audit-log entries; flows work on mobile, tablet, and desktop.",
+        "Status model: implemented as an extended enum (see client_status_mapping.status_model_decision_task2) with board umbrella grouping + reason chip.",
+        "Prototype note: backend behaviour (persistence, real push, permissions, admin review side-effects) is simulated via the existing mocks; the ⚠ entry reuses the driver Report Problem sheet; the full editable-booked-order form is represented in the prototype by a focused editor (driver-visible notes + driver offer) that exercises the save→notify→audit path — the production editor exposes the complete order form.",
+        "Open item: the cancellation-warning terms link is a placeholder pending the real Terms & Conditions target (see production_open_questions)."
+      ],
+      "status": "pending",
+      "files": [
+        "prototype/project/store.js",
+        "prototype/project/driver.jsx",
+        "prototype/project/admin.jsx",
+        "prototype/project/i18n.js",
+        "prototype/project/AUTHEON Prototype.html",
+        "services/jobs/cancellation.ts",
+        "services/jobs/empty-run.ts",
+        "services/jobs/duplicate.ts",
+        "services/jobs/internal-notes.ts",
+        "services/jobs/order-edit.ts"
+      ]
     }
   ],
   "out_of_scope": [
@@ -1394,6 +1439,7 @@
     "master_data_change_requests_prototype": "store.masterDataChangeRequests[]; requestMasterDataChange, requestDailyLimitIncrease, listMasterDataChangeRequests, getOpenMasterDataChangeRequestForDriver, resolveMasterDataChangeRequest, getOpenMasterDataChangeRequestCount; MasterDataRequestsPane in admin.jsx (profile + daily_limit_override); metadata-only evidence on specialCaseReport.evidence."
   },
   "production_open_questions": [
+    "Task 2 §2 (2026-07-21): provide the real Terms & Conditions / cancellation-conditions target for the service-partner cancellation warning link. The prototype currently uses a placeholder that discloses an in-app notice; the value originally supplied pointed at the Task 1 email-design HTML (a paste slip) and was deliberately not used. Decide: a hosted /legal/cancellation-terms route, a bundled PDF, or an in-app legal document.",
     "Confirm Keycloak email action settings for account invites and password resets: sender domain, templates, link expiry, required actions, and whether SMTP is handled by Keycloak or AUTHEON's mail provider.",
     "Confirm which map or distance API vendor to use and acceptable ongoing usage budget.",
     "Confirm production file retention period, encryption at rest, malware scanning, and DSGVO handling for tour document uploads.",
@@ -1563,8 +1609,57 @@
         "prd_document_review": null,
         "prd_settlement": null,
         "ui_display_note": "Same"
+      },
+      {
+        "client_pdf_status": "Storniert durch Servicepartner",
+        "prd_operational_status": "cancelled_by_sp",
+        "prd_document_review": null,
+        "prd_settlement": null,
+        "ui_display_note": "Task 2 §2. Board umbrella = Cancelled + reason chip. cancellationActor = service_partner. Read-only; leaves partner active list, stays in history."
+      },
+      {
+        "client_pdf_status": "Storniert durch Autheon",
+        "prd_operational_status": "cancelled_by_autheon",
+        "prd_document_review": null,
+        "prd_settlement": null,
+        "ui_display_note": "Task 2 §5. Board umbrella = Cancelled + reason chip. cancellationActor = admin. Booked or unbooked; read-only; never deleted or auto-republished."
+      },
+      {
+        "client_pdf_status": "Leerfahrt gemeldet",
+        "prd_operational_status": "empty_run_reported",
+        "prd_document_review": null,
+        "prd_settlement": null,
+        "ui_display_note": "Task 2 §3. Board umbrella = review/Special case + reason chip. Pending Autheon review; partner locked out of further ⚠ actions."
+      },
+      {
+        "client_pdf_status": "Leerfahrt anerkannt",
+        "prd_operational_status": "empty_run_recognised",
+        "prd_document_review": null,
+        "prd_settlement": null,
+        "ui_display_note": "Task 2 §4.1. Terminal, read-only; partner notified (push + in-app)."
+      },
+      {
+        "client_pdf_status": "Leerfahrt nicht anerkannt",
+        "prd_operational_status": "empty_run_not_recognised",
+        "prd_document_review": null,
+        "prd_settlement": null,
+        "ui_display_note": "Task 2 §4.2. Terminal, read-only; partner notified; does NOT reactivate the original order."
       }
     ],
+    "status_model_decision_task2": {
+      "decision": "Extended enum (explicit machine statuses), NOT a discriminator field.",
+      "rationale": "The Storno/empty-run workflow (PDF §10 availability logic, per-status audit entries) needs each final/interim state to be distinct with its own rules. Overloading the single cancelled/special_case values would lose that. The extended enum keeps store.js STATUSES and schema.dbml job_status in sync.",
+      "new_statuses": [
+        "cancelled_by_sp",
+        "cancelled_by_autheon",
+        "empty_run_reported",
+        "empty_run_recognised",
+        "empty_run_not_recognised"
+      ],
+      "board_grouping": "The Jobs board stays scannable by grouping precise statuses under umbrella columns (statusUmbrella(): cancelled_by_sp/cancelled_by_autheon/empty_run_not_recognised -> Cancelled; empty_run_reported -> Special case/review; empty_run_recognised -> Performed) and showing the precise status as a reason chip on each row.",
+      "legacy": "cancelled and special_case are retained as legacy umbrella values for backward compatibility with pre-Task-2 data and the existing special-case resolution panel.",
+      "separation": "Cancellation and empty-run reporting are technically and status-wise separate processes with different statuses, validation, and audit entries — never a shared status or backend action."
+    },
     "auto_transitions": [
       "On first tour-linked document upload after operational Performed, set job document_review_summary to Under Review and trigger admin notification.",
       "Admin sets settlement to Closed when order is fully checked and documented for billing; UI may display client term Completed."

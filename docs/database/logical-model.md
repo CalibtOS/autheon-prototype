@@ -198,6 +198,30 @@ The flags drive no marketplace filter or acceptance rule in V1.
 
 `jobs.cancellation_actor`, `cancellation_reason_code`, and `cancellation_reason_text` record who cancelled and why. When dispatch cancels an assigned tour, `cancellation_reason_text` is the **driver-facing message** shown in the driver PWA and `order_cancelled_by_autheon` notifications — not an internal-only note.
 
+## Order cancellation & empty-run workflow (Task 2)
+
+Cancellation and empty-run reporting are **separate processes** with distinct statuses, validation, and audit entries — never a shared status or backend action.
+
+**Status model — extended enum, not a discriminator.** `job_status` gains explicit machine values: `cancelled_by_sp`, `cancelled_by_autheon`, `empty_run_reported`, `empty_run_recognised`, `empty_run_not_recognised`. Each carries its own rules, ⚠-availability logic, and audit entries; overloading `cancelled`/`special_case` would lose that distinction. `cancelled`/`special_case` remain as legacy umbrellas. The Jobs board stays scannable by rolling precise statuses up to **umbrella columns** (cancelled_by_sp / cancelled_by_autheon / empty_run_not_recognised → *Cancelled*; empty_run_reported → *review/Special case*; empty_run_recognised → *Performed*) and showing the precise status as a **reason chip** per row.
+
+**Service-partner cancel (§2).** Only on a booked order (`assigned`/`accepted`). Requires a reason (`sp_cancellation_reason`) and a ≥30-char explanation. Result: `cancelled_by_sp`, read-only, removed from the partner's active list but retained in history, admin notified, audit `cancelled_by_service_partner`. Stored in `sp_cancellations` (reason, explanation, date/time, executing partner). Not auto-republished; no fee processing in-system.
+
+**Empty-run report (§3) + review (§4).** The *order* cannot be executed. Requires a reason (`empty_run_reason`) and a ≥30-char description; optional evidence must never block submission. Result: `empty_run_reported`, report locked for the partner, admin notified, audit `empty_run_reported`, stored in `empty_run_reports`. Admin review has exactly two outcomes (`empty_run_decision`): `recognised` → `empty_run_recognised`; `not_recognised` → `empty_run_not_recognised`. Both are terminal/read-only, push + in-app notify the partner, and audit `empty_run_recognised`/`empty_run_not_recognised`. A not-recognised empty run does **not** reactivate the original order.
+
+**Autheon cancellation (§5).** Admin may cancel unbooked (`published`) and booked orders → `cancelled_by_autheon`, read-only, never deleted, stays visible in backend and partner history. Unbooked is removed from the marketplace immediately (the pickup-cutoff policy applies only to **booked** orders — an unbooked order has no committed partner). Booked cancellation pushes a partner notification. Audit `cancelled_by_autheon`.
+
+**Internal notes (§6).** `internal_notes` is append-only, admin-only, never exposed to the service-partner frontend; each note auto-stamps author + timestamp and is permanently attached.
+
+**Edit active order (§7).** Admins may edit non-terminal orders (including booked). On save: persist immediately, push + in-app notify the assigned partner with the **actual changed values** in one combined notification (no re-confirmation), and audit **previous + new** values per changed field (`order_edited`).
+
+**Duplicate order (§9).** Creates a new `draft` copying all data with a new order number, opens it in the editor, leaves the original unchanged, and is not in the marketplace until explicitly published. Audit `order_duplicated`, and publication of the duplicate is audited on publish.
+
+**⚠ availability (§10).** The service-partner ⚠ action is available only on booked orders and is hidden for all terminal states and while an empty-run report is pending review.
+
+**Cancelled/completed behaviour (§8).** Terminal orders cannot be reactivated, edited, reset to a previous status, or directly republished; they stay visible in the backend and the partner's history.
+
+**Concurrency.** Repeat/concurrent submissions must not create duplicate status changes, notifications, or audit entries (guarded by status preconditions — e.g. empty-run report only from `assigned`/`accepted`, review only from `empty_run_reported`).
+
 ## App settings (`app_settings`)
 
 Key/value JSON configuration managed by admins (see PRD Task 31 and `resolved_defaults.app_settings_catalog_v1`):

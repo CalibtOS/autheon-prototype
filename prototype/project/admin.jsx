@@ -180,7 +180,10 @@ const Overview = ({ onOpen, freshId }) => {
 
   const all = store.getJobs();
   const filtered = all.filter((j) => {
-    if (statusFilter && j.status !== statusFilter) return false;
+    // Umbrella match: e.g. the "Cancelled" tile catches cancelled_by_sp /
+    // cancelled_by_autheon; "Special case" catches empty_run_reported.
+    if (statusFilter && store.statusUmbrella(j.status) !== statusFilter)
+      return false;
     if (search) {
       const q = search.toLowerCase();
       if (
@@ -965,6 +968,193 @@ const SpecialCaseResolutionPanel = ({ job, showToast }) => {
   );
 };
 
+// Reason-id → localized label maps for the service-partner reports.
+const EMPTY_RUN_REASON_KEY = {
+  not_operational: "emptyRunReasonNotOperational",
+  not_roadworthy: "emptyRunReasonNotRoadworthy",
+  not_present: "emptyRunReasonNotPresent",
+  not_released: "emptyRunReasonNotReleased",
+  key_docs_missing: "emptyRunReasonKeyDocs",
+  other: "emptyRunReasonOther",
+};
+const SP_CANCEL_REASON_KEY = {
+  appointment_not_kept: "spCancelReasonAppointment",
+  booked_accidentally: "spCancelReasonAccidental",
+  org_not_possible: "spCancelReasonOrgImpossible",
+  other: "spCancelReasonOther",
+};
+
+// ADMIN — Empty-run review (Storno-Workflow §4). Open review case for a
+// reported empty run: exactly two decisions, no intermediate state. Also
+// renders a read-only outcome summary once decided.
+const EmptyRunReviewPanel = ({ job, showToast }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const isPending = job.status === "empty_run_reported";
+  const isTerminal = store.isEmptyRunTerminal(job.status);
+  if (!isPending && !isTerminal) return null;
+  const report = job.emptyRunReport || job.specialCaseReport || {};
+  const reasonLabel = report.reason
+    ? t(EMPTY_RUN_REASON_KEY[report.reason] || "emptyRunReasonOther")
+    : "—";
+  const decide = (decision) => {
+    const r = store.reviewEmptyRun(job.id, decision);
+    if (r && r.ok) {
+      showToast?.(
+        decision === "recognised"
+          ? t("adminEmptyRunRecognisedToast")
+          : t("adminEmptyRunNotRecognisedToast"),
+        t("adminEmptyRunDecisionSub", { tour: job.tour }),
+      );
+    } else {
+      showToast?.(t("adminToastUpdateFailed"), "");
+    }
+  };
+  const evidence = report.evidence || [];
+  return (
+    <section className="card" style={{ padding: 22, borderColor: "#c4b5fd" }}>
+      <div className="sec-head">
+        <h3>
+          <span className="num">07</span>
+          {t("adminEmptyRunReviewTitle")}
+        </h3>
+        <Pill status={job.status} />
+      </div>
+      <p style={{ margin: "10px 0 0", fontSize: 13.5, lineHeight: 1.55 }}>
+        <strong>{job.driver || "—"}</strong>
+        {" · "}
+        <span className="label" style={{ display: "inline" }}>
+          {t("adminEmptyRunReasonLabel")}:
+        </span>{" "}
+        {reasonLabel}
+      </p>
+      {report.description || report.message ? (
+        <p style={{ margin: "8px 0 0", fontSize: 13.5, lineHeight: 1.55 }}>
+          {report.description || report.message}
+        </p>
+      ) : null}
+      {evidence.length > 0 ? (
+        <div className="label" style={{ marginTop: 10 }}>
+          {t("adminSpecialCaseEvidence")}: {evidence.length}
+        </div>
+      ) : null}
+      {isPending ? (
+        <>
+          <p className="label" style={{ marginTop: 14 }}>
+            {t("adminEmptyRunReviewHint")}
+          </p>
+          <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => decide("recognised")}
+            >
+              {t("adminEmptyRunDecideRecognised")}
+            </button>
+            <button
+              type="button"
+              className="btn danger"
+              onClick={() => decide("not_recognised")}
+            >
+              {t("adminEmptyRunDecideNotRecognised")}
+            </button>
+          </div>
+        </>
+      ) : (
+        <div
+          className="banner"
+          style={{ marginTop: 14, fontSize: 13, lineHeight: 1.5 }}
+        >
+          {AuthStore.statusLabel(job.status)}
+          {report.decidedBy ? ` · ${report.decidedBy}` : ""}
+          {report.decidedAt ? ` · ${report.decidedAt}` : ""}
+        </div>
+      )}
+    </section>
+  );
+};
+
+// ADMIN — Internal notes (Storno-Workflow §6). Admin-only, never shown in the
+// service-partner frontend. Optional; each note auto-stamps author + time and
+// stays permanently attached to the order.
+const InternalNotesPanel = ({ job, showToast }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const [text, setText] = useStateA("");
+  const notes = store.getInternalNotes(job.id);
+  const add = () => {
+    const r = store.addInternalNote(job.id, text);
+    if (r && r.ok) {
+      setText("");
+      showToast?.(t("adminInternalNotesTitle"), "");
+    }
+  };
+  return (
+    <section className="card" style={{ padding: 22 }}>
+      <div className="sec-head">
+        <h3>{t("adminInternalNotesTitle")}</h3>
+      </div>
+      <p className="label" style={{ marginTop: 8 }}>
+        {t("adminInternalNotesHint")}
+      </p>
+      <div className="stack-12" style={{ marginTop: 12 }}>
+        {notes.length === 0 ? (
+          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+            {t("adminInternalNotesEmpty")}
+          </p>
+        ) : (
+          <ul
+            style={{
+              listStyle: "none",
+              margin: 0,
+              padding: 0,
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            {notes.map((n) => (
+              <li
+                key={n.id}
+                style={{
+                  border: "1px solid var(--line)",
+                  borderRadius: "var(--r-2)",
+                  padding: "10px 12px",
+                }}
+              >
+                <div className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>
+                  {n.author} · {n.at}
+                </div>
+                <div style={{ fontSize: 13.5, marginTop: 4, lineHeight: 1.5 }}>
+                  {n.text}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <textarea
+        className="input"
+        style={{ marginTop: 12, width: "100%" }}
+        rows={2}
+        value={text}
+        placeholder={t("adminInternalNotePlaceholder")}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <div style={{ marginTop: 10 }}>
+        <button
+          type="button"
+          className="btn"
+          disabled={!text.trim()}
+          onClick={add}
+        >
+          {t("adminInternalNoteAdd")}
+        </button>
+      </div>
+    </section>
+  );
+};
+
 // =========================================================================
 // ADMIN — ASSIGN / REASSIGN DRIVER
 // =========================================================================
@@ -1272,6 +1462,83 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
   );
 };
 
+// ADMIN — Edit active order (Storno-Workflow §7). Admins may change order
+// data on a non-terminal order (including already-booked ones). Saving
+// notifies the assigned partner with the actual changed values (no partner
+// re-confirmation) and stores previous + new values in the audit log. This
+// focused editor covers representative fields (driver-visible notes, driver
+// offer); the production editor exposes the full order form — captured in the
+// PRD. Backend persistence/permissions are simulated here.
+const AdminEditActiveOrderModal = ({ job, onClose, onSaved, showToast }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const [notesDriver, setNotesDriver] = useStateA(job.notesDriver || "");
+  const [driverOffer, setDriverOffer] = useStateA(
+    job.driverOffer != null ? String(job.driverOffer) : "",
+  );
+  const save = () => {
+    const changes = { notesDriver };
+    const parsed = parseFloat(driverOffer);
+    if (Number.isFinite(parsed)) changes.driverOffer = parsed;
+    const r = store.updateActiveOrder(job.id, changes);
+    if (!r.ok) {
+      showToast?.(
+        r.reason === "no_changes"
+          ? t("adminNoChanges") || "No changes to save"
+          : t("adminToastUpdateFailed"),
+        "",
+      );
+      if (r.reason === "no_changes") onClose();
+      return;
+    }
+    showToast?.(
+      t("notifOrderUpdatedTitle", { tour: job.tour }),
+      t("adminEmptyRunDecisionSub", { tour: job.tour }),
+    );
+    onSaved?.();
+  };
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal card" style={{ maxWidth: 480, padding: 22 }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600 }}>
+          {t("adminEditActiveOrderTitle")}
+        </h2>
+        <p className="label" style={{ marginBottom: 14 }}>
+          {t("adminEditActiveOrderHint")}
+        </p>
+        <label className="field-label">{t("adminDriverVisibleNotes")}</label>
+        <textarea
+          className="input"
+          rows={3}
+          style={{ width: "100%", marginTop: 6 }}
+          value={notesDriver}
+          onChange={(e) => setNotesDriver(e.target.value)}
+        />
+        <label className="field-label" style={{ marginTop: 14 }}>
+          {t("driverOffer")} (€)
+        </label>
+        <input
+          className="input"
+          style={{ width: "100%", marginTop: 6 }}
+          inputMode="decimal"
+          value={driverOffer}
+          onChange={(e) => setDriverOffer(e.target.value)}
+        />
+        <div
+          style={{ display: "flex", gap: 10, marginTop: 18, justifyContent: "flex-end" }}
+        >
+          <button type="button" className="btn" onClick={onClose}>
+            {t("cancel")}
+          </button>
+          <button type="button" className="btn primary" onClick={save}>
+            {t("adminSaveAndNotify")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // =========================================================================
 // ADMIN — DETAIL
 // =========================================================================
@@ -1388,17 +1655,21 @@ const AdminDetail = ({
         </div>
       </div>
 
-      {job.status === "cancelled" && job.cancellationActor ? (
+      {store.isCancelledStatus(job.status) && job.cancellationActor ? (
         <div
           className="banner banner-warn"
           style={{ marginBottom: 18, fontSize: 13, lineHeight: 1.55 }}
         >
           {t("cancellationActor")}:{" "}
-          {job.cancellationActor === "driver"
+          {job.cancellationActor === "driver" ||
+          job.cancellationActor === "service_partner"
             ? t("cancellationActorDriver")
             : job.cancellationActor === "customer"
               ? t("cancellationActorCustomer")
               : t("cancellationActorAdmin")}
+          {job.spCancellation?.reason
+            ? ` · ${t(SP_CANCEL_REASON_KEY[job.spCancellation.reason] || "spCancelReasonOther")}`
+            : ""}
           {job.cancellationReasonText
             ? ` — ${job.cancellationReasonText}`
             : ""}
@@ -1862,6 +2133,8 @@ const AdminDetail = ({
             )
           )}
           <SpecialCaseResolutionPanel job={job} showToast={showToast} />
+          <EmptyRunReviewPanel job={job} showToast={showToast} />
+          <InternalNotesPanel job={job} showToast={showToast} />
         </div>
 
         <aside style={{ position: "sticky", top: 0 }} className="stack-18">
@@ -1996,13 +2269,38 @@ const AdminDetailFooter = ({
   onRequestAssign,
   onRequestReassign,
   onEdit,
-  onCancel,
+  onCancelled,
   onRevertToDraft,
   onDeleteDraft,
+  onDuplicate,
+  showToast,
 }) => {
   const { t } = useI18n();
+  // Own the cancel modal here so the footer's Cancel action works standalone
+  // (the trigger previously referenced state that lived in AdminDetail).
+  const [cancelOpen, setCancelOpen] = useStateA(false);
+  const [editActiveOpen, setEditActiveOpen] = useStateA(false);
   return (
     <>
+      {cancelOpen ? (
+        <AdminCancelJobModal
+          job={job}
+          onClose={() => setCancelOpen(false)}
+          onConfirm={() => {
+            setCancelOpen(false);
+            onCancelled?.(job);
+          }}
+          showToast={showToast}
+        />
+      ) : null}
+      {editActiveOpen ? (
+        <AdminEditActiveOrderModal
+          job={job}
+          onClose={() => setEditActiveOpen(false)}
+          onSaved={() => setEditActiveOpen(false)}
+          showToast={showToast}
+        />
+      ) : null}
       <span className="label">
         {job.status === "published"
           ? t("adminRevertToDraftSub")
@@ -2059,9 +2357,30 @@ const AdminDetailFooter = ({
               {t("adminReassignDriver")}
             </button>
           )}
-        {(job.status === "accepted" ||
-          job.status === "assigned" ||
-          job.status === "special_case") && (
+        {/* Edit active order (§7) — change data on a booked order; saving
+            notifies the assigned partner and audits previous + new values. */}
+        {["assigned", "accepted"].includes(job.status) && (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setEditActiveOpen(true)}
+          >
+            {t("adminEditActiveOrder")}
+          </button>
+        )}
+        {/* Duplicate order (§9) — reuse an existing/cancelled order as a new
+            draft. Primary entry per spec is the row three-dot menu; this
+            footer action provides the same capability from the detail view. */}
+        {job.status !== "draft" && onDuplicate && (
+          <button type="button" className="btn" onClick={() => onDuplicate(job)}>
+            {t("adminDuplicateOrder")}
+          </button>
+        )}
+        {/* Admin cancellation (§5) — booked orders and unbooked published ones.
+            Both become "Cancelled by Autheon" and stay visible in the backend. */}
+        {["accepted", "assigned", "special_case", "published"].includes(
+          job.status,
+        ) && (
           <button
             type="button"
             className="btn danger"

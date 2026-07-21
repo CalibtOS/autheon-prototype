@@ -104,6 +104,11 @@ window.I18n = (() => {
         performed: "Performed",
         cancelled: "Cancelled",
         special_case: "Special case",
+        cancelled_by_sp: "Cancelled by service partner",
+        cancelled_by_autheon: "Cancelled by Autheon",
+        empty_run_reported: "Empty run reported",
+        empty_run_recognised: "Empty run recognised",
+        empty_run_not_recognised: "Empty run not recognised",
       },
       statusExplain: {
         title: "What do statuses mean?",
@@ -1231,6 +1236,97 @@ window.I18n = (() => {
       emailChangedNotifyTitle: "Sign-in email changed",
       emailChangedNotifyBody:
         "Your sign-in email was changed to {email}. If this wasn't you, contact operations immediately.",
+      // ---- Task 2: cancellation & empty-run workflow ----
+      warnEntryCancelOption: "Cancel order",
+      warnEntryCancelSub: "End the tour and notify dispatch.",
+      warnEntryEmptyRunOption: "Report empty run",
+      warnEntryEmptyRunSub:
+        "The order itself can't be executed — Autheon reviews it.",
+      spCancelWarningTitle: "Cancelling a booked order",
+      spCancelBindingWarning:
+        "You are about to cancel a bindingly booked order. Under the applicable contractual conditions, cancellation costs of up to the agreed remuneration may apply.",
+      spCancelTermsLink: "Applicable terms & contractual conditions",
+      spCancelTermsPlaceholderNotice:
+        "Placeholder: the real cancellation terms / T&C document is not yet wired up. The target link is to be provided by operations.",
+      spCancelAbort: "Cancel",
+      spCancelContinue: "Continue cancellation",
+      spCancelReasonLabel: "Cancellation reason",
+      spCancelReasonAppointment: "Appointment cannot be met",
+      spCancelReasonAccidental: "Order booked accidentally",
+      spCancelReasonOrgImpossible: "Execution is organisationally impossible",
+      spCancelReasonOther: "Other",
+      spCancelExplanationLabel: "Explanation (required)",
+      spCancelExplanationPlaceholder:
+        "Describe why you are cancelling (min. 30 characters).",
+      spCancelSlide: "Cancel order",
+      spCancelSlideDone: "Order cancelled",
+      spCancelSlideLocked: "Enter at least 30 characters to unlock",
+      spCancelSuccessTitle: "Order cancelled",
+      spCancelSuccessBody:
+        "The order was successfully cancelled and must no longer be performed.",
+      emptyRunReasonLabel: "Reason",
+      emptyRunReasonNotOperational: "Vehicle is technically not operational",
+      emptyRunReasonNotRoadworthy: "Vehicle is not roadworthy",
+      emptyRunReasonNotPresent:
+        "Vehicle not present / cannot be found at the location",
+      emptyRunReasonNotReleased: "Vehicle is not being released",
+      emptyRunReasonKeyDocs: "Vehicle key or required documents missing",
+      emptyRunReasonOther: "Other",
+      emptyRunDescLabel: "Description (required)",
+      emptyRunDescPlaceholder:
+        "Describe the situation (min. 30 characters).",
+      emptyRunEvidenceLabel: "Photo / evidence (optional)",
+      emptyRunEvidenceHint: "Optional — you can submit without an upload.",
+      emptyRunWarning:
+        "The reported empty run will be reviewed by Autheon. Reporting it does not automatically establish any entitlement to recognition or payment. Where possible, please also inform dispatch by phone.",
+      emptyRunSlide: "Report empty run",
+      emptyRunSlideDone: "Empty run reported",
+      emptyRunSlideLocked: "Enter at least 30 characters to unlock",
+      emptyRunSuccessTitle: "Empty run reported",
+      emptyRunSuccessBody:
+        "Your report was submitted to Autheon and will be reviewed.",
+      emptyRunPendingLock:
+        "This report is with Autheon for review and can no longer be changed.",
+      chars30Required: "characters (min. 30)",
+      notifOrderCancelledByAutheonTitle: "Order cancelled by Autheon",
+      notifOrderCancelledByAutheonBody:
+        "Order {tour} was cancelled by Autheon and no longer needs to be performed.",
+      notifEmptyRunRecognisedTitle: "Empty run recognised",
+      notifEmptyRunRecognisedBody:
+        "The empty run reported for order {tour} was recognised by Autheon.",
+      notifEmptyRunNotRecognisedTitle: "Empty run not recognised",
+      notifEmptyRunNotRecognisedBody:
+        "The empty run reported for order {tour} was not recognised by Autheon.",
+      notifOrderUpdatedTitle: "Order {tour} updated",
+      notifOrderUpdatedIntro: "The following details changed:",
+      adminEmptyRunReviewTitle: "Empty run — open review case",
+      adminEmptyRunReviewHint:
+        "Decide whether to recognise the reported empty run. There is no intermediate state.",
+      adminEmptyRunDecideRecognised: "Recognised",
+      adminEmptyRunDecideNotRecognised: "Not recognised",
+      adminEmptyRunReasonLabel: "Reported reason",
+      adminEmptyRunRecognisedToast: "Empty run recognised",
+      adminEmptyRunNotRecognisedToast: "Empty run not recognised",
+      adminEmptyRunDecisionSub: "Partner notified · {tour}",
+      adminInternalNotesTitle: "Internal notes",
+      adminInternalNotesHint:
+        "Visible to admins only — never shown to the service partner.",
+      adminInternalNotePlaceholder: "Add an internal note…",
+      adminInternalNoteAdd: "Add note",
+      adminInternalNotesEmpty: "No internal notes yet.",
+      adminDuplicateOrder: "Duplicate order",
+      adminDuplicatedToast: "Order duplicated",
+      adminDuplicatedToastSub: "New draft {tour} opened for editing.",
+      adminCancelOrderByAutheon: "Cancel order",
+      adminCancelByAutheonConfirm:
+        "Cancel this order on behalf of Autheon? It becomes read-only and cannot be reactivated or republished.",
+      adminCancelledByAutheonToast: "Order cancelled by Autheon",
+      adminEditActiveOrder: "Edit order",
+      adminEditActiveOrderTitle: "Edit order",
+      adminEditActiveOrderHint:
+        "Changes are saved immediately and the assigned service partner is notified with the changed values. No re-confirmation required.",
+      adminSaveAndNotify: "Save & notify partner",
+      adminNoChanges: "No changes to save.",
       notificationPreferences: "Notification preferences",
       pickupPostalArea: "Pickup postal area",
       pushNotificationsEnabled: "Push notifications enabled",
@@ -1418,6 +1514,11 @@ window.I18n = (() => {
         performed: "Durchgeführt",
         cancelled: "Storniert",
         special_case: "Sonderfall",
+        cancelled_by_sp: "Storniert durch Servicepartner",
+        cancelled_by_autheon: "Storniert durch Autheon",
+        empty_run_reported: "Leerfahrt gemeldet",
+        empty_run_recognised: "Leerfahrt anerkannt",
+        empty_run_not_recognised: "Leerfahrt nicht anerkannt",
       },
       statusExplain: {
         title: "Was bedeuten die Status?",
@@ -2564,6 +2665,99 @@ window.I18n = (() => {
       emailChangedNotifyTitle: "Anmelde-E-Mail geändert",
       emailChangedNotifyBody:
         "Ihre Anmelde-E-Mail wurde zu {email} geändert. Falls Sie das nicht waren, kontaktieren Sie bitte umgehend die Disposition.",
+      // ---- Task 2: Storno-/Leerfahrt-Workflow (Quelltexte laut PDF) ----
+      warnEntryCancelOption: "Auftrag stornieren",
+      warnEntryCancelSub:
+        "Beendet den Auftrag und informiert die Disposition.",
+      warnEntryEmptyRunOption: "Leerfahrt melden",
+      warnEntryEmptyRunSub:
+        "Der Auftrag selbst kann nicht durchgeführt werden — Autheon prüft die Meldung.",
+      spCancelWarningTitle: "Verbindlich gebuchten Auftrag stornieren",
+      spCancelBindingWarning:
+        "Sie sind im Begriff, einen verbindlich gebuchten Auftrag zu stornieren. Gemäß den geltenden Vertragsbedingungen können Stornokosten bis zur Höhe der vereinbarten Vergütung entstehen.",
+      spCancelTermsLink: "AGB bzw. Vertragsbedingungen",
+      spCancelTermsPlaceholderNotice:
+        "Platzhalter: Das echte Storno-/AGB-Dokument ist noch nicht verknüpft. Das Ziel wird vom Betrieb bereitgestellt.",
+      spCancelAbort: "Abbrechen",
+      spCancelContinue: "Stornierung fortsetzen",
+      spCancelReasonLabel: "Stornierungsgrund",
+      spCancelReasonAppointment: "Termin kann nicht eingehalten werden",
+      spCancelReasonAccidental: "Auftrag versehentlich gebucht",
+      spCancelReasonOrgImpossible: "Durchführung organisatorisch nicht möglich",
+      spCancelReasonOther: "Sonstiges",
+      spCancelExplanationLabel: "Begründung (erforderlich)",
+      spCancelExplanationPlaceholder:
+        "Beschreiben Sie, warum Sie stornieren (mind. 30 Zeichen).",
+      spCancelSlide: "Auftrag stornieren",
+      spCancelSlideDone: "Auftrag storniert",
+      spCancelSlideLocked: "Mind. 30 Zeichen eingeben zum Freischalten",
+      spCancelSuccessTitle: "Auftrag storniert",
+      spCancelSuccessBody:
+        "Der Auftrag wurde erfolgreich storniert und darf nicht mehr durchgeführt werden.",
+      emptyRunReasonLabel: "Grund",
+      emptyRunReasonNotOperational: "Fahrzeug ist technisch nicht fahrbereit",
+      emptyRunReasonNotRoadworthy: "Fahrzeug ist nicht verkehrssicher",
+      emptyRunReasonNotPresent:
+        "Fahrzeug ist am angegebenen Standort nicht vorhanden oder nicht auffindbar",
+      emptyRunReasonNotReleased: "Fahrzeug wird nicht herausgegeben",
+      emptyRunReasonKeyDocs:
+        "Fahrzeugschlüssel oder erforderliche Unterlagen fehlen",
+      emptyRunReasonOther: "Sonstiges",
+      emptyRunDescLabel: "Beschreibung (erforderlich)",
+      emptyRunDescPlaceholder:
+        "Beschreiben Sie den Sachverhalt (mind. 30 Zeichen).",
+      emptyRunEvidenceLabel: "Foto / Nachweis (optional)",
+      emptyRunEvidenceHint: "Optional — Sie können ohne Upload absenden.",
+      emptyRunWarning:
+        "Die gemeldete Leerfahrt wird durch Autheon geprüft. Durch die Meldung entsteht noch kein automatischer Anspruch auf Anerkennung oder Vergütung. Bitte informieren Sie die Disposition nach Möglichkeit zusätzlich telefonisch.",
+      emptyRunSlide: "Leerfahrt melden",
+      emptyRunSlideDone: "Leerfahrt gemeldet",
+      emptyRunSlideLocked: "Mind. 30 Zeichen eingeben zum Freischalten",
+      emptyRunSuccessTitle: "Leerfahrt gemeldet",
+      emptyRunSuccessBody:
+        "Ihre Meldung wurde an Autheon übermittelt und wird geprüft.",
+      emptyRunPendingLock:
+        "Diese Meldung liegt Autheon zur Prüfung vor und kann nicht mehr geändert werden.",
+      chars30Required: "Zeichen (mind. 30)",
+      notifOrderCancelledByAutheonTitle: "Auftrag durch Autheon storniert",
+      notifOrderCancelledByAutheonBody:
+        "Der Auftrag {tour} wurde durch Autheon storniert und muss nicht mehr durchgeführt werden.",
+      notifEmptyRunRecognisedTitle: "Leerfahrt anerkannt",
+      notifEmptyRunRecognisedBody:
+        "Die gemeldete Leerfahrt für den Auftrag {tour} wurde durch Autheon anerkannt.",
+      notifEmptyRunNotRecognisedTitle: "Leerfahrt nicht anerkannt",
+      notifEmptyRunNotRecognisedBody:
+        "Die gemeldete Leerfahrt für den Auftrag {tour} wurde durch Autheon nicht anerkannt.",
+      notifOrderUpdatedTitle: "Auftrag {tour} wurde aktualisiert",
+      notifOrderUpdatedIntro: "Folgende Daten wurden geändert:",
+      adminEmptyRunReviewTitle: "Leerfahrt — offener Prüfvorgang",
+      adminEmptyRunReviewHint:
+        "Entscheiden Sie, ob die gemeldete Leerfahrt anerkannt wird. Eine Zwischenstufe gibt es nicht.",
+      adminEmptyRunDecideRecognised: "Anerkannt",
+      adminEmptyRunDecideNotRecognised: "Nicht anerkannt",
+      adminEmptyRunReasonLabel: "Gemeldeter Grund",
+      adminEmptyRunRecognisedToast: "Leerfahrt anerkannt",
+      adminEmptyRunNotRecognisedToast: "Leerfahrt nicht anerkannt",
+      adminEmptyRunDecisionSub: "Servicepartner benachrichtigt · {tour}",
+      adminInternalNotesTitle: "Interne Notizen",
+      adminInternalNotesHint:
+        "Nur für Admins sichtbar — wird dem Servicepartner nie angezeigt.",
+      adminInternalNotePlaceholder: "Interne Notiz hinzufügen…",
+      adminInternalNoteAdd: "Notiz hinzufügen",
+      adminInternalNotesEmpty: "Noch keine internen Notizen.",
+      adminDuplicateOrder: "Auftrag duplizieren",
+      adminDuplicatedToast: "Auftrag dupliziert",
+      adminDuplicatedToastSub: "Neuer Entwurf {tour} zur Bearbeitung geöffnet.",
+      adminCancelOrderByAutheon: "Auftrag stornieren",
+      adminCancelByAutheonConfirm:
+        "Diesen Auftrag im Namen von Autheon stornieren? Er wird schreibgeschützt und kann nicht reaktiviert oder erneut veröffentlicht werden.",
+      adminCancelledByAutheonToast: "Auftrag durch Autheon storniert",
+      adminEditActiveOrder: "Auftrag bearbeiten",
+      adminEditActiveOrderTitle: "Auftrag bearbeiten",
+      adminEditActiveOrderHint:
+        "Änderungen werden sofort gespeichert und der zugewiesene Servicepartner wird mit den geänderten Werten benachrichtigt. Keine erneute Bestätigung erforderlich.",
+      adminSaveAndNotify: "Speichern & Partner benachrichtigen",
+      adminNoChanges: "Keine Änderungen zum Speichern.",
       notificationPreferences: "Benachrichtigungseinstellungen",
       pickupPostalArea: "Abhol-PLZ-Gebiet",
       pushNotificationsEnabled: "Push-Benachrichtigungen aktiviert",

@@ -98,3 +98,58 @@ Playwright: Account & sign-in card renders under identity; email absent from the
 ## Open item (T1)
 
 - The change-email code is delivered to a real inbox in production; the prototype surfaces the mock code inline as a demo affordance. Real delivery, code hashing, expiry/attempt/resend throttling, and persistence are captured as requirements (schema + logical-model) for the dev team.
+
+---
+
+## T2 — Order cancellation & empty-run workflow (Storno) [v2.4]
+
+**Requirement (prd.json new `tasks[id=32]` "Order Cancellation & Empty-Run Workflow (Storno)", refining tasks 12/13/14; `client_status_mapping.status_model_decision_task2`).**
+
+Implements the full Storno-Workflow-1.pdf spec: separated service-partner cancellation and empty-run reporting, admin review, Autheon cancellation, internal notes, active-order editing with partner notification, order duplication, ⚠ availability rules, and audit logging. German interface/confirmation/notification copy is taken **verbatim** from the PDF.
+
+### Status-model decision (answer to the work order's Q1)
+
+**Chosen: extended enum** (the work order's recommended approach), *not* a discriminator field. New `job_status` / `STATUSES` values:
+
+- `cancelled_by_sp` — Cancelled by service partner (§2)
+- `cancelled_by_autheon` — Cancelled by Autheon (§5)
+- `empty_run_reported` — Empty run reported, pending review (§3)
+- `empty_run_recognised` — Empty run recognised (§4.1, terminal)
+- `empty_run_not_recognised` — Empty run not recognised (§4.2, terminal)
+
+`cancelled` and `special_case` are retained as legacy umbrellas. To keep the Jobs board scannable (the design's concern), precise statuses roll up to **umbrella columns** via `statusUmbrella()` (Cancelled / review / Performed) and each row shows the precise status as a **reason chip**. `store.js STATUSES` and `schema.dbml job_status` are kept in sync.
+
+### Flows delivered (real UI in the prototype; backend simulated)
+
+- **Flow 1 — SP cancels a booked order:** ⚠ → *Cancel order* → binding-cost warning + T&C link → *Continue* → one of 4 reasons + ≥30-char explanation → slide-to-confirm "Auftrag stornieren" → `cancelled_by_sp`; read-only; leaves active list, kept in history; admin notified; audited. No auto-republish, no fee processing.
+- **Flow 2 — SP reports an empty run:** ⚠ → *Report empty run* → one of 6 reasons + ≥30-char description + optional (never-required) evidence + review/no-guarantee/phone-dispatch warning → slide-to-confirm "Leerfahrt melden" → `empty_run_reported`; locked for the partner; admin notified; audited. **Admin review** → *Recognised* / *Not recognised* → terminal status + push/in-app partner notification; not-recognised does not reactivate the order.
+- **Flow 3 — Admin cancels an order:** *Cancel job* → `cancelled_by_autheon`; read-only; unbooked removed from marketplace immediately (cutoff policy now applies only to booked orders); booked notifies the partner; never deleted; audited.
+- **Flow 4 — Admin edits an active order:** *Edit order* (focused editor: driver-visible notes + driver offer) → save → partner notified with the actual changed values (combined) → audit stores previous + new per field. (Full editable-booked-order form captured as a requirement.)
+- **Flow 5 — Duplicate order:** *Duplicate order* → new draft copying all data + new order number → opens in editor → not in marketplace until Publish → original unchanged; audited.
+
+Plus: **internal admin notes** (§6, admin-only, timestamped, permanent), **⚠ availability** (§10, booked-only; hidden for terminal states and while pending review), and **audit-log** coverage of every specified action.
+
+### Data model (T2)
+
+- `docs/database/schema.dbml`: extended `job_status`; `cancellation_actor.service_partner`; new enums `empty_run_reason`, `sp_cancellation_reason`, `empty_run_decision`; new tables `sp_cancellations`, `empty_run_reports`, `internal_notes`.
+- `docs/database/logical-model.md`: "Order cancellation & empty-run workflow (Task 2)" section (status model, per-flow rules, concurrency guards).
+
+### Prototype changes (T2)
+
+- `prototype/project/store.js` — extended `STATUSES` + terminal/read-only/⚠-blocked sets; helpers `statusUmbrella`, `isCancelledStatus`, `isEmptyRunReported`, `isEmptyRunTerminal`, `isReadOnlyJob`, `canServicePartnerAct/Report`; reworked `reportProblemCancel` (→ cancelled_by_sp, ≥30) and `reportProblemNotPerformable` (→ empty_run_reported, ≥30, optional evidence); new `reviewEmptyRun`, `duplicateJob`, `addInternalNote`/`getInternalNotes`, `updateActiveOrder`; `cancelJob` → cancelled_by_autheon with unbooked-immediate cancel; umbrella-aware `countsByStatus`; localized notifications; audit for every action.
+- `prototype/project/driver.jsx` — reworked `ReportProblemSheet` (⚠ two-option entry; cancel warning + T&C placeholder + 4 reasons + slide; empty-run 6 reasons + optional evidence + warning + slide; 30-char minimum); `PendingNotice` success copy; ⚠ gating + new-status pills/filters in `JobUnlocked` and `MyJobs`.
+- `prototype/project/admin.jsx` — `EmptyRunReviewPanel` (Recognised/Not recognised + outcome summary), `InternalNotesPanel`, `AdminEditActiveOrderModal`; self-contained cancel in `AdminDetailFooter` (fixes a pre-existing out-of-scope `setCancelOpen` reference so the footer Cancel action works), Duplicate + Edit-order footer actions; umbrella status filtering in `Overview`; cancellation banner covers new statuses.
+- `prototype/project/AUTHEON Prototype.html` — wired footer `showToast` + `onDuplicate` (opens the duplicated draft in the editor).
+- `prototype/project/i18n.js` — EN + DE for all Task-2 strings; DE uses the PDF's verbatim confirmation/notification/dialog texts. EN/DE key parity verified (1181 each).
+
+### Validation (T2)
+
+Playwright + store-level assertions: reason/30-char validation; separated statuses; empty-run cannot be submitted twice while pending; admin Recognised/Not-recognised sets terminal status + partner notification; Autheon cancel (booked with override, unbooked immediate); duplicate creates a new draft with a new tour; internal note add + display; edit-active-order notifies + audits previous→new; ⚠ hidden for terminal/pending; all audit actions present; DE renders; **no console errors** across driver + admin.
+
+## Version bump
+
+- `version`: **v2.3 → v2.4** — order cancellation & empty-run workflow (2026-07-21).
+
+## Open item (T2)
+
+- **Terms & Conditions link (Q8):** the service-partner cancellation warning links to a flagged placeholder (an in-app notice). The real target — hosted `/legal/cancellation-terms` route, bundled PDF, or in-app legal doc — is owed by the requirements owner (recorded in `production_open_questions`). The value originally handed over pointed at the Task 1 email-design HTML (a paste slip) and was deliberately not wired.

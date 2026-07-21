@@ -719,6 +719,19 @@
           footer = (
             <AdminDetailFooter
               job={fresh}
+              showToast={showToast}
+              onDuplicate={(j) => {
+                const r = store.duplicateJob(j.id);
+                if (!r.ok || !r.job) {
+                  showToast(t("adminToastUpdateFailed"), "");
+                  return;
+                }
+                openEditDraft(r.job.id);
+                showToast(
+                  t("adminDuplicatedToast"),
+                  t("adminDuplicatedToastSub", { tour: r.job.tour }),
+                );
+              }}
               onPublish={() => {
                 const r = store.publishJob(fresh.id);
                 if (!r.ok)

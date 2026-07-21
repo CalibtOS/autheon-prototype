@@ -21,6 +21,13 @@ window.AuthStore = (() => {
   const AXLE_OWN = "driven on own wheels";
   const AXLE_THIRD = "third-party axle";
 
+  // Status model (Task 2): explicit machine statuses per the Storno/empty-run
+  // workflow (extended-enum approach — see prd.json client_status_mapping).
+  // cancelled / special_case are retained as legacy umbrellas; the new
+  // service-partner and Autheon cancellation and empty-run states are
+  // distinct so each carries its own rules, ⚠-availability logic, and audit
+  // entries. `cls` maps several statuses onto shared pill colours so the Jobs
+  // board reads as umbrella buckets (Cancelled / review) with a reason chip.
   const STATUSES = {
     draft: { i18n: "status.draft", cls: "draft" },
     published: { i18n: "status.published", cls: "published" },
@@ -29,7 +36,46 @@ window.AuthStore = (() => {
     performed: { i18n: "status.performed", cls: "performed" },
     cancelled: { i18n: "status.cancelled", cls: "cancelled" },
     special_case: { i18n: "status.special_case", cls: "special_case" },
+    cancelled_by_sp: { i18n: "status.cancelled_by_sp", cls: "cancelled" },
+    cancelled_by_autheon: {
+      i18n: "status.cancelled_by_autheon",
+      cls: "cancelled",
+    },
+    empty_run_reported: {
+      i18n: "status.empty_run_reported",
+      cls: "special_case",
+    },
+    empty_run_recognised: {
+      i18n: "status.empty_run_recognised",
+      cls: "performed",
+    },
+    empty_run_not_recognised: {
+      i18n: "status.empty_run_not_recognised",
+      cls: "cancelled",
+    },
   };
+
+  // Terminal / read-only statuses — no further editing, no ⚠ actions.
+  const CANCELLED_STATUSES = [
+    "cancelled",
+    "cancelled_by_sp",
+    "cancelled_by_autheon",
+  ];
+  const EMPTY_RUN_TERMINAL = [
+    "empty_run_recognised",
+    "empty_run_not_recognised",
+  ];
+  const READ_ONLY_STATUSES = [
+    ...CANCELLED_STATUSES,
+    ...EMPTY_RUN_TERMINAL,
+    "performed",
+  ];
+  // Statuses where the service-partner ⚠ action must be hidden/disabled
+  // (terminal states + while an empty-run report is pending review).
+  const WARN_ACTION_BLOCKED_STATUSES = [
+    ...READ_ONLY_STATUSES,
+    "empty_run_reported",
+  ];
 
   const DOC_REVIEW = [
     "uploaded",
@@ -1687,20 +1733,23 @@ window.AuthStore = (() => {
     }
     for (const id of state.specialCaseIds || []) {
       const j = jobList.find((x) => x.id === id);
-      if (!j || j.status !== "special_case") {
+      // The review bucket holds legacy special_case AND reported empty runs.
+      if (!j || !["special_case", "empty_run_reported"].includes(j.status)) {
         issues.push(`driverState.specialCaseIds: ${id} status mismatch`);
       } else {
-        const prior = j.specialCaseReport?.statusBeforeSpecialCase;
+        const prior =
+          j.specialCaseReport?.statusBeforeSpecialCase ||
+          j.emptyRunReport?.statusBeforeReport;
         if (!prior || !["assigned", "accepted"].includes(prior)) {
           issues.push(
-            `${j.id}: special case missing valid statusBeforeSpecialCase`,
+            `${j.id}: review case missing valid prior status`,
           );
         }
       }
     }
     for (const id of state.cancelledIds || []) {
       const j = jobList.find((x) => x.id === id);
-      if (!j || j.status !== "cancelled") {
+      if (!j || !CANCELLED_STATUSES.includes(j.status)) {
         issues.push(`driverState.cancelledIds: ${id} status mismatch`);
       }
     }
@@ -1964,6 +2013,11 @@ window.AuthStore = (() => {
     const hh = String(d.getHours()).padStart(2, "0");
     const mi = String(d.getMinutes()).padStart(2, "0");
     return `${dd}.${mm}. ${hh}:${mi}`;
+  }
+
+  // Safe i18n lookup for mock notification/audit copy generated in the store.
+  function t2(key, params) {
+    return window.I18n?.t ? window.I18n.t(key, params) : key;
   }
 
   function log(action, actor, entity, meta) {
@@ -2601,6 +2655,22 @@ window.AuthStore = (() => {
     },
     statusCls: (s) => STATUSES[s]?.cls || "",
 
+    // Task 2 status-model helpers (extended enum).
+    isCancelledStatus: (s) => CANCELLED_STATUSES.includes(s),
+    isEmptyRunReported: (s) => s === "empty_run_reported",
+    isEmptyRunTerminal: (s) => EMPTY_RUN_TERMINAL.includes(s),
+    isReadOnlyStatus: (s) => READ_ONLY_STATUSES.includes(s),
+    isReadOnlyJob: (job) => !!job && READ_ONLY_STATUSES.includes(job.status),
+    // Service partner may cancel / report empty run only on a booked order.
+    canServicePartnerAct: (job) =>
+      !!job && ["assigned", "accepted"].includes(job.status),
+    // ⚠ action availability (§10): booked orders only; hidden for terminal
+    // states and while an empty-run report is pending review.
+    canServicePartnerReport: (job) =>
+      !!job &&
+      ["assigned", "accepted"].includes(job.status) &&
+      !WARN_ACTION_BLOCKED_STATUSES.includes(job.status),
+
     getAppDisplayName() {
       return branding.appDisplayName || "Transport Portal";
     },
@@ -2811,10 +2881,21 @@ window.AuthStore = (() => {
       };
     },
 
+    // Umbrella grouping for the Jobs board (design: scannable columns +
+    // precise reason chip). Precise machine statuses roll up to a bucket.
+    statusUmbrella: (s) => {
+      if (s === "cancelled_by_sp" || s === "cancelled_by_autheon") return "cancelled";
+      if (s === "empty_run_not_recognised") return "cancelled";
+      if (s === "empty_run_reported") return "special_case";
+      if (s === "empty_run_recognised") return "performed";
+      return s;
+    },
+
     countsByStatus: () => {
       const c = {};
       jobs.forEach((j) => {
-        c[j.status] = (c[j.status] || 0) + 1;
+        const key = api.statusUmbrella(j.status);
+        c[key] = (c[key] || 0) + 1;
       });
       return c;
     },
@@ -3219,34 +3300,51 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
+    // Service partner cancels a booked order (Storno-Workflow §2).
+    // Separate process/status/audit from the empty-run report.
     reportProblemCancel(id, reason, message) {
       const j = api.getJob(id);
-      if (!j || !["assigned", "accepted"].includes(j.status))
+      if (!j || !api.canServicePartnerAct(j))
         return { ok: false, reason: "invalid_state" };
       if (j.driver && j.driver !== DEMO_DRIVER)
         return { ok: false, reason: "not_assigned_driver" };
-      j.status = "cancelled";
-      j.cancellationActor = "driver";
+      const explanation = String(message || "").trim();
+      if (explanation.length < 30)
+        return { ok: false, reason: "explanation_too_short", min: 30 };
+      const stamp = nowStamp();
+      j.status = "cancelled_by_sp";
+      j.cancellationActor = "service_partner";
       j.cancellationReason = reason || "";
-      j.cancellationReasonText = message || "";
+      j.cancellationReasonText = explanation;
+      // Stored per §2.2: reason, explanation, date, time, executing partner.
+      j.spCancellation = {
+        reason: reason || "other",
+        explanation,
+        at: stamp,
+        servicePartner: DEMO_DRIVER,
+        servicePartnerId: api.getCurrentDriver()?.id || "",
+      };
       j.history = [
         ...(j.history || []),
         {
-          st: "cancelled",
-          at: nowStamp(),
+          st: "cancelled_by_sp",
+          at: stamp,
           by: DEMO_DRIVER,
-          meta: `Report Problem cancel: ${reason}`,
+          meta: `Cancelled by service partner: ${reason}`,
         },
       ];
+      // Leaves the partner's active orders, stays in order history.
       driverState.acceptedIds.delete(id);
+      driverState.specialCaseIds.delete(id);
       driverState.cancelledIds.add(id);
       log(
-        "report_problem_cancel",
+        "cancelled_by_service_partner",
         DEMO_DRIVER,
         j.tour,
-        `${reason}: ${message}`,
+        `${reason}: ${explanation}`,
       );
-      queueAdminEmailAlert("report_problem_cancel", id, message);
+      // Inform the admin backend immediately.
+      queueAdminEmailAlert("order_cancelled_by_sp", id, explanation);
       emit();
       return { ok: true };
     },
@@ -3268,41 +3366,124 @@ window.AuthStore = (() => {
       return evidence;
     },
 
+    // Service partner reports an empty run (Storno-Workflow §3): the ORDER
+    // itself can't be executed. Separate process/status/audit from a cancel.
+    // Optional evidence must never be required. Locked pending Autheon review.
     reportProblemNotPerformable(id, reason, message, evidenceFiles) {
       const j = api.getJob(id);
-      if (!j || !["assigned", "accepted"].includes(j.status))
+      if (!j || !api.canServicePartnerAct(j))
         return { ok: false, reason: "invalid_state" };
       if (j.driver && j.driver !== DEMO_DRIVER)
         return { ok: false, reason: "not_assigned_driver" };
-      const statusBeforeSpecialCase = j.status;
+      const description = String(message || "").trim();
+      if (description.length < 30)
+        return { ok: false, reason: "description_too_short", min: 30 };
+      const statusBeforeReport = j.status;
       const evidence = api.buildSpecialCaseEvidenceMeta(evidenceFiles);
-      j.status = "special_case";
-      j.specialCaseReport = {
-        type: "not_performable",
+      const stamp = nowStamp();
+      j.status = "empty_run_reported";
+      // Stored per §3.4: reason, description, date, time, partner, evidence.
+      j.emptyRunReport = {
         reason: reason || "other",
-        message: message || "",
-        reportedAt: nowStamp(),
+        description,
+        reportedAt: stamp,
         reportedBy: DEMO_DRIVER,
-        statusBeforeSpecialCase,
+        servicePartnerId: api.getCurrentDriver()?.id || "",
+        statusBeforeReport,
+        evidence,
+        decision: null, // set by admin review: recognised | not_recognised
+      };
+      // Retain the legacy special-case report shape so any existing admin
+      // review UI keeps rendering the report body/evidence.
+      j.specialCaseReport = {
+        type: "empty_run",
+        reason: reason || "other",
+        message: description,
+        reportedAt: stamp,
+        reportedBy: DEMO_DRIVER,
+        statusBeforeSpecialCase: statusBeforeReport,
         evidence,
       };
       j.history = [
         ...(j.history || []),
         {
-          st: "special_case",
-          at: nowStamp(),
+          st: "empty_run_reported",
+          at: stamp,
           by: DEMO_DRIVER,
-          meta: "Report Problem: not performable",
+          meta: `Empty run reported: ${reason}`,
         },
       ];
+      // In review — not in active orders, tracked in the review bucket.
       driverState.specialCaseIds.add(id);
       driverState.acceptedIds.delete(id);
-      log("special_case_created", DEMO_DRIVER, j.tour, `${reason}: ${message}`);
+      log(
+        "empty_run_reported",
+        DEMO_DRIVER,
+        j.tour,
+        `${reason}: ${description}`,
+      );
       const alertMeta =
         evidence.length > 0
-          ? `${message || ""} · ${evidence.length} file(s)`.trim()
-          : message || "";
-      queueAdminEmailAlert("special_case_created", id, alertMeta);
+          ? `${description} · ${evidence.length} file(s)`.trim()
+          : description;
+      queueAdminEmailAlert("empty_run_reported", id, alertMeta);
+      emit();
+      return { ok: true };
+    },
+
+    // Admin decision on a reported empty run (Storno-Workflow §4): exactly two
+    // outcomes, no intermediate states. Marks the order read-only and pushes a
+    // push + in-app notification to the service partner. A not-recognised
+    // empty run does NOT reactivate the original order (§4.2).
+    reviewEmptyRun(id, decision) {
+      const j = api.getJob(id);
+      if (!j || j.status !== "empty_run_reported")
+        return { ok: false, reason: "invalid_state" };
+      const d = String(decision || "").toLowerCase();
+      const recognised = d === "recognised" || d === "recognized";
+      const notRecognised = d === "not_recognised" || d === "not_recognized";
+      if (!recognised && !notRecognised)
+        return { ok: false, reason: "bad_decision" };
+      const stamp = nowStamp();
+      j.status = recognised ? "empty_run_recognised" : "empty_run_not_recognised";
+      if (j.emptyRunReport) {
+        j.emptyRunReport.decision = recognised ? "recognised" : "not_recognised";
+        j.emptyRunReport.decidedAt = stamp;
+        j.emptyRunReport.decidedBy = DEMO_ADMIN;
+      }
+      j.specialCaseReport = null;
+      j.history = [
+        ...(j.history || []),
+        {
+          st: j.status,
+          at: stamp,
+          by: DEMO_ADMIN,
+          meta: recognised ? "Empty run recognised" : "Empty run not recognised",
+        },
+      ];
+      // Terminal: leaves the review bucket, no longer an active order.
+      driverState.specialCaseIds.delete(id);
+      driverState.acceptedIds.delete(id);
+      const action = recognised
+        ? "empty_run_recognised"
+        : "empty_run_not_recognised";
+      log(action, DEMO_ADMIN, j.tour, "");
+      const titleKey = recognised
+        ? "notifEmptyRunRecognisedTitle"
+        : "notifEmptyRunNotRecognisedTitle";
+      const bodyKey = recognised
+        ? "notifEmptyRunRecognisedBody"
+        : "notifEmptyRunNotRecognisedBody";
+      const dr = jobDriverRecord(j);
+      pushDriverNotification({
+        type: action,
+        jobId: id,
+        tour: j.tour,
+        title: t2(titleKey),
+        body: t2(bodyKey, { tour: j.tour }),
+        driverId: dr?.id,
+      });
+      queueAdminEmailAlert(action, id, "");
       emit();
       return { ok: true };
     },
@@ -3912,7 +4093,10 @@ window.AuthStore = (() => {
       const dr = jobDriverRecord(j);
       const hadDriver = !!dr;
 
-      if (actor === "admin" || actor === "customer") {
+      if ((actor === "admin" || actor === "customer") && hadDriver) {
+        // §5.1: an unbooked order (no assigned partner) is cancelled
+        // immediately — the pickup-cutoff policy only guards booked orders
+        // where a partner is already committed.
         const policy = api.checkAdminCancelPolicy(j, { overrideNote });
         if (!policy.ok) return policy;
         if (cancellationPolicies.adminCancelRequiresReasonCode && !reasonCode)
@@ -3932,7 +4116,13 @@ window.AuthStore = (() => {
         }
       }
 
-      j.status = "cancelled";
+      // Admin/dispatch cancellation → "Cancelled by Autheon" (§5). The order
+      // stays fully visible in the backend and in the partner's history; it is
+      // never deleted and never auto-republished.
+      const cancelStatus =
+        actor === "driver" ? "cancelled_by_sp" : "cancelled_by_autheon";
+      const wasBooked = hadDriver;
+      j.status = cancelStatus;
       j.specialCaseReport = null;
       j.cancellationActor = actor;
       j.cancellationReason = reasonCode;
@@ -3940,13 +4130,13 @@ window.AuthStore = (() => {
       j.history = [
         ...(j.history || []),
         {
-          st: "cancelled",
+          st: cancelStatus,
           at: nowStamp(),
           by: opts.by || DEMO_ADMIN,
           meta:
             reasonText ||
             cancellationReasonLabel(reasonCode) ||
-            "Admin cancellation",
+            "Cancelled by Autheon",
         },
       ];
       driverState.acceptedIds.delete(id);
@@ -3954,12 +4144,16 @@ window.AuthStore = (() => {
       driverState.specialCaseIds.delete(id);
       driverState.cancelledIds.add(id);
       log(
-        "job_cancelled",
+        "cancelled_by_autheon",
         opts.by || DEMO_ADMIN,
         j.tour,
         reasonText || reasonCode || "",
       );
-      queueAdminEmailAlert("job_cancelled", id, reasonText || reasonCode || "");
+      queueAdminEmailAlert(
+        "cancelled_by_autheon",
+        id,
+        reasonText || reasonCode || "",
+      );
       if (overrideNote) {
         log(
           "policy_override",
@@ -3968,17 +4162,14 @@ window.AuthStore = (() => {
           `Admin cancel inside cutoff: ${overrideNote}`,
         );
       }
-      if (dr) {
-        const notifyBody =
-          reasonText ||
-          cancellationReasonLabel(reasonCode) ||
-          "Tour cancelled by dispatch.";
+      // Booked order → push + in-app notification to the partner (§5.2).
+      if (dr && wasBooked) {
         pushDriverNotification({
-          type: "order_cancelled",
+          type: "cancelled_by_autheon",
           jobId: id,
           tour: j.tour,
-          title: "Tour cancelled",
-          body: notifyBody,
+          title: t2("notifOrderCancelledByAutheonTitle"),
+          body: t2("notifOrderCancelledByAutheonBody", { tour: j.tour }),
           driverId: dr.id,
         });
       }
@@ -3993,6 +4184,131 @@ window.AuthStore = (() => {
       log("pdf_regenerated", DEMO_ADMIN, j.tour, `PDF version ${j.pdfVersion}`);
       emit();
       return { ok: true };
+    },
+
+    // ---- Internal admin notes (Storno-Workflow §6) ----------------------
+    // Admin-only, never shown in the service-partner frontend. Optional,
+    // auto-stamped with author + date/time, permanently attached to the order.
+    getInternalNotes(id) {
+      const j = api.getJob(id);
+      return j?.internalNotes ? j.internalNotes.slice() : [];
+    },
+    addInternalNote(id, text) {
+      const j = api.getJob(id);
+      if (!j) return { ok: false, reason: "not_found" };
+      const body = String(text || "").trim();
+      if (!body) return { ok: false, reason: "empty" };
+      const note = {
+        id: `NOTE-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        author: DEMO_ADMIN,
+        at: nowStamp(),
+        text: body,
+      };
+      j.internalNotes = [...(j.internalNotes || []), note];
+      log("internal_note_added", DEMO_ADMIN, j.tour, body.slice(0, 80));
+      emit();
+      return { ok: true, note };
+    },
+
+    // ---- Duplicate order (Storno-Workflow §9) ---------------------------
+    // Create a new DRAFT copying all data with a new order number; open in the
+    // editor. Not in the marketplace until the admin explicitly publishes.
+    // Original stays unchanged. No visible "duplicated from" label required.
+    duplicateJob(id) {
+      const src = api.getJob(id);
+      if (!src) return { ok: false, reason: "not_found" };
+      // Next tour number: max numeric prefix + 1, keep the year suffix.
+      let maxSeq = 0;
+      let yearSuffix = "26";
+      for (const j of jobs) {
+        const m = String(j.tour || "").match(/^(\d+)-(\d+)$/);
+        if (m) {
+          maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+          yearSuffix = m[2];
+        }
+      }
+      const newTour = `${String(maxSeq + 1).padStart(4, "0")}-${yearSuffix}`;
+      const clone = JSON.parse(JSON.stringify(src));
+      clone.id = `J-DUP-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      clone.tour = newTour;
+      clone.status = "draft";
+      clone.isNew = true;
+      clone.driver = null;
+      clone.assignmentMode = null;
+      clone.assignmentType = null;
+      clone.history = [
+        { st: "draft", at: nowStamp(), by: DEMO_ADMIN, meta: "Duplicated order" },
+      ];
+      // Never carry over lifecycle artefacts from the source order.
+      clone.cancellationActor = null;
+      clone.cancellationReason = "";
+      clone.cancellationReasonText = "";
+      clone.specialCaseReport = null;
+      clone.emptyRunReport = null;
+      clone.spCancellation = null;
+      clone.internalNotes = [];
+      clone.pdfVersion = 0;
+      clone.duplicatedFromTour = src.tour; // internal only, not surfaced
+      jobs.unshift(clone);
+      log("order_duplicated", DEMO_ADMIN, newTour, `from ${src.tour}`);
+      emit();
+      return { ok: true, job: clone };
+    },
+
+    // ---- Admin edits an active order (Storno-Workflow §7) ---------------
+    // Applies changed fields to a non-terminal order (incl. already booked),
+    // notifies the assigned partner with the ACTUAL changed values in ONE
+    // combined notification, requires no partner re-confirmation, and stores
+    // previous + new values in the audit log.
+    updateActiveOrder(id, changes) {
+      const j = api.getJob(id);
+      if (!j) return { ok: false, reason: "not_found" };
+      if (api.isReadOnlyJob(j))
+        return { ok: false, reason: "read_only" };
+      const diffs = [];
+      for (const [field, next] of Object.entries(changes || {})) {
+        const prev = j[field];
+        if (String(prev ?? "") === String(next ?? "")) continue;
+        diffs.push({ field, from: prev ?? "", to: next ?? "" });
+        j[field] = next;
+      }
+      if (!diffs.length) return { ok: false, reason: "no_changes" };
+      const stamp = nowStamp();
+      j.history = [
+        ...(j.history || []),
+        {
+          st: j.status,
+          at: stamp,
+          by: DEMO_ADMIN,
+          meta: `Order edited: ${diffs.map((d) => d.field).join(", ")}`,
+        },
+      ];
+      // Audit stores previous + new for every changed field (§7.1, §11).
+      for (const d of diffs) {
+        log(
+          "order_edited",
+          DEMO_ADMIN,
+          j.tour,
+          `${d.field}: "${d.from}" → "${d.to}"`,
+        );
+      }
+      // One combined push + in-app notification to the assigned partner.
+      const dr = jobDriverRecord(j);
+      if (dr) {
+        const lines = diffs
+          .map((d) => `${d.field}: ${d.from || "—"} → ${d.to || "—"}`)
+          .join("\n");
+        pushDriverNotification({
+          type: "order_updated",
+          jobId: id,
+          tour: j.tour,
+          title: t2("notifOrderUpdatedTitle", { tour: j.tour }),
+          body: `${t2("notifOrderUpdatedIntro")}\n${lines}`,
+          driverId: dr.id,
+        });
+      }
+      emit();
+      return { ok: true, diffs };
     },
 
     saveDraft(form) {
