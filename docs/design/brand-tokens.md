@@ -88,6 +88,7 @@ The orange binding-action rule is a **prototype invention** (functional semantic
 | Rule | Value |
 |------|-------|
 | Canvas | `#F5F5F7`; normal content (lists, details, docs, forms, modals, profile) on white surfaces |
+| Controls | inputs, textareas, selects, OTP cells, and **all** button variants (primary / secondary / tertiary / destructive / icon, including full-width) use `--r-2` (8px). Do **not** apply screen-level `rounded-full` / `9999px` overrides on these controls. Pill radius (`--r-pill`) is reserved for chips, tags, status pills, and intentional selectors only |
 | Card rounding | moderate — `--r-3` (12px) default, `--r-4` (16px) max for cards; sheets ≤ 24px; **no** 32px+ surfaces, no bubble/pill cards |
 | Card separation | fine 1px `--line` border and/or very subtle shadow (`--sh-1`) |
 | Elevation | shadows stay neutral (slate/black, low alpha) — no colored/purple glows, no deep floating shadows |

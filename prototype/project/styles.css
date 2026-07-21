@@ -1186,7 +1186,7 @@ select.input {
 .phone-shell .header-bell-btn {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: var(--r-2); /* control radius — match FE icon buttons */
   background: var(--canvas);
   border: 0;
   color: var(--text);
@@ -1233,7 +1233,7 @@ select.input {
 .phone-shell .header-btn {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: var(--r-2); /* control radius — match FE SortSelect / header icons */
   background: var(--paper);
   border: 1px solid var(--line);
   color: var(--text);
@@ -1273,9 +1273,9 @@ select.input {
 .phone-shell .detail-back-btn {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  background: var(--canvas);
-  border: 0;
+  border-radius: var(--r-2); /* control radius — match FE detail/notifications back */
+  background: var(--paper);
+  border: 1px solid var(--line);
   color: var(--text);
   display: flex;
   align-items: center;
@@ -1640,7 +1640,7 @@ select.input {
 .phone-shell .contact-action-btn {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: var(--r-3); /* match FE contact icon buttons (rounded-lg) */
   background: var(--paper);
   border: 1px solid var(--line);
   color: var(--text);
@@ -1681,7 +1681,7 @@ select.input {
 .phone-shell .pdf-btn {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--r-2);
   background: var(--paper);
   border: 1px solid var(--line);
   color: var(--text);
@@ -3920,7 +3920,7 @@ select.input {
 .phone-shell .myjobs-search-input-wrap input {
   width: 100%;
   padding: 10px 12px 10px 36px;
-  border-radius: 12px;
+  border-radius: var(--r-2); /* input control radius — match FE My Jobs search */
   border: 1px solid var(--line);
   background: var(--canvas);
   color: var(--text);
@@ -4033,11 +4033,11 @@ select.input {
   padding-right: 42px;
 }
 
-/* Toggle segment selectors */
+/* Toggle segment selectors — match global `.seg` / FE SegmentedControl (`rounded-md`) */
 .phone-shell .seg {
   display: flex;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--r-2);
   overflow: hidden;
   background: var(--canvas);
   margin-top: 6px;
