@@ -88,6 +88,8 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 | Report problem | `ReportProblemSheet` | 7 codes, min 10 chars, evidence | Submit |
 | Notifications | `DriverNotificationsPane` | grouped by day, unread, empty | Deep link |
 | Profile | `ProfilePaneFull` | view, edit MDR, pending | Request changes |
+| Account & sign-in | `account-signin-card` in `ProfilePaneFull` | verified, pending-change | Change email address |
+| Change email | `ChangeEmailSheet` | enter address, confirm code (+resend), success, error states | Send code → Confirm change |
 | Infopoint | `Infopoint` | docs + news + help tabs, empty | Download / Help |
 
 ---
@@ -116,6 +118,19 @@ Source of truth: Figma file `CgaMrN7nmXS8xub0RxyzsJ` — nodes `8:2268` (details
 
 ---
 
+## Account & sign-in (self-service email change, 2026-07)
+
+Driver-owned credential card inside `ProfilePaneFull`, placed directly under the identity header and **above** the operations-managed master-data card. Master data is "request changes" (ops approval); the **sign-in email is self-service** — the driver changes it themselves, verify-not-approve.
+
+- **Card (`.account-signin-card`):** 🔑 `.account-signin-title` + `.account-signin-key`, an `.account-email-row` (label + `.account-email-value`) showing the current `.account-email-address` and its state, then a full-width secondary `Change email address` button (`.btn.block`) opening `ChangeEmailSheet`.
+- **Email state (never color-only):** `.account-email-verified` — small green dot + "Verified account" text label — for the confirmed address; while a change is in flight, an amber `.pill.assigned` `.account-email-badge` ("Change pending") replaces it. The green uses `var(--st-ok, #1f9d55)` (see brand-tokens: token currently undefined, falls back).
+- **`ChangeEmailSheet`** — one sheet advancing through three steps, title changes per step:
+  1. **Enter** — current address (`.change-email-current`, address in `.mono`), new-address input, code notice. CTA `Send code`.
+  2. **Confirm** — `CodeInput` 6-box code (`.code-input-row` / `.code-input-box`), `.change-email-resend-row` with a live `Resend in mm:ss` countdown → `Resend code`, a demo `InlineAlert` echoing the code, `Change address` (back) + `Confirm change`. Errors map to typed reasons (`invalid_email`, `same_email`, `duplicate_email`, `invalid_code`, `expired`, `restricted`).
+  3. **Success** — `.change-email-success-check` (brand-tint disc + ✓), confirmation body, `Done`.
+- **Model:** the new address only becomes active after the code sent to the **new** inbox is confirmed; the old inbox stays live until then and receives an `emailChangedNotify*` notification on success. No ops step.
+- **i18n:** `accountSignin*`, `accountEmail*`, `changeEmail*`, `emailChanged*` (EN+DE) — regenerate the index after changes.
+
 ## Per-screen Definition of Done
 
 - Light + dark theme (`data-theme`) — dark is an internal extension, light is the client reference
@@ -139,6 +154,7 @@ Source of truth: Figma file `CgaMrN7nmXS8xub0RxyzsJ` — nodes `8:2268` (details
 | `Skeleton` | `.skeleton-*` | Mirrors final layout |
 | `InlineAlert` | `.inline-alert` | Persistent context errors/info |
 | `ConfirmSheet` | `ConfirmSheet` | Destructive / binding confirmations |
+| `CodeInput` | `.code-input-row` + `.code-input-box` | 6-box one-time-code entry; mono digits (data identifier), auto-advance/backspace, `inputMode="numeric"`, `autoComplete="one-time-code"`, per-box `aria-label` |
 
 ---
 
@@ -185,6 +201,8 @@ Loaded before `driver.jsx` in `AUTHEON Prototype.html`. Access via `window.Drive
 | `.ui-badge`, `.ui-badge-destructive` | Numeric badges |
 | `.sheet`, `.sheet-backdrop`, `.sheet-foot` | Sheet layout |
 | `.inline-alert`, `.app-banner` | Persistent feedback |
+| `.account-signin-card`, `.account-signin-title/-key`, `.account-email-row/-value/-address/-verified`, `.account-email-badge` | Account & sign-in credential card |
+| `.change-email-current`, `.code-input-row`, `.code-input-box`, `.change-email-resend-row`, `.change-email-success-check` | Change-email sheet + `CodeInput` |
 | `.text-*`, `.stack-*`, `.row-*` | Typography / spacing utilities (see `styles.css` § TOKEN UTILITIES) |
 
 ### Formatters (`formatters.js`)

@@ -2,8 +2,10 @@
 
 > **What this file is:** the "project layer" for meeting analysis. The AI reads it *before* analysing any AUTHEON meeting transcript, so it already knows the product, the people, the vocabulary, what is decided, what is deferred, and what is genuinely still open. It exists so the AI can tell **new** from **already-decided** instead of re-explaining the product every time.
 >
-> **Source of truth:** `docs/requirements/prd.json` — **PRD v2.0** (2026-07-10).
-> **Update rule:** refresh this file only when the PRD version bumps (v2.0 → v2.1). Everything below is a *distilled mirror* of the PRD, not a replacement for it.
+> **Source of truth:** `docs/requirements/prd.json` — **PRD v2.4** (2026-07-21).
+> **Update rule:** refresh this file only when the PRD version bumps. Everything below is a *distilled mirror* of the PRD, not a replacement for it.
+> **Version trail:** v2.0 (2026-07-10 baseline) → **v2.1** important vehicle info fields (2026-07-14) → **v2.2** sticky Create/Edit-Job sidebars + fixed-height app shell (2026-07-20) → **v2.3** driver self-service email change (2026-07-20) → **v2.4** order cancellation & empty-run workflow "Storno" (2026-07-21).
+> **Note on stale mirror text:** parts of `prd.json` still carry pre-v2.4 summary strings (e.g. "daily limit", "Not Performable → Special Case"). Where they conflict, the **v2.1–v2.4 model described here is authoritative** — probation (not daily limit), and the extended Storno status model (not the special-case-only model).
 
 ---
 
@@ -12,7 +14,7 @@
 - Treat the reader as someone who **already knows AUTHEON**. Do **not** re-explain what a driver, tour, or booking is.
 - Cross-check every point in a transcript against Sections 4–9 below **before** labelling it.
 - Never raise an "open question" that Section 8 or Section 9 already answers.
-- Map findings to the **Task index (Section 7)** and the **Open questions (Section 6, OQ-1…OQ-18)** by their IDs.
+- Map findings to the **Task index (Section 7)** and the **Open questions (Section 6, OQ-1…OQ-19)** by their IDs.
 
 ---
 
@@ -55,20 +57,25 @@ AUTHEON is a **vehicle-transport / vehicle-relocation dispatch platform (Version
 - **Direct assignment flow:** Draft → Assigned → Performed.
 - Published and Assigned are **mutually exclusive** in Phase 1. A Published job must be reverted to **Draft** before it can be reassigned or direct-assigned.
 
-**Operational job statuses:** Draft · Published · Accepted · Assigned · Performed · Cancelled · Special Case.
+**Operational job statuses (extended enum, v2.4):** Draft · Published · Accepted · Assigned · Performed · Special Case, plus the Storno statuses **`cancelled_by_sp`** (cancelled by service partner) · **`cancelled_by_autheon`** (cancelled by Autheon/admin) · **`empty_run_reported`** (pending admin review) · **`empty_run_recognised`** (terminal) · **`empty_run_not_recognised`** (terminal). Legacy `cancelled` and `special_case` are **retained as umbrellas**. On the admin board, precise statuses **roll up to umbrella columns** (Cancelled / review / Performed) via `statusUmbrella()`, and each row shows the precise status as a **reason chip**.
 **Document review statuses:** Missing · Uploaded · Under Review · Accepted · Rejected · Correction Required.
 **Settlement states:** Not Started · Pending · Processed · Paid · Needs Clarification · Closed.
 **Driver statuses:** Active · Blocked · Inactive · Archived · Soft Deleted.
 
 **Key meanings that meetings keep touching**
 - **Performed** = the vehicle transfer is operationally done. It does **not** mean documents/invoices/settlement are complete (those are tracked separately).
-- **Report Problem** (driver) has two paths: **Cancel Order** and **Report Order as Not Performable**.
-- **Not Performable → Special Case** (needs admin decision). Special Case does **not** auto-cancel the order.
+- **Service partner (SP)** = the driver-side actor in the cancellation/empty-run copy (Storno-Workflow-1.pdf uses "Servicepartner"). In V1 the SP is the individual driver; the structured multi-driver company model is deferred (F-08).
+- **Report Problem** (driver) has two paths, **reworked in v2.4** (Storno): **Cancel order** and **Report empty run** (Leerfahrt). Both open behind a ⚠ warning entry, need a reason + **≥30-char** text, and use slide-to-confirm. Both are available on **booked** orders only.
+  - **Cancel order** → `cancelled_by_sp`; binding-cost warning + T&C link first; **4 reasons** (appointment can't be met, order booked accidentally, execution organisationally impossible, other); order becomes read-only, leaves the active list but is kept in history; admin notified; audited. No auto-republish, no fee processing.
+  - **Report empty run** → `empty_run_reported` (locked for the partner, pending review); **6 reasons** (vehicle technically not operational, not roadworthy, not present at pickup, not being released, key/documents missing, other) + optional (never-required) evidence + review/no-guarantee/phone-dispatch warning; admin notified; audited.
+- **Empty-run replaces the old "Not Performable → Special Case" path.** Admin **review** decides **Recognised** (`empty_run_recognised`) or **Not recognised** (`empty_run_not_recognised`) — both terminal, both push/in-app notify the partner; **not-recognised does not reactivate the order**. Map any meeting mention of "not performable" to this empty-run workflow. (`special_case` still exists as a legacy umbrella but the empty-run flow no longer routes through it.)
 - **Special-case "administrative close"** = mark Performed + settlement Closed. It is **not** the same as cancelling.
 - **Acceptance is binding.** Assigned jobs cannot be directly rejected by the driver.
 - **Probation acceptance limit** (v1.9, replaces the old per-day quota): a new driver may book up to **N initial jobs (default 3)** and must reach **N Performed jobs** before being **released**; after release there is no further V1 booking limit. It blocks **self-accept only** — admin **direct assignment is exempt** (admin may assign extra jobs even while the driver is on probation). Performed jobs count toward release whether self-accepted or admin-assigned. No rolling daily quota and no driver limit-increase request. Admin may **manually release** a driver from probation. **UI (v2.0):** a probation status/progress card — **not** a limit meter or "request higher limit" action — shown while on probation and **hidden after release**.
 - **Driver ID** (v2.0) = **system-assigned, immutable, never reused** (a monotonic sequence; retired/blocked/archived IDs are not reassigned). Assigned automatically at creation, **not** entered by admin. Exact format (prefix/padding/year/start) is client-defined (OQ-16).
 - **Time windows** (v2.0) = **same-day per leg** (window start/end on one calendar day; **no cross-midnight**). Pickup and delivery legs may still fall on **different dates**.
+- **Important vehicle info** (v2.1) = optional job fields per the Design Direction Board: `vehicle_registration_status` (`registered` | `deregistered` | null), `electric_vehicle`, `red_license_plates`, `red_license_plate_number`. Shown as text-labelled tags on cards/detail. Conditional capture in job creation: registered/unspecified → regular plate required; deregistered → plate hidden + cleared; red plates → red-plate number required (German § 16 FZV `06`-series dealer plate, operator-bound, e.g. `K-06 1234`). Never a marketplace filter; never blocks Save/Publish/Assign except those conditional rules.
+- **Account & sign-in** (v2.3) = the driver's **email is a self-service credential**, not ops-managed master data. Changed via a driver-owned "Account & sign-in" card with a **6-digit code sent to the new address** (verify, don't approve): the new address only goes live after the code is confirmed, the **old address stays live until then** and is notified on success. At most one pending change per account; no ops approval step.
 
 ---
 
@@ -96,15 +103,22 @@ If a meeting raises any of these, it is **already decided** — cite it and mark
 - Admin cancellation with **required driver-facing reason message**; operational cutoff policies in `app_settings`.
 - In-PWA **preview** of permitted PDFs/images, with download and (where supported) **share/print** system actions.
 - Infopoint **General Documents: separate View / Download actions** where layout allows (v2.0; fallback to download-only or Download-inside-View on constrained mobile layouts).
+- **Important vehicle info** on jobs (v2.1): optional registration-status / electric-vehicle / red-plate fields with conditional plate capture (see §3). Resolves the old registered/deregistered open question (OQ-7).
+- **Driver self-service email change** (v2.3): driver-owned "Account & sign-in" card, verify-with-code (no ops approval), old inbox notified; `email_change_requests` model + `driver_email_change_requested` / `driver_email_changed` audit actions. Email removed from the master-data change-request scope entirely.
+- **Order cancellation & empty-run workflow "Storno"** (v2.4, Task 32, refines Tasks 12/13/14): separated **SP cancel** (`cancelled_by_sp`) and **empty-run report** (`empty_run_reported`) driver flows; **admin empty-run review** (Recognised / Not recognised); **Autheon cancellation** of booked *and* unbooked orders (`cancelled_by_autheon`); **internal admin notes** (admin-only, timestamped, permanent); **edit active order** (driver-visible notes + offer) with partner notification of the actual changed values; **duplicate order** → new draft + new order number; **⚠ availability** rules (booked-only, hidden for terminal/pending); full audit logging. German copy verbatim from Storno-Workflow-1.pdf.
+- **Admin Create/Edit-Job sticky sidebars** (v2.2): left section-nav + right live-summary stay pinned while the form scrolls (desktop); fixed-height app shell scrolls admin content internally; single-column non-sticky fallback ≤1200px. (UI/layout requirement on Task 5.)
 
 **Locked defaults worth knowing (from `resolved_defaults`)**
-- Auth: **Keycloak** selected (roles: admin, driver). Cancel Order slide requires **min 10-char** explanation. `push_on_direct_assign = false`.
+- Auth: **Keycloak** selected (roles: admin, driver). `push_on_direct_assign = false`. *(v2.4: the Storno driver flows — SP cancel and empty-run — now require a **≥30-char** explanation, superseding the old 10-char cancel-slide minimum.)*
 - PDF generated **on acceptance/direct-assignment**, not on publish. Only the active PDF must be visible; regeneration audited.
 - **App display name configurable** (default "Transport Portal" until client provides final name).
 - Phone-first PWA; iPad best-effort. Audit-log action keys in English; UI localized EN/DE.
 - Customer field on create form = **required select from master data** (no free-text).
 - Vehicle CSV = **glossary/reference only**, not import data. Vehicle color/photos **not required** in V1.
-- 7 cancellation reason codes: `driver_unavailable`, `vehicle_not_available`, `customer_cancelled`, `appointment_not_possible`, `incorrect_order_data`, `vehicle_not_roadworthy`, `other`.
+- Reason-code sets (v2.4 splits the driver flows from admin/legacy cancellation):
+  - **Admin / legacy cancellation** — 7 codes: `driver_unavailable`, `vehicle_not_available`, `customer_cancelled`, `appointment_not_possible`, `incorrect_order_data`, `vehicle_not_roadworthy`, `other`.
+  - **SP cancel (Storno)** — 4 reasons: appointment can't be met · order booked accidentally · execution organisationally impossible · other.
+  - **Empty run (Storno)** — 6 reasons: vehicle technically not operational · not roadworthy · not present at pickup · not being released · key/documents missing · other.
 
 ---
 
@@ -116,7 +130,7 @@ If a meeting raises any of these, it is **already decided** — cite it and mark
 
 ---
 
-## 6. GENUINELY OPEN questions (OQ-1…OQ-18 — match against these; do not re-raise if already answered in §4/§8/§9)
+## 6. GENUINELY OPEN questions (OQ-1…OQ-19 — match against these; do not re-raise if already answered in §4/§8/§9)
 
 | ID | Open question | From |
 |----|---------------|------|
@@ -126,7 +140,7 @@ If a meeting raises any of these, it is **already decided** — cite it and mark
 | OQ-4 | Final production **branding pack**: display name, logo, **exact hex palette**, font, icon rules + legal/UI copy. *Direction advanced 2026-07-10 — minimalist/premium, black/white/grey, restrained purple accent, Montserrat Regular 400; final pack still pending (client → Monday).* | production |
 | OQ-5 | Production UI labels for special-case administrative **close** vs **cancel** (avoid ambiguous "Close"). | production |
 | OQ-6 | **Granular driver blocking** (block marketplace/accept but still allow doc/invoice corrections on existing tours) vs coarse "Blocked". | 2026-06-29 |
-| OQ-7 | Is **zugelassen / nicht zugelassen** (registered / not registered) a required V1 job/vehicle field, or deferred? | 2026-06-29 |
+| OQ-7 | ✅ **RESOLVED 2026-07-14** (v2.1, see §8): registered/deregistered **is** a V1 field — optional `vehicle_registration_status` with electric-vehicle + red-plate tags and conditional plate capture. | 2026-06-29 |
 | OQ-8 | Final **manual direct-assignment** policy: when allowed, whether exception-only, and what external proof must be stored. | 2026-06-29 |
 | OQ-9 | ✅ **RESOLVED 2026-07-10** (see §8): probation limits **self-accept only**; admin direct assignment is **exempt** (may assign during probation; Performed jobs count toward release regardless of source). | 2026-06-29 |
 | OQ-10 | Do marketplace **cards** show pickup/delivery windows, or only dates/regions (full windows in detail)? | 2026-06-25 |
@@ -136,8 +150,9 @@ If a meeting raises any of these, it is **already decided** — cite it and mark
 | OQ-14 | ⚠️ **CONFLICT** — allow an optional **driver workflow email after booking** (possibly with the order PDF/documents attached), or keep driver workflow email **prohibited** (PWA/push only)? Contradicts the standing no-driver-email rule; unchanged until decided. | post-v1.8 |
 | OQ-15 | **Inactive service-partner handling**: after what inactivity period should a driver be warned / contacted / blocked / set inactive / archived, and should it be automatic or admin-reviewed? | post-v1.8 |
 | OQ-16 | Exact **automatic driver ID format**: prefix, numeric length, padding, optional year component, starting sequence. | 2026-07-10 |
-| OQ-17 | ⚠️ **Report Problem timing/paths** (core V1 risk): for active tours, when is **Cancel Order** allowed vs **Not Performable** required, and does availability change before/after **pickup** and before/after **delivery**? | 2026-07-10 |
+| OQ-17 | ⚠️ **Report Problem timing/paths** (core V1 risk). **Largely addressed by v2.4 (Task 32):** Cancel order and Report empty run are now two separate always-available options on **booked** orders (⚠ hidden for terminal/pending). **Residual:** whether availability should still change **before/after pickup** and **before/after delivery** (v2.4 does not phase-gate them) is not confirmed. | 2026-07-10 |
 | OQ-18 | Final production **domain, legal/market clearance, and hosting** (likely `.com` + Hetzner if approved). | 2026-07-10 |
+| OQ-19 | **Cancellation Terms & Conditions link target** (from v2.4 Task 32): the SP-cancel binding-cost warning links to a **flagged placeholder**. Real target owed — hosted `/legal/cancellation-terms` route, bundled PDF, or in-app legal doc. | 2026-07-21 |
 
 ---
 
@@ -160,7 +175,7 @@ If a meeting raises any of these, it is **already decided** — cite it and mark
 | 13 | Admin Special Case & Cancellation Resolution | 29 | Rollout & Migration Strategy |
 | 14 | Admin Job Cancellation | 30 | Driver Probation Acceptance Limit |
 | 15 | Admin Job Overview | 31 | Operational Policies (App Settings) |
-| 16 | Admin Job Detail | | |
+| 16 | Admin Job Detail | 32 | Order Cancellation & Empty-Run Workflow (Storno) |
 
 ---
 
@@ -188,6 +203,12 @@ If a meeting raises any of these, it is **already decided** — cite it and mark
 - Order notes do **not** auto-inherit customer/address master-data notes.
 - German **postal-prefix** filtering is **inclusive** (prefix 4 matches 40, 41…).
 - Partner Policy / driver terms → V1 **deep-links external** static content.
+- **Important vehicle info is a V1 field** (v2.1, resolves OQ-7): optional registration-status / electric-vehicle / red-plate tags, conditional plate capture (registered → plate required; deregistered → no plate; red plates → red-plate number). Never a marketplace filter.
+- **Driver email is self-service, not master data** (v2.3): "Account & sign-in" card, verify-with-code, no ops approval; old inbox notified on success; email removed from the master-data change-request queue. *(This adds transactional account emails to drivers — account security, distinct from the still-open OQ-14 workflow-email question.)*
+- **Order cancellation uses an extended status enum** (v2.4, answer to Task-2 Q1): `cancelled_by_sp` / `cancelled_by_autheon` / `empty_run_reported` / `empty_run_recognised` / `empty_run_not_recognised`, **not** a discriminator field; board rolls up to umbrella columns + reason chip.
+- **Empty-run workflow replaces "Not Performable → Special Case"** (v2.4): driver reports empty run → admin **Recognised / Not recognised** (both terminal); not-recognised does **not** reactivate the order.
+- **Admin cancellation of unbooked orders is immediate** (v2.4): the operational cutoff policy now applies **only to booked** orders; unbooked cancels remove from the marketplace immediately. Orders are never deleted (cancel is read-only + audited).
+- **Admin Create/Edit-Job sidebars are sticky** (v2.2): supporting requirement on Task 5; fixed-height app shell scrolls admin content internally.
 
 ---
 
@@ -198,10 +219,13 @@ If a meeting raises any of these, it is **already decided** — cite it and mark
 - Admin may **permanently delete Draft only**; other statuses use cancel/revert/special-case.
 - Driver **acceptance is atomic** — only one driver can accept a Published job.
 - Before acceptance, marketplace shows **reduced data** (rough region, distance, dates/windows, vehicle type, axle type, offer/price). Full detail only after acceptance/assignment.
-- After acceptance, a driver **cannot casually return** a tour — must use **Report Problem** (⚠️ exact Cancel Order vs Not Performable **timing/availability** across pickup/delivery is **under decision** — see OQ-17).
-- **Not Performable → Special Case**; admin decides continue / republish / administrative-close / cancel.
+- After acceptance, a driver **cannot casually return** a tour — must use **Report Problem** → **Cancel order** (`cancelled_by_sp`) or **Report empty run** (`empty_run_reported`). Both booked-only, ⚠-gated, ≥30-char reason, slide-to-confirm (v2.4). *(Residual phase-gating question — see OQ-17.)*
+- **Empty run → admin review → Recognised / Not recognised** (both terminal); not-recognised does **not** reactivate the order. This supersedes the old "Not Performable → Special Case" routing (`special_case` retained only as a legacy umbrella).
+- **Two cancellation actors:** the **service partner** cancels (`cancelled_by_sp`, no auto-republish, no fee processing) or **Autheon/admin** cancels (`cancelled_by_autheon`); admin cancel of a **booked** order notifies the partner and honours the cutoff policy, **unbooked** cancels are immediate. Orders are never deleted — cancelled tours are read-only and kept in history.
+- **Admin can edit an active (booked) order** (driver-visible notes + offer); the partner is notified with the **actual changed values** and the audit stores previous→new per field. **Duplicate order** creates a new draft with a new order number (not in marketplace until Publish).
+- **Internal admin notes** (v2.4): admin-only, timestamped, permanent; never shown to the driver.
 - **Performed ≠ documents/settlement complete.** Document review + settlement are separate state machines.
-- Drivers get **no workflow emails**; PWA + push only (⚠️ an optional post-booking driver email is **under decision** — see OQ-14; rule unchanged until then). Admins get **email alerts** for critical events.
+- Drivers get **no workflow emails**; PWA + push only (⚠️ an optional post-booking driver email is **under decision** — see OQ-14; rule unchanged until then). **Transactional account emails do exist** (v2.3 email-change code + old-inbox security notice) — these are account-security, not workflow, so they don't conflict with OQ-14. Admins get **email alerts** for critical events.
 - System must **preserve manual admin control** for edge cases — never hard-block operations just because a rare flow wasn't predicted.
 - V1 = **simple A→B only**; chains represented as separate orders.
 - Cancellation records **actor** (driver / admin / customer), reason code, optional text, timestamp, user.
@@ -211,4 +235,4 @@ If a meeting raises any of these, it is **already decided** — cite it and mark
 
 ## 10. Known risks (connect findings to these when relevant)
 
-Legal wording in the transport-order PDF needs legal review · atomic acceptance must be transaction-safe (double-assignment risk) · rigid software can block rare edge cases (mitigate with Special Case + admin override) · auto-saving one-time addresses bloats master data · document rejection creates a correction loop (make it visible) · finance dashboard is scope-creep risk (keep out of base V1) · PWA push differs Android vs iOS · audit log can bury urgent events (use email alerts) · map/distance API cost + route ambiguity (cache + manual override) · vehicle-condition docs = separate large project (future) · rollout hard for less tech-friendly drivers (start with tech-friendly + keep fallback) · admin-backend state changes must go through controlled business logic · legacy CSV may have errors (glossary only) · **branding unresolved** (client rejects "AUTHEON" as the UI name).
+Legal wording in the transport-order PDF needs legal review · atomic acceptance must be transaction-safe (double-assignment risk) · rigid software can block rare edge cases (mitigate with Special Case + admin override) · auto-saving one-time addresses bloats master data · document rejection creates a correction loop (make it visible) · finance dashboard is scope-creep risk (keep out of base V1) · PWA push differs Android vs iOS · audit log can bury urgent events (use email alerts) · map/distance API cost + route ambiguity (cache + manual override) · vehicle-condition docs = separate large project (future) · rollout hard for less tech-friendly drivers (start with tech-friendly + keep fallback) · admin-backend state changes must go through controlled business logic · legacy CSV may have errors (glossary only) · **branding unresolved** (client rejects "AUTHEON" as the UI name) · **cancellation Terms & Conditions link is a flagged placeholder** (v2.4, OQ-19 — real legal target owed before go-live) · email-change security (v2.3) depends on production code hashing/expiry/throttling + real delivery (prototype simulates these).
