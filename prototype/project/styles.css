@@ -995,6 +995,7 @@ select.input {
 [data-theme="dark"] .phone-shell .tabbar-capsule {
   background: var(--paper);
   border-color: var(--line);
+  box-shadow: var(--sh-2);
 }
 .phone-shell .tabbar-item {
   background: transparent;
