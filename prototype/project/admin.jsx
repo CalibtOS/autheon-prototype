@@ -2382,7 +2382,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
 
       <div className="grid-form-layout">
         {/* TOC */}
-        <aside style={{ position: "sticky", top: 0 }}>
+        <aside>
           <div className="label" style={{ marginBottom: 12 }}>
             {t("newOrderFormSections")}
           </div>
@@ -3082,8 +3082,6 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
         {/* Live preview */}
         <aside
           style={{
-            position: "sticky",
-            top: 0,
             display: "flex",
             flexDirection: "column",
             gap: 14,
