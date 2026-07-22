@@ -1329,7 +1329,7 @@ select.input {
 }
 /* Marketplace-preview Route card (Figma 07/2026): city + dot — dashed
    connector — distance over duration — dashed connector — dot + city.
-   Figma colors mapped to tokens: #2563EB→--primary, #1E293B→--ink,
+   Figma colors mapped to tokens: primary blue→--primary, #1E293B→--ink,
    #CBD5E1→--line-dash, #6B7280→--muted, #111827/#1F2937→--text. */
 .phone-shell .detail-route-row {
   display: flex;

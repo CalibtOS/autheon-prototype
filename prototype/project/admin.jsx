@@ -1034,8 +1034,84 @@ const EmptyRunReviewPanel = ({ job, showToast }) => {
         </p>
       ) : null}
       {evidence.length > 0 ? (
-        <div className="label" style={{ marginTop: 10 }}>
-          {t("adminSpecialCaseEvidence")}: {evidence.length}
+        <div style={{ marginTop: 12 }}>
+          <div className="label" style={{ marginBottom: 8 }}>
+            {t("adminSpecialCaseEvidence")}: {evidence.length}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 10,
+            }}
+          >
+            {evidence.map((ev, i) => {
+              const canPreview = ev.isImage && ev.previewUrl;
+              const sizeKb =
+                ev.sizeBytes > 0
+                  ? `${Math.max(1, Math.round(ev.sizeBytes / 1024))} KB`
+                  : "";
+              return canPreview ? (
+                <a
+                  key={ev.id || i}
+                  href={ev.previewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={`${ev.fileName}${sizeKb ? " · " + sizeKb : ""}`}
+                  style={{
+                    display: "block",
+                    width: 84,
+                    height: 84,
+                    borderRadius: 8,
+                    overflow: "hidden",
+                    border: "1px solid var(--line)",
+                    background: "var(--surface-2, #f4f4f5)",
+                  }}
+                >
+                  <img
+                    src={ev.previewUrl}
+                    alt={ev.fileName}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                </a>
+              ) : (
+                <div
+                  key={ev.id || i}
+                  title={ev.fileName}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    gap: 2,
+                    minWidth: 120,
+                    maxWidth: 200,
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1px solid var(--line)",
+                    fontSize: 12,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {ev.fileName}
+                  </span>
+                  <span className="label" style={{ margin: 0 }}>
+                    {ev.mimeType || "file"}
+                    {sizeKb ? " · " + sizeKb : ""}
+                    {ev.isImage && !ev.previewUrl
+                      ? " · " + t("adminEvidenceNoPreview")
+                      : ""}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       ) : null}
       {isPending ? (
@@ -1462,82 +1538,14 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
   );
 };
 
-// ADMIN — Edit active order (Storno-Workflow §7). Admins may change order
-// data on a non-terminal order (including already-booked ones). Saving
+// ADMIN — Edit order (Storno-Workflow §7). Admins may change ALL eligible
+// business data on any non-terminal order (draft, published, or already-booked)
+// through the canonical Create/Edit Job form (`NewOrder`). For a booked order
+// the save routes through store.updateOrderFromForm, which persists immediately,
 // notifies the assigned partner with the actual changed values (no partner
-// re-confirmation) and stores previous + new values in the audit log. This
-// focused editor covers representative fields (driver-visible notes, driver
-// offer); the production editor exposes the full order form — captured in the
-// PRD. Backend persistence/permissions are simulated here.
-const AdminEditActiveOrderModal = ({ job, onClose, onSaved, showToast }) => {
-  const { t } = useI18n();
-  const store = useAuthStore();
-  const [notesDriver, setNotesDriver] = useStateA(job.notesDriver || "");
-  const [driverOffer, setDriverOffer] = useStateA(
-    job.driverOffer != null ? String(job.driverOffer) : "",
-  );
-  const save = () => {
-    const changes = { notesDriver };
-    const parsed = parseFloat(driverOffer);
-    if (Number.isFinite(parsed)) changes.driverOffer = parsed;
-    const r = store.updateActiveOrder(job.id, changes);
-    if (!r.ok) {
-      showToast?.(
-        r.reason === "no_changes"
-          ? t("adminNoChanges") || "No changes to save"
-          : t("adminToastUpdateFailed"),
-        "",
-      );
-      if (r.reason === "no_changes") onClose();
-      return;
-    }
-    showToast?.(
-      t("notifOrderUpdatedTitle", { tour: job.tour }),
-      t("adminEmptyRunDecisionSub", { tour: job.tour }),
-    );
-    onSaved?.();
-  };
-  return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal card" style={{ maxWidth: 480, padding: 22 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600 }}>
-          {t("adminEditActiveOrderTitle")}
-        </h2>
-        <p className="label" style={{ marginBottom: 14 }}>
-          {t("adminEditActiveOrderHint")}
-        </p>
-        <label className="field-label">{t("adminDriverVisibleNotes")}</label>
-        <textarea
-          className="input"
-          rows={3}
-          style={{ width: "100%", marginTop: 6 }}
-          value={notesDriver}
-          onChange={(e) => setNotesDriver(e.target.value)}
-        />
-        <label className="field-label" style={{ marginTop: 14 }}>
-          {t("driverOffer")} (€)
-        </label>
-        <input
-          className="input"
-          style={{ width: "100%", marginTop: 6 }}
-          inputMode="decimal"
-          value={driverOffer}
-          onChange={(e) => setDriverOffer(e.target.value)}
-        />
-        <div
-          style={{ display: "flex", gap: 10, marginTop: 18, justifyContent: "flex-end" }}
-        >
-          <button type="button" className="btn" onClick={onClose}>
-            {t("cancel")}
-          </button>
-          <button type="button" className="btn primary" onClick={save}>
-            {t("adminSaveAndNotify")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+// re-confirmation), audits previous → new per field, and preserves the
+// operational status. There is no separate limited editor — a single form
+// avoids drift with Job Creation.
 
 // =========================================================================
 // ADMIN — DETAIL
@@ -2279,7 +2287,7 @@ const AdminDetailFooter = ({
   // Own the cancel modal here so the footer's Cancel action works standalone
   // (the trigger previously referenced state that lived in AdminDetail).
   const [cancelOpen, setCancelOpen] = useStateA(false);
-  const [editActiveOpen, setEditActiveOpen] = useStateA(false);
+  const canEdit = AuthStore.canAdminEditOrder(job);
   return (
     <>
       {cancelOpen ? (
@@ -2290,14 +2298,6 @@ const AdminDetailFooter = ({
             setCancelOpen(false);
             onCancelled?.(job);
           }}
-          showToast={showToast}
-        />
-      ) : null}
-      {editActiveOpen ? (
-        <AdminEditActiveOrderModal
-          job={job}
-          onClose={() => setEditActiveOpen(false)}
-          onSaved={() => setEditActiveOpen(false)}
           showToast={showToast}
         />
       ) : null}
@@ -2316,7 +2316,7 @@ const AdminDetailFooter = ({
           justifyContent: "flex-end",
         }}
       >
-        {job.status === "draft" && (
+        {canEdit && job.status === "draft" && (
           <button type="button" className="btn" onClick={onEdit}>
             {t("adminEditDraft")}
           </button>
@@ -2357,14 +2357,12 @@ const AdminDetailFooter = ({
               {t("adminReassignDriver")}
             </button>
           )}
-        {/* Edit active order (§7) — change data on a booked order; saving
-            notifies the assigned partner and audits previous + new values. */}
-        {["assigned", "accepted"].includes(job.status) && (
-          <button
-            type="button"
-            className="btn"
-            onClick={() => setEditActiveOpen(true)}
-          >
+        {/* Edit order (§7) — full order form on any non-terminal booked order
+            (published/assigned/accepted/special_case/empty_run_reported). Saving
+            persists immediately, notifies the assigned partner with the actual
+            changed values and audits previous → new, without changing status. */}
+        {canEdit && job.status !== "draft" && (
+          <button type="button" className="btn" onClick={onEdit}>
             {t("adminEditActiveOrder")}
           </button>
         )}
@@ -2471,16 +2469,21 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
   const { t } = useI18n();
   const editingJob = editJobId ? store.getJob(editJobId) : null;
 
+  // Load the full form from ANY editable order — draft OR already-booked
+  // (Storno §7). Terminal orders are never editable (canAdminEditOrder).
   const buildFormState = () => {
     if (editJobId) {
       const j = store.getJob(editJobId);
-      if (j?.status === "draft") {
+      if (j && store.canAdminEditOrder(j)) {
         const mapped = store.jobToDraftForm(j);
         if (mapped) return { ...EMPTY_NEW_ORDER_FORM, ...mapped };
       }
     }
     return { ...EMPTY_NEW_ORDER_FORM };
   };
+  // A booked edit re-uses this exact form but saves through updateOrderFromForm
+  // (persist + notify partner + audit prev→new) instead of the draft path.
+  const isBookedEdit = !!editingJob && editingJob.status !== "draft";
 
   const vehicleTypes = [
     { value: "SUV", label: t("newOrderVtSuv") },
@@ -2698,6 +2701,28 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
           </div>
         </div>
       </div>
+
+      {isBookedEdit && (
+        <div
+          className="card"
+          style={{
+            padding: "12px 16px",
+            marginBottom: 18,
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <Pill status={editingJob.status} className="no-dot">
+            {AuthStore.statusLabel(editingJob.status)}
+          </Pill>
+          <span className="label" style={{ margin: 0, lineHeight: 1.4 }}>
+            {t("adminEditOrderStatusNote", {
+              status: AuthStore.statusLabel(editingJob.status),
+            })}
+          </span>
+        </div>
+      )}
 
       <div className="grid-form-layout">
         {/* TOC */}
@@ -3319,6 +3344,16 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 onChange={(e) => set("notes", e.target.value)}
               />
             </div>
+            <div style={{ marginTop: 14 }}>
+              <label className="field-label">
+                {t("orderFieldNotesDriver")}
+              </label>
+              <textarea
+                className="input"
+                value={form.notesDriver || ""}
+                onChange={(e) => set("notesDriver", e.target.value)}
+              />
+            </div>
           </section>
 
           <section id="sec-07" className="card" style={{ padding: 22 }}>
@@ -3540,8 +3575,33 @@ const NewOrderFooter = ({
   onPublish,
   onAssign,
   valid,
+  bookedEdit,
+  onSaveBookedEdit,
 }) => {
   const { t } = useI18n();
+  // Editing an already-booked order: a single Save action that persists,
+  // notifies the assigned partner and preserves the operational status
+  // (Storno §7). Publish/Assign do not apply to a booked order.
+  if (bookedEdit) {
+    return (
+      <>
+        <span className="label">{t("adminEditOrderSaveHint")}</span>
+        <div style={{ display: "inline-flex", gap: 10, flexWrap: "wrap" }}>
+          <button type="button" className="btn" onClick={onCancel}>
+            {t("newOrderCancel")}
+          </button>
+          <button
+            type="button"
+            className="btn primary"
+            disabled={!valid}
+            onClick={onSaveBookedEdit}
+          >
+            {t("adminSaveAndNotify")}
+          </button>
+        </div>
+      </>
+    );
+  }
   return (
     <>
       <span className="label">{t("newOrderFooterHint")}</span>

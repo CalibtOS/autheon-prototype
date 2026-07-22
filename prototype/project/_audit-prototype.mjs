@@ -196,7 +196,11 @@ const copyFiles = ["i18n.js", "driver.jsx", "admin.jsx", "AUTHEON Prototype.html
 for (const f of copyFiles) {
   const s = file(f);
   for (const bad of staleCopy) {
-    if (s.toLowerCase().includes(bad.toLowerCase())) {
+    let hit = s.toLowerCase().includes(bad.toLowerCase());
+    // "return window" is legacy user-facing copy — must NOT match the JS
+    // expression `return window.<prop>` (e.g. return window.matchMedia(...)).
+    if (bad === "return window") hit = /return window(?!\s*\.)/i.test(s);
+    if (hit) {
       out(`STALE v1.4 copy "${bad}" found in ${f}`);
       process.exitCode = 1;
     }

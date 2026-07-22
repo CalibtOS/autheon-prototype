@@ -2350,10 +2350,15 @@ window.AuthStore = (() => {
           : "",
       distanceKm: job.distanceKm,
       pickupDate: pu.date || "",
+      // Carry the long-form date so a form round-trip preserves the real
+      // pickup datetime (used by the schedule-change cutoff, §13) instead of
+      // clearing it. locationFromForm reads pickupDateLong/deliveryDateLong.
+      pickupDateLong: pu.dateLong || "",
       pickupFrom: pu.windowFrom || "",
       pickupTo: pu.windowTo || "",
       pickupFlex: !!pu.windowFlex,
       deliveryDate: del.date || "",
+      deliveryDateLong: del.dateLong || "",
       deliveryFrom: del.windowFrom || "",
       deliveryTo: del.windowTo || "",
       deliveryFlex: !!del.windowFlex,
@@ -2489,6 +2494,129 @@ window.AuthStore = (() => {
       notes: form.notes,
       notesDriver: form.notesDriver || "",
     };
+  }
+
+  // -----------------------------------------------------------------------
+  // Full order editing (Storno §7). One canonical list of editable business
+  // fields drives the diff, the audit (previous → new per field), and the
+  // partner notification. `dv` (driver-visible) marks which changes may appear
+  // in the assigned partner's notification — internal notes and admin-only
+  // financials are audited but NEVER leaked to the driver (§17).
+  // -----------------------------------------------------------------------
+  function fmtEditWindow(loc) {
+    if (!loc) return "";
+    const from = loc.windowFrom || "";
+    const to = loc.windowTo || "";
+    if (!from && !to) return "";
+    const base = `${from || "?"}–${to || "?"}`;
+    return loc.windowFlex ? `${base} (flex)` : base;
+  }
+  function fmtEditBool(v) {
+    return v ? "Yes" : "No";
+  }
+  const ORDER_EDIT_FIELDS = [
+    { key: "customer", i18n: "orderFieldCustomer", dv: true, get: (j) => j.customerName || j.customer || "" },
+    { key: "category", i18n: "orderFieldCategory", dv: true, get: (j) => j.category || "" },
+    { key: "distanceKm", i18n: "orderFieldDistance", dv: true, get: (j) => (j.distanceKm != null ? j.distanceKm : "") },
+    // Pickup leg
+    { key: "pickupCompany", i18n: "orderFieldPickupCompany", dv: true, get: (j) => j.pickup?.name || "" },
+    { key: "pickupAddress", i18n: "orderFieldPickupAddress", dv: true, get: (j) => [j.pickup?.street, j.pickup?.houseNumber].filter(Boolean).join(" ") },
+    { key: "pickupPostal", i18n: "orderFieldPickupPostal", dv: true, get: (j) => j.pickup?.postalCode || "" },
+    { key: "pickupCity", i18n: "orderFieldPickupCity", dv: true, get: (j) => j.pickup?.city || "" },
+    { key: "pickupCountry", i18n: "orderFieldPickupCountry", dv: true, get: (j) => j.pickup?.country || "" },
+    { key: "pickupContact", i18n: "orderFieldPickupContact", dv: true, get: (j) => j.pickup?.contactPerson || "" },
+    { key: "pickupPhone", i18n: "orderFieldPickupPhone", dv: true, get: (j) => j.pickup?.phone || "" },
+    { key: "pickupAltContact", i18n: "orderFieldPickupAltContact", dv: true, get: (j) => j.pickup?.alternateContactPerson || "" },
+    { key: "pickupSecondPhone", i18n: "orderFieldPickupSecondPhone", dv: true, get: (j) => j.pickup?.secondPhone || "" },
+    { key: "pickupEmail", i18n: "orderFieldPickupEmail", dv: true, get: (j) => j.pickup?.email || "" },
+    { key: "pickupNotes", i18n: "orderFieldPickupNotes", dv: true, get: (j) => j.pickup?.notes || "" },
+    { key: "pickupDate", i18n: "orderFieldPickupDate", dv: true, get: (j) => j.pickup?.date || "" },
+    { key: "pickupWindow", i18n: "orderFieldPickupWindow", dv: true, get: (j) => fmtEditWindow(j.pickup) },
+    // Delivery leg
+    { key: "deliveryCompany", i18n: "orderFieldDeliveryCompany", dv: true, get: (j) => j.delivery?.name || "" },
+    { key: "deliveryAddress", i18n: "orderFieldDeliveryAddress", dv: true, get: (j) => [j.delivery?.street, j.delivery?.houseNumber].filter(Boolean).join(" ") },
+    { key: "deliveryPostal", i18n: "orderFieldDeliveryPostal", dv: true, get: (j) => j.delivery?.postalCode || "" },
+    { key: "deliveryCity", i18n: "orderFieldDeliveryCity", dv: true, get: (j) => j.delivery?.city || "" },
+    { key: "deliveryCountry", i18n: "orderFieldDeliveryCountry", dv: true, get: (j) => j.delivery?.country || "" },
+    { key: "deliveryContact", i18n: "orderFieldDeliveryContact", dv: true, get: (j) => j.delivery?.contactPerson || "" },
+    { key: "deliveryPhone", i18n: "orderFieldDeliveryPhone", dv: true, get: (j) => j.delivery?.phone || "" },
+    { key: "deliveryAltContact", i18n: "orderFieldDeliveryAltContact", dv: true, get: (j) => j.delivery?.alternateContactPerson || "" },
+    { key: "deliverySecondPhone", i18n: "orderFieldDeliverySecondPhone", dv: true, get: (j) => j.delivery?.secondPhone || "" },
+    { key: "deliveryEmail", i18n: "orderFieldDeliveryEmail", dv: true, get: (j) => j.delivery?.email || "" },
+    { key: "deliveryNotes", i18n: "orderFieldDeliveryNotes", dv: true, get: (j) => j.delivery?.notes || "" },
+    { key: "deliveryDate", i18n: "orderFieldDeliveryDate", dv: true, get: (j) => j.delivery?.date || "" },
+    { key: "deliveryWindow", i18n: "orderFieldDeliveryWindow", dv: true, get: (j) => fmtEditWindow(j.delivery) },
+    // Vehicle
+    { key: "vehicleType", i18n: "orderFieldVehicleType", dv: true, get: (j) => j.vehicle || "" },
+    { key: "vehicleModel", i18n: "orderFieldVehicleModel", dv: true, get: (j) => j.vehicleModel || "" },
+    { key: "plate", i18n: "orderFieldPlate", dv: true, get: (j) => j.plate || "" },
+    { key: "vin", i18n: "orderFieldVin", dv: true, get: (j) => j.vin || "" },
+    { key: "axle", i18n: "orderFieldAxle", dv: true, get: (j) => j.axle || "" },
+    { key: "registrationStatus", i18n: "orderFieldRegistrationStatus", dv: true, get: (j) => j.registrationStatus || "" },
+    { key: "electricVehicle", i18n: "orderFieldElectricVehicle", dv: true, get: (j) => fmtEditBool(j.electricVehicle) },
+    { key: "redPlates", i18n: "orderFieldRedPlates", dv: true, get: (j) => fmtEditBool(j.redPlates) },
+    { key: "redPlateNumber", i18n: "orderFieldRedPlateNumber", dv: true, get: (j) => j.redPlateNumber || "" },
+    // Commercial
+    { key: "driverOffer", i18n: "orderFieldDriverOffer", dv: true, get: (j) => (j.driverOffer != null ? j.driverOffer : "") },
+    { key: "expenses", i18n: "orderFieldExpenses", dv: false, get: (j) => (j.expenses != null ? j.expenses : "") },
+    // Notes — driver-visible order note is notifiable; the internal order note
+    // (job.notes) is admin-only and NEVER included in the partner notification.
+    { key: "notesDriver", i18n: "orderFieldNotesDriver", dv: true, get: (j) => j.notesDriver || "" },
+    { key: "notes", i18n: "orderFieldNotesInternal", dv: false, get: (j) => j.notes || "" },
+  ];
+  function flattenOrderBusinessFields(job) {
+    const out = {};
+    for (const f of ORDER_EDIT_FIELDS) out[f.key] = f.get(job);
+    return out;
+  }
+  function diffOrderBusinessFields(before, after) {
+    const diffs = [];
+    for (const f of ORDER_EDIT_FIELDS) {
+      const from = before[f.key];
+      const to = after[f.key];
+      if (String(from ?? "") === String(to ?? "")) continue;
+      diffs.push({
+        field: f.key,
+        label: t2(f.i18n),
+        from: from ?? "",
+        to: to ?? "",
+        driverVisible: f.dv !== false,
+      });
+    }
+    return diffs;
+  }
+  // Shared commit path for every admin order edit (Storno §7.1, §11, §17):
+  // one history row, one audit entry per changed field carrying previous → new,
+  // and ONE combined partner notification containing only driver-visible diffs.
+  function finalizeOrderEdit(job, diffs) {
+    const stamp = nowStamp();
+    job.history = [
+      ...(job.history || []),
+      {
+        st: job.status,
+        at: stamp,
+        by: DEMO_ADMIN,
+        meta: `Order edited: ${diffs.map((d) => d.label || d.field).join(", ")}`,
+      },
+    ];
+    for (const d of diffs) {
+      log("order_edited", DEMO_ADMIN, job.tour, `${d.label || d.field}: "${d.from}" → "${d.to}"`);
+    }
+    const dr = jobDriverRecord(job);
+    const visible = diffs.filter((d) => d.driverVisible !== false);
+    if (dr && visible.length) {
+      const lines = visible
+        .map((d) => `${d.label || d.field}: ${d.from || "—"} → ${d.to || "—"}`)
+        .join("\n");
+      pushDriverNotification({
+        type: "order_updated",
+        jobId: job.id,
+        tour: job.tour,
+        title: t2("notifOrderUpdatedTitle", { tour: job.tour }),
+        body: `${t2("notifOrderUpdatedIntro")}\n${lines}`,
+        driverId: dr.id,
+      });
+    }
   }
 
   function jobWasEverCommitted(job) {
@@ -2661,6 +2789,12 @@ window.AuthStore = (() => {
     isEmptyRunTerminal: (s) => EMPTY_RUN_TERMINAL.includes(s),
     isReadOnlyStatus: (s) => READ_ONLY_STATUSES.includes(s),
     isReadOnlyJob: (job) => !!job && READ_ONLY_STATUSES.includes(job.status),
+    // Single source of truth for admin edit eligibility (Storno §7/§8/§11):
+    // admins may edit ALL business data on any non-terminal order — draft,
+    // published, assigned, accepted, special_case (legacy) and empty_run_reported
+    // (pending review). Terminal states (cancelled_by_sp, cancelled_by_autheon,
+    // empty_run_recognised, empty_run_not_recognised, performed) stay read-only.
+    canAdminEditOrder: (job) => !!job && !READ_ONLY_STATUSES.includes(job.status),
     // Service partner may cancel / report empty run only on a booked order.
     canServicePartnerAct: (job) =>
       !!job && ["assigned", "accepted"].includes(job.status),
@@ -2910,9 +3044,23 @@ window.AuthStore = (() => {
       if (driverState.performedIds.has(j.id)) return true;
       if (driverState.specialCaseIds.has(j.id)) return true;
       if (j.status === "cancelled" && j.driver === curName) return true;
+      // A job stays "mine" across its whole lifecycle when its driver is me —
+      // including the Storno terminal states, so a cancelled/recognised/
+      // not-recognised order remains visible in the driver's My Jobs history
+      // (reviewEmptyRun/cancelJob leave j.driver set but clear the id buckets).
       if (
         j.driver === curName &&
-        ["assigned", "accepted", "special_case", "performed"].includes(j.status)
+        [
+          "assigned",
+          "accepted",
+          "special_case",
+          "performed",
+          "empty_run_reported",
+          "empty_run_recognised",
+          "empty_run_not_recognised",
+          "cancelled_by_sp",
+          "cancelled_by_autheon",
+        ].includes(j.status)
       )
         return true;
       return false;
@@ -3355,12 +3503,27 @@ window.AuthStore = (() => {
       for (const file of list) {
         if (!file || !isAllowedTourDocumentFile(file)) continue;
         const mime = (file.type || guessMimeFromName(file.name) || "").trim();
+        const isImage = /^image\//i.test(mime);
+        // Keep an in-session object URL for image evidence so the admin review
+        // panel can actually display the picture the partner uploaded (the
+        // prototype has no binary storage, so this preview lives only for the
+        // current page session). Non-image / seed evidence has no previewUrl.
+        let previewUrl = "";
+        if (isImage && typeof URL !== "undefined" && URL.createObjectURL) {
+          try {
+            previewUrl = URL.createObjectURL(file);
+          } catch (e) {
+            previewUrl = "";
+          }
+        }
         evidence.push({
           id: `SCE-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           fileName: file.name,
           mimeType: mime || "application/octet-stream",
           sizeBytes: typeof file.size === "number" ? file.size : 0,
           uploadedAt: new Date().toISOString(),
+          isImage,
+          previewUrl,
         });
       }
       return evidence;
@@ -4260,79 +4423,30 @@ window.AuthStore = (() => {
     // notifies the assigned partner with the ACTUAL changed values in ONE
     // combined notification, requires no partner re-confirmation, and stores
     // previous + new values in the audit log.
+    // Low-level flat-field edit primitive (kept for programmatic/test use).
+    // The admin UI edits booked orders through the full order form via
+    // updateOrderFromForm below; both share finalizeOrderEdit.
     updateActiveOrder(id, changes) {
       const j = api.getJob(id);
       if (!j) return { ok: false, reason: "not_found" };
-      if (api.isReadOnlyJob(j))
-        return { ok: false, reason: "read_only" };
+      if (!api.canAdminEditOrder(j)) return { ok: false, reason: "read_only" };
       const diffs = [];
       for (const [field, next] of Object.entries(changes || {})) {
         const prev = j[field];
         if (String(prev ?? "") === String(next ?? "")) continue;
-        diffs.push({ field, from: prev ?? "", to: next ?? "" });
+        diffs.push({ field, label: field, from: prev ?? "", to: next ?? "" });
         j[field] = next;
       }
       if (!diffs.length) return { ok: false, reason: "no_changes" };
-      const stamp = nowStamp();
-      j.history = [
-        ...(j.history || []),
-        {
-          st: j.status,
-          at: stamp,
-          by: DEMO_ADMIN,
-          meta: `Order edited: ${diffs.map((d) => d.field).join(", ")}`,
-        },
-      ];
-      // Audit stores previous + new for every changed field (§7.1, §11).
-      for (const d of diffs) {
-        log(
-          "order_edited",
-          DEMO_ADMIN,
-          j.tour,
-          `${d.field}: "${d.from}" → "${d.to}"`,
-        );
-      }
-      // One combined push + in-app notification to the assigned partner.
-      const dr = jobDriverRecord(j);
-      if (dr) {
-        const lines = diffs
-          .map((d) => `${d.field}: ${d.from || "—"} → ${d.to || "—"}`)
-          .join("\n");
-        pushDriverNotification({
-          type: "order_updated",
-          jobId: id,
-          tour: j.tour,
-          title: t2("notifOrderUpdatedTitle", { tour: j.tour }),
-          body: `${t2("notifOrderUpdatedIntro")}\n${lines}`,
-          driverId: dr.id,
-        });
-      }
+      finalizeOrderEdit(j, diffs);
       emit();
       return { ok: true, diffs };
     },
 
-    saveDraft(form) {
-      const compareTimes =
-        window.InputFormatters?.compareTimeStrings || (() => 0);
-      if (
-        form.pickupFrom &&
-        form.pickupTo &&
-        compareTimes(form.pickupFrom, form.pickupTo) > 0
-      ) {
-        return { error: "cross_midnight_window", leg: "pickup" };
-      }
-      if (
-        form.deliveryFrom &&
-        form.deliveryTo &&
-        compareTimes(form.deliveryFrom, form.deliveryTo) > 0
-      ) {
-        return { error: "cross_midnight_window", leg: "delivery" };
-      }
-      const editId = String(form.jobId || form.id || "").trim();
-      const opId = form.customerId || "";
-      const op =
-        customers.find((x) => x.id === opId) ||
-        customers.find((x) => x.name === form.customer);
+    // Persist optional "save/update address to master data" checkboxes from the
+    // order form. Shared by saveDraft (create/edit draft) and updateOrderFromForm
+    // (edit booked order) so the behaviour never drifts between the two paths.
+    _persistFormMasterAddresses(form) {
       if (form.updatePickupMaster && form.pickupLocationId) {
         api.updateAddress(form.pickupLocationId, {
           label: form.startCompany || undefined,
@@ -4397,6 +4511,104 @@ window.AuthStore = (() => {
           notes: form.deliveryContactNotes,
         });
       }
+    },
+
+    // Full order edit from the canonical Create/Edit Job form (Storno §7).
+    // Edits ALL eligible business fields on any non-terminal order — including
+    // already-booked (assigned/accepted) orders — without changing the
+    // operational status and without requiring partner re-confirmation.
+    updateOrderFromForm(id, form) {
+      const j = api.getJob(id);
+      if (!j) return { ok: false, reason: "not_found" };
+      if (!api.canAdminEditOrder(j)) return { ok: false, reason: "read_only" };
+      const compareTimes =
+        window.InputFormatters?.compareTimeStrings || (() => 0);
+      if (
+        form.pickupFrom &&
+        form.pickupTo &&
+        compareTimes(form.pickupFrom, form.pickupTo) > 0
+      ) {
+        return { ok: false, reason: "cross_midnight_window", leg: "pickup" };
+      }
+      if (
+        form.deliveryFrom &&
+        form.deliveryTo &&
+        compareTimes(form.deliveryFrom, form.deliveryTo) > 0
+      ) {
+        return { ok: false, reason: "cross_midnight_window", leg: "delivery" };
+      }
+      // Schedule-cutoff policy applies ONLY to schedule changes on a committed
+      // order (§13). Non-schedule fields (vehicle, contacts, notes, offer) stay
+      // editable regardless of the cutoff.
+      const scheduleChanged =
+        jobWasEverCommitted(j) &&
+        formScheduleSnapshot(form) !== jobScheduleSnapshot(j);
+      if (scheduleChanged) {
+        const policy = api.checkScheduleChangePolicy(j, {
+          overrideNote: form.scheduleOverrideNote,
+        });
+        if (!policy.ok) {
+          return {
+            ok: false,
+            reason: policy.reason,
+            minHours: policy.minHours,
+            hoursRemaining: policy.hoursRemaining,
+          };
+        }
+        if (policy.policyOverride) {
+          log(
+            "policy_override",
+            DEMO_ADMIN,
+            j.tour,
+            `Schedule change inside cutoff: ${form.scheduleOverrideNote}`,
+          );
+        }
+      }
+      api._persistFormMasterAddresses(form);
+      const fields = composeDraftFieldsFromForm(form);
+      // Diff on a clone so an all-unchanged save does not mutate the order.
+      const before = flattenOrderBusinessFields(j);
+      const working = JSON.parse(JSON.stringify(j));
+      Object.assign(working, fields);
+      if (!working.distanceKm) working.distanceKm = estimateDistanceKm(working);
+      syncDisplayFields(working);
+      const after = flattenOrderBusinessFields(working);
+      const diffs = diffOrderBusinessFields(before, after);
+      if (!diffs.length) return { ok: false, reason: "no_changes" };
+      // Commit: workflow status, cancellation records and empty-run/status
+      // history are untouched — this is a pure business-data edit (§19).
+      Object.assign(j, fields);
+      if (!j.distanceKm) j.distanceKm = estimateDistanceKm(j);
+      syncDisplayFields(j);
+      processPendingAdminAttachments(j.id, form);
+      finalizeOrderEdit(j, diffs);
+      emit();
+      return { ok: true, diffs };
+    },
+
+    saveDraft(form) {
+      const compareTimes =
+        window.InputFormatters?.compareTimeStrings || (() => 0);
+      if (
+        form.pickupFrom &&
+        form.pickupTo &&
+        compareTimes(form.pickupFrom, form.pickupTo) > 0
+      ) {
+        return { error: "cross_midnight_window", leg: "pickup" };
+      }
+      if (
+        form.deliveryFrom &&
+        form.deliveryTo &&
+        compareTimes(form.deliveryFrom, form.deliveryTo) > 0
+      ) {
+        return { error: "cross_midnight_window", leg: "delivery" };
+      }
+      const editId = String(form.jobId || form.id || "").trim();
+      const opId = form.customerId || "";
+      const op =
+        customers.find((x) => x.id === opId) ||
+        customers.find((x) => x.name === form.customer);
+      api._persistFormMasterAddresses(form);
 
       const fields = composeDraftFieldsFromForm(form);
 
