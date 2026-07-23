@@ -1471,7 +1471,9 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
               maxLength={5}
               aria-label={t("pickupExample")}
               value={local.startPlz || ""}
-              onChange={(e) => setLocal({ ...local, startPlz: e.target.value })}
+              onChange={(e) =>
+                setLocal({ ...local, startPlz: e.target.value.replace(/\D/g, "") })
+              }
             />
             <input
               className="input"
@@ -1480,7 +1482,9 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
               maxLength={5}
               aria-label={t("deliveryExample")}
               value={local.endPlz || ""}
-              onChange={(e) => setLocal({ ...local, endPlz: e.target.value })}
+              onChange={(e) =>
+                setLocal({ ...local, endPlz: e.target.value.replace(/\D/g, "") })
+              }
             />
           </div>
 
@@ -5013,7 +5017,11 @@ const ProfilePaneFull = () => {
                 type="text"
                 className="postal-chip-input"
                 value={postalText}
-                onChange={(e) => setPostalText(e.target.value)}
+                inputMode="numeric"
+                maxLength={5}
+                onChange={(e) =>
+                  setPostalText(e.target.value.replace(/\D/g, ""))
+                }
                 onKeyDown={handleKeyDown}
                 onBlur={handleBlur}
                 placeholder={
