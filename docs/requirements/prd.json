@@ -1,7 +1,7 @@
 {
   "feature": "Vehicle Transport Platform Phase 1 - working app name configurable",
-  "version": "PRD v2.5 - Full admin order-editing implementation + Storno consistency pass: the prototype now implements editing of ALL eligible business data on any non-terminal order (draft/published/assigned/accepted/special_case/empty_run_reported) via the canonical Create/Edit Job form (store.updateOrderFromForm) — persist immediately, notify the assigned partner of the actual driver-visible changed values in one combined notification, audit previous→new per field, preserve status, no re-confirmation; one canAdminEditOrder() eligibility policy; terminal states read-only. Consistency pass reconciled tasks 12/13/14/16/20/22/26/32, the operational-status enum, notification_channels_matrix (order_updated_after_booking + empty_run_reported/recognised/not_recognised), resolved_defaults, prototype_coverage_notes and prototype_validation (now PASS v2.4/v2.5). Schema: added empty_run_evidence (§3.2 optional attachments) + the previously-missing sp_cancellations/empty_run_reports/internal_notes/email_change_requests FK relationships; special_case + problem_type.not_performable are legacy/read-only only (ignore the special case). Bug fixes: admin empty-run review now displays uploaded evidence; notification-feed Open-tour navigates to job detail. [v2.4] Order cancellation & empty-run workflow (T2): separate service-partner Cancel-order and Report-empty-run flows (⚠ entry, 4/6 reasons, ≥30-char text, slide-to-confirm), admin empty-run review (Recognised/Not recognised), Autheon cancellation of booked/unbooked orders, internal admin notes, FULL edit of any non-terminal order (ALL eligible business data, including already-booked orders, via the canonical Create/Edit Job form → persist + notify the assigned partner of the actual driver-visible changed values + audit previous→new per field + status preserved, no re-confirmation), duplicate order, ⚠ availability rules, and full audit logging; status model = extended enum (cancelled_by_sp, cancelled_by_autheon, empty_run_reported, empty_run_recognised, empty_run_not_recognised) with board umbrella grouping + reason chip; German copy verbatim from Storno-Workflow-1.pdf; T&C link is a flagged placeholder (2026-07-21). [v2.3] Driver self-service email change (T1): email moves out of ops-managed master data into a driver-owned 'Account & sign-in' card; changed self-serve with no ops approval, gated by a 6-digit code sent to the new address (verify, don't approve) — old address stays live until confirmed and is notified on success; verification state + email_change_requests model + driver_email_change_requested/driver_email_changed audit actions added (2026-07-20). [v2.2] Admin Create/Edit Job: left form-section navigation and right live-summary sidebars are sticky within the internally-scrolling form on wide layouts, with independent overflow scroll and a stacked non-sticky fallback below the three-column breakpoint; app shell fixed-height so admin content scrolls internally instead of growing the document (2026-07-20). [v2.1] important vehicle info metadata (registration status, electric vehicle, red license plates) added as optional job fields per Design Direction Board 07/2026 (2026-07-14); probation-only driver UI (legacy limit-request UI removed); automatic immutable sequential driver IDs; same-day per-leg time-window validation; Infopoint separate View/Download actions; branding pack, driver-ID format, Report Problem timing, and production domain flagged for decision (2026-07-10)",
-  "goal": "Replace manual vehicle transport dispatch with a contract-driven Version 1 platform focused on operational order creation, marketplace job distribution, direct assignment, binding driver acceptance, clear Report Problem cancellation and special case flows, external map navigation, address master data, simple push notifications for drivers, admin email alerts for critical events, optional tour-linked document and driver invoice handling, auditability, and a controlled rollout from zero without historical Excel tour migration.",
+  "version": "PRD v2.6 - Legacy special-case model removed: the special_case operational status and problem_type.not_performable are deleted entirely (not just deprecated); the empty-run workflow (empty_run_reported → admin review → empty_run_recognised / empty_run_not_recognised, both terminal, no reactivation) is now the sole driver problem/empty-run path; specialCaseReport→emptyRunReport, seed tour 0846 is now empty_run_reported, admin SpecialCaseResolutionPanel removed (EmptyRunReviewPanel only), i18n/schema/logical-model/context-pack updated (2026-07-23). [v2.5] Full admin order-editing implementation + Storno consistency pass: the prototype now implements editing of ALL eligible business data on any non-terminal order (draft/published/assigned/accepted/special_case/empty_run_reported) via the canonical Create/Edit Job form (store.updateOrderFromForm) — persist immediately, notify the assigned partner of the actual driver-visible changed values in one combined notification, audit previous→new per field, preserve status, no re-confirmation; one canAdminEditOrder() eligibility policy; terminal states read-only. Consistency pass reconciled tasks 12/13/14/16/20/22/26/32, the operational-status enum, notification_channels_matrix (order_updated_after_booking + empty_run_reported/recognised/not_recognised), resolved_defaults, prototype_coverage_notes and prototype_validation (now PASS v2.4/v2.5). Schema: added empty_run_evidence (§3.2 optional attachments) + the previously-missing sp_cancellations/empty_run_reports/internal_notes/email_change_requests FK relationships; special_case + problem_type.not_performable removed in v2.6 (ignore the special case). Bug fixes: admin empty-run review now displays uploaded evidence; notification-feed Open-tour navigates to job detail. [v2.4] Order cancellation & empty-run workflow (T2): separate service-partner Cancel-order and Report-empty-run flows (⚠ entry, 4/6 reasons, ≥30-char text, slide-to-confirm), admin empty-run review (Recognised/Not recognised), Autheon cancellation of booked/unbooked orders, internal admin notes, FULL edit of any non-terminal order (ALL eligible business data, including already-booked orders, via the canonical Create/Edit Job form → persist + notify the assigned partner of the actual driver-visible changed values + audit previous→new per field + status preserved, no re-confirmation), duplicate order, ⚠ availability rules, and full audit logging; status model = extended enum (cancelled_by_sp, cancelled_by_autheon, empty_run_reported, empty_run_recognised, empty_run_not_recognised) with board umbrella grouping + reason chip; German copy verbatim from Storno-Workflow-1.pdf; T&C link is a flagged placeholder (2026-07-21). [v2.3] Driver self-service email change (T1): email moves out of ops-managed master data into a driver-owned 'Account & sign-in' card; changed self-serve with no ops approval, gated by a 6-digit code sent to the new address (verify, don't approve) — old address stays live until confirmed and is notified on success; verification state + email_change_requests model + driver_email_change_requested/driver_email_changed audit actions added (2026-07-20). [v2.2] Admin Create/Edit Job: left form-section navigation and right live-summary sidebars are sticky within the internally-scrolling form on wide layouts, with independent overflow scroll and a stacked non-sticky fallback below the three-column breakpoint; app shell fixed-height so admin content scrolls internally instead of growing the document (2026-07-20). [v2.1] important vehicle info metadata (registration status, electric vehicle, red license plates) added as optional job fields per Design Direction Board 07/2026 (2026-07-14); probation-only driver UI (legacy limit-request UI removed); automatic immutable sequential driver IDs; same-day per-leg time-window validation; Infopoint separate View/Download actions; branding pack, driver-ID format, Report Problem timing, and production domain flagged for decision (2026-07-10)",
+  "goal": "Replace manual vehicle transport dispatch with a contract-driven Version 1 platform focused on operational order creation, marketplace job distribution, direct assignment, binding driver acceptance, clear Report Problem cancellation and empty-run flows, external map navigation, address master data, simple push notifications for drivers, admin email alerts for critical events, optional tour-linked document and driver invoice handling, auditability, and a controlled rollout from zero without historical Excel tour migration.",
   "product_context": {
     "platform_type": "Vehicle transport / vehicle relocation operations platform",
     "primary_users": [
@@ -30,8 +30,8 @@
       "Pickup and delivery locations have separate address, contact, date, and time window data.",
       "Acceptance is binding.",
       "Drivers cannot directly reject directly assigned jobs.",
-      "After acceptance, drivers cannot casually return a tour. They use Report Problem behind the ⚠ entry: Cancel order (→ cancelled_by_sp) or Report empty run (→ empty_run_reported, admin-reviewed) — the v2.4 Storno flow that supersedes the old Cancel Order / Report-as-Not-Performable split.",
-      "SUPERSEDED (v2.4, Task 32): the empty-run workflow replaces Not-Performable→Special-Case. A reported empty run (empty_run_reported) is reviewed by the admin with exactly two terminal outcomes — Recognised (empty_run_recognised) or Not recognised (empty_run_not_recognised); Not recognised does not reactivate the order and neither outcome cancels it or counts as performed. special_case remains only as a legacy umbrella.",
+      "After acceptance, drivers cannot casually return a tour. They use Report Problem behind the ⚠ entry: Cancel order (→ cancelled_by_sp) or Report empty run (→ empty_run_reported, admin-reviewed) — the v2.4 Storno flow, the sole driver Report Problem path.",
+      "Driver problem reporting uses the empty-run workflow (Task 32): a reported empty run (empty_run_reported) is reviewed by the admin with exactly two terminal outcomes — Recognised (empty_run_recognised) or Not recognised (empty_run_not_recognised); Not recognised does not reactivate the order and neither outcome cancels it or counts as performed.",
       "Published and Assigned are separate mutually exclusive paths in Phase 1.",
       "Dispatch may return a Published marketplace job to Draft as an admin action to edit, re-publish, or direct-assign.",
       "Admins may cancel, republish, adjust, close, or resolve jobs where operations require it, with full audit history.",
@@ -63,11 +63,11 @@
     "prototype_reference": "prototype/project (single-page HTML/React Babel demo: admin.jsx, driver.jsx, store.js, i18n.js, inputFormatters.js — not production repo layout; maps conceptually to apps/* paths in tasks). Canonical production spec is docs/requirements/prd.json (currently v1.8)."
   },
   "prototype_coverage_notes": [
-    "Driver PWA (demo): marketplace with pull-to-refresh, My Jobs (Active, Performed, Cancelled, Special case), locked preview, slide accept with one-time probation limit (hard block until the required number of Performed jobs; admin manual release; no per-day quota, no limit-increase request) and same-day overlap confirmation sheet, map handoff, Mark as performed, Report Problem (v2.4 Storno ⚠ entry → Cancel order [4 reasons, ≥30-char, binding warning + T&C link, slide-to-confirm → cancelled_by_sp] or Report empty run [6 reasons, ≥30-char, optional evidence, review warning, slide-to-confirm → empty_run_reported]; ⚠ hidden for terminal/pending states), tour-linked document upload on active and performed tours (single upload CTA, categories, rejection reason, replace file), cancelled tour detail shows admin cancellation reason code and driver-facing message, correction badge on Performed tab only, Profile probation status card (progress toward release; no limit meter, no request-higher-limit; hidden after release), Infopoint (General documents with description, date, view/download stub; New messages with read/unread badge; Help tab with dispatcher hotline and email support only — no FAQ accordion), profile with read-only master data, change-request form (blocked while open request pending), push preferences (no driver workflow email).",
-    "Admin (demo): job overview with special case and performed filters, primary New job CTA on Jobs overview (no separate New job sidebar item), job detail with draft delete, cancel modal requiring reason code and driver-facing message (operational cutoff enforced from Settings), optional admin document attach on new/edit draft job (section 07, admin_off_channel), empty-run review (Recognised / Not recognised — the only two admin decisions, both terminal), Autheon cancellation of booked and unbooked orders (→ cancelled_by_autheon), permanent admin-only internal notes (auto-stamped author + timestamp), duplicate order (new draft + new order number, opened in the editor), full edit of ANY non-terminal order through the canonical Create/Edit Job form (persist immediately + notify partner of driver-visible changes + audit previous→new + status preserved), and the legacy special-case resolution panel (Continue / Republish / administrative close / cancel order) retained ONLY for legacy special_case jobs — it does not handle the empty-run flow, distance estimate/recalculate, new order input formatters (date/time blur, VIN/plate normalize, manufacturer datalist, schedule/time-window warnings via inputFormatters.js), full CRUD for customers (all PRD fields, active flag, delete blocked when referenced by tours) and addresses (full location/contact fields, active flag, usage count), new order form with customer select plus pickup/delivery selects from address master data and optional save-to-master checkboxes for manual entry, direct assign and reassign via driver picker (active drivers only), driver daily job limit on driver profile, Settings operational policies (cutoff hours, message min length, schedule change cutoff), driver invoices and documents with review/reject/replace/bulk download (status via pill only, no full-row green highlight), Infopoint admin (General documents: upload stub, add/rename/replace/hide; New messages: publish form with subject, body, date, optional in-app/push notify), separate Drivers and Staff nav modules (not combined Users), Profile change requests nav (open/approved/rejected filters, profile and daily_limit_override requests, Approve & save applies updateDriver then closes request; Reject closes without save), Drivers module driver edit, audit log, admin notification feed with Review request deep-link, admin email alert demo, CSV export. Finance dashboard removed.",
-    "Driver Report Problem (demo, v2.4 Storno): the ⚠ entry opens a sheet with two SEPARATE flows — Cancel order (→ cancelled_by_sp; binding-cost warning + T&C link; 4 reasons; ≥30-char explanation; slide-to-confirm) and Report empty run (→ empty_run_reported; 6 reasons; ≥30-char description; optional never-required evidence; review/no-guarantee warning; slide-to-confirm). Both are booked-only; ⚠ is hidden for terminal states and while an empty-run report is pending review. Supersedes the old 10-character single Cancel-Order slide and the Not-Performable→Special-Case path.",
-    "Publishing (demo): admin revert Published to Draft; publish and direct assign from Draft only (assign opens modal to pick active driver); admin can reassign driver on Assigned, Accepted, or Special case tours; admin can delete Draft jobs from job detail.",
-    "Status model (demo): extended operational-status enum (v2.4) — draft, published, accepted, assigned, performed, plus the Storno statuses cancelled_by_sp, cancelled_by_autheon, empty_run_reported, empty_run_recognised, empty_run_not_recognised; cancelled and special_case retained as legacy umbrellas. No return_requested; \"Completed\" remains a derived display status only. The Jobs board rolls precise statuses up to umbrella columns via statusUmbrella() (display/query grouping ONLY — never a source of workflow truth) with a precise-status reason chip; empty_run_recognised groups under the Performed column for board scanning but is NOT an operational performed transport (it never counts toward probation release or performed-job logic — those use the precise status).",
+    "Driver PWA (demo): marketplace with pull-to-refresh, My Jobs (Active, Performed, Cancelled, Review), locked preview, slide accept with one-time probation limit (hard block until the required number of Performed jobs; admin manual release; no per-day quota, no limit-increase request) and same-day overlap confirmation sheet, map handoff, Mark as performed, Report Problem (v2.4 Storno ⚠ entry → Cancel order [4 reasons, ≥30-char, binding warning + T&C link, slide-to-confirm → cancelled_by_sp] or Report empty run [6 reasons, ≥30-char, optional evidence, review warning, slide-to-confirm → empty_run_reported]; ⚠ hidden for terminal/pending states), tour-linked document upload on active and performed tours (single upload CTA, categories, rejection reason, replace file), cancelled tour detail shows admin cancellation reason code and driver-facing message, correction badge on Performed tab only, Profile probation status card (progress toward release; no limit meter, no request-higher-limit; hidden after release), Infopoint (General documents with description, date, view/download stub; New messages with read/unread badge; Help tab with dispatcher hotline and email support only — no FAQ accordion), profile with read-only master data, change-request form (blocked while open request pending), push preferences (no driver workflow email).",
+    "Admin (demo): job overview with empty-run and performed filters, primary New job CTA on Jobs overview (no separate New job sidebar item), job detail with draft delete, cancel modal requiring reason code and driver-facing message (operational cutoff enforced from Settings), optional admin document attach on new/edit draft job (section 07, admin_off_channel), empty-run review (Recognised / Not recognised — the only two admin decisions, both terminal), Autheon cancellation of booked and unbooked orders (→ cancelled_by_autheon), permanent admin-only internal notes (auto-stamped author + timestamp), duplicate order (new draft + new order number, opened in the editor), full edit of ANY non-terminal order through the canonical Create/Edit Job form (persist immediately + notify partner of driver-visible changes + audit previous→new + status preserved), distance estimate/recalculate, new order input formatters (date/time blur, VIN/plate normalize, manufacturer datalist, schedule/time-window warnings via inputFormatters.js), full CRUD for customers (all PRD fields, active flag, delete blocked when referenced by tours) and addresses (full location/contact fields, active flag, usage count), new order form with customer select plus pickup/delivery selects from address master data and optional save-to-master checkboxes for manual entry, direct assign and reassign via driver picker (active drivers only), driver daily job limit on driver profile, Settings operational policies (cutoff hours, message min length, schedule change cutoff), driver invoices and documents with review/reject/replace/bulk download (status via pill only, no full-row green highlight), Infopoint admin (General documents: upload stub, add/rename/replace/hide; New messages: publish form with subject, body, date, optional in-app/push notify), separate Drivers and Staff nav modules (not combined Users), Profile change requests nav (open/approved/rejected filters, profile and daily_limit_override requests, Approve & save applies updateDriver then closes request; Reject closes without save), Drivers module driver edit, audit log, admin notification feed with Review request deep-link, admin email alert demo, CSV export. Finance dashboard removed.",
+    "Driver Report Problem (demo, v2.4 Storno): the ⚠ entry opens a sheet with two SEPARATE flows — Cancel order (→ cancelled_by_sp; binding-cost warning + T&C link; 4 reasons; ≥30-char explanation; slide-to-confirm) and Report empty run (→ empty_run_reported; 6 reasons; ≥30-char description; optional never-required evidence; review/no-guarantee warning; slide-to-confirm). Both are booked-only; ⚠ is hidden for terminal states and while an empty-run report is pending review. Supersedes the old 10-character single Cancel-Order slide.",
+    "Publishing (demo): admin revert Published to Draft; publish and direct assign from Draft only (assign opens modal to pick active driver); admin can reassign driver on Assigned, Accepted, or empty-run reported tours; admin can delete Draft jobs from job detail.",
+    "Status model (demo): extended operational-status enum (v2.4) — draft, published, accepted, assigned, performed, plus the Storno statuses cancelled_by_sp, cancelled_by_autheon, empty_run_reported, empty_run_recognised, empty_run_not_recognised; cancelled retained as the only legacy umbrella. No return_requested; \"Completed\" remains a derived display status only. The Jobs board rolls precise statuses up to umbrella columns via statusUmbrella() (display/query grouping ONLY — never a source of workflow truth) with a precise-status reason chip; empty_run_recognised groups under the Performed column for board scanning but is NOT an operational performed transport (it never counts toward probation release or performed-job logic — those use the precise status).",
     "Branding (demo): configurable display name default Transport Portal; AUTHEON not shown in UI chrome.",
     "i18n: EN/DE for UI strings; audit log action keys in English.",
     "Seed data: 10 jobs, 5 customers, 17 addresses, 3 drivers (2 active, 1 blocked) with one-time probation limit, tour-linked seed documents on performed and at least one active tour, sample admin email alerts, expanded audit log; validateSeedData() on load checks contacts, addresses, schedules, vehicle IDs, driver offer, history, driverState consistency, and document placement rules aligned with v1.8."
@@ -78,7 +78,7 @@
     "verdict": "PASS v2.4 — prototype synced to PRD v2.4 (Storno). _audit-prototype.mjs, _audit-i18n.js and _verify-seed.mjs all exit 0. Covers the order cancellation & empty-run workflow (SP cancel → cancelled_by_sp; empty-run report → empty_run_reported → admin Recognised/Not recognised; Autheon cancellation of booked/unbooked → cancelled_by_autheon; permanent internal admin notes; duplicate order) AND full admin order editing (§7): admins edit ALL eligible business data on any non-terminal order — including already-booked ones — through the canonical Create/Edit Job form (store.updateOrderFromForm), persisting immediately, notifying the assigned partner of the actual driver-visible changed values, auditing previous→new per changed field, and preserving the operational status with no re-confirmation. Terminal states are read-only via one canAdminEditOrder() policy. Prior v1.7–v2.3 coverage retained.",
     "sync_pass_notes": [
       "Integrated client feedback requiring customer, pickup location, and delivery location separation.",
-      "Replaced return window logic with Report Problem, cancellation, and special case handling.",
+      "Replaced return window logic with Report Problem, cancellation, and empty-run reporting/review handling.",
       "De-scoped full Finance dashboard, vehicle condition documentation, CSV mass import, historical migration, internal map module, and complex tour chains from base V1.",
       "Added address master data, pull to refresh, external map navigation, admin email alerts, Infopoint, driver management, and rollout-from-zero assumptions.",
       "2026-05-21: Admin draft permanent delete; Jobs overview primary New job entry (removed duplicate sidebar nav item); Cancel Order slide gated on min. 10-character explanation with disabled slider styling; special case resolution actions documented as Continue, Republish, administrative close (Performed + settlement Closed), and Cancel order.",
@@ -175,7 +175,6 @@
       "Assigned",
       "Performed",
       "Cancelled (legacy umbrella)",
-      "Special Case (legacy umbrella)",
       "cancelled_by_sp (Storno §2 — service partner cancelled a booked order; terminal)",
       "cancelled_by_autheon (Storno §5 — Autheon/admin cancelled booked or unbooked; terminal)",
       "empty_run_reported (Storno §3 — empty run reported by partner, pending admin review)",
@@ -260,7 +259,7 @@
       "bulk download eligibility",
       "storage reference"
     ],
-    "special_case_reason_examples": [
+    "empty_run_reason_examples": [
       "vehicle not on site",
       "vehicle not roadworthy",
       "vehicle deregistered",
@@ -299,13 +298,13 @@
       "adminNote optional",
       "snapshot at submit: company, address, email, phone"
     ],
-    "special_case_evidence_fields": [
+    "empty_run_evidence_fields": [
       "evidence id",
       "fileName",
       "mimeType",
       "sizeBytes",
       "uploadedAt",
-      "stored on specialCaseReport.evidence for not-performable (prototype: metadata only, no blob storage)"
+      "stored on emptyRunReport.evidence (prototype: metadata only, no blob storage)"
     ],
     "cancellation_reason_codes_v1": [
       "driver_unavailable",
@@ -323,27 +322,25 @@
     "Direct assignment flow: Draft → Assigned → Performed. Document review and settlement are tracked separately after or alongside Performed.",
     "Published → Assigned is not part of Phase 1. If a published job must be changed or reassigned manually, it should return to Draft first through an admin action.",
     "Admin may revert Published → Draft directly. This removes the job from the marketplace and enables edit, re-publish, or direct assignment.",
-    "Admin may permanently delete Draft jobs that were created in error or are no longer needed. Deletion is allowed only while status is Draft; published or committed jobs use cancel, revert, or special-case flows instead.",
+    "Admin may permanently delete Draft jobs that were created in error or are no longer needed. Deletion is allowed only while status is Draft; published or committed jobs use cancel, revert, or empty-run flows instead.",
     "Driver acceptance must be atomic. Only one driver can successfully accept a Published job.",
     "After acceptance or direct assignment, sensitive job details become visible only to the assigned or accepting driver.",
     "Before acceptance, marketplace previews show only reduced data such as rough pickup/delivery region, distance, relevant dates/time windows, vehicle type, axle type, and driver offer and customer price where applicable.",
     "Directly assigned jobs appear in the assigned driver's My Jobs area and do not appear in the marketplace.",
     "Published jobs whose pickup date is before today are expired and must be filtered out of the marketplace listing and marketplace detail; drivers cannot accept them.",
-    "Admin may reassign a different active driver on tours in Assigned, Accepted, or Special Case without changing operational status; reassignment is audited and notifies the tour context.",
+    "Admin may reassign a different active driver on tours in Assigned, Accepted, or empty-run reported without changing operational status; reassignment is audited and notifies the tour context.",
     "Published tours cannot be directly reassigned without returning to Draft first.",
     "Assigned jobs cannot be rejected directly by the driver.",
     "After acceptance, a driver cannot casually return a tour. The driver must use Report Problem.",
-    "Report Problem has two main driver paths: Cancel Order and Report Order as Not Performable.",
+    "Report Problem has two driver paths: Cancel order and Report empty run.",
     "Cancel Order records actor, timestamp, reason, optional free text, optional evidence, and triggers an admin alert.",
-    "Report Order as Not Performable creates Special Case status. Special Case does not automatically cancel the order.",
-    "Admins decide whether a legacy Special Case should continue, be adjusted, be republished, be administratively closed, be billed separately, or be cancelled. These legacy resolution actions apply ONLY to the legacy special_case umbrella; the Task 32 empty-run review is separate and offers ONLY Recognised / Not recognised (both terminal).",
-    "Admins may edit ALL eligible business data of any non-terminal order (draft, published, assigned, accepted, special_case, empty_run_reported) through the canonical Create/Edit Job form (Storno §7). Editing preserves the operational status, persists immediately, notifies the assigned partner with the actual driver-visible changed values in one combined notification (no re-confirmation), and audits previous → new per changed field. Editing business data does not require reverting a Published order to Draft. Internal admin notes and admin-only financials are never included in the partner notification. Edit eligibility is centralised in one canAdminEditOrder() policy.",
+    "Report empty run creates an empty-run report pending review (status empty_run_reported). A reported empty run does not automatically cancel the order; dispatch reviews it (recognised / not recognised).",
+    "Dispatch reviews a reported empty run (empty_run_reported) with exactly two terminal outcomes: Recognised (empty_run_recognised) or Not recognised (empty_run_not_recognised). Not recognised does not reactivate the order, and neither outcome cancels it or counts as a performed transport. Admins may separately Cancel an order (→ cancelled_by_autheon) or Edit/Duplicate it via the standard admin actions.",
+    "Admins may edit ALL eligible business data of any non-terminal order (draft, published, assigned, accepted, empty_run_reported) through the canonical Create/Edit Job form (Storno §7). Editing preserves the operational status, persists immediately, notifies the assigned partner with the actual driver-visible changed values in one combined notification (no re-confirmation), and audits previous → new per changed field. Editing business data does not require reverting a Published order to Draft. Internal admin notes and admin-only financials are never included in the partner notification. Edit eligibility is centralised in one canAdminEditOrder() policy.",
     "Terminal orders are permanently read-only (Storno §8): cancelled_by_sp, cancelled_by_autheon, empty_run_recognised, empty_run_not_recognised and performed cannot be reactivated, edited, reset to a previous status, or directly republished; they stay visible in the backend and the partner history. To reuse a cancelled/terminal order, use Duplicate order (new Draft + new order number, not in the marketplace until explicitly published).",
     "empty_run_recognised is a terminal empty-run resolution, NOT an operational performed transport: it must not increment driver Performed counts, release probation, or trigger performed-specific completion logic. Status-umbrella / board grouping (statusUmbrella) is presentation-only and must never drive probation, completion, cancellation, editing, or transition logic.",
-    "Special case administrative close means operational status Performed with settlement or administrative closure marked Closed — it is not the same as cancelling the order.",
-    "Special case cancel order transitions the job to Cancelled and ends the tour operationally.",
     "Admin creates new jobs from the Jobs overview primary action; Version 1 does not use a separate persistent sidebar navigation item for New job.",
-    "Admins may transition Accepted, Assigned, Performed, or Special Case jobs to Cancelled where operations require it and permissions allow; administrative closure should be tracked through settlement/document closure state rather than treated as normal operational completion.",
+    "Admins may transition Accepted, Assigned, Performed, or empty-run reported jobs to Cancelled where operations require it and permissions allow; administrative closure should be tracked through settlement/document closure state rather than treated as normal operational completion.",
     "Performed means the vehicle transfer was completed operationally. It does not mean all documents, invoices, receipts, or settlement steps are complete.",
     "Document review status is separate from operational job status. Documents can be Missing, Uploaded, Under Review, Accepted, Rejected, or Correction Required.",
     "Settlement or invoice processing state is separate from operational job status and document review status if included in scope.",
@@ -361,7 +358,7 @@
     "Driver visibility before and after acceptance follows driver_visibility_matrix; server-side authorization enforces the matrix.",
     "On first tour-linked document upload after operational Performed, job document_review_summary transitions to Under Review and triggers admin notification per notification_channels_matrix.",
     "Admin lightweight notification feed lists critical operational events in the admin UI; email alerts complement the feed for urgent events.",
-    "Driver in-app notifications inform drivers of tour changes, document review outcomes, special case resolution, and new Infopoint messages without workflow email.",
+    "Driver in-app notifications inform drivers of tour changes, document review outcomes, empty-run review outcomes, and new Infopoint messages without workflow email.",
     "Cancellation attribution records whether cancellation came from driver, admin/dispatching, or customer (client).",
     "Status history for every operational transition records previous status, new status, date/time, triggering user, optional comment, and uploaded evidence reference when applicable.",
     "Pickup and delivery optional contact blocks use progressive disclosure (Add another contact / Show additional contact details) so the default form stays lean.",
@@ -387,7 +384,7 @@
         "Address records support name, street, house number, postal code, city, country, contact person, phone, optional second phone, optional email, notes, and active/archive metadata.",
         "Job entity includes vehicle data, VIN, license plate, axle type using English labels such as driven on own wheels / third-party axle, distance estimate, manual distance override, pricing inputs where operationally needed, and generated PDF reference.",
         "Operational job status is separated from document review status and settlement state.",
-        "Operational statuses include Draft, Published, Accepted, Assigned, Performed, Cancelled, and Special Case.",
+        "Operational statuses include Draft, Published, Accepted, Assigned, Performed, Cancelled, and the Storno statuses cancelled_by_sp, cancelled_by_autheon, empty_run_reported, empty_run_recognised, and empty_run_not_recognised.",
         "Document review statuses include Missing, Uploaded, Under Review, Accepted, Rejected, and Correction Required.",
         "Settlement or invoice processing states include Not Started, Pending, Processed, Paid, Needs Clarification, and Closed if included in scope.",
         "Driver/driver entity includes identity, company/person contact information, status, driver identifier, access state, and notification/filter preferences.",
@@ -416,7 +413,7 @@
         "Exact driver login ceremony is configured in Keycloak and should keep first login simple while still forcing the user to set their own password.",
         "Admin can create admin and driver accounts and can resend or reset driver access.",
         "Admin can manage orders, customers, addresses, drivers, documents, driver invoices, Infopoint content, audit logs, and status decisions according to permissions.",
-        "Driver can access only Published jobs in the marketplace, own Assigned/Accepted/Performed/Cancelled/Special Case jobs where allowed, profile, Information Center/Infopoint, and permitted PDFs/documents.",
+        "Driver can access only Published jobs in the marketplace, own Assigned/Accepted/Performed/Cancelled/empty-run jobs where allowed, profile, Information Center/Infopoint, and permitted PDFs/documents.",
         "Blocked or inactive drivers cannot access marketplace active actions or accept new tours.",
         "Archived or soft-deleted drivers remain linked to historical tours for traceability according to data retention rules.",
         "Unauthorized API calls return safe error messages and never leak sensitive data."
@@ -444,7 +441,7 @@
         "Driver record includes company name, person name, contact data, driver ID, notes, account/access state, and operational status.",
         "Driver statuses include Active, Blocked, Inactive, Archived, and Soft Deleted.",
         "Blocked or inactive drivers cannot accept new tours or use active marketplace actions.",
-        "Admin cannot block, deactivate, archive, or soft-delete a driver while that driver has active tours (assigned, accepted, or special case); activation is always allowed.",
+        "Admin cannot block, deactivate, archive, or soft-delete a driver while that driver has active tours (assigned, accepted, or empty-run reported); activation is always allowed.",
         "Admin can view a driver's probation state and can manually release a driver from probation for exceptional account-reset cases; manual release is audited (see Task 30).",
         "Historical tours remain linked to archived or soft-deleted drivers.",
         "Hard delete is avoided except for test records or records with no historical activity, subject to compliance rules.",
@@ -543,8 +540,8 @@
       "acceptance": [
         "Publish transitions Draft to Published only after validation.",
         "Direct assign transitions Draft to Assigned only after selecting an eligible active driver through an assign dialog (dropdown or equivalent); blocked, inactive, archived, or soft-deleted drivers are not selectable.",
-        "Admin can reassign a different active driver on tours in Assigned, Accepted, or Special Case; reassignment updates driver id and display name, preserves operational status, records status history and audit log, and must not allow selecting the already-assigned driver.",
-        "Reassign is blocked for Draft, Published, Performed, and Cancelled unless business rules route through revert or special-case flows first.",
+        "Admin can reassign a different active driver on tours in Assigned, Accepted, or empty-run reported; reassignment updates driver id and display name, preserves operational status, records status history and audit log, and must not allow selecting the already-assigned driver.",
+        "Reassign is blocked for Draft, Published, Performed, and Cancelled unless business rules route through revert first.",
         "Assigned jobs do not appear in the marketplace.",
         "Published jobs appear only as reduced previews in the marketplace.",
         "Published to Assigned without Draft is blocked in Phase 1 unless the job is returned to Draft first.",
@@ -637,7 +634,7 @@
         "Acceptance uses atomic database logic so exactly one driver can win.",
         "Success transitions Published to Accepted and assigns the accepting driver.",
         "Success removes job from marketplace for other drivers.",
-        "After acceptance, the driver cannot casually return the tour and must use Report Problem for cancellation or not performable cases.",
+        "After acceptance, the driver cannot casually return the tour and must use Report Problem for cancellation or empty-run cases.",
         "Failure state shows a clear message such as job already taken."
       ],
       "status": "pending",
@@ -650,17 +647,17 @@
       "id": 10,
       "epic": "My Jobs",
       "priority": 10,
-      "story": "As a driver, I want to manage my assigned, accepted, performed, cancelled, and special-case tours in My Jobs.",
+      "story": "As a driver, I want to manage my assigned, accepted, performed, cancelled, and empty-run tours in My Jobs.",
       "acceptance": [
         "My Jobs includes Active and Performed/History sections or tabs.",
         "Active includes Assigned and Accepted jobs.",
         "Performed jobs move to a Performed or History area after the driver reports operational completion.",
         "Cancelled jobs are either shown in a separate tab or clearly labelled historical section if required by final UX.",
-        "Special Case jobs remain visible to the assigned driver with clear status and next-step messaging until admin resolves them.",
+        "Reported empty-run jobs (empty_run_reported) remain visible to the assigned driver with clear status and next-step messaging until admin reviews them.",
         "Jobs requiring document correction show a correction indicator on Performed tours only, not on Active (assigned/accepted) tours.",
         "Each job card shows route summary, date/time, vehicle type, driver offer and customer price where applicable, and status badge.",
-        "Driver sees only own assigned, accepted, performed, cancelled, or special-case jobs.",
-        "Driver in-app notification or badge surfaces document rejection, admin cancellation, and special case resolution on affected tours in My Jobs."
+        "Driver sees only own assigned, accepted, performed, cancelled, or empty-run jobs.",
+        "Driver in-app notification or badge surfaces document rejection, admin cancellation, and empty-run review outcomes on affected tours in My Jobs."
       ],
       "status": "pending",
       "files": [
@@ -692,26 +689,26 @@
     },
     {
       "id": 12,
-      "epic": "Report Problem, Cancellation & Special Case",
+      "epic": "Report Problem, Cancellation & Empty Run",
       "priority": 12,
-      "story": "As a driver with an active tour, I want to report cancellation or not-performable problems so dispatch can decide without relying on the old return-window logic.",
+      "story": "As a driver with an active tour, I want to report cancellation or empty-run problems so dispatch can decide without relying on the old return-window logic.",
       "acceptance": [
         "Old time-dependent return window logic is replaced by Report Problem.",
         "After acceptance, the driver cannot casually return a tour.",
-        "Report Problem provides two main paths: Cancel Order and Report Order as Not Performable.",
+        "Report Problem provides two paths: Cancel order and Report empty run.",
         "Cancel Order requires clear confirmation such as slide-to-confirm and warning that cancellation after acceptance may trigger costs or further consequences according to applicable terms and conditions.",
         "Cancel Order slide-to-confirm stays visually disabled until the driver enters at least 10 characters in the required explanation field; character count shows progress (e.g. x/10).",
-        "Report Order as Not Performable uses a standard Submit action after reason and explanation; it does not use the cancel slide control.",
+        "Report empty run uses a reason selection, a mandatory description, and a slide-to-confirm submission (Leerfahrt melden).",
         "Cancellation records actor, timestamp, cancellation type, selected reason, optional free text, and optional evidence.",
         "Cancellation reasons include driver unavailable, vehicle not available, customer cancelled order, appointment no longer possible, incorrect order data, vehicle not roadworthy, and other reason.",
         "Admin receives an alert when a driver cancellation is submitted.",
-        "Report Order as Not Performable requires reason selection, optional description, and optional evidence upload such as photos, waiting time evidence, drop-off receipt, delivery note, or other documents.",
-        "Report Order as Not Performable transitions the job to Special Case. SUPERSEDED by Task 32 (Storno): the service-partner flow is now Report empty run → empty_run_reported → admin Recognised/Not recognised (both terminal); special_case is retained only as a legacy umbrella and the empty-run flow no longer routes through it. The 10-character Cancel-Order minimum is likewise superseded by the Storno ≥30-character explanation.",
-        "Special Case does not automatically cancel the job.",
-        "Admin decides whether the job continues, is adjusted, is republished, is billed separately, is closed, or is cancelled.",
-        "Driver-facing copy reinforces immediate reporting of delays, accidents, anomalies, cancellation, or not-performable conditions to dispatch.",
+        "Report empty run requires reason selection, a mandatory description (at least 30 characters), and optional evidence upload such as photos, waiting time evidence, drop-off receipt, delivery note, or other documents; evidence is never required to submit.",
+        "Report empty run transitions the job to empty_run_reported (pending admin review); the admin then decides Recognised (empty_run_recognised) or Not recognised (empty_run_not_recognised), both terminal. The Cancel-order explanation minimum is at least 30 characters (Storno).",
+        "A reported empty run does not automatically cancel the job; dispatch reviews it (recognised / not recognised).",
+        "The admin resolves a reported empty run with exactly two terminal decisions — Recognised or Not recognised — and neither reactivates nor performs the order; separate admin Cancel/Edit/Duplicate actions remain available.",
+        "Driver-facing copy reinforces immediate reporting of delays, accidents, anomalies, cancellation, or empty-run conditions to dispatch.",
         "Driver cannot directly reject assigned jobs.",
-        "Report Order as Not Performable reason examples include vehicle not on site, vehicle not roadworthy, vehicle deregistered, red license plates required, contact person not reachable, wrong address, waiting time, empty trip/deadhead trip, damage to the vehicle, missing documents, vehicle data mismatch, and other clarification required.",
+        "Report empty run reason examples include vehicle not on site, vehicle not roadworthy, vehicle deregistered, red license plates required, contact person not reachable, wrong address, waiting time, empty trip/deadhead trip, damage to the vehicle, missing documents, vehicle data mismatch, and other clarification required.",
         "Report Problem should have a clear label and icon treatment in the tour detail UI so drivers can find it quickly."
       ],
       "status": "pending",
@@ -719,29 +716,28 @@
         "apps/driver-pwa/src/jobs/report-problem.tsx",
         "services/jobs/report-problem.ts",
         "services/jobs/cancellation.ts",
-        "services/jobs/special-case.ts"
+        "services/jobs/empty-run.ts"
       ]
     },
     {
       "id": 13,
-      "epic": "Admin Special Case & Cancellation Resolution",
+      "epic": "Admin Empty-Run Review & Cancellation Resolution",
       "priority": 13,
-      "story": "As an admin, I want to review cancellations and special cases with notes and evidence so operations stay controlled.",
+      "story": "As an admin, I want to review cancellations and reported empty runs with notes and evidence so operations stay controlled.",
       "acceptance": [
         "Admin can view Report Problem submissions including job, driver, selected path, reason, free text, evidence file metadata (photos, receipts, PDFs), timestamp, and current status.",
         "Admin can accept or finalize a driver cancellation.",
-        "Admin can republish a cancelled or special-case tour where business rules allow it.",
-        "Admin can adjust job data and continue the tour where business rules allow it.",
-        "Admin can resolve a special case with distinct outcomes: Continue (restore operational status to statusBeforeSpecialCase stored when the driver reported not performable — typically Assigned or Accepted, not always Assigned), Republish (return to Published marketplace), Administrative close (Performed with settlement/administrative Closed — case finished without treating as a driver cancellation), or Cancel order (Cancelled).",
-        "UI labels must distinguish administrative close from cancel order and from dismissing a dialog (production copy should not use ambiguous Close alone for administrative close).",
+        "Admin can edit order data on any non-terminal order via the canonical Create/Edit Job form where business rules allow it (see Task 32 §7).",
+        "Admin resolves a reported empty run (empty_run_reported) with exactly two terminal outcomes: Recognised (empty_run_recognised) or Not recognised (empty_run_not_recognised). Neither reactivates the order or counts as a performed transport, and Not recognised specifically does not reactivate it.",
+        "UI labels must clearly distinguish the two empty-run decisions (Recognised / Not recognised) from an order cancellation and from merely dismissing a dialog.",
         "Admin can add decision notes.",
         "Decision is reflected in status history and audit log.",
-        "Special case resolution must preserve manual control and must not block exceptional operational decisions. Task 32 (Storno) empty-run review is SEPARATE: an empty_run_reported order is resolved ONLY by the two admin decisions Recognised / Not recognised (both terminal) — the legacy special-case actions (Continue, Republish, administrative close, Cancel order) do NOT apply to empty_run_reported, and Not recognised does not reactivate the order."
+        "Empty-run review must preserve manual control and must not block exceptional operational decisions. An empty_run_reported order is resolved ONLY by the two admin decisions Recognised / Not recognised (both terminal); Not recognised does not reactivate the order. Cancelling, editing, or duplicating an order are separate admin actions (see Task 32)."
       ],
       "status": "pending",
       "files": [
-        "apps/admin/src/jobs/special-cases/",
-        "services/jobs/special-case-decision.ts",
+        "apps/admin/src/jobs/empty-run-review/",
+        "services/jobs/empty-run-review.ts",
         "services/jobs/cancellation-decision.ts"
       ]
     },
@@ -751,10 +747,10 @@
       "priority": 14,
       "story": "As an admin, I want to cancel jobs when operations require it and keep clear cancellation attribution.",
       "acceptance": [
-        "Admin can transition Published, Accepted, Assigned, Performed, or Special Case jobs to Cancelled where business rules and operational policies allow.",
+        "Admin can transition Published, Accepted, Assigned, Performed, or empty-run reported jobs to Cancelled where business rules and operational policies allow.",
         "Draft jobs are permanently deleted rather than cancelled; cancelled status applies only after a job has left Draft.",
         "Backend records whether cancellation came from driver, admin/dispatching, or customer.",
-        "Admin cancellation (including special-case Cancel order when a driver was assigned or had accepted) requires a cancellation reason code and a driver-facing message stored in cancellation_reason_text; message minimum length follows cancellation.policies app setting (default 20 characters).",
+        "Admin cancellation (when a driver was assigned or had accepted) requires a cancellation reason code and a driver-facing message stored in cancellation_reason_text; message minimum length follows cancellation.policies app setting (default 20 characters).",
         "When a driver was assigned or had accepted the tour, the driver-facing message and reason code are visible on the cancelled tour detail and included in order_cancelled_by_autheon in-app/push notification body.",
         "Admin cancel is blocked inside the configured minimum hours before pickup window start unless an authorized override with audit note is used when allowPolicyOverrideWithAuditNote is enabled.",
         "Cancelled jobs are excluded from active marketplace and active driver job lists.",
@@ -776,8 +772,8 @@
       "acceptance": [
         "Table includes customer, pickup/delivery route, driver, operational status, document review summary, vehicle, date/time windows, distance, and financial/payment indicators only where feasible and in scope.",
         "Table distinguishes operational status from document review status and settlement state.",
-        "Table supports filtering and sorting by operational status, date, driver, customer, pickup/delivery postal code, and special case state at minimum.",
-        "Critical events such as cancellation, problem case, and not-performable order are visually highlighted or accessible through admin alerts.",
+        "Table supports filtering and sorting by operational status, date, driver, customer, pickup/delivery postal code, and empty-run state at minimum.",
+        "Critical events such as cancellation, problem case, and reported empty run are visually highlighted or accessible through admin alerts.",
         "Export or column mapping can align with legacy spreadsheet headers where Phase 1 needs continuity, but CSV mass import is not part of Version 1.",
         "Desktop list remains usable at high volume via pagination, density controls, or equivalent.",
         "Rows navigate to job detail.",
@@ -795,19 +791,19 @@
       "id": 16,
       "epic": "Admin Job Detail",
       "priority": 16,
-      "story": "As an admin, I want job detail with full operational data, assignment, status history, PDF, document review state, special cases, and basic financial fields if in scope.",
+      "story": "As an admin, I want job detail with full operational data, assignment, status history, PDF, document review state, empty-run reports, and basic financial fields if in scope.",
       "acceptance": [
         "Shows customer, pickup location, delivery location, contacts, time windows, vehicle data, distance estimate, manual distance override, pricing inputs where in scope, driver, notes, and document data.",
         "Shows operational status, document review summary, settlement state if included, and status history timeline separately.",
         "Shows generated PDF and regeneration action where allowed.",
-        "Shows Report Problem, cancellation, and Special Case state if present.",
+        "Shows Report Problem, cancellation, and empty-run report state if present.",
         "Shows uploaded documents and driver invoices linked to the tour if document/invoice module is included.",
         "Shows basic financial fields only where operationally needed; full Finance dashboard is not base V1 unless separately confirmed.",
         "Operational auxiliary fields from legacy spreadsheet may be supported or stubbed for export continuity, but historical Excel tour migration is out of scope.",
-        "Admin can edit ALL eligible business data on any non-terminal order — draft, published, and already-booked (assigned/accepted/special_case/empty_run_reported) — through the same canonical Create/Edit Job form; terminal orders (cancelled_by_sp, cancelled_by_autheon, empty_run_recognised, empty_run_not_recognised, performed) are read-only. Editing a booked order persists immediately, notifies the assigned partner of the actual changed values, audits previous→new per field, and preserves the operational status (Storno §7). Editing business data does NOT require returning a Published order to Draft; Return to Draft remains a separate action only for switching marketplace publication to direct assignment / reverting publication.",
+        "Admin can edit ALL eligible business data on any non-terminal order — draft, published, and already-booked (assigned/accepted/empty_run_reported) — through the same canonical Create/Edit Job form; terminal orders (cancelled_by_sp, cancelled_by_autheon, empty_run_recognised, empty_run_not_recognised, performed) are read-only. Editing a booked order persists immediately, notifies the assigned partner of the actual changed values, audits previous→new per field, and preserves the operational status (Storno §7). Editing business data does NOT require returning a Published order to Draft; Return to Draft remains a separate action only for switching marketplace publication to direct assignment / reverting publication.",
         "Admin can delete Draft jobs permanently (hard delete or equivalent soft-delete hidden from operational lists); deletion is blocked once the job leaves Draft.",
         "Published jobs show Return to Draft in admin actions; after revert, Draft actions such as edit, publish, and assign apply.",
-        "Draft and detail footers expose Assign driver; Assigned, Accepted, and Special case expose Reassign driver; both open the same driver picker pattern.",
+        "Draft and detail footers expose Assign driver; Assigned, Accepted, and empty-run reported expose Reassign driver; both open the same driver picker pattern.",
         "Assigned driver card shows name and driver id when set.",
         "Admin can manually override distance and optionally recalculate distance if pickup or delivery addresses change."
       ],
@@ -924,14 +920,14 @@
         "Notifications are not sent for directly assigned jobs unless separately confirmed by client.",
         "Admin audit log remains useful but is not enough for urgent operational events.",
         "Admin critical alerts in Version 1 can be sent as system emails with deep links to the relevant order.",
-        "Critical admin events include order accepted, cancellation, problem case, not-performable order, uploaded invoice, uploaded receipt/evidence, rejected document follow-up, and performed tour.",
+        "Critical admin events include order accepted, cancellation, problem case, reported empty run, uploaded invoice, uploaded receipt/evidence, rejected document follow-up, and performed tour.",
         "Full backend notification center is future scope unless the selected backend platform makes it trivial.",
         "Android support is validated.",
         "iOS support is documented as requiring compatible iOS version, home-screen installation, and user permission.",
         "Notification sending is logged or traceable.",
         "Admin critical alerts may include master data change requested if a driver profile or master-data change request flow is implemented.",
         "Version 1 includes a lightweight admin notification feed in the admin UI listing critical events from notification_channels_matrix; full backend notification center remains future scope.",
-        "Driver in-app + push notifications cover order cancelled by Autheon, document accepted or rejected with reason, special case processed, new Infopoint message, and the Storno events (v2.4): order updated after booking (one combined notification listing the actual driver-visible previous → new values; no re-confirmation), empty run recognised, and empty run not recognised — all per notification_channels_matrix.",
+        "Driver in-app + push notifications cover order cancelled by Autheon, document accepted or rejected with reason, empty-run review outcomes (recognised / not recognised), new Infopoint message, and the Storno events (v2.4): order updated after booking (one combined notification listing the actual driver-visible previous → new values; no re-confirmation), empty run recognised, and empty run not recognised — all per notification_channels_matrix.",
         "Admin alert when invoice, receipt, or evidence is uploaded again after initial upload (re-upload or replace).",
         "Push notifications for newly published marketplace jobs follow driver toggles; push for direct assignment is off by default in Version 1."
       ],
@@ -971,7 +967,7 @@
       "story": "As the platform owner, I want all important actions logged so the system is traceable.",
       "acceptance": [
         "Audit log records action type, actor, affected entity, timestamp, and relevant metadata.",
-        "Logged actions include job created, changed, published, reverted to draft, directly assigned, job reassigned, accepted, marked performed, cancelled, Report Problem submitted, special case created, special case resolved, admin cancellation decision, document uploaded/replaced/rejected/accepted, driver invoice upload registered/updated/deleted, PDF generated/regenerated, acceptance confirmation, driver created with system-assigned driver ID, driver blocked/inactivated/archived/access reset, driver probation release (automatic or manual), audit log export, admin alert sent, feature flag changes if used, and the Storno actions (v2.4): order_edited (stores the previous AND new value of every changed field), cancelled_by_service_partner, cancelled_by_autheon, empty_run_reported, empty_run_recognised, empty_run_not_recognised, order_duplicated (plus publication of a duplicated order), and internal_note_added.",
+        "Logged actions include job created, changed, published, reverted to draft, directly assigned, job reassigned, accepted, marked performed, cancelled, Report Problem submitted, admin cancellation decision, document uploaded/replaced/rejected/accepted, driver invoice upload registered/updated/deleted, PDF generated/regenerated, acceptance confirmation, driver created with system-assigned driver ID, driver blocked/inactivated/archived/access reset, driver probation release (automatic or manual), audit log export, admin alert sent, feature flag changes if used, and the Storno actions (v2.4): order_edited (stores the previous AND new value of every changed field), cancelled_by_service_partner, cancelled_by_autheon, empty_run_reported, empty_run_recognised, empty_run_not_recognised, order_duplicated (plus publication of a duplicated order), and internal_note_added.",
         "Status history records previous status, new status, date/time, triggering user, optional comment, and uploaded evidence if applicable.",
         "Admin can view audit log entries in the admin console.",
         "Admin can download or export the audit log for offline search, filtering, and archival; export is admin-only and is itself auditable.",
@@ -1061,19 +1057,19 @@
       "acceptance": [
         "Test: two simultaneous accepts result in exactly one success and one clean failure.",
         "Test: blocked or inactive driver cannot access marketplace active actions or accept jobs.",
-        "Test: admin cannot deactivate a driver with assigned, accepted, or special_case tours; activation succeeds when jobs are cleared.",
+        "Test: admin cannot deactivate a driver with assigned, accepted, or empty_run_reported tours; activation succeeds when jobs are cleared.",
         "Test: pre-acceptance driver cannot fetch locked fields.",
         "Test: Draft can Publish or Assign (with active driver selection), but Published cannot Assign in Phase 1 without returning to Draft.",
-        "Test: admin can reassign Assigned, Accepted, or Special case tour to another active driver; same driver selection is rejected; audit log records reassignment.",
+        "Test: admin can reassign Assigned, Accepted, or empty-run reported tour to another active driver; same driver selection is rejected; audit log records reassignment.",
         "Test: admin can revert Published job to Draft; job leaves marketplace and can Publish or Assign again from Draft.",
         "Test: direct assigned jobs do not appear in marketplace.",
         "Test: expired Published jobs (pickup date before today) are filtered out of marketplace list and detail and cannot be accepted.",
         "Test: acceptance unlocks full details, navigation actions, and PDF for accepted driver only.",
-        "Test: driver can use Report Problem paths: Cancel Order and Report Order as Not Performable.",
-        "Test: Report Order as Not Performable creates Special Case and does not automatically cancel the job.",
+        "Test: driver can use Report Problem paths: Cancel order and Report empty run.",
+        "Test: Report empty run creates status empty_run_reported and does not automatically cancel the job.",
         "Test: cancellation records actor, timestamp, reason, optional text, and optional evidence.",
-        "Test: admin can resolve a legacy Special Case by continuing, adjusting, republishing, closing, or cancelling where rules allow. Test (Storno v2.4): SP cancel → cancelled_by_sp; Autheon cancel → cancelled_by_autheon; empty-run report → empty_run_reported → admin Recognised → empty_run_recognised (terminal, NOT counted as performed, does not release probation) / Not recognised → empty_run_not_recognised (terminal, does not reactivate); empty-run report is NOT resolvable via the legacy Continue/Republish/Close/Cancel actions; terminal states are read-only; Duplicate order creates a new Draft rather than reactivating a cancelled order. Test (full order editing §7): draft, published, assigned and accepted orders can all edit the full eligible field set via the canonical form; generic edit never changes status; the schedule-change cutoff gates only schedule fields (with authorized override) and never blocks vehicle/contact/notes edits; terminal orders cannot be edited; one changed field and multiple changed fields both record previous → new per field, unchanged values create no fake diffs, and actor + timestamp are recorded; a booked edit creates ONE combined partner notification (no per-field push, no re-confirmation) and admin-only changed fields never leak; an unbooked edit notifies no partner.",
-        "Test: admin can cancel Accepted, Assigned, Performed, or Special Case job; job leaves marketplace and active driver lists as appropriate.",
+        "Test (Storno v2.4): SP cancel → cancelled_by_sp; Autheon cancel → cancelled_by_autheon; empty-run report → empty_run_reported → admin Recognised → empty_run_recognised (terminal, NOT counted as performed, does not release probation) / Not recognised → empty_run_not_recognised (terminal, does not reactivate); empty-run report is resolved ONLY via Recognised / Not recognised; terminal states are read-only; Duplicate order creates a new Draft rather than reactivating a cancelled order. Test (full order editing §7): draft, published, assigned and accepted orders can all edit the full eligible field set via the canonical form; generic edit never changes status; the schedule-change cutoff gates only schedule fields (with authorized override) and never blocks vehicle/contact/notes edits; terminal orders cannot be edited; one changed field and multiple changed fields both record previous → new per field, unchanged values create no fake diffs, and actor + timestamp are recorded; a booked edit creates ONE combined partner notification (no per-field push, no re-confirmation) and admin-only changed fields never leak; an unbooked edit notifies no partner.",
+        "Test: admin can cancel Accepted, Assigned, Performed, or empty-run reported job; job leaves marketplace and active driver lists as appropriate.",
         "Test: operational completion changes status to Performed, not document/settlement Completed.",
         "Test: document statuses are independent from operational job status.",
         "Test: driver invoice/document upload requires job id and Performed status for driver uploads; rejection reason creates visible correction need on Performed My Jobs only.",
@@ -1364,15 +1360,7 @@
     "cancel_order_slide_disabled_until_valid": true,
     "admin_new_job_entry": "Primary CTA on Jobs overview only; no separate New job item in admin sidebar navigation.",
     "customer_input_v1": "Required select from customer master data; free-text customer field not used for production create form.",
-    "direct_assign_and_reassign_v1": "Assign from Draft and reassign on Assigned/Accepted/Special case require picking an active driver; reassignment preserves status.",
-    "special_case_resolution_actions": {
-      "continue": "Resume tour to statusBeforeSpecialCase captured when Report Problem created the special case (assigned or accepted), not always assigned",
-      "republish": "Return to Published on marketplace",
-      "administrative_close": "Performed + settlement/administrative Closed",
-      "cancel_order": "Cancelled",
-      "_superseded_note": "These actions apply ONLY to the legacy special_case umbrella. Task 32 (v2.4) empty-run review is separate and offers ONLY Recognised / Not recognised (both terminal); empty_run_reported is never resolved via continue/republish/administrative_close/cancel_order."
-    },
-    "special_case_resolution_label_guidance": "Avoid ambiguous Close for administrative close; prefer labels such as Mark performed and close case vs Cancel order.",
+    "direct_assign_and_reassign_v1": "Assign from Draft and reassign on Assigned/Accepted/empty-run reported require picking an active driver; reassignment preserves status.",
     "push_notification_toggles_v1": [
       "push_enabled_master",
       "notify_newly_published_orders",
@@ -1388,7 +1376,7 @@
     "client_display_status_labels": "UI may show Under review and Completed from document_review_summary and settlement Closed without adding operational statuses.",
     "master_data_change_request_v1": "Driver request queue; one open per driver; admin Approve & save applies updateDriver; Reject without save; audit master_data_change_requested|approved|rejected; driver in-app notify on resolution.",
     "report_problem_cancel_ux_v1": "Binding warning + driver terms link before slide; warning icon on tour detail and sheet header. SUPERSEDED for the driver flow by Task 32 (v2.4, Storno): the ⚠ entry now splits into SP Cancel order (4 reasons, ≥30-char explanation → cancelled_by_sp) and Report empty run (6 reasons → empty_run_reported); the seven reason codes remain the ADMIN/legacy cancellation set, and the ≥30-char minimum supersedes the old 10-character slide gate.",
-    "report_problem_not_performable_evidence_v1": "Optional file upload (PDF/images, capped in prototype); listed on the admin review panel; metadata only in demo. SUPERSEDED for the active flow by Task 32 (v2.4): evidence now attaches to the empty-run report (empty_run_reported), is never required to submit, and the report is reviewed via Recognised / Not recognised — not the legacy Not-Performable→Special-Case path.",
+    "empty_run_evidence_v1": "Optional file upload (PDF/images, capped in prototype) attached to the empty-run report (empty_run_reported); never required to submit; listed on the admin empty-run review panel; reviewed via Recognised / Not recognised; metadata only in demo.",
     "driver_probation_acceptance_limit_v1": "One-time probation model (F-01, replaces the former per-calendar-day daily_job_limit model). Each driver stores a probation_job_limit (smallint, default 3, confirmable with client) and a probation-released state (probation_cleared_at). A driver on probation may book up to probation_job_limit initial jobs and must have that many jobs marked Performed to be released; after release no further V1 booking limit applies. No rolling daily quota and no driver limit-increase request flow. Admin may manually release a driver from probation for exceptional account-reset cases. Probation constrains only driver self-service marketplace booking; admin direct assignment is exempt, so admin may assign additional jobs to a driver even while on probation (decision 2026-07-10), and Performed jobs count toward release whether self-accepted or admin-assigned. Same-day overlap (existing accepted/assigned job on the same calendar day) still shows a confirmation prompt only — not a hard block. Geo/travel-time overlap detection is out of V1 scope. Driver-facing UI (F-02): a probation-specific status/progress card replaces the legacy daily-limit usage meter and 'request higher limit' action; the card is hidden once the driver is released.",
     "driver_id_generation_v1": "Driver IDs are assigned automatically by the system on driver creation using a monotonic sequence (not entered manually). Assigned IDs are immutable and are never reused, including after a driver is blocked, inactive, archived, soft-deleted, or departed. The exact ID format (prefix, numeric length, padding, optional year component, starting sequence) is client-defined and tracked in production_open_questions (F-03).",
     "time_window_same_day_v1": "Each tour leg's time window must start and end on the same calendar day; pickup and delivery may be on different dates. Cross-midnight windows are unsupported in V1 and are rejected or blocked with a clear message on save/publish (F-04).",
@@ -1396,7 +1384,7 @@
     "document_upload_pre_completion_v1": "Tour-linked document upload is available at any job operational status (active as well as Performed). Upload is no longer restricted to post-Performed only. Applies to both driver and admin uploads.",
     "admin_documents_at_creation_v1": "Admin may attach additional self-created documents during job creation or editing, including optional images such as a vehicle photo. Attached documents are stored as job_documents with source admin_off_channel alongside the auto-generated transport-order document. Drivers see these as read-only reference documents (view/download); only driver_pwa uploads are replaceable by the driver.",
     "document_replace_permissions_v1": "Drivers may replace only job_documents with source driver_pwa when review status allows. admin_off_channel and generated transport-order documents are read-only for drivers (view/download beside transport order). Admin may replace admin_off_channel documents; transport order uses PDF regenerate.",
-    "admin_cancel_driver_message_v1": "Admin cancel and special-case cancel order require cancellation_reason_code plus driver-facing cancellation_reason_text (min length from cancellation.policies). Driver sees both on cancelled tour detail; order_cancelled_by_autheon notification body uses the message.",
+    "admin_cancel_driver_message_v1": "Admin cancel requires cancellation_reason_code plus driver-facing cancellation_reason_text (min length from cancellation.policies). Driver sees both on cancelled tour detail; order_cancelled_by_autheon notification body uses the message.",
     "operational_policies_v1": "app_settings operational.policies controls minimum hours before pickup for admin cancel and schedule change (default 1 hour, client TBD), reference time pickup_window_start, optional override with audit note.",
     "cancellation_policies_v1": "app_settings cancellation.policies controls required admin reason code, required driver message, min char lengths for admin and driver cancel explanations.",
     "app_settings_catalog_v1": {
@@ -1432,7 +1420,7 @@
     "files": "Metadata and placeholder download only; no binary persistence.",
     "admin_nav": "Jobs overview hosts primary New job button; no New job sidebar nav item.",
     "cancel_slide": "Slide-to-cancel locked until explanation >= 10 chars with disabled track styling in prototype.",
-    "special_case_continue": "reportProblemNotPerformable stores statusBeforeSpecialCase on specialCaseReport; Continue restores that status and driverState.acceptedIds when prior was accepted.",
+    "empty_run_review": "Report empty run stores the empty-run report (reason, description, statusBeforeReport, evidence) on job.emptyRunReport; admin review resolves to empty_run_recognised or empty_run_not_recognised (both terminal, no reactivation).",
     "master_data_crud": "Customers and addresses: full create/read/update/delete in admin UI; inactive flag; delete blocked when tours reference record; new job uses selects; optional save manual address to master on draft save.",
     "schedule_multi_day": "Pickup and delivery each have date + window from/to; prototype new job form, job detail, overview, and driver views show both legs; delivery before pickup shows admin warning only.",
     "tour_billing_workspace": "Admin nav labeled Tour documents lists all tourDocuments with filters (document type, review status, source) and type column; section id remains invoices in prototype HTML routing.",
@@ -1445,7 +1433,7 @@
     "assign_driver_picker": "AssignDriverDialog modal; assignJob/reassignJob by driver id; getAssignableDrivers() returns Active only.",
     "customer_select": "New job section 01 uses select populated from customer master data; sets customerId + customer name.",
     "order_entry_formatters_prototype": "inputFormatters.js: formatDateInput, formatTimeInput, normalizeVin, normalizePlate, compareTimeStrings; wired on admin new-order blur; MANUFACTURER_SUGGESTIONS datalist on brand field.",
-    "master_data_change_requests_prototype": "store.masterDataChangeRequests[]; requestMasterDataChange, requestDailyLimitIncrease, listMasterDataChangeRequests, getOpenMasterDataChangeRequestForDriver, resolveMasterDataChangeRequest, getOpenMasterDataChangeRequestCount; MasterDataRequestsPane in admin.jsx (profile + daily_limit_override); metadata-only evidence on specialCaseReport.evidence."
+    "master_data_change_requests_prototype": "store.masterDataChangeRequests[]; requestMasterDataChange, requestDailyLimitIncrease, listMasterDataChangeRequests, getOpenMasterDataChangeRequestForDriver, resolveMasterDataChangeRequest, getOpenMasterDataChangeRequestCount; MasterDataRequestsPane in admin.jsx (profile + daily_limit_override); metadata-only evidence on emptyRunReport.evidence."
   },
   "production_open_questions": [
     "Task 2 §2 (2026-07-21): provide the real Terms & Conditions / cancellation-conditions target for the service-partner cancellation warning link. The prototype currently uses a placeholder that discloses an in-app notice; the value originally supplied pointed at the Task 1 email-design HTML (a paste slip) and was deliberately not used. Decide: a hosted /legal/cancellation-terms route, a bundled PDF, or an in-app legal document.",
@@ -1454,9 +1442,8 @@
     "Confirm production file retention period, encryption at rest, malware scanning, and DSGVO handling for tour document uploads.",
     "Confirm final production branding package (OQ-4): app display name, logo, exact hex palette, font, icon rules, and related legal/UI copy. Direction advanced 2026-07-10 — minimalist/premium, black/white/grey baseline, restrained purple accent used very sparingly, Montserrat Regular 400; final hex values, logo, display name, and legal copy still pending (client to upload the final Corporate Design package).",
     "Post-v1.9 meeting 2026-07-10 (F-03): confirm the exact automatic driver ID format — prefix, numeric length, padding, optional year component, and starting sequence number.",
-    "Post-v1.9 meeting 2026-07-10 (F-06): for active tours, when exactly is driver Cancel Order allowed, when is Report Order as Not Performable required instead, and does availability of each path change before pickup, after pickup, before delivery, or after delivery?",
+    "Post-v1.9 meeting 2026-07-10 (F-06): for active tours, when exactly is driver Cancel order allowed, when is Report empty run required instead, and does availability of each path change before pickup, after pickup, before delivery, or after delivery?",
     "Post-v1.9 meeting 2026-07-10 (F-07): what final production domain, legal/market clearance outcome, and hosting provider/responsibility should be used (likely .com domain and Hetzner hosting if approved)?",
-    "Confirm production UI labels for special case administrative close vs cancel order (avoid ambiguous Close).",
     "Meeting 2026-06-29: confirm whether driver blocking must be granular so a driver can be blocked from marketplace/accepting new jobs while still correcting invoices or documents on existing tours, or whether V1 keeps coarse Blocked behavior.",
     "RESOLVED 2026-07-14 (Design Direction Board July 2026 §5 + client direction): zugelassen/abgemeldet (registered/deregistered) plus electric-vehicle and red-license-plate flags are V1 job fields — optional announcement metadata, never required for publish; see resolved_defaults.vehicle_important_info_v1.",
     "Meeting 2026-06-29: confirm final policy for manual direct assignment: when admin direct assign is allowed, whether it is exception-only, and what external proof (phone, email, confirmation note) must be stored.",
@@ -1470,7 +1457,7 @@
   "risks": [
     "Legal wording inside the transport-order PDF requires legal review before production.",
     "Atomic marketplace acceptance requires transaction-safe implementation; wrong implementation can cause double assignment.",
-    "Replacing flexible Excel workflows with rigid software can block rare edge cases; mitigate with Special Case status, admin override, and manual correction paths.",
+    "Replacing flexible Excel workflows with rigid software can block rare edge cases; mitigate with admin override, order editing/duplication, and manual correction paths.",
     "Automatically saving every private one-time address can bloat address master data; mitigate with optional save control.",
     "Document rejection creates a follow-up loop for drivers; the PWA must make correction needs clearly visible.",
     "Finance dashboard was not validated and may cause scope creep; keep full finance out of base V1 and focus on driver invoices if included.",
@@ -1490,7 +1477,7 @@
       "Marketplace and driver PWA for simple A to B tours",
       "Binding acceptance and direct assignment with driver picker and reassignment on active tours",
       "Customer select on job creation form",
-      "Report Problem with cancellation and not-performable special case flows",
+      "Report Problem with cancellation and empty-run flows",
       "External map app navigation handoff",
       "Pull to refresh and app-open data reload",
       "Simple driver push notification settings and postal code prefix preferences",
@@ -1613,13 +1600,6 @@
         "ui_display_note": "Same; cancellationActor records driver, admin, or customer"
       },
       {
-        "client_pdf_status": "Special case",
-        "prd_operational_status": "Special Case",
-        "prd_document_review": null,
-        "prd_settlement": null,
-        "ui_display_note": "Same"
-      },
-      {
         "client_pdf_status": "Storniert durch Servicepartner",
         "prd_operational_status": "cancelled_by_sp",
         "prd_document_review": null,
@@ -1638,7 +1618,7 @@
         "prd_operational_status": "empty_run_reported",
         "prd_document_review": null,
         "prd_settlement": null,
-        "ui_display_note": "Task 2 §3. Board umbrella = review/Special case + reason chip. Pending Autheon review; partner locked out of further ⚠ actions."
+        "ui_display_note": "Task 2 §3. Board umbrella = Review + reason chip. Pending Autheon review; partner locked out of further ⚠ actions."
       },
       {
         "client_pdf_status": "Leerfahrt anerkannt",
@@ -1657,7 +1637,7 @@
     ],
     "status_model_decision_task2": {
       "decision": "Extended enum (explicit machine statuses), NOT a discriminator field.",
-      "rationale": "The Storno/empty-run workflow (PDF §10 availability logic, per-status audit entries) needs each final/interim state to be distinct with its own rules. Overloading the single cancelled/special_case values would lose that. The extended enum keeps store.js STATUSES and schema.dbml job_status in sync.",
+      "rationale": "The Storno/empty-run workflow (PDF §10 availability logic, per-status audit entries) needs each final/interim state to be distinct with its own rules. Overloading the single cancelled value would lose that. The extended enum keeps store.js STATUSES and schema.dbml job_status in sync.",
       "new_statuses": [
         "cancelled_by_sp",
         "cancelled_by_autheon",
@@ -1665,8 +1645,8 @@
         "empty_run_recognised",
         "empty_run_not_recognised"
       ],
-      "board_grouping": "The Jobs board stays scannable by grouping precise statuses under umbrella columns (statusUmbrella(): cancelled_by_sp/cancelled_by_autheon/empty_run_not_recognised -> Cancelled; empty_run_reported -> Special case/review; empty_run_recognised -> Performed) and showing the precise status as a reason chip on each row.",
-      "legacy": "cancelled and special_case are retained as legacy umbrella values for backward compatibility with pre-Task-2 data and the existing special-case resolution panel.",
+      "board_grouping": "The Jobs board stays scannable by grouping precise statuses under umbrella columns (statusUmbrella(): cancelled_by_sp/cancelled_by_autheon/empty_run_not_recognised -> Cancelled; empty_run_reported -> Review; empty_run_recognised -> Performed) and showing the precise status as a reason chip on each row.",
+      "legacy": "cancelled is retained as the only legacy umbrella value for backward compatibility with pre-Task-2 data; the former special-case status was removed in v2.6 (the empty-run workflow fully replaces it).",
       "separation": "Cancellation and empty-run reporting are technically and status-wise separate processes with different statuses, validation, and audit entries — never a shared status or backend action."
     },
     "auto_transitions": [
@@ -1765,14 +1745,6 @@
       "notes": "Highlight in admin feed"
     },
     {
-      "event": "order_reported_not_performable",
-      "admin_feed": true,
-      "admin_email": true,
-      "driver_in_app": false,
-      "driver_push": false,
-      "notes": "Special case created"
-    },
-    {
       "event": "invoice_uploaded",
       "admin_feed": true,
       "admin_email": true,
@@ -1850,7 +1822,7 @@
       "admin_email": true,
       "driver_in_app": false,
       "driver_push": false,
-      "notes": "Storno §3.4: partner reported an empty run; the admin backend is informed immediately as an open review case. Separate from order_reported_not_performable (legacy)."
+      "notes": "Storno §3.4: partner reported an empty run; the admin backend is informed immediately as an open review case."
     },
     {
       "event": "empty_run_recognised",
@@ -1883,14 +1855,6 @@
       "driver_in_app": true,
       "driver_push": true,
       "notes": "Includes rejection reason in UI"
-    },
-    {
-      "event": "special_case_processed_by_admin",
-      "admin_feed": false,
-      "admin_email": false,
-      "driver_in_app": true,
-      "driver_push": true,
-      "notes": null
     },
     {
       "event": "new_infopoint_message",
@@ -1972,7 +1936,7 @@
     },
     {
       "question": "When admin cancels an assigned tour, must the driver receive an explanation? (Product decision 2026-07-02)",
-      "resolution": "Yes. Admin cancel and special-case cancel order require reason code plus driver-facing message (cancellation_reason_text). Shown on cancelled tour detail and in order_cancelled_by_autheon notification.",
+      "resolution": "Yes. Admin cancel requires reason code plus driver-facing message (cancellation_reason_text). Shown on cancelled tour detail and in order_cancelled_by_autheon notification.",
       "prd_reference": "Task 14, resolved_defaults.admin_cancel_driver_message_v1, notification_channels_matrix order_cancelled_by_autheon"
     },
     {
@@ -2075,7 +2039,7 @@
     },
     {
       "pdf_section": "C.1",
-      "summary": "Report Problem cancellation and not performable flows",
+      "summary": "Report Problem cancellation and empty-run flows",
       "prd_location": "Task 12, Task 13, Task 14",
       "status": "covered"
     },

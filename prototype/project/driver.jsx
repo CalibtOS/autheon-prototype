@@ -2666,10 +2666,8 @@ const JobUnlocked = ({
   const isCancelled = store.isCancelledStatus(job.status);
   const isEmptyRunReported = job.status === "empty_run_reported";
   const isEmptyRunTerminal = store.isEmptyRunTerminal(job.status);
-  // Review bucket = legacy special case OR a reported empty run pending review.
-  const isSpecialCase = job.status === "special_case" || isEmptyRunReported;
   const canPerform = ["assigned", "accepted"].includes(job.status);
-  const inExecution = canPerform || isSpecialCase || job.status === "assigned";
+  const inExecution = canPerform || isEmptyRunReported || job.status === "assigned";
   // ⚠ action availability (§10): booked orders only; hidden for terminal
   // states and while an empty-run report is pending review.
   const canReportProblem = store.canServicePartnerReport(job);
@@ -2757,7 +2755,7 @@ const JobUnlocked = ({
               <Pill status={job.status}>{AuthStore.statusLabel(job.status)}</Pill>
             ) : isEmptyRunTerminal ? (
               <Pill status={job.status}>{AuthStore.statusLabel(job.status)}</Pill>
-            ) : isSpecialCase ? (
+            ) : isEmptyRunReported ? (
               <Pill status={job.status}>
                 {AuthStore.statusLabel(job.status)}
               </Pill>
@@ -3242,10 +3240,8 @@ const MyJobs = ({ onOpen }) => {
       store.isCancelledStatus(j.status) ||
       store.isEmptyRunTerminal(j.status),
   );
-  // Review bucket = legacy special case + reported empty runs pending review.
-  const special = mine.filter(
-    (j) => j.status === "special_case" || j.status === "empty_run_reported",
-  );
+  // Review bucket = empty-run reports pending Autheon review.
+  const review = mine.filter((j) => j.status === "empty_run_reported");
 
   const listFor = (tabId) =>
     tabId === "active"
@@ -3254,7 +3250,7 @@ const MyJobs = ({ onOpen }) => {
         ? performed
         : tabId === "cancelled"
           ? cancelled
-          : special;
+          : review;
 
   const buildList = (tabId) =>
     listFor(tabId)
@@ -3411,6 +3407,10 @@ const MyJobs = ({ onOpen }) => {
       </div>
     );
   };
+          : {
+              title: t("nothingHereYet"),
+              description: t("emptyRunReviewTab"),
+            };
 
   return (
     <>
@@ -3444,7 +3444,7 @@ const MyJobs = ({ onOpen }) => {
           ["active", t("active"), active.length],
           ["performed", t("performedTab"), performed.length],
           ["cancelled", t("cancelled"), cancelled.length],
-          ["special", t("specialCaseTab"), special.length],
+          ["review", t("emptyRunReviewTab"), review.length],
         ].map(([id, lbl, n]) => (
           <button
             key={id}
@@ -3492,8 +3492,7 @@ const MyJobs = ({ onOpen }) => {
             <div className="jobcard-header-row">
               <span className="jobcard-tour-num">Tour #{job.tour}</span>
               <div style={{ display: "flex", gap: 6 }}>
-                {(job.status === "special_case" ||
-                  job.status === "empty_run_reported" ||
+                {(job.status === "empty_run_reported" ||
                   store.isEmptyRunTerminal(job.status)) && (
                   <span className={"pill " + AuthStore.statusCls(job.status)}>
                     {AuthStore.statusLabel(job.status)}

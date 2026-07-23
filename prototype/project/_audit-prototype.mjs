@@ -70,7 +70,7 @@ const store = file("store.js");
 const critical = [
   "reportProblemCancel",
   "reportProblemNotPerformable",
-  "resolveSpecialCase",
+  "reviewEmptyRun",
   "markPerformed",
   "getTourDocuments",
   "acceptTourDocument",
@@ -100,7 +100,7 @@ const critical = [
   "getTransportOrderPreview",
   "getTourDocumentPreview",
   "getInfopointDocumentPreview",
-  "buildSpecialCaseEvidenceMeta",
+  "buildEmptyRunEvidenceMeta",
   "listMasterDataChangeRequests",
   "getOpenMasterDataChangeRequestForDriver",
   "resolveMasterDataChangeRequest",
@@ -301,12 +301,12 @@ const gapChecks = [
   ["formatDateInput", "formatDateInput in store"],
   ["requestMasterDataChange", "requestMasterDataChange API"],
   ["releaseDriverFromProbation", "releaseDriverFromProbation API"],
-  ["buildSpecialCaseEvidenceMeta", "special case evidence builder"],
+  ["buildEmptyRunEvidenceMeta", "empty-run evidence builder"],
   ["reportCancelDriverUnavailable", "seven cancel reasons i18n"],
   ["reportProblemCancelBindingWarning", "cancel binding warning i18n"],
-  ["reportProblemEvidenceLabel", "not-performable evidence i18n"],
+  ["emptyRunEvidenceLabel", "empty-run evidence i18n"],
   ["master_data_change_requested", "master data alert event"],
-  ["specialCaseReport", "specialCaseReport on jobs"],
+  ["emptyRunReport", "emptyRunReport on jobs"],
 ];
 out("");
 for (const [needle, label] of gapChecks) {
@@ -596,12 +596,12 @@ if (!process.exitCode) {
       "Farbgebung --brand-accent #6F29FF in styles.css",
     ],
     [
-      /--st-special-case:\s*#9333ea/i.test(css),
-      "--st-special-case shifted to #9333EA (no brand collision)",
+      /--st-empty-run:\s*#9333ea/i.test(css),
+      "--st-empty-run #9333EA (no brand collision)",
     ],
     [
       !/#a855f7/i.test(css + driver + admin),
-      "no legacy special-case purple #A855F7",
+      "no legacy status purple #A855F7",
     ],
     [
       driver.includes("tabbar-capsule") && driver.includes("tabbar-label"),

@@ -42,7 +42,7 @@
   --st-published: #2563eb;
   --st-assigned: #c2410c;
   --st-accepted: #059669;
-  --st-special-case: #9333ea;
+  --st-empty-run: #9333ea;
   --st-performed: #0f172a;
   --st-cancelled: #dc2626;
   --st-warn: #ea580c;
@@ -50,7 +50,7 @@
   --st-published-bg: #eff6ff;
   --st-assigned-bg: #fff7ed;
   --st-accepted-bg: #ecfdf5;
-  --st-special-bg: #f5f3ff;
+  --st-empty-run-bg: #f5f3ff;
   --st-cancelled-bg: #fef2f2;
   --st-warn-bg: #ffedd5;
 
@@ -138,7 +138,7 @@
   --st-published-bg: #172554;
   --st-assigned-bg: #3a2210;
   --st-accepted-bg: #092a24;
-  --st-special-bg: #2c1f50;
+  --st-empty-run-bg: #2c1f50;
   --st-cancelled-bg: #3e1520;
   --st-warn-bg: #4a2b12;
   --sh-1: 0 1px 2px rgba(2, 6, 23, 0.45);
@@ -545,9 +545,9 @@ select.input {
   background: rgba(248, 250, 252, 0.14);
   color: #e2e8f0;
 }
-.pill.special_case {
-  background: var(--st-special-bg);
-  color: var(--st-special-case);
+.pill.empty_run {
+  background: var(--st-empty-run-bg);
+  color: var(--st-empty-run);
 }
 .pill.cancelled {
   background: var(--st-cancelled-bg);

@@ -1,7 +1,7 @@
 // AUTHEON — Shared store (PRD v1.8 prototype). Target spec: docs/requirements/prd.json
 // Domain glossary: DOMAIN.md
 // Single source of truth for Driver + Admin views.
-// Operational statuses: draft, published, assigned, accepted, performed, cancelled, special_case.
+// Operational statuses: draft, published, assigned, accepted, performed, cancelled + Storno statuses.
 // pickup/delivery/customerName are canonical; syncDisplayFields() denormalizes flat fields for tables/CSV.
 
 window.AuthStore = (() => {
@@ -23,11 +23,12 @@ window.AuthStore = (() => {
 
   // Status model (Task 2): explicit machine statuses per the Storno/empty-run
   // workflow (extended-enum approach — see prd.json client_status_mapping).
-  // cancelled / special_case are retained as legacy umbrellas; the new
-  // service-partner and Autheon cancellation and empty-run states are
-  // distinct so each carries its own rules, ⚠-availability logic, and audit
-  // entries. `cls` maps several statuses onto shared pill colours so the Jobs
-  // board reads as umbrella buckets (Cancelled / review) with a reason chip.
+  // `cancelled` is retained as a legacy umbrella; the service-partner and
+  // Autheon cancellation and empty-run states are distinct so each carries its
+  // own rules, ⚠-availability logic, and audit entries. `cls` maps several
+  // statuses onto shared pill colours so the Jobs board reads as umbrella
+  // buckets (Cancelled / review) with a reason chip. (The old `special_case`
+  // status was removed once the empty-run model fully replaced it.)
   const STATUSES = {
     draft: { i18n: "status.draft", cls: "draft" },
     published: { i18n: "status.published", cls: "published" },
@@ -35,7 +36,6 @@ window.AuthStore = (() => {
     accepted: { i18n: "status.accepted", cls: "accepted" },
     performed: { i18n: "status.performed", cls: "performed" },
     cancelled: { i18n: "status.cancelled", cls: "cancelled" },
-    special_case: { i18n: "status.special_case", cls: "special_case" },
     cancelled_by_sp: { i18n: "status.cancelled_by_sp", cls: "cancelled" },
     cancelled_by_autheon: {
       i18n: "status.cancelled_by_autheon",
@@ -43,7 +43,7 @@ window.AuthStore = (() => {
     },
     empty_run_reported: {
       i18n: "status.empty_run_reported",
-      cls: "special_case",
+      cls: "empty_run",
     },
     empty_run_recognised: {
       i18n: "status.empty_run_recognised",
@@ -84,7 +84,7 @@ window.AuthStore = (() => {
     "correction_required",
   ];
 
-  const ACTIVE_JOB_STATUSES = ["assigned", "accepted", "special_case"];
+  const ACTIVE_JOB_STATUSES = ["assigned", "accepted", "empty_run_reported"];
 
   function normalizeTourDocumentReviewStatus(st) {
     const s = String(st || "").trim();
@@ -227,7 +227,7 @@ window.AuthStore = (() => {
       performedAt: "",
       documentReviewSummary: "Not Started",
       settlementState: "Not Started",
-      specialCaseReport: null,
+      emptyRunReport: null,
       cancellationActor: null,
       cancellationReason: "",
       cancellationReasonText: "",
@@ -737,9 +737,9 @@ window.AuthStore = (() => {
       },
       {
         id: "DOC-008",
-        title: "Cancellation and problem case process",
+        title: "Cancellation and empty-run process",
         description:
-          "When and how to use Report Problem; contact dispatch for special cases.",
+          "When and how to use Report Problem; how empty-run reports are reviewed by dispatch.",
         category: "Process",
         visible: true,
         scope: "Global",
@@ -771,7 +771,7 @@ window.AuthStore = (() => {
       {
         id: "NEWS-003",
         title: "Report Problem replaces returns",
-        body: "Use Report Problem to cancel or flag a tour as not performable. Not performable creates a special case for dispatch.",
+        body: "Use Report Problem to cancel an order or report an empty run. A reported empty run is submitted to dispatch for review (recognised or not recognised).",
         publishedAt: "03.05. 14:30",
         visible: true,
         readBy: [],
@@ -955,20 +955,20 @@ window.AuthStore = (() => {
           "Historic vehicle on third-party axle; yard access issue reported by driver.",
         notesDriver:
           "Do not attempt pickup until dispatch confirms yard reopening.",
-        status: "special_case",
+        status: "empty_run_reported",
         driver: DEMO_DRIVER,
         pdfVersion: 1,
-        specialCaseReport: {
-          type: "not_performable",
-          reason: "access_blocked",
-          message:
+        emptyRunReport: {
+          reason: "not_present",
+          description:
             "Customer yard closed unexpectedly; vehicle not accessible for pickup.",
           reportedAt: "23.04. 08:40",
           reportedBy: DEMO_DRIVER,
-          statusBeforeSpecialCase: "accepted",
+          statusBeforeReport: "accepted",
+          decision: null,
           evidence: [
             {
-              id: "SCE-SEED-001",
+              id: "ERE-SEED-001",
               fileName: "yard-closed-photo-0846.jpg",
               mimeType: "image/jpeg",
               sizeBytes: 890400,
@@ -981,10 +981,10 @@ window.AuthStore = (() => {
           { st: "assigned", at: "23.04. 07:55", by: "A. Bauer" },
           { st: "accepted", at: "23.04. 08:10", by: DEMO_DRIVER },
           {
-            st: "special_case",
+            st: "empty_run_reported",
             at: "23.04. 08:40",
             by: DEMO_DRIVER,
-            meta: "Report Problem: not performable",
+            meta: "Report Problem: empty run reported",
           },
         ],
         createdAt: "22.04. 16:11",
@@ -1274,7 +1274,7 @@ window.AuthStore = (() => {
     return {
       acceptedIds: new Set(["A-2026-00845", "A-2026-00843"]),
       performedIds: new Set(["A-2026-00842"]),
-      specialCaseIds: new Set(["A-2026-00846"]),
+      emptyRunReviewIds: new Set(["A-2026-00846"]),
       cancelledIds: new Set(["A-2026-00841"]),
     };
   }
@@ -1545,10 +1545,10 @@ window.AuthStore = (() => {
     return [
       {
         id: "ALERT-SEED-001",
-        event: "special_case_created",
+        event: "empty_run_reported",
         jobId: "A-2026-00846",
         tour: "0846-26",
-        meta: "Report Problem: not performable — yard closed · 1 file(s)",
+        meta: "Report Problem: empty run reported — yard closed · 1 file(s)",
         at: "23.04. 08:41",
         sent: true,
       },
@@ -1588,11 +1588,11 @@ window.AuthStore = (() => {
         meta: "Binding slide confirmation",
       },
       {
-        action: "special_case_created",
+        action: "empty_run_reported",
         actor: DEMO_DRIVER,
         entity: "0846-26",
         at: "23.04. 08:40",
-        meta: "Not performable — yard closed",
+        meta: "Empty run reported — yard closed",
       },
       {
         action: "tour_document_uploaded",
@@ -1643,20 +1643,6 @@ window.AuthStore = (() => {
       identityProvisioned: true,
       inviteEmailSent: true,
     };
-  }
-
-  /** Restore target when admin continues a special case (fallback if statusBeforeSpecialCase missing). */
-  function inferStatusBeforeSpecialCase(job) {
-    const fromReport = job?.specialCaseReport?.statusBeforeSpecialCase;
-    if (fromReport && ["assigned", "accepted"].includes(fromReport))
-      return fromReport;
-    const hist = job?.history || [];
-    for (let i = hist.length - 1; i >= 0; i--) {
-      const st = hist[i]?.st;
-      if (st === "special_case") continue;
-      if (["assigned", "accepted"].includes(st)) return st;
-    }
-    return "assigned";
   }
 
   function validateSeedData(jobList, partyList, docList, state) {
@@ -1731,18 +1717,16 @@ window.AuthStore = (() => {
         issues.push(`driverState.performedIds: ${id} status mismatch`);
       }
     }
-    for (const id of state.specialCaseIds || []) {
+    for (const id of state.emptyRunReviewIds || []) {
       const j = jobList.find((x) => x.id === id);
-      // The review bucket holds legacy special_case AND reported empty runs.
-      if (!j || !["special_case", "empty_run_reported"].includes(j.status)) {
-        issues.push(`driverState.specialCaseIds: ${id} status mismatch`);
+      // The review bucket holds empty-run reports pending Autheon review.
+      if (!j || j.status !== "empty_run_reported") {
+        issues.push(`driverState.emptyRunReviewIds: ${id} status mismatch`);
       } else {
-        const prior =
-          j.specialCaseReport?.statusBeforeSpecialCase ||
-          j.emptyRunReport?.statusBeforeReport;
+        const prior = j.emptyRunReport?.statusBeforeReport;
         if (!prior || !["assigned", "accepted"].includes(prior)) {
           issues.push(
-            `${j.id}: review case missing valid prior status`,
+            `${j.id}: empty-run report missing valid prior status`,
           );
         }
       }
@@ -1960,7 +1944,7 @@ window.AuthStore = (() => {
     if (!driverId || !day) return false;
     return jobs.some((j) => {
       if (j.id === excludeId) return false;
-      if (!["accepted", "assigned", "special_case"].includes(j.status))
+      if (!["accepted", "assigned", "empty_run_reported"].includes(j.status))
         return false;
       const dr = jobDriverRecord(j);
       if (!dr || dr.id !== driverId) return false;
@@ -1969,7 +1953,7 @@ window.AuthStore = (() => {
   }
 
   function uploadAllowedStatuses() {
-    return ["assigned", "accepted", "special_case", "performed"];
+    return ["assigned", "accepted", "empty_run_reported", "performed"];
   }
 
   const DISTANCE_TABLE = {
@@ -2621,7 +2605,7 @@ window.AuthStore = (() => {
 
   function jobWasEverCommitted(job) {
     return (job?.history || []).some((h) =>
-      ["published", "assigned", "accepted", "performed", "special_case"].includes(
+      ["published", "assigned", "accepted", "performed", "empty_run_reported"].includes(
         h.st,
       ),
     );
@@ -2791,8 +2775,8 @@ window.AuthStore = (() => {
     isReadOnlyJob: (job) => !!job && READ_ONLY_STATUSES.includes(job.status),
     // Single source of truth for admin edit eligibility (Storno §7/§8/§11):
     // admins may edit ALL business data on any non-terminal order — draft,
-    // published, assigned, accepted, special_case (legacy) and empty_run_reported
-    // (pending review). Terminal states (cancelled_by_sp, cancelled_by_autheon,
+    // published, assigned, accepted and empty_run_reported (pending review).
+    // Terminal states (cancelled_by_sp, cancelled_by_autheon,
     // empty_run_recognised, empty_run_not_recognised, performed) stay read-only.
     canAdminEditOrder: (job) => !!job && !READ_ONLY_STATUSES.includes(job.status),
     // Service partner may cancel / report empty run only on a booked order.
@@ -3020,8 +3004,9 @@ window.AuthStore = (() => {
     statusUmbrella: (s) => {
       if (s === "cancelled_by_sp" || s === "cancelled_by_autheon") return "cancelled";
       if (s === "empty_run_not_recognised") return "cancelled";
-      if (s === "empty_run_reported") return "special_case";
       if (s === "empty_run_recognised") return "performed";
+      // empty_run_reported is its own umbrella (the review bucket) — it keeps a
+      // real status label + pill class and is the only member.
       return s;
     },
 
@@ -3042,7 +3027,7 @@ window.AuthStore = (() => {
       if (driverState.cancelledIds.has(j.id)) return true;
       if (driverState.acceptedIds.has(j.id)) return true;
       if (driverState.performedIds.has(j.id)) return true;
-      if (driverState.specialCaseIds.has(j.id)) return true;
+      if (driverState.emptyRunReviewIds.has(j.id)) return true;
       if (j.status === "cancelled" && j.driver === curName) return true;
       // A job stays "mine" across its whole lifecycle when its driver is me —
       // including the Storno terminal states, so a cancelled/recognised/
@@ -3053,7 +3038,6 @@ window.AuthStore = (() => {
         [
           "assigned",
           "accepted",
-          "special_case",
           "performed",
           "empty_run_reported",
           "empty_run_recognised",
@@ -3097,7 +3081,7 @@ window.AuthStore = (() => {
 
     isAccepted: (id) => driverState.acceptedIds.has(id),
     isPerformed: (id) => driverState.performedIds.has(id),
-    isSpecialCase: (id) => driverState.specialCaseIds.has(id),
+    isInEmptyRunReview: (id) => driverState.emptyRunReviewIds.has(id),
 
     getCustomer: (id) => customers.find((x) => x.id === id) || null,
 
@@ -3483,7 +3467,7 @@ window.AuthStore = (() => {
       ];
       // Leaves the partner's active orders, stays in order history.
       driverState.acceptedIds.delete(id);
-      driverState.specialCaseIds.delete(id);
+      driverState.emptyRunReviewIds.delete(id);
       driverState.cancelledIds.add(id);
       log(
         "cancelled_by_service_partner",
@@ -3497,7 +3481,7 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
-    buildSpecialCaseEvidenceMeta(files) {
+    buildEmptyRunEvidenceMeta(files) {
       const list = Array.isArray(files) ? files.slice(0, 5) : [];
       const evidence = [];
       for (const file of list) {
@@ -3517,7 +3501,7 @@ window.AuthStore = (() => {
           }
         }
         evidence.push({
-          id: `SCE-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          id: `ERE-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           fileName: file.name,
           mimeType: mime || "application/octet-stream",
           sizeBytes: typeof file.size === "number" ? file.size : 0,
@@ -3542,7 +3526,7 @@ window.AuthStore = (() => {
       if (description.length < 30)
         return { ok: false, reason: "description_too_short", min: 30 };
       const statusBeforeReport = j.status;
-      const evidence = api.buildSpecialCaseEvidenceMeta(evidenceFiles);
+      const evidence = api.buildEmptyRunEvidenceMeta(evidenceFiles);
       const stamp = nowStamp();
       j.status = "empty_run_reported";
       // Stored per §3.4: reason, description, date, time, partner, evidence.
@@ -3556,17 +3540,6 @@ window.AuthStore = (() => {
         evidence,
         decision: null, // set by admin review: recognised | not_recognised
       };
-      // Retain the legacy special-case report shape so any existing admin
-      // review UI keeps rendering the report body/evidence.
-      j.specialCaseReport = {
-        type: "empty_run",
-        reason: reason || "other",
-        message: description,
-        reportedAt: stamp,
-        reportedBy: DEMO_DRIVER,
-        statusBeforeSpecialCase: statusBeforeReport,
-        evidence,
-      };
       j.history = [
         ...(j.history || []),
         {
@@ -3577,7 +3550,7 @@ window.AuthStore = (() => {
         },
       ];
       // In review — not in active orders, tracked in the review bucket.
-      driverState.specialCaseIds.add(id);
+      driverState.emptyRunReviewIds.add(id);
       driverState.acceptedIds.delete(id);
       log(
         "empty_run_reported",
@@ -3614,7 +3587,6 @@ window.AuthStore = (() => {
         j.emptyRunReport.decidedAt = stamp;
         j.emptyRunReport.decidedBy = DEMO_ADMIN;
       }
-      j.specialCaseReport = null;
       j.history = [
         ...(j.history || []),
         {
@@ -3625,7 +3597,7 @@ window.AuthStore = (() => {
         },
       ];
       // Terminal: leaves the review bucket, no longer an active order.
-      driverState.specialCaseIds.delete(id);
+      driverState.emptyRunReviewIds.delete(id);
       driverState.acceptedIds.delete(id);
       const action = recognised
         ? "empty_run_recognised"
@@ -3987,107 +3959,6 @@ window.AuthStore = (() => {
       return { ok: true, request: row };
     },
 
-    resolveSpecialCase(id, decision, note, opts = {}) {
-      const j = api.getJob(id);
-      if (!j || j.status !== "special_case") return { ok: false };
-      const d = String(decision || "").toLowerCase();
-      if (d === "cancel" || d === "cancelled") {
-        return api.cancelJob(id, {
-          actor: "admin",
-          reason: opts.reasonCode || "",
-          note: opts.driverMessage || note || "",
-          overrideNote: opts.overrideNote || "",
-          by: DEMO_ADMIN,
-          fromSpecialCase: true,
-        });
-      } else if (d === "republish") {
-        j.status = "published";
-        j.driver = null;
-        j.specialCaseReport = null;
-        driverState.specialCaseIds.delete(id);
-        j.history = [
-          ...(j.history || []),
-          {
-            st: "published",
-            at: nowStamp(),
-            by: DEMO_ADMIN,
-            meta: note || "Special case resolved -> republished",
-          },
-        ];
-        log("special_case_resolved", DEMO_ADMIN, j.tour, "Republished");
-        queuePushNotification(j, "republish");
-        queueAdminEmailAlert("special_case_republished", id, note || "");
-      } else if (d === "reopen" || d === "draft") {
-        j.status = "draft";
-        j.driver = null;
-        j.specialCaseReport = null;
-        driverState.specialCaseIds.delete(id);
-        j.history = [
-          ...(j.history || []),
-          {
-            st: "draft",
-            at: nowStamp(),
-            by: DEMO_ADMIN,
-            meta: note || "Special case resolved → draft",
-          },
-        ];
-        log("special_case_resolved", DEMO_ADMIN, j.tour, "Returned to draft");
-      } else if (d === "assign" || d === "assigned" || d === "continue") {
-        const restored =
-          j.specialCaseReport?.statusBeforeSpecialCase ||
-          inferStatusBeforeSpecialCase(j);
-        j.status = restored;
-        j.specialCaseReport = null;
-        driverState.specialCaseIds.delete(id);
-        if (restored === "accepted") driverState.acceptedIds.add(id);
-        else driverState.acceptedIds.delete(id);
-        j.history = [
-          ...(j.history || []),
-          {
-            st: restored,
-            at: nowStamp(),
-            by: DEMO_ADMIN,
-            meta: note || `Special case resolved → continued as ${restored}`,
-          },
-        ];
-        log(
-          "special_case_resolved",
-          DEMO_ADMIN,
-          j.tour,
-          `Continued as ${restored}`,
-        );
-        pushDriverNotification({
-          type: "special_case_processed",
-          jobId: id,
-          tour: j.tour,
-          title: "Problem case updated",
-          body: note || "Dispatch continued the tour.",
-          driverId: j.driverId,
-        });
-      } else if (d === "close") {
-        j.status = "performed";
-        j.performedAt = j.performedAt || nowStamp();
-        j.settlementState = "Closed";
-        j.specialCaseReport = null;
-        driverState.specialCaseIds.delete(id);
-        driverState.performedIds.add(id);
-        j.history = [
-          ...(j.history || []),
-          {
-            st: "performed",
-            at: nowStamp(),
-            by: DEMO_ADMIN,
-            meta: note || "Special case resolved → closed",
-          },
-        ];
-        log("special_case_resolved", DEMO_ADMIN, j.tour, "Closed");
-      } else {
-        return { ok: false, reason: "unknown_decision" };
-      }
-      emit();
-      return { ok: true };
-    },
-
     publishJob(id) {
       const j = api.getJob(id);
       if (!j || j.status !== "draft") return { ok: false };
@@ -4117,7 +3988,7 @@ window.AuthStore = (() => {
       jobs.splice(idx, 1);
       driverState.acceptedIds.delete(id);
       driverState.performedIds.delete(id);
-      driverState.specialCaseIds.delete(id);
+      driverState.emptyRunReviewIds.delete(id);
       driverState.cancelledIds.delete(id);
       log("job_draft_deleted", DEMO_ADMIN, tour, "Draft removed by admin");
       emit();
@@ -4212,7 +4083,7 @@ window.AuthStore = (() => {
 
     reassignJob(id, driverRef) {
       const j = api.getJob(id);
-      const allowed = ["assigned", "accepted", "special_case"];
+      const allowed = ["assigned", "accepted", "empty_run_reported"];
       if (!j || !allowed.includes(j.status))
         return { ok: false, reason: "not_reassignable" };
       const dr = api.resolveAssignableDriver(driverRef);
@@ -4242,7 +4113,7 @@ window.AuthStore = (() => {
       const allowed = [
         "accepted",
         "assigned",
-        "special_case",
+        "empty_run_reported",
         "performed",
         "published",
       ];
@@ -4286,7 +4157,7 @@ window.AuthStore = (() => {
         actor === "driver" ? "cancelled_by_sp" : "cancelled_by_autheon";
       const wasBooked = hadDriver;
       j.status = cancelStatus;
-      j.specialCaseReport = null;
+      j.emptyRunReport = null;
       j.cancellationActor = actor;
       j.cancellationReason = reasonCode;
       j.cancellationReasonText = reasonText;
@@ -4304,7 +4175,7 @@ window.AuthStore = (() => {
       ];
       driverState.acceptedIds.delete(id);
       driverState.performedIds.delete(id);
-      driverState.specialCaseIds.delete(id);
+      driverState.emptyRunReviewIds.delete(id);
       driverState.cancelledIds.add(id);
       log(
         "cancelled_by_autheon",
@@ -4406,7 +4277,6 @@ window.AuthStore = (() => {
       clone.cancellationActor = null;
       clone.cancellationReason = "";
       clone.cancellationReasonText = "";
-      clone.specialCaseReport = null;
       clone.emptyRunReport = null;
       clone.spCancellation = null;
       clone.internalNotes = [];

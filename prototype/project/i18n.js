@@ -103,7 +103,6 @@ window.I18n = (() => {
         accepted: "Accepted",
         performed: "Performed",
         cancelled: "Cancelled",
-        special_case: "Special case",
         cancelled_by_sp: "Cancelled by service partner",
         cancelled_by_autheon: "Cancelled by Autheon",
         empty_run_reported: "Empty run reported",
@@ -113,7 +112,7 @@ window.I18n = (() => {
       statusExplain: {
         title: "What do statuses mean?",
         intro:
-          "Version 1 rules: only Draft tours can be published or directly assigned. Marketplace path: Draft → Published → Accepted → Performed. Direct path: Draft → Assigned → Performed. Report Problem handles cancellation and not-performable special cases after commitment.",
+          "Version 1 rules: only Draft tours can be published or directly assigned. Marketplace path: Draft → Published → Accepted → Performed. Direct path: Draft → Assigned → Performed. Report Problem handles cancellation and empty-run reports after commitment.",
         noteSeparate:
           "Driver account Active/Blocked and finance payment labels are separate from tour lifecycle status.",
         draft:
@@ -126,8 +125,8 @@ window.I18n = (() => {
           "Driver accepted a Published marketplace offer. Active execution alongside Assigned.",
         performed:
           "Driver marked the vehicle transfer finished. Operational completion; documents and settlement are tracked separately.",
-        special_case:
-          "Driver reported the tour as not performable. Dispatch decides next steps; the tour is not automatically cancelled.",
+        empty_run_reported:
+          "Driver reported an empty run. Dispatch reviews it and decides recognised or not recognised; the tour is not automatically cancelled.",
         cancelled:
           "Tour was cancelled by dispatch or by the driver via Report Problem. Removed from marketplace and active lists.",
       },
@@ -234,7 +233,7 @@ window.I18n = (() => {
       openInMaps: "Open in maps",
       refreshDemo: "Refresh",
       performedTab: "Performed",
-      specialCaseTab: "Special",
+      emptyRunReviewTab: "Empty run",
       correctionRequiredBadge: "Correction",
       infopoint: "Infopoint",
       infopointDocsTab: "General documents",
@@ -331,9 +330,6 @@ window.I18n = (() => {
       docReviewCorrectionRequired: "Correction required",
       reportProblemCancelTitle: "Cancel order",
       reportProblemCancelSub: "Ends the tour and notifies dispatch.",
-      reportProblemNotPerformableTitle: "Report not performable",
-      reportProblemNotPerformableSub:
-        "Creates a special case for dispatch review.",
       reportCancelDriverUnavailable: "Driver unavailable",
       reportCancelDriverUnavailableSub: "You cannot execute this tour in time",
       reportCancelVehicleNotAvailable: "Vehicle not available",
@@ -439,11 +435,7 @@ window.I18n = (() => {
       slideToCancelOrderHint:
         "Enter at least 10 characters in the explanation above to unlock the slider.",
       reportProblemCancelConfirmed: "Cancellation submitted",
-      reportProblemSpecialCaseNotice:
-        "Dispatch will review this report and follow up.",
       reportProblemCancelSent: "Your cancellation was sent to dispatch.",
-      reportProblemSpecialCaseSent:
-        "Your report was sent. Dispatch will review the special case.",
       profileTitle: "Profile",
       profileVerifiedAccount: "Verified account",
       infoTitle: "Info",
@@ -486,7 +478,7 @@ window.I18n = (() => {
       assignedTour: "Tour {tour}",
       cancellationBlocked: "Cancellation blocked",
       cancellationRules:
-        "Admin can cancel tours in Accepted, Assigned, or Special case status.",
+        "Admin can cancel tours in Accepted, Assigned, or Empty run reported status.",
       cancelledTour: "Cancelled · Tour {tour}",
       cancelledSub: "Removed from marketplace and active lists.",
       driverTourCancelledNotice:
@@ -620,17 +612,6 @@ window.I18n = (() => {
       adminColDriver: "Driver",
       adminColStatusHeader: "Status",
       adminColDocuments: "Docs",
-      adminSpecialCaseTitle: "Special case resolution",
-      adminSpecialCaseNotes: "Decision notes",
-      adminSpecialCaseContinue: "Continue",
-      adminSpecialCaseContinueTitle: "Resume tour as {status}",
-      adminSpecialCaseResumeHint:
-        "Continue restores the tour to {status} (state before the special case was reported).",
-      adminSpecialCaseRepublish: "Republish",
-      adminSpecialCaseClose: "Close",
-      adminSpecialCaseCancel: "Cancel tour",
-      adminSpecialCaseResolved: "Special case updated.",
-      adminSpecialCaseResolveFailed: "Could not resolve special case.",
       adminDocAccept: "Accept",
       adminDocReject: "Reject",
       adminDocErrAlreadyAccepted:
@@ -921,7 +902,7 @@ window.I18n = (() => {
       adminReassignSameDriver: "This driver is already assigned to the tour.",
       reassignBlocked: "Reassignment blocked",
       reassignBlockedSub:
-        "Only Assigned, Accepted, or Special case tours can be reassigned.",
+        "Only Assigned, Accepted, or Empty run reported tours can be reassigned.",
       jobReassigned: "Reassigned · {driver}",
       adminCancelJob: "Cancel job",
       adminCancelJobConfirm:
@@ -1167,7 +1148,7 @@ window.I18n = (() => {
       bindingAcceptance: "Binding acceptance",
       acceptThisTour: "Accept this tour?",
       acceptanceLegal:
-        "Acceptance is binding. After commitment, use Report Problem to cancel or mark the tour as not performable.",
+        "Acceptance is binding. After commitment, use Report Problem to cancel the order or report an empty run.",
       partnerTermsApply: "Driver terms apply.",
       partnerPolicyAlert:
         "Demo document: Driver terms are available in the Driver Info area and admin Documents module.",
@@ -1397,13 +1378,12 @@ window.I18n = (() => {
       adminNotificationEmpty: "No alerts in the feed.",
       adminNotifMasterDataChange: "Master-data change requested",
       adminNotifReportProblemCancel: "Order cancelled by driver",
-      adminNotifSpecialCaseCreated: "Order reported not performable",
+      adminNotifEmptyRunReported: "Empty run reported",
       adminNotifJobAccepted: "Order accepted",
       adminNotifJobPerformed: "Tour reported performed",
       adminNotifDocumentUploaded: "Document uploaded",
       adminNotifDocumentReuploaded: "Document re-uploaded",
-      adminSpecialCaseEvidence: "Attached evidence",
-      adminSpecialCaseEvidenceDemo: "Preview (demo)",
+      adminEmptyRunEvidence: "Attached evidence",
       adminNotificationOpenJob: "Open tour",
       alternateContact: "Alternate contact person",
       secondPhone: "Second phone",
@@ -1564,7 +1544,6 @@ window.I18n = (() => {
         accepted: "Akzeptiert",
         performed: "Durchgeführt",
         cancelled: "Storniert",
-        special_case: "Sonderfall",
         cancelled_by_sp: "Storniert durch Servicepartner",
         cancelled_by_autheon: "Storniert durch Autheon",
         empty_run_reported: "Leerfahrt gemeldet",
@@ -1574,7 +1553,7 @@ window.I18n = (() => {
       statusExplain: {
         title: "Was bedeuten die Status?",
         intro:
-          "Version-1-Regeln: Nur Entwürfe können veröffentlicht oder direkt zugewiesen werden. Marktplatz: Entwurf → Veröffentlicht → Akzeptiert → Durchgeführt. Direkt: Entwurf → Zugewiesen → Durchgeführt. Problem melden für Storno und nicht durchführbare Sonderfälle nach Bindung.",
+          "Version-1-Regeln: Nur Entwürfe können veröffentlicht oder direkt zugewiesen werden. Marktplatz: Entwurf → Veröffentlicht → Akzeptiert → Durchgeführt. Direkt: Entwurf → Zugewiesen → Durchgeführt. Problem melden für Storno und Leerfahrtmeldungen nach Bindung.",
         noteSeparate:
           "Kontostatus des Fahrers (Aktiv/Gesperrt) und Zahlungsstatus in der Finanzübersicht sind vom Tour-Lebenszyklus getrennt.",
         draft:
@@ -1587,8 +1566,8 @@ window.I18n = (() => {
           "Fahrer hat ein veröffentlichtes Marktplatzangebot angenommen. Aktive Ausführung parallel zu Zugewiesen.",
         performed:
           "Fahrer hat die Fahrzeugübernahme abgeschlossen. Operativer Abschluss; Dokumente und Abrechnung werden separat geführt.",
-        special_case:
-          "Fahrer hat die Tour als nicht durchführbar gemeldet. Disposition entscheidet; die Tour wird nicht automatisch storniert.",
+        empty_run_reported:
+          "Fahrer hat eine Leerfahrt gemeldet. Die Disposition prüft und entscheidet anerkannt oder nicht anerkannt; die Tour wird nicht automatisch storniert.",
         cancelled:
           "Tour wurde von der Disposition oder vom Driver über Problem melden storniert. Aus Marktplatz und aktiven Listen entfernt.",
       },
@@ -1695,7 +1674,7 @@ window.I18n = (() => {
       openInMaps: "In Karten öffnen",
       refreshDemo: "Aktualisieren",
       performedTab: "Durchgeführt",
-      specialCaseTab: "Sonderfall",
+      emptyRunReviewTab: "Leerfahrt",
       correctionRequiredBadge: "Korrektur",
       infopoint: "Infopoint",
       infopointDocsTab: "Allgemeine Dokumente",
@@ -1796,8 +1775,6 @@ window.I18n = (() => {
       reportProblemCancelTitle: "Auftrag stornieren",
       reportProblemCancelSub:
         "Beendet die Tour und informiert die Disposition.",
-      reportProblemNotPerformableTitle: "Nicht durchführbar melden",
-      reportProblemNotPerformableSub: "Erzeugt einen Sonderfall zur Prüfung.",
       reportCancelDriverUnavailable: "Fahrer nicht verfügbar",
       reportCancelDriverUnavailableSub:
         "Tour kann zeitlich nicht ausgeführt werden",
@@ -1909,12 +1886,8 @@ window.I18n = (() => {
       slideToCancelOrderHint:
         "Geben Sie oben mindestens 10 Zeichen in die Erklärung ein, um den Schieberegler freizuschalten.",
       reportProblemCancelConfirmed: "Stornierung gesendet",
-      reportProblemSpecialCaseNotice:
-        "Die Disposition prüft den Bericht und meldet sich.",
       reportProblemCancelSent:
         "Ihre Stornierung wurde an die Disposition gesendet.",
-      reportProblemSpecialCaseSent:
-        "Ihr Bericht wurde gesendet. Die Disposition prüft den Sonderfall.",
       profileTitle: "Profil",
       profileVerifiedAccount: "Verifiziertes Konto",
       infoTitle: "Info",
@@ -1958,7 +1931,7 @@ window.I18n = (() => {
       assignedTour: "Tour {tour}",
       cancellationBlocked: "Stornierung blockiert",
       cancellationRules:
-        "Admin kann Touren in den Status Akzeptiert, Zugewiesen oder Sonderfall stornieren.",
+        "Admin kann Touren in den Status Akzeptiert, Zugewiesen oder Leerfahrt gemeldet stornieren.",
       cancelledTour: "Storniert · Tour {tour}",
       cancelledSub: "Aus Marktplatz und aktiven Listen entfernt.",
       driverTourCancelledNotice:
@@ -2092,18 +2065,6 @@ window.I18n = (() => {
       adminColDriver: "Fahrer",
       adminColStatusHeader: "Status",
       adminColDocuments: "Dok.",
-      adminSpecialCaseTitle: "Sonderfall auflösen",
-      adminSpecialCaseNotes: "Entscheidungsnotizen",
-      adminSpecialCaseContinue: "Fortsetzen",
-      adminSpecialCaseContinueTitle: "Tour als {status} fortsetzen",
-      adminSpecialCaseResumeHint:
-        "Fortsetzen stellt den Status {status} wieder her (Zustand vor dem Sonderfall).",
-      adminSpecialCaseRepublish: "Erneut veröffentlichen",
-      adminSpecialCaseClose: "Schließen",
-      adminSpecialCaseCancel: "Tour stornieren",
-      adminSpecialCaseResolved: "Sonderfall aktualisiert.",
-      adminSpecialCaseResolveFailed:
-        "Sonderfall konnte nicht aufgelöst werden.",
       adminDocAccept: "Akzeptieren",
       adminDocReject: "Ablehnen",
       adminDocErrAlreadyAccepted:
@@ -2397,7 +2358,7 @@ window.I18n = (() => {
       adminReassignSameDriver: "Dieser Fahrer ist der Tour bereits zugewiesen.",
       reassignBlocked: "Neuzuweisung blockiert",
       reassignBlockedSub:
-        "Nur Zugewiesen-, Angenommen- oder Sonderfall-Touren können neu zugewiesen werden.",
+        "Nur Zugewiesen-, Angenommen- oder Leerfahrt-gemeldet-Touren können neu zugewiesen werden.",
       jobReassigned: "Neu zugewiesen · {driver}",
       adminCancelJob: "Auftrag stornieren",
       adminCancelJobConfirm:
@@ -2463,7 +2424,7 @@ window.I18n = (() => {
       draftDeletedTour: "Entwurf gelöscht · Tour {tour}",
       deleteDraftBlocked: "Entwurf konnte nicht gelöscht werden",
       deleteDraftBlockedSub:
-        "Nur Entwürfe können gelöscht werden. Andere Statuse stornieren oder im Sonderfall bearbeiten.",
+        "Nur Entwürfe können gelöscht werden. Andere Status stornieren oder auflösen.",
       adminPhase1PublishedNoAssign:
         "Phase 1: Zuweisung aus „Veröffentlicht“ nicht möglich. Zuerst auf Entwurf zurück, dann bearbeiten, erneut veröffentlichen oder direkt zuweisen.",
       adminRevertToDraft: "Zurück auf Entwurf",
@@ -2644,7 +2605,7 @@ window.I18n = (() => {
       bindingAcceptance: "Verbindliche Annahme",
       acceptThisTour: "Diese Tour annehmen?",
       acceptanceLegal:
-        "Die Annahme ist verbindlich. Danach Problem melden nutzen, um zu stornieren oder die Tour als nicht durchführbar zu melden.",
+        "Die Annahme ist verbindlich. Danach Problem melden nutzen, um den Auftrag zu stornieren oder eine Leerfahrt zu melden.",
       partnerTermsApply: "Es gelten die Fahrerbedingungen.",
       partnerPolicyAlert:
         "Demo-Dokument: Fahrerbedingungen sind im Fahrer-Infobereich und im Admin-Dokumentenmodul verfügbar.",
@@ -2880,13 +2841,12 @@ window.I18n = (() => {
       adminNotificationEmpty: "Keine Meldungen im Feed.",
       adminNotifMasterDataChange: "Stammdatenänderung angefragt",
       adminNotifReportProblemCancel: "Auftrag vom Fahrer storniert",
-      adminNotifSpecialCaseCreated: "Auftrag als nicht durchführbar gemeldet",
+      adminNotifEmptyRunReported: "Leerfahrt gemeldet",
       adminNotifJobAccepted: "Auftrag angenommen",
       adminNotifJobPerformed: "Tour als durchgeführt gemeldet",
       adminNotifDocumentUploaded: "Dokument hochgeladen",
       adminNotifDocumentReuploaded: "Dokument erneut hochgeladen",
-      adminSpecialCaseEvidence: "Angehängte Nachweise",
-      adminSpecialCaseEvidenceDemo: "Vorschau (Demo)",
+      adminEmptyRunEvidence: "Angehängte Nachweise",
       adminNotificationOpenJob: "Tour öffnen",
       alternateContact: "Weitere Kontaktperson",
       secondPhone: "Zweite Telefonnummer",

@@ -181,7 +181,8 @@ const Overview = ({ onOpen, freshId }) => {
   const all = store.getJobs();
   const filtered = all.filter((j) => {
     // Umbrella match: e.g. the "Cancelled" tile catches cancelled_by_sp /
-    // cancelled_by_autheon; "Special case" catches empty_run_reported.
+    // cancelled_by_autheon / empty_run_not_recognised; the "Empty run reported"
+    // tile is the review bucket.
     if (statusFilter && store.statusUmbrella(j.status) !== statusFilter)
       return false;
     if (search) {
@@ -205,7 +206,7 @@ const Overview = ({ onOpen, freshId }) => {
     ["published", AuthStore.statusLabel("published")],
     ["assigned", AuthStore.statusLabel("assigned")],
     ["accepted", AuthStore.statusLabel("accepted")],
-    ["special_case", AuthStore.statusLabel("special_case")],
+    ["empty_run_reported", AuthStore.statusLabel("empty_run_reported")],
     ["performed", AuthStore.statusLabel("performed")],
     ["cancelled", AuthStore.statusLabel("cancelled")],
   ];
@@ -215,7 +216,7 @@ const Overview = ({ onOpen, freshId }) => {
     "published",
     "assigned",
     "accepted",
-    "special_case",
+    "empty_run_reported",
     "performed",
     "cancelled",
   ];
@@ -752,222 +753,6 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenTourBilling }) => {
   );
 };
 
-const SPECIAL_CASE_STORE_DECISION = {
-  continue: "continue",
-  republish: "republish",
-  cancel: "cancel",
-  close: "close",
-};
-
-const SpecialCaseResolutionPanel = ({ job, showToast }) => {
-  const { t } = useI18n();
-  const store = useAuthStore();
-  const [note, setNote] = useStateA("");
-  const [cancelReasonCode, setCancelReasonCode] = useStateA("");
-  const [cancelDriverMessage, setCancelDriverMessage] = useStateA("");
-  const codes = store.getCancellationReasonCodes();
-  const minMsg =
-    store.getOperationalPolicies().cancellation?.adminCancelDriverMessageMinChars ||
-    20;
-  const hasDriver = !!(job.driver || job.driverId);
-  if (job.status !== "special_case") return null;
-  const report = job.specialCaseReport || {};
-  const priorStatus =
-    report.statusBeforeSpecialCase ||
-    (() => {
-      const hist = job.history || [];
-      for (let i = hist.length - 1; i >= 0; i--) {
-        const st = hist[i]?.st;
-        if (st === "special_case") continue;
-        if (st === "assigned" || st === "accepted") return st;
-      }
-      return "assigned";
-    })();
-  const resolve = (decision) => {
-    const mapped = SPECIAL_CASE_STORE_DECISION[decision] || decision;
-    const opts =
-      mapped === "cancel"
-        ? {
-            reasonCode: cancelReasonCode,
-            driverMessage: cancelDriverMessage || note.trim(),
-          }
-        : {};
-    const r = store.resolveSpecialCase(job.id, mapped, note.trim(), opts);
-    if (r && r.ok) {
-      showToast?.(
-        t("adminSpecialCaseResolved") || "Special case resolved",
-        AuthStore.statusLabel(store.getJob(job.id)?.status || decision),
-      );
-      setNote("");
-    } else {
-      showToast?.(
-        t("adminSpecialCaseResolveFailed") || "Could not resolve special case",
-      );
-    }
-  };
-  return (
-    <section className="card" style={{ padding: 22, borderColor: "#c4b5fd" }}>
-      <div className="sec-head">
-        <h3>
-          <span className="num">07</span>
-          {t("adminSpecialCaseTitle") || "Special case"}
-        </h3>
-        <Pill status="special_case" />
-      </div>
-      <p style={{ margin: "10px 0 0", fontSize: 13.5, lineHeight: 1.55 }}>
-        <strong>{job.driver || "—"}</strong>
-        {report.reason ? ` · ${report.reason}` : ""}
-      </p>
-      <div
-        className="dash-area"
-        style={{
-          marginTop: 12,
-          fontFamily: "var(--font-sans)",
-          fontSize: 13,
-          letterSpacing: 0,
-          textTransform: "none",
-        }}
-      >
-        {report.message || report.note || "—"}
-      </div>
-      {(report.evidence || []).length > 0 ? (
-        <div style={{ marginTop: 14 }}>
-          <div className="label" style={{ marginBottom: 8 }}>
-            {t("adminSpecialCaseEvidence")}
-          </div>
-          <ul
-            style={{
-              margin: 0,
-              padding: 0,
-              listStyle: "none",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-          >
-            {(report.evidence || []).map((ev) => (
-              <li
-                key={ev.id}
-                style={{
-                  fontSize: 12.5,
-                  padding: "8px 10px",
-                  border: "1px solid var(--line)",
-                  borderRadius: "var(--r-2)",
-                  background: "var(--paper)",
-                }}
-              >
-                <span className="mono" style={{ wordBreak: "break-all" }}>
-                  {ev.fileName}
-                </span>
-                <button
-                  type="button"
-                  className="btn ghost xs"
-                  style={{ marginTop: 6, padding: 0 }}
-                  onClick={() =>
-                    window.alert(`${t("adminSpecialCaseEvidenceDemo")}: ${ev.fileName}`)
-                  }
-                >
-                  {t("adminSpecialCaseEvidenceDemo")}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      <p
-        className="label"
-        style={{ marginTop: 10, fontSize: 11.5, lineHeight: 1.45 }}
-      >
-        {t("adminSpecialCaseResumeHint", {
-          status: AuthStore.statusLabel(priorStatus),
-        })}
-      </p>
-      {hasDriver ? (
-        <>
-          <label className="field-label" style={{ marginTop: 14 }}>
-            {t("adminCancelReasonLabel")}
-          </label>
-          <select
-            className="input"
-            style={{ marginTop: 6, width: "100%" }}
-            value={cancelReasonCode}
-            onChange={(e) => setCancelReasonCode(e.target.value)}
-          >
-            <option value="">{t("adminCancelReasonPlaceholder")}</option>
-            {codes.map((c) => (
-              <option key={c} value={c}>
-                {t(`cancellationReason_${c}`) || store.getCancellationReasonLabel(c)}
-              </option>
-            ))}
-          </select>
-          <label className="field-label" style={{ marginTop: 12 }}>
-            {t("adminCancelDriverMessageLabel")}
-          </label>
-          <textarea
-            className="input"
-            rows={3}
-            style={{ marginTop: 6, width: "100%" }}
-            value={cancelDriverMessage}
-            onChange={(e) => setCancelDriverMessage(e.target.value)}
-            placeholder={t("adminCancelDriverMessagePh")}
-          />
-          <div className="label" style={{ marginTop: 4 }}>
-            {t("adminCancelMessageCounter", {
-              count: cancelDriverMessage.length,
-              min: minMsg,
-            })}
-          </div>
-        </>
-      ) : null}
-      <div
-        style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}
-      >
-        <button
-          type="button"
-          className="btn primary"
-          onClick={() => resolve("continue")}
-          title={t("adminSpecialCaseContinueTitle", {
-            status: AuthStore.statusLabel(priorStatus),
-          })}
-        >
-          {t("adminSpecialCaseContinue") || "Continue tour"}
-        </button>
-        <button type="button" className="btn" onClick={() => resolve("republish")}>
-          {t("adminSpecialCaseRepublish") || "Republish / draft"}
-        </button>
-        <button type="button" className="btn" onClick={() => resolve("close")}>
-          {t("adminSpecialCaseClose") || "Close"}
-        </button>
-        <button
-          type="button"
-          className="btn danger"
-          disabled={
-            hasDriver &&
-            (!cancelReasonCode || cancelDriverMessage.length < minMsg)
-          }
-          onClick={() => resolve("cancel")}
-        >
-          {t("adminSpecialCaseCancel") || "Cancel tour"}
-        </button>
-      </div>
-      <label
-        className="field-label"
-        style={{ marginTop: 14 }}
-        htmlFor={`sc-note-${job.id}`}
-      >
-        {t("adminSpecialCaseNotes") || "Resolution notes"}
-      </label>
-      <textarea
-        id={`sc-note-${job.id}`}
-        className="input"
-        placeholder={t("adminRejectNotePlaceholder")}
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-      />
-    </section>
-  );
-};
-
 // Reason-id → localized label maps for the service-partner reports.
 const EMPTY_RUN_REASON_KEY = {
   not_operational: "emptyRunReasonNotOperational",
@@ -993,7 +778,7 @@ const EmptyRunReviewPanel = ({ job, showToast }) => {
   const isPending = job.status === "empty_run_reported";
   const isTerminal = store.isEmptyRunTerminal(job.status);
   if (!isPending && !isTerminal) return null;
-  const report = job.emptyRunReport || job.specialCaseReport || {};
+  const report = job.emptyRunReport || {};
   const reasonLabel = report.reason
     ? t(EMPTY_RUN_REASON_KEY[report.reason] || "emptyRunReasonOther")
     : "—";
@@ -1036,7 +821,7 @@ const EmptyRunReviewPanel = ({ job, showToast }) => {
       {evidence.length > 0 ? (
         <div style={{ marginTop: 12 }}>
           <div className="label" style={{ marginBottom: 8 }}>
-            {t("adminSpecialCaseEvidence")}: {evidence.length}
+            {t("adminEmptyRunEvidence")}: {evidence.length}
           </div>
           <div
             style={{
@@ -2140,7 +1925,6 @@ const AdminDetail = ({
               </section>
             )
           )}
-          <SpecialCaseResolutionPanel job={job} showToast={showToast} />
           <EmptyRunReviewPanel job={job} showToast={showToast} />
           <InternalNotesPanel job={job} showToast={showToast} />
         </div>
@@ -2179,7 +1963,7 @@ const AdminDetail = ({
                 {t("adminAssignDriver")}
               </button>
             ) : null}
-            {["assigned", "accepted", "special_case"].includes(job.status) &&
+            {["assigned", "accepted", "empty_run_reported"].includes(job.status) &&
             onRequestReassign ? (
               <button
                 type="button"
@@ -2351,14 +2135,14 @@ const AdminDetailFooter = ({
             {t("adminRevertToDraft")}
           </button>
         )}
-        {["assigned", "accepted", "special_case"].includes(job.status) &&
+        {["assigned", "accepted", "empty_run_reported"].includes(job.status) &&
           onRequestReassign && (
             <button type="button" className="btn" onClick={onRequestReassign}>
               {t("adminReassignDriver")}
             </button>
           )}
         {/* Edit order (§7) — full order form on any non-terminal booked order
-            (published/assigned/accepted/special_case/empty_run_reported). Saving
+            (published/assigned/accepted/empty_run_reported). Saving
             persists immediately, notifies the assigned partner with the actual
             changed values and audits previous → new, without changing status. */}
         {canEdit && job.status !== "draft" && (
@@ -2376,7 +2160,7 @@ const AdminDetailFooter = ({
         )}
         {/* Admin cancellation (§5) — booked orders and unbooked published ones.
             Both become "Cancelled by Autheon" and stay visible in the backend. */}
-        {["accepted", "assigned", "special_case", "published"].includes(
+        {["accepted", "assigned", "empty_run_reported", "published"].includes(
           job.status,
         ) && (
           <button
@@ -7449,7 +7233,7 @@ const FLAG_I18N = {
 
 const CRITICAL_ALERT_EVENTS = new Set([
   "report_problem_cancel",
-  "special_case_created",
+  "empty_run_reported",
   "job_cancelled",
   "tour_document_reuploaded",
 ]);
@@ -7457,7 +7241,7 @@ const CRITICAL_ALERT_EVENTS = new Set([
 const ADMIN_ALERT_EVENT_I18N = {
   master_data_change_requested: "adminNotifMasterDataChange",
   report_problem_cancel: "adminNotifReportProblemCancel",
-  special_case_created: "adminNotifSpecialCaseCreated",
+  empty_run_reported: "adminNotifEmptyRunReported",
   job_accepted: "adminNotifJobAccepted",
   job_performed: "adminNotifJobPerformed",
   tour_document_uploaded: "adminNotifDocumentUploaded",

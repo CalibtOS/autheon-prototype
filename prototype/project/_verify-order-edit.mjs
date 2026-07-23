@@ -66,8 +66,8 @@ ok(S.isReadOnlyStatus("cancelled_by_sp") === true, "cancelled_by_sp is terminal"
 ok(S.isReadOnlyStatus("cancelled_by_autheon") === true, "cancelled_by_autheon is terminal");
 ok(S.isReadOnlyStatus("performed") === true, "performed is terminal");
 ok(
-  ["draft", "published", "assigned", "accepted", "special_case"].every((s) => !S.isReadOnlyStatus(s)),
-  "draft/published/assigned/accepted/special_case are editable",
+  ["draft", "published", "assigned", "accepted", "empty_run_reported"].every((s) => !S.isReadOnlyStatus(s)),
+  "draft/published/assigned/accepted/empty_run_reported are editable",
 );
 
 const notifBefore = S.getDriverNotifications(booked.driverId).length;
