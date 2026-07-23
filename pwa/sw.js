@@ -9,7 +9,7 @@ const PRECACHE_URLS = [
   "/pwa/manifest.webmanifest",
   "/pwa/manifest.json",
   "/pwa/pwa.css?v=6",
-  "/pwa/pwa-app.jsx?v=10",
+  "/pwa/pwa-app.jsx?v=11",
   "/pwa/pwa-install.js?v=4",
   "/pwa/splash.js?v=2",
   "/pwa/favicon.svg",
