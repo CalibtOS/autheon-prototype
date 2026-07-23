@@ -2515,9 +2515,10 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   className="input mono"
                   style={{ maxWidth: 140 }}
                   placeholder="0"
+                  inputMode="numeric"
                   value={form.distance}
                   onChange={(e) => {
-                    set("distance", e.target.value);
+                    set("distance", e.target.value.replace(/\D/g, ""));
                     setDistanceEstimateNote("");
                   }}
                 />
@@ -2957,8 +2958,19 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 className="input mono"
                 style={{ maxWidth: 200, fontSize: 18, fontWeight: 600 }}
                 placeholder={t("newOrderDriverOfferPh")}
+                inputMode="decimal"
                 value={form.driverOffer}
-                onChange={(e) => set("driverOffer", e.target.value)}
+                onChange={(e) => {
+                  // Digits plus a single decimal separator (comma or dot).
+                  let v = e.target.value.replace(/[^\d.,]/g, "");
+                  const sep = v.search(/[.,]/);
+                  if (sep !== -1) {
+                    v =
+                      v.slice(0, sep + 1) +
+                      v.slice(sep + 1).replace(/[.,]/g, "");
+                  }
+                  set("driverOffer", v);
+                }}
               />
             </div>
           </section>
@@ -4210,6 +4222,12 @@ const emptyAddressForm = () => ({
   active: true,
 });
 
+/** Keep only digits and a single leading "+" (for the country code). */
+const sanitizePhone = (val) => {
+  const plus = val.trimStart().startsWith("+") ? "+" : "";
+  return plus + val.replace(/\D/g, "");
+};
+
 /** Shared address fields (same as Addresses master create/update). */
 const AddressMasterFields = ({ form, setF }) => {
   const { t } = useI18n();
@@ -4238,8 +4256,11 @@ const AddressMasterFields = ({ form, setF }) => {
           <label className="field-label">{t("adminMasterDataHouseNo")}</label>
           <input
             className="input"
+            inputMode="numeric"
             value={form.houseNumber}
-            onChange={(e) => setF("houseNumber", e.target.value)}
+            onChange={(e) =>
+              setF("houseNumber", e.target.value.replace(/\D/g, ""))
+            }
           />
         </div>
       </div>
@@ -4254,8 +4275,12 @@ const AddressMasterFields = ({ form, setF }) => {
           <label className="field-label">{t("newOrderPlzPh")} *</label>
           <input
             className="input mono"
+            inputMode="numeric"
+            maxLength={5}
             value={form.postalCode}
-            onChange={(e) => setF("postalCode", e.target.value)}
+            onChange={(e) =>
+              setF("postalCode", e.target.value.replace(/\D/g, ""))
+            }
           />
         </div>
         <div>
@@ -4290,8 +4315,9 @@ const AddressMasterFields = ({ form, setF }) => {
           <label className="field-label">{t("phone")}</label>
           <input
             className="input"
+            inputMode="tel"
             value={form.phone}
-            onChange={(e) => setF("phone", e.target.value)}
+            onChange={(e) => setF("phone", sanitizePhone(e.target.value))}
           />
         </div>
       </div>
@@ -4299,8 +4325,9 @@ const AddressMasterFields = ({ form, setF }) => {
         <label className="field-label">{t("adminMasterDataSecondPhone")}</label>
         <input
           className="input"
+          inputMode="tel"
           value={form.secondPhone}
-          onChange={(e) => setF("secondPhone", e.target.value)}
+          onChange={(e) => setF("secondPhone", sanitizePhone(e.target.value))}
         />
       </div>
       <div>
