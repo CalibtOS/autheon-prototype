@@ -336,8 +336,10 @@ Recommended scripts:
   "test:smoke": "playwright test --grep \"@smoke|@public-regression\" --project=chromium",
   "test:regression": "playwright test tests/regression",
   "test:regression:update": "playwright test tests/regression --update-snapshots",
-  "test:regression:visual:ci": "node scripts/visual-regression-ci.mjs",
-  "test:regression:visual:ci:strict": "node scripts/visual-regression-ci.mjs --strict",
+  "test:regression:visual": "playwright test tests/regression --grep @visual-regression",
+  "test:regression:ci": "node scripts/run-visual-regression-docker-ci.mjs",
+  "test:regression:baseline": "node scripts/run-visual-regression-docker-ci.mjs --baseline",
+  "test:regression:baseline:approve": "node scripts/approve-visual-baselines.mjs",
   "test:regression:lab": "playwright test tests/regression/lab",
   "test:regression:lab:update": "playwright test tests/regression/lab --update-snapshots",
   "test:regression:network": "playwright test tests/regression/lab/signals/browser-network-regression.spec.ts",
@@ -357,9 +359,11 @@ Recommended scripts:
 | `test:e2e:trace`             | Open a trace file                    | Local and CI artifact review | Inspect `trace.zip`                             |
 | `test:smoke`                 | Fast smoke/public-regression gate    | PR CI and local              | PR safety check                                 |
 | `test:regression`            | Run regression suite                 | CI and local                 | Compare approved UI/browser behavior            |
-| `test:regression:update`     | Update approved regression baselines | Local only                   | After approved UI/behavior change               |
-| `test:regression:visual:ci`  | Run visual CI wrapper and archive    | CI and local artifact checks | Warn on visual diffs; fail execution failures    |
-| `test:regression:visual:ci:strict` | Run visual CI wrapper as a gate  | CI only when policy requires | Fail on visual diffs too                         |
+| `test:regression:update`     | Update local (ARIA/structural) baselines | Local only               | After approved non-visual snapshot change       |
+| `test:regression:visual`     | Run visual suite on the current platform | Local                    | Quick local check (compares current-OS baseline)|
+| `test:regression:ci`         | Full visual pipeline in Docker/Linux | CI and local                 | Canonical CI entry point; warn on visual diffs, fail execution failures |
+| `test:regression:baseline`   | Generate Linux baseline candidates   | Local/CI (intentional)       | First-time setup or after an approved UI change |
+| `test:regression:baseline:approve` | Promote reviewed candidates to approved baselines | Local (intentional) | After manually reviewing candidates, then commit |
 | `test:regression:lab`        | Run signal lab                       | Local and optional CI        | Validate framework signal examples              |
 | `test:regression:lab:update` | Update lab baselines                 | Local only                   | After approved lab baseline change              |
 | `test:regression:network`    | Run browser network signal           | Local and CI if stable       | Investigate network behavior                    |
@@ -451,24 +455,33 @@ Keep the Playwright folders intact inside the archive. This preserves the HTML
 report's expected/current/diff, side-by-side, and slider views after the archive
 is extracted.
 
-For AUTHEON, the CI wrapper is:
+The generic wrapper is `scripts/visual-regression-ci.mjs`. It is an internal
+implementation step and is not exposed as its own public npm script; the Docker
+entry point calls it directly. Strict mode is a runtime flag
+(`VISUAL_REGRESSION_STRICT=true`), not a separate command, so one wrapper covers
+both the warning and gating policies.
+
+For AUTHEON, the single public CI entry point wraps this in the canonical
+Docker/Linux environment (see "Local Docker CI Simulation" and "GitHub Actions"
+below):
 
 ```bash
-npm run test:regression:visual:ci
+npm run test:regression:ci
 ```
 
-It writes:
+It writes, under the run's artifact directory:
 
 ```text
-visual-regression-artifacts/autheon-visual-regression-artifact.tar.gz
-visual-regression-artifacts/visual-regression-summary/summary.md
-visual-regression-artifacts/visual-regression-summary/summary.json
-visual-regression-artifacts/visual-regression-summary/manifest.json
+<artifact-dir>/autheon-visual-regression-artifact.tar.gz
+<artifact-dir>/visual-regression-summary/summary.md
+<artifact-dir>/visual-regression-summary/summary.json
+<artifact-dir>/visual-regression-summary/manifest.json
+<artifact-dir>/visual-regression-summary/visual-regression-report.pdf
 ```
 
-The wrapper does not update approved snapshots. Approval still happens only by
-running the update command after human review and committing the changed
-baseline files.
+The wrapper never updates approved snapshots. Approval happens only through the
+explicit baseline candidate/approve flow after human review and a commit of the
+changed baseline files.
 
 ### Visual Regression Notification Report
 
@@ -562,7 +575,7 @@ For local Jenkins-like validation, wrap the visual CI command in a disposable
 Docker environment:
 
 ```bash
-REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:visual:docker-ci
+REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:ci
 ```
 
 The local Docker runner:
@@ -570,7 +583,8 @@ The local Docker runner:
 1. builds `docker/visual-regression-ci.Dockerfile`
 2. installs dependencies inside the image with `npm ci`
 3. mounts the host artifact directory to `/app/visual-regression-artifacts`
-4. runs `npm run test:regression:visual:ci`
+4. runs the container entry point, which invokes the visual CI wrapper
+   (`scripts/visual-regression-ci.mjs`) directly
 5. sends or dry-runs notification email from `summary.json`
 6. exits with the visual CI wrapper's effective exit code
 
@@ -585,7 +599,7 @@ Override it with:
 ```bash
 VISUAL_REGRESSION_DOCKER_ARTIFACT_DIR=/absolute/or/repo-relative/path \
 REGRESSION_NOTIFICATION_DRY_RUN=true \
-npm run test:regression:visual:docker-ci
+npm run test:regression:ci
 ```
 
 The Dockerfile defaults to `node:24-bookworm-slim` and installs only Chromium
@@ -595,7 +609,7 @@ mirror or a compatible cached base image:
 ```bash
 VISUAL_REGRESSION_DOCKER_BASE_IMAGE=registry.example.com/node:24-bookworm-slim \
 REGRESSION_NOTIFICATION_DRY_RUN=true \
-npm run test:regression:visual:docker-ci
+npm run test:regression:ci
 ```
 
 Docker/Linux is the canonical visual-regression environment. The container
@@ -610,13 +624,13 @@ separate from normal CI:
 
 ```bash
 # 1. Render baseline CANDIDATES inside the canonical Docker image.
-npm run test:regression:visual:baseline:docker
+npm run test:regression:baseline
 # Candidates land in visual-regression-artifacts/docker-ci/baseline-candidates/
 # together with manifest.json. Nothing is approved automatically.
 
 # 2. After manual review, promote candidates into the approved baseline
 #    directory, then commit the diff to finalize the approval.
-npm run test:regression:visual:baseline:approve
+npm run test:regression:baseline:approve
 ```
 
 If a run finds no approved baseline for its platform, the visual CI wrapper
@@ -655,12 +669,12 @@ Safe validation commands:
 
 ```bash
 # Warning path: known visual differences should exit 0 and dry-run a warning email.
-REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:visual:docker-ci
+REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:ci
 
 # Failure path: missing test dir simulates execution failure without editing specs.
 REGRESSION_NOTIFICATION_DRY_RUN=true \
 VISUAL_REGRESSION_TEST_DIR=tests/regression/__missing__ \
-npm run test:regression:visual:docker-ci
+npm run test:regression:ci
 ```
 
 ### Persistent Visual Baseline
@@ -761,7 +775,10 @@ pipeline {
 
     stage('Visual Regression Evidence') {
       steps {
-        sh 'npm run test:regression:visual:ci'
+        // Canonical Docker/Linux pipeline. On a Linux agent that already
+        // matches the baseline environment you may instead call the wrapper
+        // directly: `node scripts/visual-regression-ci.mjs`.
+        sh 'npm run test:regression:ci'
       }
     }
 
@@ -847,7 +864,58 @@ Use CI credentials/secrets for:
 - API tokens used only for test setup
 - service credentials for safe QA environments
 
-Never echo credentials, cookies, tokens, or raw auth headers into Jenkins logs.
+Visual regression notification (email) secrets:
+
+| Secret | Purpose |
+| --- | --- |
+| `SMTP_HOST` | SMTP server host (required to send mail) |
+| `SMTP_PORT` | SMTP port, default 587 |
+| `SMTP_SECURE` | `true` for implicit TLS (465), else `false` |
+| `SMTP_USER` | SMTP auth user (required to send mail) |
+| `SMTP_PASSWORD` | SMTP auth password (required to send mail) |
+| `SMTP_FROM` | From address, defaults to `SMTP_USER` |
+| `REGRESSION_NOTIFICATION_EMAIL` | Recipient address |
+
+If SMTP secrets are absent, the notifier logs that mail was skipped and does not
+fail the run (unless `REGRESSION_NOTIFICATION_REQUIRED=true`). Never echo
+credentials, cookies, tokens, or raw auth headers into CI logs.
+
+### GitHub Actions Integration
+
+GitHub Actions is the primary CI for this framework. The workflow does not
+re-implement any logic: it supplies the environment and calls the same single
+entry point used locally, then maps the machine-readable result onto the CI
+status.
+
+Reusable pattern (`.github/workflows/visual-regression.yml`):
+
+1. `actions/checkout`
+2. `actions/setup-node` with npm cache
+3. `npm ci` — installs only the host launcher deps; browsers/test deps are
+   installed inside the Docker image by the pipeline
+4. `npm run test:regression:ci` — builds the canonical Docker/Linux image and
+   runs the full pipeline (visual suite → classify → archive → email). Capture
+   its exit code without aborting the job.
+5. A classify step reads
+   `visual-regression-artifacts/docker-ci/visual-regression-summary/summary.json`
+   and enforces the policy at the workflow level:
+   - `executionFailures > 0` or `missingBaselines > 0` → `::error` + job fails
+     (infrastructure/framework failure)
+   - `visualDifferences > 0` → `::warning` + job passes (non-blocking), unless
+     the manual `strict` input is set
+   - no summary produced → treated as an infrastructure failure
+6. `actions/upload-artifact` (with `if: always()`) uploads the summary directory
+   (PDF/HTML/JSON) and the `.tar.gz` evidence archive.
+
+Determinism note: CI compares against committed `*-chromium-linux.png`
+baselines, so those baselines MUST be generated in the same Docker image
+(`npm run test:regression:baseline` → review → `:approve` → commit). Running the
+raw visual suite on a bare GitHub runner instead of the pinned image would
+reintroduce cross-environment font-rendering noise. Because the Docker image is
+rebuilt each run, an optional speed-up is to build it once with
+`docker buildx` + `type=gha` cache and pass `-- --no-build` to the pipeline.
+
+Never echo credentials, cookies, tokens, or raw auth headers into CI logs.
 
 ## 6. E2E Test Design Rules
 
@@ -1594,11 +1662,11 @@ Run normally first:
 pnpm test:regression
 ```
 
-Run the CI visual wrapper when you need the same artifact and non-blocking
+Run the full CI visual pipeline when you need the same artifact and non-blocking
 classification policy used in pipelines:
 
 ```bash
-npm run test:regression:visual:ci
+npm run test:regression:ci
 ```
 
 If a baseline fails:
@@ -1613,6 +1681,20 @@ If a baseline fails:
 8. commit the updated baseline with a clear reason
 
 Update commands:
+
+Visual (pixel) baselines are platform-specific and canonical in Docker/Linux, so
+they are updated through the candidate/approve flow rather than a raw
+`--update-snapshots`:
+
+```bash
+npm run test:regression:baseline          # render Linux candidates in Docker
+# review visual-regression-artifacts/docker-ci/baseline-candidates/
+npm run test:regression:baseline:approve  # promote reviewed candidates
+git add tests/regression/snapshots && git commit
+```
+
+Non-visual baselines (ARIA/structural `.yml`, lab signals) are platform-neutral
+and updated locally:
 
 ```bash
 pnpm test:regression:update

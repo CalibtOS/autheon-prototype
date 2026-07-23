@@ -36,10 +36,10 @@ if (mode === 'baseline') {
 // never created or modified here; a missing platform baseline is a blocking
 // failure reported by the visual CI wrapper.
 async function runVisualComparison() {
-  const visualExitCode = await run('npm', [
-    'run',
-    'test:regression:visual:ci',
-    '--',
+  // Call the wrapper binary directly rather than via an npm script so the
+  // container flow does not depend on a public package.json entry point.
+  const visualExitCode = await run('node', [
+    'scripts/visual-regression-ci.mjs',
     ...splitArgs(process.env.VISUAL_REGRESSION_CI_ARGS),
   ]);
 
@@ -117,7 +117,7 @@ async function generateBaselineCandidates() {
     `[docker-visual-ci] Exported ${candidates.length} ${process.platform} baseline candidate(s) to the artifact directory under baseline-candidates/.`,
   );
   console.log(
-    '[docker-visual-ci] Candidates are NOT approved. Review them, then run "npm run test:regression:visual:baseline:approve" on the host and commit the changes.',
+    '[docker-visual-ci] Candidates are NOT approved. Review them, then run "npm run test:regression:baseline:approve" on the host and commit the changes.',
   );
 
   if (playwrightExitCode !== 0) {

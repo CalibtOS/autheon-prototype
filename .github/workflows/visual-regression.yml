@@ -1,0 +1,126 @@
+name: Visual Regression
+
+# Runs the visual regression pipeline in the SAME Docker/Linux image the
+# approved baselines were rendered in, so CI comparisons are deterministic.
+# The pipeline itself (build image -> run visual suite -> classify -> archive
+# artifacts -> email) lives in scripts/, invoked through one entry point:
+# `npm run test:regression:ci`. This workflow only supplies the environment,
+# uploads artifacts, and maps the result onto the CI status.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      strict:
+        description: 'Fail the run on visual differences (blocking gate)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: visual-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  visual-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      # Notification / SMTP configuration (see repository secrets below).
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_SECURE: ${{ secrets.SMTP_SECURE }}
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP_FROM: ${{ secrets.SMTP_FROM }}
+      REGRESSION_NOTIFICATION_EMAIL: ${{ secrets.REGRESSION_NOTIFICATION_EMAIL }}
+      # Product decision: visual differences are a non-blocking warning; only
+      # execution failures / missing baselines fail CI. Manual runs may opt into
+      # a strict gate via the workflow_dispatch input.
+      VISUAL_REGRESSION_STRICT: ${{ github.event.inputs.strict || 'false' }}
+      # Link back to this run's uploaded artifacts from the notification email.
+      REGRESSION_ARTIFACT_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      # Only the small launcher (dotenv) runs on the host; all test/browser
+      # dependencies are installed inside the Docker image by the pipeline.
+      - name: Install launcher dependencies
+        run: npm ci
+
+      - name: Run visual regression pipeline (Docker/Linux)
+        id: pipeline
+        run: |
+          set +e
+          npm run test:regression:ci
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+
+      # Classify the outcome from the machine-readable summary the pipeline
+      # writes, so infrastructure/execution failures and visual differences are
+      # never conflated. This drives the job status and the run annotations.
+      - name: Classify result
+        if: always()
+        run: |
+          SUMMARY="visual-regression-artifacts/docker-ci/visual-regression-summary/summary.json"
+          EXIT="${{ steps.pipeline.outputs.exit_code }}"
+
+          if [ ! -f "$SUMMARY" ]; then
+            echo "::error title=Visual regression infrastructure failure::Pipeline produced no summary.json (exit ${EXIT}). Treating as an execution/infra failure."
+            exit 1
+          fi
+
+          read STATUS VISUAL EXECFAIL MISSING < <(node -e '
+            const s = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+            process.stdout.write([s.status, s.visualDifferences.length, s.executionFailures.length, s.missingBaselines.length].join(" "));
+          ' "$SUMMARY")
+
+          {
+            echo "## Visual Regression Result"
+            echo ""
+            echo "- Status: \`${STATUS}\`"
+            echo "- Visual differences (non-blocking): ${VISUAL}"
+            echo "- Execution failures (blocking): ${EXECFAIL}"
+            echo "- Missing baselines (blocking): ${MISSING}"
+            echo "- Pipeline exit code: ${EXIT}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$EXECFAIL" -gt 0 ] || [ "$MISSING" -gt 0 ]; then
+            echo "::error title=Visual regression execution failure::${EXECFAIL} execution failure(s), ${MISSING} missing baseline(s). This is an infrastructure/framework failure, not a visual diff. See the uploaded artifact."
+            exit 1
+          fi
+
+          if [ "$VISUAL" -gt 0 ]; then
+            echo "::warning title=Visual differences detected::${VISUAL} visual difference(s) found. Review the report in the uploaded artifact; approve intentional changes via 'npm run test:regression:baseline' + ':approve'."
+            # Non-blocking by default; blocking only when the strict gate is on.
+            if [ "${VISUAL_REGRESSION_STRICT}" = "true" ]; then exit 1; fi
+          fi
+
+          # Any other non-zero pipeline exit is an infrastructure failure.
+          if [ "$EXIT" != "0" ] && [ "$VISUAL" -eq 0 ]; then
+            echo "::error title=Visual regression infrastructure failure::Pipeline exited ${EXIT} with no classified visual/exec result."
+            exit 1
+          fi
+          exit 0
+
+      - name: Upload visual regression artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-artifacts
+          path: |
+            visual-regression-artifacts/docker-ci/visual-regression-summary/
+            visual-regression-artifacts/docker-ci/*.tar.gz
+          if-no-files-found: warn
+          retention-days: 30

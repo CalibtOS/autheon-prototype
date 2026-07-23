@@ -1,7 +1,12 @@
 .cursor
 .claude
 .playwright-cli
-.github
+# Keep local .github tooling untracked, but commit CI workflows.
+.github/*
+!.github/workflows/
+.github/workflows/*
+!.github/workflows/*.yml
+!.github/workflows/*.yaml
 .env
 .env.*
 !.env.example

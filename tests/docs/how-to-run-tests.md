@@ -64,17 +64,18 @@ Run regression tests:
 npm run test:regression
 ```
 
-Run visual regression in CI artifact mode:
+Run the full visual regression pipeline (Docker/Linux, the canonical CI command):
 
 ```bash
-npm run test:regression:visual:ci
+npm run test:regression:ci
 ```
 
-This creates `visual-regression-artifacts/autheon-visual-regression-artifact.tar.gz`
-with the Playwright HTML report, `test-results`, approved baseline copy, and
-`visual-regression-summary/summary.md` / `summary.json`. Visual screenshot
+This builds the Docker image, runs the visual suite inside it, and creates
+`visual-regression-artifacts/docker-ci/…` with the Playwright HTML report,
+`test-results`, approved baseline copy, `visual-regression-summary/summary.md` /
+`summary.json`, the PDF report, and one `.tar.gz` archive. Visual screenshot
 differences are reported as non-blocking findings; missing baselines or
-technical test failures still fail the command.
+technical test failures fail the command.
 
 ### Canonical visual environment: Docker/Linux
 
@@ -89,13 +90,13 @@ Baseline lifecycle:
 
 ```text
 First-time platform setup:
-  npm run test:regression:visual:baseline:docker   # generate CANDIDATES
+  npm run test:regression:baseline   # generate CANDIDATES
   review visual-regression-artifacts/docker-ci/baseline-candidates/
-  npm run test:regression:visual:baseline:approve  # promote into tests/regression/snapshots
+  npm run test:regression:baseline:approve  # promote into tests/regression/snapshots
   git commit the snapshot changes                  # approval is final only when committed
 
 Normal CI run:
-  npm run test:regression:visual:docker-ci         # compare against approved Linux baselines
+  npm run test:regression:ci         # compare against approved Linux baselines
 
 Intentional UI change:
   review expected/actual/diff in the report, then regenerate candidates,
@@ -111,7 +112,7 @@ baselines (committed snapshots), baseline candidates
 (`test-results/**-actual.png`), and diff images (`test-results/**-diff.png`).
 
 For local development on macOS, run the visual suite through Docker
-(`npm run test:regression:visual:docker-ci`) so every comparison uses the one
+(`npm run test:regression:ci`) so every comparison uses the one
 canonical rendering environment. Native `npm run test:regression:visual` runs
 on a Mac compare against `*-chromium-darwin.png` baselines and are only
 meaningful if that legacy Darwin baseline set is kept up to date.
@@ -119,15 +120,15 @@ meaningful if that legacy Darwin baseline set is kept up to date.
 Run the local Docker-based CI simulation:
 
 ```bash
-REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:visual:docker-ci
+REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:ci
 ```
 
 This builds `autheon-visual-regression-ci:local`, installs dependencies with
-`npm ci` inside the image, runs `npm run test:regression:visual:ci` (visual
-suite retries default to 0 — screenshot mismatches are deterministic, so
-retrying them only repeats the identical failure; override with
-`VISUAL_REGRESSION_RETRIES`), sends or dry-runs the notification email, and
-preserves artifacts on the host under:
+`npm ci` inside the image, runs the visual CI wrapper
+(`scripts/visual-regression-ci.mjs`; visual suite retries default to 0 —
+screenshot mismatches are deterministic, so retrying them only repeats the
+identical failure; override with `VISUAL_REGRESSION_RETRIES`), sends or dry-runs
+the notification email, and preserves artifacts on the host under:
 
 ```text
 visual-regression-artifacts/docker-ci/
@@ -190,20 +191,20 @@ Safe local validation commands:
 
 ```bash
 # Warning path: known visual differences should exit 0 and dry-run a warning email.
-REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:visual:docker-ci
+REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:ci
 
 # Failure path: missing test dir simulates a real execution failure and exits non-zero.
 REGRESSION_NOTIFICATION_DRY_RUN=true \
 VISUAL_REGRESSION_TEST_DIR=tests/regression/__missing__ \
-npm run test:regression:visual:docker-ci
+npm run test:regression:ci
 ```
 
 Update regression baselines after approved UI/accessibility changes:
 
 ```bash
 # Canonical Docker/Linux visual baselines (candidates -> review -> approve -> commit):
-npm run test:regression:visual:baseline:docker
-npm run test:regression:visual:baseline:approve
+npm run test:regression:baseline
+npm run test:regression:baseline:approve
 
 # Local-platform (non-visual or Darwin) baselines:
 npm run test:regression:update

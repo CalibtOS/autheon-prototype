@@ -16,10 +16,10 @@ const options = {
 };
 
 if (options.help) {
-  console.log(`Usage: npm run test:regression:visual:baseline:approve -- [--dry-run] [--from <candidate-dir>]
+  console.log(`Usage: npm run test:regression:baseline:approve -- [--dry-run] [--from <candidate-dir>]
 
 Promotes reviewed baseline CANDIDATES (produced by
-"npm run test:regression:visual:baseline:docker") into the approved baseline
+"npm run test:regression:baseline") into the approved baseline
 directory tests/regression/snapshots.
 
 This command is the explicit approval step. It never runs automatically, and
@@ -49,7 +49,7 @@ if (!fsSync.existsSync(candidateSnapshots)) {
     `[baseline-approve] No baseline candidates found at ${toWorkspacePath(candidateSnapshots)}.`,
   );
   console.error(
-    '[baseline-approve] Generate candidates first: npm run test:regression:visual:baseline:docker',
+    '[baseline-approve] Generate candidates first: npm run test:regression:baseline',
   );
   process.exit(1);
 }

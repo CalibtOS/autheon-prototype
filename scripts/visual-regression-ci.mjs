@@ -93,7 +93,7 @@ try {
 
   if (visualBaselineCount === 0) {
     analysis = createPreflightFailure(
-      `No approved visual baselines for platform "${process.platform}" were found in ${settings.baselineDir}. Generate candidates with "npm run test:regression:visual:baseline:docker", review them, then approve with "npm run test:regression:visual:baseline:approve" and commit the snapshots.`,
+      `No approved visual baselines for platform "${process.platform}" were found in ${settings.baselineDir}. Generate candidates with "npm run test:regression:baseline", review them, then approve with "npm run test:regression:baseline:approve" and commit the snapshots.`,
       visualBaselineCount,
     );
   } else {
@@ -815,7 +815,7 @@ function renderSummaryMarkdown(run) {
   lines.push(
     '## Baseline Approval Rule',
     '',
-    'Detected visual differences do not update approved baselines automatically. Review the HTML report and image evidence first. Only after approval, run `npm run test:regression:visual:update` and commit the changed files under `tests/regression/snapshots`.',
+    'Detected visual differences do not update approved baselines automatically. Review the HTML report and image evidence first. Only after approval, regenerate candidates with `npm run test:regression:baseline`, promote them with `npm run test:regression:baseline:approve`, and commit the changed files under `tests/regression/snapshots`.',
     '',
   );
 
