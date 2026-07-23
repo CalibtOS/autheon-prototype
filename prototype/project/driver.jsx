@@ -3223,7 +3223,7 @@ const parseDottedDateToTimestamp = (dateStr, fallbackStr) => {
 const MyJobs = ({ onOpen }) => {
   const { t } = useI18n();
   const [tab, setTab] = useState("active");
-  const TAB_IDS = ["active", "performed", "cancelled", "special"];
+  const TAB_IDS = ["active", "performed", "cancelled", "review"];
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date_desc");
   const store = useAuthStore();
@@ -3329,7 +3329,7 @@ const MyJobs = ({ onOpen }) => {
               }
             : {
                 title: t("nothingHereYet"),
-                description: t("specialCaseTab"),
+                description: t("emptyRunReviewTab"),
               };
 
   const renderJobCard = (job) => (
@@ -3347,9 +3347,10 @@ const MyJobs = ({ onOpen }) => {
       <div className="jobcard-header-row">
         <span className="jobcard-tour-num">Tour #{job.tour}</span>
         <div style={{ display: "flex", gap: 6 }}>
-          {job.status === "special_case" && (
-            <span className="pill special_case">
-              {AuthStore.statusLabel("special_case")}
+          {(job.status === "empty_run_reported" ||
+            store.isEmptyRunTerminal(job.status)) && (
+            <span className={"pill " + AuthStore.statusCls(job.status)}>
+              {AuthStore.statusLabel(job.status)}
             </span>
           )}
           {job.status === "accepted" && (
@@ -3360,8 +3361,10 @@ const MyJobs = ({ onOpen }) => {
               {AuthStore.statusLabel("performed")}
             </span>
           )}
-          {job.status === "cancelled" && (
-            <span className="pill cancelled">{t("cancelled")}</span>
+          {store.isCancelledStatus(job.status) && (
+            <span className="pill cancelled">
+              {AuthStore.statusLabel(job.status)}
+            </span>
           )}
           {job.status === "assigned" && (
             <span className="pill assigned">{t("assignedShort")}</span>
@@ -3407,10 +3410,6 @@ const MyJobs = ({ onOpen }) => {
       </div>
     );
   };
-          : {
-              title: t("nothingHereYet"),
-              description: t("emptyRunReviewTab"),
-            };
 
   return (
     <>
@@ -3467,72 +3466,6 @@ const MyJobs = ({ onOpen }) => {
       >
         {TAB_IDS.map((tabId) => (
           <React.Fragment key={tabId}>{renderJobsPane(tabId)}</React.Fragment>
-      {/* Scrollable list content */}
-      <div className="scroll scroll-body">
-        {filteredList.length === 0 && (
-          <EmptyState
-            title={emptyCopy.title}
-            description={emptyCopy.description}
-            actionLabel={emptyCopy.actionLabel}
-            onAction={emptyCopy.onAction}
-          />
-        )}
-        {filteredList.map((job) => (
-          <button
-            key={job.id}
-            type="button"
-            className="jobcard-btn"
-            onClick={() => onOpen(job)}
-          >
-            {job.status === "assigned" ? (
-              <div className="jobcard-banner-assigned">
-                <Ic.TabInfo /> {t("assignedDirectlyNotice")}
-              </div>
-            ) : null}
-            <div className="jobcard-header-row">
-              <span className="jobcard-tour-num">Tour #{job.tour}</span>
-              <div style={{ display: "flex", gap: 6 }}>
-                {(job.status === "empty_run_reported" ||
-                  store.isEmptyRunTerminal(job.status)) && (
-                  <span className={"pill " + AuthStore.statusCls(job.status)}>
-                    {AuthStore.statusLabel(job.status)}
-                  </span>
-                )}
-                {job.status === "accepted" && (
-                  <span className="pill accepted">{t("active")}</span>
-                )}
-                {job.status === "performed" && (
-                  <span className="pill performed">
-                    {AuthStore.statusLabel("performed")}
-                  </span>
-                )}
-                {store.isCancelledStatus(job.status) && (
-                  <span className="pill cancelled">
-                    {AuthStore.statusLabel(job.status)}
-                  </span>
-                )}
-                {job.status === "assigned" && (
-                  <span className="pill assigned">{t("assignedShort")}</span>
-                )}
-              </div>
-            </div>
-            <JobCardBody job={job} />
-            {jobNeedsDocCorrection(job, store) ? (
-              <div className="stack-8">
-                <span
-                  className="chip"
-                  style={{
-                    borderColor: "var(--st-cancelled)",
-                    color: "var(--st-cancelled)",
-                    fontSize: 11,
-                    padding: "1px 6px",
-                  }}
-                >
-                  {t("correctionRequiredBadge")}
-                </span>
-              </div>
-            ) : null}
-          </button>
         ))}
       </SwipeViews>
     </>
