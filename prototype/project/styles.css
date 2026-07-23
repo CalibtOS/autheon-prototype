@@ -2059,6 +2059,40 @@ select.input {
   border-radius: 3px;
 }
 
+/* Draggable paged tab views (see SwipeViews in driver.jsx) */
+.swipe-viewport {
+  position: relative;
+  overflow: hidden;
+  /* Let the browser own vertical panning; we handle horizontal drags. */
+  touch-action: pan-y;
+}
+.swipe-track {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  will-change: transform;
+}
+.swipe-pane {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.swipe-pane::-webkit-scrollbar {
+  width: 6px;
+}
+.swipe-pane::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 3px;
+}
+/* A pane's inner content fills the pane height so its background never
+   leaves a gap under short lists. */
+.swipe-pane-body {
+  min-height: 100%;
+}
+
 /* Legacy .tabbar (pre-capsule nav) removed — use .tabbar-container / .tabbar-capsule */
 
 /* Job card (driver) */

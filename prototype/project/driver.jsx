@@ -5,6 +5,95 @@ const UI = window.DriverUI || {};
 const { Badge, EmptyState, SkeletonList, Sheet, ConfirmSheet, SortSelect } = UI;
 const F = () => window.AutheonFormatters || {};
 
+// Draggable paged views — a dependency-free carousel for tab content.
+// All panes are rendered side-by-side in a horizontal track; the track
+// follows the finger during a horizontal drag so the adjacent tab peeks in,
+// then snaps to the nearest tab on release. Vertical drags are left to the
+// pane's own scrolling. Swipe left → next tab, swipe right → previous tab.
+const SwipeViews = ({
+  index,
+  count,
+  onIndexChange,
+  className = "",
+  style,
+  children,
+}) => {
+  const [dragDx, setDragDx] = useState(null); // px offset while dragging, else null
+  const gesture = useRef(null); // { x, y, axis: "x" | "y" | null }
+  const widthRef = useRef(1);
+  const viewportRef = useRef(null);
+
+  const onTouchStart = (e) => {
+    if (e.touches.length !== 1) {
+      gesture.current = null;
+      return;
+    }
+    const p = e.touches[0];
+    gesture.current = { x: p.clientX, y: p.clientY, axis: null };
+    widthRef.current =
+      (viewportRef.current && viewportRef.current.offsetWidth) || 1;
+  };
+  const onTouchMove = (e) => {
+    const g = gesture.current;
+    if (!g) return;
+    const p = e.touches[0];
+    const dx = p.clientX - g.x;
+    const dy = p.clientY - g.y;
+    // Lock the gesture to one axis after a small initial movement.
+    if (g.axis === null) {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      g.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+    if (g.axis !== "x") return; // vertical → let the pane scroll
+    if (e.cancelable) e.preventDefault(); // own the horizontal gesture
+    let d = dx;
+    // Rubber-band resistance when dragging past the first/last tab.
+    if ((index === 0 && d > 0) || (index === count - 1 && d < 0)) d *= 0.35;
+    setDragDx(d);
+  };
+  const onTouchEnd = () => {
+    const g = gesture.current;
+    gesture.current = null;
+    const d = dragDx;
+    setDragDx(null);
+    if (!g || g.axis !== "x" || d == null) return;
+    const threshold = Math.min(72, widthRef.current * 0.22);
+    let next = index;
+    if (d <= -threshold) next = Math.min(count - 1, index + 1);
+    else if (d >= threshold) next = Math.max(0, index - 1);
+    if (next !== index) onIndexChange(next);
+  };
+
+  const offset = dragDx || 0;
+  const trackStyle = {
+    transform: `translate3d(calc(${-index * 100}% + ${offset}px), 0, 0)`,
+    transition:
+      dragDx == null
+        ? "transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1)"
+        : "none",
+  };
+
+  return (
+    <div
+      ref={viewportRef}
+      className={`swipe-viewport ${className}`.trim()}
+      style={style}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchEnd}
+    >
+      <div className="swipe-track" style={trackStyle}>
+        {React.Children.map(children, (child, i) => (
+          <div className="swipe-pane" aria-hidden={i !== index}>
+            {child}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // =========================================================================
 // SHARED ATOMS
 // =========================================================================
@@ -1057,13 +1146,6 @@ const Portal = ({
   const unreadNotif = store.getDriverNotificationUnreadCount();
   const all = store.getJobs().filter((j) => j.status === "published");
   const filtered = all.filter((j) => jobMatchesDriverFilters(j, filters));
-  const mineJobs = store.getJobs().filter((j) => store.isMineJob(j));
-  const bookedCount = mineJobs.filter((j) =>
-    ["assigned", "accepted"].includes(j.status),
-  ).length;
-  const openDocsCount = mineJobs.filter((j) =>
-    jobNeedsDocCorrection(j, store),
-  ).length;
 
   const ordered = filtered.slice().sort((a, b) => {
     if (sortBy === "date_asc") {
@@ -1195,22 +1277,6 @@ const Portal = ({
                 </span>
               ) : null}
             </button>
-          </div>
-        </div>
-
-        {/* Restrained header KPIs — reduced dashboard character (board §4) */}
-        <div className="kpi-row">
-          <div className="kpi-chip">
-            <span className="kpi-num tnum">{all.length}</span>
-            <span className="kpi-label">{t("kpiAvailableJobs")}</span>
-          </div>
-          <div className="kpi-chip">
-            <span className="kpi-num tnum">{bookedCount}</span>
-            <span className="kpi-label">{t("kpiBookedJobs")}</span>
-          </div>
-          <div className="kpi-chip">
-            <span className="kpi-num tnum">{openDocsCount}</span>
-            <span className="kpi-label">{t("kpiOpenDocuments")}</span>
           </div>
         </div>
 
@@ -3138,6 +3204,7 @@ const parseDottedDateToTimestamp = (dateStr, fallbackStr) => {
 const MyJobs = ({ onOpen }) => {
   const { t } = useI18n();
   const [tab, setTab] = useState("active");
+  const TAB_IDS = ["active", "performed", "cancelled", "special"];
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date_desc");
   const store = useAuthStore();
@@ -3150,58 +3217,59 @@ const MyJobs = ({ onOpen }) => {
   const cancelled = mine.filter((j) => j.status === "cancelled");
   const special = mine.filter((j) => j.status === "special_case");
 
-  const list =
-    tab === "active"
+  const listFor = (tabId) =>
+    tabId === "active"
       ? active
-      : tab === "performed"
+      : tabId === "performed"
         ? performed
-        : tab === "cancelled"
+        : tabId === "cancelled"
           ? cancelled
           : special;
 
-  const filteredList = list
-    .filter((job) => {
-      if (!searchQuery) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        job.tour.toString().includes(q) ||
-        (job.customer || "").toLowerCase().includes(q) ||
-        (job.customerName || "").toLowerCase().includes(q) ||
-        (job.vehicleModel || "").toLowerCase().includes(q) ||
-        (job.plate || "").toLowerCase().includes(q) ||
-        (job.vin || "").toLowerCase().includes(q) ||
-        (job.startCity || "").toLowerCase().includes(q) ||
-        (job.endCity || "").toLowerCase().includes(q)
-      );
-    })
-    .sort((a, b) => {
-      if (sortBy === "date_asc") {
-        const timeA = parseDottedDateToTimestamp(
-          a.pickup?.date || a.pickupDate,
-          a.createdAt,
+  const buildList = (tabId) =>
+    listFor(tabId)
+      .filter((job) => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+          job.tour.toString().includes(q) ||
+          (job.customer || "").toLowerCase().includes(q) ||
+          (job.customerName || "").toLowerCase().includes(q) ||
+          (job.vehicleModel || "").toLowerCase().includes(q) ||
+          (job.plate || "").toLowerCase().includes(q) ||
+          (job.vin || "").toLowerCase().includes(q) ||
+          (job.startCity || "").toLowerCase().includes(q) ||
+          (job.endCity || "").toLowerCase().includes(q)
         );
-        const timeB = parseDottedDateToTimestamp(
-          b.pickup?.date || b.pickupDate,
-          b.createdAt,
-        );
-        return timeA - timeB;
-      } else if (sortBy === "date_desc") {
-        const timeA = parseDottedDateToTimestamp(
-          a.pickup?.date || a.pickupDate,
-          a.createdAt,
-        );
-        const timeB = parseDottedDateToTimestamp(
-          b.pickup?.date || b.pickupDate,
-          b.createdAt,
-        );
-        return timeB - timeA;
-      } else if (sortBy === "tour_asc") {
-        return Number(a.tour || 0) - Number(b.tour || 0);
-      } else if (sortBy === "tour_desc") {
-        return Number(b.tour || 0) - Number(a.tour || 0);
-      }
-      return 0;
-    });
+      })
+      .sort((a, b) => {
+        if (sortBy === "date_asc") {
+          const timeA = parseDottedDateToTimestamp(
+            a.pickup?.date || a.pickupDate,
+            a.createdAt,
+          );
+          const timeB = parseDottedDateToTimestamp(
+            b.pickup?.date || b.pickupDate,
+            b.createdAt,
+          );
+          return timeA - timeB;
+        } else if (sortBy === "date_desc") {
+          const timeA = parseDottedDateToTimestamp(
+            a.pickup?.date || a.pickupDate,
+            a.createdAt,
+          );
+          const timeB = parseDottedDateToTimestamp(
+            b.pickup?.date || b.pickupDate,
+            b.createdAt,
+          );
+          return timeB - timeA;
+        } else if (sortBy === "tour_asc") {
+          return Number(a.tour || 0) - Number(b.tour || 0);
+        } else if (sortBy === "tour_desc") {
+          return Number(b.tour || 0) - Number(a.tour || 0);
+        }
+        return 0;
+      });
 
   const myJobsSortOptions = [
     ["date_desc", t("sortDateDesc")],
@@ -3210,32 +3278,109 @@ const MyJobs = ({ onOpen }) => {
     ["tour_desc", t("sortTourDesc")],
   ];
 
-  const emptyCopy = searchQuery
-    ? {
-        title: t("noJobsMatch"),
-        description: t("searchMyJobsPlaceholder"),
-        actionLabel: t("reset"),
-        onAction: () => setSearchQuery(""),
-      }
-    : tab === "active"
+  const emptyCopyFor = (tabId) =>
+    searchQuery
       ? {
-          title: t("nothingHereYet"),
-          description: t("exploreJobs"),
+          title: t("noJobsMatch"),
+          description: t("searchMyJobsPlaceholder"),
+          actionLabel: t("reset"),
+          onAction: () => setSearchQuery(""),
         }
-      : tab === "performed"
+      : tabId === "active"
         ? {
             title: t("nothingHereYet"),
-            description: t("performedTab"),
+            description: t("exploreJobs"),
           }
-        : tab === "cancelled"
+        : tabId === "performed"
           ? {
               title: t("nothingHereYet"),
-              description: t("cancelledSub"),
+              description: t("performedTab"),
             }
-          : {
-              title: t("nothingHereYet"),
-              description: t("specialCaseTab"),
-            };
+          : tabId === "cancelled"
+            ? {
+                title: t("nothingHereYet"),
+                description: t("cancelledSub"),
+              }
+            : {
+                title: t("nothingHereYet"),
+                description: t("specialCaseTab"),
+              };
+
+  const renderJobCard = (job) => (
+    <button
+      key={job.id}
+      type="button"
+      className="jobcard-btn"
+      onClick={() => onOpen(job)}
+    >
+      {job.status === "assigned" ? (
+        <div className="jobcard-banner-assigned">
+          <Ic.TabInfo /> {t("assignedDirectlyNotice")}
+        </div>
+      ) : null}
+      <div className="jobcard-header-row">
+        <span className="jobcard-tour-num">Tour #{job.tour}</span>
+        <div style={{ display: "flex", gap: 6 }}>
+          {job.status === "special_case" && (
+            <span className="pill special_case">
+              {AuthStore.statusLabel("special_case")}
+            </span>
+          )}
+          {job.status === "accepted" && (
+            <span className="pill accepted">{t("active")}</span>
+          )}
+          {job.status === "performed" && (
+            <span className="pill performed">
+              {AuthStore.statusLabel("performed")}
+            </span>
+          )}
+          {job.status === "cancelled" && (
+            <span className="pill cancelled">{t("cancelled")}</span>
+          )}
+          {job.status === "assigned" && (
+            <span className="pill assigned">{t("assignedShort")}</span>
+          )}
+        </div>
+      </div>
+      <JobCardBody job={job} />
+      {jobNeedsDocCorrection(job, store) ? (
+        <div className="stack-8">
+          <span
+            className="chip"
+            style={{
+              borderColor: "var(--st-cancelled)",
+              color: "var(--st-cancelled)",
+              fontSize: 11,
+              padding: "1px 6px",
+            }}
+          >
+            {t("correctionRequiredBadge")}
+          </span>
+        </div>
+      ) : null}
+    </button>
+  );
+
+  const renderJobsPane = (tabId) => {
+    const jobs = buildList(tabId);
+    const empty = emptyCopyFor(tabId);
+    return (
+      <div className="scroll-body swipe-pane-body">
+        {jobs.length === 0 && (
+          <EmptyState
+            title={empty.title}
+            description={empty.description}
+            actionLabel={empty.actionLabel}
+            onAction={empty.onAction}
+          />
+        )}
+        {jobs.map(renderJobCard)}
+        {jobs.length > 0 ? (
+          <div className="list-end">— {t("endOfList")} —</div>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -3283,74 +3428,17 @@ const MyJobs = ({ onOpen }) => {
         ))}
       </div>
 
-      {/* Scrollable list content */}
-      <div className="scroll scroll-body">
-        {filteredList.length === 0 && (
-          <EmptyState
-            title={emptyCopy.title}
-            description={emptyCopy.description}
-            actionLabel={emptyCopy.actionLabel}
-            onAction={emptyCopy.onAction}
-          />
-        )}
-        {filteredList.map((job) => (
-          <button
-            key={job.id}
-            type="button"
-            className="jobcard-btn"
-            onClick={() => onOpen(job)}
-          >
-            {job.status === "assigned" ? (
-              <div className="jobcard-banner-assigned">
-                <Ic.TabInfo /> {t("assignedDirectlyNotice")}
-              </div>
-            ) : null}
-            <div className="jobcard-header-row">
-              <span className="jobcard-tour-num">Tour #{job.tour}</span>
-              <div style={{ display: "flex", gap: 6 }}>
-                {job.status === "special_case" && (
-                  <span className="pill special_case">
-                    {AuthStore.statusLabel("special_case")}
-                  </span>
-                )}
-                {job.status === "accepted" && (
-                  <span className="pill accepted">{t("active")}</span>
-                )}
-                {job.status === "performed" && (
-                  <span className="pill performed">
-                    {AuthStore.statusLabel("performed")}
-                  </span>
-                )}
-                {job.status === "cancelled" && (
-                  <span className="pill cancelled">{t("cancelled")}</span>
-                )}
-                {job.status === "assigned" && (
-                  <span className="pill assigned">{t("assignedShort")}</span>
-                )}
-              </div>
-            </div>
-            <JobCardBody job={job} />
-            {jobNeedsDocCorrection(job, store) ? (
-              <div className="stack-8">
-                <span
-                  className="chip"
-                  style={{
-                    borderColor: "var(--st-cancelled)",
-                    color: "var(--st-cancelled)",
-                    fontSize: 11,
-                    padding: "1px 6px",
-                  }}
-                >
-                  {t("correctionRequiredBadge")}
-                </span>
-              </div>
-            ) : null}
-          </button>
+      {/* Swipeable list content — drag left/right to switch tabs */}
+      <SwipeViews
+        index={TAB_IDS.indexOf(tab)}
+        count={TAB_IDS.length}
+        onIndexChange={(i) => setTab(TAB_IDS[i])}
+        style={{ flex: 1, minHeight: 0, background: "var(--canvas)" }}
+      >
+        {TAB_IDS.map((tabId) => (
+          <React.Fragment key={tabId}>{renderJobsPane(tabId)}</React.Fragment>
         ))}
-        {filteredList.length > 0 ? (
-          <div className="list-end">— {t("endOfList")} —</div>
-        ) : null}
-      </div>
+      </SwipeViews>
     </>
   );
 };
@@ -5014,6 +5102,7 @@ const Infopoint = () => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [subTab, setSubTab] = useState("documents");
+  const INFO_TABS = ["documents", "news", "help"];
   const [openNewsId, setOpenNewsId] = useState(null);
   const [docPreview, setDocPreview] = useState(null);
   const readerId = store.getCurrentDriver()?.id || AuthStore.DEMO_DRIVER;
@@ -5028,11 +5117,10 @@ const Infopoint = () => {
 
   return (
     <div
-      className="scroll"
       style={{
-        padding: "16px 20px 24px",
         background: "var(--paper-2)",
         flex: 1,
+        minHeight: 0,
         display: "flex",
         flexDirection: "column",
       }}
@@ -5046,7 +5134,6 @@ const Infopoint = () => {
       <div
         style={{
           background: "var(--paper)",
-          margin: "-16px -20px 0 -20px",
           padding: "16px 20px 14px",
           borderBottom: "1px solid var(--line)",
         }}
@@ -5104,8 +5191,20 @@ const Infopoint = () => {
         </div>
       </div>
 
-      <div style={{ flex: 1, marginTop: 16 }}>
-        {subTab === "documents" ? (
+      {/* Swipeable tab content — drag left/right to switch tabs */}
+      <SwipeViews
+        index={INFO_TABS.indexOf(subTab)}
+        count={INFO_TABS.length}
+        onIndexChange={(i) => setSubTab(INFO_TABS[i])}
+        style={{ flex: 1, minHeight: 0, background: "var(--paper-2)" }}
+      >
+        {INFO_TABS.map((paneId) => (
+          <div
+            key={paneId}
+            className="swipe-pane-body"
+            style={{ padding: "16px 20px 24px" }}
+          >
+            {paneId === "documents" ? (
           <>
             <div className="infopoint-card">
               {docs.map((d) => (
@@ -5193,7 +5292,7 @@ const Infopoint = () => {
               {t("emergencyDispatchNotice")}
             </div>
           </>
-        ) : subTab === "help" ? (
+        ) : paneId === "help" ? (
           <HelpSupportContent />
         ) : (
           <>
@@ -5293,8 +5392,10 @@ const Infopoint = () => {
               </div>
             )}
           </>
-        )}
-      </div>
+            )}
+          </div>
+        ))}
+      </SwipeViews>
     </div>
   );
 };
