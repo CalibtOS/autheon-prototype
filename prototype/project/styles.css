@@ -4645,6 +4645,22 @@ select.input {
   flex: 1;
   min-width: 60px;
 }
+/* iOS Safari auto-zooms the viewport when a focused form control has a
+   computed font-size below 16px, which jerks the whole phone-shell (a
+   sudden zoom + scroll-into-view "jump") on every tap. Scope a 16px floor
+   to coarse pointers so real touch devices never trigger the zoom, while
+   the desktop phone-frame preview keeps its designed 13–14px density. */
+@media (pointer: coarse) {
+  .phone-shell input,
+  .phone-shell textarea,
+  .phone-shell select,
+  .phone-shell .input,
+  .phone-shell select.input,
+  .phone-shell .postal-chip-input,
+  .phone-shell .myjobs-search-input-wrap input {
+    font-size: 16px;
+  }
+}
 [data-theme="dark"] .phone-shell .postal-chip-container {
   background: var(--paper-2);
 }

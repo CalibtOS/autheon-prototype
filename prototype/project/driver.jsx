@@ -1187,9 +1187,7 @@ const Portal = ({
           ? t("today")
           : filters.from === "This week"
             ? t("thisWeek")
-            : filters.from === "Weekend"
-              ? t("weekend")
-              : t("fromDateChip", { date: isoToDisplayDate(filters.from) }),
+            : t("fromDateChip", { date: isoToDisplayDate(filters.from) }),
     });
   if (filters.to)
     activeChips.push({
@@ -1349,7 +1347,7 @@ const Portal = ({
 // =========================================================================
 // Shared marketplace filter predicate (plan §6.1) — single source of truth
 // for Portal's list AND the FilterSheet's live result count.
-const FILTER_DATE_PRESETS = ["Today", "This week", "Weekend"];
+const FILTER_DATE_PRESETS = ["Today", "This week"];
 const parseJobDdMm = (raw) => {
   const m = String(raw || "").match(/(\d{2})\.(\d{2})/);
   if (!m) return null;
@@ -1389,8 +1387,6 @@ const jobMatchesDriverFilters = (j, filters) => {
     if (toDate && jobDate && jobDate > toDate) return false;
   }
   if (filters.from === "Today" && j.date !== "05.05.") return false;
-  if (filters.from === "Weekend" && !String(j.dateLong || "").match(/Sat|Sun/i))
-    return false;
   if (
     filters.vehicle &&
     filters.vehicle !== "All" &&
@@ -1513,7 +1509,6 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
             {[
               [t("today"), "Today"],
               [t("thisWeek"), "This week"],
-              [t("weekend"), "Weekend"],
             ].map(([label, value]) => (
               <button
                 key={value}
@@ -3966,6 +3961,71 @@ const PendingNotice = ({ onClose, kind }) => {
   );
 };
 
+// Confirmation popup shown after a tour is booked (binding acceptance).
+// Mirrors the "Tour performed successfully" popup: a green check, a title,
+// a short body, and an OK button that dismisses back to the tour.
+const TourBookedSuccessSheet = ({ onClose }) => {
+  const { t } = useI18n();
+  return (
+    <div className="sheet-backdrop center" onClick={onClose}>
+      <div
+        className="sheet modal"
+        onClick={(e) => e.stopPropagation()}
+        style={{ padding: 26, textAlign: "center", maxWidth: 320 }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tour-booked-success-title"
+      >
+        <div
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: "50%",
+            background: "var(--st-accepted-bg)",
+            margin: "0 auto 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path
+              d="M6 12l4 4 8-9"
+              stroke="var(--st-accepted)"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+        <h3
+          id="tour-booked-success-title"
+          style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 600 }}
+        >
+          {t("tourBookedSuccessTitle")}
+        </h3>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 13.5,
+            color: "var(--muted)",
+            lineHeight: 1.55,
+          }}
+        >
+          {t("tourBookedSuccessBody")}
+        </p>
+        <button
+          type="button"
+          className="btn block primary mt-20"
+          onClick={onClose}
+        >
+          {t("ok")}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // =========================================================================
 // MARK PERFORMED — deliberate two-stage flow (Figma 07/2026):
 //   1. slide-to-confirm (same binding gesture as acceptance; a plain tap
@@ -5462,6 +5522,7 @@ Object.assign(window, {
   MyJobs,
   ReportProblemSheet,
   PendingNotice,
+  TourBookedSuccessSheet,
   MarkPerformedSheet,
   ProbationLimitSheet,
   DocumentPreviewSheet,
