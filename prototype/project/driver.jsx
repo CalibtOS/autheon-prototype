@@ -4787,14 +4787,10 @@ const ProfilePaneFull = () => {
   const [postalText, setPostalText] = useState("");
   const [theme, setTheme] = useState(readStoredTheme);
   const postalAreas = prefs.postalAreas || [];
-  const isPwaSurface =
-    typeof document !== "undefined" &&
-    document.body.classList.contains("pwa-page");
 
   useEffect(() => {
-    if (!isPwaSurface) return;
     applyAppTheme(theme);
-  }, [theme, isPwaSurface]);
+  }, [theme]);
 
   const handleAddPostal = (val) => {
     const trimmed = val.trim();
@@ -5140,29 +5136,27 @@ const ProfilePaneFull = () => {
           <option value="en">English</option>
         </select>
       </div>
-      {isPwaSurface ? (
-        <div className="stack-16">
-          <label className="field-label">{t("appTheme")}</label>
-          <div className="seg full" role="group" aria-label={t("appTheme")}>
-            <button
-              type="button"
-              className={theme === "light" ? "on" : ""}
-              aria-pressed={theme === "light"}
-              onClick={() => setTheme("light")}
-            >
-              {t("themeLight")}
-            </button>
-            <button
-              type="button"
-              className={theme === "dark" ? "on" : ""}
-              aria-pressed={theme === "dark"}
-              onClick={() => setTheme("dark")}
-            >
-              {t("themeDark")}
-            </button>
-          </div>
+      <div className="stack-16">
+        <label className="field-label">{t("appTheme")}</label>
+        <div className="seg full" role="group" aria-label={t("appTheme")}>
+          <button
+            type="button"
+            className={theme === "light" ? "on" : ""}
+            aria-pressed={theme === "light"}
+            onClick={() => setTheme("light")}
+          >
+            {t("themeLight")}
+          </button>
+          <button
+            type="button"
+            className={theme === "dark" ? "on" : ""}
+            aria-pressed={theme === "dark"}
+            onClick={() => setTheme("dark")}
+          >
+            {t("themeDark")}
+          </button>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 
