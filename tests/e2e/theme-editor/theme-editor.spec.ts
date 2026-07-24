@@ -1,60 +1,33 @@
 import { test, expect } from '../../regression/support/fixtures/prototype-test.ts';
-import type { Page } from '@playwright/test';
 import {
   getPrototypeFrame,
   prototypeFrame,
 } from '../../regression/support/helpers/selectors.ts';
 import { gotoPrototype } from '../../regression/support/helpers/stable-page.ts';
+import {
+  ACCENT_VAR,
+  OVERRIDE_KEY,
+  LAUNCHER_KEY,
+  accentHex,
+  accentSwatch,
+  launcher,
+  openEditor,
+  panel,
+  picker,
+  readStorage,
+  readVar,
+} from '../../regression/support/helpers/theme-editor.ts';
 
 /**
  * Behavioural E2E for the Floating Theme Editor, mapped to the feature spec's
- * acceptance criteria. The editor mounts inside the prototype iframe, so every
- * locator goes through prototypeFrame(page). Per the repo selector-priority
- * guide (tests/docs/FRONTEND_E2E_REGRESSION_FRAMEWORK_GUIDE.md) we drive the UI
- * through roles / accessible names; the only CSS-class locators are the two
- * presentational layers that carry no ARIA role (backdrop, picker catcher).
+ * acceptance criteria. Shared automation lives in support/helpers/theme-editor.
+ * The only CSS-class locators are the two presentational layers that carry no
+ * ARIA role (backdrop, picker catcher).
  *
  * These tests deliberately do NOT suppress the launcher (unlike the visual
  * specs). The prototype's in-memory store re-seeds on every load, so a colour
  * surviving a reload also proves persistence is independent of mock-data reseed.
  */
-
-const ACCENT_VAR = '--brand-accent';
-const OVERRIDE_KEY = 'autheon.themeEditor.overrides.v1';
-const LAUNCHER_KEY = 'autheon.themeEditor.launcher.v1';
-
-const launcher = (p: Page) =>
-  prototypeFrame(p).getByRole('button', { name: 'Open Theme Editor' });
-const panel = (p: Page) =>
-  prototypeFrame(p).getByRole('dialog', { name: 'Theme Editor' });
-const picker = (p: Page) =>
-  prototypeFrame(p).getByRole('dialog', { name: /Colour picker/ });
-// Exact / anchored so these never also match the "Accent (pressed)" row.
-const accentHex = (p: Page) =>
-  prototypeFrame(p).getByLabel('Hex value for Accent', { exact: true });
-const accentSwatch = (p: Page) =>
-  prototypeFrame(p).getByRole('button', {
-    name: /^Pick colour for Accent \(currently /,
-  });
-
-async function readVar(page: Page, name: string) {
-  const frame = await getPrototypeFrame(page);
-  const raw = await frame.evaluate(
-    (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(),
-    name,
-  );
-  return raw.toUpperCase();
-}
-
-async function readStorage(page: Page, key: string) {
-  const frame = await getPrototypeFrame(page);
-  return frame.evaluate((k) => window.localStorage.getItem(k), key);
-}
-
-async function openEditor(page: Page) {
-  await launcher(page).click();
-  await expect(panel(page)).toBeVisible();
-}
 
 test.describe('Floating Theme Editor', () => {
   test('AC1: launcher appears in the bottom-right corner on first use', async ({

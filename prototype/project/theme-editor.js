@@ -127,7 +127,13 @@
 
   const ALL_EDITABLE = REGISTRY.flatMap((g) => g.items.map((i) => i.cssVar));
   const NAME_BY_VAR = {};
-  REGISTRY.forEach((g) => g.items.forEach((i) => (NAME_BY_VAR[i.cssVar] = i.name)));
+  const CATEGORY_BY_VAR = {};
+  REGISTRY.forEach((g) =>
+    g.items.forEach((i) => {
+      NAME_BY_VAR[i.cssVar] = i.name;
+      CATEGORY_BY_VAR[i.cssVar] = g.group;
+    }),
+  );
 
   // ===========================================================================
   // Pure helpers (no DOM/side-effects) — exposed on __test for unit specs
@@ -244,6 +250,117 @@
     return out;
   }
 
+  /**
+   * Serialize per-mode overrides to a compact, URL-safe `theme` value:
+   *   light:brand-accent=ff0000,brand-text=111111|dark:brand-accent=8f5bff
+   * Variable names drop the leading `--`; hex drops `#`. Registry order is used
+   * so two exports/URLs compare cleanly.
+   */
+  function serializeOverrides(overrides) {
+    const blocks = [];
+    for (const mode of MODES) {
+      const map = (overrides && overrides[mode]) || {};
+      const entries = [];
+      for (const cssVar of ALL_EDITABLE) {
+        const norm = normalizeHex(map[cssVar]);
+        if (!norm) continue;
+        entries.push(cssVar.replace(/^--/, '') + '=' + norm.slice(1).toLowerCase());
+      }
+      if (entries.length) blocks.push(mode + ':' + entries.join(','));
+    }
+    return blocks.join('|');
+  }
+
+  /**
+   * Parse a `theme` param into validated per-mode overrides. Injection-safe by
+   * construction: an entry is kept only when the variable is a known editable
+   * token AND the value normalizes to `#RRGGBB`. Everything else is dropped, so
+   * no arbitrary CSS/HTML/JS can reach the DOM.
+   */
+  function parseThemeParam(str) {
+    const result = { light: {}, dark: {} };
+    if (typeof str !== 'string' || !str) return result;
+    str.split('|').forEach(function (block) {
+      const sep = block.indexOf(':');
+      if (sep === -1) return;
+      const mode = block.slice(0, sep).trim();
+      if (mode !== 'light' && mode !== 'dark') return;
+      block
+        .slice(sep + 1)
+        .split(',')
+        .forEach(function (pair) {
+          const eq = pair.indexOf('=');
+          if (eq === -1) return;
+          const cssVar = '--' + pair.slice(0, eq).trim();
+          if (!ALL_EDITABLE.includes(cssVar)) return;
+          const hex = normalizeHex(pair.slice(eq + 1).trim());
+          if (!hex) return;
+          result[mode][cssVar] = hex;
+        });
+    });
+    return result;
+  }
+
+  /** Escape a value for a Markdown table cell (pipe would break the row). */
+  function escapeMarkdownCell(value) {
+    return String(value).replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
+  }
+
+  /**
+   * Build a stable, mode-scoped JSON export from a {var: hex} value map.
+   * `variables` is the full visible snapshot for the mode; `modified` lists the
+   * variables the user actually changed from the code default, so a reader can
+   * tell the active configuration apart from the baseline it sits on.
+   */
+  function buildThemeJson(mode, valueMap, modified) {
+    const variables = {};
+    const modifiedList = [];
+    ALL_EDITABLE.forEach(function (cssVar) {
+      if (valueMap && Object.prototype.hasOwnProperty.call(valueMap, cssVar)) {
+        variables[cssVar] = valueMap[cssVar];
+      }
+      if (modified && modified.indexOf(cssVar) !== -1) modifiedList.push(cssVar);
+    });
+    return JSON.stringify(
+      {
+        name: 'Autheon prototype theme (' + mode + ')',
+        mode: mode,
+        generatedBy: 'floating-theme-editor',
+        modified: modifiedList,
+        variables: variables,
+      },
+      null,
+      2,
+    );
+  }
+
+  /** Build a readable Markdown table export from a {var: hex} value map. The
+   *  Modified column flags variables the user changed from the code default. */
+  function buildThemeMarkdown(mode, valueMap, modified) {
+    const mods = modified || [];
+    const lines = [
+      '# Autheon prototype theme — ' + mode,
+      '',
+      '| Category | Variable | Value | Modified |',
+      '| --- | --- | --- | --- |',
+    ];
+    ALL_EDITABLE.forEach(function (cssVar) {
+      if (!valueMap || !Object.prototype.hasOwnProperty.call(valueMap, cssVar)) return;
+      lines.push(
+        '| ' +
+          escapeMarkdownCell(CATEGORY_BY_VAR[cssVar] || '') +
+          ' | `' +
+          cssVar +
+          '` | `' +
+          escapeMarkdownCell(valueMap[cssVar]) +
+          '` | ' +
+          (mods.indexOf(cssVar) !== -1 ? 'yes' : '') +
+          ' |',
+      );
+    });
+    return lines.join('\n');
+  }
+
   const __test = {
     normalizeHex,
     isValidHex,
@@ -256,6 +373,11 @@
     meetsContrast,
     clampPosition,
     buildOverrideCss,
+    serializeOverrides,
+    parseThemeParam,
+    escapeMarkdownCell,
+    buildThemeJson,
+    buildThemeMarkdown,
   };
 
   // ===========================================================================
@@ -323,18 +445,22 @@
     return empty;
   }
 
+  // The single commit point: write the active overrides to BOTH persistence
+  // targets (localStorage + the shareable URL). Called only from user actions,
+  // never from init/URL-read, so there is no circular update loop.
   function persistOverrides() {
     const hasAny = MODES.some(
       (m) => Object.keys(state.overrides[m] || {}).length > 0,
     );
-    if (!hasAny) {
+    if (hasAny) {
+      safeSet(
+        STORAGE.overrides,
+        JSON.stringify({ v: SCHEMA_VERSION, overrides: state.overrides }),
+      );
+    } else {
       safeRemove(STORAGE.overrides);
-      return;
     }
-    safeSet(
-      STORAGE.overrides,
-      JSON.stringify({ v: SCHEMA_VERSION, overrides: state.overrides }),
-    );
+    syncUrl();
   }
 
   // ===========================================================================
@@ -352,6 +478,61 @@
 
   const els = {}; // cached DOM references
   let probeEl = null;
+
+  // ===========================================================================
+  // URL layer — a single shareable `theme` query param.
+  //
+  // The prototype page is loaded inside a same-origin <iframe> (root index.html),
+  // so we operate on the TOP-LEVEL browsing context's URL where reachable; that
+  // way the copyable browser-bar URL carries the config. The standalone /pwa/
+  // and directly-opened prototype are top-level already, so hostWindow === window.
+  //
+  // State flow is strictly one-way to avoid loops:
+  //   init:  URL param → (else) localStorage → (else) defaults   [read only]
+  //   user change: state → DOM → localStorage → URL (replaceState) [write only]
+  // We never listen for URL changes, so writes can't feed back into reads.
+  // ===========================================================================
+  const URL_PARAM = 'theme';
+  const hostWindow = (function () {
+    try {
+      const top = window.top;
+      if (top && top !== window) {
+        void top.location.search; // throws for a cross-origin parent
+        return top;
+      }
+    } catch (_) {
+      /* cross-origin parent — fall back to this window */
+    }
+    return window;
+  })();
+
+  function readUrlOverrides() {
+    try {
+      const params = new URLSearchParams(hostWindow.location.search);
+      return parseThemeParam(params.get(URL_PARAM) || '');
+    } catch (_) {
+      return { light: {}, dark: {} };
+    }
+  }
+
+  /** The host URL with the `theme` param reflecting the active overrides and
+   *  every unrelated param (e.g. the PWA's ?tab) left intact. */
+  function currentUrlWithTheme() {
+    const url = new URL(hostWindow.location.href);
+    const value = serializeOverrides(state.overrides);
+    if (value) url.searchParams.set(URL_PARAM, value);
+    else url.searchParams.delete(URL_PARAM);
+    return url;
+  }
+
+  function syncUrl() {
+    try {
+      const url = currentUrlWithTheme();
+      hostWindow.history.replaceState(hostWindow.history.state, '', url.href);
+    } catch (_) {
+      /* history unavailable — non-fatal, the theme still applies */
+    }
+  }
 
   function currentMode() {
     const m = document.documentElement.getAttribute('data-theme');
@@ -753,7 +934,7 @@
       role: 'dialog',
       'aria-modal': 'true',
       'aria-labelledby': 'ate-title',
-    }, [header, intro, els.rows, footer]);
+    }, [header, intro, els.rows, buildExportSection(), footer]);
     els.panel = panel;
 
     const root = h('div', { class: 'ate-root' }, [backdrop, panel]);
@@ -1117,14 +1298,137 @@
 
   function doResetTheme() {
     state.overrides = { light: {}, dark: {} };
-    safeRemove(STORAGE.overrides);
     applyOverrides();
+    persistOverrides(); // empty → clears both localStorage and the URL param
     renderRows();
     statusText('Restored default theme', 'ok');
   }
 
   function resetTheme() {
     doResetTheme();
+  }
+
+  // ===========================================================================
+  // Export & share
+  // ===========================================================================
+  /** Snapshot of the *visible* theme for the active mode: {var: effective hex}.
+   *  Only editable theme tokens — never launcher/picker/UI runtime state. */
+  function activeValueMap() {
+    const mode = currentMode();
+    const map = {};
+    ALL_EDITABLE.forEach(function (cssVar) {
+      const hex = effectiveHex(cssVar, mode);
+      if (hex) map[cssVar] = hex;
+    });
+    return map;
+  }
+
+  /** Variable names the user overrode for the active mode (registry order). */
+  function modifiedVars() {
+    const overrides = state.overrides[currentMode()] || {};
+    return ALL_EDITABLE.filter(function (cssVar) {
+      return Object.prototype.hasOwnProperty.call(overrides, cssVar);
+    });
+  }
+
+  function copyText(text, okMsg) {
+    const ok = function () {
+      statusText(okMsg, 'ok');
+    };
+    const manual = function () {
+      // Fallback when the async Clipboard API is unavailable or denied.
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
+        (els.panel || document.body).appendChild(ta);
+        ta.select();
+        const copied = document.execCommand && document.execCommand('copy');
+        ta.remove();
+        if (copied) ok();
+        else statusText('Copy failed — select the text manually', 'warn');
+      } catch (_) {
+        statusText('Copy failed — select the text manually', 'warn');
+      }
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok, manual);
+      } else {
+        manual();
+      }
+    } catch (_) {
+      manual();
+    }
+  }
+
+  function downloadFile(filename, text, mime) {
+    try {
+      const blob = new Blob([text], { type: mime || 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      (els.panel || document.body).appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () {
+        URL.revokeObjectURL(url);
+      }, 0);
+      statusText('Downloaded ' + filename, 'ok');
+    } catch (_) {
+      statusText('Download failed', 'warn');
+    }
+  }
+
+  function exportFilename(ext) {
+    return 'autheon-theme-' + currentMode() + '.' + ext;
+  }
+
+  function buildExportSection() {
+    function actionBtn(label, onClick) {
+      return h('button', {
+        type: 'button',
+        class: 'ate-btn ate-btn--ghost ate-btn--sm',
+        text: label,
+        onclick: onClick,
+      });
+    }
+    return h('details', { class: 'ate-export' }, [
+      h('summary', { class: 'ate-export-summary', text: 'Export & share' }),
+      h('div', { class: 'ate-export-grid' }, [
+        actionBtn('Copy JSON', function () {
+          copyText(
+            buildThemeJson(currentMode(), activeValueMap(), modifiedVars()),
+            'Copied JSON',
+          );
+        }),
+        actionBtn('Download JSON', function () {
+          downloadFile(
+            exportFilename('json'),
+            buildThemeJson(currentMode(), activeValueMap(), modifiedVars()),
+            'application/json;charset=utf-8',
+          );
+        }),
+        actionBtn('Copy Markdown', function () {
+          copyText(
+            buildThemeMarkdown(currentMode(), activeValueMap(), modifiedVars()),
+            'Copied Markdown',
+          );
+        }),
+        actionBtn('Download Markdown', function () {
+          downloadFile(
+            exportFilename('md'),
+            buildThemeMarkdown(currentMode(), activeValueMap(), modifiedVars()),
+            'text/markdown;charset=utf-8',
+          );
+        }),
+        actionBtn('Copy shareable link', function () {
+          copyText(currentUrlWithTheme().href, 'Copied shareable link');
+        }),
+      ]),
+    ]);
   }
 
   // ===========================================================================
@@ -1434,8 +1738,15 @@
       document.documentElement.setAttribute('data-theme', initialMode);
     }
 
-    // 2) Apply stored overrides immediately (no flash of the default theme).
-    state.overrides = loadOverrides();
+    // 2) Resolve overrides by precedence — URL > localStorage > defaults — and
+    //    apply immediately (no flash of the default theme). Reading is the only
+    //    thing that happens here; we do NOT write back on load, so a shareable
+    //    URL keeps winning on refresh and nothing loops.
+    const urlOverrides = readUrlOverrides();
+    const urlHasConfig = MODES.some(
+      (m) => Object.keys(urlOverrides[m]).length > 0,
+    );
+    state.overrides = urlHasConfig ? urlOverrides : loadOverrides();
     applyOverrides();
 
     // 3) Defer any DOM mounting until the body exists.
@@ -1506,6 +1817,7 @@
     '.ate-title{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;}',
     '.ate-status{font-size:12px;color:#9aa0ab;margin-top:2px;transition:color .2s ease;}',
     '.ate-status--ok{color:#57d08a;}',
+    '.ate-status--warn{color:#ffca8a;}',
     '.ate-iconbtn{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:transparent;border:1px solid transparent;color:#c7cbd3;cursor:pointer;flex-shrink:0;}',
     '.ate-iconbtn:hover{background:rgba(255,255,255,.08);color:#fff;}',
     '.ate-iconbtn:focus-visible{outline:2px solid #7cc4ff;outline-offset:1px;}',
@@ -1562,6 +1874,18 @@
     '.ate-btn--ghost:hover{background:rgba(255,255,255,.12);}',
     '.ate-btn--primary{background:#3b82f6;color:#fff;}',
     '.ate-btn--primary:hover{background:#2f6fe0;}',
+    '.ate-btn--sm{padding:6px 10px;font-size:12px;}',
+
+    /* Export & share (collapsible to stay compact on small screens) */
+    '.ate-export{border-top:1px solid rgba(255,255,255,.08);}',
+    '.ate-export-summary{padding:10px 14px;font-size:12px;font-weight:600;color:#c7cbd3;cursor:pointer;list-style:none;user-select:none;}',
+    '.ate-export-summary::-webkit-details-marker{display:none;}',
+    '.ate-export-summary::before{content:"\\25B8  ";color:#8b909b;}',
+    'details[open] > .ate-export-summary::before{content:"\\25BE  ";}',
+    '.ate-export-summary:focus-visible{outline:2px solid #7cc4ff;outline-offset:-2px;}',
+    '.ate-export-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 14px 12px;}',
+    '.ate-export-grid .ate-btn{width:100%;}',
+    '.ate-export-grid .ate-btn:last-child{grid-column:1 / -1;}',
 
     /* Confirm dialog */
     '.ate-confirm-backdrop{position:absolute;inset:0;z-index:2147483200;display:grid;place-items:center;background:rgba(6,8,12,.5);padding:16px;}',
