@@ -1,7 +1,7 @@
 // AUTHEON — Shared store (PRD v1.8 prototype). Target spec: docs/requirements/prd.json
 // Domain glossary: DOMAIN.md
 // Single source of truth for Driver + Admin views.
-// Operational statuses: draft, published, assigned, accepted, performed, cancelled, special_case.
+// Operational statuses: draft, published, assigned, accepted, performed, cancelled + Storno statuses.
 // pickup/delivery/customerName are canonical; syncDisplayFields() denormalizes flat fields for tables/CSV.
 
 window.AuthStore = (() => {
@@ -21,6 +21,14 @@ window.AuthStore = (() => {
   const AXLE_OWN = "driven on own wheels";
   const AXLE_THIRD = "third-party axle";
 
+  // Status model (Task 2): explicit machine statuses per the Storno/empty-run
+  // workflow (extended-enum approach — see prd.json client_status_mapping).
+  // `cancelled` is retained as a legacy umbrella; the service-partner and
+  // Autheon cancellation and empty-run states are distinct so each carries its
+  // own rules, ⚠-availability logic, and audit entries. `cls` maps several
+  // statuses onto shared pill colours so the Jobs board reads as umbrella
+  // buckets (Cancelled / review) with a reason chip. (The old `special_case`
+  // status was removed once the empty-run model fully replaced it.)
   const STATUSES = {
     draft: { i18n: "status.draft", cls: "draft" },
     published: { i18n: "status.published", cls: "published" },
@@ -28,8 +36,46 @@ window.AuthStore = (() => {
     accepted: { i18n: "status.accepted", cls: "accepted" },
     performed: { i18n: "status.performed", cls: "performed" },
     cancelled: { i18n: "status.cancelled", cls: "cancelled" },
-    special_case: { i18n: "status.special_case", cls: "special_case" },
+    cancelled_by_sp: { i18n: "status.cancelled_by_sp", cls: "cancelled" },
+    cancelled_by_autheon: {
+      i18n: "status.cancelled_by_autheon",
+      cls: "cancelled",
+    },
+    empty_run_reported: {
+      i18n: "status.empty_run_reported",
+      cls: "empty_run",
+    },
+    empty_run_recognised: {
+      i18n: "status.empty_run_recognised",
+      cls: "performed",
+    },
+    empty_run_not_recognised: {
+      i18n: "status.empty_run_not_recognised",
+      cls: "cancelled",
+    },
   };
+
+  // Terminal / read-only statuses — no further editing, no ⚠ actions.
+  const CANCELLED_STATUSES = [
+    "cancelled",
+    "cancelled_by_sp",
+    "cancelled_by_autheon",
+  ];
+  const EMPTY_RUN_TERMINAL = [
+    "empty_run_recognised",
+    "empty_run_not_recognised",
+  ];
+  const READ_ONLY_STATUSES = [
+    ...CANCELLED_STATUSES,
+    ...EMPTY_RUN_TERMINAL,
+    "performed",
+  ];
+  // Statuses where the service-partner ⚠ action must be hidden/disabled
+  // (terminal states + while an empty-run report is pending review).
+  const WARN_ACTION_BLOCKED_STATUSES = [
+    ...READ_ONLY_STATUSES,
+    "empty_run_reported",
+  ];
 
   const DOC_REVIEW = [
     "uploaded",
@@ -38,7 +84,7 @@ window.AuthStore = (() => {
     "correction_required",
   ];
 
-  const ACTIVE_JOB_STATUSES = ["assigned", "accepted", "special_case"];
+  const ACTIVE_JOB_STATUSES = ["assigned", "accepted", "empty_run_reported"];
 
   function normalizeTourDocumentReviewStatus(st) {
     const s = String(st || "").trim();
@@ -181,7 +227,7 @@ window.AuthStore = (() => {
       performedAt: "",
       documentReviewSummary: "Not Started",
       settlementState: "Not Started",
-      specialCaseReport: null,
+      emptyRunReport: null,
       cancellationActor: null,
       cancellationReason: "",
       cancellationReasonText: "",
@@ -691,9 +737,9 @@ window.AuthStore = (() => {
       },
       {
         id: "DOC-008",
-        title: "Cancellation and problem case process",
+        title: "Cancellation and empty-run process",
         description:
-          "When and how to use Report Problem; contact dispatch for special cases.",
+          "When and how to use Report Problem; how empty-run reports are reviewed by dispatch.",
         category: "Process",
         visible: true,
         scope: "Global",
@@ -725,7 +771,7 @@ window.AuthStore = (() => {
       {
         id: "NEWS-003",
         title: "Report Problem replaces returns",
-        body: "Use Report Problem to cancel or flag a tour as not performable. Not performable creates a special case for dispatch.",
+        body: "Use Report Problem to cancel an order or report an empty run. A reported empty run is submitted to dispatch for review (recognised or not recognised).",
         publishedAt: "03.05. 14:30",
         visible: true,
         readBy: [],
@@ -909,20 +955,20 @@ window.AuthStore = (() => {
           "Historic vehicle on third-party axle; yard access issue reported by driver.",
         notesDriver:
           "Do not attempt pickup until dispatch confirms yard reopening.",
-        status: "special_case",
+        status: "empty_run_reported",
         driver: DEMO_DRIVER,
         pdfVersion: 1,
-        specialCaseReport: {
-          type: "not_performable",
-          reason: "access_blocked",
-          message:
+        emptyRunReport: {
+          reason: "not_present",
+          description:
             "Customer yard closed unexpectedly; vehicle not accessible for pickup.",
           reportedAt: "23.04. 08:40",
           reportedBy: DEMO_DRIVER,
-          statusBeforeSpecialCase: "accepted",
+          statusBeforeReport: "accepted",
+          decision: null,
           evidence: [
             {
-              id: "SCE-SEED-001",
+              id: "ERE-SEED-001",
               fileName: "yard-closed-photo-0846.jpg",
               mimeType: "image/jpeg",
               sizeBytes: 890400,
@@ -935,10 +981,10 @@ window.AuthStore = (() => {
           { st: "assigned", at: "23.04. 07:55", by: "A. Bauer" },
           { st: "accepted", at: "23.04. 08:10", by: DEMO_DRIVER },
           {
-            st: "special_case",
+            st: "empty_run_reported",
             at: "23.04. 08:40",
             by: DEMO_DRIVER,
-            meta: "Report Problem: not performable",
+            meta: "Report Problem: empty run reported",
           },
         ],
         createdAt: "22.04. 16:11",
@@ -1228,7 +1274,7 @@ window.AuthStore = (() => {
     return {
       acceptedIds: new Set(["A-2026-00845", "A-2026-00843"]),
       performedIds: new Set(["A-2026-00842"]),
-      specialCaseIds: new Set(["A-2026-00846"]),
+      emptyRunReviewIds: new Set(["A-2026-00846"]),
       cancelledIds: new Set(["A-2026-00841"]),
     };
   }
@@ -1242,6 +1288,8 @@ window.AuthStore = (() => {
         driverCode: "AU-41-0228",
         address: "Landsberger Str. 22, 80339 Munchen",
         email: "jordan.blake@example.com",
+        emailVerified: true,
+        pendingEmailChange: null,
         phone: "+49 170 4400228",
         notes: "",
         status: "Active",
@@ -1497,10 +1545,10 @@ window.AuthStore = (() => {
     return [
       {
         id: "ALERT-SEED-001",
-        event: "special_case_created",
+        event: "empty_run_reported",
         jobId: "A-2026-00846",
         tour: "0846-26",
-        meta: "Report Problem: not performable — yard closed · 1 file(s)",
+        meta: "Report Problem: empty run reported — yard closed · 1 file(s)",
         at: "23.04. 08:41",
         sent: true,
       },
@@ -1540,11 +1588,11 @@ window.AuthStore = (() => {
         meta: "Binding slide confirmation",
       },
       {
-        action: "special_case_created",
+        action: "empty_run_reported",
         actor: DEMO_DRIVER,
         entity: "0846-26",
         at: "23.04. 08:40",
-        meta: "Not performable — yard closed",
+        meta: "Empty run reported — yard closed",
       },
       {
         action: "tour_document_uploaded",
@@ -1595,20 +1643,6 @@ window.AuthStore = (() => {
       identityProvisioned: true,
       inviteEmailSent: true,
     };
-  }
-
-  /** Restore target when admin continues a special case (fallback if statusBeforeSpecialCase missing). */
-  function inferStatusBeforeSpecialCase(job) {
-    const fromReport = job?.specialCaseReport?.statusBeforeSpecialCase;
-    if (fromReport && ["assigned", "accepted"].includes(fromReport))
-      return fromReport;
-    const hist = job?.history || [];
-    for (let i = hist.length - 1; i >= 0; i--) {
-      const st = hist[i]?.st;
-      if (st === "special_case") continue;
-      if (["assigned", "accepted"].includes(st)) return st;
-    }
-    return "assigned";
   }
 
   function validateSeedData(jobList, partyList, docList, state) {
@@ -1683,22 +1717,23 @@ window.AuthStore = (() => {
         issues.push(`driverState.performedIds: ${id} status mismatch`);
       }
     }
-    for (const id of state.specialCaseIds || []) {
+    for (const id of state.emptyRunReviewIds || []) {
       const j = jobList.find((x) => x.id === id);
-      if (!j || j.status !== "special_case") {
-        issues.push(`driverState.specialCaseIds: ${id} status mismatch`);
+      // The review bucket holds empty-run reports pending Autheon review.
+      if (!j || j.status !== "empty_run_reported") {
+        issues.push(`driverState.emptyRunReviewIds: ${id} status mismatch`);
       } else {
-        const prior = j.specialCaseReport?.statusBeforeSpecialCase;
+        const prior = j.emptyRunReport?.statusBeforeReport;
         if (!prior || !["assigned", "accepted"].includes(prior)) {
           issues.push(
-            `${j.id}: special case missing valid statusBeforeSpecialCase`,
+            `${j.id}: empty-run report missing valid prior status`,
           );
         }
       }
     }
     for (const id of state.cancelledIds || []) {
       const j = jobList.find((x) => x.id === id);
-      if (!j || j.status !== "cancelled") {
+      if (!j || !CANCELLED_STATUSES.includes(j.status)) {
         issues.push(`driverState.cancelledIds: ${id} status mismatch`);
       }
     }
@@ -1909,7 +1944,7 @@ window.AuthStore = (() => {
     if (!driverId || !day) return false;
     return jobs.some((j) => {
       if (j.id === excludeId) return false;
-      if (!["accepted", "assigned", "special_case"].includes(j.status))
+      if (!["accepted", "assigned", "empty_run_reported"].includes(j.status))
         return false;
       const dr = jobDriverRecord(j);
       if (!dr || dr.id !== driverId) return false;
@@ -1918,7 +1953,7 @@ window.AuthStore = (() => {
   }
 
   function uploadAllowedStatuses() {
-    return ["assigned", "accepted", "special_case", "performed"];
+    return ["assigned", "accepted", "empty_run_reported", "performed"];
   }
 
   const DISTANCE_TABLE = {
@@ -1962,6 +1997,11 @@ window.AuthStore = (() => {
     const hh = String(d.getHours()).padStart(2, "0");
     const mi = String(d.getMinutes()).padStart(2, "0");
     return `${dd}.${mm}. ${hh}:${mi}`;
+  }
+
+  // Safe i18n lookup for mock notification/audit copy generated in the store.
+  function t2(key, params) {
+    return window.I18n?.t ? window.I18n.t(key, params) : key;
   }
 
   function log(action, actor, entity, meta) {
@@ -2294,10 +2334,15 @@ window.AuthStore = (() => {
           : "",
       distanceKm: job.distanceKm,
       pickupDate: pu.date || "",
+      // Carry the long-form date so a form round-trip preserves the real
+      // pickup datetime (used by the schedule-change cutoff, §13) instead of
+      // clearing it. locationFromForm reads pickupDateLong/deliveryDateLong.
+      pickupDateLong: pu.dateLong || "",
       pickupFrom: pu.windowFrom || "",
       pickupTo: pu.windowTo || "",
       pickupFlex: !!pu.windowFlex,
       deliveryDate: del.date || "",
+      deliveryDateLong: del.dateLong || "",
       deliveryFrom: del.windowFrom || "",
       deliveryTo: del.windowTo || "",
       deliveryFlex: !!del.windowFlex,
@@ -2435,9 +2480,132 @@ window.AuthStore = (() => {
     };
   }
 
+  // -----------------------------------------------------------------------
+  // Full order editing (Storno §7). One canonical list of editable business
+  // fields drives the diff, the audit (previous → new per field), and the
+  // partner notification. `dv` (driver-visible) marks which changes may appear
+  // in the assigned partner's notification — internal notes and admin-only
+  // financials are audited but NEVER leaked to the driver (§17).
+  // -----------------------------------------------------------------------
+  function fmtEditWindow(loc) {
+    if (!loc) return "";
+    const from = loc.windowFrom || "";
+    const to = loc.windowTo || "";
+    if (!from && !to) return "";
+    const base = `${from || "?"}–${to || "?"}`;
+    return loc.windowFlex ? `${base} (flex)` : base;
+  }
+  function fmtEditBool(v) {
+    return v ? "Yes" : "No";
+  }
+  const ORDER_EDIT_FIELDS = [
+    { key: "customer", i18n: "orderFieldCustomer", dv: true, get: (j) => j.customerName || j.customer || "" },
+    { key: "category", i18n: "orderFieldCategory", dv: true, get: (j) => j.category || "" },
+    { key: "distanceKm", i18n: "orderFieldDistance", dv: true, get: (j) => (j.distanceKm != null ? j.distanceKm : "") },
+    // Pickup leg
+    { key: "pickupCompany", i18n: "orderFieldPickupCompany", dv: true, get: (j) => j.pickup?.name || "" },
+    { key: "pickupAddress", i18n: "orderFieldPickupAddress", dv: true, get: (j) => [j.pickup?.street, j.pickup?.houseNumber].filter(Boolean).join(" ") },
+    { key: "pickupPostal", i18n: "orderFieldPickupPostal", dv: true, get: (j) => j.pickup?.postalCode || "" },
+    { key: "pickupCity", i18n: "orderFieldPickupCity", dv: true, get: (j) => j.pickup?.city || "" },
+    { key: "pickupCountry", i18n: "orderFieldPickupCountry", dv: true, get: (j) => j.pickup?.country || "" },
+    { key: "pickupContact", i18n: "orderFieldPickupContact", dv: true, get: (j) => j.pickup?.contactPerson || "" },
+    { key: "pickupPhone", i18n: "orderFieldPickupPhone", dv: true, get: (j) => j.pickup?.phone || "" },
+    { key: "pickupAltContact", i18n: "orderFieldPickupAltContact", dv: true, get: (j) => j.pickup?.alternateContactPerson || "" },
+    { key: "pickupSecondPhone", i18n: "orderFieldPickupSecondPhone", dv: true, get: (j) => j.pickup?.secondPhone || "" },
+    { key: "pickupEmail", i18n: "orderFieldPickupEmail", dv: true, get: (j) => j.pickup?.email || "" },
+    { key: "pickupNotes", i18n: "orderFieldPickupNotes", dv: true, get: (j) => j.pickup?.notes || "" },
+    { key: "pickupDate", i18n: "orderFieldPickupDate", dv: true, get: (j) => j.pickup?.date || "" },
+    { key: "pickupWindow", i18n: "orderFieldPickupWindow", dv: true, get: (j) => fmtEditWindow(j.pickup) },
+    // Delivery leg
+    { key: "deliveryCompany", i18n: "orderFieldDeliveryCompany", dv: true, get: (j) => j.delivery?.name || "" },
+    { key: "deliveryAddress", i18n: "orderFieldDeliveryAddress", dv: true, get: (j) => [j.delivery?.street, j.delivery?.houseNumber].filter(Boolean).join(" ") },
+    { key: "deliveryPostal", i18n: "orderFieldDeliveryPostal", dv: true, get: (j) => j.delivery?.postalCode || "" },
+    { key: "deliveryCity", i18n: "orderFieldDeliveryCity", dv: true, get: (j) => j.delivery?.city || "" },
+    { key: "deliveryCountry", i18n: "orderFieldDeliveryCountry", dv: true, get: (j) => j.delivery?.country || "" },
+    { key: "deliveryContact", i18n: "orderFieldDeliveryContact", dv: true, get: (j) => j.delivery?.contactPerson || "" },
+    { key: "deliveryPhone", i18n: "orderFieldDeliveryPhone", dv: true, get: (j) => j.delivery?.phone || "" },
+    { key: "deliveryAltContact", i18n: "orderFieldDeliveryAltContact", dv: true, get: (j) => j.delivery?.alternateContactPerson || "" },
+    { key: "deliverySecondPhone", i18n: "orderFieldDeliverySecondPhone", dv: true, get: (j) => j.delivery?.secondPhone || "" },
+    { key: "deliveryEmail", i18n: "orderFieldDeliveryEmail", dv: true, get: (j) => j.delivery?.email || "" },
+    { key: "deliveryNotes", i18n: "orderFieldDeliveryNotes", dv: true, get: (j) => j.delivery?.notes || "" },
+    { key: "deliveryDate", i18n: "orderFieldDeliveryDate", dv: true, get: (j) => j.delivery?.date || "" },
+    { key: "deliveryWindow", i18n: "orderFieldDeliveryWindow", dv: true, get: (j) => fmtEditWindow(j.delivery) },
+    // Vehicle
+    { key: "vehicleType", i18n: "orderFieldVehicleType", dv: true, get: (j) => j.vehicle || "" },
+    { key: "vehicleModel", i18n: "orderFieldVehicleModel", dv: true, get: (j) => j.vehicleModel || "" },
+    { key: "plate", i18n: "orderFieldPlate", dv: true, get: (j) => j.plate || "" },
+    { key: "vin", i18n: "orderFieldVin", dv: true, get: (j) => j.vin || "" },
+    { key: "axle", i18n: "orderFieldAxle", dv: true, get: (j) => j.axle || "" },
+    { key: "registrationStatus", i18n: "orderFieldRegistrationStatus", dv: true, get: (j) => j.registrationStatus || "" },
+    { key: "electricVehicle", i18n: "orderFieldElectricVehicle", dv: true, get: (j) => fmtEditBool(j.electricVehicle) },
+    { key: "redPlates", i18n: "orderFieldRedPlates", dv: true, get: (j) => fmtEditBool(j.redPlates) },
+    { key: "redPlateNumber", i18n: "orderFieldRedPlateNumber", dv: true, get: (j) => j.redPlateNumber || "" },
+    // Commercial
+    { key: "driverOffer", i18n: "orderFieldDriverOffer", dv: true, get: (j) => (j.driverOffer != null ? j.driverOffer : "") },
+    { key: "expenses", i18n: "orderFieldExpenses", dv: false, get: (j) => (j.expenses != null ? j.expenses : "") },
+    // Notes — driver-visible order note is notifiable; the internal order note
+    // (job.notes) is admin-only and NEVER included in the partner notification.
+    { key: "notesDriver", i18n: "orderFieldNotesDriver", dv: true, get: (j) => j.notesDriver || "" },
+    { key: "notes", i18n: "orderFieldNotesInternal", dv: false, get: (j) => j.notes || "" },
+  ];
+  function flattenOrderBusinessFields(job) {
+    const out = {};
+    for (const f of ORDER_EDIT_FIELDS) out[f.key] = f.get(job);
+    return out;
+  }
+  function diffOrderBusinessFields(before, after) {
+    const diffs = [];
+    for (const f of ORDER_EDIT_FIELDS) {
+      const from = before[f.key];
+      const to = after[f.key];
+      if (String(from ?? "") === String(to ?? "")) continue;
+      diffs.push({
+        field: f.key,
+        label: t2(f.i18n),
+        from: from ?? "",
+        to: to ?? "",
+        driverVisible: f.dv !== false,
+      });
+    }
+    return diffs;
+  }
+  // Shared commit path for every admin order edit (Storno §7.1, §11, §17):
+  // one history row, one audit entry per changed field carrying previous → new,
+  // and ONE combined partner notification containing only driver-visible diffs.
+  function finalizeOrderEdit(job, diffs) {
+    const stamp = nowStamp();
+    job.history = [
+      ...(job.history || []),
+      {
+        st: job.status,
+        at: stamp,
+        by: DEMO_ADMIN,
+        meta: `Order edited: ${diffs.map((d) => d.label || d.field).join(", ")}`,
+      },
+    ];
+    for (const d of diffs) {
+      log("order_edited", DEMO_ADMIN, job.tour, `${d.label || d.field}: "${d.from}" → "${d.to}"`);
+    }
+    const dr = jobDriverRecord(job);
+    const visible = diffs.filter((d) => d.driverVisible !== false);
+    if (dr && visible.length) {
+      const lines = visible
+        .map((d) => `${d.label || d.field}: ${d.from || "—"} → ${d.to || "—"}`)
+        .join("\n");
+      pushDriverNotification({
+        type: "order_updated",
+        jobId: job.id,
+        tour: job.tour,
+        title: t2("notifOrderUpdatedTitle", { tour: job.tour }),
+        body: `${t2("notifOrderUpdatedIntro")}\n${lines}`,
+        driverId: dr.id,
+      });
+    }
+  }
+
   function jobWasEverCommitted(job) {
     return (job?.history || []).some((h) =>
-      ["published", "assigned", "accepted", "performed", "special_case"].includes(
+      ["published", "assigned", "accepted", "performed", "empty_run_reported"].includes(
         h.st,
       ),
     );
@@ -2598,6 +2766,28 @@ window.AuthStore = (() => {
       return s;
     },
     statusCls: (s) => STATUSES[s]?.cls || "",
+
+    // Task 2 status-model helpers (extended enum).
+    isCancelledStatus: (s) => CANCELLED_STATUSES.includes(s),
+    isEmptyRunReported: (s) => s === "empty_run_reported",
+    isEmptyRunTerminal: (s) => EMPTY_RUN_TERMINAL.includes(s),
+    isReadOnlyStatus: (s) => READ_ONLY_STATUSES.includes(s),
+    isReadOnlyJob: (job) => !!job && READ_ONLY_STATUSES.includes(job.status),
+    // Single source of truth for admin edit eligibility (Storno §7/§8/§11):
+    // admins may edit ALL business data on any non-terminal order — draft,
+    // published, assigned, accepted and empty_run_reported (pending review).
+    // Terminal states (cancelled_by_sp, cancelled_by_autheon,
+    // empty_run_recognised, empty_run_not_recognised, performed) stay read-only.
+    canAdminEditOrder: (job) => !!job && !READ_ONLY_STATUSES.includes(job.status),
+    // Service partner may cancel / report empty run only on a booked order.
+    canServicePartnerAct: (job) =>
+      !!job && ["assigned", "accepted"].includes(job.status),
+    // ⚠ action availability (§10): booked orders only; hidden for terminal
+    // states and while an empty-run report is pending review.
+    canServicePartnerReport: (job) =>
+      !!job &&
+      ["assigned", "accepted"].includes(job.status) &&
+      !WARN_ACTION_BLOCKED_STATUSES.includes(job.status),
 
     getAppDisplayName() {
       return branding.appDisplayName || "Transport Portal";
@@ -2809,10 +2999,22 @@ window.AuthStore = (() => {
       };
     },
 
+    // Umbrella grouping for the Jobs board (design: scannable columns +
+    // precise reason chip). Precise machine statuses roll up to a bucket.
+    statusUmbrella: (s) => {
+      if (s === "cancelled_by_sp" || s === "cancelled_by_autheon") return "cancelled";
+      if (s === "empty_run_not_recognised") return "cancelled";
+      if (s === "empty_run_recognised") return "performed";
+      // empty_run_reported is its own umbrella (the review bucket) — it keeps a
+      // real status label + pill class and is the only member.
+      return s;
+    },
+
     countsByStatus: () => {
       const c = {};
       jobs.forEach((j) => {
-        c[j.status] = (c[j.status] || 0) + 1;
+        const key = api.statusUmbrella(j.status);
+        c[key] = (c[key] || 0) + 1;
       });
       return c;
     },
@@ -2825,11 +3027,24 @@ window.AuthStore = (() => {
       if (driverState.cancelledIds.has(j.id)) return true;
       if (driverState.acceptedIds.has(j.id)) return true;
       if (driverState.performedIds.has(j.id)) return true;
-      if (driverState.specialCaseIds.has(j.id)) return true;
+      if (driverState.emptyRunReviewIds.has(j.id)) return true;
       if (j.status === "cancelled" && j.driver === curName) return true;
+      // A job stays "mine" across its whole lifecycle when its driver is me —
+      // including the Storno terminal states, so a cancelled/recognised/
+      // not-recognised order remains visible in the driver's My Jobs history
+      // (reviewEmptyRun/cancelJob leave j.driver set but clear the id buckets).
       if (
         j.driver === curName &&
-        ["assigned", "accepted", "special_case", "performed"].includes(j.status)
+        [
+          "assigned",
+          "accepted",
+          "performed",
+          "empty_run_reported",
+          "empty_run_recognised",
+          "empty_run_not_recognised",
+          "cancelled_by_sp",
+          "cancelled_by_autheon",
+        ].includes(j.status)
       )
         return true;
       return false;
@@ -2866,7 +3081,7 @@ window.AuthStore = (() => {
 
     isAccepted: (id) => driverState.acceptedIds.has(id),
     isPerformed: (id) => driverState.performedIds.has(id),
-    isSpecialCase: (id) => driverState.specialCaseIds.has(id),
+    isInEmptyRunReview: (id) => driverState.emptyRunReviewIds.has(id),
 
     getCustomer: (id) => customers.find((x) => x.id === id) || null,
 
@@ -3217,90 +3432,193 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
+    // Service partner cancels a booked order (Storno-Workflow §2).
+    // Separate process/status/audit from the empty-run report.
     reportProblemCancel(id, reason, message) {
       const j = api.getJob(id);
-      if (!j || !["assigned", "accepted"].includes(j.status))
+      if (!j || !api.canServicePartnerAct(j))
         return { ok: false, reason: "invalid_state" };
       if (j.driver && j.driver !== DEMO_DRIVER)
         return { ok: false, reason: "not_assigned_driver" };
-      j.status = "cancelled";
-      j.cancellationActor = "driver";
+      const explanation = String(message || "").trim();
+      if (explanation.length < 30)
+        return { ok: false, reason: "explanation_too_short", min: 30 };
+      const stamp = nowStamp();
+      j.status = "cancelled_by_sp";
+      j.cancellationActor = "service_partner";
       j.cancellationReason = reason || "";
-      j.cancellationReasonText = message || "";
+      j.cancellationReasonText = explanation;
+      // Stored per §2.2: reason, explanation, date, time, executing partner.
+      j.spCancellation = {
+        reason: reason || "other",
+        explanation,
+        at: stamp,
+        servicePartner: DEMO_DRIVER,
+        servicePartnerId: api.getCurrentDriver()?.id || "",
+      };
       j.history = [
         ...(j.history || []),
         {
-          st: "cancelled",
-          at: nowStamp(),
+          st: "cancelled_by_sp",
+          at: stamp,
           by: DEMO_DRIVER,
-          meta: `Report Problem cancel: ${reason}`,
+          meta: `Cancelled by service partner: ${reason}`,
         },
       ];
+      // Leaves the partner's active orders, stays in order history.
       driverState.acceptedIds.delete(id);
+      driverState.emptyRunReviewIds.delete(id);
       driverState.cancelledIds.add(id);
       log(
-        "report_problem_cancel",
+        "cancelled_by_service_partner",
         DEMO_DRIVER,
         j.tour,
-        `${reason}: ${message}`,
+        `${reason}: ${explanation}`,
       );
-      queueAdminEmailAlert("report_problem_cancel", id, message);
+      // Inform the admin backend immediately.
+      queueAdminEmailAlert("order_cancelled_by_sp", id, explanation);
       emit();
       return { ok: true };
     },
 
-    buildSpecialCaseEvidenceMeta(files) {
+    buildEmptyRunEvidenceMeta(files) {
       const list = Array.isArray(files) ? files.slice(0, 5) : [];
       const evidence = [];
       for (const file of list) {
         if (!file || !isAllowedTourDocumentFile(file)) continue;
         const mime = (file.type || guessMimeFromName(file.name) || "").trim();
+        const isImage = /^image\//i.test(mime);
+        // Keep an in-session object URL for image evidence so the admin review
+        // panel can actually display the picture the partner uploaded (the
+        // prototype has no binary storage, so this preview lives only for the
+        // current page session). Non-image / seed evidence has no previewUrl.
+        let previewUrl = "";
+        if (isImage && typeof URL !== "undefined" && URL.createObjectURL) {
+          try {
+            previewUrl = URL.createObjectURL(file);
+          } catch (e) {
+            previewUrl = "";
+          }
+        }
         evidence.push({
-          id: `SCE-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          id: `ERE-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           fileName: file.name,
           mimeType: mime || "application/octet-stream",
           sizeBytes: typeof file.size === "number" ? file.size : 0,
           uploadedAt: new Date().toISOString(),
+          isImage,
+          previewUrl,
         });
       }
       return evidence;
     },
 
+    // Service partner reports an empty run (Storno-Workflow §3): the ORDER
+    // itself can't be executed. Separate process/status/audit from a cancel.
+    // Optional evidence must never be required. Locked pending Autheon review.
     reportProblemNotPerformable(id, reason, message, evidenceFiles) {
       const j = api.getJob(id);
-      if (!j || !["assigned", "accepted"].includes(j.status))
+      if (!j || !api.canServicePartnerAct(j))
         return { ok: false, reason: "invalid_state" };
       if (j.driver && j.driver !== DEMO_DRIVER)
         return { ok: false, reason: "not_assigned_driver" };
-      const statusBeforeSpecialCase = j.status;
-      const evidence = api.buildSpecialCaseEvidenceMeta(evidenceFiles);
-      j.status = "special_case";
-      j.specialCaseReport = {
-        type: "not_performable",
+      const description = String(message || "").trim();
+      if (description.length < 30)
+        return { ok: false, reason: "description_too_short", min: 30 };
+      const statusBeforeReport = j.status;
+      const evidence = api.buildEmptyRunEvidenceMeta(evidenceFiles);
+      const stamp = nowStamp();
+      j.status = "empty_run_reported";
+      // Stored per §3.4: reason, description, date, time, partner, evidence.
+      j.emptyRunReport = {
         reason: reason || "other",
-        message: message || "",
-        reportedAt: nowStamp(),
+        description,
+        reportedAt: stamp,
         reportedBy: DEMO_DRIVER,
-        statusBeforeSpecialCase,
+        servicePartnerId: api.getCurrentDriver()?.id || "",
+        statusBeforeReport,
         evidence,
+        decision: null, // set by admin review: recognised | not_recognised
       };
       j.history = [
         ...(j.history || []),
         {
-          st: "special_case",
-          at: nowStamp(),
+          st: "empty_run_reported",
+          at: stamp,
           by: DEMO_DRIVER,
-          meta: "Report Problem: not performable",
+          meta: `Empty run reported: ${reason}`,
         },
       ];
-      driverState.specialCaseIds.add(id);
+      // In review — not in active orders, tracked in the review bucket.
+      driverState.emptyRunReviewIds.add(id);
       driverState.acceptedIds.delete(id);
-      log("special_case_created", DEMO_DRIVER, j.tour, `${reason}: ${message}`);
+      log(
+        "empty_run_reported",
+        DEMO_DRIVER,
+        j.tour,
+        `${reason}: ${description}`,
+      );
       const alertMeta =
         evidence.length > 0
-          ? `${message || ""} · ${evidence.length} file(s)`.trim()
-          : message || "";
-      queueAdminEmailAlert("special_case_created", id, alertMeta);
+          ? `${description} · ${evidence.length} file(s)`.trim()
+          : description;
+      queueAdminEmailAlert("empty_run_reported", id, alertMeta);
+      emit();
+      return { ok: true };
+    },
+
+    // Admin decision on a reported empty run (Storno-Workflow §4): exactly two
+    // outcomes, no intermediate states. Marks the order read-only and pushes a
+    // push + in-app notification to the service partner. A not-recognised
+    // empty run does NOT reactivate the original order (§4.2).
+    reviewEmptyRun(id, decision) {
+      const j = api.getJob(id);
+      if (!j || j.status !== "empty_run_reported")
+        return { ok: false, reason: "invalid_state" };
+      const d = String(decision || "").toLowerCase();
+      const recognised = d === "recognised" || d === "recognized";
+      const notRecognised = d === "not_recognised" || d === "not_recognized";
+      if (!recognised && !notRecognised)
+        return { ok: false, reason: "bad_decision" };
+      const stamp = nowStamp();
+      j.status = recognised ? "empty_run_recognised" : "empty_run_not_recognised";
+      if (j.emptyRunReport) {
+        j.emptyRunReport.decision = recognised ? "recognised" : "not_recognised";
+        j.emptyRunReport.decidedAt = stamp;
+        j.emptyRunReport.decidedBy = DEMO_ADMIN;
+      }
+      j.history = [
+        ...(j.history || []),
+        {
+          st: j.status,
+          at: stamp,
+          by: DEMO_ADMIN,
+          meta: recognised ? "Empty run recognised" : "Empty run not recognised",
+        },
+      ];
+      // Terminal: leaves the review bucket, no longer an active order.
+      driverState.emptyRunReviewIds.delete(id);
+      driverState.acceptedIds.delete(id);
+      const action = recognised
+        ? "empty_run_recognised"
+        : "empty_run_not_recognised";
+      log(action, DEMO_ADMIN, j.tour, "");
+      const titleKey = recognised
+        ? "notifEmptyRunRecognisedTitle"
+        : "notifEmptyRunNotRecognisedTitle";
+      const bodyKey = recognised
+        ? "notifEmptyRunRecognisedBody"
+        : "notifEmptyRunNotRecognisedBody";
+      const dr = jobDriverRecord(j);
+      pushDriverNotification({
+        type: action,
+        jobId: id,
+        tour: j.tour,
+        title: t2(titleKey),
+        body: t2(bodyKey, { tour: j.tour }),
+        driverId: dr?.id,
+      });
+      queueAdminEmailAlert(action, id, "");
       emit();
       return { ok: true };
     },
@@ -3348,25 +3666,23 @@ window.AuthStore = (() => {
       if (api.getOpenMasterDataChangeRequestForDriver(d.id)) {
         return { ok: false, reason: "open_request_exists" };
       }
+      // Email is no longer part of ops-managed master data — the driver owns
+      // it via the self-serve Account & sign-in flow (verify, don't approve).
+      // It is preserved unchanged here so an approval never rewrites it.
       const p = {
         company: String(proposed?.company ?? "").trim(),
         address: String(proposed?.address ?? "").trim(),
-        email: String(proposed?.email ?? "").trim(),
+        email: d.email || "",
         phone: String(proposed?.phone ?? "").trim(),
       };
       if (!p.company) return { ok: false, reason: "company_required" };
-      if (!p.email) return { ok: false, reason: "email_required" };
-      if (!isValidEmail(p.email)) return { ok: false, reason: "invalid_email" };
-      if (drivers.some((x) => x.id !== d.id && x.email === p.email)) {
-        return { ok: false, reason: "duplicate_email" };
-      }
       const snapshot = {
         company: d.company || "",
         address: d.address || "",
         email: d.email || "",
         phone: d.phone || "",
       };
-      const changedFields = ["company", "address", "email", "phone"].filter(
+      const changedFields = ["company", "address", "phone"].filter(
         (k) => p[k] !== snapshot[k],
       );
       if (!changedFields.length) return { ok: false, reason: "no_changes" };
@@ -3413,6 +3729,144 @@ window.AuthStore = (() => {
       });
       emit();
       return { ok: true, id: reqId, request: row };
+    },
+
+    // ---- Driver self-service email change (verify, don't approve) --------
+    // The driver owns their sign-in email. A change is confirmed by a
+    // 6-digit code sent to the NEW address; the OLD address stays live until
+    // the code is confirmed. No operations approval, ever. Backend delivery
+    // of the code, real persistence, and rate limiting are simulated here and
+    // captured as requirements for the dev team.
+    EMAIL_CODE_TTL_MS: 10 * 60 * 1000,
+    EMAIL_CODE_RESEND_MS: 30 * 1000,
+
+    getDriverEmailChange() {
+      const d = api.getCurrentDriver();
+      if (!d) return null;
+      return {
+        email: d.email || "",
+        emailVerified: d.emailVerified !== false,
+        pending: d.pendingEmailChange || null,
+      };
+    },
+
+    startDriverEmailChange(newEmailRaw) {
+      if (!api.isCurrentDriverActive())
+        return { ok: false, reason: "restricted" };
+      const d = api.getCurrentDriver();
+      if (!d) return { ok: false, reason: "no_driver" };
+      const newEmail = String(newEmailRaw || "").trim();
+      if (!isValidEmail(newEmail)) return { ok: false, reason: "invalid_email" };
+      if (newEmail.toLowerCase() === String(d.email || "").toLowerCase())
+        return { ok: false, reason: "same_email" };
+      if (
+        drivers.some(
+          (x) =>
+            x.id !== d.id &&
+            String(x.email || "").toLowerCase() === newEmail.toLowerCase(),
+        )
+      )
+        return { ok: false, reason: "duplicate_email" };
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const now = Date.now();
+      d.pendingEmailChange = {
+        newEmail,
+        code,
+        createdAt: nowStamp(),
+        sentAt: now,
+        expiresAt: now + api.EMAIL_CODE_TTL_MS,
+        attempts: 0,
+        resendCount: 0,
+      };
+      // Code is delivered to the NEW inbox only (proof of ownership).
+      log(
+        "driver_email_change_requested",
+        d.name || DEMO_DRIVER,
+        "account",
+        `${d.email || "—"} → ${newEmail}`,
+      );
+      emit();
+      return { ok: true, newEmail, code, expiresInSec: api.EMAIL_CODE_TTL_MS / 1000 };
+    },
+
+    resendDriverEmailCode() {
+      const d = api.getCurrentDriver();
+      if (!d || !d.pendingEmailChange)
+        return { ok: false, reason: "no_pending" };
+      const now = Date.now();
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const pending = d.pendingEmailChange;
+      pending.code = code;
+      pending.sentAt = now;
+      pending.expiresAt = now + api.EMAIL_CODE_TTL_MS;
+      pending.attempts = 0;
+      pending.resendCount = (pending.resendCount || 0) + 1;
+      log(
+        "driver_email_change_requested",
+        d.name || DEMO_DRIVER,
+        "account",
+        `resend · ${pending.newEmail}`,
+      );
+      emit();
+      return { ok: true, newEmail: pending.newEmail, code };
+    },
+
+    confirmDriverEmailChange(codeRaw) {
+      const d = api.getCurrentDriver();
+      if (!d || !d.pendingEmailChange)
+        return { ok: false, reason: "no_pending" };
+      const pending = d.pendingEmailChange;
+      if (Date.now() > pending.expiresAt) {
+        return { ok: false, reason: "expired" };
+      }
+      const code = String(codeRaw || "").trim();
+      if (code !== pending.code) {
+        pending.attempts = (pending.attempts || 0) + 1;
+        emit();
+        return { ok: false, reason: "invalid_code" };
+      }
+      const oldEmail = d.email || "";
+      const newEmail = pending.newEmail;
+      // Re-check uniqueness at confirm time (another account may have taken it).
+      if (
+        drivers.some(
+          (x) =>
+            x.id !== d.id &&
+            String(x.email || "").toLowerCase() === newEmail.toLowerCase(),
+        )
+      ) {
+        return { ok: false, reason: "duplicate_email" };
+      }
+      d.email = newEmail;
+      d.emailVerified = true;
+      d.pendingEmailChange = null;
+      log(
+        "driver_email_changed",
+        d.name || DEMO_DRIVER,
+        "account",
+        `${oldEmail || "—"} → ${newEmail}`,
+      );
+      // Notify the OLD inbox that the sign-in address changed (security).
+      pushDriverNotification({
+        type: "email_changed",
+        title: window.I18n
+          ? window.I18n.t("emailChangedNotifyTitle")
+          : "Sign-in email changed",
+        body: window.I18n
+          ? window.I18n.t("emailChangedNotifyBody", { email: newEmail })
+          : `Your sign-in email was changed to ${newEmail}.`,
+        driverId: d.id,
+      });
+      emit();
+      return { ok: true, email: newEmail, previousEmail: oldEmail };
+    },
+
+    cancelDriverEmailChange() {
+      const d = api.getCurrentDriver();
+      if (!d) return { ok: false, reason: "no_driver" };
+      d.pendingEmailChange = null;
+      emit();
+      return { ok: true };
     },
 
     requestDailyLimitIncrease() {
@@ -3505,107 +3959,6 @@ window.AuthStore = (() => {
       return { ok: true, request: row };
     },
 
-    resolveSpecialCase(id, decision, note, opts = {}) {
-      const j = api.getJob(id);
-      if (!j || j.status !== "special_case") return { ok: false };
-      const d = String(decision || "").toLowerCase();
-      if (d === "cancel" || d === "cancelled") {
-        return api.cancelJob(id, {
-          actor: "admin",
-          reason: opts.reasonCode || "",
-          note: opts.driverMessage || note || "",
-          overrideNote: opts.overrideNote || "",
-          by: DEMO_ADMIN,
-          fromSpecialCase: true,
-        });
-      } else if (d === "republish") {
-        j.status = "published";
-        j.driver = null;
-        j.specialCaseReport = null;
-        driverState.specialCaseIds.delete(id);
-        j.history = [
-          ...(j.history || []),
-          {
-            st: "published",
-            at: nowStamp(),
-            by: DEMO_ADMIN,
-            meta: note || "Special case resolved -> republished",
-          },
-        ];
-        log("special_case_resolved", DEMO_ADMIN, j.tour, "Republished");
-        queuePushNotification(j, "republish");
-        queueAdminEmailAlert("special_case_republished", id, note || "");
-      } else if (d === "reopen" || d === "draft") {
-        j.status = "draft";
-        j.driver = null;
-        j.specialCaseReport = null;
-        driverState.specialCaseIds.delete(id);
-        j.history = [
-          ...(j.history || []),
-          {
-            st: "draft",
-            at: nowStamp(),
-            by: DEMO_ADMIN,
-            meta: note || "Special case resolved → draft",
-          },
-        ];
-        log("special_case_resolved", DEMO_ADMIN, j.tour, "Returned to draft");
-      } else if (d === "assign" || d === "assigned" || d === "continue") {
-        const restored =
-          j.specialCaseReport?.statusBeforeSpecialCase ||
-          inferStatusBeforeSpecialCase(j);
-        j.status = restored;
-        j.specialCaseReport = null;
-        driverState.specialCaseIds.delete(id);
-        if (restored === "accepted") driverState.acceptedIds.add(id);
-        else driverState.acceptedIds.delete(id);
-        j.history = [
-          ...(j.history || []),
-          {
-            st: restored,
-            at: nowStamp(),
-            by: DEMO_ADMIN,
-            meta: note || `Special case resolved → continued as ${restored}`,
-          },
-        ];
-        log(
-          "special_case_resolved",
-          DEMO_ADMIN,
-          j.tour,
-          `Continued as ${restored}`,
-        );
-        pushDriverNotification({
-          type: "special_case_processed",
-          jobId: id,
-          tour: j.tour,
-          title: "Problem case updated",
-          body: note || "Dispatch continued the tour.",
-          driverId: j.driverId,
-        });
-      } else if (d === "close") {
-        j.status = "performed";
-        j.performedAt = j.performedAt || nowStamp();
-        j.settlementState = "Closed";
-        j.specialCaseReport = null;
-        driverState.specialCaseIds.delete(id);
-        driverState.performedIds.add(id);
-        j.history = [
-          ...(j.history || []),
-          {
-            st: "performed",
-            at: nowStamp(),
-            by: DEMO_ADMIN,
-            meta: note || "Special case resolved → closed",
-          },
-        ];
-        log("special_case_resolved", DEMO_ADMIN, j.tour, "Closed");
-      } else {
-        return { ok: false, reason: "unknown_decision" };
-      }
-      emit();
-      return { ok: true };
-    },
-
     publishJob(id) {
       const j = api.getJob(id);
       if (!j || j.status !== "draft") return { ok: false };
@@ -3635,7 +3988,7 @@ window.AuthStore = (() => {
       jobs.splice(idx, 1);
       driverState.acceptedIds.delete(id);
       driverState.performedIds.delete(id);
-      driverState.specialCaseIds.delete(id);
+      driverState.emptyRunReviewIds.delete(id);
       driverState.cancelledIds.delete(id);
       log("job_draft_deleted", DEMO_ADMIN, tour, "Draft removed by admin");
       emit();
@@ -3730,7 +4083,7 @@ window.AuthStore = (() => {
 
     reassignJob(id, driverRef) {
       const j = api.getJob(id);
-      const allowed = ["assigned", "accepted", "special_case"];
+      const allowed = ["assigned", "accepted", "empty_run_reported"];
       if (!j || !allowed.includes(j.status))
         return { ok: false, reason: "not_reassignable" };
       const dr = api.resolveAssignableDriver(driverRef);
@@ -3760,7 +4113,7 @@ window.AuthStore = (() => {
       const allowed = [
         "accepted",
         "assigned",
-        "special_case",
+        "empty_run_reported",
         "performed",
         "published",
       ];
@@ -3774,7 +4127,10 @@ window.AuthStore = (() => {
       const dr = jobDriverRecord(j);
       const hadDriver = !!dr;
 
-      if (actor === "admin" || actor === "customer") {
+      if ((actor === "admin" || actor === "customer") && hadDriver) {
+        // §5.1: an unbooked order (no assigned partner) is cancelled
+        // immediately — the pickup-cutoff policy only guards booked orders
+        // where a partner is already committed.
         const policy = api.checkAdminCancelPolicy(j, { overrideNote });
         if (!policy.ok) return policy;
         if (cancellationPolicies.adminCancelRequiresReasonCode && !reasonCode)
@@ -3794,34 +4150,44 @@ window.AuthStore = (() => {
         }
       }
 
-      j.status = "cancelled";
-      j.specialCaseReport = null;
+      // Admin/dispatch cancellation → "Cancelled by Autheon" (§5). The order
+      // stays fully visible in the backend and in the partner's history; it is
+      // never deleted and never auto-republished.
+      const cancelStatus =
+        actor === "driver" ? "cancelled_by_sp" : "cancelled_by_autheon";
+      const wasBooked = hadDriver;
+      j.status = cancelStatus;
+      j.emptyRunReport = null;
       j.cancellationActor = actor;
       j.cancellationReason = reasonCode;
       j.cancellationReasonText = reasonText;
       j.history = [
         ...(j.history || []),
         {
-          st: "cancelled",
+          st: cancelStatus,
           at: nowStamp(),
           by: opts.by || DEMO_ADMIN,
           meta:
             reasonText ||
             cancellationReasonLabel(reasonCode) ||
-            "Admin cancellation",
+            "Cancelled by Autheon",
         },
       ];
       driverState.acceptedIds.delete(id);
       driverState.performedIds.delete(id);
-      driverState.specialCaseIds.delete(id);
+      driverState.emptyRunReviewIds.delete(id);
       driverState.cancelledIds.add(id);
       log(
-        "job_cancelled",
+        "cancelled_by_autheon",
         opts.by || DEMO_ADMIN,
         j.tour,
         reasonText || reasonCode || "",
       );
-      queueAdminEmailAlert("job_cancelled", id, reasonText || reasonCode || "");
+      queueAdminEmailAlert(
+        "cancelled_by_autheon",
+        id,
+        reasonText || reasonCode || "",
+      );
       if (overrideNote) {
         log(
           "policy_override",
@@ -3830,17 +4196,14 @@ window.AuthStore = (() => {
           `Admin cancel inside cutoff: ${overrideNote}`,
         );
       }
-      if (dr) {
-        const notifyBody =
-          reasonText ||
-          cancellationReasonLabel(reasonCode) ||
-          "Tour cancelled by dispatch.";
+      // Booked order → push + in-app notification to the partner (§5.2).
+      if (dr && wasBooked) {
         pushDriverNotification({
-          type: "order_cancelled",
+          type: "cancelled_by_autheon",
           jobId: id,
           tour: j.tour,
-          title: "Tour cancelled",
-          body: notifyBody,
+          title: t2("notifOrderCancelledByAutheonTitle"),
+          body: t2("notifOrderCancelledByAutheonBody", { tour: j.tour }),
           driverId: dr.id,
         });
       }
@@ -3857,28 +4220,103 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
-    saveDraft(form) {
-      const compareTimes =
-        window.InputFormatters?.compareTimeStrings || (() => 0);
-      if (
-        form.pickupFrom &&
-        form.pickupTo &&
-        compareTimes(form.pickupFrom, form.pickupTo) > 0
-      ) {
-        return { error: "cross_midnight_window", leg: "pickup" };
+    // ---- Internal admin notes (Storno-Workflow §6) ----------------------
+    // Admin-only, never shown in the service-partner frontend. Optional,
+    // auto-stamped with author + date/time, permanently attached to the order.
+    getInternalNotes(id) {
+      const j = api.getJob(id);
+      return j?.internalNotes ? j.internalNotes.slice() : [];
+    },
+    addInternalNote(id, text) {
+      const j = api.getJob(id);
+      if (!j) return { ok: false, reason: "not_found" };
+      const body = String(text || "").trim();
+      if (!body) return { ok: false, reason: "empty" };
+      const note = {
+        id: `NOTE-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        author: DEMO_ADMIN,
+        at: nowStamp(),
+        text: body,
+      };
+      j.internalNotes = [...(j.internalNotes || []), note];
+      log("internal_note_added", DEMO_ADMIN, j.tour, body.slice(0, 80));
+      emit();
+      return { ok: true, note };
+    },
+
+    // ---- Duplicate order (Storno-Workflow §9) ---------------------------
+    // Create a new DRAFT copying all data with a new order number; open in the
+    // editor. Not in the marketplace until the admin explicitly publishes.
+    // Original stays unchanged. No visible "duplicated from" label required.
+    duplicateJob(id) {
+      const src = api.getJob(id);
+      if (!src) return { ok: false, reason: "not_found" };
+      // Next tour number: max numeric prefix + 1, keep the year suffix.
+      let maxSeq = 0;
+      let yearSuffix = "26";
+      for (const j of jobs) {
+        const m = String(j.tour || "").match(/^(\d+)-(\d+)$/);
+        if (m) {
+          maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+          yearSuffix = m[2];
+        }
       }
-      if (
-        form.deliveryFrom &&
-        form.deliveryTo &&
-        compareTimes(form.deliveryFrom, form.deliveryTo) > 0
-      ) {
-        return { error: "cross_midnight_window", leg: "delivery" };
+      const newTour = `${String(maxSeq + 1).padStart(4, "0")}-${yearSuffix}`;
+      const clone = JSON.parse(JSON.stringify(src));
+      clone.id = `J-DUP-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      clone.tour = newTour;
+      clone.status = "draft";
+      clone.isNew = true;
+      clone.driver = null;
+      clone.assignmentMode = null;
+      clone.assignmentType = null;
+      clone.history = [
+        { st: "draft", at: nowStamp(), by: DEMO_ADMIN, meta: "Duplicated order" },
+      ];
+      // Never carry over lifecycle artefacts from the source order.
+      clone.cancellationActor = null;
+      clone.cancellationReason = "";
+      clone.cancellationReasonText = "";
+      clone.emptyRunReport = null;
+      clone.spCancellation = null;
+      clone.internalNotes = [];
+      clone.pdfVersion = 0;
+      clone.duplicatedFromTour = src.tour; // internal only, not surfaced
+      jobs.unshift(clone);
+      log("order_duplicated", DEMO_ADMIN, newTour, `from ${src.tour}`);
+      emit();
+      return { ok: true, job: clone };
+    },
+
+    // ---- Admin edits an active order (Storno-Workflow §7) ---------------
+    // Applies changed fields to a non-terminal order (incl. already booked),
+    // notifies the assigned partner with the ACTUAL changed values in ONE
+    // combined notification, requires no partner re-confirmation, and stores
+    // previous + new values in the audit log.
+    // Low-level flat-field edit primitive (kept for programmatic/test use).
+    // The admin UI edits booked orders through the full order form via
+    // updateOrderFromForm below; both share finalizeOrderEdit.
+    updateActiveOrder(id, changes) {
+      const j = api.getJob(id);
+      if (!j) return { ok: false, reason: "not_found" };
+      if (!api.canAdminEditOrder(j)) return { ok: false, reason: "read_only" };
+      const diffs = [];
+      for (const [field, next] of Object.entries(changes || {})) {
+        const prev = j[field];
+        if (String(prev ?? "") === String(next ?? "")) continue;
+        diffs.push({ field, label: field, from: prev ?? "", to: next ?? "" });
+        j[field] = next;
       }
-      const editId = String(form.jobId || form.id || "").trim();
-      const opId = form.customerId || "";
-      const op =
-        customers.find((x) => x.id === opId) ||
-        customers.find((x) => x.name === form.customer);
+      if (!diffs.length) return { ok: false, reason: "no_changes" };
+      finalizeOrderEdit(j, diffs);
+      emit();
+      return { ok: true, diffs };
+    },
+
+    // Persist optional "save/update address to master data" checkboxes from the
+    // order form. Shared by saveDraft (create/edit draft) and updateOrderFromForm
+    // (edit booked order) so the behaviour never drifts between the two paths.
+    _persistFormMasterAddresses(form) {
       if (form.updatePickupMaster && form.pickupLocationId) {
         api.updateAddress(form.pickupLocationId, {
           label: form.startCompany || undefined,
@@ -3943,6 +4381,104 @@ window.AuthStore = (() => {
           notes: form.deliveryContactNotes,
         });
       }
+    },
+
+    // Full order edit from the canonical Create/Edit Job form (Storno §7).
+    // Edits ALL eligible business fields on any non-terminal order — including
+    // already-booked (assigned/accepted) orders — without changing the
+    // operational status and without requiring partner re-confirmation.
+    updateOrderFromForm(id, form) {
+      const j = api.getJob(id);
+      if (!j) return { ok: false, reason: "not_found" };
+      if (!api.canAdminEditOrder(j)) return { ok: false, reason: "read_only" };
+      const compareTimes =
+        window.InputFormatters?.compareTimeStrings || (() => 0);
+      if (
+        form.pickupFrom &&
+        form.pickupTo &&
+        compareTimes(form.pickupFrom, form.pickupTo) > 0
+      ) {
+        return { ok: false, reason: "cross_midnight_window", leg: "pickup" };
+      }
+      if (
+        form.deliveryFrom &&
+        form.deliveryTo &&
+        compareTimes(form.deliveryFrom, form.deliveryTo) > 0
+      ) {
+        return { ok: false, reason: "cross_midnight_window", leg: "delivery" };
+      }
+      // Schedule-cutoff policy applies ONLY to schedule changes on a committed
+      // order (§13). Non-schedule fields (vehicle, contacts, notes, offer) stay
+      // editable regardless of the cutoff.
+      const scheduleChanged =
+        jobWasEverCommitted(j) &&
+        formScheduleSnapshot(form) !== jobScheduleSnapshot(j);
+      if (scheduleChanged) {
+        const policy = api.checkScheduleChangePolicy(j, {
+          overrideNote: form.scheduleOverrideNote,
+        });
+        if (!policy.ok) {
+          return {
+            ok: false,
+            reason: policy.reason,
+            minHours: policy.minHours,
+            hoursRemaining: policy.hoursRemaining,
+          };
+        }
+        if (policy.policyOverride) {
+          log(
+            "policy_override",
+            DEMO_ADMIN,
+            j.tour,
+            `Schedule change inside cutoff: ${form.scheduleOverrideNote}`,
+          );
+        }
+      }
+      api._persistFormMasterAddresses(form);
+      const fields = composeDraftFieldsFromForm(form);
+      // Diff on a clone so an all-unchanged save does not mutate the order.
+      const before = flattenOrderBusinessFields(j);
+      const working = JSON.parse(JSON.stringify(j));
+      Object.assign(working, fields);
+      if (!working.distanceKm) working.distanceKm = estimateDistanceKm(working);
+      syncDisplayFields(working);
+      const after = flattenOrderBusinessFields(working);
+      const diffs = diffOrderBusinessFields(before, after);
+      if (!diffs.length) return { ok: false, reason: "no_changes" };
+      // Commit: workflow status, cancellation records and empty-run/status
+      // history are untouched — this is a pure business-data edit (§19).
+      Object.assign(j, fields);
+      if (!j.distanceKm) j.distanceKm = estimateDistanceKm(j);
+      syncDisplayFields(j);
+      processPendingAdminAttachments(j.id, form);
+      finalizeOrderEdit(j, diffs);
+      emit();
+      return { ok: true, diffs };
+    },
+
+    saveDraft(form) {
+      const compareTimes =
+        window.InputFormatters?.compareTimeStrings || (() => 0);
+      if (
+        form.pickupFrom &&
+        form.pickupTo &&
+        compareTimes(form.pickupFrom, form.pickupTo) > 0
+      ) {
+        return { error: "cross_midnight_window", leg: "pickup" };
+      }
+      if (
+        form.deliveryFrom &&
+        form.deliveryTo &&
+        compareTimes(form.deliveryFrom, form.deliveryTo) > 0
+      ) {
+        return { error: "cross_midnight_window", leg: "delivery" };
+      }
+      const editId = String(form.jobId || form.id || "").trim();
+      const opId = form.customerId || "";
+      const op =
+        customers.find((x) => x.id === opId) ||
+        customers.find((x) => x.name === form.customer);
+      api._persistFormMasterAddresses(form);
 
       const fields = composeDraftFieldsFromForm(form);
 

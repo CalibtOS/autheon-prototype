@@ -141,6 +141,8 @@ Retained under the board's conditions: consistently tokenized, **always paired w
 
 Always pair status pills with a **text label** — never color-only. Pill text is sans, sentence case, caption-sized (uppercase mono pill text retired 2026-07-14).
 
+> **Gap — `--st-ok` (2026-07):** the driver Account & sign-in "Verified account" badge (`.account-email-verified`) references `var(--st-ok, #1f9d55)`, but **`--st-ok` is not defined** in `:root`/`[data-theme="dark"]` — it silently falls back to the hardcoded green `#1F9D55`, which is *not* the existing `--st-accepted #059669`. This is an off-token hex by the back door. Resolve by either **defining `--st-ok`** (light + dark, contrast-checked) as a first-class positive/confirmation semantic, or **reusing `--st-accepted`** for the badge. The badge is always text-labelled, so it satisfies the "never color-only" rule regardless.
+
 ---
 
 ## Do / Don't

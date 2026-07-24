@@ -146,6 +146,17 @@ Line-height 1.5 body / 1.3 headings. Every current 9–11px mono label becomes `
 - **Motion:** 120ms micro / 200ms standard / 320ms sheet, `cubic-bezier(0.32,0.72,0,1)`, transform/opacity only, `prefers-reduced-motion` kept.
 - **Touch:** ≥44×44px with ≥8px gaps — default on all interactive styles, not the opt-in `.touch-target` class.
 
+### 4.4 Layout & scroll architecture (fixed-height app shell)
+
+*(Added 2026-07 — the shell moved from a document-scroll model to a fixed-height, internally-scrolling one so admin sticky positioning works. `styles.css` `.app`/`.admin`/`.admin-nav`/`.grid-form-layout`.)*
+
+- **App shell (`.app`):** grid `52px 1fr`, pinned to `height: 100dvh` (with a `100vh` fallback), `min-height: 0`, `overflow: hidden`. The header row never scrolls; each surface below it scrolls **internally**. Do **not** use `min-height: 100vh` here — that lets the whole document scroll and breaks `position: sticky` inside the admin content.
+- **Driver:** the `.phone-shell` stage is the internal scroller (unchanged behaviour, now guaranteed a definite height).
+- **Admin (`.admin`):** two-column grid `248px 1fr` bounded to the shell with `grid-template-rows: minmax(0, 1fr)` + `min-height: 0`, so `.admin-main` → `.admin-content` (`flex: 1; min-height: 0; overflow: auto`) inherits a definite height and scrolls internally instead of growing the document. The sidebar `.admin-nav` scrolls independently (`min-height: 0; overflow-y: auto`).
+- **Sticky Create/Edit-Job sidebars (`.grid-form-layout`):** the three-column form (`180px 1fr 280px`, `align-items: start`) pins its left section-nav and right live-summary `> aside` to the top of the scrolling `.admin-content` (`position: sticky; top: 0`). Each sidebar caps at `max-height: calc(100dvh - 172px)` with its own `overflow-y: auto` + `overscroll-behavior: contain`, so a tall sidebar scrolls by itself and never overlaps the top bar or footer while the central form scrolls.
+- **Narrow desktop fallback (`@media (max-width: 1200px)`):** the form collapses to a single column (`minmax(0, 1fr)`) and the sidebars drop sticky (`position: static; max-height: none; overflow: visible`) so they never overlap the form or force a horizontal scrollbar. This only removes the desktop sticky behaviour; tablet/mobile layouts are reviewed separately.
+- **Production note:** use `100dvh`, never `100vh`, for the shell height (mobile URL-bar resize) — already flagged in Appendix A.
+
 ---
 
 ## 5. Driver PWA Component Standards (prototype inventory → spec)
@@ -243,6 +254,8 @@ Per §6.2 — full-height page replaces the popover. Layout: day group headers (
 6. **Sign out:** destructive-outline button, own section, confirm sheet (not `window.confirm`).
    All section headings = `heading` sentence case; single card style; every confirm via sheet primitive.
 
+**Update 2026-07 (Task 1 — Account & sign-in):** a driver-owned **credential card** now sits directly under the identity header, *above* the master-data card (`.account-signin-card`). Unlike master data (operations-managed, "request changes"), the sign-in email is **self-service** — the driver changes it without ops approval. Card = 🔑 title, an `.account-email-row` showing the current address with a **verified** state (`.account-email-verified`, small green dot + "Verified account" label — text always present) or a **pending** amber `.pill.assigned` badge while a change is in flight, and a full-width secondary "Change email address" button opening `ChangeEmailSheet`. The sheet is a single bottom sheet advancing **enter new address → confirm with 6-digit code → updated**: the new address only becomes active after the code sent to the *new* inbox is confirmed; the old inbox stays live until then and is notified on success (`emailChangedNotify*`). Verification code uses the `CodeInput` primitive (see driver-screen-spec). Compliance note: the verified badge references `var(--st-ok, #1f9d55)`, a semantic that is **not yet defined** in `:root` (falls back to a hardcoded green) — see brand-tokens.md.
+
 ### 7.8 Infopoint (`Infopoint`, L3729)
 
 **Current:** two text tabs with gray numeral badge; document rows OK but icon-only download buttons unlabeled; meta line mixes sans + mono mid-line (`Operations · Global · v1.3` sans, `04.05. 09:10` mono); active tab keeps red "2" badge while you're on it; news items lack read/unread logic tie-in with the tab badge; 27 inline styles, 8 font sizes.
@@ -334,5 +347,6 @@ _For when the prototype design contract is implemented as the real driver PWA. S
 
 ## Changelog
 
+- **v3.1 — 2026-07-21.** Post-remediation feature work reflected from `styles.css` (commits `3ef6597` Task 3, `1cdf1a7` Task 1): new §4.4 **Layout & scroll architecture** documenting the fixed-height app shell (pinned header, internally-scrolling driver/admin surfaces) and the sticky Create/Edit-Job form sidebars with the ≤1200px stack fallback; §7.7 Profile gains the driver-owned **Account & sign-in** credential card and self-service change-email flow. No token/behavior changes to the DDB remediation contract; the `--st-ok` verified-badge token is flagged as undefined in brand-tokens.md.
 - **v3.0 — 2026-07-14.** Incorporated the client **Design Direction Board (AUTHEON GmbH, July 2026)**: authority hierarchy rewritten (§0 — PRD behavior / board visuals / prototype as compliant reference / docs as contract); Inter Tight replaces Plus Jakarta Sans as primary UI font; typography re-based on 400/500/600 with 700+ as exception-only; purple active-navigation capsule requirement removed and replaced by the client's black/white/gray navigation direction ("no dominant purple navigation"); marketplace-card content, compensation placement, route line, conditional registered/deregistered/red-plate metadata (PRD scope guard), restrained KPI/header, restrained gradients, minimal micro-animations, moderate radius + subtle elevation added via canonical sections in brand-tokens/driver-screen-spec; status colors confirmed text-labelled and restrained; W6 remediation phase added from `design-direction-board-audit.md`. Accessibility, tokenization, reusable-component, async-state and visual-regression work from v2.0 is preserved; dark theme remains an internal extension that must not redefine the client's light-theme direction.
 - **v2.0 — 2026-07-10.** Original source-of-truth contract + prototype remediation plan (W1–W5).

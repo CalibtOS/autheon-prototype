@@ -76,3 +76,18 @@ Checked against the rendered `after/` captures:
 - Inter Tight is slightly narrower than Plus Jakarta Sans; German strings should be spot-checked for now-loose layouts (no truncation observed in the captured screens).
 - `--st-warn` on `--st-warn-bg` contrast in light theme remains borderline (pre-existing; production plan §4.1).
 - Admin screens beyond overview/detail (billing, master data, infopoint panes) received the token-level fixes but were not individually re-captured; a full admin visual pass is recommended before client demo.
+
+---
+
+## Feature changes since remediation (2026-07)
+
+> These are **post-remediation feature commits**, not DDB compliance fixes — recorded here to preserve the repo's `styles.css` before/after audit trail (the R1–R27 DDB table above is left intact). Rows use the same columns; "DDB requirement" becomes the feature/rationale. Design-contract prose lives in [`ui-ux-production-plan.md`](ui-ux-production-plan.md) §4.4 + §7.7 and [`driver-screen-spec.md`](driver-screen-spec.md).
+
+| Change ID | Screen | `styles.css` rules | Feature / rationale | Before | After adjustment | Notes |
+|---|---|---|---|---|---|---|
+| F1 | Admin shell (all admin) + app chrome | `.app`, `.admin`, `.admin-nav` | Task 3 — sticky positioning needs a bounded, internally-scrolling shell | `.app { min-height: 100vh }` let the whole document scroll, which broke `position: sticky` inside `.admin-content` | Fixed-height shell: `.app` → `height: 100dvh` (100vh fallback) `+ min-height: 0 + overflow: hidden`; `.admin` bounded with `grid-template-rows: minmax(0,1fr) + min-height: 0`; `.admin-nav` scrolls independently (`min-height: 0; overflow-y: auto`) | Header pinned; each surface scrolls internally. See production plan §4.4 |
+| F2 | Admin Create/Edit Job | `.grid-form-layout` + `> aside` + `@media (max-width:1200px)` | Task 3 — keep the section-nav and live-summary in view while the long form scrolls | `align-items: flex-start`; sidebars scrolled away with the form | Sidebars `position: sticky; top: 0; max-height: calc(100dvh - 172px); overflow-y: auto; overscroll-behavior: contain`; `align-items: start`. ≤1200px: single column + sticky dropped (`static`) so nothing overlaps or forces horizontal scroll | Tablet/mobile reviewed separately — desktop sticky only |
+| F3 | Driver Profile — Account & sign-in | `.account-signin-title/-key`, `.account-email-row/-value/-address/-verified(.dot)`, `.account-email-badge` | Task 1 — driver-owned, self-service sign-in email (verify, don't approve) | No credential surface; email was buried in read-only master data | Credential card under the identity header: current address + green **Verified account** badge (text-labelled) or amber `.pill.assigned` pending badge, + "Change email address" button | Verified green uses `var(--st-ok, #1f9d55)` — **undefined token**, flagged in brand-tokens.md |
+| F4 | Driver — Change email sheet | `.change-email-current`, `.code-input-row`, `.code-input-box (+:focus)`, `.change-email-resend-row`, `.change-email-success-check` | Task 1 — `ChangeEmailSheet` enter → confirm-code → success | No self-service email change | 6-box mono `CodeInput` (data identifier), resend-countdown row, brand-tint success check disc; moderate radii + focus ring per tokens | New `CodeInput` primitive documented in driver-screen-spec.md |
+
+*Task 2 (order cancellation / empty-run "Storno", commit `23d1b4e`) added no `styles.css` changes and is out of scope for this design-doc pass.*

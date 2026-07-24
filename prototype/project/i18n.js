@@ -103,12 +103,16 @@ window.I18n = (() => {
         accepted: "Accepted",
         performed: "Performed",
         cancelled: "Cancelled",
-        special_case: "Special case",
+        cancelled_by_sp: "Cancelled by service partner",
+        cancelled_by_autheon: "Cancelled by Autheon",
+        empty_run_reported: "Empty run reported",
+        empty_run_recognised: "Empty run recognised",
+        empty_run_not_recognised: "Empty run not recognised",
       },
       statusExplain: {
         title: "What do statuses mean?",
         intro:
-          "Version 1 rules: only Draft tours can be published or directly assigned. Marketplace path: Draft → Published → Accepted → Performed. Direct path: Draft → Assigned → Performed. Report Problem handles cancellation and not-performable special cases after commitment.",
+          "Version 1 rules: only Draft tours can be published or directly assigned. Marketplace path: Draft → Published → Accepted → Performed. Direct path: Draft → Assigned → Performed. Report Problem handles cancellation and empty-run reports after commitment.",
         noteSeparate:
           "Driver account Active/Blocked and finance payment labels are separate from tour lifecycle status.",
         draft:
@@ -121,8 +125,8 @@ window.I18n = (() => {
           "Driver accepted a Published marketplace offer. Active execution alongside Assigned.",
         performed:
           "Driver marked the vehicle transfer finished. Operational completion; documents and settlement are tracked separately.",
-        special_case:
-          "Driver reported the tour as not performable. Dispatch decides next steps; the tour is not automatically cancelled.",
+        empty_run_reported:
+          "Driver reported an empty run. Dispatch reviews it and decides recognised or not recognised; the tour is not automatically cancelled.",
         cancelled:
           "Tour was cancelled by dispatch or by the driver via Report Problem. Removed from marketplace and active lists.",
       },
@@ -229,7 +233,7 @@ window.I18n = (() => {
       openInMaps: "Open in maps",
       refreshDemo: "Refresh",
       performedTab: "Performed",
-      specialCaseTab: "Special",
+      emptyRunReviewTab: "Empty run",
       correctionRequiredBadge: "Correction",
       infopoint: "Infopoint",
       infopointDocsTab: "General documents",
@@ -326,9 +330,6 @@ window.I18n = (() => {
       docReviewCorrectionRequired: "Correction required",
       reportProblemCancelTitle: "Cancel order",
       reportProblemCancelSub: "Ends the tour and notifies dispatch.",
-      reportProblemNotPerformableTitle: "Report not performable",
-      reportProblemNotPerformableSub:
-        "Creates a special case for dispatch review.",
       reportCancelDriverUnavailable: "Driver unavailable",
       reportCancelDriverUnavailableSub: "You cannot execute this tour in time",
       reportCancelVehicleNotAvailable: "Vehicle not available",
@@ -434,11 +435,7 @@ window.I18n = (() => {
       slideToCancelOrderHint:
         "Enter at least 10 characters in the explanation above to unlock the slider.",
       reportProblemCancelConfirmed: "Cancellation submitted",
-      reportProblemSpecialCaseNotice:
-        "Dispatch will review this report and follow up.",
       reportProblemCancelSent: "Your cancellation was sent to dispatch.",
-      reportProblemSpecialCaseSent:
-        "Your report was sent. Dispatch will review the special case.",
       profileTitle: "Profile",
       profileVerifiedAccount: "Verified account",
       infoTitle: "Info",
@@ -481,7 +478,7 @@ window.I18n = (() => {
       assignedTour: "Tour {tour}",
       cancellationBlocked: "Cancellation blocked",
       cancellationRules:
-        "Admin can cancel tours in Accepted, Assigned, or Special case status.",
+        "Admin can cancel tours in Accepted, Assigned, or Empty run reported status.",
       cancelledTour: "Cancelled · Tour {tour}",
       cancelledSub: "Removed from marketplace and active lists.",
       driverTourCancelledNotice:
@@ -615,17 +612,6 @@ window.I18n = (() => {
       adminColDriver: "Driver",
       adminColStatusHeader: "Status",
       adminColDocuments: "Docs",
-      adminSpecialCaseTitle: "Special case resolution",
-      adminSpecialCaseNotes: "Decision notes",
-      adminSpecialCaseContinue: "Continue",
-      adminSpecialCaseContinueTitle: "Resume tour as {status}",
-      adminSpecialCaseResumeHint:
-        "Continue restores the tour to {status} (state before the special case was reported).",
-      adminSpecialCaseRepublish: "Republish",
-      adminSpecialCaseClose: "Close",
-      adminSpecialCaseCancel: "Cancel tour",
-      adminSpecialCaseResolved: "Special case updated.",
-      adminSpecialCaseResolveFailed: "Could not resolve special case.",
       adminDocAccept: "Accept",
       adminDocReject: "Reject",
       adminDocErrAlreadyAccepted:
@@ -916,7 +902,7 @@ window.I18n = (() => {
       adminReassignSameDriver: "This driver is already assigned to the tour.",
       reassignBlocked: "Reassignment blocked",
       reassignBlockedSub:
-        "Only Assigned, Accepted, or Special case tours can be reassigned.",
+        "Only Assigned, Accepted, or Empty run reported tours can be reassigned.",
       jobReassigned: "Reassigned · {driver}",
       adminCancelJob: "Cancel job",
       adminCancelJobConfirm:
@@ -1162,7 +1148,7 @@ window.I18n = (() => {
       bindingAcceptance: "Binding acceptance",
       acceptThisTour: "Accept this tour?",
       acceptanceLegal:
-        "Acceptance is binding. After commitment, use Report Problem to cancel or mark the tour as not performable.",
+        "Acceptance is binding. After commitment, use Report Problem to cancel the order or report an empty run.",
       partnerTermsApply: "Driver terms apply.",
       partnerPolicyAlert:
         "Demo document: Driver terms are available in the Driver Info area and admin Documents module.",
@@ -1191,6 +1177,188 @@ window.I18n = (() => {
       accountStatus: "Account status",
       masterDataChangeNotice:
         "These details are managed by operations. Tap Request changes to propose updates.",
+      accountSigninTitle: "Account & sign-in",
+      accountSigninHint:
+        "This is your sign-in email. You control it — no operations approval needed.",
+      accountEmailLabel: "Email",
+      accountEmailVerified: "Verified",
+      accountEmailPending: "Change pending",
+      accountEmailChangeBtn: "Change",
+      changeEmailTitle: "Change email address",
+      changeEmailCurrentPrefix: "Current",
+      changeEmailNewLabel: "New email address",
+      changeEmailNewPlaceholder: "name@company.com",
+      changeEmailCodeNotice:
+        "We'll send a 6-digit code to your new address to confirm it's yours.",
+      changeEmailSendCode: "Send code",
+      changeEmailCodeTitle: "Enter confirmation code",
+      changeEmailCodeSentTo: "Sent to {email}",
+      changeEmailResendIn: "Resend in {time}",
+      changeEmailResend: "Resend code",
+      changeEmailBack: "Change address",
+      changeEmailConfirm: "Confirm change",
+      changeEmailSuccessTitle: "Email updated",
+      changeEmailSuccessBody:
+        "Your sign-in email is now {email}. Use it the next time you sign in.",
+      changeEmailDone: "Done",
+      changeEmailDemoHint:
+        "Prototype: the 6-digit code sent to your new address is {code}.",
+      changeEmailErrInvalid: "Enter a valid email address.",
+      changeEmailErrSame: "This is already your sign-in email.",
+      changeEmailErrDuplicate:
+        "That email is already in use by another account.",
+      changeEmailErrCodeInvalid:
+        "That code isn't correct. Check it and try again.",
+      changeEmailErrCodeExpired:
+        "That code has expired. Send a new one.",
+      changeEmailErrRestricted:
+        "Your account can't change its email right now.",
+      changeEmailErrGeneric: "Something went wrong. Please try again.",
+      emailChangedNotifyTitle: "Sign-in email changed",
+      emailChangedNotifyBody:
+        "Your sign-in email was changed to {email}. If this wasn't you, contact operations immediately.",
+      // ---- Task 2: cancellation & empty-run workflow ----
+      warnEntryCancelOption: "Cancel order",
+      warnEntryCancelSub: "End the tour and notify dispatch.",
+      warnEntryEmptyRunOption: "Report empty run",
+      warnEntryEmptyRunSub:
+        "The order itself can't be executed — Autheon reviews it.",
+      spCancelWarningTitle: "Cancelling a booked order",
+      spCancelBindingWarning:
+        "You are about to cancel a bindingly booked order. Under the applicable contractual conditions, cancellation costs of up to the agreed remuneration may apply.",
+      spCancelTermsLink: "Applicable terms & contractual conditions",
+      spCancelTermsPlaceholderNotice:
+        "Placeholder: the real cancellation terms / T&C document is not yet wired up. The target link is to be provided by operations.",
+      spCancelAbort: "Cancel",
+      spCancelContinue: "Continue cancellation",
+      spCancelReasonLabel: "Cancellation reason",
+      spCancelReasonAppointment: "Appointment cannot be met",
+      spCancelReasonAccidental: "Order booked accidentally",
+      spCancelReasonOrgImpossible: "Execution is organisationally impossible",
+      spCancelReasonOther: "Other",
+      spCancelExplanationLabel: "Explanation (required)",
+      spCancelExplanationPlaceholder:
+        "Describe why you are cancelling (min. 30 characters).",
+      spCancelSlide: "Cancel order",
+      spCancelSlideDone: "Order cancelled",
+      spCancelSlideLocked: "Enter at least 30 characters to unlock",
+      spCancelSuccessTitle: "Order cancelled",
+      spCancelSuccessBody:
+        "The order was successfully cancelled and must no longer be performed.",
+      emptyRunReasonLabel: "Reason",
+      emptyRunReasonNotOperational: "Vehicle is technically not operational",
+      emptyRunReasonNotRoadworthy: "Vehicle is not roadworthy",
+      emptyRunReasonNotPresent:
+        "Vehicle not present / cannot be found at the location",
+      emptyRunReasonNotReleased: "Vehicle is not being released",
+      emptyRunReasonKeyDocs: "Vehicle key or required documents missing",
+      emptyRunReasonOther: "Other",
+      emptyRunDescLabel: "Description (required)",
+      emptyRunDescPlaceholder:
+        "Describe the situation (min. 30 characters).",
+      emptyRunEvidenceLabel: "Photo / evidence (optional)",
+      emptyRunEvidenceHint: "Optional — you can submit without an upload.",
+      emptyRunWarning:
+        "The reported empty run will be reviewed by Autheon. Reporting it does not automatically establish any entitlement to recognition or payment. Where possible, please also inform dispatch by phone.",
+      emptyRunSlide: "Report empty run",
+      emptyRunSlideDone: "Empty run reported",
+      emptyRunSlideLocked: "Enter at least 30 characters to unlock",
+      emptyRunSuccessTitle: "Empty run reported",
+      emptyRunSuccessBody:
+        "Your report was submitted to Autheon and will be reviewed.",
+      emptyRunPendingLock:
+        "This report is with Autheon for review and can no longer be changed.",
+      chars30Required: "characters (min. 30)",
+      notifOrderCancelledByAutheonTitle: "Order cancelled by Autheon",
+      notifOrderCancelledByAutheonBody:
+        "Order {tour} was cancelled by Autheon and no longer needs to be performed.",
+      notifEmptyRunRecognisedTitle: "Empty run recognised",
+      notifEmptyRunRecognisedBody:
+        "The empty run reported for order {tour} was recognised by Autheon.",
+      notifEmptyRunNotRecognisedTitle: "Empty run not recognised",
+      notifEmptyRunNotRecognisedBody:
+        "The empty run reported for order {tour} was not recognised by Autheon.",
+      notifOrderUpdatedTitle: "Order {tour} updated",
+      notifOrderUpdatedIntro: "The following details changed:",
+      adminEmptyRunReviewTitle: "Empty run — open review case",
+      adminEmptyRunReviewHint:
+        "Decide whether to recognise the reported empty run. There is no intermediate state.",
+      adminEmptyRunDecideRecognised: "Recognised",
+      adminEmptyRunDecideNotRecognised: "Not recognised",
+      adminEmptyRunReasonLabel: "Reported reason",
+      adminEmptyRunRecognisedToast: "Empty run recognised",
+      adminEmptyRunNotRecognisedToast: "Empty run not recognised",
+      adminEmptyRunDecisionSub: "Partner notified · {tour}",
+      adminInternalNotesTitle: "Internal notes",
+      adminInternalNotesHint:
+        "Visible to admins only — never shown to the service partner.",
+      adminInternalNotePlaceholder: "Add an internal note…",
+      adminInternalNoteAdd: "Add note",
+      adminInternalNotesEmpty: "No internal notes yet.",
+      adminDuplicateOrder: "Duplicate order",
+      adminDuplicatedToast: "Order duplicated",
+      adminDuplicatedToastSub: "New draft {tour} opened for editing.",
+      adminCancelOrderByAutheon: "Cancel order",
+      adminCancelByAutheonConfirm:
+        "Cancel this order on behalf of Autheon? It becomes read-only and cannot be reactivated or republished.",
+      adminCancelledByAutheonToast: "Order cancelled by Autheon",
+      adminEditActiveOrder: "Edit order",
+      adminEditActiveOrderTitle: "Edit order",
+      adminEditActiveOrderHint:
+        "Changes are saved immediately and the assigned service partner is notified with the changed values. No re-confirmation required.",
+      adminSaveAndNotify: "Save & notify partner",
+      adminNoChanges: "No changes to save.",
+      // Full order editing (Storno §7)
+      adminEditOrderStatusNote:
+        "This order is {status}. Editing changes the order data only — the operational status does not change and the assigned service partner is notified of the actual changes with no re-confirmation required.",
+      adminEditOrderSaveHint:
+        "Save the changes to this booked order. The assigned service partner is notified of the changed values; no re-confirmation is required.",
+      adminEvidenceNoPreview: "preview unavailable (metadata only)",
+      adminOrderEditedToast: "Order {tour} updated",
+      adminOrderEditedToastSub: "Changes saved and the assigned partner notified.",
+      adminOrderEditedToastSubNoPartner: "Changes saved.",
+      orderFieldCustomer: "Customer",
+      orderFieldCategory: "Category",
+      orderFieldDistance: "Distance (km)",
+      orderFieldPickupCompany: "Pickup location",
+      orderFieldPickupAddress: "Pickup address",
+      orderFieldPickupPostal: "Pickup postal code",
+      orderFieldPickupCity: "Pickup city",
+      orderFieldPickupCountry: "Pickup country",
+      orderFieldPickupContact: "Pickup contact",
+      orderFieldPickupPhone: "Pickup phone",
+      orderFieldPickupAltContact: "Pickup alternate contact",
+      orderFieldPickupSecondPhone: "Pickup second phone",
+      orderFieldPickupEmail: "Pickup email",
+      orderFieldPickupNotes: "Pickup notes",
+      orderFieldPickupDate: "Pickup date",
+      orderFieldPickupWindow: "Pickup time window",
+      orderFieldDeliveryCompany: "Delivery location",
+      orderFieldDeliveryAddress: "Delivery address",
+      orderFieldDeliveryPostal: "Delivery postal code",
+      orderFieldDeliveryCity: "Delivery city",
+      orderFieldDeliveryCountry: "Delivery country",
+      orderFieldDeliveryContact: "Delivery contact",
+      orderFieldDeliveryPhone: "Delivery phone",
+      orderFieldDeliveryAltContact: "Delivery alternate contact",
+      orderFieldDeliverySecondPhone: "Delivery second phone",
+      orderFieldDeliveryEmail: "Delivery email",
+      orderFieldDeliveryNotes: "Delivery notes",
+      orderFieldDeliveryDate: "Delivery date",
+      orderFieldDeliveryWindow: "Delivery time window",
+      orderFieldVehicleType: "Vehicle type",
+      orderFieldVehicleModel: "Vehicle make/model",
+      orderFieldPlate: "License plate",
+      orderFieldVin: "VIN",
+      orderFieldAxle: "Axle / transport type",
+      orderFieldRegistrationStatus: "Registration status",
+      orderFieldElectricVehicle: "Electric vehicle",
+      orderFieldRedPlates: "Red license plates",
+      orderFieldRedPlateNumber: "Red plate number",
+      orderFieldDriverOffer: "Driver offer (€)",
+      orderFieldExpenses: "Expenses (€)",
+      orderFieldNotesDriver: "Driver-visible notes",
+      orderFieldNotesInternal: "Internal order notes",
       notificationPreferences: "Notification preferences",
       pickupPostalArea: "Pickup postal area",
       pushNotificationsEnabled: "Push notifications enabled",
@@ -1210,13 +1378,12 @@ window.I18n = (() => {
       adminNotificationEmpty: "No alerts in the feed.",
       adminNotifMasterDataChange: "Master-data change requested",
       adminNotifReportProblemCancel: "Order cancelled by driver",
-      adminNotifSpecialCaseCreated: "Order reported not performable",
+      adminNotifEmptyRunReported: "Empty run reported",
       adminNotifJobAccepted: "Order accepted",
       adminNotifJobPerformed: "Tour reported performed",
       adminNotifDocumentUploaded: "Document uploaded",
       adminNotifDocumentReuploaded: "Document re-uploaded",
-      adminSpecialCaseEvidence: "Attached evidence",
-      adminSpecialCaseEvidenceDemo: "Preview (demo)",
+      adminEmptyRunEvidence: "Attached evidence",
       adminNotificationOpenJob: "Open tour",
       alternateContact: "Alternate contact person",
       secondPhone: "Second phone",
@@ -1377,12 +1544,16 @@ window.I18n = (() => {
         accepted: "Akzeptiert",
         performed: "Durchgeführt",
         cancelled: "Storniert",
-        special_case: "Sonderfall",
+        cancelled_by_sp: "Storniert durch Servicepartner",
+        cancelled_by_autheon: "Storniert durch Autheon",
+        empty_run_reported: "Leerfahrt gemeldet",
+        empty_run_recognised: "Leerfahrt anerkannt",
+        empty_run_not_recognised: "Leerfahrt nicht anerkannt",
       },
       statusExplain: {
         title: "Was bedeuten die Status?",
         intro:
-          "Version-1-Regeln: Nur Entwürfe können veröffentlicht oder direkt zugewiesen werden. Marktplatz: Entwurf → Veröffentlicht → Akzeptiert → Durchgeführt. Direkt: Entwurf → Zugewiesen → Durchgeführt. Problem melden für Storno und nicht durchführbare Sonderfälle nach Bindung.",
+          "Version-1-Regeln: Nur Entwürfe können veröffentlicht oder direkt zugewiesen werden. Marktplatz: Entwurf → Veröffentlicht → Akzeptiert → Durchgeführt. Direkt: Entwurf → Zugewiesen → Durchgeführt. Problem melden für Storno und Leerfahrtmeldungen nach Bindung.",
         noteSeparate:
           "Kontostatus des Fahrers (Aktiv/Gesperrt) und Zahlungsstatus in der Finanzübersicht sind vom Tour-Lebenszyklus getrennt.",
         draft:
@@ -1395,8 +1566,8 @@ window.I18n = (() => {
           "Fahrer hat ein veröffentlichtes Marktplatzangebot angenommen. Aktive Ausführung parallel zu Zugewiesen.",
         performed:
           "Fahrer hat die Fahrzeugübernahme abgeschlossen. Operativer Abschluss; Dokumente und Abrechnung werden separat geführt.",
-        special_case:
-          "Fahrer hat die Tour als nicht durchführbar gemeldet. Disposition entscheidet; die Tour wird nicht automatisch storniert.",
+        empty_run_reported:
+          "Fahrer hat eine Leerfahrt gemeldet. Die Disposition prüft und entscheidet anerkannt oder nicht anerkannt; die Tour wird nicht automatisch storniert.",
         cancelled:
           "Tour wurde von der Disposition oder vom Driver über Problem melden storniert. Aus Marktplatz und aktiven Listen entfernt.",
       },
@@ -1503,7 +1674,7 @@ window.I18n = (() => {
       openInMaps: "In Karten öffnen",
       refreshDemo: "Aktualisieren",
       performedTab: "Durchgeführt",
-      specialCaseTab: "Sonderfall",
+      emptyRunReviewTab: "Leerfahrt",
       correctionRequiredBadge: "Korrektur",
       infopoint: "Infopoint",
       infopointDocsTab: "Allgemeine Dokumente",
@@ -1604,8 +1775,6 @@ window.I18n = (() => {
       reportProblemCancelTitle: "Auftrag stornieren",
       reportProblemCancelSub:
         "Beendet die Tour und informiert die Disposition.",
-      reportProblemNotPerformableTitle: "Nicht durchführbar melden",
-      reportProblemNotPerformableSub: "Erzeugt einen Sonderfall zur Prüfung.",
       reportCancelDriverUnavailable: "Fahrer nicht verfügbar",
       reportCancelDriverUnavailableSub:
         "Tour kann zeitlich nicht ausgeführt werden",
@@ -1717,12 +1886,8 @@ window.I18n = (() => {
       slideToCancelOrderHint:
         "Geben Sie oben mindestens 10 Zeichen in die Erklärung ein, um den Schieberegler freizuschalten.",
       reportProblemCancelConfirmed: "Stornierung gesendet",
-      reportProblemSpecialCaseNotice:
-        "Die Disposition prüft den Bericht und meldet sich.",
       reportProblemCancelSent:
         "Ihre Stornierung wurde an die Disposition gesendet.",
-      reportProblemSpecialCaseSent:
-        "Ihr Bericht wurde gesendet. Die Disposition prüft den Sonderfall.",
       profileTitle: "Profil",
       profileVerifiedAccount: "Verifiziertes Konto",
       infoTitle: "Info",
@@ -1766,7 +1931,7 @@ window.I18n = (() => {
       assignedTour: "Tour {tour}",
       cancellationBlocked: "Stornierung blockiert",
       cancellationRules:
-        "Admin kann Touren in den Status Akzeptiert, Zugewiesen oder Sonderfall stornieren.",
+        "Admin kann Touren in den Status Akzeptiert, Zugewiesen oder Leerfahrt gemeldet stornieren.",
       cancelledTour: "Storniert · Tour {tour}",
       cancelledSub: "Aus Marktplatz und aktiven Listen entfernt.",
       driverTourCancelledNotice:
@@ -1900,18 +2065,6 @@ window.I18n = (() => {
       adminColDriver: "Fahrer",
       adminColStatusHeader: "Status",
       adminColDocuments: "Dok.",
-      adminSpecialCaseTitle: "Sonderfall auflösen",
-      adminSpecialCaseNotes: "Entscheidungsnotizen",
-      adminSpecialCaseContinue: "Fortsetzen",
-      adminSpecialCaseContinueTitle: "Tour als {status} fortsetzen",
-      adminSpecialCaseResumeHint:
-        "Fortsetzen stellt den Status {status} wieder her (Zustand vor dem Sonderfall).",
-      adminSpecialCaseRepublish: "Erneut veröffentlichen",
-      adminSpecialCaseClose: "Schließen",
-      adminSpecialCaseCancel: "Tour stornieren",
-      adminSpecialCaseResolved: "Sonderfall aktualisiert.",
-      adminSpecialCaseResolveFailed:
-        "Sonderfall konnte nicht aufgelöst werden.",
       adminDocAccept: "Akzeptieren",
       adminDocReject: "Ablehnen",
       adminDocErrAlreadyAccepted:
@@ -2205,7 +2358,7 @@ window.I18n = (() => {
       adminReassignSameDriver: "Dieser Fahrer ist der Tour bereits zugewiesen.",
       reassignBlocked: "Neuzuweisung blockiert",
       reassignBlockedSub:
-        "Nur Zugewiesen-, Angenommen- oder Sonderfall-Touren können neu zugewiesen werden.",
+        "Nur Zugewiesen-, Angenommen- oder Leerfahrt-gemeldet-Touren können neu zugewiesen werden.",
       jobReassigned: "Neu zugewiesen · {driver}",
       adminCancelJob: "Auftrag stornieren",
       adminCancelJobConfirm:
@@ -2271,7 +2424,7 @@ window.I18n = (() => {
       draftDeletedTour: "Entwurf gelöscht · Tour {tour}",
       deleteDraftBlocked: "Entwurf konnte nicht gelöscht werden",
       deleteDraftBlockedSub:
-        "Nur Entwürfe können gelöscht werden. Andere Statuse stornieren oder im Sonderfall bearbeiten.",
+        "Nur Entwürfe können gelöscht werden. Andere Status stornieren oder auflösen.",
       adminPhase1PublishedNoAssign:
         "Phase 1: Zuweisung aus „Veröffentlicht“ nicht möglich. Zuerst auf Entwurf zurück, dann bearbeiten, erneut veröffentlichen oder direkt zuweisen.",
       adminRevertToDraft: "Zurück auf Entwurf",
@@ -2452,7 +2605,7 @@ window.I18n = (() => {
       bindingAcceptance: "Verbindliche Annahme",
       acceptThisTour: "Diese Tour annehmen?",
       acceptanceLegal:
-        "Die Annahme ist verbindlich. Danach Problem melden nutzen, um zu stornieren oder die Tour als nicht durchführbar zu melden.",
+        "Die Annahme ist verbindlich. Danach Problem melden nutzen, um den Auftrag zu stornieren oder eine Leerfahrt zu melden.",
       partnerTermsApply: "Es gelten die Fahrerbedingungen.",
       partnerPolicyAlert:
         "Demo-Dokument: Fahrerbedingungen sind im Fahrer-Infobereich und im Admin-Dokumentenmodul verfügbar.",
@@ -2483,6 +2636,192 @@ window.I18n = (() => {
       accountStatus: "Kontostatus",
       masterDataChangeNotice:
         "Diese Daten verwaltet der Betrieb. Tippen Sie auf Änderung anfragen, um Updates vorzuschlagen.",
+      accountSigninTitle: "Konto & Anmeldung",
+      accountSigninHint:
+        "Das ist Ihre Anmelde-E-Mail. Sie verwalten sie selbst — keine Freigabe durch den Betrieb nötig.",
+      accountEmailLabel: "E-Mail",
+      accountEmailVerified: "Bestätigt",
+      accountEmailPending: "Änderung ausstehend",
+      accountEmailChangeBtn: "Ändern",
+      changeEmailTitle: "E-Mail-Adresse ändern",
+      changeEmailCurrentPrefix: "Aktuell",
+      changeEmailNewLabel: "Neue E-Mail-Adresse",
+      changeEmailNewPlaceholder: "name@firma.de",
+      changeEmailCodeNotice:
+        "Wir senden einen 6-stelligen Code an Ihre neue Adresse, um zu bestätigen, dass sie Ihnen gehört.",
+      changeEmailSendCode: "Code senden",
+      changeEmailCodeTitle: "Bestätigungscode eingeben",
+      changeEmailCodeSentTo: "Gesendet an {email}",
+      changeEmailResendIn: "Erneut senden in {time}",
+      changeEmailResend: "Code erneut senden",
+      changeEmailBack: "Adresse ändern",
+      changeEmailConfirm: "Änderung bestätigen",
+      changeEmailSuccessTitle: "E-Mail aktualisiert",
+      changeEmailSuccessBody:
+        "Ihre Anmelde-E-Mail lautet jetzt {email}. Verwenden Sie sie bei Ihrer nächsten Anmeldung.",
+      changeEmailDone: "Fertig",
+      changeEmailDemoHint:
+        "Prototyp: Der an Ihre neue Adresse gesendete 6-stellige Code lautet {code}.",
+      changeEmailErrInvalid: "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+      changeEmailErrSame: "Das ist bereits Ihre Anmelde-E-Mail.",
+      changeEmailErrDuplicate:
+        "Diese E-Mail wird bereits von einem anderen Konto verwendet.",
+      changeEmailErrCodeInvalid:
+        "Der Code ist nicht korrekt. Bitte prüfen Sie ihn und versuchen Sie es erneut.",
+      changeEmailErrCodeExpired:
+        "Der Code ist abgelaufen. Bitte fordern Sie einen neuen an.",
+      changeEmailErrRestricted:
+        "Ihr Konto kann derzeit die E-Mail-Adresse nicht ändern.",
+      changeEmailErrGeneric:
+        "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+      emailChangedNotifyTitle: "Anmelde-E-Mail geändert",
+      emailChangedNotifyBody:
+        "Ihre Anmelde-E-Mail wurde zu {email} geändert. Falls Sie das nicht waren, kontaktieren Sie bitte umgehend die Disposition.",
+      // ---- Task 2: Storno-/Leerfahrt-Workflow (Quelltexte laut PDF) ----
+      warnEntryCancelOption: "Auftrag stornieren",
+      warnEntryCancelSub:
+        "Beendet den Auftrag und informiert die Disposition.",
+      warnEntryEmptyRunOption: "Leerfahrt melden",
+      warnEntryEmptyRunSub:
+        "Der Auftrag selbst kann nicht durchgeführt werden — Autheon prüft die Meldung.",
+      spCancelWarningTitle: "Verbindlich gebuchten Auftrag stornieren",
+      spCancelBindingWarning:
+        "Sie sind im Begriff, einen verbindlich gebuchten Auftrag zu stornieren. Gemäß den geltenden Vertragsbedingungen können Stornokosten bis zur Höhe der vereinbarten Vergütung entstehen.",
+      spCancelTermsLink: "AGB bzw. Vertragsbedingungen",
+      spCancelTermsPlaceholderNotice:
+        "Platzhalter: Das echte Storno-/AGB-Dokument ist noch nicht verknüpft. Das Ziel wird vom Betrieb bereitgestellt.",
+      spCancelAbort: "Abbrechen",
+      spCancelContinue: "Stornierung fortsetzen",
+      spCancelReasonLabel: "Stornierungsgrund",
+      spCancelReasonAppointment: "Termin kann nicht eingehalten werden",
+      spCancelReasonAccidental: "Auftrag versehentlich gebucht",
+      spCancelReasonOrgImpossible: "Durchführung organisatorisch nicht möglich",
+      spCancelReasonOther: "Sonstiges",
+      spCancelExplanationLabel: "Begründung (erforderlich)",
+      spCancelExplanationPlaceholder:
+        "Beschreiben Sie, warum Sie stornieren (mind. 30 Zeichen).",
+      spCancelSlide: "Auftrag stornieren",
+      spCancelSlideDone: "Auftrag storniert",
+      spCancelSlideLocked: "Mind. 30 Zeichen eingeben zum Freischalten",
+      spCancelSuccessTitle: "Auftrag storniert",
+      spCancelSuccessBody:
+        "Der Auftrag wurde erfolgreich storniert und darf nicht mehr durchgeführt werden.",
+      emptyRunReasonLabel: "Grund",
+      emptyRunReasonNotOperational: "Fahrzeug ist technisch nicht fahrbereit",
+      emptyRunReasonNotRoadworthy: "Fahrzeug ist nicht verkehrssicher",
+      emptyRunReasonNotPresent:
+        "Fahrzeug ist am angegebenen Standort nicht vorhanden oder nicht auffindbar",
+      emptyRunReasonNotReleased: "Fahrzeug wird nicht herausgegeben",
+      emptyRunReasonKeyDocs:
+        "Fahrzeugschlüssel oder erforderliche Unterlagen fehlen",
+      emptyRunReasonOther: "Sonstiges",
+      emptyRunDescLabel: "Beschreibung (erforderlich)",
+      emptyRunDescPlaceholder:
+        "Beschreiben Sie den Sachverhalt (mind. 30 Zeichen).",
+      emptyRunEvidenceLabel: "Foto / Nachweis (optional)",
+      emptyRunEvidenceHint: "Optional — Sie können ohne Upload absenden.",
+      emptyRunWarning:
+        "Die gemeldete Leerfahrt wird durch Autheon geprüft. Durch die Meldung entsteht noch kein automatischer Anspruch auf Anerkennung oder Vergütung. Bitte informieren Sie die Disposition nach Möglichkeit zusätzlich telefonisch.",
+      emptyRunSlide: "Leerfahrt melden",
+      emptyRunSlideDone: "Leerfahrt gemeldet",
+      emptyRunSlideLocked: "Mind. 30 Zeichen eingeben zum Freischalten",
+      emptyRunSuccessTitle: "Leerfahrt gemeldet",
+      emptyRunSuccessBody:
+        "Ihre Meldung wurde an Autheon übermittelt und wird geprüft.",
+      emptyRunPendingLock:
+        "Diese Meldung liegt Autheon zur Prüfung vor und kann nicht mehr geändert werden.",
+      chars30Required: "Zeichen (mind. 30)",
+      notifOrderCancelledByAutheonTitle: "Auftrag durch Autheon storniert",
+      notifOrderCancelledByAutheonBody:
+        "Der Auftrag {tour} wurde durch Autheon storniert und muss nicht mehr durchgeführt werden.",
+      notifEmptyRunRecognisedTitle: "Leerfahrt anerkannt",
+      notifEmptyRunRecognisedBody:
+        "Die gemeldete Leerfahrt für den Auftrag {tour} wurde durch Autheon anerkannt.",
+      notifEmptyRunNotRecognisedTitle: "Leerfahrt nicht anerkannt",
+      notifEmptyRunNotRecognisedBody:
+        "Die gemeldete Leerfahrt für den Auftrag {tour} wurde durch Autheon nicht anerkannt.",
+      notifOrderUpdatedTitle: "Auftrag {tour} wurde aktualisiert",
+      notifOrderUpdatedIntro: "Folgende Daten wurden geändert:",
+      adminEmptyRunReviewTitle: "Leerfahrt — offener Prüfvorgang",
+      adminEmptyRunReviewHint:
+        "Entscheiden Sie, ob die gemeldete Leerfahrt anerkannt wird. Eine Zwischenstufe gibt es nicht.",
+      adminEmptyRunDecideRecognised: "Anerkannt",
+      adminEmptyRunDecideNotRecognised: "Nicht anerkannt",
+      adminEmptyRunReasonLabel: "Gemeldeter Grund",
+      adminEmptyRunRecognisedToast: "Leerfahrt anerkannt",
+      adminEmptyRunNotRecognisedToast: "Leerfahrt nicht anerkannt",
+      adminEmptyRunDecisionSub: "Servicepartner benachrichtigt · {tour}",
+      adminInternalNotesTitle: "Interne Notizen",
+      adminInternalNotesHint:
+        "Nur für Admins sichtbar — wird dem Servicepartner nie angezeigt.",
+      adminInternalNotePlaceholder: "Interne Notiz hinzufügen…",
+      adminInternalNoteAdd: "Notiz hinzufügen",
+      adminInternalNotesEmpty: "Noch keine internen Notizen.",
+      adminDuplicateOrder: "Auftrag duplizieren",
+      adminDuplicatedToast: "Auftrag dupliziert",
+      adminDuplicatedToastSub: "Neuer Entwurf {tour} zur Bearbeitung geöffnet.",
+      adminCancelOrderByAutheon: "Auftrag stornieren",
+      adminCancelByAutheonConfirm:
+        "Diesen Auftrag im Namen von Autheon stornieren? Er wird schreibgeschützt und kann nicht reaktiviert oder erneut veröffentlicht werden.",
+      adminCancelledByAutheonToast: "Auftrag durch Autheon storniert",
+      adminEditActiveOrder: "Auftrag bearbeiten",
+      adminEditActiveOrderTitle: "Auftrag bearbeiten",
+      adminEditActiveOrderHint:
+        "Änderungen werden sofort gespeichert und der zugewiesene Servicepartner wird mit den geänderten Werten benachrichtigt. Keine erneute Bestätigung erforderlich.",
+      adminSaveAndNotify: "Speichern & Partner benachrichtigen",
+      // Vollständige Auftragsbearbeitung (Storno §7)
+      adminEditOrderStatusNote:
+        "Dieser Auftrag ist {status}. Die Bearbeitung ändert ausschließlich die Auftragsdaten — der operative Status ändert sich nicht und der zugewiesene Servicepartner wird über die tatsächlichen Änderungen benachrichtigt, ohne dass eine erneute Bestätigung erforderlich ist.",
+      adminEditOrderSaveHint:
+        "Änderungen an diesem gebuchten Auftrag speichern. Der zugewiesene Servicepartner wird über die geänderten Werte benachrichtigt; eine erneute Bestätigung ist nicht erforderlich.",
+      adminEvidenceNoPreview: "Vorschau nicht verfügbar (nur Metadaten)",
+      adminOrderEditedToast: "Auftrag {tour} aktualisiert",
+      adminOrderEditedToastSub:
+        "Änderungen gespeichert und der zugewiesene Partner benachrichtigt.",
+      adminOrderEditedToastSubNoPartner: "Änderungen gespeichert.",
+      orderFieldCustomer: "Auftraggeber",
+      orderFieldCategory: "Kategorie",
+      orderFieldDistance: "Distanz (km)",
+      orderFieldPickupCompany: "Abholort",
+      orderFieldPickupAddress: "Abholadresse",
+      orderFieldPickupPostal: "Abhol-PLZ",
+      orderFieldPickupCity: "Abholstadt",
+      orderFieldPickupCountry: "Abholland",
+      orderFieldPickupContact: "Ansprechpartner Abholung",
+      orderFieldPickupPhone: "Telefon Abholung",
+      orderFieldPickupAltContact: "Alternativer Kontakt Abholung",
+      orderFieldPickupSecondPhone: "Zweite Telefonnummer Abholung",
+      orderFieldPickupEmail: "E-Mail Abholung",
+      orderFieldPickupNotes: "Notiz Abholung",
+      orderFieldPickupDate: "Abholdatum",
+      orderFieldPickupWindow: "Abholzeitfenster",
+      orderFieldDeliveryCompany: "Zustellort",
+      orderFieldDeliveryAddress: "Zustelladresse",
+      orderFieldDeliveryPostal: "Zustell-PLZ",
+      orderFieldDeliveryCity: "Zustellstadt",
+      orderFieldDeliveryCountry: "Zustellland",
+      orderFieldDeliveryContact: "Ansprechpartner Zustellung",
+      orderFieldDeliveryPhone: "Telefon Zustellung",
+      orderFieldDeliveryAltContact: "Alternativer Kontakt Zustellung",
+      orderFieldDeliverySecondPhone: "Zweite Telefonnummer Zustellung",
+      orderFieldDeliveryEmail: "E-Mail Zustellung",
+      orderFieldDeliveryNotes: "Notiz Zustellung",
+      orderFieldDeliveryDate: "Zustelldatum",
+      orderFieldDeliveryWindow: "Zustellzeitfenster",
+      orderFieldVehicleType: "Fahrzeugtyp",
+      orderFieldVehicleModel: "Fahrzeug (Marke/Modell)",
+      orderFieldPlate: "Kennzeichen",
+      orderFieldVin: "FIN",
+      orderFieldAxle: "Achse / Transportart",
+      orderFieldRegistrationStatus: "Zulassungsstatus",
+      orderFieldElectricVehicle: "Elektrofahrzeug",
+      orderFieldRedPlates: "Rote Kennzeichen",
+      orderFieldRedPlateNumber: "Rote Kennzeichennummer",
+      orderFieldDriverOffer: "Fahrerangebot (€)",
+      orderFieldExpenses: "Auslagen (€)",
+      orderFieldNotesDriver: "Fahrer-sichtbare Notizen",
+      orderFieldNotesInternal: "Interne Auftragsnotizen",
+      adminNoChanges: "Keine Änderungen zum Speichern.",
       notificationPreferences: "Benachrichtigungseinstellungen",
       pickupPostalArea: "Abhol-PLZ-Gebiet",
       pushNotificationsEnabled: "Push-Benachrichtigungen aktiviert",
@@ -2502,13 +2841,12 @@ window.I18n = (() => {
       adminNotificationEmpty: "Keine Meldungen im Feed.",
       adminNotifMasterDataChange: "Stammdatenänderung angefragt",
       adminNotifReportProblemCancel: "Auftrag vom Fahrer storniert",
-      adminNotifSpecialCaseCreated: "Auftrag als nicht durchführbar gemeldet",
+      adminNotifEmptyRunReported: "Leerfahrt gemeldet",
       adminNotifJobAccepted: "Auftrag angenommen",
       adminNotifJobPerformed: "Tour als durchgeführt gemeldet",
       adminNotifDocumentUploaded: "Dokument hochgeladen",
       adminNotifDocumentReuploaded: "Dokument erneut hochgeladen",
-      adminSpecialCaseEvidence: "Angehängte Nachweise",
-      adminSpecialCaseEvidenceDemo: "Vorschau (Demo)",
+      adminEmptyRunEvidence: "Angehängte Nachweise",
       adminNotificationOpenJob: "Tour öffnen",
       alternateContact: "Weitere Kontaktperson",
       secondPhone: "Zweite Telefonnummer",

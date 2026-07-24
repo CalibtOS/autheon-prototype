@@ -448,6 +448,53 @@
           return saved;
         };
 
+        // Save a full edit of an already-booked (non-draft) order (Storno §7):
+        // persists immediately, notifies the assigned partner and preserves the
+        // operational status. Reuses the same NewOrder form as draft editing.
+        const saveBookedOrderEdit = () => {
+          const jobId = editingJobId;
+          if (!jobId) return;
+          const r = store.updateOrderFromForm(jobId, newOrderForm || {});
+          if (!r.ok) {
+            if (r.reason === "within_schedule_cutoff") {
+              showToast(
+                t("adminScheduleCutoffBlocked", { hours: r.minHours || 1 }),
+                t("adminScheduleOverrideHint"),
+              );
+            } else if (r.reason === "cross_midnight_window") {
+              showToast(
+                t("adminScheduleSameDayWindowError"),
+                r.leg === "delivery"
+                  ? t("newOrderDeliverySchedule")
+                  : t("newOrderPickupSchedule"),
+              );
+            } else if (r.reason === "no_changes") {
+              showToast(t("adminNoChanges"), "");
+            } else {
+              showToast(t("adminToastUpdateFailed"), "");
+            }
+            return;
+          }
+          const job = store.getJob(jobId);
+          const hadVisibleForPartner =
+            !!job &&
+            !!job.driverId &&
+            (r.diffs || []).some((d) => d.driverVisible);
+          showToast(
+            t("adminOrderEditedToast", { tour: job?.tour || "" }),
+            hadVisibleForPartner
+              ? t("adminOrderEditedToastSub")
+              : t("adminOrderEditedToastSubNoPartner"),
+          );
+          setEditingJobId(null);
+          if (job) {
+            setActiveJob(job);
+            setSection("detail");
+          } else {
+            onBack();
+          }
+        };
+
         const onOpenJob = (j) => {
           setActiveJob(j);
           setSection("detail");
@@ -672,7 +719,12 @@
         } else if (section === "notifications") {
           body = (
             <NotificationFeedPane
+              showToast={showToast}
               onReviewMasterDataRequest={openMasterDataRequest}
+              onOpenJob={(j) => {
+                setActiveJob(j);
+                setSection("detail");
+              }}
             />
           );
         } else if (section === "masterdata") {
@@ -719,6 +771,19 @@
           footer = (
             <AdminDetailFooter
               job={fresh}
+              showToast={showToast}
+              onDuplicate={(j) => {
+                const r = store.duplicateJob(j.id);
+                if (!r.ok || !r.job) {
+                  showToast(t("adminToastUpdateFailed"), "");
+                  return;
+                }
+                openEditDraft(r.job.id);
+                showToast(
+                  t("adminDuplicatedToast"),
+                  t("adminDuplicatedToastSub", { tour: r.job.tour }),
+                );
+              }}
               onPublish={() => {
                 const r = store.publishJob(fresh.id);
                 if (!r.ok)
@@ -813,11 +878,22 @@
             />
           );
         } else if (section === "new") {
-          // Saved-draft + publish handlers via window store; pull form from window
+          // Saved-draft + publish handlers via window store; pull form from window.
+          // For an already-booked (non-draft) order the footer switches to a
+          // single "Save & notify partner" action (Storno §7).
+          const editJobForFooter = editingJobId
+            ? store.getJob(editingJobId)
+            : null;
+          const bookedEditMode =
+            !!editJobForFooter &&
+            editJobForFooter.status !== "draft" &&
+            store.canAdminEditOrder(editJobForFooter);
           footer = (
             <NewOrderFooter
               form={newOrderForm}
               valid={newOrderValid}
+              bookedEdit={bookedEditMode}
+              onSaveBookedEdit={saveBookedOrderEdit}
               onCancel={cancelNewOrder}
               onSaveDraft={() => {
                 const saved = saveNewOrderDraft();
