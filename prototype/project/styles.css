@@ -4890,6 +4890,178 @@ select.input {
   color: var(--muted);
   margin-top: 2px;
 }
+
+/* ---------------------------------------------------------------------------
+   Profile: navigation-list / drill-down layout
+   (identity card, summary card, grouped nav rows, app-version)
+   --------------------------------------------------------------------------- */
+.phone-shell .profile-identity-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.phone-shell .profile-identity-card .avatar {
+  width: 56px;
+  height: 56px;
+  font-size: var(--text-body);
+  background: rgba(var(--primary-rgb), 0.1);
+  color: var(--primary);
+  border: none;
+  flex-shrink: 0;
+}
+.phone-shell .profile-identity-partner {
+  font-size: var(--text-body-sm);
+  color: var(--muted);
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+/* Summary card — rows with dividers; only the log-out row is actionable */
+.phone-shell .profile-summary-card {
+  padding: 0;
+  overflow: hidden;
+}
+.phone-shell .profile-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 56px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.phone-shell .profile-summary-row:last-child {
+  border-bottom: none;
+}
+.phone-shell button.profile-summary-action {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-top: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.phone-shell button.profile-summary-action:last-child {
+  border-bottom: none;
+}
+.phone-shell .profile-summary-action:focus-visible,
+.phone-shell .profile-nav-row:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.phone-shell .profile-summary-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  flex-shrink: 0;
+  color: var(--text);
+}
+.phone-shell .profile-summary-icon.is-status {
+  color: var(--st-accepted);
+}
+.phone-shell .profile-summary-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.phone-shell .profile-summary-label {
+  font-size: var(--text-body-sm);
+  color: var(--muted);
+}
+.phone-shell .profile-summary-value {
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.phone-shell .profile-summary-value.is-active {
+  color: var(--st-accepted);
+}
+.phone-shell .profile-summary-action-label {
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Grouped navigation */
+.phone-shell .profile-group {
+  margin-top: 22px;
+}
+.phone-shell .profile-group-label {
+  margin: 0 0 8px;
+  padding: 0 4px;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.phone-shell .section-card.profile-nav-card {
+  margin-top: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.phone-shell .profile-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 56px;
+  padding: 15px 16px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.phone-shell .profile-nav-row:last-child {
+  border-bottom: none;
+}
+.phone-shell .profile-nav-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  flex-shrink: 0;
+  color: var(--text);
+}
+.phone-shell .profile-nav-row-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.phone-shell .profile-nav-row-label {
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.phone-shell .profile-nav-row-sub {
+  font-size: var(--text-caption);
+  color: var(--muted);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.phone-shell .profile-nav-row-chevron {
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted-2);
+  flex-shrink: 0;
+}
+.phone-shell .profile-version {
+  text-align: center;
+  font-size: var(--text-caption);
+  color: var(--muted-2);
+  margin: 22px 0 4px;
+}
 .phone-shell .btn.destructive-outline {
   border: 1px solid var(--st-cancelled);
   color: var(--st-cancelled);
