@@ -1,7 +1,15 @@
 .cursor
 .claude
 .playwright-cli
-.github
+# Keep local .github tooling untracked, but commit CI workflows.
+.github/*
+!.github/workflows/
+.github/workflows/*
+!.github/workflows/*.yml
+!.github/workflows/*.yaml
+.env
+.env.*
+!.env.example
 
 # =============================================================================
 # Design image binaries — keep on disk locally; do not commit to git
@@ -23,6 +31,7 @@ docs/design/screenshots/*
 node_modules/
 test-results/
 playwright-report/
+visual-regression-artifacts/
 npm-debug.log*
 snapshots/
 
