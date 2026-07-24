@@ -18,7 +18,24 @@ import {
  * playwright.config.ts). This helper puts the prototype into that known state
  * so every screen/popup snapshot is comparable and deterministic.
  */
+/**
+ * The Floating Theme Editor mounts a fixed launcher (a dev/design overlay) on
+ * every surface. Suppress it BEFORE navigation so it never appears in pixel
+ * baselines — its own behaviour is covered in tests/e2e/theme-editor. Must be
+ * called before the first goto to take effect.
+ */
+export async function hideThemeEditorChrome(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    try {
+      window.localStorage.setItem('autheon.themeEditor.hidden', '1');
+    } catch {
+      /* localStorage unavailable — the launcher self-suppresses anyway */
+    }
+  });
+}
+
 async function prepareVisualBaseline(page: Page): Promise<void> {
+  await hideThemeEditorChrome(page);
   await gotoPrototype(page);
   await switchLanguage(page, 'EN');
   await switchTheme(page, 'light');
