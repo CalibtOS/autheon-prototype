@@ -1,4 +1,4 @@
-/* global React, AuthStore, useAuthStore, useI18n, TabBar, Portal, MyJobs, Infopoint, ProfilePaneFull, JobLocked, JobUnlocked, AcceptanceModal, ReportProblemSheet, PendingNotice, MarkPerformedSheet, ProbationLimitSheet, SameDayOverlapSheet, FilterSheet, DriverNotificationsPane */
+/* global React, AuthStore, useAuthStore, useI18n, TabBar, Portal, MyJobs, Infopoint, ProfilePaneFull, JobLocked, JobUnlocked, AcceptanceModal, ReportProblemSheet, PendingNotice, TourBookedSuccessSheet, MarkPerformedSheet, ProbationLimitSheet, SameDayOverlapSheet, FilterSheet, DriverNotificationsPane */
 /**
  * PwaDriverApp — real-viewport driver PWA shell for /pwa.
  *
@@ -55,6 +55,7 @@ function PwaDriverApp() {
   const [probationLimitModal, setProbationLimitModal] = useState(null);
   const [overlapConfirm, setOverlapConfirm] = useState(null);
   const [banner, setBanner] = useState(null);
+  const [bookedSuccess, setBookedSuccess] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
   const handleOpenJob = (j, fromTab = tab) => {
@@ -293,6 +294,7 @@ function PwaDriverApp() {
                   }
                   setAcceptModal(null);
                   setActiveJob({ id, mode: "unlocked" });
+                  setBookedSuccess(true);
                 };
                 tryAccept(false);
               }}
@@ -368,8 +370,12 @@ function PwaDriverApp() {
                   return;
                 }
                 setActiveJob({ id, mode: "unlocked" });
+                setBookedSuccess(true);
               }}
             />
+          )}
+          {bookedSuccess && (
+            <TourBookedSuccessSheet onClose={() => setBookedSuccess(false)} />
           )}
         </div>
       </div>
