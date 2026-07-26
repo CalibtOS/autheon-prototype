@@ -284,6 +284,7 @@
       if (sep === -1) return;
       const mode = block.slice(0, sep).trim();
       if (mode !== 'light' && mode !== 'dark') return;
+      const modeMap = mode === 'light' ? result.light : result.dark;
       block
         .slice(sep + 1)
         .split(',')
@@ -294,7 +295,7 @@
           if (!ALL_EDITABLE.includes(cssVar)) return;
           const hex = normalizeHex(pair.slice(eq + 1).trim());
           if (!hex) return;
-          result[mode][cssVar] = hex;
+          modeMap[cssVar] = hex;
         });
     });
     return result;
