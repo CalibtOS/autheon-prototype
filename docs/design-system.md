@@ -35,12 +35,13 @@ See [`brand-tokens.md`](design/brand-tokens.md) for full tables.
 | Component | Variants / behavior |
 | --- | --- |
 | Button | default, primary, cta, ghost, danger, destructive-outline, icon; min 44×44px touch |
-| Input | Labelled; focus ring `--primary`; validation inline |
+| Input | Labelled; focus ring `--primary`; validation inline; numeric fields (postal code, house no., distance) strip to digits on input — phone allows a leading `+`, money allows one decimal separator |
 | StatusPill | Text + dot; `.pill.{status}` |
 | Badge | `.ui-badge` — numeric, unified across bell/tabs/sidebar |
 | Card | `.card`, `.section-card` — 16px padding mobile |
 | Sheet / Dialog | Bottom sheet (driver); sticky footer Cancel \| Primary |
 | TabBar | 4 items, icon + label, `aria-current="page"` |
+| SwipeViews (paged tabs) | Horizontal swipe/drag pages between in-screen tabs (My Jobs, Infopoint); adjacent pane peeks in, snaps on release; per-pane vertical scroll preserved; `.swipe-viewport`/`.swipe-track`/`.swipe-pane` |
 | Toast | Transient confirmations only |
 | EmptyState / Skeleton | Required on every list screen |
 

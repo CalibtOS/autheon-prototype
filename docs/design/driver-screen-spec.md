@@ -68,7 +68,7 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 ## Header & KPIs
 
 - Marketplace header: greeting/avatar, notifications bell, screen title, sort + filter controls, applied-filter chips. Restrained — orientation without dashboard weight.
-- **KPI row (implemented per PDF §4 — "reduzierter Dashboard-Charakter"):** three quiet chips — Available (published jobs), Booked (own assigned/accepted), Open documents (tours needing document correction). `--canvas` chips, 12px labels, 600-weight numbers; never dominant.
+- **KPI row — removed at client request (2026-07, PR #17).** The three quiet chips (Available / Booked / Open documents, per PDF §4 "reduzierter Dashboard-Charakter") were implemented but then removed: the same counts already surface as tab badges in **My Jobs**, so the marketplace row only duplicated them. The `.kpi-row`/`.kpi-chip` CSS and `kpiAvailableJobs`/`kpiBookedJobs`/`kpiOpenDocuments` i18n keys remain in place but unused — re-introduce only on explicit client ask.
 
 ---
 
@@ -77,7 +77,7 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 | Screen | Component | Required states | Primary CTA |
 |--------|-----------|-----------------|-------------|
 | Marketplace | `Portal` | default, filtered, empty, loading, blocked driver | Filter / open job |
-| My Jobs | `MyJobs` | 4 tabs × empty / loading / populated | Open job |
+| My Jobs | `MyJobs` | 4 tabs × empty / loading / populated (swipe between tabs) | Open job |
 | Job detail (locked) | `JobLocked` | masked addresses, dashed route card | Accept (opens sheet) |
 | Job detail (unlocked) | `JobUnlocked` | route, contacts, docs, cancellation; performed → `Job details / My documents` tab pills | Mark performed |
 | Tour documents (active tours) | `JobTourDocuments` | empty, uploading, review | Upload |
@@ -90,7 +90,7 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 | Profile | `ProfilePaneFull` | view, edit MDR, pending | Request changes |
 | Account & sign-in | `account-signin-card` in `ProfilePaneFull` | verified, pending-change | Change email address |
 | Change email | `ChangeEmailSheet` | enter address, confirm code (+resend), success, error states | Send code → Confirm change |
-| Infopoint | `Infopoint` | docs + news + help tabs, empty | Download / Help |
+| Infopoint | `Infopoint` | docs + news + help tabs, empty (swipe between tabs) | Download / Help |
 
 ---
 
@@ -101,6 +101,8 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 - Moderate button rounding (`--r-2`/`--r-3`); no pill-shaped primary buttons.
 - Tap feedback: subtle opacity/scale/pressed states; micro-animations minimal, transform/opacity only, `prefers-reduced-motion` respected.
 - **Slide-to-confirm** (binding acceptance, binding cancellation, **mark performed**): must clearly prevent accidental actions — full-width deliberate drag, locked until preconditions are met (e.g. 10-char reason), clear track label (sentence case), performant transform-only feedback. Shared control: `SlideToConfirm` (`driver.jsx`).
+- **Swipe between in-screen tabs** (`SwipeViews`, `driver.jsx` — 2026-07, PR #17): My Jobs (Active / Performed / Cancelled / Special) and Infopoint (Documents / News / Help) are a paged carousel — a horizontal drag moves the track so the adjacent tab peeks in and snaps on release; the tab pills stay in sync and tapping still works. The gesture locks to one axis after ~10px so vertical list scrolling is preserved (`touch-action: pan-y`, per-pane `overflow-y`); transform-only, reduced-motion friendly. Not the bottom nav — that switches on tap only.
+- **Digit-only numeric inputs** (2026-07, PR #17): the preferred postal-code input (profile push prefs) and the Marketplace filter PLZ fields strip non-digits on input (`inputMode="numeric"`). Mirrors the admin Create/Edit-Job numeric rules (postal code, house no., distance = digits; phone allows a leading `+`; money allows one decimal separator).
 
 ---
 
@@ -203,6 +205,7 @@ Loaded before `driver.jsx` in `AUTHEON Prototype.html`. Access via `window.Drive
 | `.inline-alert`, `.app-banner` | Persistent feedback |
 | `.account-signin-card`, `.account-signin-title/-key`, `.account-email-row/-value/-address/-verified`, `.account-email-badge` | Account & sign-in credential card |
 | `.change-email-current`, `.code-input-row`, `.code-input-box`, `.change-email-resend-row`, `.change-email-success-check` | Change-email sheet + `CodeInput` |
+| `.swipe-viewport`, `.swipe-track`, `.swipe-pane`, `.swipe-pane-body` | Paged swipe tab views (`SwipeViews`) — My Jobs / Infopoint tab carousel |
 | `.text-*`, `.stack-*`, `.row-*` | Typography / spacing utilities (see `styles.css` § TOKEN UTILITIES) |
 
 ### Formatters (`formatters.js`)
