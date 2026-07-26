@@ -42,7 +42,7 @@
   --st-published: #2563eb;
   --st-assigned: #c2410c;
   --st-accepted: #059669;
-  --st-special-case: #9333ea;
+  --st-empty-run: #9333ea;
   --st-performed: #0f172a;
   --st-cancelled: #dc2626;
   --st-warn: #ea580c;
@@ -50,7 +50,7 @@
   --st-published-bg: #eff6ff;
   --st-assigned-bg: #fff7ed;
   --st-accepted-bg: #ecfdf5;
-  --st-special-bg: #f5f3ff;
+  --st-empty-run-bg: #f5f3ff;
   --st-cancelled-bg: #fef2f2;
   --st-warn-bg: #ffedd5;
 
@@ -138,7 +138,7 @@
   --st-published-bg: #172554;
   --st-assigned-bg: #3a2210;
   --st-accepted-bg: #092a24;
-  --st-special-bg: #2c1f50;
+  --st-empty-run-bg: #2c1f50;
   --st-cancelled-bg: #3e1520;
   --st-warn-bg: #4a2b12;
   --sh-1: 0 1px 2px rgba(2, 6, 23, 0.45);
@@ -545,9 +545,9 @@ select.input {
   background: rgba(248, 250, 252, 0.14);
   color: #e2e8f0;
 }
-.pill.special_case {
-  background: var(--st-special-bg);
-  color: var(--st-special-case);
+.pill.empty_run {
+  background: var(--st-empty-run-bg);
+  color: var(--st-empty-run);
 }
 .pill.cancelled {
   background: var(--st-cancelled-bg);
@@ -1329,7 +1329,7 @@ select.input {
 }
 /* Marketplace-preview Route card (Figma 07/2026): city + dot — dashed
    connector — distance over duration — dashed connector — dot + city.
-   Figma colors mapped to tokens: #2563EB→--primary, #1E293B→--ink,
+   Figma colors mapped to tokens: primary blue→--primary, #1E293B→--ink,
    #CBD5E1→--line-dash, #6B7280→--muted, #111827/#1F2937→--text. */
 .phone-shell .detail-route-row {
   display: flex;
@@ -4841,6 +4841,95 @@ select.input {
   font-size: var(--text-caption);
   color: var(--muted);
   margin-top: 3px;
+}
+/* Account & sign-in — driver-owned credential card (Task 1) */
+.phone-shell .account-signin-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.phone-shell .account-signin-key {
+  font-size: 15px;
+  line-height: 1;
+}
+.phone-shell .account-email-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0 2px;
+}
+.phone-shell .account-email-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.phone-shell .account-email-address {
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.phone-shell .account-email-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--st-ok, #1f9d55);
+  white-space: nowrap;
+}
+.phone-shell .account-email-verified .dot {
+  font-size: 9px;
+  line-height: 1;
+}
+.phone-shell .account-email-badge {
+  flex-shrink: 0;
+}
+/* Change-email sheet */
+.phone-shell .change-email-current {
+  font-size: var(--text-body-sm);
+  color: var(--muted);
+}
+.phone-shell .code-input-row {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.phone-shell .code-input-box {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+}
+.phone-shell .code-input-box:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+}
+.phone-shell .change-email-resend-row {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+}
+.phone-shell .change-email-success-check {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  background: rgba(var(--primary-rgb), 0.12);
+  color: var(--primary);
 }
 .phone-shell .switch-row {
   display: flex;

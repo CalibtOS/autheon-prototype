@@ -1,5 +1,7 @@
 # AUTHEON database logical model
 
+> **Status override:** Updated 2026-07-22 - PRD v2.5: full admin order-editing implementation + Storno consistency pass. **No new job columns** — editing all eligible business data on any non-terminal order (Storno §7) reuses existing `jobs` / `job_locations` / `job_financials` columns and is captured in `audit_events` under `action_key = 'order_edited'` with a `metadata` jsonb payload carrying the per-field `{field, previous, new}` diff list as one logical edit action (status is preserved, never mutated by an edit). **Added `empty_run_evidence`** (empty-run report attachments → `upload_assets`, mirroring `problem_report_evidence`) so §3.2 optional evidence has a first-class home. **Added the previously-missing FK relationships** for `sp_cancellations`, `empty_run_reports`, `internal_notes`, and `email_change_requests`. **Legacy removal (PRD v2.6, 2026-07-23 — "ignore the special case"):** the `special_case` job_status value and `problem_type.not_performable` have been **removed entirely** — the canonical driver problem workflow is `sp_cancellations` + `empty_run_reports`/`empty_run_evidence`, and the empty-run report model fully replaces the old not-performable → special-case path. New `user_notifications.notification_type` values: `order_updated_after_booking`, `empty_run_reported`, `empty_run_recognised`, `empty_run_not_recognised` (type stays a free varchar).
+
 > **Status override:** Updated 2026-07-10 - PRD v2.0: no structural schema change. `drivers.driver_code` is now documented as system-assigned, immutable, and never reused (F-03); per-leg time windows are same-day only with no cross-midnight window (F-04). Probation-only driver UI, Infopoint View/Download actions, and branding/domain/Report-Problem-timing are UI or open-question items with no data-model impact.
 
 > **Status override:** Updated 2026-07-09 - PRD v1.9 (F-01): driver acceptance limits changed from a per-calendar-day quota to a one-time probation model. `drivers.daily_job_limit` is replaced by `probation_job_limit` + `probation_cleared_at`; the `master_data_change_type.daily_limit_override` request flow is removed; the `app_settings` key `driver.acceptance.defaultDailyJobLimit` is renamed to `driver.acceptance.probationJobCount`, whose value is copied into `drivers.probation_job_limit` at driver creation.
@@ -37,7 +39,7 @@ user_notifications ──< notification_deliveries
 | Identity                 | `users`, `drivers`                                                                                             | Keycloak owns authentication. AUTHEON stores the local user record (`users`) linked by `keycloak_id`, with first/last name, status, roles, and email verification state. The driver business profile lives in `drivers` where applicable. Roles are persisted locally and provisioned to Keycloak on account invite.                              |
 | Master data              | `customers`, `locations`                                                                                           | Reusable reporting/billing customers and pickup/delivery locations, including customer type, billing notes, and operational instructions. Deactivation replaces deletion where a record is referenced. |
 | Tours                    | `jobs`, `job_locations`, `job_assignments`, `job_status_history`, `job_distance_estimates`, `job_financials`       | Current operational state plus immutable historical context.                                                                                                                                           |
-| Problems                 | `job_problem_reports`, `problem_report_evidence`                                                                   | Cancellation and not-performable reports, reasons, evidence, and the pre-problem status needed for dispatch resolution.                                                                                |
+| Problems (Storno)        | `sp_cancellations`, `empty_run_reports`, `empty_run_evidence`, `internal_notes`; legacy `job_problem_reports`, `problem_report_evidence` | **Canonical (Task 32/Storno):** service-partner cancellations, empty-run reports + optional evidence, and admin-only internal notes. **Legacy (read-only):** `job_problem_reports` / `problem_report_evidence` — retained for back-compat only. The `special_case` status and `not_performable` problem type have been **removed** ("ignore the special case"); the empty-run workflow supersedes them. |
 | Documents                | `job_documents`, `document_files`, `job_document_reviews`, `generated_job_documents`, `upload_assets`              | Business document, immutable file versions, review history, generated transport-order PDFs, and upload-core binary metadata.                                                                            |
 | Content                  | `infopoint_documents`, `infopoint_news`, `infopoint_news_reads`                                                    | Driver-facing general documents and one-way news.                                                                                                                                                      |
 | Notifications            | `notification_preferences`, `push_subscriptions`, `user_notifications`, `outbox_events`, `notification_deliveries` | In-app notifications, driver preferences, push endpoints, durable business events, and per-notification delivery attempts.                                                                                                              |
@@ -64,7 +66,7 @@ The following maps every persisted prototype collection in `prototype/project/st
 | `branding`                 | `app_settings`                                                                                 | Covered: configurable display name and future legal/branding settings without hard-coding product copy.                                                                                          |
 | `auditLog`                 | `audit_events` and `job_status_history`                                                        | Covered: generic append-only audit plus structured operational status history.                                                                                                                   |
 
-No production table represents the prototype's former return-request/return-window flow. That is intentional: the current PRD replaces it with `job_problem_reports` for cancellation and not-performable handling.
+No production table represents the prototype's former return-request/return-window flow. That is intentional: the current PRD replaces it with the Storno driver flows — `sp_cancellations` (cancellation) and `empty_run_reports`/`empty_run_evidence` (empty-run reporting + admin review).
 
 ## Tour data and historical truth
 
@@ -99,7 +101,7 @@ This prevents two drivers from accepting the same published tour.
 
 ### State separation
 
-`jobs.operational_status` governs the tour lifecycle: `draft`, `published`, `assigned`, `accepted`, `performed`, `cancelled`, or `special_case`.
+`jobs.operational_status` governs the tour lifecycle: `draft`, `published`, `assigned`, `accepted`, `performed`, `cancelled`, and the Storno statuses `cancelled_by_sp`, `cancelled_by_autheon`, `empty_run_reported`, `empty_run_recognised`, `empty_run_not_recognised`. (The former `special_case` value has been removed.)
 
 `jobs.document_review_summary` represents the aggregate document state, while each `job_documents` row has its own review state. `jobs.settlement_state` is independent and must never be used to imply that a driver performed a tour. The old return-request state is deliberately absent.
 
@@ -116,6 +118,19 @@ Status transitions belong in a transaction/service layer, not an unconstrained c
 `master_data_change_requests.change_type` is a required discriminator (`bank_details`, `address`, `vehicle_info`, `license`, `contact`). Without it the admin review queue cannot filter by type, and the service layer cannot apply type-specific validation rules to the proposed change JSON. The partial unique index on `(driver_id) where status = 'open'` applies regardless of type — one open request per driver at a time.
 
 `reviewed_by_user_id` and `reviewed_at` record the reviewing admin independently of `resolved_by_user_id`, which allows a future multi-step flow where a reviewer and an approver may differ.
+
+**Email is not a master-data change type (T1, 2026-07-20).** The driver's sign-in email (`users.email`) is a credential the driver owns, not ops-managed master data, so it is never carried in a `master_data_change_request`. The `contact` type covers company/phone/contact details only.
+
+### Driver self-service email change (T1)
+
+Email changes follow a *verify, don't approve* model with no operations/admin step, recorded in `email_change_requests`:
+
+- **Ownership proof, not approval.** On request the system generates a 6-digit code, stores only its **hash** (`code_hash`), and sends the plaintext to the **new** address. `users.email` is unchanged until the driver submits the matching code — the **old address stays valid for sign-in** throughout, and is notified (in-app/push, and email in production) once the change is confirmed.
+- **One pending change per account.** Partial unique index on `email_change_requests(user_id) where status = 'pending'`. Starting a new request supersedes/cancels any prior pending one for that user.
+- **Expiry, attempts, resend throttle.** `expires_at` bounds code validity (10 min in the prototype); an expired or mismatched code errors without changing the address. `attempts` caps guesses; `resend_count` + a minimum resend interval (30s in the prototype) throttle re-sends. These live in the application layer.
+- **Uniqueness.** `new_email` must be a valid address, different from the current one, and not already used by another account — re-checked at both request and confirm time (a race where another account claims it between steps fails the confirm).
+- **Atomic confirm.** On success, within one transaction: set `email_change_requests.status = 'confirmed'` + `confirmed_at`, update `users.email`, and set `users.email_verified = true`.
+- **Audit.** `driver_email_change_requested` (request/resend) and `driver_email_changed` (confirm, with old → new) are appended to the audit log.
 
 ## Documents and object storage
 
@@ -141,6 +156,7 @@ The SQL implementation must include at least these controls:
 - Unique active assignment per job: partial unique index on `job_assignments(job_id) where ended_at is null`.
 - One `pickup` and one `delivery` row per job: unique `(job_id, location_role)`.
 - One open master-data change request per driver: partial unique index on `master_data_change_requests(driver_id) where status = 'open'`.
+- One pending email change per account (T1): partial unique index on `email_change_requests(user_id) where status = 'pending'`. Code stored as hash only; `expires_at` enforced server-side; `users.email` updated only on confirm.
 - Draft-only hard deletion enforced by a stored procedure/service transaction. Non-draft jobs are never hard-deleted.
 - `delivery_date >= pickup_date` where both values are present; time-window sanity checks at service level because flexible windows are allowed. Each leg's window is same-day only: `window_end >= window_start` with no cross-midnight window (F-04); pickup and delivery legs may still have different `scheduled_date`.
 - Active marketplace index: `(operational_status, pickup_postal_code, pickup_date)` for published tours.
@@ -151,7 +167,7 @@ The SQL implementation must include at least these controls:
 
 ## Access model and data exposure
 
-Authorization is not a UI concern. The database/service policy must enforce that a driver can retrieve only its own assigned/accepted/performed/cancelled/special-case tours and permitted documents.
+Authorization is not a UI concern. The database/service policy must enforce that a driver can retrieve only its own assigned/accepted/performed/cancelled/empty-run tours and permitted documents.
 
 Keycloak is the identity source of truth for authentication. Application services validate the Keycloak token, resolve `sub` to `users.keycloak_id`, and apply AUTHEON domain rules using the local `users` record. `users.status` (`pending_verification`, `active`, `suspended`, `inactive`) and `users.deleted_at` provide application-level access control; they do not replace Keycloak account state. Authorization checks use `users.roles` (`user`, `admin`, `driver`), which are synced to Keycloak when an account is provisioned.
 
@@ -183,6 +199,30 @@ The flags drive no marketplace filter or acceptance rule in V1.
 ## Cancellation attribution and driver communication
 
 `jobs.cancellation_actor`, `cancellation_reason_code`, and `cancellation_reason_text` record who cancelled and why. When dispatch cancels an assigned tour, `cancellation_reason_text` is the **driver-facing message** shown in the driver PWA and `order_cancelled_by_autheon` notifications — not an internal-only note.
+
+## Order cancellation & empty-run workflow (Task 2)
+
+Cancellation and empty-run reporting are **separate processes** with distinct statuses, validation, and audit entries — never a shared status or backend action.
+
+**Status model — extended enum, not a discriminator.** `job_status` gains explicit machine values: `cancelled_by_sp`, `cancelled_by_autheon`, `empty_run_reported`, `empty_run_recognised`, `empty_run_not_recognised`. Each carries its own rules, ⚠-availability logic, and audit entries; overloading `cancelled` would lose that distinction. `cancelled` remains as a legacy umbrella (the former `special_case` umbrella has been removed). The Jobs board stays scannable by rolling precise statuses up to **umbrella columns** (cancelled_by_sp / cancelled_by_autheon / empty_run_not_recognised → *Cancelled*; empty_run_reported → its own *Empty run reported* review column; empty_run_recognised → *Performed*) and showing the precise status as a **reason chip** per row.
+
+**Service-partner cancel (§2).** Only on a booked order (`assigned`/`accepted`). Requires a reason (`sp_cancellation_reason`) and a ≥30-char explanation. Result: `cancelled_by_sp`, read-only, removed from the partner's active list but retained in history, admin notified, audit `cancelled_by_service_partner`. Stored in `sp_cancellations` (reason, explanation, date/time, executing partner). Not auto-republished; no fee processing in-system.
+
+**Empty-run report (§3) + review (§4).** The *order* cannot be executed. Requires a reason (`empty_run_reason`) and a ≥30-char description; optional evidence must never block submission. Result: `empty_run_reported`, report locked for the partner, admin notified, audit `empty_run_reported`, stored in `empty_run_reports` with optional attachments in `empty_run_evidence` (never required to submit, §3.2). Admin review has exactly two outcomes (`empty_run_decision`): `recognised` → `empty_run_recognised`; `not_recognised` → `empty_run_not_recognised`. Both are terminal/read-only, push + in-app notify the partner, and audit `empty_run_recognised`/`empty_run_not_recognised`. A not-recognised empty run does **not** reactivate the original order. **`empty_run_recognised` is an empty-run resolution, NOT a performed transport:** the vehicle transfer did not happen, so it must never increment a driver's Performed-job count, release probation, or trigger performed-specific completion logic — probation and completion always key off the precise `performed` status, never the board umbrella. The `statusUmbrella()` rollup (which groups `empty_run_recognised` under the *Performed* board column for scannability) is **presentation/query grouping only** and must never drive probation, completion, cancellation, editing, or transition logic.
+
+**Autheon cancellation (§5).** Admin may cancel unbooked (`published`) and booked orders → `cancelled_by_autheon`, read-only, never deleted, stays visible in backend and partner history. Unbooked is removed from the marketplace immediately (the pickup-cutoff policy applies only to **booked** orders — an unbooked order has no committed partner). Booked cancellation pushes a partner notification. Audit `cancelled_by_autheon`.
+
+**Internal notes (§6).** `internal_notes` is append-only, admin-only, never exposed to the service-partner frontend; each note auto-stamps author + timestamp and is permanently attached.
+
+**Edit active order (§7).** Admins may edit **all eligible business data** of any non-terminal order — draft, published, assigned, accepted and `empty_run_reported` — through the same canonical Create/Edit Job form used for creation (one `canAdminEditOrder()` eligibility policy, not scattered status arrays). On save: persist immediately, preserve the operational status (a business-data edit never changes status and never mutates cancellation/empty-run/status-history records), push + in-app notify the assigned partner with the **actual driver-visible changed values** in one combined notification (no re-confirmation; internal notes and admin-only financials are audited but never included in the partner notification), and audit **previous + new** values per changed field (`order_edited`). Editing business data does **not** require reverting a Published order to Draft. The schedule-change cutoff (`operational.policies`) gates only schedule-field changes on a committed order — with an authorized override + audit note where enabled — and never blocks non-schedule fields.
+
+**Duplicate order (§9).** Creates a new `draft` copying all data with a new order number, opens it in the editor, leaves the original unchanged, and is not in the marketplace until explicitly published. Audit `order_duplicated`, and publication of the duplicate is audited on publish.
+
+**⚠ availability (§10).** The service-partner ⚠ action is available only on booked orders and is hidden for all terminal states and while an empty-run report is pending review.
+
+**Cancelled/completed behaviour (§8).** Terminal orders cannot be reactivated, edited, reset to a previous status, or directly republished; they stay visible in the backend and the partner's history.
+
+**Concurrency.** Repeat/concurrent submissions must not create duplicate status changes, notifications, or audit entries (guarded by status preconditions — e.g. empty-run report only from `assigned`/`accepted`, review only from `empty_run_reported`).
 
 ## App settings (`app_settings`)
 
