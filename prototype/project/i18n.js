@@ -144,8 +144,6 @@ window.I18n = (() => {
       blockedDriverBody:
         "Marketplace access and new tour acceptance are restricted for blocked drivers. Use My Jobs to correct documents on existing tours. Profile, Info, and historical jobs remain visible in this prototype.",
       backToMarketplace: "Marketplace",
-      tourInExecutionBanner:
-        "Tour in execution — complete pickup, delivery, and documents from this screen.",
       date: "Date",
       timeWindow: "Time window",
       vehicle: "Vehicle",
@@ -1594,8 +1592,6 @@ window.I18n = (() => {
       blockedDriverBody:
         "Marktplatzzugriff und neue Tour-Annahmen sind für blockierte Fahrer eingeschränkt. Nutzen Sie Meine Aufträge, um Dokumente bestehender Touren zu korrigieren. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar.",
       backToMarketplace: "Marktplatz",
-      tourInExecutionBanner:
-        "Tour in Ausführung — Abholung, Zustellung und Dokumente hier abschließen.",
       date: "Datum",
       timeWindow: "Zeitfenster",
       vehicle: "Fahrzeug",

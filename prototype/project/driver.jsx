@@ -2680,7 +2680,6 @@ const JobUnlocked = ({
   const isEmptyRunReported = job.status === "empty_run_reported";
   const isEmptyRunTerminal = store.isEmptyRunTerminal(job.status);
   const canPerform = ["assigned", "accepted"].includes(job.status);
-  const inExecution = canPerform || isEmptyRunReported || job.status === "assigned";
   // ⚠ action availability (§10): booked orders only; hidden for terminal
   // states and while an empty-run report is pending review.
   const canReportProblem = store.canServicePartnerReport(job);
@@ -2834,16 +2833,6 @@ const JobUnlocked = ({
           </div>
         ) : (
         <>
-        {inExecution && !isCancelled && !isPerformed ? (
-          <div
-            className="banner banner-success"
-            role="status"
-            style={{ margin: 0 }}
-          >
-            {t("tourInExecutionBanner")}
-          </div>
-        ) : null}
-
         {isCancelled && (
           <div className="cancellation-card" role="status">
             <p className="cancellation-card-title">{t("cancelled")}</p>
