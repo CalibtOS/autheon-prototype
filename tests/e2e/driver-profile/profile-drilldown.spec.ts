@@ -22,10 +22,10 @@ test.describe('driver profile drill-down @smoke', () => {
     await expect(frame.getByText('Account status')).toBeVisible();
     await expect(frame.getByText('Member since')).toBeVisible();
     await expect(frame.getByText('14.03.2024')).toBeVisible();
-    // Group labels
-    await expect(frame.getByRole('heading', { name: 'Account' })).toBeVisible();
-    await expect(frame.getByRole('heading', { name: 'Settings' })).toBeVisible();
-    await expect(frame.getByRole('heading', { name: 'Help' })).toBeVisible();
+    // Group labels — exact, so "Account & sign-in" card heading isn't matched too
+    await expect(frame.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
+    await expect(frame.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
+    await expect(frame.getByRole('heading', { name: 'Help', exact: true })).toBeVisible();
     // App-version, discreet near the bottom
     await expect(frame.getByText(/App version 1\.2\.0/)).toBeVisible();
   });
@@ -181,4 +181,52 @@ test.describe('standalone driver PWA profile appearance @smoke', () => {
       expect(hasOverflow).toBe(false);
     }
   });
+
+  /**
+   * The Sign out sheet reuses the canonical `.sheet-foot` Cancel|Confirm grid.
+   * A bare `1fr` (= minmax(auto, 1fr)) let the nowrap label floor its column, so
+   * DE at 320px rendered 1:1.3 instead of 1:1.6. Locks the ratio, the 44px touch
+   * target, and the absence of clipping in both locales at the tightest width.
+   */
+  for (const locale of ['en', 'de'] as const) {
+    test(`sign out sheet keeps the canonical 1:1.6 footer ratio (${locale} @ 320px)`, async ({
+      page,
+    }) => {
+      await page.addInitScript((loc) => {
+        localStorage.setItem('autheon-locale', loc);
+        localStorage.setItem('autheon-theme', 'light');
+      }, locale);
+      await page.setViewportSize({ width: 320, height: 740 });
+      await page.goto('/pwa/?tab=profile', { waitUntil: 'domcontentloaded' });
+
+      await expect(page.locator('.profile-summary-action')).toBeVisible({
+        timeout: 30_000,
+      });
+      await page.locator('.profile-summary-action').click();
+
+      const foot = page.locator('.sheet-foot');
+      await expect(foot).toBeVisible();
+
+      // offsetWidth/Height read the layout box, so the 0.22s `modalIn` scale
+      // animation cannot skew the measurement the way getBoundingClientRect does.
+      const metrics = await foot.evaluate((el) => {
+        const buttons = [...el.querySelectorAll<HTMLElement>('.btn')];
+        return {
+          widths: buttons.map((b) => b.offsetWidth),
+          heights: buttons.map((b) => b.offsetHeight),
+          clipped: buttons.map((b) => b.scrollWidth > b.clientWidth + 1),
+          overflows: el.scrollWidth > el.clientWidth + 1,
+        };
+      });
+
+      expect(metrics.widths).toHaveLength(2);
+      // Cancel left : destructive confirm right, at the shared 1 : 1.6 ratio.
+      expect(metrics.widths[1] / metrics.widths[0]).toBeCloseTo(1.6, 1);
+      for (const height of metrics.heights) {
+        expect(height).toBeGreaterThanOrEqual(44);
+      }
+      expect(metrics.clipped).toEqual([false, false]);
+      expect(metrics.overflows).toBe(false);
+    });
+  }
 });

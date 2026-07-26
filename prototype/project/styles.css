@@ -1858,7 +1858,7 @@ select.input {
   border-top: 1px solid var(--line);
   background: var(--paper);
   display: grid;
-  grid-template-columns: 1fr 1.6fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
   gap: 12px;
 }
 .phone-shell .sheet-body .field-label {
@@ -2232,9 +2232,22 @@ select.input {
   padding: 14px 22px 22px;
   border-top: 1px solid var(--line);
   display: grid;
-  grid-template-columns: 1fr 1.6fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
   gap: 10px;
   background: var(--paper);
+}
+/* Footer actions are stretched grid items, so a bare `1fr` (= minmax(auto, 1fr))
+   lets each button's nowrap min-content floor its column: at 320px the DE label
+   "Abbrechen" widened Cancel to 105px and squeezed Confirm to 137px — a 1:1.3
+   ratio instead of the canonical 1:1.6. minmax(0, …) makes the declared ratio
+   authoritative; min-width:0 plus tighter inline padding keeps long labels
+   unclipped inside the narrower column. The label stays centred in the stretched
+   column, so the reduced padding is visually inert. min-height meets the 44px
+   touch-target floor (buttons previously rendered 41px tall). */
+.sheet-foot > .btn {
+  min-width: 0;
+  min-height: 44px;
+  padding-inline: 12px;
 }
 
 /* Slide-to-confirm */
