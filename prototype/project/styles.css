@@ -979,7 +979,8 @@ select.input {
 /* Tabbar Redesign Styles */
 .phone-shell .tabbar-container {
   padding: 0 16px 20px;
-  background: transparent;
+  /* Same as scroll canvas so the floating capsule has contrast (not white-on-white) */
+  background: var(--canvas);
   flex-shrink: 0;
   position: relative;
   z-index: 40;
@@ -1001,6 +1002,7 @@ select.input {
 [data-theme="dark"] .phone-shell .tabbar-capsule {
   background: var(--paper);
   border-color: var(--line);
+  box-shadow: var(--sh-2);
 }
 .phone-shell .tabbar-item {
   background: transparent;

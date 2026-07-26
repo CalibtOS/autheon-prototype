@@ -22,7 +22,7 @@ const PRECACHE_URLS = [
   "/pwa/icons/icon-512-maskable.png",
   "/apple-touch-icon.png",
   "/apple-touch-icon-precomposed.png",
-  "/prototype/project/styles.css?v=22",
+  "/prototype/project/styles.css?v=23",
   "/prototype/project/feature-flags.js",
   "/prototype/project/i18n.js?v=26",
   "/prototype/project/formatters.js",
