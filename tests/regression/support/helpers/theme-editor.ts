@@ -1,5 +1,16 @@
 import { expect, type Page } from '@playwright/test';
 import { getPrototypeFrame, prototypeFrame } from './selectors.ts';
+import { gotoPrototype } from './stable-page.ts';
+
+/**
+ * Navigate with the visibility gate enabled (?themecolorchanger=1) so the
+ * launcher is present. The tool is hidden by default, so specs that exercise it
+ * must opt in here; merges the param without clobbering an existing query.
+ */
+export async function gotoEditor(page: Page, path = '/'): Promise<void> {
+  const sep = path.includes('?') ? '&' : '?';
+  await gotoPrototype(page, path + sep + 'themecolorchanger=1');
+}
 
 /**
  * Shared automation for the Floating Theme Editor specs. The editor mounts

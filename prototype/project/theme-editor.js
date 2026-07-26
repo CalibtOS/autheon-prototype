@@ -30,7 +30,6 @@
     overrides: NS + '.overrides.v1',
     launcher: NS + '.launcher.v1',
     ui: NS + '.ui.v1',
-    hidden: NS + '.hidden',
   };
   const SCHEMA_VERSION = 1;
   const LAUNCHER_SIZE = 48;
@@ -361,6 +360,42 @@
     return lines.join('\n');
   }
 
+  // Visibility gate: the tool is hidden by default and only appears on initial
+  // load when `?themecolorchanger=1` is present (clean screenshots by default).
+  const VISIBILITY_PARAM = 'themecolorchanger';
+
+  /** True only when the visibility gate param is exactly "1". */
+  function wantsVisible(search) {
+    try {
+      return new URLSearchParams(search || '').get(VISIBILITY_PARAM) === '1';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /** Match the show/hide shortcut: Ctrl/⌘ + Alt/⌥ + Shift + T. Matched by
+   *  physical key (`code`) so it is layout-independent and unaffected by the
+   *  character Alt composes. */
+  function isToggleShortcut(e) {
+    return !!(
+      e &&
+      e.shiftKey &&
+      e.altKey &&
+      (e.ctrlKey || e.metaKey) &&
+      e.code === 'KeyT'
+    );
+  }
+
+  /** Platform-aware keycaps for the shortcut (single source of truth). */
+  function shortcutKeys(isMac) {
+    return isMac ? ['⌘', '⌥', 'Shift', 'T'] : ['Ctrl', 'Alt', 'Shift', 'T'];
+  }
+
+  /** Platform-aware label for the shortcut hint. */
+  function shortcutLabel(isMac) {
+    return shortcutKeys(isMac).join(' + ');
+  }
+
   const __test = {
     normalizeHex,
     isValidHex,
@@ -378,6 +413,9 @@
     escapeMarkdownCell,
     buildThemeJson,
     buildThemeMarkdown,
+    wantsVisible,
+    isToggleShortcut,
+    shortcutLabel,
   };
 
   // ===========================================================================
@@ -470,6 +508,7 @@
     overrides: { light: {}, dark: {} },
     defaults: null, // { light: {var:hex}, dark: {var:hex} } — parsed lazily
     launcherPos: null, // {x,y} or null (=default bottom-right)
+    visible: false, // whether the feature (launcher) is currently shown
     open: false,
     filter: '',
     picker: null, // active picker session
@@ -690,20 +729,32 @@
     };
   }
 
+  function isMacPlatform() {
+    try {
+      return /Mac|iPhone|iPad|iPod/i.test(
+        navigator.platform || navigator.userAgent || '',
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // Positioning lives on the WRAP so the launcher and its red hide-badge move
+  // together (the badge overflows the wrap's top-right corner).
   function positionLauncher() {
-    const el = els.launcher;
+    const el = els.launcherWrap;
     if (!el) return;
     if (state.launcherPos) {
       const clamped = clampPosition(state.launcherPos, viewportBox());
       state.launcherPos = clamped;
-      el.classList.remove('ate-launcher--default');
+      el.classList.remove('ate-launcher-wrap--default');
       el.style.left = clamped.x + 'px';
       el.style.top = clamped.y + 'px';
       el.style.right = 'auto';
       el.style.bottom = 'auto';
     } else {
       // Default bottom-right, respecting mobile safe areas.
-      el.classList.add('ate-launcher--default');
+      el.classList.add('ate-launcher-wrap--default');
       el.style.left = 'auto';
       el.style.top = 'auto';
       el.style.removeProperty('right');
@@ -712,15 +763,42 @@
   }
 
   function buildLauncher() {
+    if (els.launcherWrap) return; // build once
+
+    const wrap = h('div', {
+      class: 'ate-launcher-wrap ate-launcher-wrap--default',
+    });
     const btn = h('button', {
       type: 'button',
-      class: 'ate-launcher ate-launcher--default',
+      class: 'ate-launcher',
       'aria-label': 'Open Theme Editor',
       'aria-haspopup': 'dialog',
       title: 'Theme Editor',
       html: ICONS.palette,
     });
+    const badge = h('button', {
+      type: 'button',
+      class: 'ate-hide-badge',
+      'aria-label': 'Hide Theme Color Changer',
+      title: 'Hide Theme Color Changer (restore with ' + shortcutLabel(isMacPlatform()) + ')',
+      html: ICONS.close,
+    });
+    // The badge hides the WHOLE feature. Keep its pointer/click events off the
+    // launcher so it can never start a drag or open the editor.
+    ['pointerdown', 'pointerup', 'mousedown', 'touchstart'].forEach(function (t) {
+      badge.addEventListener(t, function (e) {
+        e.stopPropagation();
+      });
+    });
+    badge.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      hideFeature();
+    });
+
+    els.launcherWrap = wrap;
     els.launcher = btn;
+    els.badge = badge;
     attachDrag(btn);
     btn.addEventListener('click', function () {
       if (drag.justDragged) {
@@ -729,7 +807,9 @@
       }
       openPanel();
     });
-    document.body.appendChild(btn);
+    wrap.appendChild(btn);
+    wrap.appendChild(badge);
+    document.body.appendChild(wrap);
     positionLauncher();
   }
 
@@ -934,7 +1014,7 @@
       role: 'dialog',
       'aria-modal': 'true',
       'aria-labelledby': 'ate-title',
-    }, [header, intro, els.rows, buildExportSection(), footer]);
+    }, [header, intro, els.rows, buildExportSection(), buildHelpRow(), footer]);
     els.panel = panel;
 
     const root = h('div', { class: 'ate-root' }, [backdrop, panel]);
@@ -1386,6 +1466,20 @@
     return 'autheon-theme-' + currentMode() + '.' + ext;
   }
 
+  // Compact, always-visible hint explaining how to hide/restore the whole tool
+  // (platform-aware; rendered as keycaps so it reads without technical jargon).
+  function buildHelpRow() {
+    const parts = shortcutKeys(isMacPlatform());
+    const row = h('div', { class: 'ate-help' }, [
+      h('span', { class: 'ate-help-label', text: 'Show / hide tool:' }),
+    ]);
+    parts.forEach(function (key, i) {
+      if (i) row.appendChild(h('span', { class: 'ate-help-plus', text: '+' }));
+      row.appendChild(h('kbd', { class: 'ate-kbd', text: key }));
+    });
+    return row;
+  }
+
   function buildExportSection() {
     function actionBtn(label, onClick) {
       return h('button', {
@@ -1666,33 +1760,44 @@
   // ===========================================================================
   // Visibility / lifecycle
   // ===========================================================================
-  function isHiddenByFlag() {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const q = params.get('themeEditor');
-      if (q === 'off' || q === '0' || q === 'false') return true;
-    } catch (_) {
-      /* ignore */
-    }
-    return safeGet(STORAGE.hidden) === '1';
+  // Visibility is a purely in-memory concern gated by the URL on load:
+  //   ?themecolorchanger=1 → shown; otherwise hidden (clean screenshots).
+  // The keyboard shortcut and the red badge toggle it during the session; we
+  // deliberately do NOT persist visibility, so a clean URL never shows the tool
+  // and there is one unambiguous source of truth.
+  function urlWantsVisible() {
+    return wantsVisible(hostWindow.location.search);
   }
 
-  function show() {
+  function ensureLauncher() {
     injectStyles();
-    if (!els.launcher) buildLauncher();
-    els.launcher.style.display = '';
-    safeRemove(STORAGE.hidden);
+    if (!els.launcherWrap) buildLauncher();
   }
 
-  function hide() {
+  function showFeature() {
+    ensureLauncher();
+    els.launcherWrap.style.display = '';
+    state.visible = true;
+  }
+
+  function hideFeature() {
+    state.visible = false;
     if (state.open) closePanel();
-    if (els.launcher) els.launcher.style.display = 'none';
-    safeSet(STORAGE.hidden, '1');
+    if (els.launcherWrap) els.launcherWrap.style.display = 'none';
   }
 
-  function toggle() {
-    if (els.launcher && els.launcher.style.display !== 'none') hide();
-    else show();
+  function toggleFeature() {
+    if (state.visible) hideFeature();
+    else showFeature();
+  }
+
+  function onVisibilityKeydown(e) {
+    if (!isToggleShortcut(e)) return;
+    // The 4-key combo can't occur while typing a hex value, so it is safe to
+    // handle globally; preventDefault stops any browser default for the combo.
+    e.preventDefault();
+    if (e.repeat) return; // one toggle per physical press
+    toggleFeature();
   }
 
   function onResize() {
@@ -1756,9 +1861,23 @@
       watchThemeMode();
       watchStorage();
       window.addEventListener('resize', onResize);
-      if (!isHiddenByFlag()) {
-        buildLauncher();
+
+      // One centralized keydown listener for the show/hide shortcut, added once
+      // (the module is a double-load-guarded singleton, so it never duplicates).
+      // Also listen on the top document so the shortcut works whether focus is
+      // in the framed prototype or the host page (same-origin).
+      document.addEventListener('keydown', onVisibilityKeydown);
+      try {
+        if (hostWindow.document && hostWindow.document !== document) {
+          hostWindow.document.addEventListener('keydown', onVisibilityKeydown);
+        }
+      } catch (_) {
+        /* cross-origin host — the local listener still covers the tool */
       }
+
+      // Hidden by default: only mount the launcher when the gate param is set.
+      state.visible = urlWantsVisible();
+      if (state.visible) buildLauncher();
     }
     if (document.body) mount();
     else document.addEventListener('DOMContentLoaded', mount, { once: true });
@@ -1770,9 +1889,9 @@
   window.AutheonThemeEditor = {
     __mounted: true,
     __test: __test,
-    show: show,
-    hide: hide,
-    toggle: toggle,
+    show: showFeature,
+    hide: hideFeature,
+    toggle: toggleFeature,
     open: openPanel,
     close: closePanel,
     resetTheme: resetTheme,
@@ -1789,16 +1908,25 @@
   // ===========================================================================
   const EDITOR_CSS = [
     /* Launcher */
-    '.ate-launcher{position:fixed;z-index:2147482000;width:48px;height:48px;min-width:44px;min-height:44px;display:grid;place-items:center;border-radius:14px;',
+    '.ate-launcher-wrap{position:fixed;z-index:2147482000;width:48px;height:48px;}',
+    '.ate-launcher-wrap--default{right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));}',
+    '.ate-launcher{position:absolute;inset:0;width:100%;height:100%;min-width:44px;min-height:44px;display:grid;place-items:center;border-radius:14px;',
     'background:rgba(28,28,32,.62);color:#fff;border:1px solid rgba(255,255,255,.22);',
     'box-shadow:0 6px 20px rgba(0,0,0,.28),0 1px 2px rgba(0,0,0,.35);',
     '-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);opacity:.82;cursor:grab;',
-    'transition:opacity .15s ease,transform .12s ease,box-shadow .15s ease;touch-action:none;padding:0;}',
-    '.ate-launcher--default{right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));}',
-    '.ate-launcher:hover,.ate-launcher:focus-visible{opacity:1;transform:translateY(-1px);}',
+    'transition:opacity .15s ease,box-shadow .15s ease;touch-action:none;padding:0;}',
+    '.ate-launcher:hover,.ate-launcher:focus-visible{opacity:1;}',
     '.ate-launcher:focus-visible{outline:3px solid #7cc4ff;outline-offset:2px;}',
-    '.ate-launcher--dragging{cursor:grabbing;opacity:1;transform:scale(1.04);}',
+    '.ate-launcher--dragging{cursor:grabbing;opacity:1;}',
     '.ate-launcher svg{pointer-events:none;}',
+    /* Red hide badge — hides the WHOLE feature; distinct from the overlay close X */
+    '.ate-hide-badge{position:absolute;top:-6px;right:-6px;width:22px;height:22px;min-width:22px;display:grid;place-items:center;border-radius:50%;',
+    'background:#ff3b30;color:#fff;border:2px solid rgba(24,25,30,.92);box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:pointer;padding:0;z-index:2;',
+    'opacity:.95;transition:transform .12s ease,opacity .12s ease;touch-action:none;}',
+    '.ate-hide-badge:hover{opacity:1;transform:scale(1.08);}',
+    '.ate-hide-badge:active{transform:scale(.92);}',
+    '.ate-hide-badge:focus-visible{outline:2px solid #7cc4ff;outline-offset:2px;}',
+    '.ate-hide-badge svg{width:11px;height:11px;pointer-events:none;}',
 
     /* Root / backdrop */
     '.ate-root{position:fixed;inset:0;z-index:2147483000;font-family:"Inter Tight",system-ui,-apple-system,sans-serif;}',
@@ -1886,6 +2014,13 @@
     '.ate-export-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 14px 12px;}',
     '.ate-export-grid .ate-btn{width:100%;}',
     '.ate-export-grid .ate-btn:last-child{grid-column:1 / -1;}',
+
+    /* Shortcut hint (keycaps) — readable in both app themes, wraps on mobile */
+    '.ate-help{display:flex;align-items:center;flex-wrap:wrap;gap:5px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.08);color:#9aa0ab;font-size:11.5px;}',
+    '.ate-help-label{margin-right:3px;}',
+    '.ate-help-plus{color:#6b7280;}',
+    '.ate-kbd{display:inline-block;min-width:16px;text-align:center;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);border-bottom-width:2px;',
+    'font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:11px;line-height:1.35;color:#e9eaee;}',
 
     /* Confirm dialog */
     '.ate-confirm-backdrop{position:absolute;inset:0;z-index:2147483200;display:grid;place-items:center;background:rgba(6,8,12,.5);padding:16px;}',

@@ -1,9 +1,9 @@
 import { test, expect } from '../../regression/support/fixtures/prototype-test.ts';
 import { prototypeFrame } from '../../regression/support/helpers/selectors.ts';
-import { gotoPrototype } from '../../regression/support/helpers/stable-page.ts';
 import {
   ACCENT_VAR,
   accentHex,
+  gotoEditor,
   launcher,
   openEditor,
   openExport,
@@ -26,7 +26,7 @@ test.beforeEach(async ({ context }) => {
 
 test.describe('Theme Editor — URL query parameters', () => {
   test('applies a valid theme param on load', async ({ page }) => {
-    await gotoPrototype(page, '/?theme=light:brand-accent=00ff00');
+    await gotoEditor(page, '/?theme=light:brand-accent=00ff00');
     await expect(launcher(page)).toBeVisible();
     expect(await readVar(page, ACCENT_VAR)).toBe('#00FF00');
   });
@@ -34,7 +34,7 @@ test.describe('Theme Editor — URL query parameters', () => {
   test('a colour edit syncs into the shareable (top-level) URL', async ({
     page,
   }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     await openEditor(page);
     await setAccent(page, 'ff0000');
 
@@ -43,7 +43,7 @@ test.describe('Theme Editor — URL query parameters', () => {
   });
 
   test('URL config survives a reload', async ({ page }) => {
-    await gotoPrototype(page, '/?theme=light:brand-accent=00ccff');
+    await gotoEditor(page, '/?theme=light:brand-accent=00ccff');
     expect(await readVar(page, ACCENT_VAR)).toBe('#00CCFF');
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(launcher(page)).toBeVisible();
@@ -52,16 +52,16 @@ test.describe('Theme Editor — URL query parameters', () => {
 
   test('ignores invalid params and falls back safely', async ({ page }) => {
     const clean = await (async () => {
-      await gotoPrototype(page);
+      await gotoEditor(page);
       return readVar(page, ACCENT_VAR);
     })();
-    await gotoPrototype(page, '/?theme=not-valid:::garbage%7Cboom');
+    await gotoEditor(page, '/?theme=not-valid:::garbage%7Cboom');
     await expect(launcher(page)).toBeVisible();
     expect(await readVar(page, ACCENT_VAR)).toBe(clean);
   });
 
   test('preserves unrelated query params when syncing', async ({ page }) => {
-    await gotoPrototype(page, '/?tab=mine');
+    await gotoEditor(page, '/?tab=mine');
     await openEditor(page);
     await setAccent(page, '112233');
 
@@ -71,7 +71,7 @@ test.describe('Theme Editor — URL query parameters', () => {
   });
 
   test('reset clears the theme param from the URL', async ({ page }) => {
-    await gotoPrototype(page, '/?theme=light:brand-accent=abcdef');
+    await gotoEditor(page, '/?theme=light:brand-accent=abcdef');
     await openEditor(page);
     const frame = prototypeFrame(page);
     await frame.getByRole('button', { name: 'Reset to defaults' }).click();
@@ -86,7 +86,7 @@ test.describe('Theme Editor — export', () => {
   test('Copy JSON puts a parseable, matching snapshot on the clipboard', async ({
     page,
   }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     await openEditor(page);
     await setAccent(page, 'FF8800');
     await openExport(page);
@@ -101,7 +101,7 @@ test.describe('Theme Editor — export', () => {
   });
 
   test('Copy Markdown produces a table', async ({ page }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     await openEditor(page);
     await openExport(page);
     await prototypeFrame(page).getByRole('button', { name: 'Copy Markdown' }).click();
@@ -112,7 +112,7 @@ test.describe('Theme Editor — export', () => {
   });
 
   test('Copy shareable link copies a URL carrying the config', async ({ page }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     await openEditor(page);
     await setAccent(page, '00AA55');
     await openExport(page);
@@ -126,7 +126,7 @@ test.describe('Theme Editor — export', () => {
   });
 
   test('Download JSON offers a clearly named file', async ({ page }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     await openEditor(page);
     await openExport(page);
 
@@ -146,9 +146,10 @@ test.describe('Theme Editor — top-level (non-iframe) host', () => {
   const PROTOTYPE_PAGE = '/prototype/project/AUTHEON%20Prototype.html';
 
   test('applies a URL param and syncs edits to its own URL', async ({ page }) => {
-    await page.goto(PROTOTYPE_PAGE + '?theme=light:brand-accent=00ff00', {
-      waitUntil: 'domcontentloaded',
-    });
+    await page.goto(
+      PROTOTYPE_PAGE + '?theme=light:brand-accent=00ff00&themecolorchanger=1',
+      { waitUntil: 'domcontentloaded' },
+    );
     await expect(page.locator('#root .app')).toBeVisible();
 
     const topLauncher = page.getByRole('button', { name: 'Open Theme Editor' });

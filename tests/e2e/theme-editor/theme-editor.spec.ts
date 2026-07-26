@@ -3,9 +3,9 @@ import {
   getPrototypeFrame,
   prototypeFrame,
 } from '../../regression/support/helpers/selectors.ts';
-import { gotoPrototype } from '../../regression/support/helpers/stable-page.ts';
 import {
   ACCENT_VAR,
+  gotoEditor,
   OVERRIDE_KEY,
   LAUNCHER_KEY,
   accentHex,
@@ -33,7 +33,7 @@ test.describe('Floating Theme Editor', () => {
   test('AC1: launcher appears in the bottom-right corner on first use', async ({
     page,
   }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     await expect(launcher(page)).toBeVisible();
 
     const box = await launcher(page).boundingBox();
@@ -50,7 +50,7 @@ test.describe('Floating Theme Editor', () => {
   test('AC5/AC6: opens the editor and lists grouped colours with name, value and swatch', async ({
     page,
   }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     await openEditor(page);
     const frame = prototypeFrame(page);
 
@@ -69,7 +69,7 @@ test.describe('Floating Theme Editor', () => {
   test('AC7: a valid hex edit updates the application immediately', async ({
     page,
   }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     await openEditor(page);
     await accentHex(page).fill('ff0000');
     await accentHex(page).press('Enter');
@@ -82,7 +82,7 @@ test.describe('Floating Theme Editor', () => {
   test('AC8: an invalid hex value does not replace the previous valid value', async ({
     page,
   }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     const before = await readVar(page, ACCENT_VAR);
     await openEditor(page);
     await accentHex(page).fill('not-a-colour');
@@ -95,7 +95,7 @@ test.describe('Floating Theme Editor', () => {
   test('AC14/AC15: theme changes survive a reload (and mock-data reseed)', async ({
     page,
   }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     await openEditor(page);
     await accentHex(page).fill('00CC66');
     await accentHex(page).press('Enter');
@@ -111,7 +111,7 @@ test.describe('Floating Theme Editor', () => {
   test('AC16: reset restores the code-defined default colours and keeps the editor open', async ({
     page,
   }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     const original = await readVar(page, ACCENT_VAR);
     await openEditor(page);
     const frame = prototypeFrame(page);
@@ -135,7 +135,7 @@ test.describe('Floating Theme Editor', () => {
   test('AC13: closes via the close button, the backdrop and Escape', async ({
     page,
   }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     const frame = prototypeFrame(page);
 
     // Close button
@@ -156,7 +156,7 @@ test.describe('Floating Theme Editor', () => {
   });
 
   test('AC18: the launcher is keyboard-operable', async ({ page }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     await launcher(page).focus();
     await expect(launcher(page)).toBeFocused();
     await page.keyboard.press('Enter');
@@ -166,7 +166,7 @@ test.describe('Floating Theme Editor', () => {
   test('AC9/AC11: a swatch opens the picker and OK commits the value', async ({
     page,
   }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     await openEditor(page);
 
     await accentSwatch(page).click();
@@ -185,7 +185,7 @@ test.describe('Floating Theme Editor', () => {
   test('AC10/AC12: the picker previews live and Cancel restores the pre-picker value', async ({
     page,
   }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     const original = await readVar(page, ACCENT_VAR);
     await openEditor(page);
 
@@ -206,7 +206,7 @@ test.describe('Floating Theme Editor', () => {
   test('AC12: clicking outside the picker cancels it but keeps the editor open', async ({
     page,
   }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     const original = await readVar(page, ACCENT_VAR);
     await openEditor(page);
     const frame = prototypeFrame(page);
@@ -225,7 +225,7 @@ test.describe('Floating Theme Editor', () => {
   test('AC2/AC3/AC4: dragging moves the launcher without opening the editor', async ({
     page,
   }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
     const start = await launcher(page).boundingBox();
     expect(start).not.toBeNull();
 
@@ -253,7 +253,7 @@ test.describe('Floating Theme Editor', () => {
   test('AC20: a localStorage write failure does not break the editor', async ({
     page,
   }) => {
-    await gotoPrototype(page);
+    await gotoEditor(page);
 
     // Simulate a storage backend that reads fine but rejects writes (full disk
     // / private mode). Applied AFTER the app has loaded so the host prototype —

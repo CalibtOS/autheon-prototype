@@ -1,15 +1,13 @@
 import { test, expect } from '../../regression/support/fixtures/prototype-test.ts';
 import { prototypeFrame } from '../../regression/support/helpers/selectors.ts';
-import {
-  gotoPrototype,
-  waitForPrototypeStable,
-} from '../../regression/support/helpers/stable-page.ts';
+import { waitForPrototypeStable } from '../../regression/support/helpers/stable-page.ts';
 import {
   switchToAdminBackend,
   switchToDriverPWA,
 } from '../../regression/support/helpers/header-controls.ts';
 import {
   ACCENT_VAR,
+  gotoEditor,
   launcher,
   panel,
   readVar,
@@ -48,7 +46,7 @@ test.describe('Theme Editor — viewport matrix', () => {
   for (const vp of VIEWPORTS) {
     test(`launcher + panel stay usable at ${vp.name}`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
-      await gotoPrototype(page);
+      await gotoEditor(page);
 
       // Launcher visible and inside the viewport.
       await expect(launcher(page)).toBeVisible();
@@ -71,7 +69,7 @@ test.describe('Theme Editor — viewport matrix', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await gotoPrototype(page);
+    await gotoEditor(page);
     await switchToDriverPWA(page);
     await waitForPrototypeStable(page);
 
@@ -83,7 +81,7 @@ test.describe('Theme Editor — viewport matrix', () => {
 
   test('admin surface at desktop keeps the editor usable', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await gotoPrototype(page);
+    await gotoEditor(page);
     await switchToAdminBackend(page);
     await waitForPrototypeStable(page);
 
@@ -95,7 +93,7 @@ test.describe('Theme Editor — viewport matrix', () => {
 
   test('switching PWA → Admin does not corrupt theme state', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await gotoPrototype(page, '/?theme=light:brand-accent=00ff00');
+    await gotoEditor(page, '/?theme=light:brand-accent=00ff00');
     expect(await readVar(page, ACCENT_VAR)).toBe('#00FF00');
 
     await switchToAdminBackend(page);
