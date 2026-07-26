@@ -183,6 +183,68 @@ test.describe('standalone driver PWA profile appearance @smoke', () => {
   });
 
   /**
+   * A state-based drill-down changes the view without a route, so focus and
+   * scroll have to be moved deliberately: entering a subpage focuses its heading
+   * (announcing the new view), leaving restores the list offset and re-focuses
+   * the row that opened it. Also asserts the back control meets the documented
+   * >=44x44 touch floor.
+   */
+  test('drill-down moves focus and restores list position on back', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('autheon-locale', 'en');
+      localStorage.setItem('autheon-theme', 'light');
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/pwa/?tab=profile', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('.profile-nav-row').first()).toBeVisible({
+      timeout: 30_000,
+    });
+
+    // Scroll the list down so a lost position would be obvious. The row is
+    // brought into view first, so Playwright's click cannot auto-scroll the
+    // container afterwards and invalidate the offset captured here.
+    const row = page.locator('[data-profile-row="reportError"]');
+    await row.scrollIntoViewIfNeeded();
+    const before = await page
+      .locator('.scroll-body')
+      .evaluate((el) => el.scrollTop);
+    expect(before).toBeGreaterThan(0);
+
+    await row.click();
+
+    // Focus lands on the subpage heading, not <body>.
+    await expect(page.locator('.detail-header-title')).toBeFocused();
+    // Both views share one `.scroll-body` node, so the subpage must be reset to
+    // its own top rather than inheriting the list's offset.
+    await expect
+      .poll(() => page.locator('.scroll-body').evaluate((el) => el.scrollTop))
+      .toBe(0);
+
+    const back = page.locator('.detail-back-btn');
+    const backBox = await back.evaluate((el: HTMLElement) => [
+      el.offsetWidth,
+      el.offsetHeight,
+    ]);
+    expect(backBox[0]).toBeGreaterThanOrEqual(44);
+    expect(backBox[1]).toBeGreaterThanOrEqual(44);
+    await expect(back).toHaveAttribute('aria-label', 'Profile');
+
+    await back.click();
+
+    // Returning re-focuses the originating row and keeps the list offset.
+    await expect(
+      page.locator('[data-profile-row="reportError"]'),
+    ).toBeFocused();
+    await expect
+      .poll(() =>
+        page.locator('.scroll-body').evaluate((el) => el.scrollTop),
+      )
+      .toBe(before);
+  });
+
+  /**
    * The Sign out sheet reuses the canonical `.sheet-foot` Cancel|Confirm grid.
    * A bare `1fr` (= minmax(auto, 1fr)) let the nowrap label floor its column, so
    * DE at 320px rendered 1:1.3 instead of 1:1.6. Locks the ratio, the 44px touch

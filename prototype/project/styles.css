@@ -2250,6 +2250,26 @@ select.input {
   padding-inline: 12px;
 }
 
+/* Profile drill-down back control: the shared .detail-back-btn is 40px, below
+   the documented ≥44×44 floor (design-system.md §Button, ui-ux-production-plan
+   §"Touch: ≥44×44px … default on all interactive styles"). It is the primary
+   escape from every Profile subpage, so it is raised here. Scoped to the Profile
+   header so the job-detail chrome is untouched; the same 40px gap exists there
+   and is worth a follow-up. */
+.phone-shell .profile-subpage-header .detail-back-btn {
+  width: 44px;
+  height: 44px;
+}
+/* Mirror the 44px control so the centred title stays optically centred. */
+.phone-shell .profile-subpage-header .w-40-spacer {
+  width: 44px;
+}
+/* The heading receives focus on entry (tabIndex -1) purely to announce the new
+   view; it is not an interactive control, so it must not paint a focus ring. */
+.phone-shell .profile-subpage-header .detail-header-title:focus {
+  outline: none;
+}
+
 /* Slide-to-confirm */
 .slide-confirm {
   position: relative;

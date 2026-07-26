@@ -5009,8 +5009,13 @@ function applyAppTheme(theme) {
 
 // Full-row navigation entry: left icon, label (+ optional supporting text),
 // trailing chevron. The whole row is a single accessible button.
-const ProfileNavRow = ({ icon: Icon, label, sub, onClick }) => (
-  <button type="button" className="profile-nav-row" onClick={onClick}>
+const ProfileNavRow = ({ icon: Icon, label, sub, onClick, rowId }) => (
+  <button
+    type="button"
+    className="profile-nav-row"
+    onClick={onClick}
+    data-profile-row={rowId}
+  >
     <span className="profile-nav-row-icon" aria-hidden="true">
       <Icon />
     </span>
@@ -5052,8 +5057,10 @@ const DeferredFormCard = ({ intro, placeholder, submitLabel, deferredNote }) => 
 );
 
 // In-page back header for a drill-down subpage (mirrors pwa-detail-header).
-const ProfileSubpageHeader = ({ title, backLabel, onBack }) => (
-  <div className="pwa-detail-header">
+// The heading takes focus on entry (tabIndex -1) so a state-based drill-down
+// announces the new view instead of leaving focus stranded on <body>.
+const ProfileSubpageHeader = ({ title, backLabel, onBack, titleRef }) => (
+  <div className="pwa-detail-header profile-subpage-header">
     <button
       type="button"
       className="detail-back-btn"
@@ -5062,7 +5069,9 @@ const ProfileSubpageHeader = ({ title, backLabel, onBack }) => (
     >
       <Ic.Back />
     </button>
-    <h1 className="detail-header-title">{title}</h1>
+    <h1 className="detail-header-title" ref={titleRef} tabIndex={-1}>
+      {title}
+    </h1>
     <div className="w-40-spacer" />
   </div>
 );
@@ -5130,6 +5139,42 @@ const ProfilePaneFull = () => {
   // State-based routing mirrors the job-detail pattern (PwaDriverApp.activeJob),
   // keeping the bottom tab bar visible on the Profile tab.
   const [subpage, setSubpage] = useState(null);
+  const scrollBodyRef = useRef(null); // .scroll-body (shared by both views)
+  const listScrollTop = useRef(0); // list offset to restore when coming back
+  const lastSubpage = useRef(null); // row to re-focus when coming back
+  const subpageTitleRef = useRef(null);
+
+  // Swapping views by state alone leaves focus on <body>, so a keyboard or
+  // screen-reader user gets no announcement of the change and loses their place
+  // in the list (plan §7: every interactive element keeps a visible focus and an
+  // accessible name). Entering a subpage moves focus to its heading; returning
+  // restores the list offset and re-focuses the originating row.
+  //
+  // Both views render `.scroll-body` at the same position, so React reuses that
+  // one DOM node: its scrollTop survives the swap and has to be reset explicitly,
+  // or a subpage opens already scrolled down. The rows themselves *do* unmount,
+  // so the row is re-queried by data attribute rather than stored as a node.
+  const openSubpage = (id) => () => {
+    listScrollTop.current = scrollBodyRef.current?.scrollTop || 0;
+    lastSubpage.current = id;
+    setSubpage(id);
+  };
+
+  useEffect(() => {
+    const container = scrollBodyRef.current;
+    if (subpage) {
+      if (container) container.scrollTop = 0;
+      subpageTitleRef.current?.focus({ preventScroll: true });
+      return;
+    }
+    const returningFrom = lastSubpage.current;
+    if (!container || !returningFrom) return;
+    container.scrollTop = listScrollTop.current;
+    container
+      .querySelector(`[data-profile-row="${returningFrom}"]`)
+      ?.focus({ preventScroll: true });
+    lastSubpage.current = null;
+  }, [subpage]);
   const submitMasterDataRequest = () => {
     const r = store.requestMasterDataChange(mdForm);
     if (r.ok) {
@@ -5539,15 +5584,18 @@ const ProfilePaneFull = () => {
             title={activeSub.title}
             backLabel={t("profileBackLabel")}
             onBack={() => setSubpage(null)}
+            titleRef={subpageTitleRef}
           />
-          <div className="scroll scroll-body">{activeSub.body}</div>
+          <div className="scroll scroll-body" ref={scrollBodyRef}>
+            {activeSub.body}
+          </div>
         </>
       ) : (
         <>
           <div className="pwa-screen-header">
             <h1 className="header-title">{t("profileTitle")}</h1>
           </div>
-          <div className="scroll scroll-body">
+          <div className="scroll scroll-body" ref={scrollBodyRef}>
             {/* Identity card — avatar, name, partner id */}
             <div className="section-card profile-identity-card">
               <span className="avatar">{initials}</span>
@@ -5654,12 +5702,14 @@ const ProfilePaneFull = () => {
                 icon={Ic.TabUser}
                 label={t("profileNavBasicData")}
                 sub={t("profileNavBasicDataSub")}
-                onClick={() => setSubpage("masterData")}
+                rowId="masterData"
+                onClick={openSubpage("masterData")}
               />
               <ProfileNavRow
                 icon={Ic.Lock}
                 label={t("profileNavChangePassword")}
-                onClick={() => setSubpage("password")}
+                rowId="password"
+                onClick={openSubpage("password")}
               />
             </ProfileGroup>
 
@@ -5667,12 +5717,14 @@ const ProfilePaneFull = () => {
               <ProfileNavRow
                 icon={Ic.Bell}
                 label={t("profileNavNotifications")}
-                onClick={() => setSubpage("notifications")}
+                rowId="notifications"
+                onClick={openSubpage("notifications")}
               />
               <ProfileNavRow
                 icon={Ic.Globe}
                 label={t("profileNavAppearance")}
-                onClick={() => setSubpage("appearance")}
+                rowId="appearance"
+                onClick={openSubpage("appearance")}
               />
             </ProfileGroup>
 
@@ -5680,12 +5732,14 @@ const ProfilePaneFull = () => {
               <ProfileNavRow
                 icon={Ic.Chat}
                 label={t("profileNavFeedback")}
-                onClick={() => setSubpage("feedback")}
+                rowId="feedback"
+                onClick={openSubpage("feedback")}
               />
               <ProfileNavRow
                 icon={Ic.Alert}
                 label={t("profileNavReportError")}
-                onClick={() => setSubpage("reportError")}
+                rowId="reportError"
+                onClick={openSubpage("reportError")}
               />
             </ProfileGroup>
 
