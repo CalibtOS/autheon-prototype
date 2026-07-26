@@ -901,6 +901,8 @@
     if (!state.open) return;
     cancelPicker(); // discard any live picker preview
     state.open = false;
+    const focusRestore = lastFocusBeforeOpen;
+    lastFocusBeforeOpen = null;
     document.removeEventListener('keydown', onGlobalKeydown, true);
     if (els.root) {
       els.root.remove();
@@ -908,7 +910,14 @@
     }
     if (els.launcher) {
       els.launcher.setAttribute('aria-expanded', 'false');
-      // Return focus to the launcher when the editor closes.
+    }
+    if (
+      focusRestore &&
+      typeof focusRestore.focus === 'function' &&
+      document.contains(focusRestore)
+    ) {
+      focusRestore.focus();
+    } else if (els.launcher) {
       els.launcher.focus();
     }
   }
@@ -1352,7 +1361,8 @@
           text: 'Cancel',
           onclick: function () {
             overlay.remove();
-            if (els.launcher && !state.open) els.launcher.focus();
+            if (els.search && state.open) els.search.focus();
+            else if (els.launcher) els.launcher.focus();
           },
         }),
         h('button', {
