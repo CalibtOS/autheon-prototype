@@ -5380,7 +5380,7 @@ const ProfilePaneFull = () => {
                 type="button"
                 className="postal-chip-delete"
                 onClick={() => removePostal(idx)}
-                aria-label={`Remove postal code ${chip}`}
+                aria-label={t("removePostalCode", { code: chip })}
               >
                 ×
               </button>
@@ -5614,18 +5614,18 @@ const ProfilePaneFull = () => {
             {/* Probation progress — only while the driver is on probation */}
             <DriverProbationCard />
 
-            {/* Account & sign-in â€” self-serve email change from main */}
+            {/* Account & sign-in — self-serve email change from main */}
             <div className="section-card account-signin-card">
               <h2 className="section-title account-signin-title">
                 <span className="account-signin-key" aria-hidden="true">
-                  ðŸ”‘
+                  🔑
                 </span>
                 {t("accountSigninTitle")}
               </h2>
               <div className="account-email-row">
                 <div className="mdr-field-label">{t("accountEmailLabel")}</div>
                 <div className="account-email-value">
-                  <span className="account-email-address">{d?.email || "â€”"}</span>
+                  <span className="account-email-address">{d?.email || "—"}</span>
                   {emailChange?.pending ? (
                     <span className="pill assigned account-email-badge">
                       {t("accountEmailPending")}
@@ -5633,7 +5633,7 @@ const ProfilePaneFull = () => {
                   ) : (
                     <span className="account-email-verified">
                       <span className="dot" aria-hidden="true">
-                        â—
+                        ●
                       </span>{" "}
                       {t("accountEmailVerified")}
                     </span>

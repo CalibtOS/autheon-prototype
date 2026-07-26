@@ -1400,6 +1400,7 @@ window.I18n = (() => {
       pushNotifyNewPublished: "Newly published orders",
       pushNotifyPostalPrefix: "Orders in pickup postal code area",
       pushPostalPrefixHint: "1–2 digit prefix, e.g. 4, 40, or 41",
+      removePostalCode: "Remove postal code {code}",
       pushSupportNotice:
         "Android supported in app flow. iOS requires home-screen installation, compatible iOS version, and permission.",
       driverNotifications: "Notifications",
@@ -2897,6 +2898,7 @@ window.I18n = (() => {
       pushNotifyNewPublished: "Neu veröffentlichte Aufträge",
       pushNotifyPostalPrefix: "Aufträge im Abhol-PLZ-Gebiet",
       pushPostalPrefixHint: "1–2-stelliges Präfix, z. B. 4, 40 oder 41",
+      removePostalCode: "Postleitzahl {code} entfernen",
       pushSupportNotice:
         "Android wird im App-Ablauf unterstützt. iOS erfordert Installation auf dem Homescreen, eine kompatible iOS-Version und Berechtigung.",
       driverNotifications: "Benachrichtigungen",
