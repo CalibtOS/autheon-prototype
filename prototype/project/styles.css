@@ -2249,6 +2249,10 @@ select.input {
   min-height: 44px;
   padding-inline: 12px;
 }
+/* Success / single-action sheets: one primary spans the Cancel|Primary grid. */
+.sheet-foot > .btn:only-child {
+  grid-column: 1 / -1;
+}
 
 /* Profile drill-down back control: the shared .detail-back-btn is 40px, below
    the documented ≥44×44 floor (design-system.md §Button, ui-ux-production-plan

@@ -88,8 +88,7 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 | Report problem | `ReportProblemSheet` | 7 codes, min 10 chars, evidence | Submit |
 | Notifications | `DriverNotificationsPane` | grouped by day, unread, empty | Deep link |
 | Profile | `ProfilePaneFull` | view, edit MDR, pending | Request changes |
-| Account & sign-in | `account-signin-card` in `ProfilePaneFull` | verified, pending-change | Change email address |
-| Change email | `ChangeEmailSheet` | enter address, confirm code (+resend), success, error states | Send code → Confirm change |
+| Change email | Account nav row → `ChangeEmailSheet` | enter, confirm code (+resend), success, pending resume | Cancel \| Send code → Confirm change |
 | Infopoint | `Infopoint` | docs + news + help tabs, empty | Download / Help |
 
 ---
@@ -118,18 +117,18 @@ Source of truth: Figma file `CgaMrN7nmXS8xub0RxyzsJ` — nodes `8:2268` (details
 
 ---
 
-## Account & sign-in (self-service email change, 2026-07)
+## Account & sign-in (self-service email change, 2026-07; nav IA 2026-07-27)
 
-Driver-owned credential card inside `ProfilePaneFull`, placed directly under the identity header and **above** the operations-managed master-data card. Master data is "request changes" (ops approval); the **sign-in email is self-service** — the driver changes it themselves, verify-not-approve.
+Driver-owned sign-in email lives under the Profile **Account** group as a `ProfileNavRow` (`profileNavChangeEmail`, `Ic.Mail`, subline = current email or "Change pending"). It is **not** a drill-down subpage and **not** a standalone credential card. Master data stays "request changes" (ops approval); the **sign-in email is self-service** — verify-not-approve.
 
-- **Card (`.account-signin-card`):** 🔑 `.account-signin-title` + `.account-signin-key`, an `.account-email-row` (label + `.account-email-value`) showing the current `.account-email-address` and its state, then a full-width secondary `Change email address` button (`.btn.block`) opening `ChangeEmailSheet`.
-- **Email state (never color-only):** `.account-email-verified` — small green dot + "Verified account" text label — for the confirmed address; while a change is in flight, an amber `.pill.assigned` `.account-email-badge` ("Change pending") replaces it. The green uses `var(--st-ok, #1f9d55)` (see brand-tokens: token currently undefined, falls back).
-- **`ChangeEmailSheet`** — one sheet advancing through three steps, title changes per step:
-  1. **Enter** — current address (`.change-email-current`, address in `.mono`), new-address input, code notice. CTA `Send code`.
-  2. **Confirm** — `CodeInput` 6-box code (`.code-input-row` / `.code-input-box`), `.change-email-resend-row` with a live `Resend in mm:ss` countdown → `Resend code`, a demo `InlineAlert` echoing the code, `Change address` (back) + `Confirm change`. Errors map to typed reasons (`invalid_email`, `same_email`, `duplicate_email`, `invalid_code`, `expired`, `restricted`).
-  3. **Success** — `.change-email-success-check` (brand-tint disc + ✓), confirmation body, `Done`.
+- **Nav row:** opens `ChangeEmailSheet` as a **centered modal** (`Sheet` + `centered`, same grammar as `ConfirmSheet` / Sign out) — not a bottom sheet.
+- **Pending:** while a change is in flight the nav subline shows "Change pending"; reopening resumes the code step instead of starting a second flow.
+- **`ChangeEmailSheet`** — three steps, title changes per step; sticky footer **Cancel (ghost) | Primary** at the shared `.sheet-foot` 1:1.6 ratio:
+  1. **Enter** — `accountSigninHint`, current address (`.change-email-current`, `.mono`), new-address input, code notice. Footer: Cancel \| Send code.
+  2. **Confirm** — `CodeInput` 6-box code, resend countdown → Resend code, in-body "Change address" (step back), demo `InlineAlert`. Footer: Cancel \| Confirm change. Errors map to typed reasons (`invalid_email`, `same_email`, `duplicate_email`, `invalid_code`, `expired`, `restricted`).
+  3. **Success** — `.change-email-success-check`, confirmation body, single full-width Done (`.sheet-foot > .btn:only-child`).
 - **Model:** the new address only becomes active after the code sent to the **new** inbox is confirmed; the old inbox stays live until then and receives an `emailChangedNotify*` notification on success. No ops step.
-- **i18n:** `accountSignin*`, `accountEmail*`, `changeEmail*`, `emailChanged*` (EN+DE) — regenerate the index after changes.
+- **i18n:** `profileNavChangeEmail`, `accountSignin*`, `accountEmail*`, `changeEmail*` (incl. `changeEmailCodeGroupLabel` / `changeEmailDigitLabel`), `emailChanged*` (EN+DE) — regenerate the index after changes.
 
 ## Per-screen Definition of Done
 
@@ -201,8 +200,8 @@ Loaded before `driver.jsx` in `AUTHEON Prototype.html`. Access via `window.Drive
 | `.ui-badge`, `.ui-badge-destructive` | Numeric badges |
 | `.sheet`, `.sheet-backdrop`, `.sheet-foot` | Sheet layout |
 | `.inline-alert`, `.app-banner` | Persistent feedback |
-| `.account-signin-card`, `.account-signin-title/-key`, `.account-email-row/-value/-address/-verified`, `.account-email-badge` | Account & sign-in credential card |
-| `.change-email-current`, `.code-input-row`, `.code-input-box`, `.change-email-resend-row`, `.change-email-success-check` | Change-email sheet + `CodeInput` |
+| `.profile-nav-row`, `.profile-group` | Profile navigation list / Account group |
+| `.change-email-current`, `.code-input-row`, `.code-input-box`, `.change-email-resend-row`, `.change-email-success-check` | Change-email modal + `CodeInput` |
 | `.text-*`, `.stack-*`, `.row-*` | Typography / spacing utilities (see `styles.css` § TOKEN UTILITIES) |
 
 ### Formatters (`formatters.js`)

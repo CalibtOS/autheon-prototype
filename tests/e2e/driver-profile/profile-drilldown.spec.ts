@@ -22,11 +22,13 @@ test.describe('driver profile drill-down @smoke', () => {
     await expect(frame.getByText('Account status')).toBeVisible();
     await expect(frame.getByText('Member since')).toBeVisible();
     await expect(frame.getByText('14.03.2024')).toBeVisible();
-    // Group labels — exact, so "Account & sign-in" card heading isn't matched too
     await expect(frame.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
     await expect(frame.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
     await expect(frame.getByRole('heading', { name: 'Help', exact: true })).toBeVisible();
-    // App-version, discreet near the bottom
+    // Change email lives under Account as a nav row (opens a modal, not a subpage).
+    await expect(
+      frame.getByRole('button', { name: /Change email address/ }),
+    ).toBeVisible();
     await expect(frame.getByText(/App version 1\.2\.0/)).toBeVisible();
   });
 
@@ -49,6 +51,25 @@ test.describe('driver profile drill-down @smoke', () => {
       await expect(frame.getByRole('heading', { level: 1, name: /^Profile$/ })).toBeVisible();
     });
   }
+
+  test('Change email nav row opens a centered modal with Cancel|Send code', async ({
+    page,
+  }) => {
+    const frame = prototypeFrame(page);
+    await frame.getByRole('button', { name: /Change email address/ }).click();
+
+    const dialog = frame.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible();
+    await expect(
+      dialog.getByRole('heading', { name: /^Change email address$/ }),
+    ).toBeVisible();
+    await expect(dialog).toHaveClass(/modal/);
+    await expect(frame.locator('.sheet-backdrop')).toHaveClass(/center/);
+
+    const foot = dialog.locator('.sheet-foot');
+    await expect(foot.getByRole('button', { name: /^Cancel$/ })).toBeVisible();
+    await expect(foot.getByRole('button', { name: /^Send code$/ })).toBeVisible();
+  });
 
   test('Basic data subpage exposes the existing "Request a change" flow', async ({ page }) => {
     const frame = prototypeFrame(page);
@@ -283,6 +304,52 @@ test.describe('standalone driver PWA profile appearance @smoke', () => {
 
       expect(metrics.widths).toHaveLength(2);
       // Cancel left : destructive confirm right, at the shared 1 : 1.6 ratio.
+      expect(metrics.widths[1] / metrics.widths[0]).toBeCloseTo(1.6, 1);
+      for (const height of metrics.heights) {
+        expect(height).toBeGreaterThanOrEqual(44);
+      }
+      expect(metrics.clipped).toEqual([false, false]);
+      expect(metrics.overflows).toBe(false);
+    });
+  }
+
+  /**
+   * Change-email reuses the same Cancel|Primary `.sheet-foot` grid as Sign out.
+   * DE labels ("Abbrechen" | "Code senden") must keep the 1:1.6 ratio at 320px.
+   */
+  for (const locale of ['en', 'de'] as const) {
+    test(`change email sheet keeps the canonical 1:1.6 footer ratio (${locale} @ 320px)`, async ({
+      page,
+    }) => {
+      await page.addInitScript((loc) => {
+        localStorage.setItem('autheon-locale', loc);
+        localStorage.setItem('autheon-theme', 'light');
+      }, locale);
+      await page.setViewportSize({ width: 320, height: 740 });
+      await page.goto('/pwa/?tab=profile', { waitUntil: 'domcontentloaded' });
+
+      const row = page.locator('[data-profile-row="changeEmail"]');
+      await expect(row).toBeVisible({ timeout: 30_000 });
+      await row.click();
+
+      const dialog = page.locator('[role="dialog"].change-email-sheet');
+      await expect(dialog).toBeVisible();
+      await expect(dialog).toHaveClass(/modal/);
+
+      const foot = dialog.locator('.sheet-foot');
+      await expect(foot).toBeVisible();
+
+      const metrics = await foot.evaluate((el) => {
+        const buttons = [...el.querySelectorAll<HTMLElement>('.btn')];
+        return {
+          widths: buttons.map((b) => b.offsetWidth),
+          heights: buttons.map((b) => b.offsetHeight),
+          clipped: buttons.map((b) => b.scrollWidth > b.clientWidth + 1),
+          overflows: el.scrollWidth > el.clientWidth + 1,
+        };
+      });
+
+      expect(metrics.widths).toHaveLength(2);
       expect(metrics.widths[1] / metrics.widths[0]).toBeCloseTo(1.6, 1);
       for (const height of metrics.heights) {
         expect(height).toBeGreaterThanOrEqual(44);

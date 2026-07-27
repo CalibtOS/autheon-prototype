@@ -7,17 +7,13 @@
 |-----|----|----|
 | `acceptThisTour` | Accept this tour? | Diese Tour annehmen? |
 | `acceptTour` | Accept tour | Tour annehmen |
-| `acceptanceLegal` | Acceptance is binding. After commitment, use Report Problem to cancel or mark the tour as not performable. | Die Annahme ist verbindlich. Danach Problem melden nutzen, um zu stornieren oder die Tour als nicht durchführbar zu melden. |
+| `acceptanceLegal` | Acceptance is binding. After commitment, use Report Problem to cancel the order or report an empty run. | Die Annahme ist verbindlich. Danach Problem melden nutzen, um den Auftrag zu stornieren oder eine Leerfahrt zu melden. |
 | `acceptedActive` | Accepted · active | Angenommen · aktiv |
-| `accountEmailChangeBtn` | Change | Ändern |
-| `accountEmailLabel` | Email | E-Mail |
 | `accountEmailPending` | Change pending | Änderung ausstehend |
-| `accountEmailVerified` | Verified | Bestätigt |
-| `accountSigninTitle` | Account & sign-in | Konto & Anmeldung |
+| `accountSigninHint` | This is your sign-in email. You control it — no operations approval needed. | Das ist Ihre Anmelde-E-Mail. Sie verwalten sie selbst — keine Freigabe durch den Betrieb nötig. |
 | `accountStatus` | Account status | Kontostatus |
 | `active` | Active | Aktiv |
 | `all` | All | Alle |
-| `appAppearance` | Appearance | Erscheinungsbild |
 | `appAppearanceHint` | Language and display preferences for this device. | Sprache und Anzeigeeinstellungen für dieses Gerät. |
 | `appLanguage` | Language | Sprache |
 | `appTheme` | Theme | Design |
@@ -34,12 +30,14 @@
 | `cancelled` | Cancelled | Storniert |
 | `cancelledSub` | Removed from marketplace and active lists. | Aus Marktplatz und aktiven Listen entfernt. |
 | `changeEmailBack` | Change address | Adresse ändern |
+| `changeEmailCodeGroupLabel` | 6-digit confirmation code | 6-stelliger Bestätigungscode |
 | `changeEmailCodeNotice` | We'll send a 6-digit code to your new address to confirm it's yours. | Wir senden einen 6-stelligen Code an Ihre neue Adresse, um zu bestätigen, dass sie Ihnen gehört. |
 | `changeEmailCodeSentTo` | Sent to {email} | Gesendet an {email} |
 | `changeEmailCodeTitle` | Enter confirmation code | Bestätigungscode eingeben |
 | `changeEmailConfirm` | Confirm change | Änderung bestätigen |
 | `changeEmailCurrentPrefix` | Current | Aktuell |
 | `changeEmailDemoHint` | Prototype: the 6-digit code sent to your new address is {code}. | Prototyp: Der an Ihre neue Adresse gesendete 6-stellige Code lautet {code}. |
+| `changeEmailDigitLabel` | Digit {n} | Ziffer {n} |
 | `changeEmailDone` | Done | Fertig |
 | `changeEmailNewLabel` | New email address | Neue E-Mail-Adresse |
 | `changeEmailNewPlaceholder` | name@company.com | name@firma.de |
@@ -113,6 +111,7 @@
 | `emptyRunReasonNotReleased` | Vehicle is not being released | Fahrzeug wird nicht herausgegeben |
 | `emptyRunReasonNotRoadworthy` | Vehicle is not roadworthy | Fahrzeug ist nicht verkehrssicher |
 | `emptyRunReasonOther` | Other | Sonstiges |
+| `emptyRunReviewTab` | Empty run | Leerfahrt |
 | `emptyRunSlide` | Report empty run | Leerfahrt melden |
 | `emptyRunSlideDone` | Empty run reported | Leerfahrt gemeldet |
 | `emptyRunSlideLocked` | Enter at least 30 characters to unlock | Mind. 30 Zeichen eingeben zum Freischalten |
@@ -143,9 +142,6 @@
 | `invoiceUploadRestricted` | Uploads are unavailable while your account is restricted. | Upload nicht möglich, solange das Konto eingeschränkt ist. |
 | `invoiceUploadTourRequired` | Invoice upload must be linked to a valid tour. | Der Upload muss einer gültigen Tour zugeordnet sein. |
 | `jobDetailsTab` | Job details | Auftragsdetails |
-| `kpiAvailableJobs` | Available | Verf\u00fcgbar |
-| `kpiBookedJobs` | Booked | Gebucht |
-| `kpiOpenDocuments` | Open documents | Offene Nachweise |
 | `legal` | Legal | Rechtliches |
 | `legalSub` | Terms · privacy · imprint | AGB · Datenschutz · Impressum |
 | `licensePlate` | License plate | Kennzeichen |
@@ -180,7 +176,6 @@
 | `noteConfirmArrival` | Please confirm arrival 15 minutes early. | Bitte Ankunft 15 Minuten vorher bestätigen. |
 | `noteReportPickupDelay` | Report any pickup delay immediately to dispatch. | Verzögerungen bei der Abholung sofort an die Disposition melden. |
 | `nothingHereYet` | Nothing here yet. | Hier ist noch nichts. |
-| `notificationPreferences` | Notification preferences | Benachrichtigungseinstellungen |
 | `notifications` | Notifications | Benachrichtigungen |
 | `notificationsSub` | Push filters mirror Portal preferences | Push-Filter spiegeln die Portal-Einstellungen |
 | `offer` | Offer | Angebot |
@@ -208,11 +203,38 @@
 | `primaryNavigation` | Primary navigation | Hauptnavigation |
 | `print` | Print | Drucken |
 | `profile` | Profile | Profil |
+| `profileAppVersion` | App version {version} | App-Version {version} |
+| `profileBackLabel` | Profile | Profil |
+| `profileDateJoined` | Member since | Dabei seit |
 | `profileEmailSupport` | Email support | E-Mail-Support |
+| `profileFeedbackDeferred` | This is a prototype preview — feedback is not yet submitted anywhere. | Dies ist eine Prototyp-Vorschau – Feedback wird noch nicht übermittelt. |
+| `profileFeedbackIntro` | Tell us what is working well or what we could improve. | Sagen Sie uns, was gut funktioniert oder was wir verbessern können. |
+| `profileFeedbackPlaceholder` | Your feedback… | Ihr Feedback… |
+| `profileFeedbackSubmit` | Send feedback | Feedback senden |
+| `profileGroupAccount` | Account | Konto |
+| `profileGroupHelp` | Help | Hilfe |
+| `profileGroupSettings` | Settings | Einstellungen |
 | `profileMasterData` | Read-only master data | Stammdaten (nur lesbar) |
-| `profileSubtitle` | Manage your account, limits and preferences | Verwalten Sie Ihr Konto, Limits und Einstellungen |
+| `profileNavAppearance` | Appearance and language | Darstellung und Sprache |
+| `profileNavBasicData` | Basic data | Stammdaten |
+| `profileNavBasicDataSub` | Request a change | Änderung anfragen |
+| `profileNavChangeEmail` | Change email address | E-Mail-Adresse ändern |
+| `profileNavChangePassword` | Change password | Passwort ändern |
+| `profileNavFeedback` | Feedback | Feedback |
+| `profileNavNotifications` | Notification settings | Benachrichtigungseinstellungen |
+| `profileNavReportError` | Report an error | Fehler melden |
+| `profilePartnerId` | Partner ID | Partner ID |
+| `profilePasswordConfirm` | Confirm new password | Neues Passwort bestätigen |
+| `profilePasswordCurrent` | Current password | Aktuelles Passwort |
+| `profilePasswordDeferred` | This is a prototype preview — password changes are not yet processed. | Dies ist eine Prototyp-Vorschau – Passwortänderungen werden noch nicht verarbeitet. |
+| `profilePasswordIntro` | Choose a new password for your driver account. | Wählen Sie ein neues Passwort für Ihr Fahrerkonto. |
+| `profilePasswordNew` | New password | Neues Passwort |
+| `profilePasswordSubmit` | Update password | Passwort aktualisieren |
+| `profileReportErrorDeferred` | This is a prototype preview — error reports are not yet submitted anywhere. | Dies ist eine Prototyp-Vorschau – Fehlermeldungen werden noch nicht übermittelt. |
+| `profileReportErrorIntro` | Describe the problem you ran into so we can look into it. | Beschreiben Sie das aufgetretene Problem, damit wir es prüfen können. |
+| `profileReportErrorPlaceholder` | Describe the error… | Fehler beschreiben… |
+| `profileReportErrorSubmit` | Report error | Fehler melden |
 | `profileTitle` | Profile | Profil |
-| `profileVerifiedAccount` | Verified account | Verifiziertes Konto |
 | `pushEnabledMaster` | Enable push notifications | Push-Benachrichtigungen aktivieren |
 | `pushNotifyNewPublished` | Newly published orders | Neu veröffentlichte Aufträge |
 | `pushNotifyPostalPrefix` | Orders in pickup postal code area | Aufträge im Abhol-PLZ-Gebiet |
@@ -225,6 +247,7 @@
 | `removeDocConfirm` | Remove | Entfernen |
 | `removeDocTitle` | Remove document? | Dokument entfernen? |
 | `removeFilterChip` | Remove filter: {label} | Filter entfernen: {label} |
+| `removePostalCode` | Remove postal code {code} | Postleitzahl {code} entfernen |
 | `reportProblem` | Report problem | Problem melden |
 | `reportProblemEvidenceAdd` | Add file | Datei hinzufügen |
 | `reportProblemEvidenceRemove` | Remove | Entfernen |
@@ -269,7 +292,6 @@
 | `spCancelSuccessTitle` | Order cancelled | Auftrag storniert |
 | `spCancelTermsLink` | Applicable terms & contractual conditions | AGB bzw. Vertragsbedingungen |
 | `spCancelTermsPlaceholderNotice` | Placeholder: the real cancellation terms / T&C document is not yet wired up. The target link is to be provided by operations. | Platzhalter: Das echte Storno-/AGB-Dokument ist noch nicht verknüpft. Das Ziel wird vom Betrieb bereitgestellt. |
-| `specialCaseTab` | Special | Sonderfall |
 | `themeDark` | Dark | Dunkel |
 | `themeLight` | Light | Hell |
 | `thirdPartyAxle` | Third-party axle | Fremdachse |

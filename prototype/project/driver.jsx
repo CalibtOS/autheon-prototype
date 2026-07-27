@@ -4574,6 +4574,7 @@ const formatCalendarDayLabel = (dayKey) => {
 // 6-digit confirmation-code entry (auto-advance + paste support).
 const CODE_LEN = 6;
 const CodeInput = ({ value, onChange, disabled }) => {
+  const { t } = useI18n();
   const refs = useRef([]);
   const digits = String(value || "")
     .padEnd(CODE_LEN, " ")
@@ -4606,7 +4607,11 @@ const CodeInput = ({ value, onChange, disabled }) => {
   };
 
   return (
-    <div className="code-input-row" role="group" aria-label={CODE_LEN + "-digit code"}>
+    <div
+      className="code-input-row"
+      role="group"
+      aria-label={t("changeEmailCodeGroupLabel")}
+    >
       {Array.from({ length: CODE_LEN }, (_, i) => (
         <input
           key={i}
@@ -4618,7 +4623,7 @@ const CodeInput = ({ value, onChange, disabled }) => {
           maxLength={1}
           disabled={disabled}
           value={digits[i]}
-          aria-label={`Digit ${i + 1}`}
+          aria-label={t("changeEmailDigitLabel", { n: i + 1 })}
           onChange={(e) => setDigit(i, e.target.value)}
           onKeyDown={(e) => onKeyDown(i, e)}
           onFocus={(e) => e.target.select()}
@@ -4628,10 +4633,10 @@ const CodeInput = ({ value, onChange, disabled }) => {
   );
 };
 
-// Self-serve email change — a single bottom sheet advancing through
-// enter-new-address → confirm-with-code → updated. The address only becomes
-// active after the code sent to the NEW inbox is confirmed; the old inbox
-// stays live until then and is notified on success. No ops approval.
+// Self-serve email change — centered modal (same Sheet grammar as ConfirmSheet)
+// advancing enter-new-address → confirm-with-code → updated. The address only
+// becomes active after the code sent to the NEW inbox is confirmed; the old
+// inbox stays live until then and is notified on success. No ops approval.
 const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -4643,18 +4648,29 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
   const [confirmedEmail, setConfirmedEmail] = useState("");
   const [resendLeft, setResendLeft] = useState(0);
 
-  // Reset everything whenever the sheet opens.
+  // Open: resume a pending change at the code step so the driver cannot
+  // silently start a second flow over an in-flight verification.
   useEffect(() => {
-    if (open) {
-      setStep("enter");
-      setNewEmail("");
-      setCode("");
-      setError("");
-      setDemoCode("");
-      setConfirmedEmail("");
-      setResendLeft(0);
+    if (!open) return;
+    const pending = store.getDriverEmailChange()?.pending;
+    setCode("");
+    setError("");
+    setConfirmedEmail("");
+    if (pending?.newEmail) {
+      setStep("code");
+      setNewEmail(pending.newEmail);
+      setDemoCode(pending.code || "");
+      const elapsed = Date.now() - (pending.sentAt || 0);
+      setResendLeft(
+        Math.max(0, Math.ceil((store.EMAIL_CODE_RESEND_MS - elapsed) / 1000)),
+      );
+      return;
     }
-  }, [open]);
+    setStep("enter");
+    setNewEmail("");
+    setDemoCode("");
+    setResendLeft(0);
+  }, [open, store]);
 
   // Resend cooldown countdown.
   useEffect(() => {
@@ -4724,6 +4740,9 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
   if (step === "enter") {
     body = (
       <div className="stack-4" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <p className="section-hint" style={{ margin: 0 }}>
+          {t("accountSigninHint")}
+        </p>
         <div className="change-email-current">
           {t("changeEmailCurrentPrefix")} · <span className="mono">{currentEmail}</span>
         </div>
@@ -4752,14 +4771,19 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
       </div>
     );
     footer = (
-      <button
-        type="button"
-        className="btn primary block"
-        disabled={!newEmail.trim()}
-        onClick={sendCode}
-      >
-        {t("changeEmailSendCode")}
-      </button>
+      <>
+        <button type="button" className="btn ghost" onClick={close}>
+          {t("cancel")}
+        </button>
+        <button
+          type="button"
+          className="btn primary"
+          disabled={!newEmail.trim()}
+          onClick={sendCode}
+        >
+          {t("changeEmailSendCode")}
+        </button>
+      </>
     );
   } else if (step === "code") {
     title = t("changeEmailCodeTitle");
@@ -4780,6 +4804,16 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
             </button>
           )}
         </div>
+        <button
+          type="button"
+          className="btn ghost xs"
+          onClick={() => {
+            setStep("enter");
+            setError("");
+          }}
+        >
+          {t("changeEmailBack")}
+        </button>
         {demoCode ? (
           <InlineAlert tone="info" message={t("changeEmailDemoHint", { code: demoCode })} />
         ) : null}
@@ -4788,15 +4822,8 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
     );
     footer = (
       <>
-        <button
-          type="button"
-          className="btn ghost"
-          onClick={() => {
-            setStep("enter");
-            setError("");
-          }}
-        >
-          {t("changeEmailBack")}
+        <button type="button" className="btn ghost" onClick={close}>
+          {t("cancel")}
         </button>
         <button
           type="button"
@@ -4826,7 +4853,14 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
   }
 
   return (
-    <Sheet open={open} onClose={close} title={title} footer={footer}>
+    <Sheet
+      open={open}
+      onClose={close}
+      title={title}
+      footer={footer}
+      centered
+      className="change-email-sheet"
+    >
       {body}
     </Sheet>
   );
@@ -5607,6 +5641,9 @@ const ProfilePaneFull = () => {
               </div>
             </div>
 
+            {/* Probation progress — second on the main list while on probation */}
+            <DriverProbationCard />
+
             {/* Summary card — status, joined, log out */}
             <div className="section-card profile-summary-card">
               <div className="profile-summary-row">
@@ -5659,44 +5696,6 @@ const ProfilePaneFull = () => {
               </button>
             </div>
 
-            {/* Probation progress — only while the driver is on probation */}
-            <DriverProbationCard />
-
-            {/* Account & sign-in — self-serve email change from main */}
-            <div className="section-card account-signin-card">
-              <h2 className="section-title account-signin-title">
-                <span className="account-signin-key" aria-hidden="true">
-                  🔑
-                </span>
-                {t("accountSigninTitle")}
-              </h2>
-              <div className="account-email-row">
-                <div className="mdr-field-label">{t("accountEmailLabel")}</div>
-                <div className="account-email-value">
-                  <span className="account-email-address">{d?.email || "—"}</span>
-                  {emailChange?.pending ? (
-                    <span className="pill assigned account-email-badge">
-                      {t("accountEmailPending")}
-                    </span>
-                  ) : (
-                    <span className="account-email-verified">
-                      <span className="dot" aria-hidden="true">
-                        ●
-                      </span>{" "}
-                      {t("accountEmailVerified")}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <button
-                type="button"
-                className="btn block stack-16"
-                onClick={() => setEmailSheetOpen(true)}
-              >
-                {t("accountEmailChangeBtn")}
-              </button>
-            </div>
-
             <ProfileGroup label={t("profileGroupAccount")}>
               <ProfileNavRow
                 icon={Ic.TabUser}
@@ -5704,6 +5703,17 @@ const ProfilePaneFull = () => {
                 sub={t("profileNavBasicDataSub")}
                 rowId="masterData"
                 onClick={openSubpage("masterData")}
+              />
+              <ProfileNavRow
+                icon={Ic.Mail}
+                label={t("profileNavChangeEmail")}
+                sub={
+                  emailChange?.pending
+                    ? t("accountEmailPending")
+                    : d?.email || "—"
+                }
+                rowId="changeEmail"
+                onClick={() => setEmailSheetOpen(true)}
               />
               <ProfileNavRow
                 icon={Ic.Lock}
