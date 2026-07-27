@@ -1,9 +1,20 @@
-/* global React, AuthStore, useAuthStore */
+/* global React, ReactDOM, AuthStore, useAuthStore */
 const { useState, useEffect, useRef, useMemo } = React;
 
 const UI = window.DriverUI || {};
 const { Badge, EmptyState, SkeletonList, Sheet, ConfirmSheet, SortSelect } = UI;
 const F = () => window.AutheonFormatters || {};
+
+// Portal target for full-frame overlays. The tab bar is a later sibling of
+// the tab body inside .phone-screen and ties it on z-index (both 40), so an
+// overlay rendered inline in a tab pane loses the paint order and the nav
+// swallows taps meant for the overlay. Portaling to .phone-screen appends
+// after the tab bar and wins the tie — same trick SortSelect uses for its
+// dropdown (driver-ui.jsx).
+const getPhoneScreen = () => {
+  if (typeof document === "undefined") return null;
+  return document.querySelector(".phone-screen");
+};
 
 // Draggable paged views — a dependency-free carousel for tab content.
 // All panes are rendered side-by-side in a horizontal track; the track
@@ -2064,7 +2075,7 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
     if (preview.pdfUrl) window.open(preview.pdfUrl, "_blank");
   };
 
-  return (
+  const sheet = (
     <>
       <button
         type="button"
@@ -2142,6 +2153,13 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
       </div>
     </>
   );
+
+  // Render above the tab bar, not inside whichever pane opened us. Job
+  // detail unmounts the tab bar anyway, so this only changes Infopoint —
+  // where the nav used to paint over the Download/Share/Print row and eat
+  // its taps. Falls back to inline if the frame is missing.
+  const portalTarget = getPhoneScreen();
+  return portalTarget ? ReactDOM.createPortal(sheet, portalTarget) : sheet;
 };
 
 // Document-type chooser — used by the tour-documents card and the
