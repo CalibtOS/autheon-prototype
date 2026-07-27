@@ -1741,7 +1741,7 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
                 {AuthStore.registrationStatusLabel(job.registrationStatus, t)}
               </div>
             </div>
-            vehicleCharacteristicFlags(job, t).length ? (
+            {vehicleCharacteristicFlags(job, t).length ? (
               <div className="detail-flag-block">
                 <div className="label">{t("vehicleCharacteristics")}</div>
                 <div className="jobcard-tags">
@@ -3051,7 +3051,7 @@ const JobUnlocked = ({
                 {AuthStore.registrationStatusLabel(job.registrationStatus, t)}
               </div>
             </div>
-            vehicleCharacteristicFlags(job, t).length ? (
+            {vehicleCharacteristicFlags(job, t).length ? (
               <div className="detail-flag-block">
                 <div className="label">{t("vehicleCharacteristics")}</div>
                 <div className="jobcard-tags">
