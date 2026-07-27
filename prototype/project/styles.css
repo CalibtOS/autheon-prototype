@@ -1401,7 +1401,8 @@ select.input {
 .phone-shell .header-bell-btn {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  /* Rectangular container — match FE MarketplaceHeader notification control */
+  border-radius: var(--r-2);
   background: var(--canvas);
   border: 0;
   color: var(--text);
