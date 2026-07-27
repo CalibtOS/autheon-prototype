@@ -5,6 +5,95 @@ const UI = window.DriverUI || {};
 const { Badge, EmptyState, SkeletonList, Sheet, ConfirmSheet, SortSelect } = UI;
 const F = () => window.AutheonFormatters || {};
 
+// Draggable paged views — a dependency-free carousel for tab content.
+// All panes are rendered side-by-side in a horizontal track; the track
+// follows the finger during a horizontal drag so the adjacent tab peeks in,
+// then snaps to the nearest tab on release. Vertical drags are left to the
+// pane's own scrolling. Swipe left → next tab, swipe right → previous tab.
+const SwipeViews = ({
+  index,
+  count,
+  onIndexChange,
+  className = "",
+  style,
+  children,
+}) => {
+  const [dragDx, setDragDx] = useState(null); // px offset while dragging, else null
+  const gesture = useRef(null); // { x, y, axis: "x" | "y" | null }
+  const widthRef = useRef(1);
+  const viewportRef = useRef(null);
+
+  const onTouchStart = (e) => {
+    if (e.touches.length !== 1) {
+      gesture.current = null;
+      return;
+    }
+    const p = e.touches[0];
+    gesture.current = { x: p.clientX, y: p.clientY, axis: null };
+    widthRef.current =
+      (viewportRef.current && viewportRef.current.offsetWidth) || 1;
+  };
+  const onTouchMove = (e) => {
+    const g = gesture.current;
+    if (!g) return;
+    const p = e.touches[0];
+    const dx = p.clientX - g.x;
+    const dy = p.clientY - g.y;
+    // Lock the gesture to one axis after a small initial movement.
+    if (g.axis === null) {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      g.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+    if (g.axis !== "x") return; // vertical → let the pane scroll
+    if (e.cancelable) e.preventDefault(); // own the horizontal gesture
+    let d = dx;
+    // Rubber-band resistance when dragging past the first/last tab.
+    if ((index === 0 && d > 0) || (index === count - 1 && d < 0)) d *= 0.35;
+    setDragDx(d);
+  };
+  const onTouchEnd = () => {
+    const g = gesture.current;
+    gesture.current = null;
+    const d = dragDx;
+    setDragDx(null);
+    if (!g || g.axis !== "x" || d == null) return;
+    const threshold = Math.min(72, widthRef.current * 0.22);
+    let next = index;
+    if (d <= -threshold) next = Math.min(count - 1, index + 1);
+    else if (d >= threshold) next = Math.max(0, index - 1);
+    if (next !== index) onIndexChange(next);
+  };
+
+  const offset = dragDx || 0;
+  const trackStyle = {
+    transform: `translate3d(calc(${-index * 100}% + ${offset}px), 0, 0)`,
+    transition:
+      dragDx == null
+        ? "transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1)"
+        : "none",
+  };
+
+  return (
+    <div
+      ref={viewportRef}
+      className={`swipe-viewport ${className}`.trim()}
+      style={style}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchEnd}
+    >
+      <div className="swipe-track" style={trackStyle}>
+        {React.Children.map(children, (child, i) => (
+          <div className="swipe-pane" aria-hidden={i !== index}>
+            {child}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // =========================================================================
 // SHARED ATOMS
 // =========================================================================
@@ -1057,13 +1146,6 @@ const Portal = ({
   const unreadNotif = store.getDriverNotificationUnreadCount();
   const all = store.getJobs().filter((j) => j.status === "published");
   const filtered = all.filter((j) => jobMatchesDriverFilters(j, filters));
-  const mineJobs = store.getJobs().filter((j) => store.isMineJob(j));
-  const bookedCount = mineJobs.filter((j) =>
-    ["assigned", "accepted"].includes(j.status),
-  ).length;
-  const openDocsCount = mineJobs.filter((j) =>
-    jobNeedsDocCorrection(j, store),
-  ).length;
 
   const ordered = filtered.slice().sort((a, b) => {
     if (sortBy === "date_asc") {
@@ -1195,22 +1277,6 @@ const Portal = ({
                 </span>
               ) : null}
             </button>
-          </div>
-        </div>
-
-        {/* Restrained header KPIs — reduced dashboard character (board §4) */}
-        <div className="kpi-row">
-          <div className="kpi-chip">
-            <span className="kpi-num tnum">{all.length}</span>
-            <span className="kpi-label">{t("kpiAvailableJobs")}</span>
-          </div>
-          <div className="kpi-chip">
-            <span className="kpi-num tnum">{bookedCount}</span>
-            <span className="kpi-label">{t("kpiBookedJobs")}</span>
-          </div>
-          <div className="kpi-chip">
-            <span className="kpi-num tnum">{openDocsCount}</span>
-            <span className="kpi-label">{t("kpiOpenDocuments")}</span>
           </div>
         </div>
 
@@ -1405,7 +1471,9 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
               maxLength={5}
               aria-label={t("pickupExample")}
               value={local.startPlz || ""}
-              onChange={(e) => setLocal({ ...local, startPlz: e.target.value })}
+              onChange={(e) =>
+                setLocal({ ...local, startPlz: e.target.value.replace(/\D/g, "") })
+              }
             />
             <input
               className="input"
@@ -1414,7 +1482,9 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
               maxLength={5}
               aria-label={t("deliveryExample")}
               value={local.endPlz || ""}
-              onChange={(e) => setLocal({ ...local, endPlz: e.target.value })}
+              onChange={(e) =>
+                setLocal({ ...local, endPlz: e.target.value.replace(/\D/g, "") })
+              }
             />
           </div>
 
@@ -2593,10 +2663,14 @@ const JobUnlocked = ({
   const onReport = onReportProblem || onReturn;
   const onMarkPerformed = onPerform || onComplete;
   const isPerformed = job.status === "performed";
-  const isCancelled = job.status === "cancelled";
-  const isSpecialCase = job.status === "special_case";
+  const isCancelled = store.isCancelledStatus(job.status);
+  const isEmptyRunReported = job.status === "empty_run_reported";
+  const isEmptyRunTerminal = store.isEmptyRunTerminal(job.status);
   const canPerform = ["assigned", "accepted"].includes(job.status);
-  const inExecution = canPerform || isSpecialCase || job.status === "assigned";
+  const inExecution = canPerform || isEmptyRunReported || job.status === "assigned";
+  // ⚠ action availability (§10): booked orders only; hidden for terminal
+  // states and while an empty-run report is pending review.
+  const canReportProblem = store.canServicePartnerReport(job);
   const pickup = job.contactPickup || {};
   const drop = job.contactDelivery || {};
   const pickupMaps = googleMapsSearchUrl(
@@ -2678,10 +2752,12 @@ const JobUnlocked = ({
                 {AuthStore.statusLabel("performed")}
               </Pill>
             ) : isCancelled ? (
-              <Pill status="cancelled">{t("cancelled")}</Pill>
-            ) : isSpecialCase ? (
-              <Pill status="special_case">
-                {AuthStore.statusLabel("special_case")}
+              <Pill status={job.status}>{AuthStore.statusLabel(job.status)}</Pill>
+            ) : isEmptyRunTerminal ? (
+              <Pill status={job.status}>{AuthStore.statusLabel(job.status)}</Pill>
+            ) : isEmptyRunReported ? (
+              <Pill status={job.status}>
+                {AuthStore.statusLabel(job.status)}
               </Pill>
             ) : job.status === "assigned" ? (
               <Pill status="assigned">{t("assignedShort")}</Pill>
@@ -3045,7 +3121,13 @@ const JobUnlocked = ({
       </div>
 
       {/* Bottom Bar */}
-      {!isPerformed && !isCancelled && !isSpecialCase && (
+      {/* Empty-run report pending review — locked for the partner (§3.4). */}
+      {isEmptyRunReported && (
+        <div style={{ padding: "0 16px 12px" }}>
+          <InlineAlert tone="info" message={t("emptyRunPendingLock")} />
+        </div>
+      )}
+      {canPerform && (
         <div className="pwa-unlocked-bottom">
           <button
             type="button"
@@ -3060,23 +3142,26 @@ const JobUnlocked = ({
           >
             {t("markPerformed")}
           </button>
-          <button
-            type="button"
-            className="btn outline"
-            onClick={onReport}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              padding: "12px 24px",
-              fontSize: 15,
-              fontWeight: 600,
-            }}
-          >
-            <Ic.Alert />
-            {t("reportProblem")}
-          </button>
+          {canReportProblem && (
+            <button
+              type="button"
+              className="btn outline"
+              onClick={onReport}
+              aria-label={t("reportProblem")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                padding: "12px 24px",
+                fontSize: 15,
+                fontWeight: 600,
+              }}
+            >
+              <Ic.Alert />
+              {t("reportProblem")}
+            </button>
+          )}
         </div>
       )}
 
@@ -3138,6 +3223,7 @@ const parseDottedDateToTimestamp = (dateStr, fallbackStr) => {
 const MyJobs = ({ onOpen }) => {
   const { t } = useI18n();
   const [tab, setTab] = useState("active");
+  const TAB_IDS = ["active", "performed", "cancelled", "review"];
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date_desc");
   const store = useAuthStore();
@@ -3147,61 +3233,69 @@ const MyJobs = ({ onOpen }) => {
     ["assigned", "accepted"].includes(j.status),
   );
   const performed = mine.filter((j) => j.status === "performed");
-  const cancelled = mine.filter((j) => j.status === "cancelled");
-  const special = mine.filter((j) => j.status === "special_case");
+  // Cancelled bucket = generic + service-partner + Autheon cancellations, and
+  // (as a terminal outcome) a not-recognised empty run belongs in history too.
+  const cancelled = mine.filter(
+    (j) =>
+      store.isCancelledStatus(j.status) ||
+      store.isEmptyRunTerminal(j.status),
+  );
+  // Review bucket = empty-run reports pending Autheon review.
+  const review = mine.filter((j) => j.status === "empty_run_reported");
 
-  const list =
-    tab === "active"
+  const listFor = (tabId) =>
+    tabId === "active"
       ? active
-      : tab === "performed"
+      : tabId === "performed"
         ? performed
-        : tab === "cancelled"
+        : tabId === "cancelled"
           ? cancelled
-          : special;
+          : review;
 
-  const filteredList = list
-    .filter((job) => {
-      if (!searchQuery) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        job.tour.toString().includes(q) ||
-        (job.customer || "").toLowerCase().includes(q) ||
-        (job.customerName || "").toLowerCase().includes(q) ||
-        (job.vehicleModel || "").toLowerCase().includes(q) ||
-        (job.plate || "").toLowerCase().includes(q) ||
-        (job.vin || "").toLowerCase().includes(q) ||
-        (job.startCity || "").toLowerCase().includes(q) ||
-        (job.endCity || "").toLowerCase().includes(q)
-      );
-    })
-    .sort((a, b) => {
-      if (sortBy === "date_asc") {
-        const timeA = parseDottedDateToTimestamp(
-          a.pickup?.date || a.pickupDate,
-          a.createdAt,
+  const buildList = (tabId) =>
+    listFor(tabId)
+      .filter((job) => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+          job.tour.toString().includes(q) ||
+          (job.customer || "").toLowerCase().includes(q) ||
+          (job.customerName || "").toLowerCase().includes(q) ||
+          (job.vehicleModel || "").toLowerCase().includes(q) ||
+          (job.plate || "").toLowerCase().includes(q) ||
+          (job.vin || "").toLowerCase().includes(q) ||
+          (job.startCity || "").toLowerCase().includes(q) ||
+          (job.endCity || "").toLowerCase().includes(q)
         );
-        const timeB = parseDottedDateToTimestamp(
-          b.pickup?.date || b.pickupDate,
-          b.createdAt,
-        );
-        return timeA - timeB;
-      } else if (sortBy === "date_desc") {
-        const timeA = parseDottedDateToTimestamp(
-          a.pickup?.date || a.pickupDate,
-          a.createdAt,
-        );
-        const timeB = parseDottedDateToTimestamp(
-          b.pickup?.date || b.pickupDate,
-          b.createdAt,
-        );
-        return timeB - timeA;
-      } else if (sortBy === "tour_asc") {
-        return Number(a.tour || 0) - Number(b.tour || 0);
-      } else if (sortBy === "tour_desc") {
-        return Number(b.tour || 0) - Number(a.tour || 0);
-      }
-      return 0;
-    });
+      })
+      .sort((a, b) => {
+        if (sortBy === "date_asc") {
+          const timeA = parseDottedDateToTimestamp(
+            a.pickup?.date || a.pickupDate,
+            a.createdAt,
+          );
+          const timeB = parseDottedDateToTimestamp(
+            b.pickup?.date || b.pickupDate,
+            b.createdAt,
+          );
+          return timeA - timeB;
+        } else if (sortBy === "date_desc") {
+          const timeA = parseDottedDateToTimestamp(
+            a.pickup?.date || a.pickupDate,
+            a.createdAt,
+          );
+          const timeB = parseDottedDateToTimestamp(
+            b.pickup?.date || b.pickupDate,
+            b.createdAt,
+          );
+          return timeB - timeA;
+        } else if (sortBy === "tour_asc") {
+          return Number(a.tour || 0) - Number(b.tour || 0);
+        } else if (sortBy === "tour_desc") {
+          return Number(b.tour || 0) - Number(a.tour || 0);
+        }
+        return 0;
+      });
 
   const myJobsSortOptions = [
     ["date_desc", t("sortDateDesc")],
@@ -3210,32 +3304,112 @@ const MyJobs = ({ onOpen }) => {
     ["tour_desc", t("sortTourDesc")],
   ];
 
-  const emptyCopy = searchQuery
-    ? {
-        title: t("noJobsMatch"),
-        description: t("searchMyJobsPlaceholder"),
-        actionLabel: t("reset"),
-        onAction: () => setSearchQuery(""),
-      }
-    : tab === "active"
+  const emptyCopyFor = (tabId) =>
+    searchQuery
       ? {
-          title: t("nothingHereYet"),
-          description: t("exploreJobs"),
+          title: t("noJobsMatch"),
+          description: t("searchMyJobsPlaceholder"),
+          actionLabel: t("reset"),
+          onAction: () => setSearchQuery(""),
         }
-      : tab === "performed"
+      : tabId === "active"
         ? {
             title: t("nothingHereYet"),
-            description: t("performedTab"),
+            description: t("exploreJobs"),
           }
-        : tab === "cancelled"
+        : tabId === "performed"
           ? {
               title: t("nothingHereYet"),
-              description: t("cancelledSub"),
+              description: t("performedTab"),
             }
-          : {
-              title: t("nothingHereYet"),
-              description: t("specialCaseTab"),
-            };
+          : tabId === "cancelled"
+            ? {
+                title: t("nothingHereYet"),
+                description: t("cancelledSub"),
+              }
+            : {
+                title: t("nothingHereYet"),
+                description: t("emptyRunReviewTab"),
+              };
+
+  const renderJobCard = (job) => (
+    <button
+      key={job.id}
+      type="button"
+      className="jobcard-btn"
+      onClick={() => onOpen(job)}
+    >
+      {job.status === "assigned" ? (
+        <div className="jobcard-banner-assigned">
+          <Ic.TabInfo /> {t("assignedDirectlyNotice")}
+        </div>
+      ) : null}
+      <div className="jobcard-header-row">
+        <span className="jobcard-tour-num">Tour #{job.tour}</span>
+        <div style={{ display: "flex", gap: 6 }}>
+          {(job.status === "empty_run_reported" ||
+            store.isEmptyRunTerminal(job.status)) && (
+            <span className={"pill " + AuthStore.statusCls(job.status)}>
+              {AuthStore.statusLabel(job.status)}
+            </span>
+          )}
+          {job.status === "accepted" && (
+            <span className="pill accepted">{t("active")}</span>
+          )}
+          {job.status === "performed" && (
+            <span className="pill performed">
+              {AuthStore.statusLabel("performed")}
+            </span>
+          )}
+          {store.isCancelledStatus(job.status) && (
+            <span className="pill cancelled">
+              {AuthStore.statusLabel(job.status)}
+            </span>
+          )}
+          {job.status === "assigned" && (
+            <span className="pill assigned">{t("assignedShort")}</span>
+          )}
+        </div>
+      </div>
+      <JobCardBody job={job} />
+      {jobNeedsDocCorrection(job, store) ? (
+        <div className="stack-8">
+          <span
+            className="chip"
+            style={{
+              borderColor: "var(--st-cancelled)",
+              color: "var(--st-cancelled)",
+              fontSize: 11,
+              padding: "1px 6px",
+            }}
+          >
+            {t("correctionRequiredBadge")}
+          </span>
+        </div>
+      ) : null}
+    </button>
+  );
+
+  const renderJobsPane = (tabId) => {
+    const jobs = buildList(tabId);
+    const empty = emptyCopyFor(tabId);
+    return (
+      <div className="scroll-body swipe-pane-body">
+        {jobs.length === 0 && (
+          <EmptyState
+            title={empty.title}
+            description={empty.description}
+            actionLabel={empty.actionLabel}
+            onAction={empty.onAction}
+          />
+        )}
+        {jobs.map(renderJobCard)}
+        {jobs.length > 0 ? (
+          <div className="list-end">— {t("endOfList")} —</div>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -3269,7 +3443,7 @@ const MyJobs = ({ onOpen }) => {
           ["active", t("active"), active.length],
           ["performed", t("performedTab"), performed.length],
           ["cancelled", t("cancelled"), cancelled.length],
-          ["special", t("specialCaseTab"), special.length],
+          ["review", t("emptyRunReviewTab"), review.length],
         ].map(([id, lbl, n]) => (
           <button
             key={id}
@@ -3283,74 +3457,17 @@ const MyJobs = ({ onOpen }) => {
         ))}
       </div>
 
-      {/* Scrollable list content */}
-      <div className="scroll scroll-body">
-        {filteredList.length === 0 && (
-          <EmptyState
-            title={emptyCopy.title}
-            description={emptyCopy.description}
-            actionLabel={emptyCopy.actionLabel}
-            onAction={emptyCopy.onAction}
-          />
-        )}
-        {filteredList.map((job) => (
-          <button
-            key={job.id}
-            type="button"
-            className="jobcard-btn"
-            onClick={() => onOpen(job)}
-          >
-            {job.status === "assigned" ? (
-              <div className="jobcard-banner-assigned">
-                <Ic.TabInfo /> {t("assignedDirectlyNotice")}
-              </div>
-            ) : null}
-            <div className="jobcard-header-row">
-              <span className="jobcard-tour-num">Tour #{job.tour}</span>
-              <div style={{ display: "flex", gap: 6 }}>
-                {job.status === "special_case" && (
-                  <span className="pill special_case">
-                    {AuthStore.statusLabel("special_case")}
-                  </span>
-                )}
-                {job.status === "accepted" && (
-                  <span className="pill accepted">{t("active")}</span>
-                )}
-                {job.status === "performed" && (
-                  <span className="pill performed">
-                    {AuthStore.statusLabel("performed")}
-                  </span>
-                )}
-                {job.status === "cancelled" && (
-                  <span className="pill cancelled">{t("cancelled")}</span>
-                )}
-                {job.status === "assigned" && (
-                  <span className="pill assigned">{t("assignedShort")}</span>
-                )}
-              </div>
-            </div>
-            <JobCardBody job={job} />
-            {jobNeedsDocCorrection(job, store) ? (
-              <div className="stack-8">
-                <span
-                  className="chip"
-                  style={{
-                    borderColor: "var(--st-cancelled)",
-                    color: "var(--st-cancelled)",
-                    fontSize: 11,
-                    padding: "1px 6px",
-                  }}
-                >
-                  {t("correctionRequiredBadge")}
-                </span>
-              </div>
-            ) : null}
-          </button>
+      {/* Swipeable list content — drag left/right to switch tabs */}
+      <SwipeViews
+        index={TAB_IDS.indexOf(tab)}
+        count={TAB_IDS.length}
+        onIndexChange={(i) => setTab(TAB_IDS[i])}
+        style={{ flex: 1, minHeight: 0, background: "var(--canvas)" }}
+      >
+        {TAB_IDS.map((tabId) => (
+          <React.Fragment key={tabId}>{renderJobsPane(tabId)}</React.Fragment>
         ))}
-        {filteredList.length > 0 ? (
-          <div className="list-end">— {t("endOfList")} —</div>
-        ) : null}
-      </div>
+      </SwipeViews>
     </>
   );
 };
@@ -3358,87 +3475,82 @@ const MyJobs = ({ onOpen }) => {
 // =========================================================================
 // REPORT PROBLEM SHEET
 // =========================================================================
+// ⚠ Service-partner entry (Storno-Workflow §1): a single sheet whose two
+// options start SEPARATE flows — Cancel order (immediate, slide-to-confirm)
+// and Report empty run (submitted for Autheon review). Both require a reason
+// and a ≥30-character explanation and confirm via slide-to-confirm so the
+// final action can't be triggered accidentally.
 const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   const { t } = useI18n();
-  const [path, setPath] = useState(null);
-  const [reason, setReason] = useState("driver_unavailable");
+  const [path, setPath] = useState(null); // 'cancel' | 'not_performable'
+  const [cancelStep, setCancelStep] = useState("warn"); // 'warn' | 'form'
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [reason, setReason] = useState("");
   const [text, setText] = useState("");
+  const [evidenceFiles, setEvidenceFiles] = useState([]);
+  const [evidenceNotice, setEvidenceNotice] = useState(null);
   const [slidePos, setSlidePos] = useState(0);
   const [slideDone, setSlideDone] = useState(false);
   const [slideDragging, setSlideDragging] = useState(false);
-  const [evidenceFiles, setEvidenceFiles] = useState([]);
-  const [evidenceNotice, setEvidenceNotice] = useState(null);
   const trackRef = useRef(null);
   const evidenceInputRef = useRef(null);
-  const valid = text.trim().length >= 10;
+  const MIN = 30;
+  const valid = text.trim().length >= MIN;
 
-  const pathOptions = [
-    ["cancel", t("reportProblemCancelTitle"), t("reportProblemCancelSub")],
-    [
-      "not_performable",
-      t("reportProblemNotPerformableTitle"),
-      t("reportProblemNotPerformableSub"),
-    ],
-  ];
   const cancelReasons = [
-    [
-      "driver_unavailable",
-      t("reportCancelDriverUnavailable"),
-      t("reportCancelDriverUnavailableSub"),
-    ],
-    [
-      "vehicle_not_available",
-      t("reportCancelVehicleNotAvailable"),
-      t("reportCancelVehicleNotAvailableSub"),
-    ],
-    [
-      "customer_cancelled",
-      t("reportCancelCustomerCancelled"),
-      t("reportCancelCustomerCancelledSub"),
-    ],
-    [
-      "appointment_not_possible",
-      t("reportCancelAppointmentNotPossible"),
-      t("reportCancelAppointmentNotPossibleSub"),
-    ],
-    [
-      "incorrect_order_data",
-      t("reportCancelIncorrectData"),
-      t("reportCancelIncorrectDataSub"),
-    ],
-    [
-      "vehicle_not_roadworthy",
-      t("reportCancelVehicleNotRoadworthy"),
-      t("reportCancelVehicleNotRoadworthySub"),
-    ],
-    ["other", t("reportCancelOther"), t("reportCancelOtherSub")],
+    ["appointment_not_kept", t("spCancelReasonAppointment")],
+    ["booked_accidentally", t("spCancelReasonAccidental")],
+    ["org_not_possible", t("spCancelReasonOrgImpossible")],
+    ["other", t("spCancelReasonOther")],
   ];
-  const notPerformableReasons = [
-    [
-      "vehicle_not_on_site",
-      t("problemReasonNotOnSite"),
-      t("problemReasonNotOnSiteSub"),
-    ],
-    [
-      "vehicle_not_roadworthy",
-      t("problemReasonNotRoadworthy"),
-      t("problemReasonNotRoadworthySub"),
-    ],
-    [
-      "contact_unreachable",
-      t("problemReasonNoContact"),
-      t("problemReasonNoContactSub"),
-    ],
-    [
-      "wrong_address",
-      t("problemReasonWrongAddress"),
-      t("problemReasonWrongAddressSub"),
-    ],
-    ["other", t("problemReasonOther"), t("problemReasonOtherSub")],
+  const emptyRunReasons = [
+    ["not_operational", t("emptyRunReasonNotOperational")],
+    ["not_roadworthy", t("emptyRunReasonNotRoadworthy")],
+    ["not_present", t("emptyRunReasonNotPresent")],
+    ["not_released", t("emptyRunReasonNotReleased")],
+    ["key_docs_missing", t("emptyRunReasonKeyDocs")],
+    ["other", t("emptyRunReasonOther")],
   ];
-  const reasonList = path === "cancel" ? cancelReasons : notPerformableReasons;
+  const isCancel = path === "cancel";
+  const reasonList = isCancel ? cancelReasons : emptyRunReasons;
+  const reasonLabel = isCancel ? t("spCancelReasonLabel") : t("emptyRunReasonLabel");
+  const explLabel = isCancel
+    ? t("spCancelExplanationLabel")
+    : t("emptyRunDescLabel");
+  const explPlaceholder = isCancel
+    ? t("spCancelExplanationPlaceholder")
+    : t("emptyRunDescPlaceholder");
+  const slideLabel = isCancel ? t("spCancelSlide") : t("emptyRunSlide");
+  const slideDoneLabel = isCancel ? t("spCancelSlideDone") : t("emptyRunSlideDone");
+  const slideLockedLabel = isCancel
+    ? t("spCancelSlideLocked")
+    : t("emptyRunSlideLocked");
+
+  // Latest submit closure for the slide gesture (evidence only for empty run).
+  const submitRef = useRef(() => {});
+  submitRef.current = () =>
+    onSubmit(path, reason, text.trim(), isCancel ? [] : evidenceFiles);
 
   const slideEnabled = valid && !slideDone;
+
+  const choosePath = (id) => {
+    setPath(id);
+    setReason(id === "cancel" ? "appointment_not_kept" : "not_operational");
+    setText("");
+    setEvidenceFiles([]);
+    setEvidenceNotice(null);
+    setSlidePos(0);
+    setSlideDone(false);
+    setCancelStep("warn");
+    setTermsOpen(false);
+  };
+  const backToEntry = () => {
+    setPath(null);
+    setEvidenceFiles([]);
+    setSlidePos(0);
+    setSlideDone(false);
+    setTermsOpen(false);
+  };
 
   const onSlideStart = (e) => {
     e.preventDefault();
@@ -3466,7 +3578,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
         setSlidePos(maxX);
         setSlideDone(true);
         cleanup();
-        setTimeout(() => onSubmit("cancel", reason, text.trim(), []), 380);
+        setTimeout(() => submitRef.current(), 380);
       }
     };
     const up = (ev) => {
@@ -3490,6 +3602,53 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
   };
+
+  // Which UI to show: entry → (cancel: warn → form) | (empty run: form).
+  const showCancelWarn = isCancel && cancelStep === "warn";
+  const showForm = path && !showCancelWarn;
+
+  const slideBlock = (
+    <div className="slide-confirm-wrap mt-16">
+      <div
+        ref={trackRef}
+        className={
+          "slide-confirm" +
+          (slideDone ? " done" : "") +
+          (slideDragging ? " dragging" : "") +
+          (!slideEnabled ? " disabled" : "")
+        }
+        aria-disabled={!slideEnabled}
+      >
+        <div className="track-text">
+          {slideDone ? slideDoneLabel : valid ? slideLabel : slideLockedLabel}
+        </div>
+        <div className="slide-fill" style={{ width: valid ? slidePos : 0 }} />
+        <div
+          className="track-text track-text-fill"
+          style={{
+            clipPath: `inset(0 calc(100% - ${valid ? slidePos : 0}px) 0 0)`,
+          }}
+        >
+          {slideDone ? slideDoneLabel : valid ? slideLabel : slideLockedLabel}
+        </div>
+        <div
+          className="thumb"
+          style={{ transform: `translateX(${valid ? slidePos : 0}px)` }}
+          onPointerDown={slideEnabled ? onSlideStart : undefined}
+          tabIndex={slideEnabled ? 0 : -1}
+        >
+          {slideDone ? (
+            <SlideCheckIcon />
+          ) : valid ? (
+            <SlideArrowIcon />
+          ) : (
+            <SlideLockIcon />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
@@ -3501,26 +3660,35 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
             </span>
             {t("reportProblem")}
           </h2>
-          <button type="button" onClick={onClose} className="btn icon sm" aria-label={t("dismiss")}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn icon sm"
+            aria-label={t("dismiss")}
+          >
             <Ic.X />
           </button>
         </div>
         <div className="sheet-body">
           {!path ? (
             <div className="flex-col-gap-10">
-              {pathOptions.map(([id, label, sub]) => (
+              {[
+                [
+                  "cancel",
+                  t("warnEntryCancelOption"),
+                  t("warnEntryCancelSub"),
+                ],
+                [
+                  "not_performable",
+                  t("warnEntryEmptyRunOption"),
+                  t("warnEntryEmptyRunSub"),
+                ],
+              ].map(([id, label, sub]) => (
                 <button
                   key={id}
                   type="button"
                   className="radio-card"
-                  onClick={() => {
-                    setPath(id);
-                    setReason(id === "cancel" ? "driver_unavailable" : "other");
-                    setText("");
-                    setEvidenceFiles([]);
-                    setSlidePos(0);
-                    setSlideDone(false);
-                  }}
+                  onClick={() => choosePath(id)}
                 >
                   <span className="ring"></span>
                   <div>
@@ -3530,24 +3698,68 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                 </button>
               ))}
             </div>
+          ) : showCancelWarn ? (
+            <>
+              <button
+                type="button"
+                className="btn ghost xs"
+                style={{ marginBottom: 12, padding: 0 }}
+                onClick={backToEntry}
+              >
+                {t("back")}
+              </button>
+              <div
+                role="alert"
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(234, 179, 8, 0.45)",
+                  background: "rgba(234, 179, 8, 0.1)",
+                  fontSize: 12.5,
+                  lineHeight: 1.55,
+                }}
+              >
+                <p style={{ margin: 0 }}>{t("spCancelBindingWarning")}</p>
+                <p style={{ margin: "10px 0 0" }}>
+                  <button
+                    type="button"
+                    className="btn ghost xs"
+                    style={{
+                      color: "var(--primary)",
+                      padding: 0,
+                      textDecoration: "underline",
+                      textUnderlineOffset: 3,
+                    }}
+                    aria-expanded={termsOpen}
+                    onClick={() => setTermsOpen((v) => !v)}
+                  >
+                    {t("spCancelTermsLink")}
+                  </button>
+                </p>
+                {termsOpen ? (
+                  <div className="stack-8">
+                    <InlineAlert
+                      tone="info"
+                      message={t("spCancelTermsPlaceholderNotice")}
+                      onDismiss={() => setTermsOpen(false)}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </>
           ) : (
             <>
               <button
                 type="button"
                 className="btn ghost xs"
                 style={{ marginBottom: 12, padding: 0 }}
-                onClick={() => {
-                  setPath(null);
-                  setEvidenceFiles([]);
-                  setSlidePos(0);
-                  setSlideDone(false);
-                }}
+                onClick={isCancel ? () => setCancelStep("warn") : backToEntry}
               >
                 {t("back")}
               </button>
-              <div className="field-label">{t("reason")}</div>
+              <div className="field-label">{reasonLabel}</div>
               <div className="flex-col-gap-10" style={{ marginBottom: 18 }}>
-                {reasonList.map(([id, label, sub]) => (
+                {reasonList.map(([id, label]) => (
                   <button
                     key={id}
                     type="button"
@@ -3557,40 +3769,37 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                     <span className="ring"></span>
                     <div>
                       <div className="t">{label}</div>
-                      <div className="s">{sub}</div>
                     </div>
                   </button>
                 ))}
               </div>
-              <div className="field-label">{t("explanationRequired")}</div>
+              <div className="field-label">{explLabel}</div>
               <textarea
                 className="input"
-                placeholder={t("reportProblemPlaceholder")}
+                placeholder={explPlaceholder}
                 value={text}
                 onChange={(e) => {
                   const next = e.target.value;
                   setText(next);
-                  if (next.trim().length < 10) {
+                  if (next.trim().length < MIN) {
                     setSlidePos(0);
                     setSlideDone(false);
                   }
                 }}
               />
               <div className="label" style={{ marginTop: 6 }}>
-                {t("charsRequired")}{" "}
                 <span
                   className={"slide-char-count " + (valid ? "ok" : "need-more")}
                 >
-                  {text.trim().length}/10
-                </span>
+                  {text.trim().length}
+                </span>{" "}
+                {t("chars30Required")}
               </div>
-              {path === "not_performable" ? (
+              {!isCancel ? (
                 <div className="mt-16">
-                  <div className="field-label">
-                    {t("reportProblemEvidenceLabel")}
-                  </div>
+                  <div className="field-label">{t("emptyRunEvidenceLabel")}</div>
                   <p className="req-panel-desc" style={{ margin: "6px 0 10px" }}>
-                    {t("reportProblemEvidenceHint")}
+                    {t("emptyRunEvidenceHint")}
                   </p>
                   <input
                     ref={evidenceInputRef}
@@ -3655,9 +3864,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                             borderRadius: "var(--r-2)",
                           }}
                         >
-                          <span className="pdf-name">
-                            {f.name}
-                          </span>
+                          <span className="pdf-name">{f.name}</span>
                           <button
                             type="button"
                             className="btn ghost xs"
@@ -3673,10 +3880,6 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                       ))}
                     </ul>
                   ) : null}
-                </div>
-              ) : null}
-              {path === "cancel" ? (
-                <>
                   <div
                     role="alert"
                     style={{
@@ -3689,109 +3892,28 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                       lineHeight: 1.55,
                     }}
                   >
-                    <p style={{ margin: 0 }}>
-                      {t("reportProblemCancelBindingWarning")}
-                    </p>
-                    <p
-                      style={{
-                        margin: "10px 0 0",
-                        fontSize: 12,
-                        color: "var(--muted)",
-                      }}
-                    >
-                      <PolicyDisclosure introKey="reportProblemCancelTermsIntro" />
-                    </p>
+                    {t("emptyRunWarning")}
                   </div>
-                  <div className="slide-confirm-wrap mt-16">
-                    <div
-                      ref={trackRef}
-                      className={
-                        "slide-confirm" +
-                        (slideDone ? " done" : "") +
-                        (slideDragging ? " dragging" : "") +
-                        (!slideEnabled ? " disabled" : "")
-                      }
-                      aria-disabled={!slideEnabled}
-                    >
-                      <div className="track-text">
-                        {slideDone
-                          ? t("reportProblemCancelConfirmed")
-                          : valid
-                            ? t("slideToCancelOrder")
-                            : t("slideToCancelOrderLocked")}
-                      </div>
-                      <div
-                        className="slide-fill"
-                        style={{ width: valid ? slidePos : 0 }}
-                      />
-                      <div
-                        className="track-text track-text-fill"
-                        style={{
-                          clipPath: `inset(0 calc(100% - ${valid ? slidePos : 0}px) 0 0)`,
-                        }}
-                      >
-                        {slideDone
-                          ? t("reportProblemCancelConfirmed")
-                          : valid
-                            ? t("slideToCancelOrder")
-                            : t("slideToCancelOrderLocked")}
-                      </div>
-                      <div
-                        className="thumb"
-                        style={{
-                          transform: `translateX(${valid ? slidePos : 0}px)`,
-                        }}
-                        onPointerDown={slideEnabled ? onSlideStart : undefined}
-                        tabIndex={slideEnabled ? 0 : -1}
-                      >
-                        {slideDone ? (
-                          <SlideCheckIcon />
-                        ) : valid ? (
-                          <SlideArrowIcon />
-                        ) : (
-                          <SlideLockIcon />
-                        )}
-                      </div>
-                    </div>
-                    {!valid && !slideDone && (
-                      <p className="slide-confirm-hint">
-                        {t("slideToCancelOrderHint")}
-                      </p>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <p
-                  style={{
-                    margin: "14px 0 0",
-                    fontSize: 12,
-                    color: "var(--muted)",
-                    lineHeight: 1.55,
-                  }}
-                >
-                  {t("reportProblemSpecialCaseNotice")}
-                </p>
-              )}
+                </div>
+              ) : null}
+              {slideBlock}
             </>
           )}
         </div>
-        {path === "not_performable" ? (
+        {showCancelWarn ? (
           <div className="sheet-foot">
             <button type="button" className="btn" onClick={onClose}>
-              {t("close")}
+              {t("spCancelAbort")}
             </button>
             <button
               type="button"
               className="btn primary"
-              disabled={!valid}
-              onClick={() =>
-                onSubmit("not_performable", reason, text.trim(), evidenceFiles)
-              }
+              onClick={() => setCancelStep("form")}
             >
-              {t("submit")}
+              {t("spCancelContinue")}
             </button>
           </div>
-        ) : path ? (
+        ) : showForm ? (
           <div className="sheet-foot">
             <button type="button" className="btn block" onClick={onClose}>
               {t("close")}
@@ -3848,7 +3970,7 @@ const PendingNotice = ({ onClose, kind }) => {
           </svg>
         </div>
         <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 600 }}>
-          {t("requestSent")}
+          {isCancel ? t("spCancelSuccessTitle") : t("emptyRunSuccessTitle")}
         </h3>
         <p
           style={{
@@ -3858,9 +3980,7 @@ const PendingNotice = ({ onClose, kind }) => {
             lineHeight: 1.55,
           }}
         >
-          {isCancel
-            ? t("reportProblemCancelSent")
-            : t("reportProblemSpecialCaseSent")}
+          {isCancel ? t("spCancelSuccessBody") : t("emptyRunSuccessBody")}
         </p>
         <button
           type="button"
@@ -4369,17 +4489,18 @@ const DriverNotificationsPane = ({ onClose, onBack, onOpenJob, onOpenInfopoint }
   );
 };
 
+// Email intentionally excluded — it is the driver's own sign-in credential
+// and is managed self-serve in the Account & sign-in card, not through the
+// ops-approval master-data flow.
 const PROFILE_MDR_FIELDS = [
   { key: "company", required: true },
   { key: "address" },
-  { key: "email", required: true, type: "email" },
   { key: "phone" },
 ];
 
 const emptyMasterDataChangeForm = (driver) => ({
   company: driver?.company || "",
   address: driver?.address || "",
-  email: driver?.email || "",
   phone: driver?.phone || "",
 });
 
@@ -4389,6 +4510,267 @@ const fieldChanged = (before, after) =>
 const formatCalendarDayLabel = (dayKey) => {
   const m = String(dayKey || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return m ? `${m[3]}.${m[2]}.${m[1]}` : dayKey || "—";
+};
+
+// 6-digit confirmation-code entry (auto-advance + paste support).
+const CODE_LEN = 6;
+const CodeInput = ({ value, onChange, disabled }) => {
+  const refs = useRef([]);
+  const digits = String(value || "")
+    .padEnd(CODE_LEN, " ")
+    .slice(0, CODE_LEN)
+    .split("")
+    .map((c) => (c === " " ? "" : c));
+
+  const setDigit = (idx, ch) => {
+    const clean = ch.replace(/\D/g, "");
+    const next = digits.slice();
+    if (clean.length > 1) {
+      // paste / multiple chars: fill forward from idx
+      for (let i = 0; i < clean.length && idx + i < CODE_LEN; i++) {
+        next[idx + i] = clean[i];
+      }
+      onChange(next.join("").trim());
+      const landing = Math.min(idx + clean.length, CODE_LEN - 1);
+      refs.current[landing]?.focus();
+      return;
+    }
+    next[idx] = clean;
+    onChange(next.join(""));
+    if (clean && idx < CODE_LEN - 1) refs.current[idx + 1]?.focus();
+  };
+
+  const onKeyDown = (idx, e) => {
+    if (e.key === "Backspace" && !digits[idx] && idx > 0) {
+      refs.current[idx - 1]?.focus();
+    }
+  };
+
+  return (
+    <div className="code-input-row" role="group" aria-label={CODE_LEN + "-digit code"}>
+      {Array.from({ length: CODE_LEN }, (_, i) => (
+        <input
+          key={i}
+          ref={(el) => (refs.current[i] = el)}
+          className="code-input-box"
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={1}
+          disabled={disabled}
+          value={digits[i]}
+          aria-label={`Digit ${i + 1}`}
+          onChange={(e) => setDigit(i, e.target.value)}
+          onKeyDown={(e) => onKeyDown(i, e)}
+          onFocus={(e) => e.target.select()}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Self-serve email change — a single bottom sheet advancing through
+// enter-new-address → confirm-with-code → updated. The address only becomes
+// active after the code sent to the NEW inbox is confirmed; the old inbox
+// stays live until then and is notified on success. No ops approval.
+const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const [step, setStep] = useState("enter"); // enter | code | done
+  const [newEmail, setNewEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [demoCode, setDemoCode] = useState("");
+  const [confirmedEmail, setConfirmedEmail] = useState("");
+  const [resendLeft, setResendLeft] = useState(0);
+
+  // Reset everything whenever the sheet opens.
+  useEffect(() => {
+    if (open) {
+      setStep("enter");
+      setNewEmail("");
+      setCode("");
+      setError("");
+      setDemoCode("");
+      setConfirmedEmail("");
+      setResendLeft(0);
+    }
+  }, [open]);
+
+  // Resend cooldown countdown.
+  useEffect(() => {
+    if (resendLeft <= 0) return undefined;
+    const id = setInterval(() => setResendLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(id);
+  }, [resendLeft]);
+
+  const errKey = {
+    invalid_email: "changeEmailErrInvalid",
+    same_email: "changeEmailErrSame",
+    duplicate_email: "changeEmailErrDuplicate",
+    invalid_code: "changeEmailErrCodeInvalid",
+    expired: "changeEmailErrCodeExpired",
+    restricted: "changeEmailErrRestricted",
+  };
+  const mapErr = (reason) => t(errKey[reason] || "changeEmailErrGeneric");
+
+  const close = () => {
+    if (step !== "done") store.cancelDriverEmailChange();
+    onClose();
+  };
+
+  const sendCode = () => {
+    const r = store.startDriverEmailChange(newEmail);
+    if (!r.ok) {
+      setError(mapErr(r.reason));
+      return;
+    }
+    setError("");
+    setCode("");
+    setDemoCode(r.code);
+    setResendLeft(30);
+    setStep("code");
+  };
+
+  const resend = () => {
+    if (resendLeft > 0) return;
+    const r = store.resendDriverEmailCode();
+    if (!r.ok) {
+      setError(mapErr(r.reason));
+      return;
+    }
+    setError("");
+    setCode("");
+    setDemoCode(r.code);
+    setResendLeft(30);
+  };
+
+  const confirm = () => {
+    const r = store.confirmDriverEmailChange(code);
+    if (!r.ok) {
+      setError(mapErr(r.reason));
+      return;
+    }
+    setConfirmedEmail(r.email);
+    setError("");
+    setStep("done");
+  };
+
+  const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+  let title = t("changeEmailTitle");
+  let body = null;
+  let footer = null;
+
+  if (step === "enter") {
+    body = (
+      <div className="stack-4" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="change-email-current">
+          {t("changeEmailCurrentPrefix")} · <span className="mono">{currentEmail}</span>
+        </div>
+        <div>
+          <label className="field-label" htmlFor="change-email-new">
+            {t("changeEmailNewLabel")}
+          </label>
+          <input
+            id="change-email-new"
+            className="input"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder={t("changeEmailNewPlaceholder")}
+            value={newEmail}
+            onChange={(e) => {
+              setNewEmail(e.target.value);
+              if (error) setError("");
+            }}
+          />
+        </div>
+        <p className="section-hint" style={{ margin: 0 }}>
+          {t("changeEmailCodeNotice")}
+        </p>
+        {error ? <InlineAlert tone="error" message={error} /> : null}
+      </div>
+    );
+    footer = (
+      <button
+        type="button"
+        className="btn primary block"
+        disabled={!newEmail.trim()}
+        onClick={sendCode}
+      >
+        {t("changeEmailSendCode")}
+      </button>
+    );
+  } else if (step === "code") {
+    title = t("changeEmailCodeTitle");
+    body = (
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="change-email-current">
+          {t("changeEmailCodeSentTo", { email: newEmail })}
+        </div>
+        <CodeInput value={code} onChange={(v) => { setCode(v); if (error) setError(""); }} />
+        <div className="change-email-resend-row">
+          {resendLeft > 0 ? (
+            <span className="section-hint">
+              {t("changeEmailResendIn", { time: mmss(resendLeft) })}
+            </span>
+          ) : (
+            <button type="button" className="btn ghost xs" onClick={resend}>
+              {t("changeEmailResend")}
+            </button>
+          )}
+        </div>
+        {demoCode ? (
+          <InlineAlert tone="info" message={t("changeEmailDemoHint", { code: demoCode })} />
+        ) : null}
+        {error ? <InlineAlert tone="error" message={error} /> : null}
+      </div>
+    );
+    footer = (
+      <>
+        <button
+          type="button"
+          className="btn ghost"
+          onClick={() => {
+            setStep("enter");
+            setError("");
+          }}
+        >
+          {t("changeEmailBack")}
+        </button>
+        <button
+          type="button"
+          className="btn primary"
+          disabled={code.replace(/\D/g, "").length !== CODE_LEN}
+          onClick={confirm}
+        >
+          {t("changeEmailConfirm")}
+        </button>
+      </>
+    );
+  } else {
+    title = t("changeEmailSuccessTitle");
+    body = (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", textAlign: "center" }}>
+        <span className="change-email-success-check" aria-hidden="true">✓</span>
+        <p style={{ margin: 0 }}>
+          {t("changeEmailSuccessBody", { email: confirmedEmail })}
+        </p>
+      </div>
+    );
+    footer = (
+      <button type="button" className="btn primary block" onClick={onClose}>
+        {t("changeEmailDone")}
+      </button>
+    );
+  }
+
+  return (
+    <Sheet open={open} onClose={close} title={title} footer={footer}>
+      {body}
+    </Sheet>
+  );
 };
 
 const DriverProbationCard = () => {
@@ -4631,6 +5013,8 @@ const ProfilePaneFull = () => {
   };
   const [mdFeedback, setMdFeedback] = useState(null); // {tone, message}
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [emailSheetOpen, setEmailSheetOpen] = useState(false);
+  const emailChange = store.getDriverEmailChange();
   const submitMasterDataRequest = () => {
     const r = store.requestMasterDataChange(mdForm);
     if (r.ok) {
@@ -4696,6 +5080,42 @@ const ProfilePaneFull = () => {
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Account & sign-in — driver-owned credential, directly under the
+            identity block. Self-serve email change (verify, don't approve). */}
+        <div className="section-card account-signin-card">
+          <h2 className="section-title account-signin-title">
+            <span className="account-signin-key" aria-hidden="true">
+              🔑
+            </span>
+            {t("accountSigninTitle")}
+          </h2>
+          <div className="account-email-row">
+            <div className="mdr-field-label">{t("accountEmailLabel")}</div>
+            <div className="account-email-value">
+              <span className="account-email-address">{d?.email || "—"}</span>
+              {emailChange?.pending ? (
+                <span className="pill assigned account-email-badge">
+                  {t("accountEmailPending")}
+                </span>
+              ) : (
+                <span className="account-email-verified">
+                  <span className="dot" aria-hidden="true">
+                    ●
+                  </span>{" "}
+                  {t("accountEmailVerified")}
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn block stack-16"
+            onClick={() => setEmailSheetOpen(true)}
+          >
+            {t("accountEmailChangeBtn")}
+          </button>
         </div>
 
         {/* Probation progress card (hidden after release) */}
@@ -4929,7 +5349,11 @@ const ProfilePaneFull = () => {
                 type="text"
                 className="postal-chip-input"
                 value={postalText}
-                onChange={(e) => setPostalText(e.target.value)}
+                inputMode="numeric"
+                maxLength={5}
+                onChange={(e) =>
+                  setPostalText(e.target.value.replace(/\D/g, ""))
+                }
                 onKeyDown={handleKeyDown}
                 onBlur={handleBlur}
                 placeholder={
@@ -5001,6 +5425,12 @@ const ProfilePaneFull = () => {
         </button>
       </div>
 
+      <ChangeEmailSheet
+        open={emailSheetOpen}
+        onClose={() => setEmailSheetOpen(false)}
+        currentEmail={d?.email || ""}
+      />
+
       <ConfirmSheet
         open={signOutOpen}
         title={t("signOut")}
@@ -5018,6 +5448,7 @@ const Infopoint = () => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [subTab, setSubTab] = useState("documents");
+  const INFO_TABS = ["documents", "news", "help"];
   const [openNewsId, setOpenNewsId] = useState(null);
   const [docPreview, setDocPreview] = useState(null);
   const readerId = store.getCurrentDriver()?.id || AuthStore.DEMO_DRIVER;
@@ -5032,11 +5463,10 @@ const Infopoint = () => {
 
   return (
     <div
-      className="scroll"
       style={{
-        padding: "16px 20px 24px",
         background: "var(--paper-2)",
         flex: 1,
+        minHeight: 0,
         display: "flex",
         flexDirection: "column",
       }}
@@ -5050,7 +5480,6 @@ const Infopoint = () => {
       <div
         style={{
           background: "var(--paper)",
-          margin: "-16px -20px 0 -20px",
           padding: "16px 20px 14px",
           borderBottom: "1px solid var(--line)",
         }}
@@ -5108,8 +5537,20 @@ const Infopoint = () => {
         </div>
       </div>
 
-      <div style={{ flex: 1, marginTop: 16 }}>
-        {subTab === "documents" ? (
+      {/* Swipeable tab content — drag left/right to switch tabs */}
+      <SwipeViews
+        index={INFO_TABS.indexOf(subTab)}
+        count={INFO_TABS.length}
+        onIndexChange={(i) => setSubTab(INFO_TABS[i])}
+        style={{ flex: 1, minHeight: 0, background: "var(--paper-2)" }}
+      >
+        {INFO_TABS.map((paneId) => (
+          <div
+            key={paneId}
+            className="swipe-pane-body"
+            style={{ padding: "16px 20px 24px" }}
+          >
+            {paneId === "documents" ? (
           <>
             <div className="infopoint-card">
               {docs.map((d) => (
@@ -5197,7 +5638,7 @@ const Infopoint = () => {
               {t("emergencyDispatchNotice")}
             </div>
           </>
-        ) : subTab === "help" ? (
+        ) : paneId === "help" ? (
           <HelpSupportContent />
         ) : (
           <>
@@ -5297,8 +5738,10 @@ const Infopoint = () => {
               </div>
             )}
           </>
-        )}
-      </div>
+            )}
+          </div>
+        ))}
+      </SwipeViews>
     </div>
   );
 };

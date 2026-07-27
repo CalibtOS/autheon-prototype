@@ -105,6 +105,19 @@ New finding from the PDF: the **button board renders the primary button dark/nea
 
 **Same-evening client review (remediation R22–R27):** axle type fully localized (EN/DE); **marketplace cards drop tour number + status by client decision** (all marketplace cards are Published — a recorded deviation from §4's status-in-lists wording; My Jobs keeps both); card footer split into a calm model+price line plus a wrapping tag row; detail vehicle-info reordered into a labelled chip block; document viewing replaced with a full-height in-app viewer rendering a seeded real 2-page PDF (item 35 scanability risk closed for documents); conditional plate capture added (registered → plate required, deregistered → no plate, red plates → §16 FZV `06`-series number required) — mirrored in `prd.json`/`schema.dbml`/`logical-model.md`/changelog without a PRD version change.
 
+## v1.2 addendum — post-remediation feature components (2026-07)
+
+Feature commits landed after the v1.1 remediation (`3ef6597` sticky sidebars + fixed-height shell; `1cdf1a7` driver self-service email change). Screened against the DDB the same way; implementation is tracked in [`design-direction-board-remediation.md`](design-direction-board-remediation.md) "Feature changes since remediation" (F1–F4).
+
+| Area | DDB dimension | Status | Notes |
+|------|---------------|--------|-------|
+| Fixed-height app shell + sticky Create/Edit-Job sidebars (F1–F2) | Layout only — no color/type/motion impact | **COVERED (n/a to visuals)** | Header pinned, surfaces scroll internally; sticky sidebars cap height and drop out ≤1200px so nothing overlaps or scrolls horizontally. Documented in `ui-ux-production-plan.md` §4.4 |
+| Account & sign-in verified badge (F3) | #10/#34 status text-labelled, not color-alone | **COVERED** | Dot + "Verified account" label always present; pending state is a text-labelled `.pill.assigned` |
+| Change-email code input (F4) | #4 mono only for data identifiers | **COVERED** | 6-box `CodeInput` uses `--font-mono` for a one-time code (a data identifier, like PLZ/timestamps) — consistent with the mono-usage rule |
+| Change-email sheet radii/focus (F4) | #13 moderate radius · #14 subtle elevation · focus ring | **COVERED** | `--r-2` boxes, brand focus ring `rgba(var(--primary-rgb),…)`; success disc is a restrained brand tint, not a large purple surface |
+
+**New gap:** the verified badge references `var(--st-ok, #1f9d55)` — `--st-ok` is **not defined** in the token set, so it falls back to a hardcoded green (an off-token hex, cf. audit item #6). Recommended action: define `--st-ok` (light + dark, contrast-checked) or reuse `--st-accepted`. Recorded in [`brand-tokens.md`](brand-tokens.md) status section. All other new rules stay within tokens.
+
 ## Method notes
 
 - Rendered checks: Chromium via Playwright (`prototype/project/_capture-design-audit.mjs`), driver phone frame light+dark, admin 1440px light+dark. Screenshot set in [`audit-2026-07-14/before/`](audit-2026-07-14/before/).

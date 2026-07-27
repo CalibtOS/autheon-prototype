@@ -1,5 +1,8 @@
 ﻿// AUTHEON Version 1 database draft — PostgreSQL target.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
+// 2026-07-22 (PRD v2.5) — full admin order-editing implementation + Storno consistency pass. No new job columns: editing ALL eligible business data on any non-terminal order (Storno §7) reuses existing jobs/job_locations/job_financials columns and is audited via audit_events.action_key='order_edited' with metadata jsonb carrying the per-field {field, previous, new} diff list (one logical edit action; status is preserved, never mutated by an edit). Added empty_run_evidence (empty-run report attachments → upload_assets), mirroring problem_report_evidence, so §3.2 optional evidence has a first-class home instead of overloading the legacy job_problem_reports path. Legacy removal (PRD v2.6, 2026-07-23 — "ignore the special case"): the special_case job_status value and the problem_type.not_performable value have been REMOVED entirely (not merely deprecated) — the canonical driver problem workflow is sp_cancellations + empty_run_reports/empty_run_evidence, and the empty-run report model fully replaces the old not-performable → special-case path. New notification_type (user_notifications) values used by the app: order_updated_after_booking, empty_run_reported, empty_run_recognised, empty_run_not_recognised (notification_type stays a free varchar — no enum change).
+// 2026-07-21 (PRD v2.4, T2) — order cancellation & empty-run workflow. Extended job_status with cancelled_by_sp, cancelled_by_autheon, empty_run_reported, empty_run_recognised, empty_run_not_recognised (decision: extended enum; board umbrellas + reason chip). Added cancellation_actor.service_partner; empty_run_reason / sp_cancellation_reason / empty_run_decision enums; sp_cancellations, empty_run_reports, internal_notes tables. New audit actions: cancelled_by_service_partner, cancelled_by_autheon, empty_run_reported, empty_run_recognised, empty_run_not_recognised, order_edited (prev+new), order_duplicated, internal_note_added, plus publication-of-duplicate.
+// 2026-07-20 (PRD v2.3, T1) — driver self-service email change (verify, don't approve): added email_change_requests table (6-digit code sent to the NEW address, old address stays live until confirmed, no ops approval). Email is removed from the ops-managed master-data change scope — master_data_change_requests no longer carries email; users.email is changed only via a confirmed email_change_request. New audit actions driver_email_change_requested / driver_email_changed.
 // 2026-07-14 (PRD v2.1 follow-up, same version) — important-vehicle-info conditional rules: added jobs.red_license_plate_number (§16 FZV dealer transfer plate, operator-bound); documented that licenseplate is app-required when registered and null when deregistered.
 // 2026-07-13 (PRD v2.0, F-01) — removed deprecated master_data_change_type.daily_limit_override enum value. Documented that drivers.probation_job_limit is a per-driver snapshot seeded at creation from app_settings 'driver.acceptance.probationJobCount' (application-layer default, literal column default is a fallback only); no structural change to columns.
 // Last updated: 2026-07-10 (PRD v2.0) — no structural change. Annotated drivers.driver_code semantics (F-03: system-assigned, immutable, never reused) and documented same-day per-leg time-window rule (F-04) in logical-model.md. Probation UI, Infopoint View/Download, branding/domain/Report-Problem-timing are UI/open items with no schema impact.
@@ -19,14 +22,26 @@ Enum user_role {
   driver
 }
 
+// Task 2 (2026-07-21) extends the enum with explicit machine statuses for the
+// Storno/empty-run workflow (decision: extended enum, not a discriminator —
+// see prd.json client_status_mapping). Each has its own rules, ⚠-availability
+// logic, and audit entries. The Jobs board groups them under umbrella columns
+// (see logical-model.md "Status model") + a precise reason chip. `cancelled`
+// is retained as a legacy umbrella for backward compat. The former
+// `special_case` status has been REMOVED — the empty-run workflow
+// (empty_run_reported/recognised/not_recognised) fully replaces it.
 Enum job_status {
   draft
   published
   assigned
   accepted
   performed
-  cancelled
-  special_case
+  cancelled                  // legacy umbrella (pre-Task-2)
+  cancelled_by_sp            // §2: service partner cancelled a booked order
+  cancelled_by_autheon       // §5: admin/Autheon cancelled (booked or unbooked)
+  empty_run_reported         // §3: empty run reported, pending Autheon review
+  empty_run_recognised       // §4.1: review outcome — recognised (terminal)
+  empty_run_not_recognised   // §4.2: review outcome — not recognised (terminal)
 }
 
 Enum assignment_mode {
@@ -45,9 +60,12 @@ Enum location_role {
   delivery
 }
 
+// LEGACY (pre-Task-2). The canonical Storno driver flows are sp_cancellations
+// (→ cancelled_by_sp) and empty_run_reports (→ empty_run_reported → review).
+// The former `not_performable` value — which drove the removed special-case
+// status — has been dropped; empty_run_reports fully replaces it.
 Enum problem_type {
   cancel_order
-  not_performable
 }
 
 Enum problem_status {
@@ -96,6 +114,28 @@ Enum cancellation_actor {
   driver
   admin
   customer
+  service_partner   // Task 2 §2: service partner self-cancelled a booked order
+}
+
+Enum empty_run_reason {
+  vehicle_not_operational      // Fahrzeug ist technisch nicht fahrbereit
+  vehicle_not_roadworthy       // Fahrzeug ist nicht verkehrssicher
+  vehicle_not_present          // am angegebenen Standort nicht vorhanden/auffindbar
+  vehicle_not_released         // Fahrzeug wird nicht herausgegeben
+  key_or_documents_missing     // Fahrzeugschlüssel oder Unterlagen fehlen
+  other                        // Sonstiges
+}
+
+Enum sp_cancellation_reason {
+  appointment_not_kept         // Termin kann nicht eingehalten werden
+  booked_accidentally          // Auftrag versehentlich gebucht
+  org_not_possible             // Durchführung organisatorisch nicht möglich
+  other                        // Sonstiges
+}
+
+Enum empty_run_decision {
+  recognised                   // §4.1 Anerkannt
+  not_recognised               // §4.2 Nicht anerkannt
 }
 
 // Important vehicle info (Design Direction Board 07/2026 §5; resolved 2026-07-14
@@ -111,7 +151,36 @@ Enum master_data_change_type {
   address
   vehicle_info
   license
-  contact
+  contact  // company/phone/contact details only — email is NOT part of master data (T1); it is driver-owned and changed via email_change_requests.
+}
+
+// Driver self-service email change (T1, "verify, don't approve"). The driver
+// owns their sign-in email (users.email). A change is proved by a 6-digit code
+// sent to the NEW address; the OLD address stays active until the code is
+// confirmed. No operations/admin approval is involved. Store a HASH of the
+// code, never the plaintext. Enforce: at most one pending request per user
+// (partial unique index on user_id where status = 'pending'); expiry, attempt
+// cap, and resend throttle live in the application/logical-model layer.
+Enum email_change_status {
+  pending
+  confirmed
+  expired
+  cancelled
+}
+
+Table email_change_requests {
+  id uuid [pk]
+  user_id uuid [not null]  // FK users.id — the account whose sign-in email changes
+  current_email varchar(255) [not null]  // snapshot of the old address at request time
+  new_email varchar(255) [not null]
+  code_hash varchar(255) [not null]  // hash of the 6-digit code; plaintext is only sent to new_email
+  status email_change_status [not null, default: 'pending']
+  attempts smallint [not null, default: 0]
+  resend_count smallint [not null, default: 0]
+  expires_at timestamptz [not null]
+  created_at timestamptz [not null]
+  confirmed_at timestamptz  // set on success; users.email + users.email_verified updated in the same transaction
+  cancelled_at timestamptz
 }
 
 Enum notification_channel {
@@ -453,6 +522,59 @@ Table master_data_change_requests {
   admin_note text
 }
 
+// Task 2 §2 — service-partner cancellation of a booked order. Stored per §2.2:
+// reason, explanation, date/time, executing partner. The job moves to
+// cancelled_by_sp (jobs.operational_status) and stays in history; this row
+// captures the cancellation detail. No cancellation-fee processing in-system.
+Table sp_cancellations {
+  id uuid [pk]
+  job_id uuid [not null, unique]
+  driver_id uuid [not null]              // executing service partner
+  reason sp_cancellation_reason [not null]
+  explanation text [not null]            // min 30 chars (app-enforced)
+  created_at timestamptz [not null]
+}
+
+// Task 2 §3–§4 — empty-run report + admin review. One report per job (the ⚠
+// action is blocked while pending). Optional evidence lives in empty_run_evidence
+// (below) — never required to submit (§3.2). decision/decided_* set by admin review.
+Table empty_run_reports {
+  id uuid [pk]
+  job_id uuid [not null, unique]
+  driver_id uuid [not null]              // reporting service partner
+  reason empty_run_reason [not null]
+  description text [not null]            // min 30 chars (app-enforced)
+  status_before varchar(32) [not null]   // assigned | accepted
+  reported_at timestamptz [not null]
+  // Admin review (§4): exactly two outcomes, no intermediate state.
+  decision empty_run_decision            // null while pending review
+  decided_by_user_id uuid
+  decided_at timestamptz
+}
+
+// Task 2 §3.2 — optional evidence attached to an empty-run report (photo or
+// other proof). Mirrors problem_report_evidence but for the canonical empty-run
+// workflow so evidence is not overloaded onto the legacy job_problem_reports path.
+// Evidence is OPTIONAL and must never block submission of the report.
+Table empty_run_evidence {
+  id uuid [pk]
+  empty_run_report_id uuid [not null]
+  upload_asset_id uuid [not null]
+  original_filename_snapshot varchar(500)
+  created_at timestamptz [not null]
+}
+
+// Task 2 §6 — internal admin notes. Admin-only; NEVER exposed in the
+// service-partner frontend. Optional; auto-stamped with author + timestamp;
+// permanently attached to the order (append-only, not editable/deletable).
+Table internal_notes {
+  id uuid [pk]
+  job_id uuid [not null]
+  author_user_id uuid [not null]        // acting admin (name auto-stored)
+  body text [not null]
+  created_at timestamptz [not null]
+}
+
 Table infopoint_documents {
   id uuid [pk]
   title varchar(255) [not null]
@@ -625,6 +747,22 @@ Ref: job_problem_reports.reported_by_customer_id > customers.id
 Ref: job_problem_reports.resolved_by_user_id > users.id
 Ref: problem_report_evidence.problem_report_id > job_problem_reports.id
 Ref: problem_report_evidence.upload_asset_id > upload_assets.id
+
+// Task 2 (Storno) relationships — added 2026-07-22 (v2.5) so the DBML fully
+// reflects the sp_cancellations / empty_run_reports / empty_run_evidence /
+// internal_notes tables the PRD (Task 32) requires.
+Ref: sp_cancellations.job_id > jobs.id
+Ref: sp_cancellations.driver_id > drivers.id
+Ref: empty_run_reports.job_id > jobs.id
+Ref: empty_run_reports.driver_id > drivers.id
+Ref: empty_run_reports.decided_by_user_id > users.id
+Ref: empty_run_evidence.empty_run_report_id > empty_run_reports.id
+Ref: empty_run_evidence.upload_asset_id > upload_assets.id
+Ref: internal_notes.job_id > jobs.id
+Ref: internal_notes.author_user_id > users.id
+
+// T1 (driver self-service email change) relationship — added 2026-07-22 (v2.5).
+Ref: email_change_requests.user_id > users.id
 
 Ref: job_documents.job_id > jobs.id
 Ref: job_documents.uploaded_by_user_id > users.id

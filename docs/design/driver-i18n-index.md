@@ -9,9 +9,18 @@
 | `acceptTour` | Accept tour | Tour annehmen |
 | `acceptanceLegal` | Acceptance is binding. After commitment, use Report Problem to cancel or mark the tour as not performable. | Die Annahme ist verbindlich. Danach Problem melden nutzen, um zu stornieren oder die Tour als nicht durchführbar zu melden. |
 | `acceptedActive` | Accepted · active | Angenommen · aktiv |
+| `accountEmailChangeBtn` | Change | Ändern |
+| `accountEmailLabel` | Email | E-Mail |
+| `accountEmailPending` | Change pending | Änderung ausstehend |
+| `accountEmailVerified` | Verified | Bestätigt |
+| `accountSigninTitle` | Account & sign-in | Konto & Anmeldung |
 | `accountStatus` | Account status | Kontostatus |
 | `active` | Active | Aktiv |
 | `all` | All | Alle |
+| `appAppearance` | Appearance | Erscheinungsbild |
+| `appAppearanceHint` | Language and display preferences for this device. | Sprache und Anzeigeeinstellungen für dieses Gerät. |
+| `appLanguage` | Language | Sprache |
+| `appTheme` | Theme | Design |
 | `assignedDirectlyNotice` | Assigned directly by admin. | Direkt vom Administrator zugewiesen. |
 | `assignedShort` | Assigned | Zugewiesen |
 | `axle` | Axle | Achse |
@@ -24,8 +33,25 @@
 | `cancel` | Cancel | Abbrechen |
 | `cancelled` | Cancelled | Storniert |
 | `cancelledSub` | Removed from marketplace and active lists. | Aus Marktplatz und aktiven Listen entfernt. |
-| `charsRequired` | Required · min. 10 chars | Pflichtfeld · mind. 10 Zeichen |
+| `changeEmailBack` | Change address | Adresse ändern |
+| `changeEmailCodeNotice` | We'll send a 6-digit code to your new address to confirm it's yours. | Wir senden einen 6-stelligen Code an Ihre neue Adresse, um zu bestätigen, dass sie Ihnen gehört. |
+| `changeEmailCodeSentTo` | Sent to {email} | Gesendet an {email} |
+| `changeEmailCodeTitle` | Enter confirmation code | Bestätigungscode eingeben |
+| `changeEmailConfirm` | Confirm change | Änderung bestätigen |
+| `changeEmailCurrentPrefix` | Current | Aktuell |
+| `changeEmailDemoHint` | Prototype: the 6-digit code sent to your new address is {code}. | Prototyp: Der an Ihre neue Adresse gesendete 6-stellige Code lautet {code}. |
+| `changeEmailDone` | Done | Fertig |
+| `changeEmailNewLabel` | New email address | Neue E-Mail-Adresse |
+| `changeEmailNewPlaceholder` | name@company.com | name@firma.de |
+| `changeEmailResend` | Resend code | Code erneut senden |
+| `changeEmailResendIn` | Resend in {time} | Erneut senden in {time} |
+| `changeEmailSendCode` | Send code | Code senden |
+| `changeEmailSuccessBody` | Your sign-in email is now {email}. Use it the next time you sign in. | Ihre Anmelde-E-Mail lautet jetzt {email}. Verwenden Sie sie bei Ihrer nächsten Anmeldung. |
+| `changeEmailSuccessTitle` | Email updated | E-Mail aktualisiert |
+| `changeEmailTitle` | Change email address | E-Mail-Adresse ändern |
+| `chars30Required` | characters (min. 30) | Zeichen (mind. 30) |
 | `close` | Close | Schließen |
+| `completionBlocked` | Completion is only available while the tour is Assigned or Accepted. | Abschluss ist nur bei Zugewiesen oder Akzeptiert verfügbar. |
 | `contact` | Contact | Kontakt |
 | `contactsPhones` | On-site contacts and phones | Vor-Ort-Kontakte und Telefonnummern |
 | `correctionRequiredBadge` | Correction | Korrektur |
@@ -75,10 +101,27 @@
 | `driverTourCancelledNotice` | Dispatch cancelled this tour. The message below explains why — no further action is required on your side. | Die Disposition hat diese Tour storniert. Die Nachricht unten erklärt warum — es sind keine weiteren Schritte nötig. |
 | `dropPlz` | Drop PLZ {plz} | Ziel-PLZ {plz} |
 | `emergencyDispatchNotice` | Emergency dispatch: Mon-Fri 07:00-22:00 CET. Incidents, delays, and anomalies must be reported immediately. | Notfall-Disposition: Mo-Fr 07:00-22:00 CET. Vorfälle, Verzögerungen und Auffälligkeiten müssen sofort gemeldet werden. |
+| `emptyRunDescLabel` | Description (required) | Beschreibung (erforderlich) |
+| `emptyRunDescPlaceholder` | Describe the situation (min. 30 characters). | Beschreiben Sie den Sachverhalt (mind. 30 Zeichen). |
+| `emptyRunEvidenceHint` | Optional — you can submit without an upload. | Optional — Sie können ohne Upload absenden. |
+| `emptyRunEvidenceLabel` | Photo / evidence (optional) | Foto / Nachweis (optional) |
+| `emptyRunPendingLock` | This report is with Autheon for review and can no longer be changed. | Diese Meldung liegt Autheon zur Prüfung vor und kann nicht mehr geändert werden. |
+| `emptyRunReasonKeyDocs` | Vehicle key or required documents missing | Fahrzeugschlüssel oder erforderliche Unterlagen fehlen |
+| `emptyRunReasonLabel` | Reason | Grund |
+| `emptyRunReasonNotOperational` | Vehicle is technically not operational | Fahrzeug ist technisch nicht fahrbereit |
+| `emptyRunReasonNotPresent` | Vehicle not present / cannot be found at the location | Fahrzeug ist am angegebenen Standort nicht vorhanden oder nicht auffindbar |
+| `emptyRunReasonNotReleased` | Vehicle is not being released | Fahrzeug wird nicht herausgegeben |
+| `emptyRunReasonNotRoadworthy` | Vehicle is not roadworthy | Fahrzeug ist nicht verkehrssicher |
+| `emptyRunReasonOther` | Other | Sonstiges |
+| `emptyRunSlide` | Report empty run | Leerfahrt melden |
+| `emptyRunSlideDone` | Empty run reported | Leerfahrt gemeldet |
+| `emptyRunSlideLocked` | Enter at least 30 characters to unlock | Mind. 30 Zeichen eingeben zum Freischalten |
+| `emptyRunSuccessBody` | Your report was submitted to Autheon and will be reviewed. | Ihre Meldung wurde an Autheon übermittelt und wird geprüft. |
+| `emptyRunSuccessTitle` | Empty run reported | Leerfahrt gemeldet |
+| `emptyRunWarning` | The reported empty run will be reviewed by Autheon. Reporting it does not automatically establish any entitlement to recognition or payment. Where possible, please also inform dispatch by phone. | Die gemeldete Leerfahrt wird durch Autheon geprüft. Durch die Meldung entsteht noch kein automatischer Anspruch auf Anerkennung oder Vergütung. Bitte informieren Sie die Disposition nach Möglichkeit zusätzlich telefonisch. |
 | `endOfList` | End of list | Ende der Liste |
 | `equipment` | Equipment | Ausrüstung |
 | `equipmentSub` | Trailers · onboard kits | Anhänger · Bordausstattung |
-| `explanationRequired` | Explanation * | Erläuterung * |
 | `exploreJobs` | Explore available jobs | Verfügbare Aufträge durchsuchen |
 | `filters` | Filters | Filter |
 | `flexible` | Flexible | Flexibel |
@@ -99,6 +142,7 @@
 | `invoiceUploadNotYourTour` | You can only upload invoices for tours assigned to you. | Rechnungen können nur für Ihnen zugewiesene Touren hochgeladen werden. |
 | `invoiceUploadRestricted` | Uploads are unavailable while your account is restricted. | Upload nicht möglich, solange das Konto eingeschränkt ist. |
 | `invoiceUploadTourRequired` | Invoice upload must be linked to a valid tour. | Der Upload muss einer gültigen Tour zugeordnet sein. |
+| `jobDetailsTab` | Job details | Auftragsdetails |
 | `kpiAvailableJobs` | Available | Verf\u00fcgbar |
 | `kpiBookedJobs` | Booked | Gebucht |
 | `kpiOpenDocuments` | Open documents | Offene Nachweise |
@@ -111,6 +155,8 @@
 | `mailtoSubjectSupport` | AUTHEON driver support — {driverCode} | AUTHEON Fahrer-Support — {driverCode} |
 | `markAllRead` | Mark all read | Alle als gelesen markieren |
 | `markPerformed` | Mark as performed | Als durchgeführt markieren |
+| `markPerformedConfirmBody` | This confirms the vehicle was handed over at the destination. Slide to confirm — or cancel if this was tapped by mistake. | Damit wird bestätigt, dass das Fahrzeug am Ziel übergeben wurde. Zum Bestätigen schieben – oder abbrechen, falls versehentlich getippt. |
+| `markPerformedConfirmTitle` | Mark this tour as performed? | Tour als durchgeführt markieren? |
 | `marketplace` | Marketplace | Marktplatz |
 | `marketplacePreview` | Marketplace preview | Marktplatz-Vorschau |
 | `masterDataChangeCancel` | Cancel | Abbrechen |
@@ -124,6 +170,8 @@
 | `masterDataChangeSubmit` | Submit change request | Änderungsanfrage senden |
 | `masterDataChangeUpdatedBadge` | Updated | Geändert |
 | `model` | Model | Modell |
+| `myDocsUploadHint` | JPG, PNG or PDF (max. 25 MB) | JPG, PNG oder PDF (max. 25 MB) |
+| `myDocumentsTab` | My documents | Meine Dokumente |
 | `myJobs` | My jobs | Meine Aufträge |
 | `myJobsSubtitle` | Track and update your accepted tours | Verfolgen und aktualisieren Sie Ihre akzeptierten Touren |
 | `noDriverAddons` | No driver-facing add-ons. | Keine fahrerseitigen Zusatzhinweise. |
@@ -143,7 +191,12 @@
 | `operationalInstructions` | Operational instructions | Operative Hinweise |
 | `ownAxle` | Own axle | Eigenachse |
 | `partnerPolicyAlert` | Demo document: Driver terms are available in the Driver Info area and admin Documents module. | Demo-Dokument: Fahrerbedingungen sind im Fahrer-Infobereich und im Admin-Dokumentenmodul verfügbar. |
+| `performedDone` | Done | Fertig |
+| `performedSuccessBody` | Upload your invoice and related documents so payment can be processed. You can skip this step and add them later in the tour's My documents tab. | Rechnung und zugehörige Dokumente hochladen, damit die Auszahlung bearbeitet werden kann. Dieser Schritt kann übersprungen und die Dokumente später im Tab „Meine Dokumente“ hinzugefügt werden. |
+| `performedSuccessTitle` | Tour performed successfully. | Tour erfolgreich durchgeführt. |
 | `performedTab` | Performed | Durchgeführt |
+| `performedUploadCta` | Click to upload | Zum Hochladen tippen |
+| `performedUploadHintEmpty` | Max file size: 25 MB | Max. Dateigröße: 25 MB |
 | `pickup` | Pickup | Abholung |
 | `pickupContact` | Pickup Contact | Ansprechpartner Abholung |
 | `pickupExample` | Pickup e.g. 80339 | Abholung z.B. 80339 |
@@ -154,16 +207,6 @@
 | `previewUnavailable` | Preview is not available for this file type. | Für diesen Dateityp ist keine Vorschau verfügbar. |
 | `primaryNavigation` | Primary navigation | Hauptnavigation |
 | `print` | Print | Drucken |
-| `problemReasonNoContact` | Contact unreachable | Kontakt nicht erreichbar |
-| `problemReasonNoContactSub` | On-site contact not available | Vor-Ort-Kontakt nicht erreichbar |
-| `problemReasonNotOnSite` | Vehicle not on site | Fahrzeug nicht vor Ort |
-| `problemReasonNotOnSiteSub` | Vehicle unavailable at pickup | Fahrzeug bei Abholung nicht verfügbar |
-| `problemReasonNotRoadworthy` | Not roadworthy | Nicht fahrbereit |
-| `problemReasonNotRoadworthySub` | Vehicle cannot be driven safely | Fahrzeug nicht sicher fahrbar |
-| `problemReasonOther` | Other | Sonstiges |
-| `problemReasonOtherSub` | Other issue requiring clarification | Anderes Klärungsproblem |
-| `problemReasonWrongAddress` | Wrong address | Falsche Adresse |
-| `problemReasonWrongAddressSub` | Location does not match order | Ort stimmt nicht mit Auftrag überein |
 | `profile` | Profile | Profil |
 | `profileEmailSupport` | Email support | E-Mail-Support |
 | `profileMasterData` | Read-only master data | Stammdaten (nur lesbar) |
@@ -175,41 +218,17 @@
 | `pushNotifyPostalPrefix` | Orders in pickup postal code area | Aufträge im Abhol-PLZ-Gebiet |
 | `pushPostalPrefixHint` | 1–2 digit prefix, e.g. 4, 40, or 41 | 1–2-stelliges Präfix, z. B. 4, 40 oder 41 |
 | `pushSupportNotice` | Android supported in app flow. iOS requires home-screen installation, compatible iOS version, and permission. | Android wird im App-Ablauf unterstützt. iOS erfordert Installation auf dem Homescreen, eine kompatible iOS-Version und Berechtigung. |
-| `reason` | Reason | Grund |
 | `redPlateNumber` | Red plate no. | Rotes Kennzeichen (Nr.) |
 | `refreshDemo` | Refresh | Aktualisieren |
+| `removeDocBlocked` | Documents already in review can't be removed. Contact dispatch if needed. | Dokumente in Prüfung können nicht entfernt werden. Bei Bedarf Disposition kontaktieren. |
+| `removeDocBody` | This will permanently remove the file from this tour. Upload a replacement if this document is required for processing. | Die Datei wird dauerhaft von dieser Tour entfernt. Falls das Dokument für die Abrechnung erforderlich ist, muss ein Ersatz hochgeladen werden. |
+| `removeDocConfirm` | Remove | Entfernen |
+| `removeDocTitle` | Remove document? | Dokument entfernen? |
 | `removeFilterChip` | Remove filter: {label} | Filter entfernen: {label} |
-| `reportCancelAppointmentNotPossible` | Appointment no longer possible | Termin nicht mehr möglich |
-| `reportCancelAppointmentNotPossibleSub` | Pickup or delivery slot is no longer feasible | Abhol- oder Lieferfenster nicht mehr machbar |
-| `reportCancelCustomerCancelled` | Customer cancelled order | Kunde hat Auftrag storniert |
-| `reportCancelCustomerCancelledSub` | Customer or dispatch withdrew the order | Kunde oder Disposition hat zurückgezogen |
-| `reportCancelDriverUnavailable` | Driver unavailable | Fahrer nicht verfügbar |
-| `reportCancelDriverUnavailableSub` | You cannot execute this tour in time | Tour kann zeitlich nicht ausgeführt werden |
-| `reportCancelIncorrectData` | Incorrect order data | Falsche Auftragsdaten |
-| `reportCancelIncorrectDataSub` | Tour data does not match reality | Daten passen nicht zur Realität |
-| `reportCancelOther` | Other reason | Anderer Grund |
-| `reportCancelOtherSub` | Another cancellation reason | Anderer Stornogrund |
-| `reportCancelVehicleNotAvailable` | Vehicle not available | Fahrzeug nicht verfügbar |
-| `reportCancelVehicleNotAvailableSub` | Vehicle cannot be handed over | Fahrzeug kann nicht übergeben werden |
-| `reportCancelVehicleNotRoadworthy` | Vehicle not roadworthy | Fahrzeug nicht fahrbereit |
-| `reportCancelVehicleNotRoadworthySub` | Vehicle cannot be driven safely | Fahrzeug nicht sicher fahrbar |
 | `reportProblem` | Report problem | Problem melden |
-| `reportProblemCancelBindingWarning` | You are about to cancel this order bindingly. Cancellation after acceptance may trigger costs or further consequences under the applicable driver terms. Please check your decision carefully. | Sie stornieren diesen Auftrag verbindlich. Eine Stornierung nach Annahme kann gemäß den Fahrerbedingungen Kosten oder weitere Folgen haben. Bitte prüfen Sie Ihre Entscheidung sorgfältig. |
-| `reportProblemCancelConfirmed` | Cancellation submitted | Stornierung gesendet |
-| `reportProblemCancelSent` | Your cancellation was sent to dispatch. | Ihre Stornierung wurde an die Disposition gesendet. |
-| `reportProblemCancelSub` | Ends the tour and notifies dispatch. | Beendet die Tour und informiert die Disposition. |
-| `reportProblemCancelTitle` | Cancel order | Auftrag stornieren |
 | `reportProblemEvidenceAdd` | Add file | Datei hinzufügen |
-| `reportProblemEvidenceHint` | Photos or documents help dispatch review the case (PDF or images, max 5 files). | Fotos oder Dokumente helfen der Disposition (PDF oder Bilder, max. 5 Dateien). |
-| `reportProblemEvidenceLabel` | Evidence (optional) | Nachweise (optional) |
 | `reportProblemEvidenceRemove` | Remove | Entfernen |
 | `reportProblemEvidenceTooMany` | Maximum 5 files per report. | Maximal 5 Dateien pro Meldung. |
-| `reportProblemNotPerformableSub` | Creates a special case for dispatch review. | Erzeugt einen Sonderfall zur Prüfung. |
-| `reportProblemNotPerformableTitle` | Report not performable | Nicht durchführbar melden |
-| `reportProblemPlaceholder` | Describe the problem (min. 10 characters)… | Problem beschreiben (mind. 10 Zeichen)… |
-| `reportProblemSpecialCaseNotice` | Dispatch will review this report and follow up. | Die Disposition prüft den Bericht und meldet sich. |
-| `reportProblemSpecialCaseSent` | Your report was sent. Dispatch will review the special case. | Ihr Bericht wurde gesendet. Die Disposition prüft den Sonderfall. |
-| `requestSent` | Request sent | Anfrage gesendet |
 | `reset` | Reset | Zurücksetzen |
 | `results` | results | Ergebnisse |
 | `route` | Route | Route |
@@ -222,9 +241,7 @@
 | `signOut` | Sign out | Abmelden |
 | `signOutAlert` | Demo sign out: authentication will be implemented in production. | Demo-Abmeldung: Authentifizierung wird in der Produktion implementiert. |
 | `slideAccepted` | Accepted | Angenommen |
-| `slideToCancelOrder` | Slide to cancel order | Zum Stornieren wischen |
-| `slideToCancelOrderHint` | Enter at least 10 characters in the explanation above to unlock the slider. | Geben Sie oben mindestens 10 Zeichen in die Erklärung ein, um den Schieberegler freizuschalten. |
-| `slideToCancelOrderLocked` | Slider locked | Schieberegler gesperrt |
+| `slidePerformed` | Marked as performed | Als durchgeführt markiert |
 | `slideToConfirm` | Slide to confirm → | Zum Bestätigen schieben → |
 | `sortDateAsc` | Oldest first | Älteste zuerst |
 | `sortDateDesc` | Newest first | Neueste zuerst |
@@ -235,8 +252,26 @@
 | `sortPriceDesc` | Highest price | Höchster Preis |
 | `sortTourAsc` | Tour ID (Asc) | Tour-ID (Auf) |
 | `sortTourDesc` | Tour ID (Desc) | Tour-ID (Ab) |
+| `spCancelAbort` | Cancel | Abbrechen |
+| `spCancelBindingWarning` | You are about to cancel a bindingly booked order. Under the applicable contractual conditions, cancellation costs of up to the agreed remuneration may apply. | Sie sind im Begriff, einen verbindlich gebuchten Auftrag zu stornieren. Gemäß den geltenden Vertragsbedingungen können Stornokosten bis zur Höhe der vereinbarten Vergütung entstehen. |
+| `spCancelContinue` | Continue cancellation | Stornierung fortsetzen |
+| `spCancelExplanationLabel` | Explanation (required) | Begründung (erforderlich) |
+| `spCancelExplanationPlaceholder` | Describe why you are cancelling (min. 30 characters). | Beschreiben Sie, warum Sie stornieren (mind. 30 Zeichen). |
+| `spCancelReasonAccidental` | Order booked accidentally | Auftrag versehentlich gebucht |
+| `spCancelReasonAppointment` | Appointment cannot be met | Termin kann nicht eingehalten werden |
+| `spCancelReasonLabel` | Cancellation reason | Stornierungsgrund |
+| `spCancelReasonOrgImpossible` | Execution is organisationally impossible | Durchführung organisatorisch nicht möglich |
+| `spCancelReasonOther` | Other | Sonstiges |
+| `spCancelSlide` | Cancel order | Auftrag stornieren |
+| `spCancelSlideDone` | Order cancelled | Auftrag storniert |
+| `spCancelSlideLocked` | Enter at least 30 characters to unlock | Mind. 30 Zeichen eingeben zum Freischalten |
+| `spCancelSuccessBody` | The order was successfully cancelled and must no longer be performed. | Der Auftrag wurde erfolgreich storniert und darf nicht mehr durchgeführt werden. |
+| `spCancelSuccessTitle` | Order cancelled | Auftrag storniert |
+| `spCancelTermsLink` | Applicable terms & contractual conditions | AGB bzw. Vertragsbedingungen |
+| `spCancelTermsPlaceholderNotice` | Placeholder: the real cancellation terms / T&C document is not yet wired up. The target link is to be provided by operations. | Platzhalter: Das echte Storno-/AGB-Dokument ist noch nicht verknüpft. Das Ziel wird vom Betrieb bereitgestellt. |
 | `specialCaseTab` | Special | Sonderfall |
-| `submit` | Submit | Senden |
+| `themeDark` | Dark | Dunkel |
+| `themeLight` | Light | Hell |
 | `thirdPartyAxle` | Third-party axle | Fremdachse |
 | `thisWeek` | This week | Diese Woche |
 | `today` | Today | Heute |
@@ -261,6 +296,7 @@
 | `tourDocRequiresPerformed` | Document upload is not available for this tour status. | Dokument-Upload ist für diesen Tour-Status nicht verfügbar. |
 | `tourDocTollReceipt` | Toll receipt | Mautbeleg |
 | `tourDocUploadAvailable` | Upload available | Upload möglich |
+| `tourDocUploadButton` | Upload document | Dokument hochladen |
 | `tourDocUploadEmpty` | No documents uploaded yet. | Noch keine Dokumente. |
 | `tourDocUploadHint` | Upload tour documents such as invoice, receipts, delivery note, waiting time evidence, or other proof. PDF or images. | Tour-Dokumente wie Rechnung, Belege, Lieferschein, Wartezeitnachweis oder sonstige Nachweise hochladen. PDF oder Bilder. |
 | `tourDocUploadReceiptButton` | Upload document / receipt | Dokument / Beleg hochladen |
@@ -285,5 +321,9 @@
 | `viewDriverPolicy` | View driver policy | Fahrerrichtlinie ansehen |
 | `viewOnMap` | View on map | Auf Karte anzeigen |
 | `vin` | VIN | FIN |
+| `warnEntryCancelOption` | Cancel order | Auftrag stornieren |
+| `warnEntryCancelSub` | End the tour and notify dispatch. | Beendet den Auftrag und informiert die Disposition. |
+| `warnEntryEmptyRunOption` | Report empty run | Leerfahrt melden |
+| `warnEntryEmptyRunSub` | The order itself can't be executed — Autheon reviews it. | Der Auftrag selbst kann nicht durchgeführt werden — Autheon prüft die Meldung. |
 | `weekend` | Weekend | Wochenende |
 | `welcomeBack` | Welcome back, | Willkommen zurück, |

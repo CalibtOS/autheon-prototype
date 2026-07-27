@@ -83,7 +83,7 @@ else ok("6 documents on performed job 0842");
 const nonAllowedDocs = docs.filter((d) => {
   const j = jobs.find((x) => x.id === d.jobId);
   if (!j) return true;
-  return !["assigned", "accepted", "special_case", "performed"].includes(j.status);
+  return !["assigned", "accepted", "empty_run_reported", "performed"].includes(j.status);
 });
 if (nonAllowedDocs.length)
   fail(
@@ -126,12 +126,15 @@ if (!store.canDriverReplaceTourDocument(adminSeedDoc))
 else fail("canDriverReplaceTourDocument should be false for admin doc");
 
 const j846 = jobs.find((j) => j.id === "A-2026-00846");
+if (j846?.status !== "empty_run_reported")
+  fail(`0846 must be empty_run_reported (got ${j846?.status})`);
+else ok("0846 is empty_run_reported");
 if (docs.some((d) => d.jobId === j846?.id))
-  fail("special_case 0846 must have no tour documents");
-else ok("0846 (special_case) has no tour documents");
-if (!(j846?.specialCaseReport?.evidence || []).length)
-  fail("0846 missing specialCaseReport.evidence");
-else ok("0846 has special case evidence");
+  fail("empty_run_reported 0846 must have no tour documents");
+else ok("0846 (empty_run_reported) has no tour documents");
+if (!(j846?.emptyRunReport?.evidence || []).length)
+  fail("0846 missing emptyRunReport.evidence");
+else ok("0846 has empty-run evidence");
 
 if (j845?.documentReviewSummary !== "Uploaded")
   fail(
