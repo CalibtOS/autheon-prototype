@@ -261,15 +261,28 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
     await expect(page).toHaveScreenshot('admin-infopoint-doc-modal.png', { fullPage: true });
   });
 
-  test('infopoint rename document modal', async ({ page }) => {
+  test('infopoint edit document modal', async ({ page }) => {
     await prepareAdminVisual(page);
     await openAdminSection(page, NAV.infopoint);
     await prototypeFrame(page)
-      .getByRole('button', { name: /Rename|Umbenennen/i })
+      .getByRole('button', { name: /^Edit$|^Bearbeiten$/i })
       .first()
       .click();
     await waitForOpenDialog(page);
-    await expect(page).toHaveScreenshot('admin-infopoint-rename-modal.png', { fullPage: true });
+    await expect(page).toHaveScreenshot('admin-infopoint-edit-doc-modal.png', { fullPage: true });
+  });
+
+  test('infopoint delete document modal', async ({ page }) => {
+    await prepareAdminVisual(page);
+    await openAdminSection(page, NAV.infopoint);
+    await prototypeFrame(page)
+      .getByRole('button', { name: /^Delete$|^Löschen$/i })
+      .first()
+      .click();
+    await waitForOpenDialog(page);
+    await expect(page).toHaveScreenshot('admin-infopoint-delete-doc-modal.png', {
+      fullPage: true,
+    });
   });
 
   test('infopoint edit news modal', async ({ page }) => {

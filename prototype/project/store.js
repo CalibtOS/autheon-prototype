@@ -665,7 +665,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v1.3",
         updatedAt: "04.05. 09:10",
-        seed: true,
       },
       {
         id: "DOC-002",
@@ -676,7 +675,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v3.0",
         updatedAt: "02.05. 14:45",
-        seed: true,
       },
       {
         id: "DOC-003",
@@ -687,7 +685,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v1.0",
         updatedAt: "01.05. 08:00",
-        seed: true,
       },
       {
         id: "DOC-004",
@@ -698,7 +695,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v2.1",
         updatedAt: "29.04. 11:30",
-        seed: true,
       },
       {
         id: "DOC-005",
@@ -709,7 +705,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v1.0",
         updatedAt: "29.04. 11:31",
-        seed: true,
       },
       {
         id: "DOC-006",
@@ -721,7 +716,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v1.0",
         updatedAt: "20.05. 10:00",
-        seed: true,
       },
       {
         id: "DOC-007",
@@ -733,7 +727,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v1.1",
         updatedAt: "20.05. 10:15",
-        seed: true,
       },
       {
         id: "DOC-008",
@@ -745,7 +738,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v1.0",
         updatedAt: "20.05. 10:30",
-        seed: true,
       },
     ];
   }
@@ -3305,8 +3297,8 @@ window.AuthStore = (() => {
       if (!n) return { ok: false };
       if (patch.title != null) n.title = String(patch.title).trim() || n.title;
       if (patch.body != null) n.body = String(patch.body).trim();
-      if (patch.publishedAt != null)
-        n.publishedAt = String(patch.publishedAt).trim() || n.publishedAt;
+      // `publishedAt` is deliberately not patchable — it is stamped once at
+      // publish time, and Edit only covers subject and message text.
       log("news_item_updated", DEMO_ADMIN, n.title, n.id);
       emit();
       return { ok: true, item: n };
@@ -4755,7 +4747,6 @@ window.AuthStore = (() => {
         scope: data.scope || "Global",
         version: data.version || "v1.0",
         updatedAt: data.updatedAt || nowStamp(),
-        seed: false,
       };
       documents.push(item);
       log("document_created", DEMO_ADMIN, item.title, item.id);
@@ -4771,18 +4762,6 @@ window.AuthStore = (() => {
         description: meta.description || `Uploaded PDF (demo): ${name}`,
         category: meta.category || "Operations",
       });
-    },
-
-    renameGeneralDocument(id, title) {
-      const d = documents.find((x) => x.id === id);
-      if (!d) return { ok: false };
-      const next = String(title || "").trim();
-      if (!next) return { ok: false, reason: "title_required" };
-      d.title = next;
-      d.updatedAt = nowStamp();
-      log("document_renamed", DEMO_ADMIN, d.title, d.id);
-      emit();
-      return { ok: true };
     },
 
     updateGeneralDocument(id, patch = {}) {
@@ -4803,10 +4782,11 @@ window.AuthStore = (() => {
       return { ok: true, item: d };
     },
 
+    // Hard delete, seeded rows included: production has no seed concept and the
+    // admin screen offers Delete on every document.
     deleteGeneralDocument(id) {
       const d = documents.find((x) => x.id === id);
       if (!d) return { ok: false };
-      if (d.seed) return { ok: false, reason: "seed_protected" };
       const idx = documents.findIndex((x) => x.id === id);
       if (idx < 0) return { ok: false };
       documents.splice(idx, 1);
