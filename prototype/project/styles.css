@@ -172,7 +172,6 @@
     transparent
   );
 }
-}
 
 [data-theme="dark"] {
   --brand-accent: #8f5bff;
@@ -3340,6 +3339,115 @@ select.input {
   color: var(--muted);
 }
 
+/* Admin Settings — folder tabs (mirrors the Autheon admin console). The
+   prototype's existing underline .tabs style above stays where it is (the
+   real console also uses two tab presentations); these folder tabs are drawn
+   entirely with prototype CSS tokens, not ported Tailwind. */
+.settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 4px;
+}
+.settings-tab {
+  appearance: none;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--r-2) var(--r-2) 0 0;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  margin-bottom: -1px;
+  position: relative;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.settings-tab:hover {
+  color: var(--text);
+}
+.settings-tab.on,
+.settings-tab[aria-selected="true"] {
+  background: var(--paper);
+  color: var(--text);
+  border-color: var(--line);
+  border-bottom: 0;
+  z-index: 1;
+}
+.settings-tab:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+/* Square top edge so the selected tab joins the bordered panel below; the
+   panel's top border shows through under the unselected tabs and is erased
+   by the selected tab's paper-coloured bottom overlap, giving the folder look. */
+.settings-tabpanel {
+  border: 1px solid var(--line);
+  border-radius: 0 0 var(--r-3) var(--r-3);
+  background: var(--paper);
+  padding: 24px;
+}
+.settings-lead {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+/* User settings language + appearance rows (label + hint on the left, control
+   on the right, separated by hairlines — same cadence as the console). */
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.settings-row:last-of-type {
+  border-bottom: 0;
+}
+.settings-row-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.settings-row-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+/* Account sections (Change email · Change password) — same hairline cadence as
+   the rows above, but stacked: heading, description, then the form. */
+.settings-section {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.settings-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+.settings-form .input {
+  margin-top: 6px;
+}
+.settings-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+/* Single-icon appearance toggle (console ThemeToggle shape) — .btn.icon gives
+   the 44×44 footprint and the hairline border; this adds the focus ring. */
+.appearance-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 /* Billing UI separation */
 .finance-snapshot-strip {
   display: grid;
@@ -4058,11 +4166,22 @@ select.input {
   justify-content: flex-end;
 }
 
+/* Operational policies — two columns, matching the console's
+   `grid gap-4 sm:grid-cols-2`. Switches and the action row span both. */
 .policy-grid {
   margin-top: 16px;
   display: grid;
-  gap: 12px;
-  max-width: 520px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 680px;
+}
+.policy-grid-full {
+  grid-column: 1 / -1;
+}
+@media (max-width: 720px) {
+  .policy-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .policy-field {
   padding: 14px 16px;
@@ -4075,6 +4194,74 @@ select.input {
 }
 .policy-field .input {
   max-width: 140px;
+}
+/* Help-contact fields hold a phone number and an email address, not a two-digit
+   count, so they fill their column instead of the numeric fields' short box. */
+.policy-field-text .input {
+  max-width: none;
+}
+/* Pill switch rows for the three cancellation policies. The console renders a
+   `role="switch"` button next to its label; the prototype's pill treatment is
+   an input+slider, so the label wraps both and no aria-labelledby is needed. */
+.policy-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 2px;
+  cursor: pointer;
+}
+.policy-switch-label {
+  font-size: 14px;
+  color: var(--text);
+  flex: 1;
+}
+.policy-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.policy-switch-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.policy-switch-slider {
+  position: absolute;
+  inset: 0;
+  background-color: var(--line-2);
+  border-radius: 24px;
+  transition: background-color 0.25s ease;
+}
+.policy-switch-slider::before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.25s ease;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--shadow-ink) 15%, transparent);
+}
+.policy-switch-input:checked + .policy-switch-slider {
+  background-color: var(--primary);
+}
+.policy-switch-input:checked + .policy-switch-slider::before {
+  transform: translateX(20px);
+}
+.policy-switch-input:focus-visible + .policy-switch-slider {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+/* Save + Discard, side by side across the full grid width. */
+.policy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .field-counter {

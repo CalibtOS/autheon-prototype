@@ -793,7 +793,7 @@
             />
           );
         } else if (section === "features") {
-          body = <FeaturesPane showToast={showToast} />;
+          body = <SettingsPane showToast={showToast} />;
         } else {
           const stubTitles = {
             customers: [
@@ -1074,9 +1074,19 @@
       function App() {
         const store = useAuthStore();
         const [view, setView] = useState("driver"); // driver | admin
-        const [theme, setTheme] = useState(
-          localStorage.getItem("autheon-theme") || "light",
-        );
+        // Theme state is the same global store the admin Settings "Appearance"
+        // row drives (window.AutheonTheme.useTheme), so the two controls stay
+        // in sync in both directions. The shell keeps its data-theme effect so
+        // first-paint behaviour is byte-for-byte unchanged.
+        const { theme, setTheme } = window.AutheonTheme
+          ? window.AutheonTheme.useTheme()
+          : {
+              theme: localStorage.getItem("autheon-theme") || "light",
+              setTheme: (next) => {
+                document.documentElement.setAttribute("data-theme", next);
+                localStorage.setItem("autheon-theme", next);
+              },
+            };
         const [themeEditorOn, setThemeEditorOn] = useState(() => {
           try {
             return !!window.AutheonThemeEditor?.isVisible?.();

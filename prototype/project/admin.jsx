@@ -4,6 +4,7 @@ const {
   useEffect: useEffectA,
   useMemo: useMemoA,
   useRef: useRefA,
+  useId: useIdA,
 } = React;
 
 const ADMIN_TOUR_DOC_TYPES = [
@@ -48,6 +49,20 @@ const uniqueTourDocTypeLabels = (docs, t) => {
   return labels;
 };
 
+// Sidebar footer initials — the admin console's `initialsFromName`: up to two
+// leading characters, "?" when there is nothing to derive them from.
+const initialsFromName = (name) => {
+  const parts = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return "?";
+  return parts
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+};
+
 // =========================================================================
 // ADMIN — NAV
 // =========================================================================
@@ -59,6 +74,15 @@ const AdminNav = ({ section, setSection }) => {
   const alertCount = store.getAdminEmailQueue().length;
   const mdrOpenCount = store.getOpenMasterDataChangeRequestCount();
   const financeOn = store.getFeatureFlag("financeModule");
+  // Footer identity — the console's exact shape: the name, falling back to the
+  // email only when the name is blank, with the role line beneath. An email
+  // change therefore produces no visible footer change; the Audit log is the
+  // observable proof.
+  const currentAdmin = store.getCurrentAdmin();
+  const adminName = String(currentAdmin?.name || "").trim();
+  const adminEmail = String(currentAdmin?.email || "").trim();
+  const displayName = adminName || adminEmail || "—";
+  const initials = initialsFromName(adminName || adminEmail);
   const items = [
     { id: "overview", label: t("navJobs"), count: total, I: Ic.N.Tour },
     {
@@ -142,9 +166,19 @@ const AdminNav = ({ section, setSection }) => {
         ))}
       </div>
       <div className="nav-foot">
-        <span className="avatar">AB</span>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>Anna Bauer</div>
+        <span className="avatar">{initials}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {displayName}
+          </div>
           <div
             style={{
               fontSize: 12,
@@ -3552,10 +3586,11 @@ const emptyAdminEditForm = () => ({
 
 const userInputErrStyle = { borderColor: "var(--destructive)" };
 
-const UserFormError = ({ message }) =>
+const UserFormError = ({ message, id }) =>
   message ? (
     <div
       className="label"
+      id={id}
       role="alert"
       style={{ color: "var(--destructive)", fontSize: 11.5, marginTop: 4 }}
     >
@@ -7752,105 +7787,593 @@ const NotificationFeedPane = ({ showToast, onOpenJob, onReviewMasterDataRequest 
   );
 };
 
+// Every numeric operational policy is a whole number of 1 or more — the same
+// rule the Autheon console's system-setting catalog enforces. The helpers below
+// are the single source for it: the input attributes, the Save gate and the
+// inline message all read from here rather than restating it.
+const MIN_POLICY_NUMBER = 1;
+
+// A numeric field differs from its stored value once both sides read as
+// numbers, so "1", "1.0" and "01" all match a stored 1. A cleared or
+// non-numeric field can never equal the stored number, so it reads as dirty
+// here (and fails isPolicyNumberValid) rather than being hidden as "clean".
+const isPolicyNumberDirty = (current, baseline) => {
+  const trimmed = String(current).trim();
+  if (trimmed === "") return true;
+  const parsed = Number(trimmed);
+  if (Number.isNaN(parsed)) return true;
+  return parsed !== baseline;
+};
+
+const isPolicyNumberValid = (current) => {
+  const trimmed = String(current).trim();
+  if (trimmed === "") return false;
+  const parsed = Number(trimmed);
+  return Number.isInteger(parsed) && parsed >= MIN_POLICY_NUMBER;
+};
+
+// Gated on the field being dirty so a freshly opened screen never nags — the
+// stored values always satisfy the rule. One message covers cleared, zero and
+// fractional alike: it reads as a complete instruction in every case.
+const policyNumberError = (current, baseline, message) =>
+  isPolicyNumberDirty(current, baseline) && !isPolicyNumberValid(current)
+    ? message
+    : "";
+
+// Labelled pill switch. The console renders a role="switch" button beside its
+// label; the prototype's pill treatment is a checkbox + slider, so the label
+// wraps the control and carries role="switch" on the input for parity.
+const PolicySwitchRow = ({ id, label, checked, onChange }) => (
+  <label className="policy-switch-row policy-grid-full">
+    <span className="policy-switch-label">{label}</span>
+    <span className="policy-switch">
+      <input
+        id={id}
+        type="checkbox"
+        role="switch"
+        className="policy-switch-input"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span className="policy-switch-slider" />
+    </span>
+  </label>
+);
+
 const OperationalPoliciesForm = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const policies = store.getOperationalPolicies();
+
+  // Stored values, read as primitives. getOperationalPolicies() hands back a
+  // fresh object on every call, so the re-seed effect below depends on these
+  // and not on `policies` — an object dep would fire on every render and wipe
+  // whatever the user is currently typing.
+  const storedCancelHours = Number(
+    policies.adminCancelMinHoursBeforePickupStart ?? 1,
+  );
+  const storedScheduleHours = Number(
+    policies.scheduleChangeMinHoursBeforePickupStart ?? 1,
+  );
+  const storedMinDriverMsg = Number(
+    policies.cancellation?.adminCancelDriverMessageMinChars ?? 20,
+  );
+  const storedDefaultLimit = Number(
+    policies.driverAcceptance?.probationJobCount ?? 3,
+  );
+  const storedAllowOverride = policies.allowPolicyOverrideWithAuditNote !== false;
+  const storedRequiresReasonCode =
+    policies.cancellation?.adminCancelRequiresReasonCode !== false;
+  const storedRequiresDriverMessage =
+    policies.cancellation?.adminCancelRequiresDriverMessage !== false;
+
   const [adminCancelHours, setAdminCancelHours] = useStateA(
-    String(policies.adminCancelMinHoursBeforePickupStart ?? 1),
+    String(storedCancelHours),
   );
   const [scheduleHours, setScheduleHours] = useStateA(
-    String(policies.scheduleChangeMinHoursBeforePickupStart ?? 1),
+    String(storedScheduleHours),
   );
-  const [minDriverMsg, setMinDriverMsg] = useStateA(
-    String(policies.cancellation?.adminCancelDriverMessageMinChars ?? 20),
+  const [minDriverMsg, setMinDriverMsg] = useStateA(String(storedMinDriverMsg));
+  const [defaultLimit, setDefaultLimit] = useStateA(String(storedDefaultLimit));
+  const [allowOverride, setAllowOverride] = useStateA(storedAllowOverride);
+  const [requiresReasonCode, setRequiresReasonCode] = useStateA(
+    storedRequiresReasonCode,
   );
-  const [defaultLimit, setDefaultLimit] = useStateA(
-    String(policies.driverAcceptance?.probationJobCount ?? 3),
+  const [requiresDriverMessage, setRequiresDriverMessage] = useStateA(
+    storedRequiresDriverMessage,
   );
 
+  // Replays the stored values into the form. The effect runs it on mount and
+  // after a save (the store emits new values); Discard runs it directly to drop
+  // unsaved edits.
+  const seedFromStore = () => {
+    setAdminCancelHours(String(storedCancelHours));
+    setScheduleHours(String(storedScheduleHours));
+    setMinDriverMsg(String(storedMinDriverMsg));
+    setDefaultLimit(String(storedDefaultLimit));
+    setAllowOverride(storedAllowOverride);
+    setRequiresReasonCode(storedRequiresReasonCode);
+    setRequiresDriverMessage(storedRequiresDriverMessage);
+  };
+
+  useEffectA(seedFromStore, [
+    storedCancelHours,
+    storedScheduleHours,
+    storedMinDriverMsg,
+    storedDefaultLimit,
+    storedAllowOverride,
+    storedRequiresReasonCode,
+    storedRequiresDriverMessage,
+  ]);
+
+  // At least one field differs from the stored values. Drives both the Save
+  // gate and whether Discard is offered.
+  const dirty =
+    isPolicyNumberDirty(adminCancelHours, storedCancelHours) ||
+    isPolicyNumberDirty(scheduleHours, storedScheduleHours) ||
+    isPolicyNumberDirty(minDriverMsg, storedMinDriverMsg) ||
+    isPolicyNumberDirty(defaultLimit, storedDefaultLimit) ||
+    allowOverride !== storedAllowOverride ||
+    requiresReasonCode !== storedRequiresReasonCode ||
+    requiresDriverMessage !== storedRequiresDriverMessage;
+
+  // Save enables only for a real, valid change. Reverting every field by hand,
+  // or a cleared/zero/fractional field, leaves it disabled — the primary button
+  // always promises a save that will succeed. Switches are always valid; only
+  // their dirtiness matters.
+  const canSave =
+    dirty &&
+    isPolicyNumberValid(adminCancelHours) &&
+    isPolicyNumberValid(scheduleHours) &&
+    isPolicyNumberValid(minDriverMsg) &&
+    isPolicyNumberValid(defaultLimit);
+
   const save = () => {
+    if (!canSave) return;
+    // Every field is passed explicitly rather than spread from the stored
+    // policies — a passthrough would let a value round-trip with no control
+    // behind it, which is exactly how the three switches stayed unreachable.
+    // canSave guarantees each Number() below is a whole number of 1 or more.
     store.setOperationalPolicies({
       operational: {
-        adminCancelMinHoursBeforePickupStart: Number(adminCancelHours) || 0,
-        scheduleChangeMinHoursBeforePickupStart: Number(scheduleHours) || 0,
+        adminCancelMinHoursBeforePickupStart: Number(adminCancelHours),
+        scheduleChangeMinHoursBeforePickupStart: Number(scheduleHours),
+        allowPolicyOverrideWithAuditNote: allowOverride,
       },
       cancellation: {
-        adminCancelDriverMessageMinChars: Number(minDriverMsg) || 20,
+        adminCancelDriverMessageMinChars: Number(minDriverMsg),
+        adminCancelRequiresReasonCode: requiresReasonCode,
+        adminCancelRequiresDriverMessage: requiresDriverMessage,
       },
       driverAcceptance: {
-        probationJobCount: Number(defaultLimit) || 3,
+        probationJobCount: Number(defaultLimit),
       },
     });
     showToast?.(t("adminOperationalPoliciesSaved"));
   };
 
+  const numericMessage = t("settings.system.policyWholeNumberError");
+  const numericFields = [
+    {
+      id: "policy-cancel-hours",
+      label: t("adminPolicyCancelHoursLabel"),
+      value: adminCancelHours,
+      setValue: setAdminCancelHours,
+      stored: storedCancelHours,
+    },
+    {
+      id: "policy-schedule-hours",
+      label: t("adminPolicyScheduleHoursLabel"),
+      value: scheduleHours,
+      setValue: setScheduleHours,
+      stored: storedScheduleHours,
+    },
+    {
+      id: "policy-min-driver-msg",
+      label: t("adminPolicyMinDriverMsgLabel"),
+      value: minDriverMsg,
+      setValue: setMinDriverMsg,
+      stored: storedMinDriverMsg,
+    },
+    {
+      id: "policy-default-limit",
+      label: t("adminPolicyDefaultProbationLimitLabel"),
+      value: defaultLimit,
+      setValue: setDefaultLimit,
+      stored: storedDefaultLimit,
+    },
+  ];
+
   return (
     <div className="policy-grid">
-      <div className="policy-field">
-        <label className="field-label" htmlFor="policy-cancel-hours">
-          {t("adminPolicyCancelHoursLabel")}
-        </label>
-        <input
-          id="policy-cancel-hours"
-          className="input"
-          type="number"
-          min={0}
-          step={0.5}
-          value={adminCancelHours}
-          onChange={(e) => setAdminCancelHours(e.target.value)}
-        />
+      {numericFields.map((f) => {
+        const err = policyNumberError(f.value, f.stored, numericMessage);
+        return (
+          <div className="policy-field" key={f.id}>
+            <label className="field-label" htmlFor={f.id}>
+              {f.label}
+            </label>
+            {/* min/step are affordance only — HTML constraints are advisory,
+                so isPolicyNumberValid is what gates Save. */}
+            <input
+              id={f.id}
+              className="input"
+              type="number"
+              min={MIN_POLICY_NUMBER}
+              step={1}
+              value={f.value}
+              style={err ? userInputErrStyle : undefined}
+              aria-invalid={err ? true : undefined}
+              aria-describedby={err ? `${f.id}-error` : undefined}
+              onChange={(e) => f.setValue(e.target.value)}
+            />
+            <UserFormError id={`${f.id}-error`} message={err} />
+          </div>
+        );
+      })}
+      <PolicySwitchRow
+        id="policy-allow-override"
+        label={t("settings.system.policyAllowOverrideLabel")}
+        checked={allowOverride}
+        onChange={setAllowOverride}
+      />
+      <PolicySwitchRow
+        id="policy-requires-reason-code"
+        label={t("settings.system.policyRequiresReasonCodeLabel")}
+        checked={requiresReasonCode}
+        onChange={setRequiresReasonCode}
+      />
+      <PolicySwitchRow
+        id="policy-requires-driver-message"
+        label={t("settings.system.policyRequiresDriverMessageLabel")}
+        checked={requiresDriverMessage}
+        onChange={setRequiresDriverMessage}
+      />
+      <div className="policy-actions policy-grid-full">
+        <button
+          type="button"
+          className="btn primary touch-target"
+          disabled={!canSave}
+          onClick={save}
+        >
+          {t("adminOperationalPoliciesSave")}
+        </button>
+        <button
+          type="button"
+          className="btn touch-target"
+          disabled={!dirty}
+          onClick={seedFromStore}
+        >
+          {t("settings.system.discardChanges")}
+        </button>
       </div>
-      <div className="policy-field">
-        <label className="field-label" htmlFor="policy-schedule-hours">
-          {t("adminPolicyScheduleHoursLabel")}
-        </label>
-        <input
-          id="policy-schedule-hours"
-          className="input"
-          type="number"
-          min={0}
-          step={0.5}
-          value={scheduleHours}
-          onChange={(e) => setScheduleHours(e.target.value)}
-        />
-      </div>
-      <div className="policy-field">
-        <label className="field-label" htmlFor="policy-min-driver-msg">
-          {t("adminPolicyMinDriverMsgLabel")}
-        </label>
-        <input
-          id="policy-min-driver-msg"
-          className="input"
-          type="number"
-          min={1}
-          value={minDriverMsg}
-          onChange={(e) => setMinDriverMsg(e.target.value)}
-        />
-      </div>
-      <div className="policy-field">
-        <label className="field-label" htmlFor="policy-default-limit">
-          {t("adminPolicyDefaultProbationLimitLabel")}
-        </label>
-        <input
-          id="policy-default-limit"
-          className="input"
-          type="number"
-          min={1}
-          value={defaultLimit}
-          onChange={(e) => setDefaultLimit(e.target.value)}
-        />
-      </div>
-      <button type="button" className="btn primary touch-target" style={{ width: "fit-content" }} onClick={save}>
-        {t("adminOperationalPoliciesSave")}
-      </button>
     </div>
   );
 };
 
-const FeaturesPane = ({ showToast }) => {
+// A help contact differs from its stored value once both sides are trimmed, so
+// trailing whitespace alone is not an edit — and a cleared field, which can
+// never equal a stored contact, always reads as dirty rather than as "clean".
+const isContactDirty = (current, stored) =>
+  String(current).trim() !== String(stored || "").trim();
+
+// Blank / malformed / valid, the three states the console's shared
+// setting-string guard distinguishes. Blank is not "no change" but a required
+// field the admin has emptied, and it gets its own message. The format rule
+// itself is the store's — passed in, never restated here.
+const contactStatus = (value, isValidFormat) => {
+  const trimmed = String(value).trim();
+  if (trimmed === "") return "empty";
+  return isValidFormat(trimmed) ? "valid" : "malformed";
+};
+
+// Infopoint — Help contacts. Both fields are required and cannot be cleared:
+// the production backend rejects an empty value and its shallow merge preserves
+// anything omitted, so a blank contact could never persist. A cleared field
+// therefore reports "required" and keeps Save disabled, rather than lighting up
+// Save for a change that would silently do nothing. The format rules come from
+// the store — the same validators its setter enforces — so anything this form
+// accepts is a value the real API would accept too.
+const InfopointHelpContactsForm = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
+  const contacts = store.getDriverSupportContact();
+
+  // Stored values read as primitives. getDriverSupportContact() hands back a
+  // fresh object on every call, so the re-seed effect below depends on these
+  // and not on `contacts` — an object dep would fire on every render and wipe
+  // whatever the user is currently typing.
+  const storedHotline = String(contacts.phone || "");
+  const storedEmail = String(contacts.email || "");
+
+  const [hotline, setHotline] = useStateA(storedHotline);
+  const [email, setEmail] = useStateA(storedEmail);
+
+  // Replays the stored contacts into the form. The effect runs it on mount and
+  // after a save (the store emits the newly stored values); Discard runs it
+  // directly to drop unsaved edits.
+  const seedFromStore = () => {
+    setHotline(storedHotline);
+    setEmail(storedEmail);
+  };
+
+  useEffectA(seedFromStore, [storedHotline, storedEmail]);
+
+  const hotlineStatus = contactStatus(hotline, store.isValidSupportPhone);
+  const emailStatus = contactStatus(email, store.isValidSupportEmail);
+  const hotlineDirty = isContactDirty(hotline, storedHotline);
+  const emailDirty = isContactDirty(email, storedEmail);
+  const dirty = hotlineDirty || emailDirty;
+
+  // A save must leave the form matching what persists, so any blank or
+  // malformed field disables Save outright — there is no partial save that
+  // silently drops a field. These are the store setter's own rules, so an
+  // enabled Save always promises a save that will succeed.
+  const canSave = dirty && hotlineStatus === "valid" && emailStatus === "valid";
+
+  const save = () => {
+    if (!canSave) return;
+    store.setDriverSupportContact({
+      phone: hotline.trim(),
+      email: email.trim(),
+    });
+    showToast?.(t("settings.system.helpContactsSaved"));
+  };
+
+  // Messages are gated on the field being dirty, so a freshly opened screen
+  // never nags — the stored contacts always satisfy the rules.
+  const hotlineError =
+    hotlineDirty && hotlineStatus !== "valid"
+      ? hotlineStatus === "empty"
+        ? t("settings.system.helpContactsHotlineRequired")
+        : t("settings.system.helpContactsHotlineError")
+      : "";
+  const emailError =
+    emailDirty && emailStatus !== "valid"
+      ? emailStatus === "empty"
+        ? t("settings.system.helpContactsEmailRequired")
+        : t("settings.system.helpContactsEmailError")
+      : "";
+
+  return (
+    <div className="policy-grid">
+      <div className="policy-field policy-field-text">
+        <label className="field-label" htmlFor="help-contacts-hotline">
+          {t("settings.system.helpContactsHotlineLabel")}
+        </label>
+        <input
+          id="help-contacts-hotline"
+          className="input"
+          type="tel"
+          value={hotline}
+          style={hotlineError ? userInputErrStyle : undefined}
+          aria-invalid={hotlineError ? true : undefined}
+          aria-describedby={
+            hotlineError ? "help-contacts-hotline-error" : undefined
+          }
+          onChange={(e) => setHotline(e.target.value)}
+        />
+        <UserFormError
+          id="help-contacts-hotline-error"
+          message={hotlineError}
+        />
+      </div>
+      <div className="policy-field policy-field-text">
+        <label className="field-label" htmlFor="help-contacts-email">
+          {t("settings.system.helpContactsEmailLabel")}
+        </label>
+        <input
+          id="help-contacts-email"
+          className="input"
+          type="email"
+          value={email}
+          style={emailError ? userInputErrStyle : undefined}
+          aria-invalid={emailError ? true : undefined}
+          aria-describedby={emailError ? "help-contacts-email-error" : undefined}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <UserFormError id="help-contacts-email-error" message={emailError} />
+      </div>
+      <div className="policy-actions policy-grid-full">
+        <button
+          type="button"
+          className="btn primary touch-target"
+          disabled={!canSave}
+          onClick={save}
+        >
+          {t("settings.system.helpContactsSave")}
+        </button>
+        <button
+          type="button"
+          className="btn touch-target"
+          disabled={!dirty}
+          onClick={seedFromStore}
+        >
+          {t("settings.system.discardChanges")}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Appearance toggle icon — matches the Autheon console's ThemeToggle: in
+// dark mode it shows the sun (click → light), in light mode the moon
+// (click → dark). Lucide-equivalent strokes, drawn with prototype tokens.
+const SunIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+  </svg>
+);
+const MoonIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+);
+
+// Change email — maps the store's rejection reason onto the field, using the
+// console's own message for each one rather than a generic failure string.
+const changeEmailErr = (r, t) => {
+  if (!r || r.ok) return "";
+  if (r.reason === "required") return t("settings.account.fieldRequired");
+  if (r.reason === "invalid_email")
+    return t("settings.account.changeEmail.invalidEmail");
+  if (r.reason === "duplicate_email") return t("adminUsersEmailDuplicate");
+  return t("adminInvoiceErrGeneric");
+};
+
+// SettingsPane — mirrors the Autheon admin console's tabbed Settings screen
+// (User settings · System settings), plus a prototype-only Prototype settings
+// tab holding the branding display name and the finance-module flag. The shell
+// chrome owns the single page title ("Settings" via navFeatures); this pane
+// opens with the console's Settings subtitle as its lead and never repeats the
+// h1. Tab state is component-local and resets on navigating away, matching the
+// console. Branding and the finance flag are moved, not changed: the display
+// name still writes its audit entry and the flag still gates the Finance nav
+// item. The operational-policies form is relocated unchanged (ticket 03
+// improves it). User settings ships with Language + Appearance rows wired to
+// the same global locale/theme state as the demo chrome, plus the console's
+// Change email and Change password sections above them. Change email is real:
+// it writes to the demo dispatcher record via updateAdmin and lands in the
+// Audit log. Change password enforces the console's client-side rules and
+// persists nothing — there is no password state in the store, and inventing
+// one would be worse than the gap.
+const SettingsPane = ({ showToast }) => {
+  const { t, locale, setLocale } = useI18n();
+  const { theme, setTheme } = window.AutheonTheme
+    ? window.AutheonTheme.useTheme()
+    : { theme: "light", setTheme: () => {} };
+  const store = useAuthStore();
+  const [tab, setTab] = useStateA("user");
+  const baseId = useIdA();
+
+  const tabs = [
+    {
+      id: "user",
+      label: t("settings.user.title"),
+      tabId: `${baseId}-tab-user`,
+      panelId: `${baseId}-panel-user`,
+    },
+    {
+      id: "system",
+      label: t("settings.system.title"),
+      tabId: `${baseId}-tab-system`,
+      panelId: `${baseId}-panel-system`,
+    },
+    {
+      id: "prototype",
+      label: t("settings.prototype.title"),
+      tabId: `${baseId}-tab-prototype`,
+      panelId: `${baseId}-panel-prototype`,
+    },
+  ];
+
+  const onTabKeyDown = (event, currentId) => {
+    const index = tabs.findIndex((it) => it.id === currentId);
+    if (index < 0) return;
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+      event.preventDefault();
+      const delta = event.key === "ArrowRight" ? 1 : -1;
+      const next = tabs[(index + delta + tabs.length) % tabs.length];
+      if (!next) return;
+      setTab(next.id);
+      const el = document.getElementById(next.tabId);
+      if (el) el.focus();
+    }
+  };
+
+  // --- Change email -------------------------------------------------------
+  // Seeded from the demo dispatcher record and re-seeded whenever it changes.
+  // The store owns every rule (required / malformed / duplicate); the only
+  // check here is the console's own guard against re-submitting the address
+  // that is already saved, which the store has no reason to reject.
+  const currentAdmin = store.getCurrentAdmin();
+  const currentEmail = String(currentAdmin?.email || "");
+  const [emailValue, setEmailValue] = useStateA(currentEmail);
+  const [emailError, setEmailError] = useStateA("");
+
+  useEffectA(() => {
+    setEmailValue(currentEmail);
+    setEmailError("");
+  }, [currentEmail]);
+
+  const emailDirty = emailValue !== currentEmail;
+
+  const submitEmail = (e) => {
+    e.preventDefault();
+    if (!currentAdmin) return;
+    // Read the saved address off the live record BEFORE updateAdmin runs.
+    const savedEmail = String(currentAdmin.email || "");
+    const next = emailValue.trim().toLowerCase();
+    if (next && next === savedEmail.toLowerCase()) {
+      setEmailError(t("settings.account.changeEmail.unchanged"));
+      return;
+    }
+    const r = store.updateAdmin(currentAdmin.id, { email: next });
+    if (!r.ok) {
+      setEmailError(changeEmailErr(r, t));
+      return;
+    }
+    setEmailError("");
+    showToast?.(t("settings.account.changeEmail.successToast"), next);
+  };
+
+  // --- Change password ----------------------------------------------------
+  // Client-side only, exactly the console's rules. Nothing is persisted: the
+  // store holds no password state and this ticket does not add any.
+  const emptyPasswordForm = { current: "", next: "", confirm: "" };
+  const [passwordForm, setPasswordForm] = useStateA(emptyPasswordForm);
+  const [passwordErrors, setPasswordErrors] = useStateA({});
+  const setPasswordField = (key, value) => {
+    setPasswordForm((p) => ({ ...p, [key]: value }));
+    setPasswordErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
+
+  const submitPassword = (e) => {
+    e.preventDefault();
+    const errors = {};
+    if (!passwordForm.current)
+      errors.current = t("settings.account.fieldRequired");
+    if (passwordForm.next.length < 8)
+      errors.next = t("settings.account.changePassword.passwordMinLength");
+    if (!passwordForm.confirm)
+      errors.confirm = t(
+        "settings.account.changePassword.confirmPasswordRequired",
+      );
+    // The console's mismatch check is a schema-level refine: it only runs once
+    // every field passes its own rule.
+    if (!Object.keys(errors).length && passwordForm.next !== passwordForm.confirm)
+      errors.confirm = t("settings.account.changePassword.passwordMismatch");
+    if (Object.keys(errors).length) {
+      setPasswordErrors(errors);
+      return;
+    }
+    setPasswordForm(emptyPasswordForm);
+    setPasswordErrors({});
+    showToast?.(t("settings.account.changePassword.successToast"), "");
+  };
+
+  // Prototype settings — branding + finance flag, relocated unchanged.
   const flags = store.getFeatureFlags();
   const appDisplayName = store.getAppDisplayName();
   const [displayName, setDisplayName] = useStateA(appDisplayName);
@@ -7863,129 +8386,415 @@ const FeaturesPane = ({ showToast }) => {
     store.setAppDisplayName(displayName);
   };
 
+  const nextTheme = theme === "dark" ? "light" : "dark";
+  const appearanceAria =
+    nextTheme === "light"
+      ? t("settings.user.appearanceLight")
+      : t("settings.user.appearanceDark");
+
   return (
-    <div style={{ maxWidth: 680 }}>
-      <section className="card" style={{ padding: 22 }}>
-        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
-          {t("adminBrandingTitle")}
-        </h2>
-        <p
-          style={{
-            color: "var(--muted)",
-            marginTop: 8,
-            marginBottom: 0,
-            fontSize: 13,
-            lineHeight: 1.55,
-          }}
-        >
-          {t("adminBrandingBlurb")}
-        </p>
-        <div style={{ marginTop: 16 }}>
-          <label className="field-label" htmlFor="branding-app-name">
-            {t("adminAppDisplayNameLabel")}
-          </label>
-          <input
-            id="branding-app-name"
-            className="input"
-            style={{ marginTop: 8, maxWidth: 360, fontWeight: 600 }}
-            value={displayName}
-            placeholder={t("adminAppDisplayNamePh")}
-            onChange={(e) => setDisplayName(e.target.value)}
-            onBlur={commitDisplayName}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                commitDisplayName();
-                e.currentTarget.blur();
-              }
-            }}
-          />
-        </div>
-      </section>
+    <div style={{ maxWidth: 720 }}>
+      <p className="settings-lead">{t("settings.subtitle")}</p>
 
-      <section className="card" style={{ padding: 22, marginTop: 22 }}>
-        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
-          {t("adminOperationalPoliciesTitle")}
-        </h2>
-        <p
-          style={{
-            color: "var(--muted)",
-            marginTop: 8,
-            marginBottom: 0,
-            fontSize: 13,
-            lineHeight: 1.55,
-          }}
-        >
-          {t("adminOperationalPoliciesBlurb")}
-        </p>
-        <OperationalPoliciesForm showToast={showToast} />
-      </section>
-
-      <h2
-        style={{
-          margin: "28px 0 0",
-          fontSize: 17,
-          fontWeight: 600,
-        }}
+      <div
+        className="settings-tabs"
+        role="tablist"
+        aria-label={t("navFeatures")}
       >
-        {t("adminFeatureFlags")}
-      </h2>
-      <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
-        {t("adminFeatureFlagsBlurb")}
-      </p>
-      <section className="card" style={{ padding: "0 18px", marginTop: 14 }}>
-        {Object.keys(FLAG_I18N).map((key) => {
-          const enabled = !!flags[key];
-          const meta = FLAG_I18N[key];
+        {tabs.map((it) => {
+          const selected = tab === it.id;
           return (
-            <div
-              key={key}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "16px 0",
-                borderBottom: "1px solid var(--line)",
-              }}
+            <button
+              key={it.id}
+              id={it.tabId}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              aria-controls={it.panelId}
+              tabIndex={selected ? 0 : -1}
+              className={`settings-tab${selected ? " on" : ""}`}
+              onClick={() => setTab(it.id)}
+              onKeyDown={(e) => onTabKeyDown(e, it.id)}
             >
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>
-                  {meta ? t(meta.label) : key}
-                </div>
-                {meta?.desc && (
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "var(--muted)",
-                      marginTop: 3,
-                    }}
-                  >
-                    {t(meta.desc)}
-                  </div>
-                )}
-              </div>
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  cursor: "pointer",
-                }}
-              >
-                <Pill status={enabled ? "accepted" : "cancelled"}>
-                  {enabled ? t("adminPillOn") : t("adminPillOff")}
-                </Pill>
-                <input
-                  type="checkbox"
-                  checked={!!enabled}
-                  onChange={(e) => store.setFeatureFlag(key, e.target.checked)}
-                  style={{ width: 16, height: 16, cursor: "pointer" }}
-                />
-              </label>
-            </div>
+              {it.label}
+            </button>
           );
         })}
-      </section>
+      </div>
+
+      {tab === "user" && (
+        <section
+          id={`${baseId}-panel-user`}
+          role="tabpanel"
+          aria-labelledby={`${baseId}-tab-user`}
+          className="settings-tabpanel"
+        >
+          <p className="settings-lead">{t("settings.user.subtitle")}</p>
+
+          <div className="settings-section">
+            <div className="settings-row-label">
+              {t("settings.account.changeEmail.title")}
+            </div>
+            <div className="settings-row-hint">
+              {t("settings.account.changeEmail.description")}
+            </div>
+            <form className="settings-form" onSubmit={submitEmail} noValidate>
+              <div>
+                <label
+                  className="field-label"
+                  htmlFor={`${baseId}-change-email`}
+                >
+                  {t("settings.account.changeEmail.emailLabel")}
+                </label>
+                <input
+                  id={`${baseId}-change-email`}
+                  className="input"
+                  type="email"
+                  autoComplete="email"
+                  style={emailError ? userInputErrStyle : undefined}
+                  aria-invalid={emailError ? true : undefined}
+                  aria-describedby={
+                    emailError ? `${baseId}-change-email-error` : undefined
+                  }
+                  value={emailValue}
+                  onChange={(e) => {
+                    setEmailValue(e.target.value);
+                    setEmailError("");
+                  }}
+                />
+                <UserFormError
+                  id={`${baseId}-change-email-error`}
+                  message={emailError}
+                />
+              </div>
+              <div className="settings-form-actions">
+                <button
+                  type="submit"
+                  className="btn primary"
+                  disabled={!emailDirty}
+                >
+                  {t("settings.account.changeEmail.submitButton")}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="settings-section">
+            <div className="settings-row-label">
+              {t("settings.account.changePassword.title")}
+            </div>
+            <div className="settings-row-hint">
+              {t("settings.account.changePassword.description")}
+            </div>
+            <form className="settings-form" onSubmit={submitPassword} noValidate>
+              <div>
+                <label
+                  className="field-label"
+                  htmlFor={`${baseId}-current-password`}
+                >
+                  {t("settings.account.changePassword.currentPasswordLabel")}
+                </label>
+                <input
+                  id={`${baseId}-current-password`}
+                  className="input"
+                  type="password"
+                  autoComplete="current-password"
+                  style={passwordErrors.current ? userInputErrStyle : undefined}
+                  aria-invalid={passwordErrors.current ? true : undefined}
+                  aria-describedby={
+                    passwordErrors.current
+                      ? `${baseId}-current-password-error`
+                      : undefined
+                  }
+                  value={passwordForm.current}
+                  onChange={(e) => setPasswordField("current", e.target.value)}
+                />
+                <UserFormError
+                  id={`${baseId}-current-password-error`}
+                  message={passwordErrors.current}
+                />
+              </div>
+              <div>
+                <label
+                  className="field-label"
+                  htmlFor={`${baseId}-new-password`}
+                >
+                  {t("settings.account.changePassword.newPasswordLabel")}
+                </label>
+                <input
+                  id={`${baseId}-new-password`}
+                  className="input"
+                  type="password"
+                  autoComplete="new-password"
+                  style={passwordErrors.next ? userInputErrStyle : undefined}
+                  aria-invalid={passwordErrors.next ? true : undefined}
+                  aria-describedby={
+                    passwordErrors.next
+                      ? `${baseId}-new-password-error`
+                      : undefined
+                  }
+                  value={passwordForm.next}
+                  onChange={(e) => setPasswordField("next", e.target.value)}
+                />
+                <UserFormError
+                  id={`${baseId}-new-password-error`}
+                  message={passwordErrors.next}
+                />
+              </div>
+              <div>
+                <label
+                  className="field-label"
+                  htmlFor={`${baseId}-confirm-password`}
+                >
+                  {t("settings.account.changePassword.confirmPasswordLabel")}
+                </label>
+                <input
+                  id={`${baseId}-confirm-password`}
+                  className="input"
+                  type="password"
+                  autoComplete="new-password"
+                  style={passwordErrors.confirm ? userInputErrStyle : undefined}
+                  aria-invalid={passwordErrors.confirm ? true : undefined}
+                  aria-describedby={
+                    passwordErrors.confirm
+                      ? `${baseId}-confirm-password-error`
+                      : undefined
+                  }
+                  value={passwordForm.confirm}
+                  onChange={(e) => setPasswordField("confirm", e.target.value)}
+                />
+                <UserFormError
+                  id={`${baseId}-confirm-password-error`}
+                  message={passwordErrors.confirm}
+                />
+              </div>
+              <div className="settings-form-actions">
+                <button type="submit" className="btn primary">
+                  {t("settings.account.changePassword.submitButton")}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="settings-row">
+            <div>
+              <div className="settings-row-label">
+                {t("settings.user.languageLabel")}
+              </div>
+              <div className="settings-row-hint">
+                {t("settings.user.languageHint")}
+              </div>
+            </div>
+            <div
+              className="seg"
+              style={{ display: "inline-grid", gridAutoFlow: "column" }}
+              role="group"
+              aria-label={t("settings.user.languageLabel")}
+            >
+              <button
+                type="button"
+                className={locale === "en" ? "on" : ""}
+                aria-pressed={locale === "en"}
+                onClick={() => setLocale("en")}
+              >
+                {t("settings.user.langEn")}
+              </button>
+              <button
+                type="button"
+                className={locale === "de" ? "on" : ""}
+                aria-pressed={locale === "de"}
+                onClick={() => setLocale("de")}
+              >
+                {t("settings.user.langDe")}
+              </button>
+            </div>
+          </div>
+
+          <div className="settings-row">
+            <div>
+              <div className="settings-row-label">
+                {t("settings.user.appearanceLabel")}
+              </div>
+              <div className="settings-row-hint">
+                {t("settings.user.appearanceHint")}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn icon touch-target appearance-toggle"
+              aria-label={appearanceAria}
+              aria-pressed={theme === "dark"}
+              onClick={() => setTheme(nextTheme)}
+            >
+              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {tab === "system" && (
+        <section
+          id={`${baseId}-panel-system`}
+          role="tabpanel"
+          aria-labelledby={`${baseId}-tab-system`}
+          className="settings-tabpanel"
+        >
+          <p className="settings-lead">{t("settings.system.subtitle")}</p>
+
+          <section className="card" style={{ padding: 22 }}>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
+              {t("adminOperationalPoliciesTitle")}
+            </h2>
+            <p
+              style={{
+                color: "var(--muted)",
+                marginTop: 8,
+                marginBottom: 0,
+                fontSize: 13,
+                lineHeight: 1.55,
+              }}
+            >
+              {t("adminOperationalPoliciesBlurb")}
+            </p>
+            <OperationalPoliciesForm showToast={showToast} />
+          </section>
+
+          <section className="card" style={{ padding: 22, marginTop: 18 }}>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
+              {t("settings.system.helpContactsTitle")}
+            </h2>
+            <p
+              style={{
+                color: "var(--muted)",
+                marginTop: 8,
+                marginBottom: 0,
+                fontSize: 13,
+                lineHeight: 1.55,
+              }}
+            >
+              {t("settings.system.helpContactsBlurb")}
+            </p>
+            <InfopointHelpContactsForm showToast={showToast} />
+          </section>
+        </section>
+      )}
+
+      {tab === "prototype" && (
+        <section
+          id={`${baseId}-panel-prototype`}
+          role="tabpanel"
+          aria-labelledby={`${baseId}-tab-prototype`}
+          className="settings-tabpanel"
+        >
+          <p className="settings-lead">{t("settings.prototype.subtitle")}</p>
+
+          <section className="card" style={{ padding: 22 }}>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
+              {t("adminBrandingTitle")}
+            </h2>
+            <p
+              style={{
+                color: "var(--muted)",
+                marginTop: 8,
+                marginBottom: 0,
+                fontSize: 13,
+                lineHeight: 1.55,
+              }}
+            >
+              {t("adminBrandingBlurb")}
+            </p>
+            <div style={{ marginTop: 16 }}>
+              <label className="field-label" htmlFor="branding-app-name">
+                {t("adminAppDisplayNameLabel")}
+              </label>
+              <input
+                id="branding-app-name"
+                className="input"
+                style={{ marginTop: 8, maxWidth: 360, fontWeight: 600 }}
+                value={displayName}
+                placeholder={t("adminAppDisplayNamePh")}
+                onChange={(e) => setDisplayName(e.target.value)}
+                onBlur={commitDisplayName}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitDisplayName();
+                    e.currentTarget.blur();
+                  }
+                }}
+              />
+            </div>
+          </section>
+
+          <h2
+            style={{
+              margin: "28px 0 0",
+              fontSize: 17,
+              fontWeight: 600,
+            }}
+          >
+            {t("adminFeatureFlags")}
+          </h2>
+          <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
+            {t("adminFeatureFlagsBlurb")}
+          </p>
+          <section className="card" style={{ padding: "0 18px", marginTop: 14 }}>
+            {Object.keys(FLAG_I18N).map((key) => {
+              const enabled = !!flags[key];
+              const meta = FLAG_I18N[key];
+              return (
+                <div
+                  key={key}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "16px 0",
+                    borderBottom: "1px solid var(--line)",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>
+                      {meta ? t(meta.label) : key}
+                    </div>
+                    {meta?.desc && (
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "var(--muted)",
+                          marginTop: 3,
+                        }}
+                      >
+                        {t(meta.desc)}
+                      </div>
+                    )}
+                  </div>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <Pill status={enabled ? "accepted" : "cancelled"}>
+                      {enabled ? t("adminPillOn") : t("adminPillOff")}
+                    </Pill>
+                    <input
+                      type="checkbox"
+                      checked={!!enabled}
+                      onChange={(e) =>
+                        store.setFeatureFlag(key, e.target.checked)
+                      }
+                      style={{ width: 16, height: 16, cursor: "pointer" }}
+                    />
+                  </label>
+                </div>
+              );
+            })}
+          </section>
+        </section>
+      )}
     </div>
   );
 };
@@ -8013,5 +8822,5 @@ Object.assign(window, {
   AuditPane,
   NotificationFeedPane,
   MasterDataRequestsPane,
-  FeaturesPane,
+  SettingsPane,
 });
