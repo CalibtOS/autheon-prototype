@@ -96,15 +96,17 @@ test.describe('Driver PWA visual regression @visual-regression', () => {
     await expect(page).toHaveScreenshot('driver-myjobs-cancelled.png', { fullPage: true });
   });
 
-  test('my jobs — special cases tab', async ({ page }) => {
+  // Was "special cases" until the legacy special-case model was removed (PRD
+  // v2.6); the 4th tab is now the empty-run review tab.
+  test('my jobs — empty run tab', async ({ page }) => {
     await prepareDriverVisual(page);
     await openDriverTab(page, TAB.myJobs);
     await prototypeFrame(page)
       .locator('.myjobs-tabs-slider')
-      .getByRole('button', { name: /Special|Sonderf/i })
+      .getByRole('button', { name: /Empty run|Leerfahrt/i })
       .click();
     await settleForCapture(page);
-    await expect(page).toHaveScreenshot('driver-myjobs-special.png', { fullPage: true });
+    await expect(page).toHaveScreenshot('driver-myjobs-empty-run.png', { fullPage: true });
   });
 
   test('job execution detail (unlocked)', async ({ page }) => {

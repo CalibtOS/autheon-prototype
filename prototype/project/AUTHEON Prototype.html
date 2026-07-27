@@ -53,7 +53,7 @@
     <script src="inputFormatters.js"></script>
     <script src="store.js"></script>
     <script type="text/babel" src="driver-ui.jsx"></script>
-<script type="text/babel" src="driver.jsx?v=13"></script>
+    <script type="text/babel" src="driver.jsx?v=13"></script>
     <script type="text/babel" src="admin.jsx"></script>
 
     <script type="text/babel" data-presets="env,react">
@@ -166,12 +166,24 @@
               onOpen={(j) =>
                 setActiveJob({ id: j.id, mode: "unlocked", fromTab: "mine" })
               }
+              onOpenNotifications={() => setShowNotifications(true)}
+              notificationsOpen={showNotifications}
             />
           );
         } else if (tab === "info") {
-          body = <Infopoint />;
+          body = (
+            <Infopoint
+              onOpenNotifications={() => setShowNotifications(true)}
+              notificationsOpen={showNotifications}
+            />
+          );
         } else {
-          body = <ProfilePaneFull />;
+          body = (
+            <ProfilePaneFull
+              onOpenNotifications={() => setShowNotifications(true)}
+              notificationsOpen={showNotifications}
+            />
+          );
         }
 
         return (

@@ -941,6 +941,90 @@ const TabBar = ({ tab, setTab }) => {
   );
 };
 
+// =========================================================================
+// SHARED SCREEN HEADER (all four primary driver screens)
+// =========================================================================
+// Client decision 2026-07-26 (Taner Özdemir / Ferhat Catak): every primary
+// menu item's header sits at the SAME height, so the header is one component
+// instead of four hand-rolled title blocks. The Marketplace greeting block
+// (avatar initials + "Welcome back, <name>") is removed entirely and is NOT
+// relocated to another screen — with it gone the title moves up into the
+// standard position the other three screens already used.
+//
+// The notification action is part of this header, so it is available on every
+// primary screen. It owns no state: the unread count comes from the store and
+// the open/close state stays in the shell (`onOpenNotifications`).
+
+const NotificationBellButton = ({ onOpen, open = false, unreadCount }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  // The store is the single source of truth for the unread count. `unreadCount`
+  // is a presentation-only override for the header states gallery
+  // (driver-header-states.html) — the app never passes it.
+  const storeUnread = store.getDriverNotificationUnreadCount();
+  const unread = unreadCount == null ? storeUnread : unreadCount;
+  return (
+    <button
+      type="button"
+      // `header-btn` is the shared header icon-button treatment (border,
+      // radius, size, surface, shadow) used by sort + filter — the bell must
+      // not re-declare any of it. `header-bell-btn` only anchors the badge.
+      className="header-btn header-bell-btn"
+      title={t("driverNotifications")}
+      // The count is in the accessible name, so the visual badge is never the
+      // only signal that notifications are unread.
+      aria-label={
+        unread > 0
+          ? `${t("driverNotifications")} (${unread})`
+          : t("driverNotifications")
+      }
+      aria-expanded={open}
+      aria-haspopup="dialog"
+      onClick={() => onOpen?.()}
+    >
+      <Ic.Bell />
+      <Badge
+        count={unread}
+        variant="destructive"
+        className="bell-badge"
+        ariaHidden
+      />
+    </button>
+  );
+};
+
+const DriverScreenHeader = ({
+  title,
+  subtitle,
+  actions,
+  onOpenNotifications,
+  notificationsOpen = false,
+  unreadCount,
+  children,
+}) => (
+  <div className="pwa-screen-header">
+    <div className="screen-header-row">
+      <div className="screen-header-titles">
+        <h1 className="header-title">{title}</h1>
+        {subtitle ? <div className="header-subtitle">{subtitle}</div> : null}
+      </div>
+      {actions || onOpenNotifications ? (
+        <div className="header-controls">
+          {actions}
+          {onOpenNotifications ? (
+            <NotificationBellButton
+              onOpen={onOpenNotifications}
+              open={notificationsOpen}
+              unreadCount={unreadCount}
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+    {children}
+  </div>
+);
+
 // Rough drive-time estimate for display (~75 km/h average, 5-min steps).
 // The prototype has no routing service; production replaces this with the
 // real route duration.
@@ -1213,7 +1297,6 @@ const Portal = ({
       </div>
     );
   }
-  const unreadNotif = store.getDriverNotificationUnreadCount();
   const all = store.getJobs().filter((j) => j.status === "published");
   const filtered = all.filter((j) => jobMatchesDriverFilters(j, filters));
 
@@ -1277,52 +1360,35 @@ const Portal = ({
 
   return (
     <>
-      <div className="pwa-header">
-        {/* Top welcome row */}
-        <div className="header-top-row">
-          <div className="driver-welcome">
-            <div className="driver-avatar">
-              {(store.getCurrentDriver()?.name || "Jakob Arsin")
-                .split(" ")
-                .map((n) => n[0])
-                .join("")}
-            </div>
-            <div className="welcome-text">
-              <div className="welcome-sub">{t("welcomeBack")}</div>
-              <div className="welcome-name">
-                {store.getCurrentDriver()?.name || "Jakob Arsin"}
-              </div>
-            </div>
+      {/* Client decision 2026-07-26: title/subtitle + bell only — the sort and
+          filter controls live with the results count below (see client's agreed
+          Marketplace structure), which also keeps this header identical in
+          height to My Orders / Infopoint / Profile. */}
+      <DriverScreenHeader
+        title={t("marketplace")}
+        subtitle={t("exploreJobs")}
+        onOpenNotifications={onOpenNotifications}
+        notificationsOpen={notificationsOpen}
+      />
+      <div
+        ref={scrollRef}
+        className="scroll scroll-body"
+        onTouchStart={onScrollTouchStart}
+        onTouchMove={onScrollTouchMove}
+        onTouchEnd={onScrollTouchEnd}
+      >
+        {refreshing ? (
+          <div className="label portal-refresh-hint">
+            <Ic.Refresh /> {t("refreshDemo")}
           </div>
-          <button
-            type="button"
-            className="header-bell-btn"
-            title={t("driverNotifications")}
-            aria-label={
-              unreadNotif > 0
-                ? `${t("driverNotifications")} (${unreadNotif})`
-                : t("driverNotifications")
-            }
-            aria-expanded={notificationsOpen}
-            aria-haspopup="dialog"
-            onClick={() => onOpenNotifications?.()}
-          >
-            <Ic.Bell />
-            <Badge
-              count={unreadNotif}
-              variant="destructive"
-              className="bell-badge"
-              ariaHidden
-            />
-          </button>
-        </div>
-
-        {/* Title and control buttons row */}
-        <div className="header-title-row">
-          <div>
-            <h1 className="header-title">{t("marketplace")}</h1>
-            <div className="header-subtitle">{t("exploreJobs")}</div>
-          </div>
+        ) : null}
+        {/* Results count + sort/filter controls sit together directly under the
+            header (client-agreed Marketplace structure 2026-07-26). Rendered
+            outside the loading branch so the controls never disappear. */}
+        <div className="portal-results-row">
+          <span className="text-caption" aria-live="polite">
+            {loading ? "" : `${ordered.length} ${t("results")}`}
+          </span>
           <div className="header-controls">
             <SortSelect
               value={sortBy}
@@ -1350,8 +1416,6 @@ const Portal = ({
             </button>
           </div>
         </div>
-
-        {/* Active chips row */}
         {activeChips.length > 0 ? (
           <div className="header-chips-row">
             {activeChips.map((c) => (
@@ -1370,30 +1434,12 @@ const Portal = ({
             ))}
           </div>
         ) : null}
-      </div>
-      <div
-        ref={scrollRef}
-        className="scroll scroll-body"
-        onTouchStart={onScrollTouchStart}
-        onTouchMove={onScrollTouchMove}
-        onTouchEnd={onScrollTouchEnd}
-      >
-        {refreshing ? (
-          <div className="label portal-refresh-hint">
-            <Ic.Refresh /> {t("refreshDemo")}
-          </div>
-        ) : null}
         {loading ? (
           <div aria-busy="true" aria-label={t("loadingJobs")}>
             <SkeletonList count={3} />
           </div>
         ) : (
           <>
-            <div className="portal-results-row">
-              <span className="text-caption" aria-live="polite">
-                {ordered.length} {t("results")}
-              </span>
-            </div>
             {ordered.map((j) => (
               <JobCard key={j.id} job={j} onOpen={onOpenJob} />
             ))}
@@ -3332,7 +3378,7 @@ const parseDottedDateToTimestamp = (dateStr, fallbackStr) => {
 // =========================================================================
 // MY JOBS
 // =========================================================================
-const MyJobs = ({ onOpen }) => {
+const MyJobs = ({ onOpen, onOpenNotifications, notificationsOpen = false }) => {
   const { t } = useI18n();
   const [tab, setTab] = useState("active");
   const TAB_IDS = ["active", "performed", "cancelled", "review"];
@@ -3526,10 +3572,12 @@ const MyJobs = ({ onOpen }) => {
 
   return (
     <>
-      <div className="pwa-screen-header">
-        <h1 className="header-title">{t("myJobs")}</h1>
-        <div className="header-subtitle">{t("myJobsSubtitle")}</div>
-      </div>
+      <DriverScreenHeader
+        title={t("myJobs")}
+        subtitle={t("myJobsSubtitle")}
+        onOpenNotifications={onOpenNotifications}
+        notificationsOpen={notificationsOpen}
+      />
 
       {/* Search and control buttons */}
       <div className="myjobs-search-row">
@@ -5266,7 +5314,8 @@ const ProfileSubpageHeader = ({ title, backLabel, onBack, titleRef }) => (
     <div className="w-40-spacer" />
   </div>
 );
-const ProfilePaneFull = () => {
+
+const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => {
   const { t, locale, setLocale } = useI18n();
   const store = useAuthStore();
   const d = store.getCurrentDriver();
@@ -5782,9 +5831,12 @@ const ProfilePaneFull = () => {
         </>
       ) : (
         <>
-          <div className="pwa-screen-header">
-            <h1 className="header-title">{t("profileTitle")}</h1>
-          </div>
+          <DriverScreenHeader
+            title={t("profileTitle")}
+            subtitle={t("profileSubtitle")}
+            onOpenNotifications={onOpenNotifications}
+            notificationsOpen={notificationsOpen}
+          />
           <div className="scroll scroll-body" ref={scrollBodyRef}>
             {/* Identity card — avatar, name, partner id */}
             <div className="section-card profile-identity-card">
@@ -5935,7 +5987,7 @@ const ProfilePaneFull = () => {
   );
 };
 
-const Infopoint = () => {
+const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [subTab, setSubTab] = useState("documents");
@@ -5968,46 +6020,14 @@ const Infopoint = () => {
           onClose={() => setDocPreview(null)}
         />
       ) : null}
-      <div
-        style={{
-          background: "var(--paper)",
-          padding: "16px 20px 14px",
-          borderBottom: "1px solid var(--line)",
-        }}
+      <DriverScreenHeader
+        title={t("infopoint")}
+        subtitle={t("infopointSubtitle")}
+        onOpenNotifications={onOpenNotifications}
+        notificationsOpen={notificationsOpen}
       >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 24,
-            fontWeight: 600,
-            letterSpacing: "-0.015em",
-            lineHeight: 1.2,
-          }}
-        >
-          {t("infopoint")}
-        </h1>
-        <div
-          style={{
-            fontSize: 13.5,
-            color: "var(--muted)",
-            marginTop: 4,
-            lineHeight: 1.3,
-          }}
-        >
-          {t("infopointSubtitle")}
-        </div>
-
         {/* Horizontal Tab Pills Selector */}
-        <div
-          className="myjobs-tabs-slider"
-          style={{
-            marginTop: 16,
-            padding: "0 0 12px 0",
-            borderBottom: "none",
-            justifyContent: "flex-start",
-            gap: "20px",
-          }}
-        >
+        <div className="myjobs-tabs-slider infopoint-tabs-slider">
           {[
             ["documents", t("infopointDocsTab")],
             ["news", t("infopointNewsTab"), unreadCount],
@@ -6026,7 +6046,7 @@ const Infopoint = () => {
             </button>
           ))}
         </div>
-      </div>
+      </DriverScreenHeader>
 
       {/* Swipeable tab content — drag left/right to switch tabs */}
       <SwipeViews
@@ -6278,6 +6298,8 @@ Object.assign(window, {
   RouteStack,
   PhoneStatusBar,
   TabBar,
+  DriverScreenHeader,
+  NotificationBellButton,
   Portal,
   FilterSheet,
   JobCard,

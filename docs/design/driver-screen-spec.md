@@ -107,10 +107,101 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 
 ---
 
-## Header & KPIs
+## Primary-screen header — `DriverScreenHeader` (shared)
 
-- Marketplace header: greeting/avatar, notifications bell, screen title, sort + filter controls, applied-filter chips. Restrained — orientation without dashboard weight.
-- **KPI row — removed at client request (2026-07, PR #17).** The three quiet chips (Available / Booked / Open documents, per PDF §4 "reduzierter Dashboard-Charakter") were implemented but then removed: the same counts already surface as tab badges in **My Jobs**, so the marketplace row only duplicated them. The `.kpi-row`/`.kpi-chip` CSS and `kpiAvailableJobs`/`kpiBookedJobs`/`kpiOpenDocuments` i18n keys remain in place but unused — re-introduce only on explicit client ask.
+> Client decision 2026-07-26 (Taner Özdemir / Ferhat Catak). **One** component renders the header of
+> **all four** primary screens. Do not hand-roll a screen header; do not add per-screen top margins.
+> Remediation: R28–R31 · Audit items 36–38.
+
+**Component:** `DriverScreenHeader` in `driver.jsx`, rendering `.pwa-screen-header`.
+
+```
+DriverScreenHeader
+  title              required — screen title (h1)
+  subtitle           optional — one supporting line
+  actions            optional — screen-specific header actions, rendered LEFT of the bell
+  onOpenNotifications  handler from the shell; when present the bell renders
+  notificationsOpen    drives aria-expanded
+  unreadCount        presentation-only override — states gallery ONLY, never the app
+  children           optional — extra header content below the title row (e.g. Infopoint sub-tabs)
+```
+
+### Structure
+
+| Region | Contents |
+|--------|----------|
+| `.screen-header-row` | `.screen-header-titles` (h1 `.header-title` + `.header-subtitle`) on the left; `.header-controls` (screen `actions`, then the notification bell) on the right |
+| `children` | Optional screen-specific header content beneath the title row |
+
+### Per-screen configuration
+
+| Screen | Component | Title key | Subtitle key | Header actions | Header children |
+|--------|-----------|-----------|--------------|----------------|-----------------|
+| Marketplace | `Portal` | `marketplace` | `exploreJobs` | — (sort/filter live in the results area) | — |
+| My Orders | `MyJobs` | `myJobs` | `myJobsSubtitle` | — (search + sort live below the header) | — |
+| Infopoint | `Infopoint` | `infopoint` | `infopointSubtitle` | — | sub-tab pills (`.infopoint-tabs-slider`) |
+| Profile | `ProfilePaneFull` | `profileTitle` | `profileSubtitle` | — | — |
+
+All four carry the notification action. No screen currently passes `actions`; the slot exists so a
+future screen action cannot reintroduce a bespoke header.
+
+### Alignment rules
+
+- **Titles start at the same visual height on all four screens.** Guaranteed by the single
+  `padding: 16px 20px 14px` on `.pwa-screen-header` — verified by test, not by inspection.
+- Status bar / safe-area / notch offset is owned by `.phone-screen` (`pwa.css`: `padding-top:
+  env(safe-area-inset-top)`), i.e. *above* the header. The header adds no device-chrome compensation.
+- `.screen-header-row` uses `align-items: flex-start`, and `.screen-header-titles` has `min-width: 0`
+  + `flex: 1`. Consequence: **screen actions never shift the title baseline**, and a long title wraps
+  inside its own column instead of colliding with the bell.
+- Subtitle length is free — a wrapping subtitle grows the header downward but never moves the title.
+
+### Notification action
+
+- Right-most item in `.header-controls` on every primary screen (same right edge on all four).
+- Rendered as `class="header-btn header-bell-btn"` — the shared header icon-button treatment
+  (border, radius, 40×40, surface, shadow) identical to sort and filter. See brand-tokens
+  "Header icon buttons". `header-bell-btn` contributes only `position: relative` + the badge anchor.
+- **Badge:** `Badge count={unread} variant="destructive"` anchored top-right, `aria-hidden`, caps at
+  `99+`. Not the only unread signal.
+- **Accessible name:** `driverNotifications`, with the count appended when unread > 0 →
+  `"Notifications (3)"` / `"Benachrichtigungen (3)"`. Plus `aria-haspopup="dialog"` and
+  `aria-expanded`. Focus-visible ring: `2px solid --primary`, `outline-offset: 2px`.
+- **State:** the unread count comes from `store.getDriverNotificationUnreadCount()`; open/close state
+  stays in the shell (`showNotifications`) and the destination is the existing
+  `DriverNotificationsPane`. The header owns no notification state.
+
+### Responsive
+
+- One implementation for all widths — **no separate tablet design**. Verified 320 / 360 / 390 / 430 /
+  768 / 1024 px, EN + DE, light + dark.
+- ≤360px (`pwa.css`): header side padding 14px, title steps to 22px, row gap 8px. This is the only
+  width-specific header adjustment, and it exists to protect long German titles from the bell.
+- ≥720px the PWA caps the column at 720px; the header follows the column, it does not re-lay-out.
+
+### Removed 2026-07-26 — do not reintroduce
+
+The Marketplace **greeting/avatar block** is gone: the `JB` initials avatar, "Willkommen zurück," /
+"Welcome back," and the driver name are **removed from the Marketplace header** and were deliberately
+**not** moved to another screen. The `welcomeBack` i18n key is deleted. Removed CSS: `.pwa-header`,
+`.header-top-row`, `.driver-welcome`, `.driver-avatar`, `.welcome-text`, `.welcome-sub`,
+`.welcome-name`.
+
+*The Profile identity block (avatar + name inside the Profile body) is unaffected and stays.*
+
+## Marketplace results area
+
+Client-agreed Marketplace structure (2026-07-26): bell top-right → title → **results count directly
+below** → **filter controls around the results area**.
+
+- `.portal-results-row`: "N results" left, `SortSelect` + filter button right (both `.header-btn`).
+- Applied-filter chips (`.header-chips-row`) sit directly beneath that row.
+- Both render outside the loading branch, so the controls do not vanish during the skeleton state.
+- **KPI row:** currently **not implemented**. The `.kpi-row` / `.kpi-chip` CSS and the
+  `kpiAvailableJobs` / `kpiBookedJobs` / `kpiOpenDocuments` i18n keys exist but are unreferenced —
+  the row was dropped from `Portal` at some point after the 2026-07-14 remediation. Whether it
+  returns (PDF §4 "reduzierter Dashboard-Charakter" marks KPIs as *may contain*) is an open client
+  decision; see audit item 22.
 
 ---
 
@@ -118,6 +209,7 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 
 | Screen | Component | Required states | Primary CTA |
 |--------|-----------|-----------------|-------------|
+| **Shared primary header** | `DriverScreenHeader` | no badge, unread single/multi digit (`99+` cap), long title/subtitle, with/without screen actions, narrow (320px), tablet column, keyboard focus | Notifications |
 | Marketplace | `Portal` | default, filtered, empty, loading, blocked driver | Filter / open job |
 | My Jobs | `MyJobs` | 4 tabs × empty / loading / populated (swipe between tabs) | Open job |
 | Job detail (locked) | `JobLocked` | masked addresses, dashed route card | Accept (opens sheet) |

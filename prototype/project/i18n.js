@@ -82,7 +82,9 @@ window.I18n = (() => {
       viewOnMap: "View on map",
       offer: "Offer",
       exploreJobs: "Explore available jobs",
-      welcomeBack: "Welcome back,",
+      // `welcomeBack` removed 2026-07-26: the Marketplace greeting block
+      // (avatar + "Welcome back, <name>") was dropped by client decision and
+      // is not relocated to another screen. No other surface used the key.
       assignedDirectlyNotice: "Assigned directly by admin.",
       statusAll: "Status: all",
       searchJobsPlaceholder: "Search tour, customer, driver, VIN…",
@@ -1690,7 +1692,7 @@ window.I18n = (() => {
       viewOnMap: "Auf Karte anzeigen",
       offer: "Angebot",
       exploreJobs: "Verfügbare Aufträge durchsuchen",
-      welcomeBack: "Willkommen zurück,",
+      // `welcomeBack` ("Willkommen zurück,") removed 2026-07-26 — see EN note.
       assignedDirectlyNotice: "Direkt vom Administrator zugewiesen.",
       statusAll: "Status: alle",
       searchJobsPlaceholder: "Tour, Kunde, Fahrer, FIN suchen…",

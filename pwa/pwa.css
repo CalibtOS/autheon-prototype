@@ -178,9 +178,19 @@ body.pwa-standalone .phone-shell.pwa-viewport {
 
 /* ---- Compact phones (≤360px, e.g. iPhone SE 1st gen / 320px) --- */
 @media (max-width: 360px) {
-  .phone-shell.pwa-viewport .pwa-header {
+  /* Shared primary-screen header (was `.pwa-header` before the 2026-07-26
+     shared-header consolidation). */
+  .phone-shell.pwa-viewport .pwa-screen-header {
     padding-left: 14px;
     padding-right: 14px;
+  }
+  /* 24px title + a long DE subtitle next to a 40px action: give the title room
+     rather than letting it wrap into the notification button. */
+  .phone-shell.pwa-viewport .pwa-screen-header .header-title {
+    font-size: 22px;
+  }
+  .phone-shell.pwa-viewport .pwa-screen-header .screen-header-row {
+    gap: 8px;
   }
   .phone-shell.pwa-viewport .tabbar-container {
     padding-left: 10px;

@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DriverScreenHeader — states gallery</title>
+    <!--
+      DriverScreenHeader states gallery
+      =================================
+      This repository has no Storybook (and no bundler — the prototype is
+      static React + Babel-standalone over CDN scripts). This page is the
+      equivalent artefact in the repo's own idiom: every state of the shared
+      primary-screen header rendered side by side, in isolation, for design
+      review and for pixel regression (tests/regression/driver-header-states.visual.spec.ts).
+
+      Each card mounts the real `DriverScreenHeader` from driver.jsx — no
+      re-implemented markup — so the gallery cannot drift from the app.
+      Add a state here whenever the header gains one.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=24" />
+    <style>
+      body {
+        margin: 0;
+        background: var(--canvas);
+        font-family: "Inter Tight", system-ui, sans-serif;
+        color: var(--text);
+      }
+      .gallery {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 24px 20px 64px;
+      }
+      .gallery-title {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0 0 4px;
+      }
+      .gallery-lede {
+        font-size: 13.5px;
+        color: var(--muted);
+        margin: 0 0 24px;
+        max-width: 70ch;
+        line-height: 1.5;
+      }
+      .story-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 20px;
+        align-items: start;
+      }
+      .story {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .story-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+      /* The phone-shell wrapper is required: the header's type/control styles
+         are scoped to `.phone-shell` in styles.css. In the app that class is an
+         absolutely-positioned full-viewport stage; here it must be inert flow
+         so each story sits in its own card. */
+      .story-canvas .phone-shell {
+        position: static;
+        inset: auto;
+        display: block;
+        place-items: initial;
+        padding: 0;
+        overflow: visible;
+      }
+      .story-canvas {
+        border: 1px solid var(--line);
+        border-radius: var(--r-3);
+        overflow: hidden;
+        background: var(--paper);
+      }
+      .story-canvas[data-width="320"] {
+        width: 320px;
+      }
+      .story-canvas[data-width="768"] {
+        width: 100%;
+        max-width: 720px;
+      }
+      .story--wide {
+        grid-column: 1 / -1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script
+      src="https://unpkg.com/react@18.3.1/umd/react.development.js"
+      integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"
+      integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"
+      integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y"
+      crossorigin="anonymous"
+    ></script>
+
+    <script src="feature-flags.js"></script>
+    <script src="i18n.js?v=25"></script>
+    <script src="formatters.js"></script>
+    <script src="inputFormatters.js"></script>
+    <script src="store.js"></script>
+    <script type="text/babel" src="driver-ui.jsx"></script>
+    <script type="text/babel" src="driver.jsx?v=9"></script>
+
+    <script type="text/babel" data-presets="env,react">
+      const { useI18n } = window;
+      const { DriverScreenHeader, Ic, SortSelect } = window;
+      const UI = window.DriverUI || {};
+
+      // Sort + filter controls, rendered exactly as the Marketplace results row
+      // does, so the gallery can prove the bell matches their border treatment.
+      function SortAndFilterActions() {
+        const { t } = useI18n();
+        return (
+          <>
+            <SortSelect
+              value="date_desc"
+              onChange={() => {}}
+              options={[["date_desc", "Newest"], ["date_asc", "Oldest"]]}
+              label={t("sortJobs")}
+            />
+            <button
+              type="button"
+              className="header-btn"
+              aria-label={t("filters")}
+              onClick={() => {}}
+            >
+              <Ic.Filter />
+            </button>
+          </>
+        );
+      }
+
+      function Story({ label, width, wide, children }) {
+        return (
+          <div className={`story${wide ? " story--wide" : ""}`}>
+            <div className="story-label">{label}</div>
+            <div className="story-canvas" data-width={width} data-story={label}>
+              <div className="phone-shell">{children}</div>
+            </div>
+          </div>
+        );
+      }
+
+      function Gallery() {
+        const { t } = useI18n();
+        const noop = () => {};
+        return (
+          <div className="gallery">
+            <h1 className="gallery-title">DriverScreenHeader — states</h1>
+            <p className="gallery-lede">
+              The shared header used by Marketplace, My orders, Infopoint and
+              Profile. Every title below starts at the same offset inside its
+              canvas; the notification button reuses the <code>.header-btn</code>{" "}
+              treatment shared with the sort and filter controls.
+            </p>
+            <div className="story-grid">
+              {/* 1 — no badge */}
+              <Story label="No unread notifications">
+                <DriverScreenHeader
+                  title={t("marketplace")}
+                  subtitle={t("exploreJobs")}
+                  onOpenNotifications={noop}
+                  unreadCount={0}
+                />
+              </Story>
+
+              {/* 2 + 3 — unread badge, single digit */}
+              <Story label="Unread badge — single digit">
+                <DriverScreenHeader
+                  title={t("marketplace")}
+                  subtitle={t("exploreJobs")}
+                  onOpenNotifications={noop}
+                  unreadCount={3}
+                />
+              </Story>
+
+              {/* 4 — multi-digit + the 99+ cap */}
+              <Story label="Unread badge — multi digit (12)">
+                <DriverScreenHeader
+                  title={t("marketplace")}
+                  subtitle={t("exploreJobs")}
+                  onOpenNotifications={noop}
+                  unreadCount={12}
+                />
+              </Story>
+              <Story label="Unread badge — capped (128 → 99+)">
+                <DriverScreenHeader
+                  title={t("marketplace")}
+                  subtitle={t("exploreJobs")}
+                  onOpenNotifications={noop}
+                  unreadCount={128}
+                />
+              </Story>
+
+              {/* 5 — Marketplace after greeting removal */}
+              <Story label="Marketplace — after greeting removal">
+                <DriverScreenHeader
+                  title={t("marketplace")}
+                  subtitle={t("exploreJobs")}
+                  onOpenNotifications={noop}
+                  unreadCount={1}
+                />
+              </Story>
+
+              {/* 6 — My orders with the notification action */}
+              <Story label="My orders — with notification action">
+                <DriverScreenHeader
+                  title={t("myJobs")}
+                  subtitle={t("myJobsSubtitle")}
+                  onOpenNotifications={noop}
+                  unreadCount={1}
+                />
+              </Story>
+
+              <Story label="Infopoint">
+                <DriverScreenHeader
+                  title={t("infopoint")}
+                  subtitle={t("infopointSubtitle")}
+                  onOpenNotifications={noop}
+                  unreadCount={1}
+                />
+              </Story>
+              <Story label="Profile">
+                <DriverScreenHeader
+                  title={t("profileTitle")}
+                  subtitle={t("profileSubtitle")}
+                  onOpenNotifications={noop}
+                  unreadCount={1}
+                />
+              </Story>
+
+              {/* Screen-specific actions must not move the title baseline */}
+              <Story label="With screen actions (sort + filter) + bell">
+                <DriverScreenHeader
+                  title={t("marketplace")}
+                  subtitle={t("exploreJobs")}
+                  actions={<SortAndFilterActions />}
+                  onOpenNotifications={noop}
+                  unreadCount={2}
+                />
+              </Story>
+
+              {/* 7 — long title / subtitle must not collide with the action */}
+              <Story label="Long title + long subtitle">
+                <DriverScreenHeader
+                  title="Marktplatz für Fahrzeugtransporte"
+                  subtitle="Verfügbare Aufträge durchsuchen, filtern und verbindlich annehmen"
+                  onOpenNotifications={noop}
+                  unreadCount={9}
+                />
+              </Story>
+
+              {/* 8 — narrow mobile */}
+              <Story label="Narrow mobile (320px)" width="320">
+                <DriverScreenHeader
+                  title="Meine Aufträge"
+                  subtitle="Verfolgen und aktualisieren Sie Ihre akzeptierten Touren"
+                  onOpenNotifications={noop}
+                  unreadCount={4}
+                />
+              </Story>
+
+              {/* 9 — wide / tablet column */}
+              <Story label="Tablet width (720px column)" width="768" wide>
+                <DriverScreenHeader
+                  title={t("myJobs")}
+                  subtitle={t("myJobsSubtitle")}
+                  onOpenNotifications={noop}
+                  unreadCount={4}
+                />
+              </Story>
+
+              {/* 10 — keyboard focus is asserted by the visual spec, which
+                  focuses this bell before capturing. */}
+              <Story label="Keyboard focus (focus-visible ring)">
+                <DriverScreenHeader
+                  title={t("profileTitle")}
+                  subtitle={t("profileSubtitle")}
+                  onOpenNotifications={noop}
+                  unreadCount={1}
+                />
+              </Story>
+            </div>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<Gallery />);
+    </script>
+  </body>
+</html>

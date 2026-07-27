@@ -60,6 +60,41 @@ while ((tm = tRe.exec(driver))) used.add(tm[1]);
 
 const keys = [...used].filter((k) => !k.includes(".")).sort();
 
+// Keys the shared primary-screen header depends on. Called out explicitly
+// because a header regression is easy to introduce by deleting a "title" key
+// that looks unused. Kept in the generator so it survives regeneration.
+const HEADER_SECTION = [
+  `## Primary-screen header keys`,
+  ``,
+  `The four primary screens share one header component (\`DriverScreenHeader\`, see`,
+  `[\`driver-screen-spec.md\`](driver-screen-spec.md)). These keys are the header's contract —`,
+  `every one of them is load-bearing:`,
+  ``,
+  `| Screen | Title key | Subtitle key |`,
+  `|--------|-----------|--------------|`,
+  `| Marketplace | \`marketplace\` | \`exploreJobs\` |`,
+  `| My Orders | \`myJobs\` | \`myJobsSubtitle\` |`,
+  `| Infopoint | \`infopoint\` | \`infopointSubtitle\` |`,
+  `| Profile | \`profileTitle\` | \`profileSubtitle\` |`,
+  ``,
+  `**Notification action (all four screens):** \`driverNotifications\` is the translated accessible`,
+  `name of the header notification button. When the unread count is > 0 the component renders`,
+  `\`\` \`${'${driverNotifications}'} (${'${count}'})\` \`\` — e.g. "Notifications (3)" / "Benachrichtigungen (3)" —`,
+  `so the unread count reaches screen readers as text and the visual badge is never the only signal.`,
+  `Do not remove or repurpose this key, and keep any translation short enough to stay legible as a`,
+  `button label.`,
+  ``,
+  `### Deprecated / removed`,
+  ``,
+  `| Key | Status | Reason |`,
+  `|-----|--------|--------|`,
+  `| \`welcomeBack\` | **Removed 2026-07-26** (EN + DE) | The Marketplace greeting block (avatar + "Welcome back," + driver name) was removed by client decision and was not relocated. The key had no other consumer. |`,
+  `| \`kpiAvailableJobs\`, \`kpiBookedJobs\`, \`kpiOpenDocuments\` | **Orphaned** — still defined in \`i18n.js\`, not referenced by any \`t()\` | The Marketplace KPI chip row is not currently rendered. Retained pending a client decision on whether the row returns; see audit item 22. |`,
+  ``,
+  `---`,
+  ``,
+];
+
 const lines = [
   `# Driver PWA — i18n Key Index`,
   ``,
@@ -105,7 +140,8 @@ const lines = [
   ``,
   `---`,
   ``,
-  `## All driver-reachable keys`,
+  ...HEADER_SECTION,
+  `## All driver keys in use`,
   ``,
   `| Key | EN | DE |`,
   `|-----|----|----|`,
