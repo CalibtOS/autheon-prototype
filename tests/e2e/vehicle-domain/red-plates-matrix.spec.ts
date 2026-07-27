@@ -1,7 +1,7 @@
 /**
  * Red-licence-plate decision matrix across every UI surface.
  *
- * Client confirmation "Systemlogik Fahrzeugeingabe" (PRD v2.7):
+ * Client confirmation "Systemlogik Fahrzeugeingabe" (PRD v2.8):
  *   requiresRedLicencePlates = (registrationStatus === DEREGISTERED
  *                               AND transportType === OWN_AXLE)
  *

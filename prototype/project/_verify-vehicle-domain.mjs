@@ -1,11 +1,10 @@
 /**
  * Domain-level verification of the vehicle model confirmed by the client
- * document "Systemlogik Fahrzeugeingabe" (PRD v2.7).
+ * document "Systemlogik Fahrzeugeingabe" (PRD v2.8).
  *
  * Loads store.js in the same minimal browser shim as _verify-seed.mjs and
  * asserts the rules that must hold BELOW the UI: the red-licence-plate decision
- * matrix, the authoritative write validation, vehicle-entry constraints, and
- * legacy-data safety.
+ * matrix, the authoritative write validation and vehicle-entry constraints.
  *
  * Run: node _verify-vehicle-domain.mjs
  */
@@ -79,13 +78,9 @@ eq(S.requiresRedLicencePlates(null, OWN), false, "null registration + own axle �
 eq(S.requiresRedLicencePlates("", OWN), false, "empty registration + own axle → no warning");
 eq(S.normalizeRegistrationStatus("nonsense"), null, "unknown registration status → null, not defaulted");
 
-// Legacy spellings of the old axle field must resolve to the same decision.
-for (const legacy of ["driven on own wheels", "Own axle", "Eigenachse"]) {
-  eq(S.requiresRedLicencePlates(DEREG, legacy), true, `legacy own-axle spelling "${legacy}" → WARNING`);
-}
-for (const legacy of ["third-party axle", "Third-party axle", "Fremdachse"]) {
-  eq(S.requiresRedLicencePlates(DEREG, legacy), false, `legacy third-party spelling "${legacy}" → no warning`);
-}
+// Only the canonical transport-type values drive the decision.
+eq(S.requiresRedLicencePlates(DEREG, OWN), true, "canonical own_axle → WARNING");
+eq(S.requiresRedLicencePlates(DEREG, THIRD), false, "canonical third_party_axle → no warning");
 
 // =========================================================================
 // 2. DERIVED VALUE IS NOT CLIENT-WRITABLE
@@ -141,19 +136,13 @@ const baseForm = {
 };
 eq(S.validateVehicleForm(baseForm).ok, true, "a complete approved form validates");
 
-// Removed vehicle types are unavailable for NEW records.
-for (const removed of ["SUV", "Van", "Transporter", "Oldtimer", "Classic", "Light truck <3.5t", "LKW < 3,5t"]) {
+// Any value outside the three approved types is rejected.
+for (const removed of ["SUV", "Van", "Transporter", "Oldtimer", "Classic", "Light truck <3.5t", "LKW < 3,5t", "PKW", "Car"]) {
   const r = S.validateVehicleForm({ ...baseForm, vehicleType: removed });
   const rejected = !r.ok && r.errors.some((e) => e.field === "vehicleType" && e.reason === "removed_vehicle_type");
   rejected
-    ? ok(`removed vehicle type "${removed}" rejected for a new record`)
-    : fail(`removed vehicle type "${removed}" was accepted for a new record`);
-  // …but it stays acceptable while editing the record that already holds it.
-  eq(
-    S.validateVehicleForm({ ...baseForm, vehicleType: removed }, removed).ok,
-    true,
-    `legacy "${removed}" still writable on its OWN record (edit preservation)`,
-  );
+    ? ok(`removed vehicle type "${removed}" rejected`)
+    : fail(`removed vehicle type "${removed}" was accepted`);
 }
 
 // Manufacturer and model are separate required fields.
@@ -235,56 +224,60 @@ eq(form.registrationStatus, j845.registrationStatus, "round-trip preserves regis
 eq(form.readyToDrive, j845.readyToDrive, "round-trip preserves readyToDrive (no silent loss)");
 eq("redPlateNumber" in form, false, "round-trip form carries NO red-plate number");
 eq("redPlates" in form, false, "round-trip form carries NO red-plates flag");
+eq("legacyVehicleType" in form, false, "round-trip form carries no removed-type escape hatch");
 
-// A legacy record exposes its own value so an edit does not force a remap.
-const legacyJob = jobs.find((j) => S.isLegacyVehicleType(j.vehicleType));
-if (!legacyJob) fail("expected at least one legacy vehicle-type fixture in the seed");
-else {
-  const lf = S.jobToDraftForm(legacyJob);
-  eq(lf.legacyVehicleType, legacyJob.vehicleType, `legacy record ${legacyJob.id} exposes its own type for edit`);
-}
 
 // =========================================================================
-// 5. LEGACY DATA SAFETY
+// 5. ONLY THE APPROVED VALUES EXIST
 // =========================================================================
-out("\n— Legacy data —");
-// Removed values are preserved VERBATIM — never remapped.
-for (const removed of ["SUV", "Van", "Transporter", "Oldtimer", "Classic", "Light truck <3.5t", "LKW < 3,5t"]) {
-  eq(S.normalizeVehicleType(removed), removed, `"${removed}" preserved verbatim (no remap)`);
-  eq(S.isLegacyVehicleType(removed), true, `"${removed}" reported as legacy`);
+out("\n— Strict approved-value domain —");
+// Every non-approved value normalizes to "" so it can never be stored.
+for (const removed of ["SUV", "Van", "Transporter", "Oldtimer", "Classic", "Light truck <3.5t", "LKW < 3,5t", "PKW", "Car"]) {
+  eq(S.normalizeVehicleType(removed), "", `"${removed}" does not resolve to a storable value`);
+  eq(S.isAcceptableVehicleTypeForWrite(removed), false, `"${removed}" is not writable`);
 }
-// The ONE approved rename: a label rename of a retained option.
-eq(S.normalizeVehicleType("PKW"), S.VEHICLE_TYPE_PASSENGER_CAR, 'the one rename: "PKW" → passenger_car');
-eq(S.normalizeVehicleType("Car"), S.VEHICLE_TYPE_PASSENGER_CAR, 'the one rename: "Car" → passenger_car');
-eq(S.isLegacyVehicleType(S.VEHICLE_TYPE_PASSENGER_CAR), false, "passenger_car is not legacy");
+for (const approved of S.VEHICLE_TYPES) {
+  eq(S.normalizeVehicleType(approved), approved, `"${approved}" resolves to itself`);
+  eq(S.isAcceptableVehicleTypeForWrite(approved), true, `"${approved}" is writable`);
+}
 
-// Legacy records must render safely (a label always resolves, never throws).
-const label = (v) => S.vehicleTypeLabel(v, (k, p) => (p ? `${k}:${p.value}` : k));
-eq(label("SUV"), "vehicleTypeLegacy:SUV", "legacy value renders through the (legacy) template");
+// Labels resolve for approved values and degrade safely otherwise.
+const label = (v) => S.vehicleTypeLabel(v, (k) => k);
 eq(label(S.VEHICLE_TYPE_TRUCK_OVER_7_5_T), "vehicleTypeTruckOver75t", "approved value renders its own key");
+eq(label("SUV"), "—", "unknown value renders a placeholder, not a crash");
 eq(label(""), "—", "empty vehicle type renders a placeholder, not a crash");
 eq(label(undefined), "—", "undefined vehicle type renders a placeholder, not a crash");
 
-// Historical red-plate numbers are preserved for audit but never active.
-const j844 = jobs.find((j) => j.id === "A-2026-00844");
-eq(j844.legacyRedPlateNumber, "HH-06 2440", "historical red-plate number preserved under its legacy name");
-eq("redPlateNumber" in j844, false, "historical record no longer carries the active red-plate field");
-eq("redPlateNumber" in S.jobToDraftForm(j844), false, "old red-plate data does not leak into the entry form");
+// Every seeded job holds an approved value — no preserved historical values.
+const nonApproved = jobs.filter((j) => !S.VEHICLE_TYPES.includes(j.vehicleType));
+eq(nonApproved.length, 0, "every seeded job holds an approved vehicle type");
+// Registration status is always explicit — never null/unspecified.
+const noStatus = jobs.filter((j) => !S.REGISTRATION_STATUSES.includes(j.registrationStatus));
+eq(noStatus.length, 0, "every seeded job has an explicit registration status");
+// No record carries any retired red-plate field.
+const redPlateFields = jobs.filter(
+  (j) => "redPlates" in j || "redPlateNumber" in j || "legacyRedPlateNumber" in j,
+);
+eq(redPlateFields.length, 0, "no record carries any red-plate field");
+// The deprecated aliases are gone.
+const aliased = jobs.filter((j) => "vehicle" in j || "axle" in j);
+eq(aliased.length, 0, "no record carries the deprecated vehicle/axle aliases");
 
-// Filter preferences degrade a removed value to "All" rather than filtering
-// the whole marketplace away.
-const prefs = S.normalizeDriverPrefs({ vehicle: "SUV", axle: "Eigenachse" });
-eq(prefs.vehicleType, "All", "removed vehicle type in a stored pref degrades to All");
-eq(prefs.transportType, OWN, "deprecated axle pref name maps to the canonical transportType");
+// Filter preferences degrade an unrecognised value to "All".
+const prefs = S.normalizeDriverPrefs({ vehicleType: "SUV", transportType: "Eigenachse" });
+eq(prefs.vehicleType, "All", "unrecognised vehicle type in a pref degrades to All");
+eq(prefs.transportType, "All", "unrecognised transport type in a pref degrades to All");
 
 // =========================================================================
-// 6. COMPATIBILITY BOUNDARY + DEPRECATED ALIASES
+// 6. CANONICAL VALUES ONLY
 // =========================================================================
-out("\n— Compatibility boundary —");
-eq(j845.vehicle, j845.vehicleType, "deprecated job.vehicle alias mirrors vehicleType");
-eq(j845.axle, j845.transportType, "deprecated job.axle alias mirrors transportType");
-eq(S.normalizeTransportType("driven on own wheels"), OWN, "legacy axle value maps at the boundary");
-eq(S.normalizeTransportType("Fremdachse"), THIRD, "German axle value maps at the boundary");
+out("\n— Canonical values —");
+eq("vehicle" in j845, false, "no deprecated job.vehicle alias");
+eq("axle" in j845, false, "no deprecated job.axle alias");
+for (const t of S.TRANSPORT_TYPES) {
+  eq(S.normalizeTransportType(t), t, `transport type "${t}" resolves to itself`);
+}
+eq(S.normalizeTransportType("Eigenachse"), OWN, "unrecognised transport type falls back to own_axle");
 eq(S.normalizeTransportType("nonsense"), OWN, "unknown transport type falls back to own_axle");
 
 // =========================================================================
@@ -307,11 +300,6 @@ warned.length >= 2
 warned.some((j) => ["assigned", "accepted", "performed"].includes(j.status))
   ? ok("a BOOKED job requires red plates (warning must survive booking)")
   : fail("no booked job requires red plates — post-booking visibility is untested");
-// Legacy fixtures present.
-const legacyFixtures = jobs.filter((j) => S.isLegacyVehicleType(j.vehicleType));
-legacyFixtures.length >= 1
-  ? ok(`${legacyFixtures.length} legacy vehicle-type fixture(s): ${legacyFixtures.map((j) => `${j.id}=${j.vehicleType}`).join(", ")}`)
-  : fail("no legacy vehicle-type fixture in the seed");
 
 // =========================================================================
 // 8. DOWNSTREAM OUTPUTS
@@ -335,8 +323,8 @@ const summaryWarn = S.transportOrderText("A-2026-00844");
 summaryWarn.includes("Rote Kennzeichen erforderlich")
   ? ok("order summary carries the red-plate requirement for a deregistered own-axle tour")
   : fail("order summary is missing the red-plate requirement");
-summaryWarn.includes("HH-06 2440")
-  ? fail("order summary leaks the historical red-plate NUMBER")
+/[0-9]{2}-06 [0-9]{4}/.test(summaryWarn)
+  ? fail("order summary leaks a red-plate NUMBER")
   : ok("order summary does NOT leak a red-plate number");
 const summaryNoWarn = S.transportOrderText("A-2026-00840"); // deregistered + third-party
 summaryNoWarn.includes("Rote Kennzeichen erforderlich")

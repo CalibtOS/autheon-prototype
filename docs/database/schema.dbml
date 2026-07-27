@@ -1,10 +1,10 @@
 ﻿// AUTHEON Version 1 database draft — PostgreSQL target.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
-// 2026-07-26 (PRD v2.7) — VEHICLE DOMAIN restructured per the client confirmation "Systemlogik Fahrzeugeingabe". Four explicit categories replace the fragmented vehicle inputs: new enums vehicle_type (passenger_car | truck_up_to_7_5_t | truck_over_7_5_t) and transport_type (own_axle | third_party_axle). jobs.axle_type -> jobs.transport_type (known 1:1 rename over every historical spelling; expose axle_type as a deprecated read-only API alias during the compatibility window). jobs.required_axle_type -> jobs.required_transport_type; notification_preferences.axle_type -> transport_type and its vehicle_type narrows to the enum. jobs.vehicle_manufacturer becomes NOT NULL (manufacturer is now a dropdown selection, model a separate field). jobs.vehicle_type deliberately stays varchar (NOT the new enum) because legacy rows hold removed values (SUV, Van, Transporter, Oldtimer, Classic, 'Light truck <3.5t') for which the client supplied NO migration mapping — narrowing it is BLOCKED on an approved mapping. Added jobs.ready_to_drive boolean (Fahrbereit). REMOVED jobs.red_license_plates; RENAMED jobs.red_license_plate_number -> jobs.legacy_red_license_plate_number (retained read-only for audit/history, never exposed to or accepted by an active order flow). The red-licence-plate REQUIREMENT is now DERIVED at the domain layer as (vehicle_registration_status = 'deregistered' AND transport_type = 'own_axle') and is deliberately NOT stored. The 2026-07-14 rule that forced licenseplate to NULL when deregistered is REVERSED: the official plate is required while registered and OPTIONAL-but-accepted once deregistered. VIN rule tightened to exactly 17 characters. See logical-model.md "Vehicle domain" + "Migration notes (backend)".
+// 2026-07-26 (PRD v2.8) — VEHICLE DOMAIN restructured per the client confirmation "Systemlogik Fahrzeugeingabe". Four explicit categories replace the fragmented vehicle inputs: new enums vehicle_type (passenger_car | truck_up_to_7_5_t | truck_over_7_5_t) and transport_type (own_axle | third_party_axle). jobs.axle_type -> jobs.transport_type; jobs.required_axle_type -> jobs.required_transport_type; notification_preferences.axle_type -> transport_type and its vehicle_type narrows to the enum. jobs.vehicle_type is the vehicle_type ENUM — only the three approved values are storable. jobs.vehicle_manufacturer becomes NOT NULL (manufacturer is now a dropdown selection, model a separate field). Added jobs.ready_to_drive boolean (Fahrbereit). REMOVED jobs.red_license_plates and jobs.red_license_plate_number entirely: the red-licence-plate REQUIREMENT is DERIVED at the domain layer as (vehicle_registration_status = 'deregistered' AND transport_type = 'own_axle') and is deliberately NOT stored, and the plate NUMBER is not recorded at all. The 2026-07-14 rule that forced licenseplate to NULL when deregistered is REVERSED: the official plate is required while registered and OPTIONAL-but-accepted once deregistered. VIN rule tightened to exactly 17 characters. vehicle_registration_status is NOT NULL. See logical-model.md "Vehicle domain".
 // 2026-07-22 (PRD v2.5) — full admin order-editing implementation + Storno consistency pass. No new job columns: editing ALL eligible business data on any non-terminal order (Storno §7) reuses existing jobs/job_locations/job_financials columns and is audited via audit_events.action_key='order_edited' with metadata jsonb carrying the per-field {field, previous, new} diff list (one logical edit action; status is preserved, never mutated by an edit). Added empty_run_evidence (empty-run report attachments → upload_assets), mirroring problem_report_evidence, so §3.2 optional evidence has a first-class home instead of overloading the legacy job_problem_reports path. Legacy removal (PRD v2.6, 2026-07-23 — "ignore the special case"): the special_case job_status value and the problem_type.not_performable value have been REMOVED entirely (not merely deprecated) — the canonical driver problem workflow is sp_cancellations + empty_run_reports/empty_run_evidence, and the empty-run report model fully replaces the old not-performable → special-case path. New notification_type (user_notifications) values used by the app: order_updated_after_booking, empty_run_reported, empty_run_recognised, empty_run_not_recognised (notification_type stays a free varchar — no enum change).
 // 2026-07-21 (PRD v2.4, T2) — order cancellation & empty-run workflow. Extended job_status with cancelled_by_sp, cancelled_by_autheon, empty_run_reported, empty_run_recognised, empty_run_not_recognised (decision: extended enum; board umbrellas + reason chip). Added cancellation_actor.service_partner; empty_run_reason / sp_cancellation_reason / empty_run_decision enums; sp_cancellations, empty_run_reports, internal_notes tables. New audit actions: cancelled_by_service_partner, cancelled_by_autheon, empty_run_reported, empty_run_recognised, empty_run_not_recognised, order_edited (prev+new), order_duplicated, internal_note_added, plus publication-of-duplicate.
 // 2026-07-20 (PRD v2.3, T1) — driver self-service email change (verify, don't approve): added email_change_requests table (6-digit code sent to the NEW address, old address stays live until confirmed, no ops approval). Email is removed from the ops-managed master-data change scope — master_data_change_requests no longer carries email; users.email is changed only via a confirmed email_change_request. New audit actions driver_email_change_requested / driver_email_changed.
-// 2026-07-14 (PRD v2.1 follow-up, same version) — [SUPERSEDED 2026-07-26 by PRD v2.7, see the v2.7 note above] important-vehicle-info conditional rules: added jobs.red_license_plate_number (§16 FZV dealer transfer plate, operator-bound); documented that licenseplate is app-required when registered and null when deregistered. Both of those rules are now GONE — the red-plate number column is retained only as legacy_red_license_plate_number for audit, and a deregistered vehicle MAY carry a recorded official plate.
+// 2026-07-14 (PRD v2.1 follow-up, same version) — [SUPERSEDED 2026-07-26 by PRD v2.8, see the v2.8 note above] important-vehicle-info conditional rules: added jobs.red_license_plate_number (§16 FZV dealer transfer plate, operator-bound); documented that licenseplate is app-required when registered and null when deregistered. Both of those rules are now GONE — the red-plate number column is removed, and a deregistered vehicle MAY carry a recorded official plate.
 // 2026-07-13 (PRD v2.0, F-01) — removed deprecated master_data_change_type.daily_limit_override enum value. Documented that drivers.probation_job_limit is a per-driver snapshot seeded at creation from app_settings 'driver.acceptance.probationJobCount' (application-layer default, literal column default is a fallback only); no structural change to columns.
 // Last updated: 2026-07-10 (PRD v2.0) — no structural change. Annotated drivers.driver_code semantics (F-03: system-assigned, immutable, never reused) and documented same-day per-leg time-window rule (F-04) in logical-model.md. Probation UI, Infopoint View/Download, branding/domain/Report-Problem-timing are UI/open items with no schema impact.
 // 2026-07-09 (PRD v1.9, F-01) — replaced drivers.daily_job_limit with the one-time probation model (probation_job_limit + probation_cleared_at); removed master_data_change_type.daily_limit_override; renamed app_settings key driver.acceptance.defaultDailyJobLimit -> driver.acceptance.probationJobCount.
@@ -141,7 +141,7 @@ Enum empty_run_decision {
 
 // ===========================================================================
 // VEHICLE DOMAIN — client confirmation "Systemlogik Fahrzeugeingabe"
-// (2026-07-26; see docs/archive/2026-07/prd-changelog-since-2026-07-26.md).
+// (2026-07-26; see docs/archive/2026-07/prd-changelog-since-2026-07-27.md).
 //
 // Four EXPLICIT categories with distinct cardinalities. The earlier proposal to
 // flatten all vehicle classifications into one unstructured multi-select tag
@@ -149,8 +149,7 @@ Enum empty_run_decision {
 // exists or should be introduced.
 // ===========================================================================
 
-// Vehicle type — exactly one. These three values are the ONLY ones selectable
-// for a new or edited record.
+// Vehicle type — exactly one. These three values are the ONLY storable values.
 Enum vehicle_type {
   passenger_car        // PKW
   truck_up_to_7_5_t    // LKW bis einschließlich 7,5 t
@@ -164,8 +163,7 @@ Enum transport_type {
 }
 
 // Registration status — exactly one, INDEPENDENT of transport type. Never
-// inferred from transport type. Nullable on jobs only for legacy records
-// created before the status became a required category (null = not specified).
+// inferred from transport type.
 Enum vehicle_registration_status {
   registered           // Zugelassen
   deregistered         // Abgemeldet
@@ -307,16 +305,8 @@ Table jobs {
   current_driver_id uuid
   distance_km numeric(10,2) // canonical tour distance: system estimate or admin-entered value (single field — no separate override or source column)
   // ---- Vehicle domain (client confirmation "Systemlogik Fahrzeugeingabe") ----
-  // 1. Vehicle type — exactly one.
-  //    Typed as varchar rather than the vehicle_type enum ON PURPOSE: legacy
-  //    records still hold removed values ('SUV', 'Van', 'Transporter',
-  //    'Oldtimer', 'Classic', 'Light truck <3.5t') and the client supplied NO
-  //    migration mapping, so those values must remain storable and readable.
-  //    The APPLICATION restricts writes to the vehicle_type enum values (plus a
-  //    legacy record's own current value while it is being edited). Narrowing
-  //    this column to the enum requires an approved legacy mapping first — see
-  //    logical-model.md → "Legacy vehicle types".
-  vehicle_type varchar(100) [not null]
+  // 1. Vehicle type — exactly one of the three approved values.
+  vehicle_type vehicle_type [not null]
   // 2. Manufacturer — selected from the manufacturer catalogue (dropdown), and
   //    the model as its own separate free-text field.
   vehicle_manufacturer varchar(128) [not null]
@@ -325,42 +315,34 @@ Table jobs {
   //    Application rule: required while registration is 'registered' (or
   //    unspecified), OPTIONAL once 'deregistered' — a previous or de-stamped
   //    plate may still be recorded when known. Deregistration must NOT clear,
-  //    hide or disable it (the pre-2026-07-26 rule forced it to null).
+  //    hide or disable it.
   licenseplate varchar(32)
   // 4. VIN — confirmed rule: exactly 17 characters when present.
   vin varchar(17)
   // 5. Transport type — exactly one. Renames axle_type (see migration note).
   transport_type transport_type [not null]
   // 6. Registration status — exactly one, INDEPENDENT of transport_type.
-  //    Application-required for new/edited records; nullable only so legacy
-  //    rows created before it became required stay readable (null = not
-  //    specified). Never derived from transport_type.
-  vehicle_registration_status vehicle_registration_status
+  //    Never derived from transport_type.
+  vehicle_registration_status vehicle_registration_status [not null]
   // 7. Additional vehicle characteristics — independent booleans.
   electric_vehicle boolean [not null, default: false]
   // 'Fahrbereit'. Decision-relevant for third-party-axle transport; applicability
   // drives UI emphasis only and the stored value is never auto-cleared.
   ready_to_drive boolean [not null, default: false]
   //
-  // NO red-plate columns. The red-licence-plate REQUIREMENT is DERIVED at the
-  // domain layer as (vehicle_registration_status = 'deregistered' AND
-  // transport_type = 'own_axle') and is deliberately NOT stored: a stored copy
-  // could drift from the two inputs and would be writable. See
+  // NO red-plate columns of any kind. The red-licence-plate REQUIREMENT is
+  // DERIVED at the domain layer as (vehicle_registration_status = 'deregistered'
+  // AND transport_type = 'own_axle') and is deliberately NOT stored: a stored
+  // copy could drift from the two inputs and would be writable. See
   // logical-model.md → "Red licence plates". The plate NUMBER is not recorded at
   // all — partners bring their own plates and the number is irrelevant to
   // AUTHEON order creation.
-  //
-  // LEGACY, read-only: red-plate numbers manually captured BEFORE 2026-07-26.
-  // Retained for audit/history during the compatibility window; never exposed to
-  // or accepted by an active order-creation/edit flow, and never displayed.
-  // Dropping it requires an approved retention decision.
-  legacy_red_license_plate_number varchar(32)
   internal_notes text
   driver_visible_notes text
   // Determines publish flow and notification strategy
   assignment_mode assignment_mode [not null, default: 'marketplace']
   // Marketplace filter dimensions — matched against notification_preferences.postal_areas / vehicle_type / transport_type
-  required_vehicle_type varchar(100)
+  required_vehicle_type vehicle_type
   required_transport_type transport_type
   pickup_postal_area varchar(16)
   document_review_summary document_review_status [not null, default: 'missing']
@@ -692,8 +674,7 @@ Table notification_preferences {
   notify_postal_area boolean [not null, default: false]
   // Array of postal area codes — replaces single pickup_postal_prefix to support multi-area subscriptions
   postal_areas text[] [not null, default: '{}']
-  // Filter preferences hold an APPROVED vehicle_type value or NULL (= no
-  // filter). Removed types are not selectable here.
+  // Filter preference: an approved vehicle_type value or NULL (= no filter).
   vehicle_type vehicle_type
   transport_type transport_type
   updated_at timestamptz [not null]

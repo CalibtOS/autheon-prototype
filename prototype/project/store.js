@@ -46,57 +46,13 @@ window.AuthStore = (() => {
     VEHICLE_TYPE_TRUCK_OVER_7_5_T,
   ];
 
-  // Legacy vehicle types — removed from NEW entry by the client confirmation
-  // (SUV, Van/Transporter, Classic car/Oldtimer) plus the older light-truck
-  // band that predates the confirmed 7.5 t boundary. Historical records keep
-  // these values VERBATIM: the client supplied no migration mapping, so the
-  // platform must never guess one (e.g. SUV → passenger car). They stay
-  // readable/displayable and render a neutral fallback icon; they can never be
-  // selected for a new record. See LEGACY DATA in logical-model.md.
-  const LEGACY_VEHICLE_TYPES = [
-    "SUV",
-    "Van",
-    "Transporter",
-    "Oldtimer",
-    "Classic",
-    "Light truck <3.5t",
-    "LKW < 3,5t",
-  ];
-
-  // The ONLY auto-applied vehicle-type migration: a pure label rename of a
-  // RETAINED option. "PKW" / "Car" always denoted the passenger-car concept
-  // that the confirmation keeps and relabels — no semantic reclassification
-  // happens. Every removed value is deliberately absent from this map.
-  const VEHICLE_TYPE_RENAMES = {
-    PKW: VEHICLE_TYPE_PASSENGER_CAR,
-    Car: VEHICLE_TYPE_PASSENGER_CAR,
-    passenger_car: VEHICLE_TYPE_PASSENGER_CAR,
-    truck_up_to_7_5_t: VEHICLE_TYPE_TRUCK_UP_TO_7_5_T,
-    truck_over_7_5_t: VEHICLE_TYPE_TRUCK_OVER_7_5_T,
-  };
-
-  // 2. Transport type — exactly one. Renames the former "axle" concept.
+  // 2. Transport type — exactly one.
   const TRANSPORT_TYPE_OWN_AXLE = "own_axle"; // Eigenachse
   const TRANSPORT_TYPE_THIRD_PARTY_AXLE = "third_party_axle"; // Fremdachse
   const TRANSPORT_TYPES = [
     TRANSPORT_TYPE_OWN_AXLE,
     TRANSPORT_TYPE_THIRD_PARTY_AXLE,
   ];
-
-  // Terminology rename with a known 1:1 mapping, so it migrates completely and
-  // safely (unlike vehicle type). Every spelling the prototype/API ever used
-  // resolves at the boundary; `job.axle` survives only as a DEPRECATED derived
-  // alias (syncDisplayFields) — never as a second writable domain value.
-  const TRANSPORT_TYPE_ALIASES = {
-    own_axle: TRANSPORT_TYPE_OWN_AXLE,
-    third_party_axle: TRANSPORT_TYPE_THIRD_PARTY_AXLE,
-    "driven on own wheels": TRANSPORT_TYPE_OWN_AXLE,
-    "third-party axle": TRANSPORT_TYPE_THIRD_PARTY_AXLE,
-    "Own axle": TRANSPORT_TYPE_OWN_AXLE,
-    "Third-party axle": TRANSPORT_TYPE_THIRD_PARTY_AXLE,
-    Eigenachse: TRANSPORT_TYPE_OWN_AXLE,
-    Fremdachse: TRANSPORT_TYPE_THIRD_PARTY_AXLE,
-  };
 
   // 3. Registration status — exactly one, INDEPENDENT of transport type.
   // Never inferred from transport type, never merged into a tag array.
@@ -110,42 +66,27 @@ window.AuthStore = (() => {
   const VIN_LENGTH = 17;
 
   /**
-   * Vehicle type at the boundary. Approved + renamed values resolve to a
-   * canonical id; anything else (a legacy record) is preserved verbatim.
+   * Vehicle type at the boundary. Only the three approved values exist; any
+   * other input resolves to "" so it fails validation rather than being stored.
    */
   function normalizeVehicleType(raw) {
     const s = String(raw || "").trim();
-    if (!s) return "";
-    if (VEHICLE_TYPES.includes(s)) return s;
-    return VEHICLE_TYPE_RENAMES[s] || s;
+    return VEHICLE_TYPES.includes(s) ? s : "";
   }
 
-  /** True for a preserved historical value that is no longer selectable. */
-  function isLegacyVehicleType(raw) {
-    const s = normalizeVehicleType(raw);
-    return !!s && !VEHICLE_TYPES.includes(s);
-  }
-
-  /** Values offered for a NEW or EDITED record — approved types only. */
+  /** Values offered for a NEW or EDITED record. */
   function selectableVehicleTypes() {
     return [...VEHICLE_TYPES];
   }
 
-  /**
-   * Reject a removed/unknown vehicle type on create+update. Legacy records may
-   * keep their stored value while being edited (`allowLegacy` = the record's
-   * own current value) so an unrelated edit never forces a silent remap.
-   */
-  function isAcceptableVehicleTypeForWrite(raw, allowLegacy) {
-    const s = normalizeVehicleType(raw);
-    if (!s) return false;
-    if (VEHICLE_TYPES.includes(s)) return true;
-    return !!allowLegacy && s === normalizeVehicleType(allowLegacy);
+  /** Reject anything outside the approved set on create + update. */
+  function isAcceptableVehicleTypeForWrite(raw) {
+    return VEHICLE_TYPES.includes(normalizeVehicleType(raw));
   }
 
   function normalizeTransportType(raw) {
     const s = String(raw || "").trim();
-    return TRANSPORT_TYPE_ALIASES[s] || TRANSPORT_TYPE_OWN_AXLE;
+    return TRANSPORT_TYPES.includes(s) ? s : TRANSPORT_TYPE_OWN_AXLE;
   }
 
   function normalizeRegistrationStatus(raw) {
@@ -204,18 +145,14 @@ window.AuthStore = (() => {
    * AUTHORITATIVE vehicle validation for every create/update. The admin form
    * imports the same helpers for immediate feedback, but this runs on the
    * server-equivalent write path so client state is never trusted.
-   *
-   * `currentVehicleType` = the edited record's stored type, which keeps a
-   * preserved legacy value acceptable for THAT record only.
    */
-  function validateVehicleForm(form = {}, currentVehicleType = "") {
+  function validateVehicleForm(form = {}) {
     const errors = [];
-    const type = normalizeVehicleType(form.vehicleType);
-    if (!type) {
+    const raw = String(form.vehicleType || "").trim();
+    if (!raw) {
       errors.push({ field: "vehicleType", reason: "required" });
-    } else if (!isAcceptableVehicleTypeForWrite(type, currentVehicleType)) {
-      // SUV / Van / Transporter / Oldtimer / Classic and the old light-truck
-      // band are removed from new entry and rejected server-side.
+    } else if (!isAcceptableVehicleTypeForWrite(raw)) {
+      // Anything outside the three approved values is rejected server-side.
       errors.push({ field: "vehicleType", reason: "removed_vehicle_type" });
     }
     if (!String(form.manufacturer || "").trim()) {
@@ -434,21 +371,17 @@ window.AuthStore = (() => {
       delivery: mkLocation(),
       distanceKm: 0,
       // --- Vehicle domain (client confirmation "Systemlogik Fahrzeugeingabe") ---
-      vehicleType: "", // exactly one of VEHICLE_TYPES (or a preserved legacy value)
+      vehicleType: "", // exactly one of VEHICLE_TYPES
       manufacturer: "", // selected from the manufacturer catalogue
       vehicleModel: "", // free text, separate from the manufacturer
       plate: "", // OFFICIAL plate of the TRANSPORTED vehicle (never a red plate)
       vin: "", // exactly 17 characters when present
       transportType: TRANSPORT_TYPE_OWN_AXLE, // exactly one — renames the former "axle"
-      registrationStatus: null, // exactly one; independent of transportType. null = legacy "not specified"
+      registrationStatus: null, // exactly one; independent of transportType
       // Additional vehicle characteristics — independent booleans
       electricVehicle: false,
       readyToDrive: false,
-      // Historical-only: manually captured red transfer-plate numbers from
-      // before the confirmation. Retained for audit/history, never displayed
-      // in or accepted by an active order-creation/edit flow.
-      legacyRedPlateNumber: "",
-
+  
       revenue: null,
       driverOffer: null,
       expenses: null,
@@ -499,35 +432,24 @@ window.AuthStore = (() => {
     if (over.pickup) job.pickup = mkLocation({ ...job.pickup, ...over.pickup });
     if (over.delivery)
       job.delivery = mkLocation({ ...job.delivery, ...over.delivery });
-    normalizeVehicleDomain(job, over);
+    normalizeVehicleDomain(job);
     syncDisplayFields(job);
     return job;
   }
 
   /**
-   * Vehicle-domain compatibility boundary. Accepts the deprecated `vehicle` /
-   * `axle` field names from older payloads, resolves every category to its
-   * canonical value, and drops the retired manual red-plate inputs — mapping
-   * any historical red-plate NUMBER into `legacyRedPlateNumber` so audit data
-   * survives the rename instead of being discarded.
+   * Resolves every vehicle category to its canonical value. Idempotent, and the
+   * single place the four categories are coerced. The retired manual red-plate
+   * inputs are stripped defensively — the requirement is derived, never stored.
    */
-  function normalizeVehicleDomain(job, over = {}) {
+  function normalizeVehicleDomain(job) {
     if (!job) return job;
-    if (over.vehicle != null && over.vehicleType == null)
-      job.vehicleType = over.vehicle;
-    if (over.axle != null && over.transportType == null)
-      job.transportType = over.axle;
     job.vehicleType = normalizeVehicleType(job.vehicleType);
     job.manufacturer = String(job.manufacturer || "").trim();
     job.transportType = normalizeTransportType(job.transportType);
     job.registrationStatus = normalizeRegistrationStatus(job.registrationStatus);
     job.electricVehicle = !!job.electricVehicle;
     job.readyToDrive = !!job.readyToDrive;
-    // Retired manual inputs: never a live field again. A pre-confirmation
-    // number is preserved once, under its legacy name, for audit/history.
-    const historical =
-      job.legacyRedPlateNumber || over.redPlateNumber || job.redPlateNumber || "";
-    job.legacyRedPlateNumber = String(historical || "").trim();
     delete job.redPlates;
     delete job.redPlateNumber;
     return job;
@@ -591,11 +513,6 @@ window.AuthStore = (() => {
     // FromForm, which does not read it). Persisting it is a documented
     // non-goal — this denormalization exists only for table/CSV/PDF reads.
     job.requiresRedLicencePlates = jobRequiresRedLicencePlates(job);
-    // DEPRECATED read-only aliases for the pre-rename field names. Kept in sync
-    // one-way from the canonical fields during the compatibility window so no
-    // consumer reads a second, independently writable domain value.
-    job.vehicle = job.vehicleType || "";
-    job.axle = job.transportType || "";
     return job;
   }
 
@@ -1217,16 +1134,14 @@ window.AuthStore = (() => {
           windowTo: "18:00",
         }),
         distanceKm: 232,
-        // LEGACY fixture: registrationStatus stays null ("not specified") — a
-        // pre-confirmation record that must remain readable without being
-        // silently assigned a status. Derived warning is false (needs an
-        // explicit `deregistered`), never guessed from the missing value.
+        // Matrix case 2: registered + third-party axle → red plates NOT required.
         vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
         manufacturer: "BMW",
         vehicleModel: "3 Touring",
         plate: "S-CC 220",
         vin: "WBA8E1100K5J12345",
         transportType: TRANSPORT_TYPE_THIRD_PARTY_AXLE,
+        registrationStatus: REGISTRATION_REGISTERED,
         readyToDrive: false,
 
         revenue: 220,
@@ -1344,12 +1259,6 @@ window.AuthStore = (() => {
         transportType: TRANSPORT_TYPE_OWN_AXLE,
         registrationStatus: REGISTRATION_DEREGISTERED,
         readyToDrive: true,
-        // PRE-CONFIRMATION record still carrying a manually captured red-plate
-        // number under the retired field name. Deliberately seeded with the OLD
-        // key so the compatibility boundary is exercised: normalizeVehicleDomain
-        // moves it to legacyRedPlateNumber (audit/history) and it never reaches
-        // an active entry form or any UI surface again.
-        redPlateNumber: "HH-06 2440",
         driverOffer: 165,
         revenue: 198,
         notes: "Marketplace preview tour Hamburg → Hannover.",
@@ -1379,12 +1288,7 @@ window.AuthStore = (() => {
           windowTo: "16:00",
         }),
         distanceKm: 232,
-        // LEGACY vehicle-type fixture on a NON-TERMINAL (accepted) order: "Van"
-        // was removed from new entry, but the client supplied no migration
-        // mapping, so the stored value is preserved verbatim and stays
-        // selectable ONLY while editing this record. Renders the neutral
-        // fallback icon on cards. Never remapped to passenger car or truck.
-        vehicleType: "Van",
+        vehicleType: VEHICLE_TYPE_TRUCK_UP_TO_7_5_T,
         manufacturer: "Mercedes-Benz",
         vehicleModel: "Sprinter",
         plate: "S-CC 130",
@@ -1475,10 +1379,7 @@ window.AuthStore = (() => {
           windowFlex: true,
         }),
         distanceKm: 188,
-        // LEGACY vehicle-type fixture on a TERMINAL (cancelled) order: "SUV" is
-        // removed from new entry and preserved verbatim here — read-only, no
-        // migration mapping applied.
-        vehicleType: "SUV",
+        vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
         manufacturer: "Ford",
         vehicleModel: "Kuga",
         plate: "B-MS 200",
@@ -2023,6 +1924,12 @@ window.AuthStore = (() => {
       if (!TRANSPORT_TYPES.includes(j.transportType)) {
         issues.push(`${j.id}: transportType`);
       }
+      if (!REGISTRATION_STATUSES.includes(j.registrationStatus)) {
+        issues.push(`${j.id}: registrationStatus`);
+      }
+      if (!VEHICLE_TYPES.includes(j.vehicleType)) {
+        issues.push(`${j.id}: vehicleType not an approved value`);
+      }
       // Derived-only: must always equal the canonical policy, never a stored
       // or client-supplied value.
       if (
@@ -2352,9 +2259,7 @@ window.AuthStore = (() => {
 
   // -----------------------------------------------------------------------
   // Vehicle-domain LABEL RESOLVERS. Canonical value → i18n key, in one place,
-  // consumed by the Admin Backend and the Driver PWA alike. A preserved legacy
-  // value has no key of its own: it is rendered through the `vehicleTypeLegacy`
-  // template so a removed option can never read as an active choice.
+  // consumed by the Admin Backend and the Driver PWA alike.
   // -----------------------------------------------------------------------
   const VEHICLE_TYPE_I18N = {
     [VEHICLE_TYPE_PASSENGER_CAR]: "vehicleTypePassengerCar",
@@ -2374,14 +2279,11 @@ window.AuthStore = (() => {
     return VEHICLE_TYPE_I18N[normalizeVehicleType(value)] || null;
   }
 
-  /** Display label for any vehicle type, legacy values included. */
+  /** Display label for a vehicle type. */
   function vehicleTypeLabel(value, translate) {
     const tr = translate || t2;
-    const canonical = normalizeVehicleType(value);
-    if (!canonical) return "—";
-    const key = VEHICLE_TYPE_I18N[canonical];
-    if (key) return tr(key);
-    return tr("vehicleTypeLegacy", { value: canonical });
+    const key = VEHICLE_TYPE_I18N[normalizeVehicleType(value)];
+    return key ? tr(key) : "—";
   }
 
   function transportTypeLabel(value, translate) {
@@ -2446,20 +2348,19 @@ window.AuthStore = (() => {
   }
 
   /**
-   * Filter prefs may only hold an APPROVED vehicle type or the "All" sentinel —
-   * a removed value stored in an old preference degrades to "All" rather than
+   * Filter prefs hold an approved vehicle type or the "All" sentinel (no
+   * filter). An unrecognised stored value degrades to "All" rather than
    * silently filtering the whole marketplace away.
    */
   function normalizePrefVehicleType(raw) {
-    const s = normalizeVehicleType(raw);
-    return VEHICLE_TYPES.includes(s) ? s : "All";
+    return VEHICLE_TYPES.includes(normalizeVehicleType(raw))
+      ? normalizeVehicleType(raw)
+      : "All";
   }
 
   function normalizePrefTransportType(raw) {
     const s = String(raw || "").trim();
-    if (!s || s === "All") return "All";
-    const canonical = TRANSPORT_TYPE_ALIASES[s];
-    return canonical || "All";
+    return TRANSPORT_TYPES.includes(s) ? s : "All";
   }
 
   function normalizeDriverPrefs(prefs = {}) {
@@ -2468,10 +2369,9 @@ window.AuthStore = (() => {
     return {
       startPlz: p.startPlz || "",
       endPlz: p.endPlz || "",
-      // Marketplace filter dimensions. "All" = no filter. Accepts the
-      // deprecated vehicle/axle pref names at the boundary.
-      vehicleType: normalizePrefVehicleType(p.vehicleType ?? p.vehicle),
-      transportType: normalizePrefTransportType(p.transportType ?? p.axle),
+      // Marketplace filter dimensions. "All" = no filter.
+      vehicleType: normalizePrefVehicleType(p.vehicleType),
+      transportType: normalizePrefTransportType(p.transportType),
       pushEnabled: p.pushEnabled != null ? !!p.pushEnabled : legacyPush,
       notifyNewPublished:
         p.notifyNewPublished != null ? !!p.notifyNewPublished : legacyPush,
@@ -2761,11 +2661,6 @@ window.AuthStore = (() => {
       // Vehicle categories round-trip 1:1 — manufacturer and model are now
       // separate fields on both sides (they used to be squashed into `brand`).
       vehicleType: job.vehicleType || "",
-      // The record's own stored type, so a legacy value stays selectable while
-      // THIS record is edited without becoming available to new records.
-      legacyVehicleType: isLegacyVehicleType(job.vehicleType)
-        ? job.vehicleType
-        : "",
       manufacturer: job.manufacturer || "",
       model: job.vehicleModel || "",
       plate: job.plate || "",
@@ -2873,8 +2768,7 @@ window.AuthStore = (() => {
       distanceKm: dist,
       category: form.category || "Standard",
       // --- Vehicle domain: four explicit categories, no flattened tag array ---
-      // Removed types are rejected before this point (validateVehicleForm);
-      // a legacy value survives only via form.legacyVehicleType on its own record.
+      // Removed types are rejected before this point (validateVehicleForm).
       vehicleType: normalizeVehicleType(form.vehicleType),
       manufacturer: String(form.manufacturer || "").trim(),
       vehicleModel: String(form.model || "").trim() || "—",
@@ -3185,7 +3079,6 @@ window.AuthStore = (() => {
     VEHICLE_TYPE_PASSENGER_CAR,
     VEHICLE_TYPE_TRUCK_UP_TO_7_5_T,
     VEHICLE_TYPE_TRUCK_OVER_7_5_T,
-    LEGACY_VEHICLE_TYPES,
     TRANSPORT_TYPES,
     TRANSPORT_TYPE_OWN_AXLE,
     TRANSPORT_TYPE_THIRD_PARTY_AXLE,
@@ -3194,7 +3087,6 @@ window.AuthStore = (() => {
     REGISTRATION_DEREGISTERED,
     VIN_LENGTH,
     normalizeVehicleType,
-    isLegacyVehicleType,
     selectableVehicleTypes,
     isAcceptableVehicleTypeForWrite,
     normalizeTransportType,
@@ -4899,7 +4791,7 @@ window.AuthStore = (() => {
       // Vehicle rules are enforced HERE, not only in the form: removed vehicle
       // types, a non-17-character VIN and any red-plate write are rejected even
       // if the client sent them.
-      const vehicleCheck = validateVehicleForm(form, j.vehicleType);
+      const vehicleCheck = validateVehicleForm(form);
       if (!vehicleCheck.ok) {
         return {
           ok: false,
@@ -4947,13 +4839,8 @@ window.AuthStore = (() => {
         return { error: "cross_midnight_window", leg: "delivery" };
       }
       const editId = String(form.jobId || form.id || "").trim();
-      // Same authoritative vehicle gate as updateOrderFromForm. An edited draft
-      // may keep its own preserved legacy vehicle type; a NEW draft may not.
-      const existingDraft = editId ? jobs.find((x) => x.id === editId) : null;
-      const vehicleCheck = validateVehicleForm(
-        form,
-        existingDraft ? existingDraft.vehicleType : "",
-      );
+      // Same authoritative vehicle gate as updateOrderFromForm.
+      const vehicleCheck = validateVehicleForm(form);
       if (!vehicleCheck.ok) {
         return { error: "invalid_vehicle", errors: vehicleCheck.errors };
       }

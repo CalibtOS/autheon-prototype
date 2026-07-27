@@ -2208,7 +2208,6 @@ const EMPTY_NEW_ORDER_FORM = {
   // Vehicle domain — four explicit categories (client confirmation
   // "Systemlogik Fahrzeugeingabe"). NOT one flattened tag collection.
   vehicleType: "",
-  legacyVehicleType: "", // the edited record's own preserved value, if any
   manufacturer: "",
   model: "",
   plate: "",
@@ -2289,25 +2288,11 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
   const [form, setForm] = useStateA(buildFormState);
   // Exactly the three approved vehicle types. SUV, Van/Transporter and
   // Classic car/Oldtimer were removed by the client confirmation and are NOT
-  // offered here. A legacy record being edited additionally keeps its own
-  // stored value selectable so an unrelated edit never forces a remap.
-  // (Derived from `form`, so it must be declared after the form state.)
-  const vehicleTypes = [
-    ...AuthStore.selectableVehicleTypes().map((value) => ({
-      value,
-      label: displayVehicleTypeAdmin(value, t),
-      legacy: false,
-    })),
-    ...(form.legacyVehicleType
-      ? [
-          {
-            value: form.legacyVehicleType,
-            label: displayVehicleTypeAdmin(form.legacyVehicleType, t),
-            legacy: true,
-          },
-        ]
-      : []),
-  ];
+  // offered here.
+  const vehicleTypes = AuthStore.selectableVehicleTypes().map((value) => ({
+    value,
+    label: displayVehicleTypeAdmin(value, t),
+  }));
   const transportTypes = AuthStore.TRANSPORT_TYPES.map((value) => ({
     value,
     label: displayTransportType(value, t),
@@ -2962,14 +2947,6 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   </button>
                 ))}
               </div>
-              {form.legacyVehicleType ? (
-                <p
-                  className="label"
-                  style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}
-                >
-                  {t("vehicleTypeLegacyHint")}
-                </p>
-              ) : null}
             </div>
 
             {/* 2. Vehicle data — manufacturer (dropdown), model, official

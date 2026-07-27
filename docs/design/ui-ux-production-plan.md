@@ -355,13 +355,13 @@ Driven by the client confirmation **“Systemlogik Fahrzeugeingabe”**. Busines
 | Step | Work | Depends on | Notes |
 |---|---|---|---|
 | 1 | **Domain layer** — canonical constants (`VEHICLE_TYPES`, `TRANSPORT_TYPES`, `REGISTRATION_STATUSES`), normalizers, `requiresRedLicencePlates` policy, `validateVehicleForm`, label resolvers, compatibility boundary (`normalizeVehicleDomain`) | — | Must land first: every later step imports from it. Nothing downstream may re-implement a rule. |
-| 2 | **Persistence / seed + fixtures** — canonical seed values, all four matrix cases represented, two deliberate legacy fixtures, one deliberate old-`redPlateNumber` record | 1 | Do **not** start destructive migration work — legacy handling is resolved as *preserve verbatim* (§10.3). |
+| 2 | **Persistence / seed + fixtures** — canonical seed values with all four matrix cases represented; approved vehicle types only | 1 | Do **not** write a destructive production migration — the two data blockers in §10.3 must be cleared first. |
 | 3 | **i18n** — EN/DE keys for all three vehicle types, the four category labels, both characteristics and the derived notice; retire old keys only after confirming zero `t()` references | 1 | Parity check (`_audit-i18n.js`) gates the step. German labels verbatim from the client source. |
 | 4 | **Shared component** — `DriverUI.RedPlatesRequiredNotice` in `driver-ui.jsx` | 1, 3 | **Must** live in the shared primitives module: `driver.jsx` and `admin.jsx` share one global lexical scope, so a same-named component declared in both silently resolves to whichever script loads last. |
 | 5 | **Admin Backend UI** — vehicle entry rebuild + job detail + jobs table + save-path rejection handling | 1, 3, 4 | |
 | 6 | **Driver PWA** — card, marketplace preview, booking dialog, complete order view, filter sheet, notification prefs, icon map | 1, 3, 4 | |
 | 7 | **Downstream outputs** — CSV export, transport-order summary text, order-edit audit/diff field list | 1 | |
-| 8 | **Tests + visual baselines** | 2–7 | Matrix + entry + legacy + responsive; refresh visual baselines last. |
+| 8 | **Tests + visual baselines** | 2–7 | Matrix + entry + approved-values-only + raw-JSX-leak guard + responsive; refresh visual baselines last. |
 | 9 | **Docs sync** | 1–8 | PRD + changelog + context pack + schema + logical model + design docs + i18n index. |
 
 ### 10.2 Shared-component updates
@@ -369,18 +369,19 @@ Driven by the client confirmation **“Systemlogik Fahrzeugeingabe”**. Busines
 | Component | Change |
 |---|---|
 | `DriverUI.RedPlatesRequiredNotice` (**new**, `driver-ui.jsx`) | The single derived-notice component for **both** apps. Four variants: `tag`, `banner`, `admin-banner`, `admin-pill`. Accepts a `job` **or** explicit `registrationStatus`/`transportType` (the live admin form state is not yet a job). Renders nothing unless *Deregistered + Own axle*. |
-| `AuthStore` vehicle contract (**new exports**) | `VEHICLE_TYPES` · `TRANSPORT_TYPES` · `REGISTRATION_STATUSES` · `selectableVehicleTypes` · `normalizeVehicleType` · `isLegacyVehicleType` · `isAcceptableVehicleTypeForWrite` · `normalizeTransportType` · `normalizeRegistrationStatus` · `isValidVin` · `isReadyToDriveApplicable` · `validateVehicleForm` · **`requiresRedLicencePlates`** / `jobRequiresRedLicencePlates` · `vehicleTypeLabel` / `transportTypeLabel` / `registrationStatusLabel` / `redPlatesRequiredLabel`. |
-| `Ic` vehicle icons (`driver.jsx`) | `VehicleCar` / `VehicleLightTruck` kept, **`VehicleTruck` added**, **`VehicleGeneric` added** (neutral legacy fallback); **`VehicleSuv` / `VehicleVan` / `VehicleClassic` deleted** with their types. |
+| `AuthStore` vehicle contract (**new exports**) | `VEHICLE_TYPES` · `TRANSPORT_TYPES` · `REGISTRATION_STATUSES` · `selectableVehicleTypes` · `normalizeVehicleType` · `isAcceptableVehicleTypeForWrite` · `normalizeTransportType` · `normalizeRegistrationStatus` · `isValidVin` · `isReadyToDriveApplicable` · `validateVehicleForm` · **`requiresRedLicencePlates`** / `jobRequiresRedLicencePlates` · `vehicleTypeLabel` / `transportTypeLabel` / `registrationStatusLabel` / `redPlatesRequiredLabel`. |
+| `Ic` vehicle icons (`driver.jsx`) | `VehicleCar` / `VehicleLightTruck` kept, **`VehicleTruck` added**; **`VehicleSuv` / `VehicleVan` / `VehicleClassic` deleted** with their types. The map covers exactly the three approved types. |
 | `VehicleFlagTags` (`driver.jsx`) | Gains `characteristicsOnly` so a detail view that already lists registration status as a row does not repeat it as a tag. |
 | Chip / segmented / input primitives | **Reused unchanged** — `.chip.actionable`, `.seg`, `.input`, standard focus ring. Only ARIA roles were added (`radiogroup`/`radio` for single-select, `aria-pressed` for the independent characteristics). |
 | Retired | `displayAxle` / `displayAxleAdmin` / `canonAxle` (three separate mapping tables) → the shared store resolvers. |
 
 ### 10.3 Migration dependencies
 
-- **Blocking:** narrowing `jobs.vehicle_type` to the new `vehicle_type` enum, and **any** mapping of SUV / Van / Transporter / Classic car / Oldtimer / `LKW < 3,5t`, require an **explicit client-approved mapping**. Until then values are preserved verbatim and the column stays `varchar`. **No destructive migration is written.**
-- **Safe and reversible now:** `axle_type` → `transport_type` (known 1:1 over every historical spelling); `PKW`/`Car` → `passenger_car` (label rename of a retained option); drop `red_license_plates`; **rename** `red_license_plate_number` → `legacy_red_license_plate_number` (never drop — audit/history); add `ready_to_drive default false`.
-- **Application-only:** registration status becomes required for new/edited records while the column stays nullable, so legacy rows stay readable. **Never backfill** a status onto a legacy row — it would fabricate a red-plate decision.
-- **API compatibility window:** expose `axle_type` as a deprecated **read-only alias** mapped at the boundary from `transport_type`; never maintain two independent domain values. In the prototype this is `syncDisplayFields` deriving `job.axle` / `job.vehicle` one-way.
+- **Safe and reversible now:** `axle_type` → `transport_type` (known 1:1 over every historical spelling); `PKW`/`Car` → `passenger_car`; drop `red_license_plates` **and** `red_license_plate_number` (no value is retained — back up first if production rows hold data); add `ready_to_drive default false`.
+- **BLOCKED on client approval — two data questions before the schema can tighten:**
+  1. `jobs.vehicle_type` becomes the `vehicle_type` **enum**. Any existing row holding SUV / Van / Transporter / Oldtimer / Classic / `LKW < 3,5t` has **no approved target value**, so the cast fails until the client supplies a mapping (or approves discarding those rows). Do not guess.
+  2. `vehicle_registration_status` becomes **`NOT NULL`**. Rows with a null status have no approved default — choosing one would fabricate a red-plate decision.
+- **No destructive migration is written until both are cleared.** The prototype already enforces approved-values-only because its store is seeded in memory; production data has not been surveyed against these blockers.
 - Full field-by-field table + rollback behaviour: `docs/database/logical-model.md` → “Migration notes (backend)”.
 
 ### 10.4 Verification

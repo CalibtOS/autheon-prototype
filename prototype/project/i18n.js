@@ -175,11 +175,6 @@ window.I18n = (() => {
       vehicleTypePassengerCar: "Passenger car",
       vehicleTypeTruckUpTo75t: "Truck up to and including 7.5 t",
       vehicleTypeTruckOver75t: "Truck over 7.5 t",
-      // Legacy display: preserved historical values that are no longer
-      // selectable. Kept separate so a removed option never reads as active.
-      vehicleTypeLegacy: "{value} (legacy)",
-      vehicleTypeLegacyHint:
-        "Historical vehicle type, no longer available for new orders. Kept as recorded \u2014 no automatic reclassification.",
       // 2. Vehicle data
       manufacturer: "Manufacturer",
       manufacturerPh: "Select manufacturer",
@@ -1650,9 +1645,6 @@ window.I18n = (() => {
       vehicleTypePassengerCar: "PKW",
       vehicleTypeTruckUpTo75t: "LKW bis einschlie\u00dflich 7,5 t",
       vehicleTypeTruckOver75t: "LKW \u00fcber 7,5 t",
-      vehicleTypeLegacy: "{value} (Altwert)",
-      vehicleTypeLegacyHint:
-        "Historischer Fahrzeugtyp, f\u00fcr neue Auftr\u00e4ge nicht mehr verf\u00fcgbar. Wird unver\u00e4ndert \u00fcbernommen \u2014 keine automatische Neuzuordnung.",
       manufacturer: "Hersteller",
       manufacturerPh: "Hersteller w\u00e4hlen",
       officialLicencePlate: "Amtliches Kennzeichen",

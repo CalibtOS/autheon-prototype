@@ -90,11 +90,7 @@ It survives refetch, reload and the booking transition because it is derived on 
 
 **“Ready to drive” applicability (final UX decision, 2026-07-26).** `readyToDrive` is decision-relevant for **third-party-axle** transport. The admin control is **always rendered and always enabled**; when transport type is *Third-party axle* an emphasised applicability note appears beneath the chips (`vehicleReadyToDriveApplicability`). The value is **never auto-cleared, defaulted away or rewritten** when the transport type or any other control changes — so temporarily switching transport type cannot silently lose a stored value. It is **not mandatory**. The repository's established "hide the non-applicable field" pattern was **deliberately not applied** here: it existed only for the licence plate, and that exact destructive behaviour is what this confirmation removes. On driver surfaces the tag is shown whenever set, regardless of transport type.
 
-**Handling of legacy vehicle types.** Removed values (`SUV`, `Van`, `Transporter`, `Oldtimer`, `Classic`, `Light truck <3.5t`, `LKW < 3,5t`) are **preserved verbatim** on historical records — no automatic remapping. On driver surfaces they:
-
-- render their label through the `vehicleTypeLegacy` template — `SUV (legacy)` / `SUV (Altwert)` — so a retired option never reads as an active choice;
-- use the neutral `Ic.VehicleGeneric` fallback icon (the SUV / Van / Classic icons were deleted with their types), so a legacy card never renders a retired type's icon and never crashes on an unknown value;
-- never match an approved vehicle-type filter (filters offer only the three approved values) rather than being coerced into one.
+**Approved vehicle types only.** The three types above are the complete set. `SUV`, `Van`, `Transporter`, `Oldtimer`, `Classic` and the older `Light truck <3.5t` / `LKW < 3,5t` band are **not storable** and never appear: the icon map covers exactly the three approved types, the filter sheet and notification preferences offer only those three, and there is no "(legacy)" label state or fallback icon.
 
 **Responsive behaviour for long values and warning text.**
 

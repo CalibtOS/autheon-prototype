@@ -1,7 +1,7 @@
 /**
  * Vehicle entry — the confirmed category structure in the Admin Backend.
  *
- * Client confirmation "Systemlogik Fahrzeugeingabe" (PRD v2.7): four explicit
+ * Client confirmation "Systemlogik Fahrzeugeingabe" (PRD v2.8): four explicit
  * single/multi-cardinality categories, NOT one flattened tag collection.
  */
 import { test, expect } from '../../regression/support/fixtures/prototype-test.ts';

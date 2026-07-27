@@ -134,21 +134,15 @@ const canonTransportType = (v) =>
 const displayVehicle = (value, t) =>
   value === "All" ? t("all") : AuthStore.vehicleTypeLabel(value, t);
 
-// Icon mapping for the THREE confirmed vehicle types. Removed types (SUV, Van/
-// Transporter, Classic car/Oldtimer) no longer have an active icon; a preserved
-// legacy record falls back to the neutral generic vehicle icon so historical
-// cards render safely without advertising a retired type.
+// Icon mapping for the three confirmed vehicle types.
 const vehicleTypeIcon = (vehicleType) => {
   switch (AuthStore.normalizeVehicleType(vehicleType)) {
-    case AuthStore.VEHICLE_TYPE_PASSENGER_CAR:
-      return <Ic.VehicleCar />;
     case AuthStore.VEHICLE_TYPE_TRUCK_UP_TO_7_5_T:
       return <Ic.VehicleLightTruck />;
     case AuthStore.VEHICLE_TYPE_TRUCK_OVER_7_5_T:
       return <Ic.VehicleTruck />;
     default:
-      // Legacy / unknown value — neutral fallback, never a retired type icon.
-      return <Ic.VehicleGeneric />;
+      return <Ic.VehicleCar />;
   }
 };
 
@@ -365,7 +359,6 @@ const Ic = {
   //   VehicleCar         → passenger_car        (tabler:car, MIT)
   //   VehicleLightTruck  → truck_up_to_7_5_t    (hugeicons:delivery-truck-01, MIT)
   //   VehicleTruck       → truck_over_7_5_t     (tabler:truck, MIT)
-  //   VehicleGeneric     → preserved legacy value — neutral fallback
   // The SUV / Van / Classic icons were REMOVED with their vehicle types: no
   // retired type may render as an active selectable option.
   VehicleCar: () => (
@@ -412,24 +405,6 @@ const Ic = {
     >
       <path d="M7 17a2 2 0 1 0 4 0a2 2 0 0 0-4 0m9 0a2 2 0 1 0 4 0a2 2 0 0 0-4 0" />
       <path d="M11 17H9.5A1.5 1.5 0 0 1 8 15.5V6.5A1.5 1.5 0 0 1 9.5 5h5A1.5 1.5 0 0 1 16 6.5V17m0-8h3.5l2 4v3.5A1.5 1.5 0 0 1 20 18M8 9H4m1 4h3" />
-    </svg>
-  ),
-  // Neutral fallback for a preserved legacy vehicle type. Deliberately generic:
-  // it must not imply SUV, Van or Classic car.
-  VehicleGeneric: () => (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="3" y="8" width="18" height="8" rx="2" />
-      <path d="M7 16v1.5M17 16v1.5M3 12h18" />
     </svg>
   ),
   Filter: () => (
@@ -1426,8 +1401,6 @@ const jobMatchesDriverFilters = (j, filters) => {
     if (toDate && jobDate && jobDate > toDate) return false;
   }
   if (filters.from === "Today" && j.date !== "05.05.") return false;
-  // Vehicle-type filter matches on canonical values. A legacy record simply
-  // never matches an approved-type filter — it is not remapped to one.
   if (
     filters.vehicleType &&
     filters.vehicleType !== "All" &&
@@ -1461,8 +1434,7 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
       vehicleType: "All",
       transportType: "All",
     });
-  // Only the three approved vehicle types are filterable — removed types are
-  // not offered even though legacy records may still carry them.
+  // Only the three approved vehicle types are filterable.
   const types = AuthStore.selectableVehicleTypes();
   const transportOptions = ["All", ...AuthStore.TRANSPORT_TYPES];
   const store = useAuthStore();

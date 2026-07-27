@@ -13,7 +13,6 @@ resolvers `AuthStore.vehicleTypeLabel` / `transportTypeLabel` /
 | Vehicle type (exactly one) | `passenger_car` | `vehicleTypePassengerCar` |
 | Vehicle type | `truck_up_to_7_5_t` | `vehicleTypeTruckUpTo75t` |
 | Vehicle type | `truck_over_7_5_t` | `vehicleTypeTruckOver75t` |
-| Vehicle type — **legacy display** | any preserved removed value | `vehicleTypeLegacy` (`{value} (legacy)`) + `vehicleTypeLegacyHint` |
 | Transport type (exactly one) | `own_axle` | `ownAxle` |
 | Transport type | `third_party_axle` | `thirdPartyAxle` |
 | Registration status (exactly one) | `registered` | `vehicleInfoRegistered` |
@@ -35,9 +34,9 @@ reference remained in `admin.jsx`, `driver.jsx`, `driver-ui.jsx` or `store.js`):
 `newOrderPlateHiddenDeregistered`, `newOrderRegistrationNone`,
 `newOrderRegistrationLabel`, `newOrderVtSuv`, `newOrderVtPkw`,
 `newOrderVtTransporter`, `newOrderVtClassic`, `lightTruck`, `adminVehicleTrp`,
-`newOrderVinShortNotice`, `newOrderBrand`, `newOrderBrandPh`.
-Legacy vehicle-type values have **no** per-value key — they are rendered through
-the `vehicleTypeLegacy` template so a retired option never reads as active.
+`newOrderVinShortNotice`, `newOrderBrand`, `newOrderBrandPh`,
+`vehicleTypeLegacy`, `vehicleTypeLegacyHint`.
+Removed vehicle types have no key at all — they are not storable values.
 
 ---
 
@@ -357,7 +356,6 @@ the `vehicleTypeLegacy` template so a retired option never reads as active.
 | `vehicleInfoRegistered` | Registered | Zugelassen |
 | `vehicleReadyToDrive` | Ready to drive | Fahrbereit |
 | `vehicleType` | Vehicle type | Fahrzeugtyp |
-| `vehicleTypeLegacy` | {value} (legacy) | {value} (Altwert) |
 | `vehicleTypePassengerCar` | Passenger car | PKW |
 | `vehicleTypeTruckOver75t` | Truck over 7.5 t | LKW \u00fcber 7,5 t |
 | `vehicleTypeTruckUpTo75t` | Truck up to and including 7.5 t | LKW bis einschlie\u00dflich 7,5 t |

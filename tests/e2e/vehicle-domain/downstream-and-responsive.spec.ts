@@ -1,10 +1,7 @@
 /**
- * Legacy-record safety, downstream display and responsive behaviour for the
- * confirmed vehicle domain (PRD v2.7, "Systemlogik Fahrzeugeingabe").
- *
- * Legacy fixtures in the seed: 0841 = "SUV" (cancelled/terminal),
- * 0843 = "Van" (accepted/non-terminal). Both are preserved verbatim — the
- * client supplied no migration mapping.
+ * Downstream display and responsive behaviour for the confirmed vehicle domain
+ * ("Systemlogik Fahrzeugeingabe"). Only the three approved vehicle types exist —
+ * there is no legacy-value compatibility layer.
  */
 import { test, expect } from '../../regression/support/fixtures/prototype-test.ts';
 import {
@@ -26,116 +23,82 @@ async function openDriver(page) {
   return prototypeFrame(page);
 }
 
-test.describe('Legacy vehicle types are read safely', () => {
-  test('legacy records render a "(legacy)" label and never crash a card', async ({
-    page,
-  }) => {
-    const frame = await openDriver(page);
-    await frame.getByRole('button', { name: /My jobs/i }).first().click();
-
-    // 0843 "Van" is an accepted tour with a preserved legacy vehicle type.
-    const card = frame.locator('.jobcard-btn').filter({ hasText: 'Sprinter' });
-    await expect(card).toHaveCount(1);
-    await expect(card).toBeVisible();
-
-    await card.click();
-    // The label must read as historical, never as an active selectable option.
-    await expect(frame.getByText('Van (legacy)').first()).toBeVisible();
-  });
-
-  test('legacy records render the neutral fallback icon, not a retired type icon', async ({
-    page,
-  }) => {
-    const frame = await openDriver(page);
-    await frame.getByRole('button', { name: /My jobs/i }).first().click();
-
-    const icons = await page.frames()[1].evaluate(() => {
-      const S = (window as any).AuthStore;
-      // Every legacy value must resolve to a label without throwing, and no
-      // retired-type icon component may exist any more.
-      const legacy = S.LEGACY_VEHICLE_TYPES.map((v: string) => ({
-        value: v,
-        isLegacy: S.isLegacyVehicleType(v),
-        // The label resolver never throws and never returns an approved key.
-        key: S.vehicleTypeI18nKey(v),
-      }));
-      return { legacy, retiredIconsPresent: false };
-    });
-
-    for (const l of icons.legacy) {
-      expect(l.isLegacy, `${l.value} should be legacy`).toBe(true);
-      // No approved i18n key → falls through to the neutral fallback icon.
-      expect(l.key, `${l.value} must have no approved key`).toBeNull();
-    }
-  });
-
-  test('removed values cannot be selected for new records but survive an edit', async ({
-    page,
-  }) => {
+test.describe('Only the approved vehicle types exist', () => {
+  test('removed values are not selectable and not writable', async ({ page }) => {
     await gotoPrototype(page);
     await switchLanguage(page, 'EN');
     await switchTheme(page, 'light');
     await switchToAdminBackend(page);
     const frame = prototypeFrame(page);
 
-    await test.step('a NEW order offers only the three approved types', async () => {
-      await frame.getByRole('button', { name: /New job/i }).click();
-      const group = frame.getByRole('radiogroup').filter({ hasText: 'Passenger car' });
-      await expect(group.getByRole('radio')).toHaveCount(3);
-      await expect(frame.getByRole('radio', { name: 'Van', exact: true })).toHaveCount(0);
-    });
+    await frame.getByRole('button', { name: /New job/i }).click();
+    const group = frame.getByRole('radiogroup').filter({ hasText: 'Passenger car' });
+    await expect(group.getByRole('radio')).toHaveCount(3);
 
-    await test.step('editing the legacy record keeps its own value selectable', async () => {
-      const preserved = await page.frames()[1].evaluate(() => {
-        const S = (window as any).AuthStore;
-        const legacyJob = S.getJobs().find((j: any) => j.vehicleType === 'Van');
-        const form = S.jobToDraftForm(legacyJob);
-        return {
-          legacyVehicleType: form.legacyVehicleType,
-          vehicleType: form.vehicleType,
-          // Writable on its own record…
-          writableOnOwnRecord: S.validateVehicleForm(form, legacyJob.vehicleType).ok,
-          // …but not on a fresh one.
-          writableOnNewRecord: S.validateVehicleForm(form, '').ok,
-        };
-      });
-      expect(preserved.vehicleType).toBe('Van');
-      expect(preserved.legacyVehicleType).toBe('Van');
-      expect(preserved.writableOnOwnRecord).toBe(true);
-      expect(preserved.writableOnNewRecord).toBe(false);
+    for (const removed of ['SUV', 'Van', 'Transporter', 'Classic', 'Oldtimer']) {
+      await expect(frame.getByRole('radio', { name: removed, exact: true })).toHaveCount(0);
+    }
+
+    const rejected = await page.frames()[1].evaluate(() => {
+      const S = (window as any).AuthStore;
+      const base = {
+        manufacturer: 'Audi',
+        model: 'A4',
+        plate: 'M-AB 1234',
+        vin: 'WAUZZZ4M5KA000001',
+        transportType: S.TRANSPORT_TYPE_OWN_AXLE,
+        registrationStatus: S.REGISTRATION_REGISTERED,
+      };
+      return ['SUV', 'Van', 'Transporter', 'Oldtimer', 'Classic', 'PKW', 'Car'].map((v) => ({
+        value: v,
+        ok: S.validateVehicleForm({ ...base, vehicleType: v }).ok,
+        normalizes: S.normalizeVehicleType(v),
+      }));
     });
+    for (const r of rejected) {
+      expect(r.ok, `${r.value} must be rejected`).toBe(false);
+      expect(r.normalizes, `${r.value} must not resolve to a storable value`).toBe('');
+    }
   });
 
-  test('old red-plate data does not leak into active entry forms', async ({ page }) => {
+  test('no record carries a removed type, a red-plate field or a deprecated alias', async ({
+    page,
+  }) => {
     await gotoPrototype(page);
-    const leak = await page.frames()[1].evaluate(() => {
+    const state = await page.frames()[1].evaluate(() => {
       const S = (window as any).AuthStore;
-      // 0844 is seeded with the OLD redPlateNumber key on purpose.
-      const job = S.getJobs().find((j: any) => j.id === 'A-2026-00844');
-      const form = S.jobToDraftForm(job);
+      const jobs = S.getJobs();
       return {
-        preservedForAudit: job.legacyRedPlateNumber,
-        activeFieldGone: !('redPlateNumber' in job) && !('redPlates' in job),
-        formHasNoRedPlate:
-          !('redPlateNumber' in form) &&
-          !('redPlates' in form) &&
-          !('legacyRedPlateNumber' in form),
+        nonApproved: jobs
+          .filter((j: any) => !S.VEHICLE_TYPES.includes(j.vehicleType))
+          .map((j: any) => `${j.id}=${j.vehicleType}`),
+        missingStatus: jobs
+          .filter((j: any) => !S.REGISTRATION_STATUSES.includes(j.registrationStatus))
+          .map((j: any) => j.id),
+        redPlateFields: jobs
+          .filter(
+            (j: any) =>
+              'redPlates' in j || 'redPlateNumber' in j || 'legacyRedPlateNumber' in j,
+          )
+          .map((j: any) => j.id),
+        aliases: jobs
+          .filter((j: any) => 'vehicle' in j || 'axle' in j)
+          .map((j: any) => j.id),
       };
     });
-    expect(leak.preservedForAudit).toBe('HH-06 2440');
-    expect(leak.activeFieldGone).toBe(true);
-    expect(leak.formHasNoRedPlate).toBe(true);
+    expect(state.nonApproved).toEqual([]);
+    expect(state.missingStatus).toEqual([]);
+    expect(state.redPlateFields).toEqual([]);
+    expect(state.aliases).toEqual([]);
   });
 
   test('no red-plate number is displayed on any driver surface', async ({ page }) => {
     const frame = await openDriver(page);
     await frame.getByRole('button', { name: /My jobs/i }).first().click();
-    await frame.getByText('Polo').first().click().catch(() => {});
 
-    // The historical number must never appear, on any screen.
-    await expect(frame.getByText('HH-06 2440')).toHaveCount(0);
     await expect(frame.locator('.plate-red')).toHaveCount(0);
     await expect(frame.getByText(/Red plate no\./i)).toHaveCount(0);
+    await expect(frame.getByText(/\d{2}-06 \d{4}/)).toHaveCount(0);
   });
 });
 
@@ -169,8 +132,7 @@ test.describe('Downstream display', () => {
 
     await expect(frame.getByRole('cell', { name: 'Passenger car' }).first()).toBeVisible();
     await expect(frame.getByText(/passenger_car/)).toHaveCount(0);
-    // The legacy fixtures show their (legacy) label, not a bare removed value.
-    await expect(frame.getByRole('cell', { name: 'Van (legacy)' })).toBeVisible();
+    await expect(frame.getByText(/\(legacy\)/i)).toHaveCount(0);
   });
 
   test('marketplace filters offer only approved vehicle types and transport type', async ({

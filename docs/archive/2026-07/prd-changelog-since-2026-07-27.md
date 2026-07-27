@@ -44,7 +44,7 @@ vehicle.tags = ["SUV", "own axle", "registered", "electric"]
 - It cannot express **cardinality**. Vehicle type, transport type and registration status are each *exactly one* value; the characteristics are *independently combinable*. A flat array permits `["own axle", "third-party axle"]` and `["registered", "deregistered"]` — contradictory states the domain must make unrepresentable.
 - The **red-licence-plate rule** needs two *identified* inputs. `requiresRedLicencePlates` is a function of registration status **and** transport type specifically. Over an untyped array the rule degrades to substring matching against display strings.
 - It **erases the independence** the client explicitly confirmed between registration status and transport type.
-- It makes **validation and migration impossible to target** — no way to reject a removed vehicle type while preserving it on legacy records, and no way to rename “axle” to “transport type” at the API boundary.
+- It makes **validation and migration impossible to target** — no way to reject a removed vehicle type, and no way to rename “axle” to “transport type” at the API boundary.
 
 A reusable **chip/segmented-control visual primitive is still reused** for selectable options, so the UI is visually consistent — but the domain keeps explicit categories and category-specific fields, and the payload keeps discrete semantic fields.
 
@@ -60,7 +60,7 @@ A reusable **chip/segmented-control visual primitive is still reused** for selec
 | `truck_up_to_7_5_t`   | Truck up to and including 7.5 t | LKW bis einschließlich 7,5 t   |
 | `truck_over_7_5_t`    | Truck over 7.5 t                | LKW über 7,5 t                 |
 
-**Removed from new entry:** SUV, Van / Transporter, Classic car / Oldtimer. The older `LKW < 3,5t` / `Light truck <3.5t` band is also no longer selectable — it is not on the approved list and its 3.5 t boundary differs from the confirmed 7.5 t one. Removed values are rejected **server-side**, not merely hidden.
+**Removed entirely:** SUV, Van / Transporter, Classic car / Oldtimer, and the older `LKW < 3,5t` / `Light truck <3.5t` band (not on the approved list, and its 3.5 t boundary differs from the confirmed 7.5 t one). These values are **not storable**: `jobs.vehicle_type` is the `vehicle_type` enum and the application rejects anything outside the approved set **server-side** on both create and update. No preservation or compatibility layer exists.
 
 ### 3. Vehicle data: four separate fields
 
@@ -84,7 +84,7 @@ A reusable **chip/segmented-control visual primitive is still reused** for selec
 | `own_axle`           | Own axle          | Eigenachse    |
 | `third_party_axle`   | Third-party axle  | Fremdachse    |
 
-Renamed consistently across UI labels, translation keys, the store/DTO field, `schema.dbml`, `logical-model.md`, this PRD, the context pack, driver-screen spec, i18n index and tests. Because the mapping is a **known 1:1** over every spelling ever used, the rename migrates completely and reversibly. `job.axle` survives only as a **deprecated read-only alias** derived from `transportType` in `syncDisplayFields` — never a second writable domain value.
+Renamed consistently across UI labels, translation keys, the store/DTO field, `schema.dbml`, `logical-model.md`, this PRD, the context pack, driver-screen spec, i18n index and tests. Because the mapping is a **known 1:1** over every spelling ever used, the rename migrates completely and reversibly. The old `job.vehicle` / `job.axle` field names are gone — no deprecated aliases are retained.
 
 ### 5. Registration status: explicit and independent
 
@@ -92,7 +92,7 @@ Renamed consistently across UI labels, translation keys, the store/DTO field, `s
 
 **Now** a required two-value single-select category — Registered (Zugelassen) / Deregistered (Abgemeldet) — that is **independent of transport type**, never inferred from it, and never merged into a tag array. “Red plates” is no longer an option in this control (or anywhere): it is not a registration status.
 
-Legacy records created before the category became required keep `null` (“not specified”) and stay readable; no status is backfilled onto them, because doing so would fabricate a red-plate decision.
+The column is `NOT NULL` — every record carries an explicit status. There is no "not specified" state.
 
 ### 6. Additional vehicle characteristics
 
@@ -137,7 +137,7 @@ requiresRedLicencePlates =
 
 - **One canonical policy.** `requiresRedLicencePlates(registrationStatus, transportType)` in `store.js`, exported on `AuthStore` (production: the backend domain layer). No UI component reproduces the condition.
 - **Backend authoritative.** The domain layer computes it, returns it, and rejects any client attempt to write it or a red-plate number. Server-side behaviour never relies on the client; the frontend imports the same shared helper only for immediate form feedback.
-- **Derived, not persisted.** Exposed as a read-only `requiresRedLicencePlates: boolean`, recomputed on every sync so it cannot drift. A manually writable red-plate boolean is explicitly not introduced.
+- **Derived, not persisted.** Exposed as a read-only `requiresRedLicencePlates: boolean`, recomputed on every sync so it cannot drift. No red-plate column of any kind exists — neither a writable boolean nor a plate number.
 - **Canonical German notice** “**Rote Kennzeichen erforderlich**”, served through i18n (`redPlatesRequired`), never hardcoded per screen.
 
 #### The five required notice locations
@@ -152,20 +152,20 @@ The notice appears **when and only when** the combination is *Deregistered + Own
 
 It **remains visible after booking** because it represents an **execution requirement**, not a temporary marketplace message. All five surfaces render the **same single shared component** (`DriverUI.RedPlatesRequiredNotice`) consuming the same policy, so no component can reach a conflicting decision.
 
-### 8. Historical-data compatibility
+### 8. Approved values only — no compatibility layer
 
-The client removed SUV, Van/Transporter and Classic car/Oldtimer from future selection but **provided no migration mapping**. Chosen behaviour:
+The three vehicle types are the complete, exclusive set:
 
-- Historical vehicle types are **preserved verbatim** as legacy-readable values. **No automatic remapping** — explicitly not SUV → passenger car, not Van → passenger car or truck, not Classic car → passenger car, and not the light-truck band → `truck_up_to_7_5_t`.
-- `jobs.vehicle_type` deliberately stays `varchar` rather than the new enum so those values remain storable.
-- Removed values **cannot be selected for new records**. While a legacy record is edited, its own stored value stays selectable so an unrelated edit never forces a silent remap.
-- Legacy values render through a distinct **“(legacy)”** template with a **neutral fallback icon**; the SUV/Van/Classic icons were deleted with their types.
-- **One** automatic rename is applied: `PKW` / `Car` → `passenger_car`. This is a **label rename of a retained option**, not a reclassification — both spellings always denoted the passenger-car concept the confirmation keeps and relabels.
-- Pre-confirmation manually entered red-plate numbers are **preserved** under `legacyRedPlateNumber` (`legacy_red_license_plate_number`) for audit/history, and are never exposed to or accepted by an active order flow.
+- `jobs.vehicle_type` is the **`vehicle_type` enum**, so a removed value cannot be stored at all.
+- The application rejects any non-approved value **server-side** on create *and* update. There is no per-record escape hatch while editing.
+- There is no "(legacy)" display template, no neutral fallback icon, and no `isLegacyVehicleType` / `LEGACY_VEHICLE_TYPES` concept anywhere in the domain, UI, filters or preferences.
+- `vehicle_registration_status` is `NOT NULL` — no "not specified" state.
+- The retired red-plate fields (`red_license_plates`, `red_license_plate_number`) are **dropped outright**; no audit/history column is retained.
+- The pre-rename `job.vehicle` / `job.axle` field names are gone; no deprecated read-only aliases remain.
 
-Seed fixtures deliberately retain two legacy records to keep this path exercised: **0841** (`SUV`, cancelled/terminal) and **0843** (`Van`, accepted/non-terminal). Tour **0844** deliberately still carries the old `redPlateNumber` key so the compatibility boundary is tested.
+Seed fixtures carry approved values only, and all four red-plate matrix cases remain represented (0847/0839 registered+own, 0846/0842 registered+third-party, 0844/0845 deregistered+own, 0840 deregistered+third-party).
 
-Full field-by-field migration strategy and rollback behaviour: `docs/database/logical-model.md` → “Migration notes (backend)”.
+Production-migration blockers this creates are recorded in `docs/database/logical-model.md` → "Migration notes (backend)": existing rows holding a removed vehicle type, or a null registration status, need an explicit client-approved target before the enum cast and the `NOT NULL` constraint can be applied.
 
 ### 9. Non-goal restated
 
@@ -189,8 +189,9 @@ Full field-by-field migration strategy and rollback behaviour: `docs/database/lo
 
 | Item | Status |
 | ---- | ------ |
-| **Legacy vehicle-type mapping** | **BLOCKED on client approval.** SUV, Van/Transporter, Classic car/Oldtimer and the `LKW < 3,5t` band have no approved target value. Until a mapping is approved, values are preserved verbatim and `vehicle_type` cannot be narrowed to an enum. No destructive migration written. |
-| **Retention of historical red-plate numbers** | Preserved under `legacy_red_license_plate_number`. Dropping the column needs an approved retention decision plus a backup strategy. |
+| **Existing rows with a removed vehicle type** | **BLOCKED on client approval.** The prototype now stores approved values only, but any production row holding SUV / Van / Transporter / Oldtimer / Classic / `LKW < 3,5t` needs an explicit approved target before the `vehicle_type` enum cast can run. No destructive migration is written here. |
+| **Existing rows with no registration status** | **BLOCKED on client approval.** `vehicle_registration_status` is now `NOT NULL`; a default cannot be guessed because it would fabricate a red-plate decision. |
+| **Dropping `red_license_plate_number`** | The column is removed and no value is retained. Take a backup first if production rows hold data. |
 | **Client-confirmation date** | Not stated in the supplied material; deliberately not invented. |
 | **Registration status now required** | Implemented as required for new/edited records, following “exactly one value” in the confirmation. Flagged for client acknowledgement since it is stricter than the previous optional/nullable field. |
 | OQ-19 (cancellation T&C link placeholder), OQ-14 (post-booking driver workflow email) | Unchanged, still open. |

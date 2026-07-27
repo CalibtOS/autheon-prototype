@@ -75,9 +75,7 @@ Four **explicit** categories with different cardinalities — deliberately *not*
 | `electricVehicle`    | independent bool   | E-Fahrzeug                                                                                   |
 | `readyToDrive`       | independent bool   | Fahrbereit — relevant to third-party-axle transport; never auto-cleared                       |
 
-**Removed from new entry:** SUV · Van / Transporter · Classic car / Oldtimer · `LKW < 3,5t`. Historical values are preserved verbatim (no migration mapping was supplied) and render via the `vehicleTypeLegacy` template with a neutral fallback icon; a legacy record keeps its own value selectable only while that record is edited.
-
-**Deprecated read-only aliases:** `job.vehicle` → `vehicleType` and `job.axle` → `transportType`, kept in sync one-way by `syncDisplayFields` for the compatibility window. Never write to them.
+**Removed entirely:** SUV · Van / Transporter · Classic car / Oldtimer · `LKW < 3,5t`. These are **not storable** — `normalizeVehicleType` resolves anything outside the approved set to `""`, and `validateVehicleForm` rejects it on create and update. No compatibility layer, no "(legacy)" label, no fallback icon, no per-record escape hatch. The pre-rename `job.vehicle` / `job.axle` field names are gone (no deprecated aliases).
 
 ### Red licence plates — derived (`requiresRedLicencePlates`)
 
@@ -96,7 +94,7 @@ requiresRedLicencePlates = registrationStatus === "deregistered" && transportTyp
 
 `AuthStore.requiresRedLicencePlates()` / `jobRequiresRedLicencePlates()` is the **only** implementation. `job.requiresRedLicencePlates` is a derived denormalization recomputed on every `syncDisplayFields`; it is never accepted from input (`validateVehicleForm` rejects it). The notice `redPlatesRequired` (“Rote Kennzeichen erforderlich”) is rendered by the one shared `DriverUI.RedPlatesRequiredNotice` component in all five required surfaces.
 
-`legacyRedPlateNumber` holds pre-confirmation manually entered numbers for audit/history only — never shown, never editable.
+No red-plate field exists on the job at all — not a boolean, not a number. `normalizeVehicleDomain` strips `redPlates` / `redPlateNumber` defensively should either ever appear on an incoming record.
 
 ## Master data change type (`masterDataChangeRequest.changeType`)
 
