@@ -1854,6 +1854,54 @@ window.AuthStore = (() => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
+  // Value validators for the Infopoint help contacts, ported unchanged from the
+  // Autheon admin console's helpContactsValidation.ts — which is itself a mirror
+  // of the backend's `infopoint.helpContacts` validators. Keeping the rules
+  // identical means a value this prototype accepts is a value the real API would
+  // accept too. Deliberately stricter than the generic isValidEmail above: these
+  // are what the help-contacts setter enforces and what the form reads for its
+  // inline messages, so the rule is stated once.
+
+  /** Phone shape the backend accepts: dial characters only, 7-15 digits. */
+  function isValidSupportPhone(value) {
+    const phone = String(value || "").trim();
+    if (!/^\+?[0-9\s()./-]+$/.test(phone)) return false;
+    const digits = phone.replace(/\D/g, "");
+    return digits.length >= 7 && digits.length <= 15;
+  }
+
+  /** Email shape the backend accepts: one @, a sane local part, a dotted domain. */
+  function isValidSupportEmail(value) {
+    const email = String(value || "").trim();
+    if (email.length > 254) return false;
+
+    const parts = email.split("@");
+    if (parts.length !== 2) return false;
+
+    const [local, domain] = parts;
+    if (
+      !local ||
+      !domain ||
+      local.length > 64 ||
+      local.startsWith(".") ||
+      local.endsWith(".") ||
+      local.includes("..") ||
+      !/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local)
+    ) {
+      return false;
+    }
+
+    const labels = domain.split(".");
+    const topLevelLabel = labels[labels.length - 1] ?? "";
+    return (
+      labels.length >= 2 &&
+      topLevelLabel.length >= 2 &&
+      labels.every((label) =>
+        /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label),
+      )
+    );
+  }
+
   const ACCESS_STATE = {
     INVITE_PENDING: "Invite pending",
     ACTIVE: "Active",
@@ -3111,6 +3159,10 @@ window.AuthStore = (() => {
     syncDisplayFields,
     jobToDraftForm,
     isValidEmail,
+    // The help-contacts format rules, so the admin form names a bad hotline or
+    // support email inline instead of relying on the setter's rejection.
+    isValidSupportPhone,
+    isValidSupportEmail,
     isAllowedTourDocumentFile,
     jobWasEverCommitted,
 
@@ -3150,6 +3202,33 @@ window.AuthStore = (() => {
     getBranding: () => ({ ...branding }),
 
     getDriverSupportContact: () => ({ ...driverSupportContact }),
+
+    // Both help contacts are required and cannot be cleared. That mirrors the
+    // production contract rather than being a preference: the backend rejects
+    // an empty value and its shallow merge preserves anything omitted, so a
+    // blank contact could never persist. Rejecting a blank or malformed value
+    // here keeps the store the single owner of the rule — the admin form reads
+    // the same validators for its inline messages instead of restating them.
+    setDriverSupportContact(next = {}) {
+      const phone = String(next.phone ?? "").trim();
+      const email = String(next.email ?? "").trim();
+      if (!phone) return { ok: false, reason: "phone_required" };
+      if (!email) return { ok: false, reason: "email_required" };
+      if (!isValidSupportPhone(phone))
+        return { ok: false, reason: "invalid_phone" };
+      if (!isValidSupportEmail(email))
+        return { ok: false, reason: "invalid_email" };
+      driverSupportContact.phone = phone;
+      driverSupportContact.email = email;
+      log(
+        "help_contacts_changed",
+        DEMO_ADMIN,
+        "app_settings",
+        JSON.stringify({ phone, email }),
+      );
+      emit();
+      return { ok: true };
+    },
 
     setAppDisplayName(name) {
       const next = String(name || "").trim() || "Transport Portal";
@@ -3230,6 +3309,11 @@ window.AuthStore = (() => {
     driverOfferAmount,
     getDrivers: () => drivers,
     getAdmins: () => admins,
+    // The demo console is always signed in as the seeded dispatcher. The
+    // sidebar footer and the User settings account forms both bind to this one
+    // record, so an email change there is the same record everywhere.
+    getCurrentAdmin: () =>
+      admins.find((x) => x.name === DEMO_ADMIN) || admins[0] || null,
     getCustomers: (opts = {}) => {
       const all = customers.slice();
       return opts.activeOnly ? all.filter((x) => x.active !== false) : all;
@@ -4987,12 +5071,19 @@ window.AuthStore = (() => {
     updateAdmin(id, patch = {}) {
       const a = admins.find((x) => x.id === id);
       if (!a) return { ok: false, reason: "not_found" };
-      if (patch.name !== undefined) a.name = String(patch.name).trim();
-      if (patch.email !== undefined) a.email = String(patch.email).trim();
-      if (!a.name || !a.email) return { ok: false, reason: "required" };
-      if (!isValidEmail(a.email)) return { ok: false, reason: "invalid_email" };
-      if (admins.some((x) => x.id !== id && x.email === a.email))
+      // Validate the candidate values, then commit. Rules and rejection reasons
+      // are unchanged; only the ordering is — a rejected patch must leave the
+      // stored record untouched, because callers surface the reason as a field
+      // error and keep reading the record (sidebar footer, User settings form).
+      const name = patch.name !== undefined ? String(patch.name).trim() : a.name;
+      const email =
+        patch.email !== undefined ? String(patch.email).trim() : a.email;
+      if (!name || !email) return { ok: false, reason: "required" };
+      if (!isValidEmail(email)) return { ok: false, reason: "invalid_email" };
+      if (admins.some((x) => x.id !== id && x.email === email))
         return { ok: false, reason: "duplicate_email" };
+      a.name = name;
+      a.email = email;
       log("admin_updated", DEMO_ADMIN, a.name, a.email);
       emit();
       return { ok: true };

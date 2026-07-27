@@ -5071,6 +5071,40 @@ function applyAppTheme(theme) {
   }
 }
 
+// Global theme store — mirrors the useI18n subscription shape so the admin
+// Settings "Appearance" row and the prototype demo shell chrome drive the
+// SAME theme state in both directions. applyAppTheme() remains the single DOM
+// writer (data-theme + localStorage + meta); this store layers notification
+// on top so every subscriber (chrome App, admin SettingsPane) re-renders when
+// any one of them changes the theme. The PWA ProfilePaneFull keeps its own
+// isPwaSurface-gated applyAppTheme call and does not subscribe here.
+const THEME_LISTENERS = new Set();
+const notifyTheme = (next) => THEME_LISTENERS.forEach((fn) => fn(next));
+const subscribeTheme = (fn) => {
+  THEME_LISTENERS.add(fn);
+  return () => THEME_LISTENERS.delete(fn);
+};
+function setThemeGlobal(next) {
+  if (next !== "light" && next !== "dark") return;
+  applyAppTheme(next);
+  notifyTheme(next);
+}
+function useTheme() {
+  // Match the chrome's pre-existing default (light when nothing stored) so
+  // the shell's first paint and button highlight are unchanged.
+  const [theme, setTheme] = useState(() => {
+    try {
+      const stored = localStorage.getItem(THEME_KEY);
+      return stored === "dark" || stored === "light" ? stored : "light";
+    } catch (_) {
+      return "light";
+    }
+  });
+  useEffect(() => subscribeTheme((next) => setTheme(next)), []);
+  return { theme, setTheme: setThemeGlobal };
+}
+window.AutheonTheme = { subscribe: subscribeTheme, useTheme };
+
 const ProfilePaneFull = () => {
   const { t, locale, setLocale } = useI18n();
   const store = useAuthStore();

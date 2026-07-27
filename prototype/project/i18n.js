@@ -1037,6 +1037,91 @@ window.I18n = (() => {
         "Lets drivers set push and email preferences from their profile tab.",
       adminPillOn: "ON",
       adminPillOff: "OFF",
+      // Admin Settings tabs — mirrors the Autheon admin console (common.json).
+      // The console's in-page h1 ("settings.title") is owned by the prototype
+      // shell chrome (navFeatures), so the pane opens with "settings.subtitle"
+      // as its lead. Copy is lifted verbatim from the console locales; the
+      // prototype-only "prototype" tab has no console counterpart and is the
+      // only translated (not verbatim) branch here.
+      settings: {
+        title: "Settings",
+        subtitle: "Manage account and console preferences.",
+        user: {
+          title: "User settings",
+          subtitle:
+            "Manage your account email, password, language, and appearance.",
+          languageLabel: "Language",
+          languageHint: "Choose the language used across the admin console.",
+          langEn: "EN",
+          langDe: "DE",
+          appearanceLabel: "Appearance",
+          appearanceHint: "Switch between light and dark mode.",
+          appearanceLight: "Switch to light mode",
+          appearanceDark: "Switch to dark mode",
+        },
+        // Account forms on the User settings tab. Copy is lifted verbatim from
+        // the console's auth.json (changeEmail.*, changePassword.*), its
+        // resetPassword.* password rules, and errors.json validation.required.
+        account: {
+          fieldRequired: "This field is required.",
+          changeEmail: {
+            title: "Change email",
+            description: "Update the email address for your account.",
+            emailLabel: "Email",
+            invalidEmail: "Enter a valid email address",
+            unchanged: "Enter a different email address",
+            submitButton: "Change email",
+            successToast: "Email changed successfully.",
+          },
+          changePassword: {
+            title: "Change password",
+            description: "Update the password for your account.",
+            currentPasswordLabel: "Current password",
+            newPasswordLabel: "New password",
+            confirmPasswordLabel: "Confirm new password",
+            passwordMinLength: "Password must be at least 8 characters",
+            confirmPasswordRequired: "Please confirm your new password",
+            passwordMismatch: "Passwords do not match",
+            submitButton: "Change password",
+            successToast: "Password changed successfully.",
+          },
+        },
+        system: {
+          title: "System settings",
+          subtitle: "App settings",
+          // Operational-policies controls the console has and the prototype
+          // was missing: the three cancellation switches, the single numeric
+          // validation message (one message covers cleared, zero and
+          // fractional alike), and Discard. Lifted verbatim from the console's
+          // common.json settings.system.*.
+          policyAllowOverrideLabel: "Allow policy override with audit note",
+          policyRequiresReasonCodeLabel: "Cancellation requires a reason code",
+          policyRequiresDriverMessageLabel:
+            "Cancellation requires a driver message",
+          policyWholeNumberError: "Enter a whole number of 1 or more.",
+          discardChanges: "Discard changes",
+          // Infopoint help contacts — the hotline and support email drivers see
+          // on the Infopoint Help tab. Also verbatim from the console's
+          // common.json settings.system.*. Both fields are required, so each has
+          // a "required" message beside its format message.
+          helpContactsTitle: "Infopoint — Help contacts",
+          helpContactsBlurb:
+            "Dispatcher hotline and support email shown to drivers on the Infopoint Help tab.",
+          helpContactsHotlineLabel: "Dispatcher hotline",
+          helpContactsEmailLabel: "Support email",
+          helpContactsSave: "Save contacts",
+          helpContactsSaved: "Help contacts updated.",
+          helpContactsHotlineError: "Enter a valid phone number.",
+          helpContactsEmailError: "Enter a valid email address.",
+          helpContactsHotlineRequired: "Dispatcher hotline is required.",
+          helpContactsEmailRequired: "Support email is required.",
+        },
+        prototype: {
+          title: "Prototype settings",
+          subtitle:
+            "Prototype-only — these have no Autheon counterpart.",
+        },
+      },
       newOrderFooterHint:
         "Required fields must be complete for marketplace publish and direct assignment",
       newOrderCancel: "Cancel",
@@ -2519,6 +2604,87 @@ window.I18n = (() => {
         "Erlaubt Fahrern, Push- und E-Mail-Einstellungen im Profil zu setzen.",
       adminPillOn: "AN",
       adminPillOff: "AUS",
+      // Admin Settings tabs — Kopie wörtlich aus der Admin-Konsole (de locale).
+      // Der in-page-h1 der Konsole (settings.title) liegt beim Prototyp-Shell
+      // (navFeatures); das Pane öffnet daher mit settings.subtitle als Lead.
+      // Nur der prototype-only Tab hat keine Konsolen-Vorlage.
+      settings: {
+        title: "Einstellungen",
+        subtitle: "Konto- und Konsolenpräferenzen verwalten.",
+        user: {
+          title: "Benutzereinstellungen",
+          subtitle:
+            "E-Mail, Passwort, Sprache und Darstellung deines Kontos verwalten.",
+          languageLabel: "Sprache",
+          languageHint: "Wähle die Sprache für die Admin-Konsole.",
+          langEn: "EN",
+          langDe: "DE",
+          appearanceLabel: "Darstellung",
+          appearanceHint: "Zwischen hellem und dunklem Modus wechseln.",
+          appearanceLight: "Zum hellen Modus wechseln",
+          appearanceDark: "Zum dunklen Modus wechseln",
+        },
+        // Kontoformulare auf dem Tab Benutzereinstellungen. Copy wörtlich aus
+        // auth.json (changeEmail.*, changePassword.*), den Passwortregeln aus
+        // resetPassword.* und errors.json validation.required der Konsole.
+        account: {
+          fieldRequired: "Dieses Feld ist erforderlich.",
+          changeEmail: {
+            title: "E-Mail ändern",
+            description:
+              "Aktualisieren Sie die E-Mail-Adresse für Ihr Konto.",
+            emailLabel: "E-Mail",
+            invalidEmail: "Geben Sie eine gültige E-Mail-Adresse ein",
+            unchanged: "Geben Sie eine andere E-Mail-Adresse ein",
+            submitButton: "E-Mail ändern",
+            successToast: "E-Mail erfolgreich geändert.",
+          },
+          changePassword: {
+            title: "Passwort ändern",
+            description: "Aktualisieren Sie das Passwort für Ihr Konto.",
+            currentPasswordLabel: "Aktuelles Passwort",
+            newPasswordLabel: "Neues Passwort",
+            confirmPasswordLabel: "Neues Passwort bestätigen",
+            passwordMinLength:
+              "Das Passwort muss mindestens 8 Zeichen lang sein",
+            confirmPasswordRequired:
+              "Bitte bestätigen Sie Ihr neues Passwort",
+            passwordMismatch: "Die Passwörter stimmen nicht überein",
+            submitButton: "Passwort ändern",
+            successToast: "Passwort erfolgreich geändert.",
+          },
+        },
+        system: {
+          title: "Systemeinstellungen",
+          subtitle: "App-Einstellungen",
+          // Wörtlich aus common.json settings.system.* der Konsole.
+          policyAllowOverrideLabel:
+            "Richtlinien-Ausnahme mit Audit-Notiz erlauben",
+          policyRequiresReasonCodeLabel: "Storno erfordert Grundcode",
+          policyRequiresDriverMessageLabel:
+            "Storno erfordert Nachricht an Fahrer",
+          policyWholeNumberError: "Bitte eine ganze Zahl ab 1 eingeben.",
+          discardChanges: "Änderungen verwerfen",
+          // Infopoint-Kontakte — ebenfalls wörtlich aus common.json
+          // settings.system.* der Konsole.
+          helpContactsTitle: "Infopoint — Kontakte",
+          helpContactsBlurb:
+            "Disponent-Hotline und Support-E-Mail, die Fahrer im Infopoint-Hilfe-Tab sehen.",
+          helpContactsHotlineLabel: "Disponent-Hotline",
+          helpContactsEmailLabel: "Support-E-Mail",
+          helpContactsSave: "Kontakte speichern",
+          helpContactsSaved: "Hilfskontakte aktualisiert.",
+          helpContactsHotlineError: "Bitte gültige Telefonnummer eingeben.",
+          helpContactsEmailError: "Bitte gültige E-Mail-Adresse eingeben.",
+          helpContactsHotlineRequired: "Disponent-Hotline ist erforderlich.",
+          helpContactsEmailRequired: "Support-E-Mail ist erforderlich.",
+        },
+        prototype: {
+          title: "Prototyp-Einstellungen",
+          subtitle:
+            "Nur im Prototyp — keine Autheon-Entsprechung.",
+        },
+      },
       newOrderFooterHint:
         "Pflichtfelder müssen ausgefüllt sein für Marktplatz-Veröffentlichung und direkte Zuweisung",
       newOrderCancel: "Abbrechen",
