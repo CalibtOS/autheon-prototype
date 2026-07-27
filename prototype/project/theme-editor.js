@@ -13,6 +13,7 @@
 
    Public API (window.AutheonThemeEditor):
      show() / hide() / toggle()      — launcher visibility
+     isVisible()                     — whether the launcher is currently shown
      open() / close()                — editor panel
      resetTheme() / resetLauncherPosition()
      __test                          — pure helpers, exercised by unit specs
@@ -1849,16 +1850,30 @@
     if (!els.launcherWrap) buildLauncher();
   }
 
+  function notifyVisibility() {
+    try {
+      document.dispatchEvent(
+        new CustomEvent('autheon-theme-editor:visibility', {
+          detail: { visible: !!state.visible },
+        }),
+      );
+    } catch (_) {
+      /* CustomEvent unavailable — header can still poll isVisible() */
+    }
+  }
+
   function showFeature() {
     ensureLauncher();
     els.launcherWrap.style.display = '';
     state.visible = true;
+    notifyVisibility();
   }
 
   function hideFeature() {
     state.visible = false;
     if (state.open) closePanel();
     if (els.launcherWrap) els.launcherWrap.style.display = 'none';
+    notifyVisibility();
   }
 
   function toggleFeature() {
@@ -1953,6 +1968,7 @@
       // Hidden by default: only mount the launcher when the gate param is set.
       state.visible = urlWantsVisible();
       if (state.visible) buildLauncher();
+      notifyVisibility();
     }
     if (document.body) mount();
     else document.addEventListener('DOMContentLoaded', mount, { once: true });
@@ -1973,6 +1989,9 @@
     resetLauncherPosition: resetLauncherPosition,
     isOpen: function () {
       return state.open;
+    },
+    isVisible: function () {
+      return !!state.visible;
     },
   };
 

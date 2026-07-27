@@ -124,6 +124,45 @@ test.describe('red hide badge', () => {
   });
 });
 
+test.describe('framed-preview header toggle', () => {
+  test('shows and hides the theme editor from the navbar', async ({ page }) => {
+    await gotoPrototype(page); // clean URL — tool starts hidden
+    const frame = prototypeFrame(page);
+    const headerToggle = frame.getByRole('button', {
+      name: 'Theme editor',
+      exact: true,
+    });
+
+    await expect(headerToggle).toBeVisible();
+    await expect(headerToggle).toHaveAttribute('aria-pressed', 'false');
+    await expect(launcher(page)).toHaveCount(0);
+
+    await headerToggle.click();
+    await expect(launcher(page)).toBeVisible();
+    await expect(headerToggle).toHaveAttribute('aria-pressed', 'true');
+
+    await headerToggle.click();
+    await expect(launcher(page)).toBeHidden();
+    await expect(headerToggle).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('stays in sync when the keyboard shortcut hides the tool', async ({
+    page,
+  }) => {
+    await gotoEditor(page);
+    const headerToggle = prototypeFrame(page).getByRole('button', {
+      name: 'Theme editor',
+      exact: true,
+    });
+    await expect(headerToggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(launcher(page)).toBeVisible();
+
+    await page.keyboard.press(TOGGLE);
+    await expect(launcher(page)).toBeHidden();
+    await expect(headerToggle).toHaveAttribute('aria-pressed', 'false');
+  });
+});
+
 test.describe('overlay shortcut hint', () => {
   test('the panel communicates the show/hide shortcut', async ({ page }) => {
     await gotoEditor(page);

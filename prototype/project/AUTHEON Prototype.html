@@ -19,14 +19,14 @@
       href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=22" />
+    <link rel="stylesheet" href="styles.css?v=23" />
     <!--
       Floating Theme Editor — a movable, persistent design-evaluation tool.
       Loaded synchronously in <head> so any locally stored colour overrides are
       applied before the first paint (no flash of the default theme). Mounts one
       launcher for the whole prototype, including the embedded mobile preview.
     -->
-    <script src="theme-editor.js?v=1"></script>
+    <script src="theme-editor.js?v=2"></script>
   </head>
   <body>
     <div id="root"></div>
@@ -48,7 +48,7 @@
     ></script>
 
     <script src="feature-flags.js"></script>
-    <script src="i18n.js?v=24"></script>
+    <script src="i18n.js?v=25"></script>
     <script src="formatters.js"></script>
     <script src="inputFormatters.js"></script>
     <script src="store.js"></script>
@@ -954,6 +954,13 @@
         const [theme, setTheme] = useState(
           localStorage.getItem("autheon-theme") || "light",
         );
+        const [themeEditorOn, setThemeEditorOn] = useState(() => {
+          try {
+            return !!window.AutheonThemeEditor?.isVisible?.();
+          } catch (_) {
+            return false;
+          }
+        });
         const { locale, setLocale, t } = useI18n();
         const pwaHref = resolvePwaHref();
 
@@ -961,6 +968,33 @@
           document.documentElement.setAttribute("data-theme", theme);
           localStorage.setItem("autheon-theme", theme);
         }, [theme]);
+
+        useEffect(() => {
+          const sync = () => {
+            try {
+              setThemeEditorOn(!!window.AutheonThemeEditor?.isVisible?.());
+            } catch (_) {
+              /* ignore */
+            }
+          };
+          const onVis = (e) => {
+            if (e?.detail && typeof e.detail.visible === "boolean") {
+              setThemeEditorOn(e.detail.visible);
+            } else {
+              sync();
+            }
+          };
+          sync();
+          document.addEventListener(
+            "autheon-theme-editor:visibility",
+            onVis,
+          );
+          return () =>
+            document.removeEventListener(
+              "autheon-theme-editor:visibility",
+              onVis,
+            );
+        }, []);
 
         return (
           <div className="app">
@@ -1004,6 +1038,23 @@
                 >
                   {t("openPwaViewport")}
                 </a>
+                <button
+                  type="button"
+                  className={
+                    "theme-editor-entry" + (themeEditorOn ? " on" : "")
+                  }
+                  aria-pressed={themeEditorOn}
+                  title={t("themeEditorTitle")}
+                  onClick={() => {
+                    try {
+                      window.AutheonThemeEditor?.toggle?.();
+                    } catch (_) {
+                      /* ignore */
+                    }
+                  }}
+                >
+                  {t("themeEditor")}
+                </button>
                 <div className="switcher locale-switch">
                   <button
                     className={locale === "en" ? "on" : ""}

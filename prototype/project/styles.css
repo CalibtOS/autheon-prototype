@@ -389,6 +389,36 @@ a {
   background: var(--chrome-header-wash-strong);
   border-color: var(--chrome-header-ring-strong);
 }
+.app-header .theme-editor-entry {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--chrome-header-ring);
+  color: var(--chrome-header-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background: var(--chrome-header-wash);
+  cursor: pointer;
+}
+.app-header .theme-editor-entry:hover {
+  background: var(--chrome-header-wash-strong);
+  border-color: var(--chrome-header-ring-strong);
+  color: var(--chrome-header-fg);
+}
+.app-header .theme-editor-entry.on {
+  background: var(--primary);
+  border-color: transparent;
+  color: var(--chrome-header-fg);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow-ink) 8%, transparent);
+}
+.app-header .theme-editor-entry:focus-visible {
+  outline: 2px solid var(--chrome-header-fg);
+  outline-offset: 2px;
+}
 .app-header .switcher button {
   background: transparent;
   color: var(--chrome-header-muted);
