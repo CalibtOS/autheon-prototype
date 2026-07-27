@@ -4957,6 +4957,46 @@ select.input {
   display: flex;
   align-items: center;
 }
+/* Tertiary text links under the OTP row (Resend / Change address).
+   Matches Report-problem terms-link treatment: primary tint + underline,
+   not a filled/outline button that would compete with Confirm change. */
+.phone-shell .change-email-aux-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  flex-wrap: wrap;
+}
+.phone-shell .change-email-resend-wait {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.phone-shell .change-email-text-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.phone-shell .change-email-text-link:hover {
+  color: var(--primary-ink);
+}
+.phone-shell .change-email-text-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--r-1);
+}
 .phone-shell .change-email-success-check {
   width: 44px;
   height: 44px;

@@ -4793,27 +4793,27 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
           {t("changeEmailCodeSentTo", { email: newEmail })}
         </div>
         <CodeInput value={code} onChange={(v) => { setCode(v); if (error) setError(""); }} />
-        <div className="change-email-resend-row">
+        <div className="change-email-aux-row">
           {resendLeft > 0 ? (
-            <span className="section-hint">
+            <span className="section-hint change-email-resend-wait">
               {t("changeEmailResendIn", { time: mmss(resendLeft) })}
             </span>
           ) : (
-            <button type="button" className="btn ghost xs" onClick={resend}>
+            <button type="button" className="change-email-text-link" onClick={resend}>
               {t("changeEmailResend")}
             </button>
           )}
+          <button
+            type="button"
+            className="change-email-text-link"
+            onClick={() => {
+              setStep("enter");
+              setError("");
+            }}
+          >
+            {t("changeEmailBack")}
+          </button>
         </div>
-        <button
-          type="button"
-          className="btn ghost xs"
-          onClick={() => {
-            setStep("enter");
-            setError("");
-          }}
-        >
-          {t("changeEmailBack")}
-        </button>
         {demoCode ? (
           <InlineAlert tone="info" message={t("changeEmailDemoHint", { code: demoCode })} />
         ) : null}

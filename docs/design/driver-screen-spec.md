@@ -125,7 +125,7 @@ Driver-owned sign-in email lives under the Profile **Account** group as a `Profi
 - **Pending:** while a change is in flight the nav subline shows "Change pending"; reopening resumes the code step instead of starting a second flow.
 - **`ChangeEmailSheet`** — three steps, title changes per step; sticky footer **Cancel (ghost) | Primary** at the shared `.sheet-foot` 1:1.6 ratio:
   1. **Enter** — `accountSigninHint`, current address (`.change-email-current`, `.mono`), new-address input, code notice. Footer: Cancel \| Send code.
-  2. **Confirm** — `CodeInput` 6-box code, resend countdown → Resend code, in-body "Change address" (step back), demo `InlineAlert`. Footer: Cancel \| Confirm change. Errors map to typed reasons (`invalid_email`, `same_email`, `duplicate_email`, `invalid_code`, `expired`, `restricted`).
+  2. **Confirm** — `CodeInput` 6-box code, resend countdown → Resend code + "Change address" as primary-tinted underlined text links (`.change-email-text-link`, ≥44px) in one `.change-email-aux-row`, demo `InlineAlert`. Footer: Cancel \| Confirm change. Errors map to typed reasons (`invalid_email`, `same_email`, `duplicate_email`, `invalid_code`, `expired`, `restricted`).
   3. **Success** — `.change-email-success-check`, confirmation body, single full-width Done (`.sheet-foot > .btn:only-child`).
 - **Model:** the new address only becomes active after the code sent to the **new** inbox is confirmed; the old inbox stays live until then and receives an `emailChangedNotify*` notification on success. No ops step.
 - **i18n:** `profileNavChangeEmail`, `accountSignin*`, `accountEmail*`, `changeEmail*` (incl. `changeEmailCodeGroupLabel` / `changeEmailDigitLabel`), `emailChanged*` (EN+DE) — regenerate the index after changes.
