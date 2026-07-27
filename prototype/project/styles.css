@@ -15,13 +15,18 @@
   --primary-rgb: 111, 41, 255;
   --primary-ink: #5a16d9;
   --cta: #ea580c;
+  --cta-rgb: 234, 88, 12;
   --destructive: #dc2626;
+  --destructive-rgb: 220, 38, 38;
+  --danger-ink: #b91c1c;
+  --on-accent: #ffffff;
+  --on-destructive: #ffffff;
+  --on-cta: #ffffff;
   --canvas: var(--brand-canvas);
   --paper: var(--brand-surface);
   --paper-2: #f1f5f9;
-  /* Neutral hover/selected wash — was a purple tint; board limits purple to
-     sparse accents, so interaction washes stay gray. */
-  --paper-3: rgba(17, 17, 17, 0.04);
+  /* Neutral hover/selected wash — solid so Theme Editor can edit it */
+  --paper-3: #f4f4f5;
   --ink: var(--brand-text);
   --ink-2: var(--brand-text-secondary);
   --ink-3: #8e8e93;
@@ -42,17 +47,46 @@
   --st-published: #2563eb;
   --st-assigned: #c2410c;
   --st-accepted: #059669;
+  --st-accepted-rgb: 5, 150, 105;
   --st-special-case: #9333ea;
   --st-performed: #0f172a;
   --st-cancelled: #dc2626;
   --st-warn: #ea580c;
 
+  --st-draft-bg: #f1efea;
   --st-published-bg: #eff6ff;
   --st-assigned-bg: #fff7ed;
   --st-accepted-bg: #ecfdf5;
   --st-special-bg: #f5f3ff;
+  --st-performed-bg: #e8eaf0;
   --st-cancelled-bg: #fef2f2;
   --st-warn-bg: #ffedd5;
+
+  /* Diff / master-data compare */
+  --diff-added: #065f46;
+  --diff-added-bright: #6ee7b7;
+  --diff-removed-bright: #fca5a5;
+
+  /* Document card icon chip */
+  --doc-icon-bg: #e5e7eb;
+  --doc-icon-fg: #4b5563;
+
+  /* Device chrome (phone frame) */
+  --phone-bezel: #1a1a1a;
+  --phone-notch: #0b0b0c;
+
+  /* Slide-to-confirm thumb */
+  --slide-thumb-bg: #ffffff;
+  --slide-thumb-fg: #4b5563;
+  --slide-thumb-fg-active: #1f2937;
+
+  /* Overlays / shadows / attention */
+  --scrim-ink: #0f172a;
+  --shadow-ink: #0f172a;
+  --shadow-ink-rgb: 15, 23, 42;
+  --highlight: #ffd255;
+  --highlight-soft: #ffe6a5;
+  --neutral-fill: #7f7f7f;
 
   /* Spacing scale (4pt) */
   --space-1: 4px;
@@ -71,10 +105,13 @@
   --r-4: 16px;
   --r-pill: 999px;
 
-  --sh-1: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --sh-1: 0 1px 2px color-mix(in srgb, var(--shadow-ink) 6%, transparent);
   --sh-2:
-    0 8px 24px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.05);
-  --sh-3: 0 24px 64px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(15, 23, 42, 0.08);
+    0 8px 24px color-mix(in srgb, var(--shadow-ink) 7%, transparent),
+    0 1px 2px color-mix(in srgb, var(--shadow-ink) 5%, transparent);
+  --sh-3:
+    0 24px 64px color-mix(in srgb, var(--shadow-ink) 16%, transparent),
+    0 2px 8px color-mix(in srgb, var(--shadow-ink) 8%, transparent);
   --sh-inset: inset 0 0 0 1px var(--line);
 
   /* Design Direction Board (07/2026): Inter Tight is the client's primary UI
@@ -105,8 +142,37 @@
   /* Prototype shell chrome — fixed dark bar (never flip with --brand-text) */
   --chrome-header-bg: #111111;
   --chrome-header-fg: #ffffff;
-  --chrome-header-muted: rgba(255, 255, 255, 0.7);
-  --chrome-header-border: rgba(255, 255, 255, 0.08);
+  --chrome-header-muted: color-mix(
+    in srgb,
+    var(--chrome-header-fg) 70%,
+    transparent
+  );
+  --chrome-header-border: color-mix(
+    in srgb,
+    var(--chrome-header-fg) 8%,
+    transparent
+  );
+  --chrome-header-wash: color-mix(
+    in srgb,
+    var(--chrome-header-fg) 6%,
+    transparent
+  );
+  --chrome-header-wash-strong: color-mix(
+    in srgb,
+    var(--chrome-header-fg) 12%,
+    transparent
+  );
+  --chrome-header-ring: color-mix(
+    in srgb,
+    var(--chrome-header-fg) 18%,
+    transparent
+  );
+  --chrome-header-ring-strong: color-mix(
+    in srgb,
+    var(--chrome-header-fg) 28%,
+    transparent
+  );
+}
 }
 
 [data-theme="dark"] {
@@ -121,6 +187,13 @@
   --primary-rgb: 143, 91, 255;
   --primary-ink: #a375ff;
   --cta: #ea580c;
+  --cta-rgb: 234, 88, 12;
+  --destructive: #dc2626;
+  --destructive-rgb: 220, 38, 38;
+  --danger-ink: #f87171;
+  --on-accent: #ffffff;
+  --on-destructive: #ffffff;
+  --on-cta: #ffffff;
   --canvas: var(--brand-canvas);
   --paper: var(--brand-surface);
   --paper-2: #1c1c1e;
@@ -130,25 +203,76 @@
   --ink-3: #8e8e93;
   --line: var(--brand-border);
   --line-2: #48484a;
-  --line-3: #ffffff;
+  --line-3: var(--brand-text);
   --line-dash: #48484a;
   --text: var(--brand-text);
   --muted: var(--brand-text-secondary);
   --muted-2: #aeaeb2; /* ≥4.5:1 on --paper */
+  --st-draft-bg: #2a2a2c;
   --st-published-bg: #172554;
   --st-assigned-bg: #3a2210;
   --st-accepted-bg: #092a24;
   --st-special-bg: #2c1f50;
+  --st-performed-bg: #1e293b;
   --st-cancelled-bg: #3e1520;
   --st-warn-bg: #4a2b12;
-  --sh-1: 0 1px 2px rgba(2, 6, 23, 0.45);
-  --sh-2: 0 14px 30px rgba(2, 6, 23, 0.48), 0 1px 2px rgba(2, 6, 23, 0.35);
-  --sh-3: 0 26px 60px rgba(2, 6, 23, 0.66), 0 2px 10px rgba(2, 6, 23, 0.4);
+  --diff-added: #6ee7b7;
+  --diff-added-bright: #6ee7b7;
+  --diff-removed-bright: #fca5a5;
+  --doc-icon-bg: #374151;
+  --doc-icon-fg: #d1d5db;
+  --phone-bezel: #1a1a1a;
+  --phone-notch: #0b0b0c;
+  --slide-thumb-bg: #ffffff;
+  --slide-thumb-fg: #4b5563;
+  --slide-thumb-fg-active: #1f2937;
+  --scrim-ink: #0b0b0c;
+  --shadow-ink: #020617;
+  --shadow-ink-rgb: 2, 6, 23;
+  --highlight: #ffd250;
+  --highlight-soft: #ffe6a5;
+  --neutral-fill: #7f7f7f;
+  --sh-1: 0 1px 2px color-mix(in srgb, var(--shadow-ink) 45%, transparent);
+  --sh-2:
+    0 14px 30px color-mix(in srgb, var(--shadow-ink) 48%, transparent),
+    0 1px 2px color-mix(in srgb, var(--shadow-ink) 35%, transparent);
+  --sh-3:
+    0 26px 60px color-mix(in srgb, var(--shadow-ink) 66%, transparent),
+    0 2px 10px color-mix(in srgb, var(--shadow-ink) 40%, transparent);
 
   --chrome-header-bg: #0b0b0c;
   --chrome-header-fg: #ffffff;
-  --chrome-header-muted: rgba(255, 255, 255, 0.72);
-  --chrome-header-border: rgba(255, 255, 255, 0.1);
+  --chrome-header-muted: color-mix(
+    in srgb,
+    var(--chrome-header-fg) 72%,
+    transparent
+  );
+  --chrome-header-border: color-mix(
+    in srgb,
+    var(--chrome-header-fg) 10%,
+    transparent
+  );
+  --chrome-header-wash: color-mix(
+    in srgb,
+    var(--chrome-header-fg) 6%,
+    transparent
+  );
+  --chrome-header-wash-strong: color-mix(
+    in srgb,
+    var(--chrome-header-fg) 12%,
+    transparent
+  );
+  --chrome-header-ring: color-mix(
+    in srgb,
+    var(--chrome-header-fg) 18%,
+    transparent
+  );
+  --chrome-header-ring-strong: color-mix(
+    in srgb,
+    var(--chrome-header-fg) 28%,
+    transparent
+  );
+}
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -236,7 +360,7 @@ a {
 }
 .app-header .switcher {
   display: inline-flex;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--chrome-header-wash);
   border-radius: var(--r-pill);
   padding: 3px;
   font-size: 13px;
@@ -252,18 +376,18 @@ a {
   height: 28px;
   padding: 0 12px;
   border-radius: var(--r-pill);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--chrome-header-ring);
   color: var(--chrome-header-fg);
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.02em;
   text-decoration: none;
   white-space: nowrap;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--chrome-header-wash);
 }
 .app-header .pwa-entry:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.28);
+  background: var(--chrome-header-wash-strong);
+  border-color: var(--chrome-header-ring-strong);
 }
 .app-header .switcher button {
   background: transparent;
@@ -279,7 +403,7 @@ a {
 .app-header .switcher button.on {
   background: var(--primary);
   color: var(--chrome-header-fg);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow-ink) 8%, transparent);
 }
 .app-header .right {
   display: inline-flex;
@@ -291,7 +415,7 @@ a {
   color: var(--chrome-header-muted);
 }
 .app-header .right .demo-tag {
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--chrome-header-ring);
   padding: 4px 10px;
   border-radius: var(--r-pill);
   text-transform: uppercase;
@@ -377,7 +501,7 @@ hr.line {
 }
 .btn.primary {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--primary);
 }
 .btn.primary:hover {
@@ -386,7 +510,7 @@ hr.line {
 }
 .btn.cta {
   background: var(--cta);
-  color: #fff;
+  color: var(--on-cta);
   border-color: var(--cta);
 }
 .btn.cta:hover {
@@ -456,7 +580,7 @@ hr.line {
 }
 .input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
 }
 textarea.input {
   min-height: 92px;
@@ -520,7 +644,7 @@ select.input {
   display: none;
 }
 .pill.draft {
-  background: #f1efea;
+  background: var(--st-draft-bg);
   color: var(--st-draft);
 }
 .pill.published {
@@ -538,12 +662,8 @@ select.input {
 .pill.performed {
   /* Tinted bg + dark text — the solid near-black chip was the one heavy
      status fill (board §C: restrained status colors). */
-  background: rgba(15, 23, 42, 0.08);
+  background: var(--st-performed-bg);
   color: var(--st-performed);
-}
-[data-theme="dark"] .pill.performed {
-  background: rgba(248, 250, 252, 0.14);
-  color: #e2e8f0;
 }
 .pill.special_case {
   background: var(--st-special-bg);
@@ -589,7 +709,7 @@ select.input {
 }
 .chip.on {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--primary);
 }
 .chip.mono {
@@ -712,7 +832,7 @@ select.input {
 .seg button.on {
   background: var(--paper);
   color: var(--text);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow-ink) 6%, transparent);
 }
 .seg.full {
   width: 100%;
@@ -935,8 +1055,8 @@ select.input {
 /* German red transfer plate (§16 FZV) — literal plate rendering; the text
    label ("Red plate no.") always accompanies it */
 .phone-shell .plate-badge.plate-red {
-  color: #b91c1c;
-  border-color: #b91c1c;
+  color: var(--danger-ink);
+  border-color: var(--danger-ink);
 }
 .phone-shell .jobcard-price {
   font-size: 19px;
@@ -995,8 +1115,8 @@ select.input {
   border-radius: 24px;
   padding: 6px 8px;
   box-shadow:
-    0 6px 20px rgba(15, 23, 42, 0.08),
-    0 1px 2px rgba(15, 23, 42, 0.05);
+    0 6px 20px color-mix(in srgb, var(--shadow-ink) 8%, transparent),
+    0 1px 2px color-mix(in srgb, var(--shadow-ink) 5%, transparent);
 }
 [data-theme="dark"] .phone-shell .tabbar-capsule {
   background: var(--paper);
@@ -1028,7 +1148,7 @@ select.input {
   font-weight: 600;
 }
 [data-theme="dark"] .phone-shell .tabbar-item.active {
-  background: rgba(255, 255, 255, 0.09);
+  background: color-mix(in srgb, var(--on-accent) 9%, transparent);
 }
 .phone-shell .tabbar-icon-wrap {
   position: relative;
@@ -1044,7 +1164,7 @@ select.input {
   top: -5px;
   right: -9px;
   background: var(--destructive);
-  color: #ffffff;
+  color: var(--on-accent);
   font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 600;
@@ -1166,7 +1286,7 @@ select.input {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(var(--primary-rgb), 0.12);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
   color: var(--primary);
   display: flex;
   align-items: center;
@@ -1257,7 +1377,7 @@ select.input {
 }
 .phone-shell .header-btn.active {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--primary);
 }
 .phone-shell .header-chips-row {
@@ -1831,7 +1951,7 @@ select.input {
   border-top-right-radius: 24px;
   border: 1px solid var(--line);
   border-bottom: 0;
-  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 -10px 30px color-mix(in srgb, var(--shadow-ink) 15%, transparent);
 }
 .phone-shell .sheet .grabber {
   width: 38px;
@@ -1895,7 +2015,7 @@ select.input {
 }
 .phone-shell .sheet-body .chip.actionable.on {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--primary);
 }
 .phone-shell .sheet-body .seg.full {
@@ -1956,14 +2076,14 @@ select.input {
   max-height: calc(100vh - 80px);
   background: var(--paper);
   border-radius: 44px;
-  border: 1px solid #1a1a1a;
+  border: 1px solid var(--phone-bezel);
   position: relative;
   overflow: hidden;
   box-shadow:
-    0 0 0 8px #1a1a1a,
-    0 28px 52px rgba(0, 0, 0, 0.24),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
-    0 4px 12px rgba(0, 0, 0, 0.1);
+    0 0 0 8px var(--phone-bezel),
+    0 28px 52px color-mix(in srgb, var(--shadow-ink) 24%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--on-accent) 3%, transparent),
+    0 4px 12px color-mix(in srgb, var(--shadow-ink) 10%, transparent);
 }
 .phone .notch {
   position: absolute;
@@ -1972,7 +2092,7 @@ select.input {
   transform: translateX(-50%);
   width: 110px;
   height: 30px;
-  background: #0b0b0c;
+  background: var(--phone-notch);
   border-radius: 18px;
   z-index: 30;
 }
@@ -2055,7 +2175,7 @@ select.input {
   width: 6px;
 }
 .scroll::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
+  background: color-mix(in srgb, var(--shadow-ink) 12%, transparent);
   border-radius: 3px;
 }
 
@@ -2099,7 +2219,7 @@ select.input {
   background-image: repeating-linear-gradient(
     135deg,
     transparent 0 8px,
-    rgba(0, 0, 0, 0.04) 8px 9px
+    color-mix(in srgb, var(--shadow-ink) 4%, transparent) 8px 9px
   );
   border-radius: var(--r-2);
   padding: 14px;
@@ -2113,7 +2233,7 @@ select.input {
 .sheet-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(11, 11, 12, 0.45);
+  background: color-mix(in srgb, var(--scrim-ink) 45%, transparent);
   backdrop-filter: blur(2px);
   display: flex;
   flex-direction: column;
@@ -2239,16 +2359,16 @@ select.input {
   left: 5px;
   bottom: 5px;
   width: 46px;
-  background: #ffffff;
-  color: #4b5563;
+  background: var(--slide-thumb-bg);
+  color: var(--slide-thumb-fg);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: grab;
   border-radius: 9999px;
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.14),
-    0 4px 10px -4px rgba(0, 0, 0, 0.2);
+    0 1px 2px color-mix(in srgb, var(--shadow-ink) 14%, transparent),
+    0 4px 10px -4px color-mix(in srgb, var(--shadow-ink) 20%, transparent);
   will-change: transform;
 }
 .slide-confirm .thumb:active {
@@ -2264,10 +2384,10 @@ select.input {
   border-color: var(--primary);
 }
 .slide-confirm.done .thumb {
-  color: #1f2937;
+  color: var(--slide-thumb-fg-active);
 }
 .slide-confirm.done .track-text {
-  color: #ffffff;
+  color: var(--on-accent);
   font-weight: 600;
   padding-left: 0;
   padding-right: 52px;
@@ -2292,8 +2412,8 @@ select.input {
 }
 .slide-confirm .track-text-fill {
   z-index: 3;
-  color: #ffffff;
-  -webkit-text-fill-color: #ffffff;
+  color: var(--on-accent);
+  -webkit-text-fill-color: var(--on-accent);
 }
 .slide-confirm .thumb {
   z-index: 4;
@@ -2328,7 +2448,7 @@ select.input {
   opacity: 1;
   background: var(--paper-2);
   border: 1px dashed var(--line-dash);
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-2) 12%, transparent);
   filter: grayscale(0.35);
 }
 .slide-confirm.disabled .track-text {
@@ -2376,7 +2496,7 @@ select.input {
     100deg,
     var(--muted) 0%,
     var(--muted) 40%,
-    rgba(var(--primary-rgb), 0.95) 50%,
+    color-mix(in srgb, var(--primary) 95%, transparent) 50%,
     var(--muted) 60%,
     var(--muted) 100%
   );
@@ -2622,7 +2742,7 @@ select.input {
   background: var(--paper-3);
 }
 [data-theme="dark"] .nav-item.on {
-  background: rgba(255, 255, 255, 0.09);
+  background: color-mix(in srgb, var(--on-accent) 9%, transparent);
   color: var(--text);
 }
 [data-theme="dark"] .nav-item .count {
@@ -2922,15 +3042,15 @@ select.input {
   background: var(--paper-3);
 }
 .tbl tr.row.fresh td {
-  background: rgba(255, 230, 165, 0.18);
+  background: color-mix(in srgb, var(--highlight-soft) 18%, transparent);
   animation: freshFade 4s ease 1;
 }
 @keyframes freshFade {
   from {
-    background: rgba(255, 210, 80, 0.32);
+    background: color-mix(in srgb, var(--highlight) 32%, transparent);
   }
   to {
-    background: rgba(255, 230, 165, 0.18);
+    background: color-mix(in srgb, var(--highlight-soft) 18%, transparent);
   }
 }
 .tbl .tour {
@@ -2956,7 +3076,7 @@ select.input {
   right: 28px;
   /* Neutral dark surface — purple is not a feedback-surface color (board §B) */
   background: var(--chrome-header-bg);
-  color: #f8fafc;
+  color: var(--on-accent);
   padding: 14px 18px;
   border-radius: var(--r-3);
   display: flex;
@@ -2981,7 +3101,7 @@ select.input {
 .toast .check {
   width: 22px;
   height: 22px;
-  border: 1.5px solid #f6f5f0;
+  border: 1.5px solid var(--paper);
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -2991,7 +3111,7 @@ select.input {
 .toast .sub {
   font-family: var(--font-sans);
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.65);
+  color: color-mix(in srgb, var(--on-accent) 65%, transparent);
   margin-top: 3px;
 }
 
@@ -3169,8 +3289,8 @@ select.input {
   margin-top: 12px;
   padding: 12px 14px;
   border-radius: var(--r-2);
-  border: 1px solid rgba(var(--primary-rgb), 0.28);
-  background: rgba(var(--primary-rgb), 0.06);
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
   font-size: 12.5px;
   line-height: 1.5;
   color: var(--text);
@@ -3199,7 +3319,7 @@ select.input {
   border-bottom: none;
 }
 .mdr-field-row.is-changed {
-  background: rgba(var(--primary-rgb), 0.04);
+  background: color-mix(in srgb, var(--primary) 4%, transparent);
 }
 .mdr-field-label {
   font-size: 12px;
@@ -3275,7 +3395,7 @@ select.input {
   border-bottom: none;
 }
 .mdr-compare-row.is-changed {
-  background: rgba(var(--primary-rgb), 0.05);
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
 }
 .mdr-compare-cell {
   font-size: 12.5px;
@@ -3310,8 +3430,8 @@ select.input {
   color: var(--muted);
 }
 .mdr-list-chip.on {
-  background: rgba(var(--primary-rgb), 0.08);
-  border-color: rgba(var(--primary-rgb), 0.25);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 25%, transparent);
   color: var(--primary-ink);
 }
 
@@ -3320,24 +3440,24 @@ select.input {
    =============================================== */
 .banner-info {
   background: var(--st-published-bg);
-  border-color: rgba(var(--primary-rgb), 0.22);
+  border-color: color-mix(in srgb, var(--primary) 22%, transparent);
   color: var(--primary-ink);
 }
 .banner-success {
   background: var(--st-accepted-bg);
-  border-color: rgba(5, 150, 105, 0.25);
-  color: #065f46;
+  border-color: color-mix(in srgb, var(--st-accepted) 25%, transparent);
+  color: var(--diff-added);
 }
 .banner-error {
   background: var(--st-cancelled-bg);
-  border-color: rgba(220, 38, 38, 0.22);
+  border-color: color-mix(in srgb, var(--destructive) 22%, transparent);
   color: var(--st-cancelled);
 }
 [data-theme="dark"] .banner-success {
-  color: #6ee7b7;
+  color: var(--diff-added-bright);
 }
 [data-theme="dark"] .banner-error {
-  color: #fca5a5;
+  color: var(--diff-removed-bright);
 }
 
 .req-panel {
@@ -3388,22 +3508,22 @@ select.input {
 }
 .inline-alert-error {
   background: var(--st-cancelled-bg);
-  border-color: rgba(220, 38, 38, 0.2);
+  border-color: color-mix(in srgb, var(--destructive) 20%, transparent);
   color: var(--st-cancelled);
 }
 .inline-alert-success {
   background: var(--st-accepted-bg);
-  border-color: rgba(5, 150, 105, 0.22);
-  color: #065f46;
+  border-color: color-mix(in srgb, var(--st-accepted) 22%, transparent);
+  color: var(--diff-added);
 }
 .inline-alert-info {
   background: var(--st-published-bg);
-  border-color: rgba(var(--primary-rgb), 0.18);
+  border-color: color-mix(in srgb, var(--primary) 18%, transparent);
   color: var(--primary-ink);
 }
 .inline-alert-warn {
   background: var(--st-warn-bg);
-  border-color: rgba(234, 88, 12, 0.25);
+  border-color: color-mix(in srgb, var(--cta) 25%, transparent);
   color: var(--st-warn);
 }
 .inline-alert-dismiss {
@@ -3480,7 +3600,7 @@ select.input {
   margin-bottom: 14px;
   padding: 14px 16px;
   border-radius: var(--r-3);
-  border: 1px solid rgba(220, 38, 38, 0.22);
+  border: 1px solid color-mix(in srgb, var(--destructive) 22%, transparent);
   background: var(--st-cancelled-bg);
   font-size: 13px;
   line-height: 1.55;
@@ -3494,7 +3614,7 @@ select.input {
 .cancellation-card-reason {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid rgba(220, 38, 38, 0.15);
+  border-top: 1px solid color-mix(in srgb, var(--destructive) 15%, transparent);
   font-weight: 600;
 }
 .cancellation-card-message {
@@ -3516,6 +3636,7 @@ select.input {
   height: 52px;
   border-radius: 50%;
   background: var(--st-accepted);
+  color: var(--on-accent);
   box-shadow: 0 0 0 8px var(--st-accepted-bg);
   margin: 10px auto 18px;
   display: flex;
@@ -3607,7 +3728,7 @@ select.input {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 1px color-mix(in srgb, var(--shadow-ink) 5%, transparent);
   transition:
     background 0.12s,
     color 0.12s;
@@ -3630,7 +3751,7 @@ select.input {
   color: var(--muted);
 }
 .phone-shell .detail-tab-pill.active .detail-tab-count {
-  background: rgba(127, 127, 127, 0.4);
+  background: color-mix(in srgb, var(--neutral-fill) 40%, transparent);
   color: var(--paper);
 }
 
@@ -3657,7 +3778,7 @@ select.input {
   flex-shrink: 0;
   border-radius: 6px;
   background: var(--muted-2);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -3675,7 +3796,7 @@ select.input {
   right: 0;
   width: 12px;
   height: 12px;
-  background: rgba(0, 0, 0, 0.12);
+  background: color-mix(in srgb, var(--shadow-ink) 12%, transparent);
   border-bottom-left-radius: 4px;
 }
 .phone-shell .mydoc-main {
@@ -3865,7 +3986,7 @@ select.input {
   border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--shadow-ink) 2%, transparent);
 }
 .phone-shell .category-group-item {
   display: flex;
@@ -3969,7 +4090,7 @@ select.input {
 }
 .phone-shell .myjobs-search-input-wrap input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.12);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
 }
 
 .phone-shell .myjobs-tabs-slider {
@@ -4027,7 +4148,7 @@ select.input {
   color: var(--primary);
 }
 [data-theme="dark"] .phone-shell .myjobs-tab-pill.active .pill-badge {
-  background: rgba(var(--primary-rgb), 0.2);
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
   color: var(--primary-ink);
 }
 
@@ -4065,7 +4186,7 @@ select.input {
 .phone-shell .input:focus,
 .phone-shell select.input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.12);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
 }
 .phone-shell select.input {
   cursor: pointer;
@@ -4095,10 +4216,10 @@ select.input {
 .phone-shell .seg button.on {
   background: var(--paper);
   color: var(--text);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--shadow-ink) 5%, transparent);
 }
 [data-theme="dark"] .phone-shell .seg button.on {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--shadow-ink) 20%, transparent);
 }
 
 /* My Documents / Uploaded Document Cards */
@@ -4107,7 +4228,7 @@ select.input {
   border-radius: 16px;
   border: 1px solid var(--line);
   background: var(--paper);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--shadow-ink) 2%, transparent);
   margin-bottom: 12px;
   display: flex;
   flex-direction: column;
@@ -4115,7 +4236,7 @@ select.input {
   transition: box-shadow 0.2s ease;
 }
 .phone-shell .doc-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow-ink) 4%, transparent);
 }
 .phone-shell .doc-card-layout {
   display: flex;
@@ -4126,18 +4247,14 @@ select.input {
   width: 44px;
   height: 44px;
   border-radius: 10px;
-  background: #e5e7eb;
-  color: #4b5563;
+  background: var(--doc-icon-bg);
+  color: var(--doc-icon-fg);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
   font-size: 10px;
   flex-shrink: 0;
-}
-[data-theme="dark"] .phone-shell .doc-card-icon-container {
-  background: #374151;
-  color: #d1d5db;
 }
 .phone-shell .doc-card-details {
   flex: 1;
@@ -4188,7 +4305,7 @@ select.input {
   border-radius: 16px;
   border: 1px solid var(--line);
   background: var(--paper);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--shadow-ink) 2%, transparent);
   margin-top: 14px;
 }
 .phone-shell .infopoint-doc-row {
@@ -4244,7 +4361,7 @@ select.input {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.2);
+  background: color-mix(in srgb, var(--scrim-ink) 20%, transparent);
   z-index: var(--z-sheet);
 }
 .phone-shell .notifications-dropdown {
@@ -4353,7 +4470,7 @@ select.input {
     box-shadow 0.15s ease;
 }
 .phone-shell .notifications-mark-all-btn:hover {
-  background: rgba(var(--primary-rgb), 0.08);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
   border-color: var(--primary);
   color: var(--primary);
 }
@@ -4441,7 +4558,7 @@ select.input {
 .phone-shell .docview-pages .docview-page {
   display: block;
   margin: 0 auto 12px;
-  background: #fff;
+  background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 4px;
   box-shadow: var(--sh-1);
@@ -4455,7 +4572,7 @@ select.input {
   width: 100%;
   height: 100%;
   border: 0;
-  background: #fff;
+  background: var(--paper);
 }
 .phone-shell .docview-actions {
   display: flex;
@@ -4497,7 +4614,7 @@ select.input {
 
 /* Master Data Diff highlight */
 .phone-shell .mdr-field-row.is-changed {
-  background: rgba(5, 150, 105, 0.04);
+  background: color-mix(in srgb, var(--st-accepted) 4%, transparent);
   border-left: 3px solid var(--st-accepted) !important;
   padding-left: 10px !important;
 }
@@ -4553,7 +4670,7 @@ select.input {
   background-color: white;
   transition: 0.25s ease;
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--shadow-ink) 15%, transparent);
 }
 .phone-shell .switch-toggle-input:checked + .switch-slider {
   background-color: var(--primary);
@@ -4790,7 +4907,7 @@ select.input {
   width: 56px;
   height: 56px;
   font-size: var(--text-body);
-  background: rgba(var(--primary-rgb), 0.1);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
   color: var(--primary);
   border: none;
 }
@@ -4838,7 +4955,7 @@ select.input {
   width: 36px;
   height: 36px;
   border-radius: var(--r-2);
-  background: rgba(var(--primary-rgb), 0.08);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
   color: var(--primary);
   display: inline-flex;
   align-items: center;
@@ -4904,11 +5021,11 @@ select.input {
 }
 .ui-badge-primary {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-accent);
 }
 .ui-badge-destructive {
   background: var(--destructive);
-  color: #fff;
+  color: var(--on-destructive);
 }
 .ui-badge-dot {
   width: 8px;
@@ -4974,7 +5091,7 @@ select.input {
   position: absolute;
   inset: 0;
   z-index: var(--z-sheet);
-  background: rgba(11, 11, 12, 0.28);
+  background: color-mix(in srgb, var(--scrim-ink) 28%, transparent);
   backdrop-filter: blur(1px);
   animation: fade 0.16s ease;
 }
@@ -4989,8 +5106,8 @@ select.input {
   border: 1px solid var(--line);
   border-radius: 16px;
   box-shadow:
-    0 16px 40px rgba(15, 23, 42, 0.16),
-    0 2px 8px rgba(15, 23, 42, 0.08);
+    0 16px 40px color-mix(in srgb, var(--shadow-ink) 16%, transparent),
+    0 2px 8px color-mix(in srgb, var(--shadow-ink) 8%, transparent);
   animation: fadeInDown 0.18s cubic-bezier(0.2, 0.8, 0.25, 1);
 }
 
@@ -5041,7 +5158,7 @@ select.input {
 }
 
 .phone-shell .sort-menu-item.on {
-  background: rgba(var(--primary-rgb), 0.1);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
   color: var(--primary);
   font-weight: 600;
 }
@@ -5305,7 +5422,7 @@ button.notifications-dropdown-backdrop {
   position: relative;
 }
 .infopoint-news-icon.unread {
-  background: rgba(var(--primary-rgb), 0.08);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
   color: var(--primary);
 }
 .infopoint-news-icon.read {

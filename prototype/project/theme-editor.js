@@ -50,6 +50,10 @@
         { cssVar: '--primary-ink', name: 'Accent (pressed)' },
         { cssVar: '--cta', name: 'Call to action' },
         { cssVar: '--destructive', name: 'Destructive' },
+        { cssVar: '--danger-ink', name: 'Danger (strong)' },
+        { cssVar: '--on-accent', name: 'Text on accent' },
+        { cssVar: '--on-cta', name: 'Text on CTA' },
+        { cssVar: '--on-destructive', name: 'Text on destructive' },
       ],
     },
     {
@@ -58,6 +62,7 @@
         { cssVar: '--brand-canvas', name: 'Canvas' },
         { cssVar: '--brand-surface', name: 'Surface' },
         { cssVar: '--paper-2', name: 'Surface (subtle)' },
+        { cssVar: '--paper-3', name: 'Surface (hover)' },
       ],
     },
     {
@@ -88,12 +93,44 @@
         { cssVar: '--st-performed', name: 'Performed' },
         { cssVar: '--st-cancelled', name: 'Cancelled' },
         { cssVar: '--st-warn', name: 'Warning' },
+        { cssVar: '--st-draft-bg', name: 'Draft · surface' },
         { cssVar: '--st-published-bg', name: 'Published · surface' },
         { cssVar: '--st-assigned-bg', name: 'Assigned · surface' },
         { cssVar: '--st-accepted-bg', name: 'Accepted · surface' },
         { cssVar: '--st-special-bg', name: 'Special case · surface' },
+        { cssVar: '--st-performed-bg', name: 'Performed · surface' },
         { cssVar: '--st-cancelled-bg', name: 'Cancelled · surface' },
         { cssVar: '--st-warn-bg', name: 'Warning · surface' },
+      ],
+    },
+    {
+      group: 'Diff & compare',
+      items: [
+        { cssVar: '--diff-added', name: 'Diff added' },
+        { cssVar: '--diff-added-bright', name: 'Diff added (bright)' },
+        { cssVar: '--diff-removed-bright', name: 'Diff removed (bright)' },
+      ],
+    },
+    {
+      group: 'Components',
+      items: [
+        { cssVar: '--doc-icon-bg', name: 'Document icon background' },
+        { cssVar: '--doc-icon-fg', name: 'Document icon text' },
+        { cssVar: '--slide-thumb-bg', name: 'Slide thumb background' },
+        { cssVar: '--slide-thumb-fg', name: 'Slide thumb icon' },
+        { cssVar: '--slide-thumb-fg-active', name: 'Slide thumb (active)' },
+        { cssVar: '--highlight', name: 'Attention highlight' },
+        { cssVar: '--highlight-soft', name: 'Attention highlight (soft)' },
+        { cssVar: '--neutral-fill', name: 'Neutral fill' },
+      ],
+    },
+    {
+      group: 'Overlays & device',
+      items: [
+        { cssVar: '--scrim-ink', name: 'Scrim / overlay ink' },
+        { cssVar: '--shadow-ink', name: 'Shadow ink' },
+        { cssVar: '--phone-bezel', name: 'Phone bezel' },
+        { cssVar: '--phone-notch', name: 'Phone notch' },
       ],
     },
     {
@@ -114,6 +151,16 @@
     { cssVar: '--paper', name: 'Surface (applied)', follows: '--brand-surface' },
     { cssVar: '--text', name: 'Text (applied)', follows: '--brand-text' },
     { cssVar: '--line', name: 'Border (applied)', follows: '--brand-border' },
+    {
+      cssVar: '--chrome-header-muted',
+      name: 'Header muted text',
+      follows: '--chrome-header-fg',
+    },
+    {
+      cssVar: '--chrome-header-border',
+      name: 'Header border',
+      follows: '--chrome-header-fg',
+    },
   ];
 
   // Known text-on-background relationships for non-blocking contrast warnings.
@@ -235,14 +282,31 @@
     };
   }
 
-  /** Build the per-mode override stylesheet from an {light,dark} override map. */
+  /**
+   * Build the per-mode override stylesheet from an {light,dark} override map.
+   * When a solid source colour is overridden, also emit its companion *-rgb
+   * channel (used by any leftover rgba(var(--x-rgb), …) washes). Washes that
+   * already use color-mix(in srgb, var(--token) …) follow automatically.
+   */
   function buildOverrideCss(overrides) {
+    const RGB_FOLLOWERS = [
+      { from: '--brand-accent', to: '--primary-rgb' },
+      { from: '--cta', to: '--cta-rgb' },
+      { from: '--destructive', to: '--destructive-rgb' },
+      { from: '--st-accepted', to: '--st-accepted-rgb' },
+      { from: '--shadow-ink', to: '--shadow-ink-rgb' },
+    ];
     let out = '';
     for (const mode of MODES) {
       const map = (overrides && overrides[mode]) || {};
       const entries = Object.keys(map)
         .filter((k) => map[k])
         .map((k) => k + ': ' + map[k]);
+      for (const { from, to } of RGB_FOLLOWERS) {
+        if (!map[from]) continue;
+        const rgb = hexToRgb(map[from]);
+        if (rgb) entries.push(to + ': ' + rgb.r + ', ' + rgb.g + ', ' + rgb.b);
+      }
       if (!entries.length) continue;
       out += ':root[data-theme="' + mode + '"]{' + entries.join(';') + '}\n';
     }

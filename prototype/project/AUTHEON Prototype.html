@@ -916,9 +916,9 @@
                     <button
                       className="btn xs"
                       style={{
-                        background: "#fff",
-                        color: "#000",
-                        borderColor: "#fff",
+                        background: "var(--paper)",
+                        color: "var(--text)",
+                        borderColor: "var(--paper)",
                       }}
                       onClick={() => {
                         toast.action.run();
@@ -930,7 +930,7 @@
                   )}
                   <button
                     className="btn icon sm"
-                    style={{ borderColor: "transparent", color: "#fff" }}
+                    style={{ borderColor: "transparent", color: "var(--on-accent)" }}
                     onClick={() => setToast(null)}
                   >
                     <Ic.X />

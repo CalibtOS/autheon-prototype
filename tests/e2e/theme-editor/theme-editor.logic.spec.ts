@@ -131,6 +131,36 @@ test.describe('theme editor — override CSS generation', () => {
     expect(css).toContain('--brand-text: #FFFFFF');
   });
 
+  test('syncs companion *-rgb channels from solid source tokens', async ({
+    page,
+  }) => {
+    const css = await page.evaluate(() =>
+      (window as any).AutheonThemeEditor.__test.buildOverrideCss({
+        light: {
+          '--brand-accent': '#FF0000',
+          '--cta': '#00AAFF',
+          '--destructive': '#112233',
+        },
+        dark: { '--brand-accent': '#00AAFF', '--shadow-ink': '#010203' },
+      }),
+    );
+    expect(css).toContain('--primary-rgb: 255, 0, 0');
+    expect(css).toContain('--cta-rgb: 0, 170, 255');
+    expect(css).toContain('--destructive-rgb: 17, 34, 51');
+    expect(css).toContain('--primary-rgb: 0, 170, 255');
+    expect(css).toContain('--shadow-ink-rgb: 1, 2, 3');
+  });
+
+  test('does not emit --primary-rgb when Accent is unset', async ({ page }) => {
+    const css = await page.evaluate(() =>
+      (window as any).AutheonThemeEditor.__test.buildOverrideCss({
+        light: { '--brand-text': '#111111' },
+        dark: {},
+      }),
+    );
+    expect(css).not.toContain('--primary-rgb');
+  });
+
   test('produces empty output when there are no overrides', async ({ page }) => {
     const css = await page.evaluate(() =>
       (window as any).AutheonThemeEditor.__test.buildOverrideCss({

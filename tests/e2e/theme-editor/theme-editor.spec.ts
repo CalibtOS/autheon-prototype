@@ -77,6 +77,8 @@ test.describe('Floating Theme Editor', () => {
     expect(await readVar(page, ACCENT_VAR)).toBe('#FF0000');
     // The derived --primary follows the accent, proving real-time propagation.
     expect(await readVar(page, '--primary')).toBe('#FF0000');
+    // Tinted washes (profile avatar bg, focus rings) use --primary-rgb.
+    expect(await readVar(page, '--primary-rgb')).toBe('255, 0, 0');
   });
 
   test('AC8: an invalid hex value does not replace the previous valid value', async ({
