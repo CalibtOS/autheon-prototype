@@ -120,50 +120,35 @@ const Lbl = ({ children, className = "", ...props }) => (
   </span>
 );
 
-const displayAxle = (value, t) =>
-  ({
-    All: t("all"),
-    "driven on own wheels": t("ownAxle"),
-    "third-party axle": t("thirdPartyAxle"),
-    "Own axle": t("ownAxle"),
-    "Third-party axle": t("thirdPartyAxle"),
-    Eigenachse: t("ownAxle"),
-    Fremdachse: t("thirdPartyAxle"),
-  })[value] || value;
+// Vehicle-domain display helpers delegate to the SHARED store resolvers
+// (client confirmation "Systemlogik Fahrzeugeingabe") so the Driver PWA and the
+// Admin Backend can never render a different label or a different derived
+// red-licence-plate decision.
+const displayTransportType = (value, t) =>
+  value === "All" ? t("all") : AuthStore.transportTypeLabel(value, t);
 
-// Canonical store axle values for filter comparisons
-const canonAxle = (v) =>
-  ({
-    "Own axle": "driven on own wheels",
-    "Third-party axle": "third-party axle",
-    Eigenachse: "driven on own wheels",
-    Fremdachse: "third-party axle",
-  })[v] || v;
+// Canonical transport-type value for filter comparisons.
+const canonTransportType = (v) =>
+  v === "All" ? "All" : AuthStore.normalizeTransportType(v);
 
 const displayVehicle = (value, t) =>
-  ({
-    All: t("all"),
-    "Light truck <3.5t": t("lightTruck"),
-  })[value] || value;
+  value === "All" ? t("all") : AuthStore.vehicleTypeLabel(value, t);
 
-// Vehicle values come from two sources: seed data (SUV, PKW, Van,
-// Light truck <3.5t) and the admin New Order form (SUV, PKW, Transporter,
-// LKW < 3,5t, Oldtimer) — map both to one icon per type.
-const vehicleTypeIcon = (vehicle) => {
-  switch (vehicle) {
-    case "SUV":
-      return <Ic.VehicleSuv />;
-    case "Van":
-    case "Transporter":
-      return <Ic.VehicleVan />;
-    case "Light truck <3.5t":
-    case "LKW < 3,5t":
-      return <Ic.VehicleLightTruck />;
-    case "Oldtimer":
-    case "Classic":
-      return <Ic.VehicleClassic />;
-    default:
+// Icon mapping for the THREE confirmed vehicle types. Removed types (SUV, Van/
+// Transporter, Classic car/Oldtimer) no longer have an active icon; a preserved
+// legacy record falls back to the neutral generic vehicle icon so historical
+// cards render safely without advertising a retired type.
+const vehicleTypeIcon = (vehicleType) => {
+  switch (AuthStore.normalizeVehicleType(vehicleType)) {
+    case AuthStore.VEHICLE_TYPE_PASSENGER_CAR:
       return <Ic.VehicleCar />;
+    case AuthStore.VEHICLE_TYPE_TRUCK_UP_TO_7_5_T:
+      return <Ic.VehicleLightTruck />;
+    case AuthStore.VEHICLE_TYPE_TRUCK_OVER_7_5_T:
+      return <Ic.VehicleTruck />;
+    default:
+      // Legacy / unknown value — neutral fallback, never a retired type icon.
+      return <Ic.VehicleGeneric />;
   }
 };
 
@@ -375,14 +360,14 @@ const SlideLockIcon = () => (
 );
 
 const Ic = {
-  // Vehicle type icons — mdi:car-suv (Apache-2.0), tabler:car (MIT),
-  // lucide:van (ISC), hugeicons:delivery-truck-01 (MIT),
-  // mdi:car-convertible (Apache-2.0)
-  VehicleSuv: () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M3 6h13l3 4h2c1.11 0 2 .89 2 2v3h-2a3 3 0 0 1-3 3a3 3 0 0 1-3-3H9a3 3 0 0 1-3 3a3 3 0 0 1-3-3H1V8c0-1.11.89-2 2-2m-.5 1.5V10h8V7.5zm9.5 0V10h5.14l-1.89-2.5zm-6 6A1.5 1.5 0 0 0 4.5 15A1.5 1.5 0 0 0 6 16.5A1.5 1.5 0 0 0 7.5 15A1.5 1.5 0 0 0 6 13.5m12 0a1.5 1.5 0 0 0-1.5 1.5a1.5 1.5 0 0 0 1.5 1.5a1.5 1.5 0 0 0 1.5-1.5a1.5 1.5 0 0 0-1.5-1.5" />
-    </svg>
-  ),
+  // Vehicle type icons for the THREE confirmed types (client confirmation
+  // "Systemlogik Fahrzeugeingabe", 2026-07-26):
+  //   VehicleCar         → passenger_car        (tabler:car, MIT)
+  //   VehicleLightTruck  → truck_up_to_7_5_t    (hugeicons:delivery-truck-01, MIT)
+  //   VehicleTruck       → truck_over_7_5_t     (tabler:truck, MIT)
+  //   VehicleGeneric     → preserved legacy value — neutral fallback
+  // The SUV / Van / Classic icons were REMOVED with their vehicle types: no
+  // retired type may render as an active selectable option.
   VehicleCar: () => (
     <svg
       width="20"
@@ -396,23 +381,6 @@ const Ic = {
     >
       <path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0-4 0m10 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0" />
       <path d="M5 17H3v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0H9m-6-6h15m-6 0V6" />
-    </svg>
-  ),
-  VehicleVan: () => (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M13 6v5a1 1 0 0 0 1 1h6.102a1 1 0 0 1 .712.298l.898.91a1 1 0 0 1 .288.702V17a1 1 0 0 1-1 1h-3" />
-      <path d="M5 18H3a1 1 0 0 1-1-1V8a2 2 0 0 1 2-2h12c1.1 0 2.1.8 2.4 1.8l1.176 4.2M9 18h5" />
-      <circle cx="16" cy="18" r="2" />
-      <circle cx="7" cy="18" r="2" />
     </svg>
   ),
   VehicleLightTruck: () => (
@@ -430,9 +398,38 @@ const Ic = {
       <path d="M14.5 17.5h-5m10 0h.763c.22 0 .33 0 .422-.012a1.5 1.5 0 0 0 1.303-1.302c.012-.093.012-.203.012-.423V13a6.5 6.5 0 0 0-6.5-6.5M2 4h10c1.414 0 2.121 0 2.56.44C15 4.878 15 5.585 15 7v8.5M2 12.75V15c0 .935 0 1.402.201 1.75a1.5 1.5 0 0 0 .549.549c.348.201.815.201 1.75.201M2 7h6m-6 3h4" />
     </svg>
   ),
-  VehicleClassic: () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-      <path d="m16 6l-1 .75L17.5 10h-4V8.5H12V10H3c-1.11 0-2 .89-2 2v3h2a3 3 0 0 0 3 3a3 3 0 0 0 3-3h6a3 3 0 0 0 3 3a3 3 0 0 0 3-3h2v-3c0-1.11-.89-2-2-2h-2zM6 13.5A1.5 1.5 0 0 1 7.5 15A1.5 1.5 0 0 1 6 16.5A1.5 1.5 0 0 1 4.5 15A1.5 1.5 0 0 1 6 13.5m12 0a1.5 1.5 0 0 1 1.5 1.5a1.5 1.5 0 0 1-1.5 1.5a1.5 1.5 0 0 1-1.5-1.5a1.5 1.5 0 0 1 1.5-1.5" />
+  // Truck over 7.5 t — heavier silhouette than the up-to-7.5 t icon.
+  VehicleTruck: () => (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M7 17a2 2 0 1 0 4 0a2 2 0 0 0-4 0m9 0a2 2 0 1 0 4 0a2 2 0 0 0-4 0" />
+      <path d="M11 17H9.5A1.5 1.5 0 0 1 8 15.5V6.5A1.5 1.5 0 0 1 9.5 5h5A1.5 1.5 0 0 1 16 6.5V17m0-8h3.5l2 4v3.5A1.5 1.5 0 0 1 20 18M8 9H4m1 4h3" />
+    </svg>
+  ),
+  // Neutral fallback for a preserved legacy vehicle type. Deliberately generic:
+  // it must not imply SUV, Van or Classic car.
+  VehicleGeneric: () => (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="8" width="18" height="8" rx="2" />
+      <path d="M7 16v1.5M17 16v1.5M3 12h18" />
     </svg>
   ),
   Filter: () => (
@@ -958,24 +955,42 @@ const FlagIc = {
   ),
 };
 
-// Important vehicle info (registered / deregistered / e-vehicle / red plates).
-// Optional announcement metadata — renders nothing when unset.
-const vehicleInfoFlags = (job, t) => {
+// Registration status + additional vehicle characteristics, shown to the
+// service partner as discrete tags. Registration status is its OWN category —
+// it is never inferred from the transport type. The retired manual "Red plates"
+// tag is gone; the requirement is derived and rendered by RedPlatesNotice.
+// The two INDEPENDENT additional characteristics. Kept separate from
+// registration status so a detail view that already lists registration status on
+// its own row does not repeat it as a tag.
+const vehicleCharacteristicFlags = (job, t) => {
   const flags = [];
-  if (job.registrationStatus === "registered")
-    flags.push({ key: "registered", Icon: FlagIc.CheckCircle, label: t("vehicleInfoRegistered") });
-  if (job.registrationStatus === "deregistered")
-    flags.push({ key: "deregistered", Icon: FlagIc.Slash, label: t("vehicleInfoDeregistered") });
   if (job.electricVehicle)
     flags.push({ key: "electric", Icon: FlagIc.Bolt, label: t("vehicleInfoElectric") });
-  if (job.redPlates)
-    flags.push({ key: "redPlates", Icon: FlagIc.Plate, label: t("vehicleInfoRedPlates") });
+  // "Ready to drive" is decision-relevant for third-party-axle transport and is
+  // always shown to the service partner when set, on every surface.
+  if (job.readyToDrive)
+    flags.push({ key: "readyToDrive", Icon: FlagIc.CheckCircle, label: t("vehicleReadyToDrive") });
   return flags;
 };
 
-const VehicleFlagTags = ({ job }) => {
+// Card-level tag row: registration status (its own category — never inferred
+// from the transport type) plus the additional characteristics. The retired
+// manual "Red plates" tag is gone; the requirement is derived and rendered by
+// RedPlatesRequiredNotice.
+const vehicleInfoFlags = (job, t) => {
+  const flags = [];
+  if (job.registrationStatus === AuthStore.REGISTRATION_REGISTERED)
+    flags.push({ key: "registered", Icon: FlagIc.CheckCircle, label: t("vehicleInfoRegistered") });
+  if (job.registrationStatus === AuthStore.REGISTRATION_DEREGISTERED)
+    flags.push({ key: "deregistered", Icon: FlagIc.Slash, label: t("vehicleInfoDeregistered") });
+  return [...flags, ...vehicleCharacteristicFlags(job, t)];
+};
+
+const VehicleFlagTags = ({ job, characteristicsOnly = false }) => {
   const { t } = useI18n();
-  const flags = vehicleInfoFlags(job, t);
+  const flags = characteristicsOnly
+    ? vehicleCharacteristicFlags(job, t)
+    : vehicleInfoFlags(job, t);
   if (!flags.length) return null;
   return (
     <>
@@ -987,6 +1002,12 @@ const VehicleFlagTags = ({ job }) => {
     </>
   );
 };
+
+// DERIVED red-licence-plate notice. Defined ONCE in driver-ui.jsx and shared
+// with the Admin Backend so no surface can reach a conflicting decision.
+const RedPlatesNotice = (props) => (
+  <DriverUI.RedPlatesRequiredNotice {...props} />
+);
 
 // Shared card body (marketplace + My Jobs) — client reference layout
 // (Design Direction Board p.5): route line, pickup/delivery legs,
@@ -1028,10 +1049,10 @@ const JobCardBody = ({ job }) => {
       <hr className="jobcard-divider" />
       <div className="jobcard-footer">
         <span className="vehicle-meta">
-          {vehicleTypeIcon(job.vehicle)}
-          {job.vehicleModel && job.vehicleModel !== "—"
-            ? job.vehicleModel
-            : displayVehicle(job.vehicle, t)}
+          {vehicleTypeIcon(job.vehicleType)}
+          {[job.manufacturer, job.vehicleModel]
+            .filter((v) => v && v !== "—")
+            .join(" ") || displayVehicle(job.vehicleType, t)}
         </span>
         <div className="jobcard-price tnum">
           {F().formatMoney
@@ -1041,7 +1062,11 @@ const JobCardBody = ({ job }) => {
       </div>
       <div className="jobcard-tags">
         <VehicleFlagTags job={job} />
-        <span className="axle-chip">{displayAxle(job.axle, t)}</span>
+        <span className="axle-chip">
+          {displayTransportType(job.transportType, t)}
+        </span>
+        {/* Derived notice — location 2 of 5: marketplace order card (also My Jobs). */}
+        <RedPlatesNotice job={job} variant="tag" />
       </div>
     </>
   );
@@ -1205,13 +1230,16 @@ const Portal = ({
       key: "to",
       label: t("untilDateChip", { date: isoToDisplayDate(filters.to) }),
     });
-  if (filters.vehicle && filters.vehicle !== "All")
+  if (filters.vehicleType && filters.vehicleType !== "All")
     activeChips.push({
-      key: "vehicle",
-      label: displayVehicle(filters.vehicle, t),
+      key: "vehicleType",
+      label: displayVehicle(filters.vehicleType, t),
     });
-  if (filters.axle && filters.axle !== "All")
-    activeChips.push({ key: "axle", label: displayAxle(filters.axle, t) });
+  if (filters.transportType && filters.transportType !== "All")
+    activeChips.push({
+      key: "transportType",
+      label: displayTransportType(filters.transportType, t),
+    });
 
   return (
     <>
@@ -1398,16 +1426,20 @@ const jobMatchesDriverFilters = (j, filters) => {
     if (toDate && jobDate && jobDate > toDate) return false;
   }
   if (filters.from === "Today" && j.date !== "05.05.") return false;
+  // Vehicle-type filter matches on canonical values. A legacy record simply
+  // never matches an approved-type filter — it is not remapped to one.
   if (
-    filters.vehicle &&
-    filters.vehicle !== "All" &&
-    j.vehicle !== filters.vehicle
+    filters.vehicleType &&
+    filters.vehicleType !== "All" &&
+    AuthStore.normalizeVehicleType(j.vehicleType) !==
+      AuthStore.normalizeVehicleType(filters.vehicleType)
   )
     return false;
   if (
-    filters.axle &&
-    filters.axle !== "All" &&
-    canonAxle(j.axle) !== canonAxle(filters.axle)
+    filters.transportType &&
+    filters.transportType !== "All" &&
+    canonTransportType(j.transportType) !==
+      canonTransportType(filters.transportType)
   )
     return false;
   return true;
@@ -1416,8 +1448,8 @@ const jobMatchesDriverFilters = (j, filters) => {
 const FilterSheet = ({ filters, setFilters, onClose }) => {
   const { t } = useI18n();
   const [local, setLocal] = useState({
-    vehicle: "All",
-    axle: "All",
+    vehicleType: "All",
+    transportType: "All",
     ...filters,
   });
   const reset = () =>
@@ -1426,15 +1458,13 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
       endPlz: "",
       from: "",
       to: "",
-      vehicle: "All",
-      axle: "All",
+      vehicleType: "All",
+      transportType: "All",
     });
-  const types = ["SUV", "PKW", "Van", "Light truck <3.5t"];
-  const axles = [
-    { val: "All", label: "All" },
-    { val: "Own axle", label: "Own axle" },
-    { val: "Third-party axle", label: "Third-party axle" },
-  ];
+  // Only the three approved vehicle types are filterable — removed types are
+  // not offered even though legacy records may still carry them.
+  const types = AuthStore.selectableVehicleTypes();
+  const transportOptions = ["All", ...AuthStore.TRANSPORT_TYPES];
   const store = useAuthStore();
   // Same predicate as the marketplace list — the CTA count is exact
   const preview = store
@@ -1549,13 +1579,13 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
                 key={type}
                 type="button"
                 className={`chip actionable chip-btn ${
-                  local.vehicle === type ? "on" : ""
+                  local.vehicleType === type ? "on" : ""
                 }`}
-                aria-pressed={local.vehicle === type}
+                aria-pressed={local.vehicleType === type}
                 onClick={() =>
                   setLocal({
                     ...local,
-                    vehicle: local.vehicle === type ? "All" : type,
+                    vehicleType: local.vehicleType === type ? "All" : type,
                   })
                 }
               >
@@ -1564,21 +1594,19 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
             ))}
           </div>
 
-          <div className="field-label mt-field">
-            {t("axleConfiguration")}
-          </div>
+          <div className="field-label mt-field">{t("transportType")}</div>
           <div className="chip-row-wrap">
-            {axles.map((a) => (
+            {transportOptions.map((val) => (
               <button
-                key={a.val}
+                key={val}
                 type="button"
                 className={`chip actionable chip-btn ${
-                  local.axle === a.val ? "on" : ""
+                  local.transportType === val ? "on" : ""
                 }`}
-                aria-pressed={local.axle === a.val}
-                onClick={() => setLocal({ ...local, axle: a.val })}
+                aria-pressed={local.transportType === val}
+                onClick={() => setLocal({ ...local, transportType: val })}
               >
-                {displayAxle(a.val, t)}
+                {displayTransportType(val, t)}
               </button>
             ))}
           </div>
@@ -1684,28 +1712,46 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
             <Ic.Pkg />
             <span>{t("vehicle")}</span>
           </div>
+          {/* Pre-acceptance reduced projection: vehicle type, manufacturer,
+              model, transport type, registration status and characteristics are
+              decision-relevant and shown; plate and VIN stay hidden until
+              acceptance. Presentation order matches driver-screen-spec.md. */}
           <div className="detail-kv-list">
             <div className="detail-kv-row">
-              <div className="label">{t("type")}</div>
-              <div className="value">{displayVehicle(job.vehicle, t)}</div>
+              <div className="label">{t("vehicleType")}</div>
+              <div className="value">{displayVehicle(job.vehicleType, t)}</div>
+            </div>
+            <div className="detail-kv-row">
+              <div className="label">{t("manufacturer")}</div>
+              <div className="value">{job.manufacturer || "—"}</div>
             </div>
             <div className="detail-kv-row">
               <div className="label">{t("model")}</div>
               <div className="value">{job.vehicleModel}</div>
             </div>
             <div className="detail-kv-row">
-              <div className="label">{t("axle")}</div>
-              <div className="value">{displayAxle(job.axle, t)}</div>
+              <div className="label">{t("transportType")}</div>
+              <div className="value">
+                {displayTransportType(job.transportType, t)}
+              </div>
             </div>
-            {vehicleInfoFlags(job, t).length ? (
+            <div className="detail-kv-row">
+              <div className="label">{t("registrationStatus")}</div>
+              <div className="value">
+                {AuthStore.registrationStatusLabel(job.registrationStatus, t)}
+              </div>
+            </div>
+            vehicleCharacteristicFlags(job, t).length ? (
               <div className="detail-flag-block">
-                <div className="label">{t("vehicleInfoLabel")}</div>
+                <div className="label">{t("vehicleCharacteristics")}</div>
                 <div className="jobcard-tags">
-                  <VehicleFlagTags job={job} />
+                  <VehicleFlagTags job={job} characteristicsOnly />
                 </div>
               </div>
             ) : null}
           </div>
+          {/* Derived notice — location 3 of 5: marketplace preview. */}
+          <RedPlatesNotice job={job} variant="banner" />
         </div>
 
         {/* Unlocked after acceptance Card */}
@@ -1866,7 +1912,8 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
           </div>
           <div className="mono text-muted-sm" style={{ marginTop: 6 }}>
             {AuthStore.formatJobScheduleShort(job, t("flexible"))} ·{" "}
-            {displayVehicle(job.vehicle, t)} · {displayAxle(job.axle, t)}
+            {displayVehicle(job.vehicleType, t)} ·{" "}
+            {displayTransportType(job.transportType, t)}
           </div>
           <div
             style={{ fontSize: 18, fontWeight: 600, marginTop: 10 }}
@@ -1875,6 +1922,11 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
             € {fmtDriverOffer(job).toFixed(2)}
           </div>
         </div>
+
+        {/* Derived notice — location 4 of 5: booking dialog, clearly
+            highlighted before the binding slide-to-confirm so the partner sees
+            the execution requirement while committing. */}
+        <RedPlatesNotice job={job} variant="banner" />
 
         <p className="para-intro">
           {t("acceptanceLegal")}
@@ -2680,6 +2732,8 @@ const JobUnlocked = ({
   const isEmptyRunReported = job.status === "empty_run_reported";
   const isEmptyRunTerminal = store.isEmptyRunTerminal(job.status);
   const canPerform = ["assigned", "accepted"].includes(job.status);
+  const inExecution =
+    canPerform || isEmptyRunReported || job.status === "assigned";
   // ⚠ action availability (§10): booked orders only; hidden for terminal
   // states and while an empty-run report is pending review.
   const canReportProblem = store.canServicePartnerReport(job);
@@ -2833,6 +2887,16 @@ const JobUnlocked = ({
           </div>
         ) : (
         <>
+        {inExecution && !isCancelled && !isPerformed ? (
+          <div
+            className="banner banner-success"
+            role="status"
+            style={{ margin: 0 }}
+          >
+            {t("tourInExecutionBanner")}
+          </div>
+        ) : null}
+
         {isCancelled && (
           <div className="cancellation-card" role="status">
             <p className="cancellation-card-title">{t("cancelled")}</p>
@@ -2945,25 +3009,28 @@ const JobUnlocked = ({
             <Ic.Pkg />
             <span>{t("vehicle")}</span>
           </div>
+          {/* Complete order view after booking — full vehicle data. No
+              red-plate NUMBER row: the number is brought by the partner and is
+              never recorded by AUTHEON. */}
           <div className="detail-kv-list">
             <div className="detail-kv-row">
-              <div className="label">{t("type")}</div>
-              <div className="value">{displayVehicle(job.vehicle, t)}</div>
+              <div className="label">{t("vehicleType")}</div>
+              <div className="value">{displayVehicle(job.vehicleType, t)}</div>
+            </div>
+            <div className="detail-kv-row">
+              <div className="label">{t("manufacturer")}</div>
+              <div className="value">{job.manufacturer || "—"}</div>
             </div>
             <div className="detail-kv-row">
               <div className="label">{t("model")}</div>
               <div className="value">{job.vehicleModel}</div>
             </div>
+            {/* Official plate of the transported vehicle — shown whenever known,
+                including for a deregistered (de-stamped) vehicle. */}
             {job.plate ? (
               <div className="detail-kv-row">
-                <div className="label">{t("licensePlate")}</div>
+                <div className="label">{t("officialLicencePlate")}</div>
                 <div className="plate-badge">{job.plate}</div>
-              </div>
-            ) : null}
-            {job.redPlateNumber ? (
-              <div className="detail-kv-row">
-                <div className="label">{t("redPlateNumber")}</div>
-                <div className="plate-badge plate-red">{job.redPlateNumber}</div>
               </div>
             ) : null}
             <div className="detail-kv-row">
@@ -2973,18 +3040,29 @@ const JobUnlocked = ({
               </div>
             </div>
             <div className="detail-kv-row">
-              <div className="label">{t("axle")}</div>
-              <div className="value">{displayAxle(job.axle, t)}</div>
+              <div className="label">{t("transportType")}</div>
+              <div className="value">
+                {displayTransportType(job.transportType, t)}
+              </div>
             </div>
-            {vehicleInfoFlags(job, t).length ? (
+            <div className="detail-kv-row">
+              <div className="label">{t("registrationStatus")}</div>
+              <div className="value">
+                {AuthStore.registrationStatusLabel(job.registrationStatus, t)}
+              </div>
+            </div>
+            vehicleCharacteristicFlags(job, t).length ? (
               <div className="detail-flag-block">
-                <div className="label">{t("vehicleInfoLabel")}</div>
+                <div className="label">{t("vehicleCharacteristics")}</div>
                 <div className="jobcard-tags">
-                  <VehicleFlagTags job={job} />
+                  <VehicleFlagTags job={job} characteristicsOnly />
                 </div>
               </div>
             ) : null}
           </div>
+          {/* Derived notice — location 5 of 5: complete order view AFTER
+              booking. Stays visible because it is an execution requirement. */}
+          <RedPlatesNotice job={job} variant="banner" />
         </div>
 
         {/* Contact Card */}
@@ -3112,7 +3190,8 @@ const JobUnlocked = ({
             <div>
               <div className="price-label">{t("driverOffer")}</div>
               <div className="price-meta">
-                {job.distanceKm} km · {displayAxle(job.axle, t)}
+                {job.distanceKm} km ·{" "}
+                {displayTransportType(job.transportType, t)}
               </div>
             </div>
             <div className="price-val">€ {fmtDriverOffer(job).toFixed(2)}</div>
@@ -3263,6 +3342,7 @@ const MyJobs = ({ onOpen }) => {
           job.tour.toString().includes(q) ||
           (job.customer || "").toLowerCase().includes(q) ||
           (job.customerName || "").toLowerCase().includes(q) ||
+          (job.manufacturer || "").toLowerCase().includes(q) ||
           (job.vehicleModel || "").toLowerCase().includes(q) ||
           (job.plate || "").toLowerCase().includes(q) ||
           (job.vin || "").toLowerCase().includes(q) ||
@@ -5364,12 +5444,14 @@ const ProfilePaneFull = () => {
           <div className="stack-16">
             <label className="field-label">{t("vehicleType")}</label>
             <div className="stack-4">
+              {/* Notification preferences offer only the three approved
+                  vehicle types — removed types are not selectable. */}
               <select
                 className="input"
-                value={prefs.vehicle || "All"}
-                onChange={(e) => setPref({ vehicle: e.target.value })}
+                value={prefs.vehicleType || "All"}
+                onChange={(e) => setPref({ vehicleType: e.target.value })}
               >
-                {["All", "PKW", "SUV", "Van", "Light truck <3.5t"].map((x) => (
+                {["All", ...AuthStore.selectableVehicleTypes()].map((x) => (
                   <option key={x} value={x}>
                     {displayVehicle(x, t)}
                   </option>
@@ -5378,16 +5460,16 @@ const ProfilePaneFull = () => {
             </div>
           </div>
           <div className="stack-16">
-            <label className="field-label">{t("axle")}</label>
+            <label className="field-label">{t("transportType")}</label>
             <div className="seg full">
-              {["All", "Own axle", "Third-party axle"].map((x) => (
+              {["All", ...AuthStore.TRANSPORT_TYPES].map((x) => (
                 <button
                   key={x}
                   type="button"
-                  className={(prefs.axle || "All") === x ? "on" : ""}
-                  onClick={() => setPref({ axle: x })}
+                  className={(prefs.transportType || "All") === x ? "on" : ""}
+                  onClick={() => setPref({ transportType: x })}
                 >
-                  {displayAxle(x, t)}
+                  {displayTransportType(x, t)}
                 </button>
               ))}
             </div>

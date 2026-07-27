@@ -74,7 +74,6 @@ window.I18n = (() => {
       postalCodeAbbr: "PLZ",
       type: "Type",
       model: "Model",
-      axle: "Axle",
       contact: "Contact",
       pickupTime: "Pickup Time",
       deliveryTime: "Delivery Time",
@@ -144,10 +143,11 @@ window.I18n = (() => {
       blockedDriverBody:
         "Marketplace access and new tour acceptance are restricted for blocked drivers. Use My Jobs to correct documents on existing tours. Profile, Info, and historical jobs remain visible in this prototype.",
       backToMarketplace: "Marketplace",
+      tourInExecutionBanner:
+        "Tour in execution — complete pickup, delivery, and documents from this screen.",
       date: "Date",
       timeWindow: "Time window",
       vehicle: "Vehicle",
-      axle: "Axle",
       driverOffer: "Driver offer",
       back: "Back",
       acceptTour: "Accept tour",
@@ -168,26 +168,47 @@ window.I18n = (() => {
       until: "Until",
       postalArea: "Postal code / area",
       dateWindow: "Date window",
+      // --- Vehicle domain: client confirmation "Systemlogik Fahrzeugeingabe" ---
+      // Four explicit categories. Every label lives here, never in a component.
+      // 1. Vehicle type \u2014 exactly one of three approved values
       vehicleType: "Vehicle type",
+      vehicleTypePassengerCar: "Passenger car",
+      vehicleTypeTruckUpTo75t: "Truck up to and including 7.5 t",
+      vehicleTypeTruckOver75t: "Truck over 7.5 t",
+      // Legacy display: preserved historical values that are no longer
+      // selectable. Kept separate so a removed option never reads as active.
+      vehicleTypeLegacy: "{value} (legacy)",
+      vehicleTypeLegacyHint:
+        "Historical vehicle type, no longer available for new orders. Kept as recorded \u2014 no automatic reclassification.",
+      // 2. Vehicle data
+      manufacturer: "Manufacturer",
+      manufacturerPh: "Select manufacturer",
+      officialLicencePlate: "Official licence plate",
+      officialLicencePlateHint:
+        "Licence plate of the transported vehicle. A previous or de-stamped plate may still be entered when known.",
+      // 3. Transport type (replaces the former \u201cAxle\u201d concept)
+      transportType: "Transport type",
+      // 4. Registration status \u2014 independent of transport type
+      registrationStatus: "Registration status",
       vehicleInfoRegistered: "Registered",
       vehicleInfoDeregistered: "Deregistered",
-      vehicleInfoElectric: "E-vehicle",
-      vehicleInfoRedPlates: "Red plates",
-      redPlateNumber: "Red plate no.",
-      newOrderRedPlatePh: "e.g. K-06 1234",
-      newOrderRedPlateHint:
-        "Dealer transfer plate (\u00a7 16 FZV): district code + number starting with 06. Assigned to the operator, not the vehicle.",
-      newOrderPlateHiddenDeregistered:
-        "Deregistered vehicle \u2014 no regular license plate. Add a red plate if the tour runs on its own wheels.",
+      // 5. Additional vehicle characteristics \u2014 independent attributes
+      vehicleCharacteristics: "Additional vehicle characteristics",
+      vehicleInfoElectric: "Electric vehicle",
+      vehicleReadyToDrive: "Ready to drive",
+      vehicleReadyToDriveApplicability:
+        "Decision-relevant for third-party-axle transport.",
       vehicleInfoLabel: "Important vehicle info",
-      newOrderRegistrationLabel: "Registration",
-      newOrderRegistrationNone: "Not specified",
       newOrderVehicleInfoHint:
         "Announced to drivers on the marketplace card and in the tour detail.",
+      // Derived red-licence-plate requirement \u2014 never manually selected and
+      // never a captured plate number. One canonical notice for all surfaces.
+      redPlatesRequired: "Red licence plates required",
+      redPlatesRequiredDetail:
+        "Deregistered vehicle transferred on its own axle. The executing service partner brings their own red licence plates; the plate number is not recorded.",
       kpiAvailableJobs: "Available",
       kpiBookedJobs: "Booked",
       kpiOpenDocuments: "Open documents",
-      axleConfiguration: "Axle configuration",
       showResults: "Show {count} results",
       myJobsExecutionDetail: "My jobs · execution detail",
       active: "Active",
@@ -605,7 +626,6 @@ window.I18n = (() => {
       adminBadgePhase1: "Admin-only · Phase 1",
       adminRowDemo: "Demo",
       adminWindowFlex: "flex",
-      adminVehicleTrp: "Trp.",
       adminColTour: "Tour",
       adminColCustomer: "Customer",
       adminColOrigin: "Origin",
@@ -1080,15 +1100,17 @@ window.I18n = (() => {
         "Delivery date is before pickup date. You can still save if this is intentional.",
       newOrderTimeWindowWarning:
         "End time is before start time. You can still save if this is intentional.",
-      newOrderVinShortNotice:
-        "VIN has fewer than 17 characters — you can still save if it is missing on the order.",
+      // Confirmed rule: exactly 17 characters. Replaces the former soft
+      // "fewer than 17 — you can still save" notice.
+      newOrderVinLengthError:
+        "VIN must be exactly 17 characters ({count}/17 entered).",
       newOrderDatePh: "DD.MM.YYYY",
       newOrderWindowFrom: "Window from",
       newOrderWindowTo: "Window until",
       newOrderTimePh: "—:—",
-      newOrderBrand: "Brand",
+      // "Brand" → "Manufacturer" (confirmed terminology); the manufacturer is
+      // now chosen from the catalogue dropdown, not typed freely.
       newOrderModel: "Model",
-      newOrderBrandPh: "e.g. Volkswagen",
       newOrderModelPh: "e.g. Passat Variant",
       newOrderPlatePh: "XX-XX 0000",
       newOrderVinLen: "17 characters",
@@ -1112,10 +1134,12 @@ window.I18n = (() => {
       newOrderProgressComplete: "{filled} / {total} COMPLETE",
       newOrderDatePreview: "DD.MM.",
       newOrderDriverOfferZero: "0.00",
-      newOrderVtSuv: "SUV",
-      newOrderVtPkw: "Car",
-      newOrderVtTransporter: "Van",
-      newOrderVtClassic: "Classic",
+      // Removed 2026-07-26 by client confirmation: newOrderVtSuv,
+      // newOrderVtPkw, newOrderVtTransporter, newOrderVtClassic and lightTruck
+      // — superseded by the three vehicleType* keys above. SUV, Van/Transporter
+      // and Classic car/Oldtimer are no longer selectable vehicle types.
+      newOrderRemovedVehicleType:
+        "This vehicle type is no longer available for new orders.",
       adminOverviewPage: "· page {cur} / {max}",
       publishBlockedDraftOnly: "Tour must be in Draft.",
       draftSavedTour: "Draft saved · Tour {tour}",
@@ -1315,6 +1339,9 @@ window.I18n = (() => {
         "Changes are saved immediately and the assigned service partner is notified with the changed values. No re-confirmation required.",
       adminSaveAndNotify: "Save & notify partner",
       adminNoChanges: "No changes to save.",
+      adminVehicleInvalid: "Vehicle data could not be saved.",
+      adminVehicleFieldNotWritable:
+        "Red licence plates are derived automatically and cannot be set manually.",
       // Full order editing (Storno §7)
       adminEditOrderStatusNote:
         "This order is {status}. Editing changes the order data only — the operational status does not change and the assigned service partner is notified of the actual changes with no re-confirmation required.",
@@ -1354,14 +1381,16 @@ window.I18n = (() => {
       orderFieldDeliveryDate: "Delivery date",
       orderFieldDeliveryWindow: "Delivery time window",
       orderFieldVehicleType: "Vehicle type",
-      orderFieldVehicleModel: "Vehicle make/model",
+      orderFieldManufacturer: "Manufacturer",
+      orderFieldVehicleModel: "Model",
       orderFieldPlate: "License plate",
       orderFieldVin: "VIN",
-      orderFieldAxle: "Axle / transport type",
+      orderFieldTransportType: "Transport type",
       orderFieldRegistrationStatus: "Registration status",
       orderFieldElectricVehicle: "Electric vehicle",
-      orderFieldRedPlates: "Red license plates",
-      orderFieldRedPlateNumber: "Red plate number",
+      orderFieldReadyToDrive: "Ready to drive",
+      // Derived, read-only — audited/notified as a consequence, never edited.
+      orderFieldRequiresRedPlates: "Red licence plates required",
       orderFieldDriverOffer: "Driver offer (€)",
       orderFieldExpenses: "Expenses (€)",
       orderFieldNotesDriver: "Driver-visible notes",
@@ -1419,7 +1448,6 @@ window.I18n = (() => {
       all: "All",
       ownAxle: "Own axle",
       thirdPartyAxle: "Third-party axle",
-      lightTruck: "Light truck <3.5t",
       emergencyDispatchNotice:
         "Emergency dispatch: Mon-Fri 07:00-22:00 CET. Incidents, delays, and anomalies must be reported immediately.",
       vatBankingReadonly: "Address · VAT · banking",
@@ -1521,7 +1549,6 @@ window.I18n = (() => {
       postalCodeAbbr: "PLZ",
       type: "Typ",
       model: "Modell",
-      axle: "Achse",
       contact: "Kontakt",
       pickupTime: "Abholzeit",
       deliveryTime: "Lieferzeit",
@@ -1592,10 +1619,11 @@ window.I18n = (() => {
       blockedDriverBody:
         "Marktplatzzugriff und neue Tour-Annahmen sind für blockierte Fahrer eingeschränkt. Nutzen Sie Meine Aufträge, um Dokumente bestehender Touren zu korrigieren. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar.",
       backToMarketplace: "Marktplatz",
+      tourInExecutionBanner:
+        "Tour in Ausführung — Abholung, Zustellung und Dokumente hier abschließen.",
       date: "Datum",
       timeWindow: "Zeitfenster",
       vehicle: "Fahrzeug",
-      axle: "Achse",
       driverOffer: "Fahrerangebot",
       back: "Zurück",
       acceptTour: "Tour annehmen",
@@ -1616,26 +1644,40 @@ window.I18n = (() => {
       until: "Bis",
       postalArea: "PLZ / Gebiet",
       dateWindow: "Datumsfenster",
+      // --- Fahrzeugdom\u00e4ne: Kundenbest\u00e4tigung "Systemlogik Fahrzeugeingabe" ---
+      // Deutsche Labels w\u00f6rtlich aus der Kundenquelle \u00fcbernommen.
       vehicleType: "Fahrzeugtyp",
+      vehicleTypePassengerCar: "PKW",
+      vehicleTypeTruckUpTo75t: "LKW bis einschlie\u00dflich 7,5 t",
+      vehicleTypeTruckOver75t: "LKW \u00fcber 7,5 t",
+      vehicleTypeLegacy: "{value} (Altwert)",
+      vehicleTypeLegacyHint:
+        "Historischer Fahrzeugtyp, f\u00fcr neue Auftr\u00e4ge nicht mehr verf\u00fcgbar. Wird unver\u00e4ndert \u00fcbernommen \u2014 keine automatische Neuzuordnung.",
+      manufacturer: "Hersteller",
+      manufacturerPh: "Hersteller w\u00e4hlen",
+      officialLicencePlate: "Amtliches Kennzeichen",
+      officialLicencePlateHint:
+        "Kennzeichen des transportierten Fahrzeugs. Ein fr\u00fcheres oder entstempeltes Kennzeichen kann weiterhin erfasst werden, wenn es bekannt ist.",
+      transportType: "Transportart",
+      registrationStatus: "Zulassungsstatus",
       vehicleInfoRegistered: "Zugelassen",
       vehicleInfoDeregistered: "Abgemeldet",
+      vehicleCharacteristics: "Weitere Fahrzeugmerkmale",
       vehicleInfoElectric: "E-Fahrzeug",
-      vehicleInfoRedPlates: "Rote Kennzeichen",
-      redPlateNumber: "Rotes Kennzeichen (Nr.)",
-      newOrderRedPlatePh: "z. B. K-06 1234",
-      newOrderRedPlateHint:
-        "H\u00e4ndlerkennzeichen (\u00a7 16 FZV): Unterscheidungszeichen + Nummer beginnend mit 06. Dem Betrieb zugeteilt, nicht dem Fahrzeug.",
-      newOrderPlateHiddenDeregistered:
-        "Abgemeldetes Fahrzeug \u2014 kein amtliches Kennzeichen. F\u00fcr \u00dcberf\u00fchrung auf eigener Achse rotes Kennzeichen erg\u00e4nzen.",
+      vehicleReadyToDrive: "Fahrbereit",
+      vehicleReadyToDriveApplicability:
+        "Entscheidungsrelevant bei Transport auf Fremdachse.",
       vehicleInfoLabel: "Wichtige Fahrzeug-Info",
-      newOrderRegistrationLabel: "Zulassung",
-      newOrderRegistrationNone: "Keine Angabe",
       newOrderVehicleInfoHint:
         "Wird Fahrern auf der Marktplatz-Card und im Tour-Detail angezeigt.",
+      // Abgeleitete Rote-Kennzeichen-Pflicht \u2014 nie manuell gew\u00e4hlt, keine
+      // Kennzeichennummer. Kanonischer Hinweistext f\u00fcr alle Oberfl\u00e4chen.
+      redPlatesRequired: "Rote Kennzeichen erforderlich",
+      redPlatesRequiredDetail:
+        "Abgemeldetes Fahrzeug wird auf eigener Achse \u00fcberf\u00fchrt. Der ausf\u00fchrende Servicepartner bringt eigene rote Kennzeichen mit; die Kennzeichennummer wird nicht erfasst.",
       kpiAvailableJobs: "Verf\u00fcgbar",
       kpiBookedJobs: "Gebucht",
       kpiOpenDocuments: "Offene Nachweise",
-      axleConfiguration: "Achsentyp",
       showResults: "{count} Ergebnisse anzeigen",
       myJobsExecutionDetail: "Meine Aufträge · Ausführungsdetail",
       active: "Aktiv",
@@ -2065,7 +2107,6 @@ window.I18n = (() => {
       adminBadgePhase1: "Nur Admin · Phase 1",
       adminRowDemo: "Demo",
       adminWindowFlex: "flex",
-      adminVehicleTrp: "Trans.",
       adminColTour: "Tour",
       adminColCustomer: "Kunde",
       adminColOrigin: "Start",
@@ -2544,15 +2585,14 @@ window.I18n = (() => {
         "Lieferdatum liegt vor dem Abholdatum. Speichern ist dennoch möglich, wenn beabsichtigt.",
       newOrderTimeWindowWarning:
         "Endzeit liegt vor der Startzeit. Speichern ist dennoch möglich, wenn beabsichtigt.",
-      newOrderVinShortNotice:
-        "FIN hat weniger als 17 Zeichen — Speichern ist möglich, wenn sie im Auftrag fehlt.",
+      // Bestätigte Regel: genau 17 Zeichen.
+      newOrderVinLengthError:
+        "FIN muss genau 17 Zeichen haben ({count}/17 erfasst).",
       newOrderDatePh: "TT.MM.JJJJ",
       newOrderWindowFrom: "Zeitfenster von",
       newOrderWindowTo: "Zeitfenster bis",
       newOrderTimePh: "—:—",
-      newOrderBrand: "Marke",
       newOrderModel: "Modell",
-      newOrderBrandPh: "z.B. Volkswagen",
       newOrderModelPh: "z.B. Passat Variant",
       newOrderPlatePh: "XX-XX 0000",
       newOrderVinLen: "17-stellig",
@@ -2576,10 +2616,10 @@ window.I18n = (() => {
       newOrderProgressComplete: "{filled} / {total} KOMPLETT",
       newOrderDatePreview: "TT.MM.",
       newOrderDriverOfferZero: "0,00",
-      newOrderVtSuv: "SUV",
-      newOrderVtPkw: "PKW",
-      newOrderVtTransporter: "Transporter",
-      newOrderVtClassic: "Oldtimer",
+      // Entfernt 2026-07-26 durch Kundenbestätigung: SUV, Transporter und
+      // Oldtimer sind keine wählbaren Fahrzeugtypen mehr.
+      newOrderRemovedVehicleType:
+        "Dieser Fahrzeugtyp ist für neue Aufträge nicht mehr verfügbar.",
       adminOverviewPage: "· Seite {cur} / {max}",
       publishBlockedDraftOnly: "Tour muss im Entwurf sein.",
       draftSavedTour: "Entwurf gespeichert · Tour {tour}",
@@ -2823,19 +2863,23 @@ window.I18n = (() => {
       orderFieldDeliveryDate: "Zustelldatum",
       orderFieldDeliveryWindow: "Zustellzeitfenster",
       orderFieldVehicleType: "Fahrzeugtyp",
-      orderFieldVehicleModel: "Fahrzeug (Marke/Modell)",
+      orderFieldManufacturer: "Hersteller",
+      orderFieldVehicleModel: "Modell",
       orderFieldPlate: "Kennzeichen",
       orderFieldVin: "FIN",
-      orderFieldAxle: "Achse / Transportart",
+      orderFieldTransportType: "Transportart",
       orderFieldRegistrationStatus: "Zulassungsstatus",
       orderFieldElectricVehicle: "Elektrofahrzeug",
-      orderFieldRedPlates: "Rote Kennzeichen",
-      orderFieldRedPlateNumber: "Rote Kennzeichennummer",
+      orderFieldReadyToDrive: "Fahrbereit",
+      orderFieldRequiresRedPlates: "Rote Kennzeichen erforderlich",
       orderFieldDriverOffer: "Fahrerangebot (€)",
       orderFieldExpenses: "Auslagen (€)",
       orderFieldNotesDriver: "Fahrer-sichtbare Notizen",
       orderFieldNotesInternal: "Interne Auftragsnotizen",
       adminNoChanges: "Keine Änderungen zum Speichern.",
+      adminVehicleInvalid: "Fahrzeugdaten konnten nicht gespeichert werden.",
+      adminVehicleFieldNotWritable:
+        "Rote Kennzeichen werden automatisch abgeleitet und können nicht manuell gesetzt werden.",
       notificationPreferences: "Benachrichtigungseinstellungen",
       pickupPostalArea: "Abhol-PLZ-Gebiet",
       pushNotificationsEnabled: "Push-Benachrichtigungen aktiviert",
@@ -2890,7 +2934,6 @@ window.I18n = (() => {
       all: "Alle",
       ownAxle: "Eigenachse",
       thirdPartyAxle: "Fremdachse",
-      lightTruck: "Leicht-Lkw <3,5 t",
       emergencyDispatchNotice:
         "Notfall-Disposition: Mo-Fr 07:00-22:00 CET. Vorfälle, Verzögerungen und Auffälligkeiten müssen sofort gemeldet werden.",
       vatBankingReadonly: "Adresse · USt. · Bankdaten",

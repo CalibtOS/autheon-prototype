@@ -57,7 +57,46 @@ The `push_on_direct_assign` feature flag controls whether a push notification fi
 
 ## Driver postal area filter (`driver.prefs.postalAreas`)
 
-Array of postal-code prefixes (e.g. `[“80”, “81”]`). Replaces the former single `notifyPostalPrefix` string. A job matches if its pickup postal code starts with **any** entry in the array. Empty array = no filter (all published jobs match for that driver's vehicle/axle preferences).
+Array of postal-code prefixes (e.g. `[“80”, “81”]`). Replaces the former single `notifyPostalPrefix` string. A job matches if its pickup postal code starts with **any** entry in the array. Empty array = no filter (all published jobs match for that driver's `vehicleType` / `transportType` preferences).
+
+## Vehicle domain (client confirmation “Systemlogik Fahrzeugeingabe”, 2026-07-26)
+
+Four **explicit** categories with different cardinalities — deliberately *not* one flat tag array. Canonical constants and the single red-plate policy live in `store.js` and are exported on `AuthStore`; user-facing labels always come from `i18n.js`.
+
+| Field                | Cardinality        | Values                                                                                      |
+| -------------------- | ------------------ | ------------------------------------------------------------------------------------------- |
+| `vehicleType`        | exactly one        | `passenger_car` (PKW) · `truck_up_to_7_5_t` (LKW bis einschl. 7,5 t) · `truck_over_7_5_t` (LKW über 7,5 t) |
+| `manufacturer`       | exactly one        | From the manufacturer catalogue (dropdown)                                                   |
+| `vehicleModel`       | exactly one        | Free text, separate from the manufacturer                                                    |
+| `plate`              | 0..1               | **Official** plate of the transported vehicle; required while registered, optional (but enterable) when deregistered |
+| `vin`                | 0..1               | Exactly 17 characters                                                                        |
+| `transportType`      | exactly one        | `own_axle` (Eigenachse) · `third_party_axle` (Fremdachse) — renames the old `axle`            |
+| `registrationStatus` | exactly one        | `registered` (Zugelassen) · `deregistered` (Abgemeldet) — independent of `transportType`      |
+| `electricVehicle`    | independent bool   | E-Fahrzeug                                                                                   |
+| `readyToDrive`       | independent bool   | Fahrbereit — relevant to third-party-axle transport; never auto-cleared                       |
+
+**Removed from new entry:** SUV · Van / Transporter · Classic car / Oldtimer · `LKW < 3,5t`. Historical values are preserved verbatim (no migration mapping was supplied) and render via the `vehicleTypeLegacy` template with a neutral fallback icon; a legacy record keeps its own value selectable only while that record is edited.
+
+**Deprecated read-only aliases:** `job.vehicle` → `vehicleType` and `job.axle` → `transportType`, kept in sync one-way by `syncDisplayFields` for the compatibility window. Never write to them.
+
+### Red licence plates — derived (`requiresRedLicencePlates`)
+
+Red plates are brought by the executing service partner; **their number is not recorded**. The requirement is derived, never selected:
+
+```
+requiresRedLicencePlates = registrationStatus === "deregistered" && transportType === "own_axle"
+```
+
+| Registration status | Transport type     | Red plates   |
+| ------------------- | ------------------ | ------------ |
+| registered          | own_axle           | not required |
+| registered          | third_party_axle   | not required |
+| **deregistered**    | **own_axle**       | **REQUIRED** |
+| deregistered        | third_party_axle   | not required |
+
+`AuthStore.requiresRedLicencePlates()` / `jobRequiresRedLicencePlates()` is the **only** implementation. `job.requiresRedLicencePlates` is a derived denormalization recomputed on every `syncDisplayFields`; it is never accepted from input (`validateVehicleForm` rejects it). The notice `redPlatesRequired` (“Rote Kennzeichen erforderlich”) is rendered by the one shared `DriverUI.RedPlatesRequiredNotice` component in all five required surfaces.
+
+`legacyRedPlateNumber` holds pre-confirmation manually entered numbers for audit/history only — never shown, never editable.
 
 ## Master data change type (`masterDataChangeRequest.changeType`)
 
@@ -68,7 +107,7 @@ Required field — discriminates requests in the admin review queue:
 | `address`      | Street, postal code, city, country |
 | `contact`      | Company name, email, phone         |
 | `bank_details` | IBAN, BIC, account holder          |
-| `vehicle_info` | Vehicle type, registration, axle   |
+| `vehicle_info` | Vehicle type, registration status, transport type |
 | `license`      | Driver licence class, expiry       |
 | `daily_limit_override` | Legacy — removed from driver UI; retained only for old prototype rows |
 

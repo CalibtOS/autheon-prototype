@@ -1055,6 +1055,49 @@ select.input {
 .phone-shell .vehicle-flag.electric svg {
   color: var(--primary); /* restrained accent per client reference card */
 }
+/* DERIVED "Red licence plates required" notice (deregistered + own axle).
+   Reuses the EXISTING semantic warning tokens (--st-warn / --st-warn-bg) that
+   already carry attention meaning across the app — no isolated warning style
+   and no new token was introduced. Compact tag variant for dense tag rows. */
+.phone-shell .vehicle-flag.red-plates-required {
+  background: var(--st-warn-bg);
+  color: var(--st-warn);
+  font-weight: 600;
+  /* Long translations ("Rote Kennzeichen erforderlich") must wrap instead of
+     overflowing a narrow card, unlike the other single-word flags. */
+  white-space: normal;
+}
+.phone-shell .vehicle-flag.red-plates-required svg {
+  color: var(--st-warn);
+}
+/* Banner variant — marketplace preview, booking dialog, complete order view. */
+.phone-shell .red-plates-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--st-warn);
+  border-radius: var(--r-2);
+  background: var(--st-warn-bg);
+  color: var(--text);
+}
+.phone-shell .red-plates-banner-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--st-warn);
+}
+.phone-shell .red-plates-banner-head svg {
+  flex-shrink: 0;
+  color: var(--st-warn);
+}
+.phone-shell .red-plates-banner-detail {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
 .phone-shell .axle-chip {
   display: inline-flex;
   align-items: center;

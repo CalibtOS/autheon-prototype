@@ -94,3 +94,67 @@ Checked against the rendered `after/` captures:
 | F7 | Driver (profile + filters) + Admin (Create/Edit Job) | inline `onChange` sanitizers; `inputMode` | PR #17 bug report — numeric fields must accept digits only | Free text accepted letters/symbols | Digits-only on input for postal code, house no., distance; phone + second phone allow a single leading `+`; driver-offer allows one decimal separator; alternate-contact left as free text (name) | No `styles.css` change — behavior only |
 
 *Task 2 (order cancellation / empty-run "Storno", commit `23d1b4e`) added no `styles.css` changes and is out of scope for this design-doc pass.*
+
+---
+
+## Vehicle domain restructure (V1–V6, 2026-07-26)
+
+> Driven by the client confirmation **“Systemlogik Fahrzeugeingabe”**, not by a DDB compliance finding. Audit of the previous state: [`design-direction-board-audit.md`](design-direction-board-audit.md) “v1.3 addendum — vehicle-entry audit”. Business/data spec: `prd.json` v2.7 + `docs/archive/2026-07/prd-changelog-since-2026-07-26.md`.
+
+### The confirmed category-based structure
+
+The vehicle section is **four explicit semantic categories plus independent characteristics**, each with its own control, its own cardinality and its own field in the payload:
+
+| Order | Category | Control | Cardinality | Values |
+|---|---|---|---|---|
+| 1 | **Vehicle type** | Chip row (`.chip.actionable`, `role="radiogroup"` / `role="radio"`) | **exactly one** | Passenger car (PKW) · Truck up to and including 7.5 t (LKW bis einschließlich 7,5 t) · Truck over 7.5 t (LKW über 7,5 t) |
+| 2 | **Manufacturer** | `<select>` dropdown from the manufacturer catalogue | exactly one | `AuthStore.MANUFACTURER_SUGGESTIONS` |
+| 2 | **Model** | Text input (`.input`) | exactly one | free text — **separate** from the manufacturer |
+| 2 | **Official licence plate** | Text input (`.input.mono`), always enabled | 0..1 | plate of the **transported** vehicle |
+| 2 | **VIN** | Text input (`.input.mono`) | 0..1 | **exactly 17 characters** |
+| 3 | **Transport type** | Segmented control (`.seg`, `role="radiogroup"`) | **exactly one** | Own axle (Eigenachse) · Third-party axle (Fremdachse) |
+| 4 | **Registration status** | Segmented control (`.seg`, `role="radiogroup"`) | **exactly one** | Registered (Zugelassen) · Deregistered (Abgemeldet) |
+| 5 | **Additional characteristics** | Independent toggle chips (`aria-pressed`) | **independent** | Electric vehicle (E-Fahrzeug) · Ready to drive (Fahrbereit) |
+
+### The unified multi-select was rejected / superseded
+
+An earlier proposal to render **one undifferentiated multi-select tag collection** holding every vehicle classification (`["SUV", "own axle", "registered", "electric"]`) was **explicitly rejected and is superseded**. A flat tag array cannot express the cardinalities above — it permits contradictory pairs such as `["own axle", "third-party axle"]` or `["registered", "deregistered"]` — and it destroys the two *identified* inputs the derived red-licence-plate rule depends on.
+
+A **shared chip/segmented visual primitive is still reused** for visual consistency, so the section reads as one system; only the *semantics* stayed separate. Values are never flattened into a single unstructured collection and the payload keeps discrete fields.
+
+### Removal of manual red-licence-plate entry
+
+- The **“Red plates” option was removed** from the registration control, which is now purely Registered / Deregistered.
+- The **red-plate number input was removed** entirely (and its `redPlateNumber` / `newOrderRedPlatePh` / `newOrderRedPlateHint` keys retired). Partners bring their own plates; the number is not recorded.
+- The **destructive plate behaviour was reversed**: the official licence-plate field is always rendered and always enabled, and deregistration no longer hides, disables or clears it. It is required while registered and optional-but-enterable once deregistered.
+- The driver **red-plate badge row was removed** from the complete order view.
+- The requirement is now **derived** — `requiresRedLicencePlates = Deregistered AND Own axle` — from one canonical domain policy, rendered by one shared component.
+
+### The five required warning locations
+
+The notice “**Rote Kennzeichen erforderlich**” / “Red licence plates required” appears **when and only when** *Deregistered + Own axle*:
+
+| # | Surface | Treatment |
+|---|---------|-----------|
+| 1 | **Admin Backend** — Create/Edit Job vehicle section (live) + job detail | `.banner.banner-warn` |
+| 2 | **Marketplace order card** | `.vehicle-flag.red-plates-required` chip in the tag row |
+| 3 | **Marketplace preview** | `.red-plates-banner` below the vehicle card |
+| 4 | **Booking dialog** — clearly highlighted, above the binding slide-to-confirm | `.red-plates-banner` |
+| 5 | **Complete order view after booking** (and the service-partner order-details view) | `.red-plates-banner` |
+
+It **stays visible after booking**: it is an execution requirement, not a temporary marketplace message. All five render the **same** `DriverUI.RedPlatesRequiredNotice` component consuming the **same** `AuthStore.requiresRedLicencePlates` policy, so no surface can reach a conflicting decision. Token usage is documented in [`brand-tokens.md`](brand-tokens.md) — the existing `--st-warn` / `--st-warn-bg` pair, no new token.
+
+### `styles.css` changes
+
+| Change ID | Screen | `styles.css` rules | Feature / rationale | Before | After adjustment | Notes |
+|---|---|---|---|---|---|---|
+| V1 | Driver — marketplace card tag row | `.phone-shell .vehicle-flag.red-plates-required` (+ ` svg`) | Derived red-plate notice must be visible on the card | No such state; red plates were an ordinary neutral `.vehicle-flag` tag driven by a manual flag | Existing `.vehicle-flag` chip geometry re-tinted with the **existing** Warn pair (`--st-warn` text/icon on `--st-warn-bg`), `font-weight: 600`, and `white-space: normal` so the long German string wraps in a narrow card | Reuses the semantic warning pattern; no new token |
+| V2 | Driver — preview · booking dialog · complete order view | `.phone-shell .red-plates-banner`, `-head`, `-detail` | Same notice needs a prominent form in detail/commit surfaces | No equivalent; nothing warned on deregistered + own axle | Tinted surface + fine `--st-warn` border + `--r-2` radius, headline in `--st-warn`, supporting sentence in `--muted` | Same recipe as `.banner-warn`, scoped to phone-shell metrics |
+| V3 | Admin — Create/Edit Job + job detail | *(none — reuse only)* | Notice in the admin surfaces | Manual red-plate chip + conditional number input | Existing `.banner.banner-warn` and `.pill.warn.no-dot`, no new CSS | Deliberately zero new admin CSS |
+| V4 | Admin — Create/Edit Job vehicle section | *(none — reuse only)* | Category-based entry structure | Free-text manufacturer with `datalist`; 5-option chip row; fused registration/red-plates segment; conditional plate copy block | `<select>` for manufacturer; 3-option chip row; separate `.seg` controls for transport type and registration status; independent characteristic chips; always-on plate input — all with existing `.chip` / `.seg` / `.input` tokens | Only markup + a11y roles changed |
+| V5 | Driver — vehicle icons | *(none — JSX)* | Icon set must match the three confirmed types | 5 body-style icons (SUV, Van, Light truck, Classic, Car) across two vocabularies, `VehicleCar` as silent catch-all | `VehicleCar` / `VehicleLightTruck` / new `VehicleTruck` for the three types; **`VehicleSuv` / `VehicleVan` / `VehicleClassic` deleted**; new neutral `VehicleGeneric` fallback for preserved legacy records | A retired type never renders as an active selectable option |
+| V6 | Admin — VIN field | *(none — reuse only)* | Confirmed exactly-17 rule | Advisory notice below 17 chars, save allowed | Inline field error in `--st-warn` with `aria-invalid` + `aria-describedby`; rejected on the authoritative write path | Reuses the Warn token as error text — no error-specific token added |
+
+### Legacy vehicle types
+
+Removed values (SUV · Van/Transporter · Classic car/Oldtimer · `LKW < 3,5t`) are **not selectable** for new records but are **preserved verbatim** on historical ones — the client supplied no migration mapping. They render through the `vehicleTypeLegacy` “(legacy)” template with the neutral `VehicleGeneric` icon, and a legacy record keeps its own value selectable only while that record is being edited (with an explanatory hint). Detail in `logical-model.md` → “Legacy vehicle types”.
