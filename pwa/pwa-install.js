@@ -72,6 +72,26 @@
 
   applyStandaloneClass();
 
+  /** Best-effort portrait lock (mirrors FE lockPortraitOrientation). Manifest also declares portrait-primary. */
+  function lockPortraitOrientation() {
+    try {
+      var orientation = screen.orientation;
+      if (!orientation || typeof orientation.lock !== "function") return;
+      var result = orientation.lock("portrait");
+      if (result && typeof result.then === "function") {
+        result.then(
+          function () {},
+          function () {
+            /* NotAllowedError / unsupported — ignore */
+          },
+        );
+      }
+    } catch (_) {
+      /* no-op */
+    }
+  }
+  lockPortraitOrientation();
+
   window.AutheonPwa = {
     getState: function () {
       return Object.assign({}, state);

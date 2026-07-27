@@ -7,10 +7,10 @@
    applying; this file only neutralizes the decorative phone-frame
    geometry and adds viewport-responsive behavior.
 
-   Breakpoint strategy (small number, meaningful):
-     ≤ 360px   compact phones  — tighter chrome, smaller nav capsule
-     361–719px default phones  — base layout, fluid
-     ≥ 720px   tablets/desktop — centered app column, sized dialogs
+   Breakpoint strategy (aligned with FE DriverShell):
+     ≤ 360px    compact phones  — tighter chrome, smaller nav capsule
+     361–1535px phones & tablets — full-bleed fluid shell, sized dialogs
+     ≥ 1536px   large desktop   — centered 720px phone-column preview
    =============================================================== */
 
 body.pwa-page {
@@ -224,12 +224,8 @@ body.pwa-standalone .phone-shell.pwa-viewport {
   min-width: 0;
 }
 
-/* ---- Tablets & desktop (≥720px): centered mobile-first column -- */
+/* ---- Tablet+ (≥720px): keep dialogs sized; shell stays full-bleed ---- */
 @media (min-width: 720px) {
-  .phone-shell.pwa-viewport .phone {
-    max-width: 720px;
-    border-inline: 1px solid var(--line);
-  }
   /* Dialogs sized like dialogs, not full-column strips */
   .phone-shell.pwa-viewport .sheet-backdrop.center {
     padding: 0 24px;
@@ -244,5 +240,13 @@ body.pwa-standalone .phone-shell.pwa-viewport {
     width: 100%;
     max-width: 640px;
     margin-inline: auto;
+  }
+}
+
+/* ---- Large desktop (≥1536px / Tailwind 2xl): phone-column preview ---- */
+@media (min-width: 1536px) {
+  .phone-shell.pwa-viewport .phone {
+    max-width: 720px;
+    border-inline: 1px solid var(--line);
   }
 }
