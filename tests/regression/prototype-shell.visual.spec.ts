@@ -18,6 +18,8 @@ test.describe('prototype shell visual regression', () => {
   test('default DriverPWA EN light shell matches approved baseline @visual-regression', async ({
     page,
   }) => {
+    // The theme editor is hidden by default (needs ?themecolorchanger=1), so a
+    // clean navigation keeps it out of the baseline automatically.
     await gotoPrototype(page);
     await switchLanguage(page, 'EN');
     await switchTheme(page, 'light');

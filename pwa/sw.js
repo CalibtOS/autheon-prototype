@@ -1,5 +1,5 @@
 /* Autheon /pwa service worker — installable shell + stale-while-revalidate assets */
-const CACHE_VERSION = "autheon-pwa-v11";
+const CACHE_VERSION = "autheon-pwa-v12";
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -24,7 +24,7 @@ const PRECACHE_URLS = [
   "/apple-touch-icon-precomposed.png",
   "/prototype/project/styles.css?v=23",
   "/prototype/project/feature-flags.js",
-  "/prototype/project/i18n.js?v=26",
+  "/prototype/project/i18n.js?v=27",
   "/prototype/project/formatters.js",
   "/prototype/project/inputFormatters.js",
   "/prototype/project/store.js",

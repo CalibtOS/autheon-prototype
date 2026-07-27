@@ -132,6 +132,9 @@ window.I18n = (() => {
       },
       themeLight: "Light",
       themeDark: "Dark",
+      themeEditor: "Theme editor",
+      themeEditorTitle:
+        "Show or hide the floating Theme Color Changer on this preview",
       appAppearance: "Appearance",
       appAppearanceHint: "Language and display preferences for this device.",
       appLanguage: "Language",
@@ -1577,6 +1580,9 @@ window.I18n = (() => {
       },
       themeLight: "Hell",
       themeDark: "Dunkel",
+      themeEditor: "Theme-Editor",
+      themeEditorTitle:
+        "Schwebenden Theme-Farbwechsler in dieser Vorschau ein- oder ausblenden",
       appAppearance: "Erscheinungsbild",
       appAppearanceHint: "Sprache und Anzeigeeinstellungen für dieses Gerät.",
       appLanguage: "Sprache",

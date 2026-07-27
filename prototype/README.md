@@ -55,6 +55,7 @@ To enable install on the hosted site: in Cloudflare, bypass or disable Basic Aut
 | `admin.jsx` | Admin console reference |
 | `store.js` | Demo data + PRD business rules (do not change for UI-only work) |
 | `i18n.js` | EN/DE copy |
+| `theme-editor.js` | Floating Theme Editor — movable overlay to edit theme colours (CSS vars) live; loaded by the prototype page and `/pwa/`, overrides persist in localStorage |
 | `_export-driver-i18n.mjs` | Generates `docs/design/driver-i18n-index.md` |
 
 ## Validation

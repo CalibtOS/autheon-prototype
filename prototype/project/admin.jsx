@@ -1074,7 +1074,7 @@ const AssignDriverDialog = ({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(15, 23, 42, 0.45)",
+        background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
         zIndex: 103,
         display: "flex",
         alignItems: "center",
@@ -2704,8 +2704,8 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   marginTop: 10,
                   padding: 12,
                   fontSize: 12.5,
-                  color: "var(--st-err, #dc2626)",
-                  borderLeft: "3px solid var(--st-err, #dc2626)",
+                  color: "var(--destructive)",
+                  borderLeft: "3px solid var(--destructive)",
                 }}
                 role="alert"
               >
@@ -2719,8 +2719,8 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   marginTop: 10,
                   padding: 12,
                   fontSize: 12.5,
-                  color: "var(--st-err, #dc2626)",
-                  borderLeft: "3px solid var(--st-err, #dc2626)",
+                  color: "var(--destructive)",
+                  borderLeft: "3px solid var(--destructive)",
                 }}
                 role="alert"
               >
@@ -3452,14 +3452,14 @@ const emptyAdminEditForm = () => ({
   email: "",
 });
 
-const userInputErrStyle = { borderColor: "#dc2626" };
+const userInputErrStyle = { borderColor: "var(--destructive)" };
 
 const UserFormError = ({ message }) =>
   message ? (
     <div
       className="label"
       role="alert"
-      style={{ color: "#dc2626", fontSize: 11.5, marginTop: 4 }}
+      style={{ color: "var(--destructive)", fontSize: 11.5, marginTop: 4 }}
     >
       {message}
     </div>
@@ -3723,7 +3723,7 @@ const AccountAccessDialog = ({ open, data, onClose, onResend, showToast }) => {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(15, 23, 42, 0.45)",
+        background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
         zIndex: 105,
         display: "flex",
         alignItems: "center",
@@ -4030,7 +4030,7 @@ const DriversPane = ({ showToast }) => {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
+            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
             zIndex: 104,
             display: "flex",
             alignItems: "center",
@@ -4268,7 +4268,7 @@ const StaffPane = ({ showToast }) => {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
+            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
             zIndex: 104,
             display: "flex",
             alignItems: "center",
@@ -4674,7 +4674,7 @@ const MasterDataModal = ({ open, title, onClose, children, footer }) => {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(15, 23, 42, 0.45)",
+        background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
         zIndex: 104,
         display: "flex",
         alignItems: "center",
@@ -6094,7 +6094,7 @@ const TourBillingPane = ({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
+            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
             zIndex: 102,
             display: "flex",
             alignItems: "center",
@@ -6456,7 +6456,7 @@ const TourBillingPane = ({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
+            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
             zIndex: 101,
             display: "flex",
             alignItems: "center",
@@ -6614,7 +6614,7 @@ const TourBillingPane = ({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
+            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
             zIndex: 102,
             display: "flex",
             alignItems: "center",
@@ -6704,7 +6704,7 @@ const TourBillingPane = ({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
+            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
             zIndex: 100,
             display: "flex",
             alignItems: "center",
@@ -6940,7 +6940,7 @@ const FinancePane = ({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
+            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
             zIndex: 100,
             display: "flex",
             alignItems: "center",
@@ -7424,7 +7424,9 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                   borderRadius: 0,
                   borderBottom: "1px solid var(--line)",
                   background:
-                    selectedId === row.id ? "rgba(30, 64, 175, 0.06)" : "transparent",
+                    selectedId === row.id
+                      ? "color-mix(in srgb, var(--st-published) 6%, transparent)"
+                      : "transparent",
                 }}
                 onClick={() => {
                   setSelectedId(row.id);
@@ -7598,7 +7600,7 @@ const NotificationFeedPane = ({ showToast, onOpenJob, onReviewMasterDataRequest 
                 padding: "14px 18px",
                 borderBottom: "1px solid var(--line)",
                 background: CRITICAL_ALERT_EVENTS.has(row.event)
-                  ? "rgba(220, 38, 38, 0.04)"
+                  ? "color-mix(in srgb, var(--destructive) 4%, transparent)"
                   : "transparent",
               }}
             >

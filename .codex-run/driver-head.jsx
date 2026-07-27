@@ -1,15 +1,15 @@
-/* global React, AuthStore, useAuthStore */
+﻿/* global React, AuthStore, useAuthStore */
 const { useState, useEffect, useRef, useMemo } = React;
 
 const UI = window.DriverUI || {};
 const { Badge, EmptyState, SkeletonList, Sheet, ConfirmSheet, SortSelect } = UI;
 const F = () => window.AutheonFormatters || {};
 
-// Draggable paged views — a dependency-free carousel for tab content.
+// Draggable paged views ΓÇö a dependency-free carousel for tab content.
 // All panes are rendered side-by-side in a horizontal track; the track
 // follows the finger during a horizontal drag so the adjacent tab peeks in,
 // then snaps to the nearest tab on release. Vertical drags are left to the
-// pane's own scrolling. Swipe left → next tab, swipe right → previous tab.
+// pane's own scrolling. Swipe left ΓåÆ next tab, swipe right ΓåÆ previous tab.
 const SwipeViews = ({
   index,
   count,
@@ -44,7 +44,7 @@ const SwipeViews = ({
       if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
       g.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
     }
-    if (g.axis !== "x") return; // vertical → let the pane scroll
+    if (g.axis !== "x") return; // vertical ΓåÆ let the pane scroll
     if (e.cancelable) e.preventDefault(); // own the horizontal gesture
     let d = dx;
     // Rubber-band resistance when dragging past the first/last tab.
@@ -137,7 +137,7 @@ const displayVehicle = (value, t) =>
 
 // Vehicle values come from two sources: seed data (SUV, PKW, Van,
 // Light truck <3.5t) and the admin New Order form (SUV, PKW, Transporter,
-// LKW < 3,5t, Oldtimer) — map both to one icon per type.
+// LKW < 3,5t, Oldtimer) ΓÇö map both to one icon per type.
 const vehicleTypeIcon = (vehicle) => {
   switch (vehicle) {
     case "SUV":
@@ -242,14 +242,14 @@ const InlineAlert = ({ tone = "error", message, onDismiss }) => {
           onClick={onDismiss}
           aria-label={t("uiDismiss")}
         >
-          ×
+          ├ù
         </button>
       ) : null}
     </div>
   );
 };
 
-// Inline policy disclosure — replaces window.alert (plan §6.2 feedback hierarchy)
+// Inline policy disclosure ΓÇö replaces window.alert (plan ┬º6.2 feedback hierarchy)
 const PolicyDisclosure = ({ introKey = "partnerTermsApply" }) => {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -364,7 +364,7 @@ const SlideLockIcon = () => (
 );
 
 const Ic = {
-  // Vehicle type icons — mdi:car-suv (Apache-2.0), tabler:car (MIT),
+  // Vehicle type icons ΓÇö mdi:car-suv (Apache-2.0), tabler:car (MIT),
   // lucide:van (ISC), hugeicons:delivery-truck-01 (MIT),
   // mdi:car-convertible (Apache-2.0)
   VehicleSuv: () => (
@@ -674,7 +674,7 @@ const Ic = {
       />
     </svg>
   ),
-  /** Double-check — Material "done_all" (filled paths render cleanly at small sizes) */
+  /** Double-check ΓÇö Material "done_all" (filled paths render cleanly at small sizes) */
   CheckAll: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
@@ -714,6 +714,65 @@ const Ic = {
         d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M14 8l4 4-4 4M18 12H8"
         stroke="currentColor"
         strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  Lock: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect
+        x="4.5"
+        y="10.5"
+        width="15"
+        height="10"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M8 10.5V8a4 4 0 0 1 8 0v2.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="15.2" r="1.4" fill="currentColor" />
+    </svg>
+  ),
+  Globe: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M3 12h18M12 3c2.5 2.4 3.8 5.6 3.8 9S14.5 18.6 12 21C9.5 18.6 8.2 15.4 8.2 12S9.5 5.4 12 3Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  Chat: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 4v-4H6a2 2 0 0 1-2-2V6Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.5 10h.01M12 10h.01M15.5 10h.01"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
+  CheckCircle: () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="m8.2 12.4 2.6 2.6 5-5.4"
+        stroke="currentColor"
+        strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -804,7 +863,7 @@ const Ic = {
 };
 
 // =========================================================================
-// ROUTE STACK (vertical Start → End)
+// ROUTE STACK (vertical Start ΓåÆ End)
 // =========================================================================
 const RouteStack = ({ job, big = true }) => {
   const { t, locale } = useI18n();
@@ -821,7 +880,7 @@ const RouteStack = ({ job, big = true }) => {
             {job.startCity}
           </div>
           <div className="meta">
-            {job.startPlz} · {t("pickup")}
+            {job.startPlz} ┬╖ {t("pickup")}
           </div>
         </div>
         <div className="end">
@@ -829,7 +888,7 @@ const RouteStack = ({ job, big = true }) => {
             {job.endCity}
           </div>
           <div className="meta">
-            {job.endPlz} · {t("destination")} · {job.distanceKm} km
+            {job.endPlz} ┬╖ {t("destination")} ┬╖ {job.distanceKm} km
           </div>
         </div>
       </div>
@@ -838,7 +897,7 @@ const RouteStack = ({ job, big = true }) => {
 };
 
 // =========================================================================
-// DRIVER PWA — STATUS BAR & TAB BAR
+// DRIVER PWA ΓÇö STATUS BAR & TAB BAR
 // =========================================================================
 const PhoneStatusBar = () => (
   <div className="statusbar">
@@ -910,17 +969,17 @@ const estimateDriveTime = (km) => {
   return h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
 };
 
-// Compact leg line for job cards: "23.04. · 08:00–12:00" (or "Flexible")
+// Compact leg line for job cards: "23.04. ┬╖ 08:00ΓÇô12:00" (or "Flexible")
 const legWhen = (loc, t) => {
-  if (!loc) return "—";
+  if (!loc) return "ΓÇö";
   const date = loc.date || "";
   const win = loc.windowFlex
     ? t("flexible")
-    : [loc.windowFrom, loc.windowTo].filter(Boolean).join("–");
-  return [date, win].filter(Boolean).join(" · ") || "—";
+    : [loc.windowFrom, loc.windowTo].filter(Boolean).join("ΓÇô");
+  return [date, win].filter(Boolean).join(" ┬╖ ") || "ΓÇö";
 };
 
-// Small supporting icons for the important-vehicle-info tags (board §5)
+// Small supporting icons for the important-vehicle-info tags (board ┬º5)
 const FlagIc = {
   Bolt: () => (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -948,7 +1007,7 @@ const FlagIc = {
 };
 
 // Important vehicle info (registered / deregistered / e-vehicle / red plates).
-// Optional announcement metadata — renders nothing when unset.
+// Optional announcement metadata ΓÇö renders nothing when unset.
 const vehicleInfoFlags = (job, t) => {
   const flags = [];
   if (job.registrationStatus === "registered")
@@ -977,7 +1036,7 @@ const VehicleFlagTags = ({ job }) => {
   );
 };
 
-// Shared card body (marketplace + My Jobs) — client reference layout
+// Shared card body (marketplace + My Jobs) ΓÇö client reference layout
 // (Design Direction Board p.5): route line, pickup/delivery legs,
 // footer meta + price right.
 const JobCardBody = ({ job }) => {
@@ -990,7 +1049,7 @@ const JobCardBody = ({ job }) => {
           <div className="route-city-plz">{job.startPlz}</div>
         </div>
         <div className="route-mid" aria-hidden="true">
-          <span className="route-arrow">→</span>
+          <span className="route-arrow">ΓåÆ</span>
           {job.distanceKm ? (
             <span className="route-distance">{job.distanceKm} km</span>
           ) : null}
@@ -1018,14 +1077,14 @@ const JobCardBody = ({ job }) => {
       <div className="jobcard-footer">
         <span className="vehicle-meta">
           {vehicleTypeIcon(job.vehicle)}
-          {job.vehicleModel && job.vehicleModel !== "—"
+          {job.vehicleModel && job.vehicleModel !== "ΓÇö"
             ? job.vehicleModel
             : displayVehicle(job.vehicle, t)}
         </span>
         <div className="jobcard-price tnum">
           {F().formatMoney
             ? F().formatMoney(fmtDriverOffer(job))
-            : `€ ${fmtDriverOffer(job).toFixed(2)}`}
+            : `Γé¼ ${fmtDriverOffer(job).toFixed(2)}`}
         </div>
       </div>
       <div className="jobcard-tags">
@@ -1335,7 +1394,7 @@ const Portal = ({
               />
             )}
             {ordered.length > 0 ? (
-              <div className="list-end">— {t("endOfList")} —</div>
+              <div className="list-end">ΓÇö {t("endOfList")} ΓÇö</div>
             ) : null}
           </>
         )}
@@ -1347,7 +1406,7 @@ const Portal = ({
 // =========================================================================
 // FILTER SHEET
 // =========================================================================
-// Shared marketplace filter predicate (plan §6.1) — single source of truth
+// Shared marketplace filter predicate (plan ┬º6.1) ΓÇö single source of truth
 // for Portal's list AND the FilterSheet's live result count.
 const FILTER_DATE_PRESETS = ["Today", "This week", "Weekend"];
 const parseJobDdMm = (raw) => {
@@ -1429,7 +1488,7 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
     { val: "Third-party axle", label: "Third-party axle" },
   ];
   const store = useAuthStore();
-  // Same predicate as the marketplace list — the CTA count is exact
+  // Same predicate as the marketplace list ΓÇö the CTA count is exact
   const preview = store
     .getJobs()
     .filter(
@@ -1598,7 +1657,7 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
 };
 
 // =========================================================================
-// JOB DETAIL — LOCKED (before acceptance)
+// JOB DETAIL ΓÇö LOCKED (before acceptance)
 // =========================================================================
 const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
   const { t } = useI18n();
@@ -1641,7 +1700,7 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
             <div className="detail-route-info">
               <div className="dist">{job.distanceKm}km</div>
               <div className="time">
-                {estimateDriveTime(job.distanceKm) || "—"}
+                {estimateDriveTime(job.distanceKm) || "ΓÇö"}
               </div>
             </div>
             <div className="detail-route-dash" aria-hidden="true"></div>
@@ -1710,19 +1769,19 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
           </div>
           <ul className="detail-check-list">
             <li>
-              <span className="check-icon">✓</span>
+              <span className="check-icon">Γ£ô</span>
               <span>{t("fullAddresses")}</span>
             </li>
             <li>
-              <span className="check-icon">✓</span>
+              <span className="check-icon">Γ£ô</span>
               <span>{t("contactsPhones")}</span>
             </li>
             <li>
-              <span className="check-icon">✓</span>
+              <span className="check-icon">Γ£ô</span>
               <span>{t("licenseVin")}</span>
             </li>
             <li>
-              <span className="check-icon">✓</span>
+              <span className="check-icon">Γ£ô</span>
               <span>{t("instructionsPdf")}</span>
             </li>
           </ul>
@@ -1733,7 +1792,7 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
       <div className="pwa-detail-bottom">
         <div className="bottom-price-info">
           <div className="label">{t("offer")}</div>
-          <div className="price">€ {fmtDriverOffer(job).toFixed(2)}</div>
+          <div className="price">Γé¼ {fmtDriverOffer(job).toFixed(2)}</div>
         </div>
         <button type="button" className="btn primary lg-cta" onClick={onAccept}>
           {t("acceptTour")}
@@ -1744,7 +1803,7 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
 };
 
 // =========================================================================
-// SLIDE TO CONFIRM — shared control for binding actions (acceptance,
+// SLIDE TO CONFIRM ΓÇö shared control for binding actions (acceptance,
 // mark-performed). Deliberate gesture prevents accidental taps.
 // =========================================================================
 const SlideToConfirm = ({ text, doneText, onConfirm }) => {
@@ -1820,7 +1879,7 @@ const SlideToConfirm = ({ text, doneText, onConfirm }) => {
 };
 
 // =========================================================================
-// ACCEPTANCE MODAL — slide to confirm
+// ACCEPTANCE MODAL ΓÇö slide to confirm
 // =========================================================================
 const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
   const { t } = useI18n();
@@ -1856,17 +1915,17 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
             Tour #{job.id}
           </div>
           <div className="mono mono-strong">
-            {job.startPlz} → {job.endPlz} · {job.distanceKm} km
+            {job.startPlz} ΓåÆ {job.endPlz} ┬╖ {job.distanceKm} km
           </div>
           <div className="mono text-muted-sm" style={{ marginTop: 6 }}>
-            {AuthStore.formatJobScheduleShort(job, t("flexible"))} ·{" "}
-            {displayVehicle(job.vehicle, t)} · {displayAxle(job.axle, t)}
+            {AuthStore.formatJobScheduleShort(job, t("flexible"))} ┬╖{" "}
+            {displayVehicle(job.vehicle, t)} ┬╖ {displayAxle(job.axle, t)}
           </div>
           <div
             style={{ fontSize: 18, fontWeight: 600, marginTop: 10 }}
             className="tnum"
           >
-            € {fmtDriverOffer(job).toFixed(2)}
+            Γé¼ {fmtDriverOffer(job).toFixed(2)}
           </div>
         </div>
 
@@ -1918,7 +1977,7 @@ const tourDocReviewPillStatus = (st) => {
 // Full-height in-app document viewer (fits the phone frame). Renders the
 // seeded real PDF via the browser's native viewer; Download/Share/Print are
 // functional. Production streams the actual file to the same surface.
-// UMD build — Babel standalone transpiles import() to require(), so the
+// UMD build ΓÇö Babel standalone transpiles import() to require(), so the
 // module build is unusable here; the classic script attaches window.pdfjsLib.
 const PDFJS_URL = "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js";
 const PDFJS_WORKER_URL =
@@ -1944,7 +2003,7 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
   const iframeRef = useRef(null);
   const pagesRef = useRef(null);
   const [shareMsg, setShareMsg] = useState("");
-  // pdf.js renders the document to canvases inside the phone frame —
+  // pdf.js renders the document to canvases inside the phone frame ΓÇö
   // works on every browser (iframe PDF viewers don't on mobile Safari).
   const [pdfState, setPdfState] = useState("loading"); // loading|ready|fallback
 
@@ -2059,7 +2118,7 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
         return;
       }
     } catch (_) {
-      /* PDF viewer frames are opaque — fall through */
+      /* PDF viewer frames are opaque ΓÇö fall through */
     }
     if (preview.pdfUrl) window.open(preview.pdfUrl, "_blank");
   };
@@ -2102,7 +2161,7 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
                   <SkeletonList count={2} />
                 </div>
               ) : null}
-              {/* canvases are appended manually — keep out of React's children */}
+              {/* canvases are appended manually ΓÇö keep out of React's children */}
               <div ref={pagesRef} />
             </div>
           ) : preview.previewable !== false && src ? (
@@ -2144,7 +2203,7 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
   );
 };
 
-// Document-type chooser — used by the tour-documents card and the
+// Document-type chooser ΓÇö used by the tour-documents card and the
 // mark-performed success screen. Grouped per client feedback: core /
 // operational / other.
 const TourDocCategoryModal = ({ open, onClose, onPick }) => {
@@ -2254,7 +2313,7 @@ const TourDocCategoryModal = ({ open, onClose, onPick }) => {
   );
 };
 
-// File-extension badge (Figma 8:2387) — folded-corner file shape with
+// File-extension badge (Figma 8:2387) ΓÇö folded-corner file shape with
 // the uppercase extension.
 const fileExt = (name) => {
   const m = /\.([a-z0-9]+)$/i.exec(String(name || ""));
@@ -2267,8 +2326,8 @@ const FileTypeBadge = ({ fileName }) => (
   </span>
 );
 
-// Driver document row (Figma 8:2387): ext badge · name + size ·
-// type right-aligned · remove (only while the upload is not yet reviewed).
+// Driver document row (Figma 8:2387): ext badge ┬╖ name + size ┬╖
+// type right-aligned ┬╖ remove (only while the upload is not yet reviewed).
 const MyDocRow = ({ doc, onRemove, t }) => (
   <div className="mydoc-row">
     <FileTypeBadge fileName={doc.fileName} />
@@ -2465,7 +2524,7 @@ const JobOfficialTourDocuments = ({ job, onPreview }) => {
           <TourDocumentRow
             key={doc.id}
             fileName={doc.fileName}
-            metaLine={`${t("officialTourDocFromDispatch")} · ${displayTourDocType(doc.documentType, t)} · ${F().formatFileSize(doc.sizeBytes)}`}
+            metaLine={`${t("officialTourDocFromDispatch")} ┬╖ ${displayTourDocType(doc.documentType, t)} ┬╖ ${F().formatFileSize(doc.sizeBytes)}`}
             onView={() => {
               const r = store.getTourDocumentPreview(doc.id);
               if (r.ok) onPreview?.(r.preview);
@@ -2598,7 +2657,7 @@ const JobTourDocuments = ({ job, onPreview }) => {
             <TourDocumentRow
               key={u.id}
               fileName={u.fileName}
-              metaLine={`${displayTourDocType(u.documentType, t)} · ${F().formatFileSize(u.sizeBytes)}`}
+              metaLine={`${displayTourDocType(u.documentType, t)} ┬╖ ${F().formatFileSize(u.sizeBytes)}`}
               statusNode={
                 <Pill status={tourDocReviewPillStatus(u.reviewStatus)} className="no-dot">
                   {displayDocReviewStatus(u.reviewStatus, t)}
@@ -2647,7 +2706,7 @@ const JobTourDocuments = ({ job, onPreview }) => {
 const JobInvoiceUpload = JobTourDocuments;
 
 // =========================================================================
-// JOB DETAIL — UNLOCKED (after acceptance / running)
+// JOB DETAIL ΓÇö UNLOCKED (after acceptance / running)
 // =========================================================================
 const JobUnlocked = ({
   job,
@@ -2663,14 +2722,10 @@ const JobUnlocked = ({
   const onReport = onReportProblem || onReturn;
   const onMarkPerformed = onPerform || onComplete;
   const isPerformed = job.status === "performed";
-  const isCancelled = store.isCancelledStatus(job.status);
-  const isEmptyRunReported = job.status === "empty_run_reported";
-  const isEmptyRunTerminal = store.isEmptyRunTerminal(job.status);
+  const isCancelled = job.status === "cancelled";
+  const isSpecialCase = job.status === "special_case";
   const canPerform = ["assigned", "accepted"].includes(job.status);
-  const inExecution = canPerform || isEmptyRunReported || job.status === "assigned";
-  // ⚠ action availability (§10): booked orders only; hidden for terminal
-  // states and while an empty-run report is pending review.
-  const canReportProblem = store.canServicePartnerReport(job);
+  const inExecution = canPerform || isSpecialCase || job.status === "assigned";
   const pickup = job.contactPickup || {};
   const drop = job.contactDelivery || {};
   const pickupMaps = googleMapsSearchUrl(
@@ -2752,12 +2807,10 @@ const JobUnlocked = ({
                 {AuthStore.statusLabel("performed")}
               </Pill>
             ) : isCancelled ? (
-              <Pill status={job.status}>{AuthStore.statusLabel(job.status)}</Pill>
-            ) : isEmptyRunTerminal ? (
-              <Pill status={job.status}>{AuthStore.statusLabel(job.status)}</Pill>
-            ) : isEmptyRunReported ? (
-              <Pill status={job.status}>
-                {AuthStore.statusLabel(job.status)}
+              <Pill status="cancelled">{t("cancelled")}</Pill>
+            ) : isSpecialCase ? (
+              <Pill status="special_case">
+                {AuthStore.statusLabel("special_case")}
               </Pill>
             ) : job.status === "assigned" ? (
               <Pill status="assigned">{t("assignedShort")}</Pill>
@@ -2858,7 +2911,7 @@ const JobUnlocked = ({
           <div className="customer-row">
             <span className="customer-title">{t("customerLabel")}</span>
             <span className="customer-name">
-              {job.customerName || job.customer || "—"}
+              {job.customerName || job.customer || "ΓÇö"}
             </span>
           </div>
         </div>
@@ -2879,7 +2932,7 @@ const JobUnlocked = ({
                 <div className="city-info">
                   <div className="city-name">{job.startCity}</div>
                   <div className="city-address">
-                    {job.startStreet} · {job.startPlz} {job.startCity}
+                    {job.startStreet} ┬╖ {job.startPlz} {job.startCity}
                   </div>
                 </div>
                 <a
@@ -2893,9 +2946,9 @@ const JobUnlocked = ({
               </div>
             </div>
             <div className="timeline-item-middle">
-              <span className="info-badge">🚙 {job.distanceKm} km</span>
+              <span className="info-badge">≡ƒÜÖ {job.distanceKm} km</span>
               <span className="info-badge">
-                ⏱ {estimateDriveTime(job.distanceKm) || "—"}
+                ΓÅ▒ {estimateDriveTime(job.distanceKm) || "ΓÇö"}
               </span>
             </div>
             <div className="timeline-item">
@@ -2906,7 +2959,7 @@ const JobUnlocked = ({
                 <div className="city-info">
                   <div className="city-name">{job.endCity}</div>
                   <div className="city-address">
-                    {job.endStreet} · {job.endPlz} {job.endCity}
+                    {job.endStreet} ┬╖ {job.endPlz} {job.endCity}
                   </div>
                 </div>
                 <a
@@ -2994,7 +3047,7 @@ const JobUnlocked = ({
           <div className="detail-contacts-grid">
             <div className="contact-column">
               <div className="contact-role">{t("pickupContact")}</div>
-              <div className="contact-name">{pickup.name || "—"}</div>
+              <div className="contact-name">{pickup.name || "ΓÇö"}</div>
               <div className="contact-actions">
                 {pickup.phone ? (
                   <a
@@ -3018,7 +3071,7 @@ const JobUnlocked = ({
             </div>
             <div className="contact-column">
               <div className="contact-role">{t("deliveryContact")}</div>
-              <div className="contact-name">{drop.name || "—"}</div>
+              <div className="contact-name">{drop.name || "ΓÇö"}</div>
               <div className="contact-actions">
                 {drop.phone ? (
                   <a
@@ -3098,7 +3151,7 @@ const JobUnlocked = ({
         {/* Official Documents Component */}
         <JobOfficialTourDocuments job={job} onPreview={setDocPreview} />
 
-        {/* Tour Documents Component — performed tours show these in the
+        {/* Tour Documents Component ΓÇö performed tours show these in the
             dedicated My documents tab instead */}
         {!isPerformed && (
           <JobTourDocuments job={job} onPreview={setDocPreview} />
@@ -3110,10 +3163,10 @@ const JobUnlocked = ({
             <div>
               <div className="price-label">{t("driverOffer")}</div>
               <div className="price-meta">
-                {job.distanceKm} km · {displayAxle(job.axle, t)}
+                {job.distanceKm} km ┬╖ {displayAxle(job.axle, t)}
               </div>
             </div>
-            <div className="price-val">€ {fmtDriverOffer(job).toFixed(2)}</div>
+            <div className="price-val">Γé¼ {fmtDriverOffer(job).toFixed(2)}</div>
           </div>
         </div>
         </>
@@ -3121,13 +3174,7 @@ const JobUnlocked = ({
       </div>
 
       {/* Bottom Bar */}
-      {/* Empty-run report pending review — locked for the partner (§3.4). */}
-      {isEmptyRunReported && (
-        <div style={{ padding: "0 16px 12px" }}>
-          <InlineAlert tone="info" message={t("emptyRunPendingLock")} />
-        </div>
-      )}
-      {canPerform && (
+      {!isPerformed && !isCancelled && !isSpecialCase && (
         <div className="pwa-unlocked-bottom">
           <button
             type="button"
@@ -3142,26 +3189,23 @@ const JobUnlocked = ({
           >
             {t("markPerformed")}
           </button>
-          {canReportProblem && (
-            <button
-              type="button"
-              className="btn outline"
-              onClick={onReport}
-              aria-label={t("reportProblem")}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                padding: "12px 24px",
-                fontSize: 15,
-                fontWeight: 600,
-              }}
-            >
-              <Ic.Alert />
-              {t("reportProblem")}
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn outline"
+            onClick={onReport}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              padding: "12px 24px",
+              fontSize: 15,
+              fontWeight: 600,
+            }}
+          >
+            <Ic.Alert />
+            {t("reportProblem")}
+          </button>
         </div>
       )}
 
@@ -3223,7 +3267,7 @@ const parseDottedDateToTimestamp = (dateStr, fallbackStr) => {
 const MyJobs = ({ onOpen }) => {
   const { t } = useI18n();
   const [tab, setTab] = useState("active");
-  const TAB_IDS = ["active", "performed", "cancelled", "review"];
+  const TAB_IDS = ["active", "performed", "cancelled", "special"];
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date_desc");
   const store = useAuthStore();
@@ -3233,15 +3277,8 @@ const MyJobs = ({ onOpen }) => {
     ["assigned", "accepted"].includes(j.status),
   );
   const performed = mine.filter((j) => j.status === "performed");
-  // Cancelled bucket = generic + service-partner + Autheon cancellations, and
-  // (as a terminal outcome) a not-recognised empty run belongs in history too.
-  const cancelled = mine.filter(
-    (j) =>
-      store.isCancelledStatus(j.status) ||
-      store.isEmptyRunTerminal(j.status),
-  );
-  // Review bucket = empty-run reports pending Autheon review.
-  const review = mine.filter((j) => j.status === "empty_run_reported");
+  const cancelled = mine.filter((j) => j.status === "cancelled");
+  const special = mine.filter((j) => j.status === "special_case");
 
   const listFor = (tabId) =>
     tabId === "active"
@@ -3250,7 +3287,7 @@ const MyJobs = ({ onOpen }) => {
         ? performed
         : tabId === "cancelled"
           ? cancelled
-          : review;
+          : special;
 
   const buildList = (tabId) =>
     listFor(tabId)
@@ -3329,7 +3366,7 @@ const MyJobs = ({ onOpen }) => {
               }
             : {
                 title: t("nothingHereYet"),
-                description: t("emptyRunReviewTab"),
+                description: t("specialCaseTab"),
               };
 
   const renderJobCard = (job) => (
@@ -3347,10 +3384,9 @@ const MyJobs = ({ onOpen }) => {
       <div className="jobcard-header-row">
         <span className="jobcard-tour-num">Tour #{job.tour}</span>
         <div style={{ display: "flex", gap: 6 }}>
-          {(job.status === "empty_run_reported" ||
-            store.isEmptyRunTerminal(job.status)) && (
-            <span className={"pill " + AuthStore.statusCls(job.status)}>
-              {AuthStore.statusLabel(job.status)}
+          {job.status === "special_case" && (
+            <span className="pill special_case">
+              {AuthStore.statusLabel("special_case")}
             </span>
           )}
           {job.status === "accepted" && (
@@ -3361,10 +3397,8 @@ const MyJobs = ({ onOpen }) => {
               {AuthStore.statusLabel("performed")}
             </span>
           )}
-          {store.isCancelledStatus(job.status) && (
-            <span className="pill cancelled">
-              {AuthStore.statusLabel(job.status)}
-            </span>
+          {job.status === "cancelled" && (
+            <span className="pill cancelled">{t("cancelled")}</span>
           )}
           {job.status === "assigned" && (
             <span className="pill assigned">{t("assignedShort")}</span>
@@ -3405,7 +3439,7 @@ const MyJobs = ({ onOpen }) => {
         )}
         {jobs.map(renderJobCard)}
         {jobs.length > 0 ? (
-          <div className="list-end">— {t("endOfList")} —</div>
+          <div className="list-end">ΓÇö {t("endOfList")} ΓÇö</div>
         ) : null}
       </div>
     );
@@ -3443,7 +3477,7 @@ const MyJobs = ({ onOpen }) => {
           ["active", t("active"), active.length],
           ["performed", t("performedTab"), performed.length],
           ["cancelled", t("cancelled"), cancelled.length],
-          ["review", t("emptyRunReviewTab"), review.length],
+          ["special", t("specialCaseTab"), special.length],
         ].map(([id, lbl, n]) => (
           <button
             key={id}
@@ -3457,7 +3491,7 @@ const MyJobs = ({ onOpen }) => {
         ))}
       </div>
 
-      {/* Swipeable list content — drag left/right to switch tabs */}
+      {/* Swipeable list content ΓÇö drag left/right to switch tabs */}
       <SwipeViews
         index={TAB_IDS.indexOf(tab)}
         count={TAB_IDS.length}
@@ -3475,82 +3509,87 @@ const MyJobs = ({ onOpen }) => {
 // =========================================================================
 // REPORT PROBLEM SHEET
 // =========================================================================
-// ⚠ Service-partner entry (Storno-Workflow §1): a single sheet whose two
-// options start SEPARATE flows — Cancel order (immediate, slide-to-confirm)
-// and Report empty run (submitted for Autheon review). Both require a reason
-// and a ≥30-character explanation and confirm via slide-to-confirm so the
-// final action can't be triggered accidentally.
 const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   const { t } = useI18n();
-  const [path, setPath] = useState(null); // 'cancel' | 'not_performable'
-  const [cancelStep, setCancelStep] = useState("warn"); // 'warn' | 'form'
-  const [termsOpen, setTermsOpen] = useState(false);
-  const [reason, setReason] = useState("");
+  const [path, setPath] = useState(null);
+  const [reason, setReason] = useState("driver_unavailable");
   const [text, setText] = useState("");
-  const [evidenceFiles, setEvidenceFiles] = useState([]);
-  const [evidenceNotice, setEvidenceNotice] = useState(null);
   const [slidePos, setSlidePos] = useState(0);
   const [slideDone, setSlideDone] = useState(false);
   const [slideDragging, setSlideDragging] = useState(false);
+  const [evidenceFiles, setEvidenceFiles] = useState([]);
+  const [evidenceNotice, setEvidenceNotice] = useState(null);
   const trackRef = useRef(null);
   const evidenceInputRef = useRef(null);
-  const MIN = 30;
-  const valid = text.trim().length >= MIN;
+  const valid = text.trim().length >= 10;
 
+  const pathOptions = [
+    ["cancel", t("reportProblemCancelTitle"), t("reportProblemCancelSub")],
+    [
+      "not_performable",
+      t("reportProblemNotPerformableTitle"),
+      t("reportProblemNotPerformableSub"),
+    ],
+  ];
   const cancelReasons = [
-    ["appointment_not_kept", t("spCancelReasonAppointment")],
-    ["booked_accidentally", t("spCancelReasonAccidental")],
-    ["org_not_possible", t("spCancelReasonOrgImpossible")],
-    ["other", t("spCancelReasonOther")],
+    [
+      "driver_unavailable",
+      t("reportCancelDriverUnavailable"),
+      t("reportCancelDriverUnavailableSub"),
+    ],
+    [
+      "vehicle_not_available",
+      t("reportCancelVehicleNotAvailable"),
+      t("reportCancelVehicleNotAvailableSub"),
+    ],
+    [
+      "customer_cancelled",
+      t("reportCancelCustomerCancelled"),
+      t("reportCancelCustomerCancelledSub"),
+    ],
+    [
+      "appointment_not_possible",
+      t("reportCancelAppointmentNotPossible"),
+      t("reportCancelAppointmentNotPossibleSub"),
+    ],
+    [
+      "incorrect_order_data",
+      t("reportCancelIncorrectData"),
+      t("reportCancelIncorrectDataSub"),
+    ],
+    [
+      "vehicle_not_roadworthy",
+      t("reportCancelVehicleNotRoadworthy"),
+      t("reportCancelVehicleNotRoadworthySub"),
+    ],
+    ["other", t("reportCancelOther"), t("reportCancelOtherSub")],
   ];
-  const emptyRunReasons = [
-    ["not_operational", t("emptyRunReasonNotOperational")],
-    ["not_roadworthy", t("emptyRunReasonNotRoadworthy")],
-    ["not_present", t("emptyRunReasonNotPresent")],
-    ["not_released", t("emptyRunReasonNotReleased")],
-    ["key_docs_missing", t("emptyRunReasonKeyDocs")],
-    ["other", t("emptyRunReasonOther")],
+  const notPerformableReasons = [
+    [
+      "vehicle_not_on_site",
+      t("problemReasonNotOnSite"),
+      t("problemReasonNotOnSiteSub"),
+    ],
+    [
+      "vehicle_not_roadworthy",
+      t("problemReasonNotRoadworthy"),
+      t("problemReasonNotRoadworthySub"),
+    ],
+    [
+      "contact_unreachable",
+      t("problemReasonNoContact"),
+      t("problemReasonNoContactSub"),
+    ],
+    [
+      "wrong_address",
+      t("problemReasonWrongAddress"),
+      t("problemReasonWrongAddressSub"),
+    ],
+    ["other", t("problemReasonOther"), t("problemReasonOtherSub")],
   ];
-  const isCancel = path === "cancel";
-  const reasonList = isCancel ? cancelReasons : emptyRunReasons;
-  const reasonLabel = isCancel ? t("spCancelReasonLabel") : t("emptyRunReasonLabel");
-  const explLabel = isCancel
-    ? t("spCancelExplanationLabel")
-    : t("emptyRunDescLabel");
-  const explPlaceholder = isCancel
-    ? t("spCancelExplanationPlaceholder")
-    : t("emptyRunDescPlaceholder");
-  const slideLabel = isCancel ? t("spCancelSlide") : t("emptyRunSlide");
-  const slideDoneLabel = isCancel ? t("spCancelSlideDone") : t("emptyRunSlideDone");
-  const slideLockedLabel = isCancel
-    ? t("spCancelSlideLocked")
-    : t("emptyRunSlideLocked");
-
-  // Latest submit closure for the slide gesture (evidence only for empty run).
-  const submitRef = useRef(() => {});
-  submitRef.current = () =>
-    onSubmit(path, reason, text.trim(), isCancel ? [] : evidenceFiles);
+  const reasonList = path === "cancel" ? cancelReasons : notPerformableReasons;
 
   const slideEnabled = valid && !slideDone;
-
-  const choosePath = (id) => {
-    setPath(id);
-    setReason(id === "cancel" ? "appointment_not_kept" : "not_operational");
-    setText("");
-    setEvidenceFiles([]);
-    setEvidenceNotice(null);
-    setSlidePos(0);
-    setSlideDone(false);
-    setCancelStep("warn");
-    setTermsOpen(false);
-  };
-  const backToEntry = () => {
-    setPath(null);
-    setEvidenceFiles([]);
-    setSlidePos(0);
-    setSlideDone(false);
-    setTermsOpen(false);
-  };
 
   const onSlideStart = (e) => {
     e.preventDefault();
@@ -3578,7 +3617,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
         setSlidePos(maxX);
         setSlideDone(true);
         cleanup();
-        setTimeout(() => submitRef.current(), 380);
+        setTimeout(() => onSubmit("cancel", reason, text.trim(), []), 380);
       }
     };
     const up = (ev) => {
@@ -3602,53 +3641,6 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
   };
-
-  // Which UI to show: entry → (cancel: warn → form) | (empty run: form).
-  const showCancelWarn = isCancel && cancelStep === "warn";
-  const showForm = path && !showCancelWarn;
-
-  const slideBlock = (
-    <div className="slide-confirm-wrap mt-16">
-      <div
-        ref={trackRef}
-        className={
-          "slide-confirm" +
-          (slideDone ? " done" : "") +
-          (slideDragging ? " dragging" : "") +
-          (!slideEnabled ? " disabled" : "")
-        }
-        aria-disabled={!slideEnabled}
-      >
-        <div className="track-text">
-          {slideDone ? slideDoneLabel : valid ? slideLabel : slideLockedLabel}
-        </div>
-        <div className="slide-fill" style={{ width: valid ? slidePos : 0 }} />
-        <div
-          className="track-text track-text-fill"
-          style={{
-            clipPath: `inset(0 calc(100% - ${valid ? slidePos : 0}px) 0 0)`,
-          }}
-        >
-          {slideDone ? slideDoneLabel : valid ? slideLabel : slideLockedLabel}
-        </div>
-        <div
-          className="thumb"
-          style={{ transform: `translateX(${valid ? slidePos : 0}px)` }}
-          onPointerDown={slideEnabled ? onSlideStart : undefined}
-          tabIndex={slideEnabled ? 0 : -1}
-        >
-          {slideDone ? (
-            <SlideCheckIcon />
-          ) : valid ? (
-            <SlideArrowIcon />
-          ) : (
-            <SlideLockIcon />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
@@ -3660,35 +3652,26 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
             </span>
             {t("reportProblem")}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn icon sm"
-            aria-label={t("dismiss")}
-          >
+          <button type="button" onClick={onClose} className="btn icon sm" aria-label={t("dismiss")}>
             <Ic.X />
           </button>
         </div>
         <div className="sheet-body">
           {!path ? (
             <div className="flex-col-gap-10">
-              {[
-                [
-                  "cancel",
-                  t("warnEntryCancelOption"),
-                  t("warnEntryCancelSub"),
-                ],
-                [
-                  "not_performable",
-                  t("warnEntryEmptyRunOption"),
-                  t("warnEntryEmptyRunSub"),
-                ],
-              ].map(([id, label, sub]) => (
+              {pathOptions.map(([id, label, sub]) => (
                 <button
                   key={id}
                   type="button"
                   className="radio-card"
-                  onClick={() => choosePath(id)}
+                  onClick={() => {
+                    setPath(id);
+                    setReason(id === "cancel" ? "driver_unavailable" : "other");
+                    setText("");
+                    setEvidenceFiles([]);
+                    setSlidePos(0);
+                    setSlideDone(false);
+                  }}
                 >
                   <span className="ring"></span>
                   <div>
@@ -3698,68 +3681,24 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                 </button>
               ))}
             </div>
-          ) : showCancelWarn ? (
-            <>
-              <button
-                type="button"
-                className="btn ghost xs"
-                style={{ marginBottom: 12, padding: 0 }}
-                onClick={backToEntry}
-              >
-                {t("back")}
-              </button>
-              <div
-                role="alert"
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(234, 179, 8, 0.45)",
-                  background: "rgba(234, 179, 8, 0.1)",
-                  fontSize: 12.5,
-                  lineHeight: 1.55,
-                }}
-              >
-                <p style={{ margin: 0 }}>{t("spCancelBindingWarning")}</p>
-                <p style={{ margin: "10px 0 0" }}>
-                  <button
-                    type="button"
-                    className="btn ghost xs"
-                    style={{
-                      color: "var(--primary)",
-                      padding: 0,
-                      textDecoration: "underline",
-                      textUnderlineOffset: 3,
-                    }}
-                    aria-expanded={termsOpen}
-                    onClick={() => setTermsOpen((v) => !v)}
-                  >
-                    {t("spCancelTermsLink")}
-                  </button>
-                </p>
-                {termsOpen ? (
-                  <div className="stack-8">
-                    <InlineAlert
-                      tone="info"
-                      message={t("spCancelTermsPlaceholderNotice")}
-                      onDismiss={() => setTermsOpen(false)}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            </>
           ) : (
             <>
               <button
                 type="button"
                 className="btn ghost xs"
                 style={{ marginBottom: 12, padding: 0 }}
-                onClick={isCancel ? () => setCancelStep("warn") : backToEntry}
+                onClick={() => {
+                  setPath(null);
+                  setEvidenceFiles([]);
+                  setSlidePos(0);
+                  setSlideDone(false);
+                }}
               >
                 {t("back")}
               </button>
-              <div className="field-label">{reasonLabel}</div>
+              <div className="field-label">{t("reason")}</div>
               <div className="flex-col-gap-10" style={{ marginBottom: 18 }}>
-                {reasonList.map(([id, label]) => (
+                {reasonList.map(([id, label, sub]) => (
                   <button
                     key={id}
                     type="button"
@@ -3769,37 +3708,40 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                     <span className="ring"></span>
                     <div>
                       <div className="t">{label}</div>
+                      <div className="s">{sub}</div>
                     </div>
                   </button>
                 ))}
               </div>
-              <div className="field-label">{explLabel}</div>
+              <div className="field-label">{t("explanationRequired")}</div>
               <textarea
                 className="input"
-                placeholder={explPlaceholder}
+                placeholder={t("reportProblemPlaceholder")}
                 value={text}
                 onChange={(e) => {
                   const next = e.target.value;
                   setText(next);
-                  if (next.trim().length < MIN) {
+                  if (next.trim().length < 10) {
                     setSlidePos(0);
                     setSlideDone(false);
                   }
                 }}
               />
               <div className="label" style={{ marginTop: 6 }}>
+                {t("charsRequired")}{" "}
                 <span
                   className={"slide-char-count " + (valid ? "ok" : "need-more")}
                 >
-                  {text.trim().length}
-                </span>{" "}
-                {t("chars30Required")}
+                  {text.trim().length}/10
+                </span>
               </div>
-              {!isCancel ? (
+              {path === "not_performable" ? (
                 <div className="mt-16">
-                  <div className="field-label">{t("emptyRunEvidenceLabel")}</div>
+                  <div className="field-label">
+                    {t("reportProblemEvidenceLabel")}
+                  </div>
                   <p className="req-panel-desc" style={{ margin: "6px 0 10px" }}>
-                    {t("emptyRunEvidenceHint")}
+                    {t("reportProblemEvidenceHint")}
                   </p>
                   <input
                     ref={evidenceInputRef}
@@ -3864,7 +3806,9 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                             borderRadius: "var(--r-2)",
                           }}
                         >
-                          <span className="pdf-name">{f.name}</span>
+                          <span className="pdf-name">
+                            {f.name}
+                          </span>
                           <button
                             type="button"
                             className="btn ghost xs"
@@ -3880,40 +3824,125 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                       ))}
                     </ul>
                   ) : null}
+                </div>
+              ) : null}
+              {path === "cancel" ? (
+                <>
                   <div
                     role="alert"
                     style={{
                       marginTop: 16,
                       padding: "12px 14px",
                       borderRadius: 10,
-                      border: "1px solid color-mix(in srgb, var(--st-warn) 45%, transparent)",
-                      background: "color-mix(in srgb, var(--st-warn) 10%, transparent)",
+                      border: "1px solid rgba(234, 179, 8, 0.45)",
+                      background: "rgba(234, 179, 8, 0.1)",
                       fontSize: 12.5,
                       lineHeight: 1.55,
                     }}
                   >
-                    {t("emptyRunWarning")}
+                    <p style={{ margin: 0 }}>
+                      {t("reportProblemCancelBindingWarning")}
+                    </p>
+                    <p
+                      style={{
+                        margin: "10px 0 0",
+                        fontSize: 12,
+                        color: "var(--muted)",
+                      }}
+                    >
+                      <PolicyDisclosure introKey="reportProblemCancelTermsIntro" />
+                    </p>
                   </div>
-                </div>
-              ) : null}
-              {slideBlock}
+                  <div className="slide-confirm-wrap mt-16">
+                    <div
+                      ref={trackRef}
+                      className={
+                        "slide-confirm" +
+                        (slideDone ? " done" : "") +
+                        (slideDragging ? " dragging" : "") +
+                        (!slideEnabled ? " disabled" : "")
+                      }
+                      aria-disabled={!slideEnabled}
+                    >
+                      <div className="track-text">
+                        {slideDone
+                          ? t("reportProblemCancelConfirmed")
+                          : valid
+                            ? t("slideToCancelOrder")
+                            : t("slideToCancelOrderLocked")}
+                      </div>
+                      <div
+                        className="slide-fill"
+                        style={{ width: valid ? slidePos : 0 }}
+                      />
+                      <div
+                        className="track-text track-text-fill"
+                        style={{
+                          clipPath: `inset(0 calc(100% - ${valid ? slidePos : 0}px) 0 0)`,
+                        }}
+                      >
+                        {slideDone
+                          ? t("reportProblemCancelConfirmed")
+                          : valid
+                            ? t("slideToCancelOrder")
+                            : t("slideToCancelOrderLocked")}
+                      </div>
+                      <div
+                        className="thumb"
+                        style={{
+                          transform: `translateX(${valid ? slidePos : 0}px)`,
+                        }}
+                        onPointerDown={slideEnabled ? onSlideStart : undefined}
+                        tabIndex={slideEnabled ? 0 : -1}
+                      >
+                        {slideDone ? (
+                          <SlideCheckIcon />
+                        ) : valid ? (
+                          <SlideArrowIcon />
+                        ) : (
+                          <SlideLockIcon />
+                        )}
+                      </div>
+                    </div>
+                    {!valid && !slideDone && (
+                      <p className="slide-confirm-hint">
+                        {t("slideToCancelOrderHint")}
+                      </p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p
+                  style={{
+                    margin: "14px 0 0",
+                    fontSize: 12,
+                    color: "var(--muted)",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {t("reportProblemSpecialCaseNotice")}
+                </p>
+              )}
             </>
           )}
         </div>
-        {showCancelWarn ? (
+        {path === "not_performable" ? (
           <div className="sheet-foot">
             <button type="button" className="btn" onClick={onClose}>
-              {t("spCancelAbort")}
+              {t("close")}
             </button>
             <button
               type="button"
               className="btn primary"
-              onClick={() => setCancelStep("form")}
+              disabled={!valid}
+              onClick={() =>
+                onSubmit("not_performable", reason, text.trim(), evidenceFiles)
+              }
             >
-              {t("spCancelContinue")}
+              {t("submit")}
             </button>
           </div>
-        ) : showForm ? (
+        ) : path ? (
           <div className="sheet-foot">
             <button type="button" className="btn block" onClick={onClose}>
               {t("close")}
@@ -3970,7 +3999,7 @@ const PendingNotice = ({ onClose, kind }) => {
           </svg>
         </div>
         <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 600 }}>
-          {isCancel ? t("spCancelSuccessTitle") : t("emptyRunSuccessTitle")}
+          {t("requestSent")}
         </h3>
         <p
           style={{
@@ -3980,7 +4009,9 @@ const PendingNotice = ({ onClose, kind }) => {
             lineHeight: 1.55,
           }}
         >
-          {isCancel ? t("spCancelSuccessBody") : t("emptyRunSuccessBody")}
+          {isCancel
+            ? t("reportProblemCancelSent")
+            : t("reportProblemSpecialCaseSent")}
         </p>
         <button
           type="button"
@@ -3995,10 +4026,10 @@ const PendingNotice = ({ onClose, kind }) => {
 };
 
 // =========================================================================
-// MARK PERFORMED — deliberate two-stage flow (Figma 07/2026):
+// MARK PERFORMED ΓÇö deliberate two-stage flow (Figma 07/2026):
 //   1. slide-to-confirm (same binding gesture as acceptance; a plain tap
-//      could be accidental — Cancel backs out without any state change)
-//   2. success screen with optional document upload (invoice, receipts…)
+//      could be accidental ΓÇö Cancel backs out without any state change)
+//   2. success screen with optional document upload (invoice, receiptsΓÇª)
 //      reusing the tour-document type chooser; documents can also be added
 //      later from the tour's documents tab.
 // =========================================================================
@@ -4104,7 +4135,7 @@ const MarkPerformedSheet = ({ job, onClose }) => {
               Tour #{job.id}
             </div>
             <div className="mono mono-strong">
-              {job.startPlz} → {job.endPlz} · {job.distanceKm} km
+              {job.startPlz} ΓåÆ {job.endPlz} ┬╖ {job.distanceKm} km
             </div>
           </div>
           <p className="para-intro">{t("markPerformedConfirmBody")}</p>
@@ -4145,7 +4176,7 @@ const MarkPerformedSheet = ({ job, onClose }) => {
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
               <path
                 d="M6 12l4 4 8-9"
-                stroke="currentColor"
+                stroke="#fff"
                 strokeWidth="2.4"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -4256,7 +4287,7 @@ const ProfilePane = () => {
             {AuthStore.DEMO_DRIVER}
           </div>
           <div className="mono text-muted-sm">
-            {t("driverCode")}: AU-41-0228 · {t("driverStatusActive")}
+            {t("driverCode")}: AU-41-0228 ┬╖ {t("driverStatusActive")}
           </div>
         </div>
       </div>
@@ -4376,7 +4407,7 @@ const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
                     ) : null}
                     <span className="notification-row-meta mono">
                       {row.createdAt}
-                      {row.tour ? ` · ${row.tour}` : ""}
+                      {row.tour ? ` ┬╖ ${row.tour}` : ""}
                     </span>
                   </span>
                 </>
@@ -4489,18 +4520,17 @@ const DriverNotificationsPane = ({ onClose, onBack, onOpenJob, onOpenInfopoint }
   );
 };
 
-// Email intentionally excluded — it is the driver's own sign-in credential
-// and is managed self-serve in the Account & sign-in card, not through the
-// ops-approval master-data flow.
 const PROFILE_MDR_FIELDS = [
   { key: "company", required: true },
   { key: "address" },
+  { key: "email", required: true, type: "email" },
   { key: "phone" },
 ];
 
 const emptyMasterDataChangeForm = (driver) => ({
   company: driver?.company || "",
   address: driver?.address || "",
+  email: driver?.email || "",
   phone: driver?.phone || "",
 });
 
@@ -4509,268 +4539,7 @@ const fieldChanged = (before, after) =>
 
 const formatCalendarDayLabel = (dayKey) => {
   const m = String(dayKey || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return m ? `${m[3]}.${m[2]}.${m[1]}` : dayKey || "—";
-};
-
-// 6-digit confirmation-code entry (auto-advance + paste support).
-const CODE_LEN = 6;
-const CodeInput = ({ value, onChange, disabled }) => {
-  const refs = useRef([]);
-  const digits = String(value || "")
-    .padEnd(CODE_LEN, " ")
-    .slice(0, CODE_LEN)
-    .split("")
-    .map((c) => (c === " " ? "" : c));
-
-  const setDigit = (idx, ch) => {
-    const clean = ch.replace(/\D/g, "");
-    const next = digits.slice();
-    if (clean.length > 1) {
-      // paste / multiple chars: fill forward from idx
-      for (let i = 0; i < clean.length && idx + i < CODE_LEN; i++) {
-        next[idx + i] = clean[i];
-      }
-      onChange(next.join("").trim());
-      const landing = Math.min(idx + clean.length, CODE_LEN - 1);
-      refs.current[landing]?.focus();
-      return;
-    }
-    next[idx] = clean;
-    onChange(next.join(""));
-    if (clean && idx < CODE_LEN - 1) refs.current[idx + 1]?.focus();
-  };
-
-  const onKeyDown = (idx, e) => {
-    if (e.key === "Backspace" && !digits[idx] && idx > 0) {
-      refs.current[idx - 1]?.focus();
-    }
-  };
-
-  return (
-    <div className="code-input-row" role="group" aria-label={CODE_LEN + "-digit code"}>
-      {Array.from({ length: CODE_LEN }, (_, i) => (
-        <input
-          key={i}
-          ref={(el) => (refs.current[i] = el)}
-          className="code-input-box"
-          type="text"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={1}
-          disabled={disabled}
-          value={digits[i]}
-          aria-label={`Digit ${i + 1}`}
-          onChange={(e) => setDigit(i, e.target.value)}
-          onKeyDown={(e) => onKeyDown(i, e)}
-          onFocus={(e) => e.target.select()}
-        />
-      ))}
-    </div>
-  );
-};
-
-// Self-serve email change — a single bottom sheet advancing through
-// enter-new-address → confirm-with-code → updated. The address only becomes
-// active after the code sent to the NEW inbox is confirmed; the old inbox
-// stays live until then and is notified on success. No ops approval.
-const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
-  const { t } = useI18n();
-  const store = useAuthStore();
-  const [step, setStep] = useState("enter"); // enter | code | done
-  const [newEmail, setNewEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-  const [demoCode, setDemoCode] = useState("");
-  const [confirmedEmail, setConfirmedEmail] = useState("");
-  const [resendLeft, setResendLeft] = useState(0);
-
-  // Reset everything whenever the sheet opens.
-  useEffect(() => {
-    if (open) {
-      setStep("enter");
-      setNewEmail("");
-      setCode("");
-      setError("");
-      setDemoCode("");
-      setConfirmedEmail("");
-      setResendLeft(0);
-    }
-  }, [open]);
-
-  // Resend cooldown countdown.
-  useEffect(() => {
-    if (resendLeft <= 0) return undefined;
-    const id = setInterval(() => setResendLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
-    return () => clearInterval(id);
-  }, [resendLeft]);
-
-  const errKey = {
-    invalid_email: "changeEmailErrInvalid",
-    same_email: "changeEmailErrSame",
-    duplicate_email: "changeEmailErrDuplicate",
-    invalid_code: "changeEmailErrCodeInvalid",
-    expired: "changeEmailErrCodeExpired",
-    restricted: "changeEmailErrRestricted",
-  };
-  const mapErr = (reason) => t(errKey[reason] || "changeEmailErrGeneric");
-
-  const close = () => {
-    if (step !== "done") store.cancelDriverEmailChange();
-    onClose();
-  };
-
-  const sendCode = () => {
-    const r = store.startDriverEmailChange(newEmail);
-    if (!r.ok) {
-      setError(mapErr(r.reason));
-      return;
-    }
-    setError("");
-    setCode("");
-    setDemoCode(r.code);
-    setResendLeft(30);
-    setStep("code");
-  };
-
-  const resend = () => {
-    if (resendLeft > 0) return;
-    const r = store.resendDriverEmailCode();
-    if (!r.ok) {
-      setError(mapErr(r.reason));
-      return;
-    }
-    setError("");
-    setCode("");
-    setDemoCode(r.code);
-    setResendLeft(30);
-  };
-
-  const confirm = () => {
-    const r = store.confirmDriverEmailChange(code);
-    if (!r.ok) {
-      setError(mapErr(r.reason));
-      return;
-    }
-    setConfirmedEmail(r.email);
-    setError("");
-    setStep("done");
-  };
-
-  const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-
-  let title = t("changeEmailTitle");
-  let body = null;
-  let footer = null;
-
-  if (step === "enter") {
-    body = (
-      <div className="stack-4" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div className="change-email-current">
-          {t("changeEmailCurrentPrefix")} · <span className="mono">{currentEmail}</span>
-        </div>
-        <div>
-          <label className="field-label" htmlFor="change-email-new">
-            {t("changeEmailNewLabel")}
-          </label>
-          <input
-            id="change-email-new"
-            className="input"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            placeholder={t("changeEmailNewPlaceholder")}
-            value={newEmail}
-            onChange={(e) => {
-              setNewEmail(e.target.value);
-              if (error) setError("");
-            }}
-          />
-        </div>
-        <p className="section-hint" style={{ margin: 0 }}>
-          {t("changeEmailCodeNotice")}
-        </p>
-        {error ? <InlineAlert tone="error" message={error} /> : null}
-      </div>
-    );
-    footer = (
-      <button
-        type="button"
-        className="btn primary block"
-        disabled={!newEmail.trim()}
-        onClick={sendCode}
-      >
-        {t("changeEmailSendCode")}
-      </button>
-    );
-  } else if (step === "code") {
-    title = t("changeEmailCodeTitle");
-    body = (
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div className="change-email-current">
-          {t("changeEmailCodeSentTo", { email: newEmail })}
-        </div>
-        <CodeInput value={code} onChange={(v) => { setCode(v); if (error) setError(""); }} />
-        <div className="change-email-resend-row">
-          {resendLeft > 0 ? (
-            <span className="section-hint">
-              {t("changeEmailResendIn", { time: mmss(resendLeft) })}
-            </span>
-          ) : (
-            <button type="button" className="btn ghost xs" onClick={resend}>
-              {t("changeEmailResend")}
-            </button>
-          )}
-        </div>
-        {demoCode ? (
-          <InlineAlert tone="info" message={t("changeEmailDemoHint", { code: demoCode })} />
-        ) : null}
-        {error ? <InlineAlert tone="error" message={error} /> : null}
-      </div>
-    );
-    footer = (
-      <>
-        <button
-          type="button"
-          className="btn ghost"
-          onClick={() => {
-            setStep("enter");
-            setError("");
-          }}
-        >
-          {t("changeEmailBack")}
-        </button>
-        <button
-          type="button"
-          className="btn primary"
-          disabled={code.replace(/\D/g, "").length !== CODE_LEN}
-          onClick={confirm}
-        >
-          {t("changeEmailConfirm")}
-        </button>
-      </>
-    );
-  } else {
-    title = t("changeEmailSuccessTitle");
-    body = (
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", textAlign: "center" }}>
-        <span className="change-email-success-check" aria-hidden="true">✓</span>
-        <p style={{ margin: 0 }}>
-          {t("changeEmailSuccessBody", { email: confirmedEmail })}
-        </p>
-      </div>
-    );
-    footer = (
-      <button type="button" className="btn primary block" onClick={onClose}>
-        {t("changeEmailDone")}
-      </button>
-    );
-  }
-
-  return (
-    <Sheet open={open} onClose={close} title={title} footer={footer}>
-      {body}
-    </Sheet>
-  );
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : dayKey || "ΓÇö";
 };
 
 const DriverProbationCard = () => {
@@ -4867,7 +4636,7 @@ const ProbationLimitSheet = ({ limitInfo, onClose }) => {
   );
 };
 
-// Help — Infopoint tab only (dispatcher hotline + email; no FAQ accordion)
+// Help ΓÇö Infopoint tab only (dispatcher hotline + email; no FAQ accordion)
 const HelpSupportContent = () => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -4932,15 +4701,11 @@ function applyAppTheme(theme) {
   } catch (_) {
     /* no-op */
   }
-  const canvas = getComputedStyle(document.documentElement)
-    .getPropertyValue("--brand-canvas")
-    .trim();
-  if (canvas) {
-    document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
-      meta.setAttribute("content", canvas);
-      meta.removeAttribute("media");
-    });
-  }
+  const color = theme === "dark" ? "#1C1C1E" : "#FFFFFF";
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.setAttribute("content", color);
+    meta.removeAttribute("media");
+  });
   const appleStatus = document.querySelector(
     'meta[name="apple-mobile-web-app-status-bar-style"]',
   );
@@ -4952,6 +4717,66 @@ function applyAppTheme(theme) {
   }
 }
 
+// Full-row navigation entry: left icon, label (+ optional supporting text),
+// trailing chevron. The whole row is a single accessible button.
+const ProfileNavRow = ({ icon: Icon, label, sub, onClick }) => (
+  <button type="button" className="profile-nav-row" onClick={onClick}>
+    <span className="profile-nav-row-icon" aria-hidden="true">
+      <Icon />
+    </span>
+    <span className="profile-nav-row-text">
+      <span className="profile-nav-row-label">{label}</span>
+      {sub ? <span className="profile-nav-row-sub">{sub}</span> : null}
+    </span>
+    <span className="profile-nav-row-chevron" aria-hidden="true">
+      <Ic.Chev />
+    </span>
+  </button>
+);
+
+// Labelled group of navigation rows (KONTO / EINSTELLUNGEN / HILFE).
+const ProfileGroup = ({ label, children }) => (
+  <section className="profile-group">
+    <h2 className="profile-group-label">{label}</h2>
+    <div className="section-card profile-nav-card">{children}</div>
+  </section>
+);
+
+// Deferred subpage shell (Feedback / Report an error): a visually complete
+// prototype form whose submit is intentionally inert ΓÇö no backend workflow yet.
+const DeferredFormCard = ({ intro, placeholder, submitLabel, deferredNote }) => (
+  <div className="section-card">
+    <p className="section-hint" style={{ marginTop: 0 }}>
+      {intro}
+    </p>
+    <div className="stack-16">
+      <textarea className="input" rows={5} placeholder={placeholder} />
+    </div>
+    <button type="button" className="btn primary block stack-16" disabled>
+      {submitLabel}
+    </button>
+    <div className="stack-16">
+      <InlineAlert tone="info" message={deferredNote} />
+    </div>
+  </div>
+);
+
+// In-page back header for a drill-down subpage (mirrors pwa-detail-header).
+const ProfileSubpageHeader = ({ title, backLabel, onBack }) => (
+  <div className="pwa-detail-header">
+    <button
+      type="button"
+      className="detail-back-btn"
+      onClick={onBack}
+      aria-label={backLabel}
+    >
+      <Ic.Back />
+    </button>
+    <h1 className="detail-header-title">{title}</h1>
+    <div className="w-40-spacer" />
+  </div>
+);
+
 const ProfilePaneFull = () => {
   const { t, locale, setLocale } = useI18n();
   const store = useAuthStore();
@@ -4962,14 +4787,10 @@ const ProfilePaneFull = () => {
   const [postalText, setPostalText] = useState("");
   const [theme, setTheme] = useState(readStoredTheme);
   const postalAreas = prefs.postalAreas || [];
-  const isPwaSurface =
-    typeof document !== "undefined" &&
-    document.body.classList.contains("pwa-page");
 
   useEffect(() => {
-    if (!isPwaSurface) return;
     applyAppTheme(theme);
-  }, [theme, isPwaSurface]);
+  }, [theme]);
 
   const handleAddPostal = (val) => {
     const trimmed = val.trim();
@@ -5013,8 +4834,10 @@ const ProfilePaneFull = () => {
   };
   const [mdFeedback, setMdFeedback] = useState(null); // {tone, message}
   const [signOutOpen, setSignOutOpen] = useState(false);
-  const [emailSheetOpen, setEmailSheetOpen] = useState(false);
-  const emailChange = store.getDriverEmailChange();
+  // Drill-down navigation: null = main list; otherwise a subpage id.
+  // State-based routing mirrors the job-detail pattern (PwaDriverApp.activeJob),
+  // keeping the bottom tab bar visible on the Profile tab.
+  const [subpage, setSubpage] = useState(null);
   const submitMasterDataRequest = () => {
     const r = store.requestMasterDataChange(mdForm);
     if (r.ok) {
@@ -5037,399 +4860,514 @@ const ProfilePaneFull = () => {
     });
   };
 
-  return (
-    <>
-      <div className="pwa-screen-header">
-        <h1 className="header-title">{t("profileTitle")}</h1>
-        <div className="header-subtitle">{t("profileSubtitle")}</div>
-      </div>
-      <div className="scroll scroll-body">
-        {/* Identity — header block, not a card (plan §7.7.1) */}
-        <div className="profile-identity">
-          <span className="avatar">
-            {d?.name
-              ? d.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-              : "JB"}
+  const initials = d?.name
+    ? d.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+    : "JB";
+  const statusActive = String(d?.status || "").toLowerCase() === "active";
+
+  // ---- Moved content (reused verbatim inside their drill-down subpages) ----
+
+  // Basic data ΓåÆ existing read-only master data + "Request a change" flow.
+  const masterDataCard = (
+    <div className="section-card mdr-card">
+      <div className="row-between">
+        <h2 className="section-title">{t("profileMasterData")}</h2>
+        {profileMode === "pending" ? (
+          <span className="pill assigned">
+            {t("masterDataChangePendingBadge")}
           </span>
-          <div className="flex-1-min-0">
-            <div className="profile-identity-name">
-              {d?.name}
-              {d?.status === "active" && (
-                <span
-                  className="profile-verified-badge"
-                  title={t("profileVerifiedAccount")}
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                  </svg>
-                </span>
-              )}
-            </div>
-            <div className="profile-identity-code">{d?.driverCode}</div>
-            <div className="stack-4">
-              <span className="pill accepted">
-                {displayDriverStatus(d?.status, t)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Account & sign-in — driver-owned credential, directly under the
-            identity block. Self-serve email change (verify, don't approve). */}
-        <div className="section-card account-signin-card">
-          <h2 className="section-title account-signin-title">
-            <span className="account-signin-key" aria-hidden="true">
-              🔑
-            </span>
-            {t("accountSigninTitle")}
-          </h2>
-          <div className="account-email-row">
-            <div className="mdr-field-label">{t("accountEmailLabel")}</div>
-            <div className="account-email-value">
-              <span className="account-email-address">{d?.email || "—"}</span>
-              {emailChange?.pending ? (
-                <span className="pill assigned account-email-badge">
-                  {t("accountEmailPending")}
-                </span>
-              ) : (
-                <span className="account-email-verified">
-                  <span className="dot" aria-hidden="true">
-                    ●
-                  </span>{" "}
-                  {t("accountEmailVerified")}
-                </span>
-              )}
-            </div>
-          </div>
-          <button
-            type="button"
-            className="btn block stack-16"
-            onClick={() => setEmailSheetOpen(true)}
-          >
-            {t("accountEmailChangeBtn")}
-          </button>
-        </div>
-
-        {/* Probation progress card (hidden after release) */}
-        <DriverProbationCard />
-
-        {/* Master Data Card */}
-        <div className="section-card mdr-card">
-          <div className="row-between">
-            <h2 className="section-title">{t("profileMasterData")}</h2>
-            {profileMode === "pending" ? (
-              <span className="pill assigned">
-                {t("masterDataChangePendingBadge")}
-              </span>
-            ) : null}
-          </div>
-          {profileMode === "pending" ? (
-            <div className="mdr-status-banner stack-12" role="status">
-              <strong>{t("masterDataChangePendingTitle")}</strong>
-              <div className="stack-4">
-                {t("masterDataChangePendingBody", { date: openMdr.createdAt })}
-              </div>
-            </div>
-          ) : (
-            <p className="section-hint">
-              {profileMode === "edit"
-                ? t("masterDataChangeFormHint")
-                : t("masterDataChangeNotice")}
-            </p>
-          )}
-          <div className="mdr-field-list stack-16">
-            {PROFILE_MDR_FIELDS.map(({ key, required, type }) => {
-              const label = t(key);
-              const current = d?.[key] || "";
-              const pendingBefore = openMdr?.snapshot?.[key] || "";
-              const pendingAfter = openMdr?.proposed?.[key] || "";
-              const changed =
-                profileMode === "pending" &&
-                fieldChanged(pendingBefore, pendingAfter);
-              const inputId = `profile-mdr-${key}`;
-              return (
-                <div
-                  key={key}
-                  className={`mdr-field-row${changed ? " is-changed" : ""}`}
-                >
-                  <label className="mdr-field-label" htmlFor={inputId}>
-                    {label}
-                    {required && profileMode === "edit" ? " *" : ""}
-                  </label>
-                  <div className="mdr-field-body">
-                    {profileMode === "edit" ? (
-                      <input
-                        id={inputId}
-                        className="input"
-                        type={type || "text"}
-                        value={mdForm[key]}
-                        onChange={(e) => setMdField(key, e.target.value)}
-                      />
-                    ) : profileMode === "pending" ? (
-                      <>
-                        <div
-                          className={`mdr-field-value${changed ? " is-new" : ""}`}
-                        >
-                          {pendingAfter || "—"}
-                          {changed ? (
-                            <span className="mdr-field-badge stack-4">
-                              {t("masterDataChangeUpdatedBadge")}
-                            </span>
-                          ) : null}
-                        </div>
-                        {changed ? (
-                          <div className="mdr-field-old">
-                            {pendingBefore || "—"}
-                          </div>
-                        ) : null}
-                      </>
-                    ) : (
-                      <div className="mdr-field-value">{current || "—"}</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            <div className="mdr-field-row">
-              <div className="mdr-field-label">{t("accountStatus")}</div>
-              <div className="mdr-field-body">
-                <div className="mdr-field-value">
-                  {displayDriverStatus(d?.status, t)}
-                </div>
-              </div>
-            </div>
-          </div>
-          {mdFeedback ? (
-            <div className="stack-12">
-              <InlineAlert
-                tone={mdFeedback.tone}
-                message={mdFeedback.message}
-                onDismiss={() => setMdFeedback(null)}
-              />
-            </div>
-          ) : null}
-          {profileMode === "view" ? (
-            <button
-              type="button"
-              className="btn block stack-16"
-              onClick={startProfileEdit}
-            >
-              {t("masterDataChangeEditBtn")}
-            </button>
-          ) : null}
-          {profileMode === "edit" ? (
-            <div
-              className="mdr-actions stack-16"
-              style={{ display: "flex", gap: 10 }}
-            >
-              <button
-                type="button"
-                className="btn ghost block"
-                onClick={() => {
-                  cancelProfileEdit();
-                  setMdFeedback(null);
-                }}
-              >
-                {t("masterDataChangeCancel")}
-              </button>
-              <button
-                type="button"
-                className="btn primary block"
-                onClick={submitMasterDataRequest}
-              >
-                {t("masterDataChangeSubmit")}
-              </button>
-            </div>
-          ) : null}
-          {profileMode === "pending" && openMdr?.note && !openMdr?.proposed ? (
-            <p className="section-hint" style={{ fontStyle: "italic" }}>
-              {openMdr.note}
-            </p>
-          ) : null}
-        </div>
-
-        {/* Preferences & Notification Card */}
-        <div className="section-card">
-          <h2 className="section-title">{t("notificationPreferences")}</h2>
-
-          <div
-            className="stack-12"
-            style={{ display: "flex", flexDirection: "column", gap: 4 }}
-          >
-            <label className="switch-row">
-              <span className="switch-row-text">{t("pushEnabledMaster")}</span>
-              <span className="switch-toggle-wrap">
-                <input
-                  type="checkbox"
-                  className="switch-toggle-input"
-                  checked={prefs.pushEnabled !== false}
-                  onChange={(e) => setPref({ pushEnabled: e.target.checked })}
-                />
-                <span className="switch-slider" />
-              </span>
-            </label>
-            <label className="switch-row">
-              <span className="switch-row-text">
-                {t("pushNotifyNewPublished")}
-              </span>
-              <span className="switch-toggle-wrap">
-                <input
-                  type="checkbox"
-                  className="switch-toggle-input"
-                  checked={prefs.notifyNewPublished !== false}
-                  onChange={(e) =>
-                    setPref({ notifyNewPublished: e.target.checked })
-                  }
-                />
-                <span className="switch-slider" />
-              </span>
-            </label>
-          </div>
-
-          <div className="stack-16">
-            <label className="field-label">{t("vehicleType")}</label>
-            <div className="stack-4">
-              <select
-                className="input"
-                value={prefs.vehicle || "All"}
-                onChange={(e) => setPref({ vehicle: e.target.value })}
-              >
-                {["All", "PKW", "SUV", "Van", "Light truck <3.5t"].map((x) => (
-                  <option key={x} value={x}>
-                    {displayVehicle(x, t)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="stack-16">
-            <label className="field-label">{t("axle")}</label>
-            <div className="seg full">
-              {["All", "Own axle", "Third-party axle"].map((x) => (
-                <button
-                  key={x}
-                  type="button"
-                  className={(prefs.axle || "All") === x ? "on" : ""}
-                  onClick={() => setPref({ axle: x })}
-                >
-                  {displayAxle(x, t)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="stack-16">
-            <label className="field-label" htmlFor="profile-postal-input">
-              {t("pushNotifyPostalPrefix")}
-            </label>
-            <div className="postal-chip-container stack-4">
-              {postalAreas.map((chip, idx) => (
-                <span key={idx} className="postal-chip">
-                  {chip}
-                  <button
-                    type="button"
-                    className="postal-chip-delete"
-                    onClick={() => removePostal(idx)}
-                    aria-label={`Remove postal code ${chip}`}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-              <input
-                id="profile-postal-input"
-                type="text"
-                className="postal-chip-input"
-                value={postalText}
-                inputMode="numeric"
-                maxLength={5}
-                onChange={(e) =>
-                  setPostalText(e.target.value.replace(/\D/g, ""))
-                }
-                onKeyDown={handleKeyDown}
-                onBlur={handleBlur}
-                placeholder={
-                  postalAreas.length === 0 ? t("pushPostalPrefixHint") : ""
-                }
-              />
-            </div>
-          </div>
-          <div className="stack-16">
-            <InlineAlert tone="info" message={t("pushSupportNotice")} />
-          </div>
-        </div>
-
-        {isPwaSurface ? (
-          <div className="section-card">
-            <h2 className="section-title">{t("appAppearance")}</h2>
-            <p className="section-hint">{t("appAppearanceHint")}</p>
-            <div className="stack-16">
-              <label className="field-label">{t("appLanguage")}</label>
-              <div className="seg full" role="group" aria-label={t("appLanguage")}>
-                <button
-                  type="button"
-                  className={locale === "en" ? "on" : ""}
-                  aria-pressed={locale === "en"}
-                  onClick={() => setLocale("en")}
-                >
-                  English
-                </button>
-                <button
-                  type="button"
-                  className={locale === "de" ? "on" : ""}
-                  aria-pressed={locale === "de"}
-                  onClick={() => setLocale("de")}
-                >
-                  Deutsch
-                </button>
-              </div>
-            </div>
-            <div className="stack-16">
-              <label className="field-label">{t("appTheme")}</label>
-              <div className="seg full" role="group" aria-label={t("appTheme")}>
-                <button
-                  type="button"
-                  className={theme === "light" ? "on" : ""}
-                  aria-pressed={theme === "light"}
-                  onClick={() => setTheme("light")}
-                >
-                  {t("themeLight")}
-                </button>
-                <button
-                  type="button"
-                  className={theme === "dark" ? "on" : ""}
-                  aria-pressed={theme === "dark"}
-                  onClick={() => setTheme("dark")}
-                >
-                  {t("themeDark")}
-                </button>
-              </div>
-            </div>
-          </div>
         ) : null}
-
+      </div>
+      {profileMode === "pending" ? (
+        <div className="mdr-status-banner stack-12" role="status">
+          <strong>{t("masterDataChangePendingTitle")}</strong>
+          <div className="stack-4">
+            {t("masterDataChangePendingBody", { date: openMdr.createdAt })}
+          </div>
+        </div>
+      ) : (
+        <p className="section-hint">
+          {profileMode === "edit"
+            ? t("masterDataChangeFormHint")
+            : t("masterDataChangeNotice")}
+        </p>
+      )}
+      <div className="mdr-field-list stack-16">
+        {PROFILE_MDR_FIELDS.map(({ key, required, type }) => {
+          const label = t(key);
+          const current = d?.[key] || "";
+          const pendingBefore = openMdr?.snapshot?.[key] || "";
+          const pendingAfter = openMdr?.proposed?.[key] || "";
+          const changed =
+            profileMode === "pending" &&
+            fieldChanged(pendingBefore, pendingAfter);
+          const inputId = `profile-mdr-${key}`;
+          return (
+            <div
+              key={key}
+              className={`mdr-field-row${changed ? " is-changed" : ""}`}
+            >
+              <label className="mdr-field-label" htmlFor={inputId}>
+                {label}
+                {required && profileMode === "edit" ? " *" : ""}
+              </label>
+              <div className="mdr-field-body">
+                {profileMode === "edit" ? (
+                  <input
+                    id={inputId}
+                    className="input"
+                    type={type || "text"}
+                    value={mdForm[key]}
+                    onChange={(e) => setMdField(key, e.target.value)}
+                  />
+                ) : profileMode === "pending" ? (
+                  <>
+                    <div
+                      className={`mdr-field-value${changed ? " is-new" : ""}`}
+                    >
+                      {pendingAfter || "ΓÇö"}
+                      {changed ? (
+                        <span className="mdr-field-badge stack-4">
+                          {t("masterDataChangeUpdatedBadge")}
+                        </span>
+                      ) : null}
+                    </div>
+                    {changed ? (
+                      <div className="mdr-field-old">
+                        {pendingBefore || "ΓÇö"}
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="mdr-field-value">{current || "ΓÇö"}</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        <div className="mdr-field-row">
+          <div className="mdr-field-label">{t("accountStatus")}</div>
+          <div className="mdr-field-body">
+            <div className="mdr-field-value">
+              {displayDriverStatus(d?.status, t)}
+            </div>
+          </div>
+        </div>
+      </div>
+      {mdFeedback ? (
+        <div className="stack-12">
+          <InlineAlert
+            tone={mdFeedback.tone}
+            message={mdFeedback.message}
+            onDismiss={() => setMdFeedback(null)}
+          />
+        </div>
+      ) : null}
+      {profileMode === "view" ? (
         <button
           type="button"
-          className="btn destructive-outline block stack-16"
-          onClick={() => setSignOutOpen(true)}
+          className="btn block stack-16"
+          onClick={startProfileEdit}
         >
-          <Ic.Logout /> {t("signOut")}
+          {t("masterDataChangeEditBtn")}
         </button>
+      ) : null}
+      {profileMode === "edit" ? (
+        <div
+          className="mdr-actions stack-16"
+          style={{ display: "flex", gap: 10 }}
+        >
+          <button
+            type="button"
+            className="btn ghost block"
+            onClick={() => {
+              cancelProfileEdit();
+              setMdFeedback(null);
+            }}
+          >
+            {t("masterDataChangeCancel")}
+          </button>
+          <button
+            type="button"
+            className="btn primary block"
+            onClick={submitMasterDataRequest}
+          >
+            {t("masterDataChangeSubmit")}
+          </button>
+        </div>
+      ) : null}
+      {profileMode === "pending" && openMdr?.note && !openMdr?.proposed ? (
+        <p className="section-hint" style={{ fontStyle: "italic" }}>
+          {openMdr.note}
+        </p>
+      ) : null}
+    </div>
+  );
+
+  // Notification settings ΓåÆ existing push/vehicle/axle/postal controls.
+  const notificationsCard = (
+    <div className="section-card">
+      <div
+        className="stack-12"
+        style={{ display: "flex", flexDirection: "column", gap: 4 }}
+      >
+        <label className="switch-row">
+          <span className="switch-row-text">{t("pushEnabledMaster")}</span>
+          <span className="switch-toggle-wrap">
+            <input
+              type="checkbox"
+              className="switch-toggle-input"
+              checked={prefs.pushEnabled !== false}
+              onChange={(e) => setPref({ pushEnabled: e.target.checked })}
+            />
+            <span className="switch-slider" />
+          </span>
+        </label>
+        <label className="switch-row">
+          <span className="switch-row-text">
+            {t("pushNotifyNewPublished")}
+          </span>
+          <span className="switch-toggle-wrap">
+            <input
+              type="checkbox"
+              className="switch-toggle-input"
+              checked={prefs.notifyNewPublished !== false}
+              onChange={(e) =>
+                setPref({ notifyNewPublished: e.target.checked })
+              }
+            />
+            <span className="switch-slider" />
+          </span>
+        </label>
       </div>
 
-      <ChangeEmailSheet
-        open={emailSheetOpen}
-        onClose={() => setEmailSheetOpen(false)}
-        currentEmail={d?.email || ""}
-      />
+      <div className="stack-16">
+        <label className="field-label">{t("vehicleType")}</label>
+        <div className="stack-4">
+          <select
+            className="input"
+            value={prefs.vehicle || "All"}
+            onChange={(e) => setPref({ vehicle: e.target.value })}
+          >
+            {["All", "PKW", "SUV", "Van", "Light truck <3.5t"].map((x) => (
+              <option key={x} value={x}>
+                {displayVehicle(x, t)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="stack-16">
+        <label className="field-label">{t("axle")}</label>
+        <div className="seg full">
+          {["All", "Own axle", "Third-party axle"].map((x) => (
+            <button
+              key={x}
+              type="button"
+              className={(prefs.axle || "All") === x ? "on" : ""}
+              onClick={() => setPref({ axle: x })}
+            >
+              {displayAxle(x, t)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="stack-16">
+        <label className="field-label" htmlFor="profile-postal-input">
+          {t("pushNotifyPostalPrefix")}
+        </label>
+        <div className="postal-chip-container stack-4">
+          {postalAreas.map((chip, idx) => (
+            <span key={idx} className="postal-chip">
+              {chip}
+              <button
+                type="button"
+                className="postal-chip-delete"
+                onClick={() => removePostal(idx)}
+                aria-label={`Remove postal code ${chip}`}
+              >
+                ├ù
+              </button>
+            </span>
+          ))}
+          <input
+            id="profile-postal-input"
+            type="text"
+            className="postal-chip-input"
+            value={postalText}
+            inputMode="numeric"
+            maxLength={5}
+            onChange={(e) => setPostalText(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+            placeholder={
+              postalAreas.length === 0 ? t("pushPostalPrefixHint") : ""
+            }
+          />
+        </div>
+      </div>
+      <div className="stack-16">
+        <InlineAlert tone="info" message={t("pushSupportNotice")} />
+      </div>
+    </div>
+  );
+
+  // Appearance and language ΓåÆ reused theme control + language DROPDOWN.
+  const appearanceCard = (
+    <div className="section-card">
+      <p className="section-hint" style={{ marginTop: 0 }}>
+        {t("appAppearanceHint")}
+      </p>
+      <div className="stack-16">
+        <label className="field-label" htmlFor="profile-language-select">
+          {t("appLanguage")}
+        </label>
+        <select
+          id="profile-language-select"
+          className="input"
+          value={locale}
+          onChange={(e) => setLocale(e.target.value)}
+        >
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+      <div className="stack-16">
+        <label className="field-label">{t("appTheme")}</label>
+        <div className="seg full" role="group" aria-label={t("appTheme")}>
+          <button
+            type="button"
+            className={theme === "light" ? "on" : ""}
+            aria-pressed={theme === "light"}
+            onClick={() => setTheme("light")}
+          >
+            {t("themeLight")}
+          </button>
+          <button
+            type="button"
+            className={theme === "dark" ? "on" : ""}
+            aria-pressed={theme === "dark"}
+            onClick={() => setTheme("dark")}
+          >
+            {t("themeDark")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Deferred shells ΓÇö visually complete, no submission/validation/backend.
+  const passwordCard = (
+    <div className="section-card">
+      <p className="section-hint" style={{ marginTop: 0 }}>
+        {t("profilePasswordIntro")}
+      </p>
+      <div className="stack-16">
+        <label className="field-label" htmlFor="profile-pw-current">
+          {t("profilePasswordCurrent")}
+        </label>
+        <input
+          id="profile-pw-current"
+          className="input"
+          type="password"
+          autoComplete="current-password"
+        />
+      </div>
+      <div className="stack-16">
+        <label className="field-label" htmlFor="profile-pw-new">
+          {t("profilePasswordNew")}
+        </label>
+        <input
+          id="profile-pw-new"
+          className="input"
+          type="password"
+          autoComplete="new-password"
+        />
+      </div>
+      <div className="stack-16">
+        <label className="field-label" htmlFor="profile-pw-confirm">
+          {t("profilePasswordConfirm")}
+        </label>
+        <input
+          id="profile-pw-confirm"
+          className="input"
+          type="password"
+          autoComplete="new-password"
+        />
+      </div>
+      <button type="button" className="btn primary block stack-16" disabled>
+        {t("profilePasswordSubmit")}
+      </button>
+      <div className="stack-16">
+        <InlineAlert tone="info" message={t("profilePasswordDeferred")} />
+      </div>
+    </div>
+  );
+
+  const feedbackCard = (
+    <DeferredFormCard
+      intro={t("profileFeedbackIntro")}
+      placeholder={t("profileFeedbackPlaceholder")}
+      submitLabel={t("profileFeedbackSubmit")}
+      deferredNote={t("profileFeedbackDeferred")}
+    />
+  );
+
+  const reportErrorCard = (
+    <DeferredFormCard
+      intro={t("profileReportErrorIntro")}
+      placeholder={t("profileReportErrorPlaceholder")}
+      submitLabel={t("profileReportErrorSubmit")}
+      deferredNote={t("profileReportErrorDeferred")}
+    />
+  );
+
+  const SUBPAGES = {
+    masterData: { title: t("profileNavBasicData"), body: masterDataCard },
+    password: { title: t("profileNavChangePassword"), body: passwordCard },
+    notifications: {
+      title: t("profileNavNotifications"),
+      body: notificationsCard,
+    },
+    appearance: { title: t("profileNavAppearance"), body: appearanceCard },
+    feedback: { title: t("profileNavFeedback"), body: feedbackCard },
+    reportError: { title: t("profileNavReportError"), body: reportErrorCard },
+  };
+  const activeSub = subpage ? SUBPAGES[subpage] : null;
+
+  return (
+    <>
+      {activeSub ? (
+        <>
+          <ProfileSubpageHeader
+            title={activeSub.title}
+            backLabel={t("profileBackLabel")}
+            onBack={() => setSubpage(null)}
+          />
+          <div className="scroll scroll-body">{activeSub.body}</div>
+        </>
+      ) : (
+        <>
+          <div className="pwa-screen-header">
+            <h1 className="header-title">{t("profileTitle")}</h1>
+          </div>
+          <div className="scroll scroll-body">
+            {/* Identity card ΓÇö avatar, name, partner id */}
+            <div className="section-card profile-identity-card">
+              <span className="avatar">{initials}</span>
+              <div className="flex-1-min-0">
+                <div className="profile-identity-name">{d?.name}</div>
+                <div className="profile-identity-partner">
+                  {t("profilePartnerId")}: {d?.driverCode}
+                </div>
+              </div>
+            </div>
+
+            {/* Summary card ΓÇö status, joined, log out */}
+            <div className="section-card profile-summary-card">
+              <div className="profile-summary-row">
+                <span
+                  className={`profile-summary-icon${statusActive ? " is-status" : ""}`}
+                  aria-hidden="true"
+                >
+                  <Ic.CheckCircle />
+                </span>
+                <span className="profile-summary-text">
+                  <span className="profile-summary-label">
+                    {t("accountStatus")}
+                  </span>
+                  <span
+                    className={`profile-summary-value${statusActive ? " is-active" : ""}`}
+                  >
+                    {displayDriverStatus(d?.status, t)}
+                  </span>
+                </span>
+              </div>
+              <div className="profile-summary-row">
+                <span className="profile-summary-icon" aria-hidden="true">
+                  <Ic.Calendar />
+                </span>
+                <span className="profile-summary-text">
+                  <span className="profile-summary-label">
+                    {t("profileDateJoined")}
+                  </span>
+                  <span className="profile-summary-value">
+                    {d?.joinedAt || "ΓÇö"}
+                  </span>
+                </span>
+              </div>
+              <button
+                type="button"
+                className="profile-summary-row profile-summary-action"
+                onClick={() => setSignOutOpen(true)}
+              >
+                <span className="profile-summary-icon" aria-hidden="true">
+                  <Ic.Logout />
+                </span>
+                <span className="profile-summary-text">
+                  <span className="profile-summary-action-label">
+                    {t("signOut")}
+                  </span>
+                </span>
+                <span className="profile-nav-row-chevron" aria-hidden="true">
+                  <Ic.Chev />
+                </span>
+              </button>
+            </div>
+
+            {/* Probation progress ΓÇö only while the driver is on probation */}
+            <DriverProbationCard />
+
+            <ProfileGroup label={t("profileGroupAccount")}>
+              <ProfileNavRow
+                icon={Ic.TabUser}
+                label={t("profileNavBasicData")}
+                sub={t("profileNavBasicDataSub")}
+                onClick={() => setSubpage("masterData")}
+              />
+              <ProfileNavRow
+                icon={Ic.Lock}
+                label={t("profileNavChangePassword")}
+                onClick={() => setSubpage("password")}
+              />
+            </ProfileGroup>
+
+            <ProfileGroup label={t("profileGroupSettings")}>
+              <ProfileNavRow
+                icon={Ic.Bell}
+                label={t("profileNavNotifications")}
+                onClick={() => setSubpage("notifications")}
+              />
+              <ProfileNavRow
+                icon={Ic.Globe}
+                label={t("profileNavAppearance")}
+                onClick={() => setSubpage("appearance")}
+              />
+            </ProfileGroup>
+
+            <ProfileGroup label={t("profileGroupHelp")}>
+              <ProfileNavRow
+                icon={Ic.Chat}
+                label={t("profileNavFeedback")}
+                onClick={() => setSubpage("feedback")}
+              />
+              <ProfileNavRow
+                icon={Ic.Alert}
+                label={t("profileNavReportError")}
+                onClick={() => setSubpage("reportError")}
+              />
+            </ProfileGroup>
+
+            <div className="profile-version">
+              {t("profileAppVersion", { version: "1.2.0" })}
+            </div>
+          </div>
+        </>
+      )}
 
       <ConfirmSheet
         open={signOutOpen}
@@ -5537,7 +5475,7 @@ const Infopoint = () => {
         </div>
       </div>
 
-      {/* Swipeable tab content — drag left/right to switch tabs */}
+      {/* Swipeable tab content ΓÇö drag left/right to switch tabs */}
       <SwipeViews
         index={INFO_TABS.indexOf(subTab)}
         count={INFO_TABS.length}
@@ -5578,14 +5516,14 @@ const Infopoint = () => {
                         fontWeight: 500,
                       }}
                     >
-                      {displayDocCategory(d.category, t)} ·{" "}
-                      {displayDocScope(d.scope, t)} · {d.version}
+                      {displayDocCategory(d.category, t)} ┬╖{" "}
+                      {displayDocScope(d.scope, t)} ┬╖ {d.version}
                     </div>
                     <div
                       className="mono text-muted-sm"
                       style={{ marginTop: 4 }}
                     >
-                      {d.size ? `${d.size} · ` : ""}
+                      {d.size ? `${d.size} ┬╖ ` : ""}
                       {d.updatedAt}
                     </div>
                   </div>
@@ -5717,7 +5655,7 @@ const Infopoint = () => {
                           {expanded
                             ? n.body
                             : `${(n.body || "").slice(0, 100)}${
-                                (n.body || "").length > 100 ? "…" : ""
+                                (n.body || "").length > 100 ? "ΓÇª" : ""
                               }`}
                         </p>
                       </div>
