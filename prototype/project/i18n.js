@@ -949,8 +949,26 @@ window.I18n = (() => {
       adminPolicyMinDriverMsgLabel: "Min. characters — message to driver",
       adminPolicyDefaultProbationLimitLabel:
         "Default probation job count (new drivers)",
+      adminPolicyAllowOverrideLabel: "Allow policy override with audit note",
+      adminPolicyRequiresReasonCodeLabel:
+        "Cancellation requires a reason code",
+      adminPolicyRequiresDriverMessageLabel:
+        "Cancellation requires a driver message",
+      adminPolicyWholeNumberError: "Enter a whole number of 1 or more.",
       adminOperationalPoliciesSave: "Save policies",
       adminOperationalPoliciesSaved: "Operational policies updated.",
+      adminDiscardChanges: "Discard changes",
+      adminHelpContactsTitle: "Infopoint — Help contacts",
+      adminHelpContactsBlurb:
+        "Dispatcher hotline and support email shown to drivers on the Infopoint Help tab.",
+      adminHelpContactsHotlineLabel: "Dispatcher hotline",
+      adminHelpContactsEmailLabel: "Support email",
+      adminHelpContactsSave: "Save contacts",
+      adminHelpContactsSaved: "Help contacts updated.",
+      adminHelpContactsHotlineError: "Enter a valid phone number.",
+      adminHelpContactsEmailError: "Enter a valid email address.",
+      adminHelpContactsHotlineRequired: "Dispatcher hotline is required.",
+      adminHelpContactsEmailRequired: "Support email is required.",
       adminScheduleSameDayWindowError:
         "Each pickup or delivery time window must start and end on the same calendar day (end time cannot be before start).",
       share: "Share",
@@ -2413,8 +2431,27 @@ window.I18n = (() => {
       adminPolicyMinDriverMsgLabel: "Min. Zeichen — Nachricht an Fahrer",
       adminPolicyDefaultProbationLimitLabel:
         "Standard Probezeit-Auftraganzahl (neue Fahrer)",
+      adminPolicyAllowOverrideLabel:
+        "Richtlinien-Ausnahme mit Audit-Notiz erlauben",
+      adminPolicyRequiresReasonCodeLabel: "Storno erfordert Grundcode",
+      adminPolicyRequiresDriverMessageLabel:
+        "Storno erfordert Nachricht an Fahrer",
+      adminPolicyWholeNumberError:
+        "Bitte eine ganze Zahl ab 1 eingeben.",
       adminOperationalPoliciesSave: "Richtlinien speichern",
       adminOperationalPoliciesSaved: "Betriebsrichtlinien aktualisiert.",
+      adminDiscardChanges: "Änderungen verwerfen",
+      adminHelpContactsTitle: "Infopoint — Kontakte",
+      adminHelpContactsBlurb:
+        "Disponent-Hotline und Support-E-Mail, die Fahrer im Infopoint-Hilfe-Tab sehen.",
+      adminHelpContactsHotlineLabel: "Disponent-Hotline",
+      adminHelpContactsEmailLabel: "Support-E-Mail",
+      adminHelpContactsSave: "Kontakte speichern",
+      adminHelpContactsSaved: "Hilfskontakte aktualisiert.",
+      adminHelpContactsHotlineError: "Bitte gültige Telefonnummer eingeben.",
+      adminHelpContactsEmailError: "Bitte gültige E-Mail-Adresse eingeben.",
+      adminHelpContactsHotlineRequired: "Disponent-Hotline ist erforderlich.",
+      adminHelpContactsEmailRequired: "Support-E-Mail ist erforderlich.",
       adminScheduleSameDayWindowError:
         "Jedes Abhol- oder Lieferzeitfenster muss am selben Kalendertag beginnen und enden (Endzeit darf nicht vor Startzeit liegen).",
       share: "Teilen",

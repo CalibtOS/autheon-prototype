@@ -7654,34 +7654,201 @@ const NotificationFeedPane = ({ showToast, onOpenJob, onReviewMasterDataRequest 
   );
 };
 
+// Every numeric policy is stored as a whole number of 1 or more.
+const MIN_POLICY_NUMBER = 1;
+
+/**
+ * A numeric policy field differs from its stored value once both sides are read
+ * as numbers, so `1`, `1.0` and `01` all match a stored `1`. A cleared or
+ * non-numeric field can never equal the stored number, so it reads as dirty here
+ * (and fails {@link isPolicyNumberValid}) rather than being hidden as "clean".
+ */
+const isPolicyNumberDirty = (current, baseline) => {
+  const trimmed = String(current).trim();
+  if (trimmed === "") return true;
+  const parsed = Number(trimmed);
+  if (Number.isNaN(parsed)) return true;
+  return parsed !== baseline;
+};
+
+/** Present, numeric, whole, and >= the minimum — i.e. savable. */
+const isPolicyNumberValid = (current) => {
+  const trimmed = String(current).trim();
+  if (trimmed === "") return false;
+  const parsed = Number(trimmed);
+  return Number.isInteger(parsed) && parsed >= MIN_POLICY_NUMBER;
+};
+
+/**
+ * Inline message for a numeric policy field, or "". Gated on the field being
+ * dirty so a freshly loaded screen never nags — stored values always satisfy the
+ * rule. One message covers cleared, zero and fractional alike.
+ */
+const policyNumberError = (current, baseline, message) =>
+  isPolicyNumberDirty(current, baseline) && !isPolicyNumberValid(current)
+    ? message
+    : "";
+
+/** Phone shape production accepts: dial characters only, 7–15 digits. */
+const isValidSupportPhone = (value) => {
+  if (!/^\+?[0-9\s()./-]+$/.test(value)) return false;
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15;
+};
+
+/** Email shape production accepts: one `@`, a sane local part, a dotted domain. */
+const isValidSupportEmail = (value) => {
+  if (value.length > 254) return false;
+  const parts = value.split("@");
+  if (parts.length !== 2) return false;
+  const [local, domain] = parts;
+  if (
+    !local ||
+    !domain ||
+    local.length > 64 ||
+    local.startsWith(".") ||
+    local.endsWith(".") ||
+    local.includes("..") ||
+    !/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local)
+  )
+    return false;
+  const labels = domain.split(".");
+  const topLevelLabel = labels[labels.length - 1] || "";
+  return (
+    labels.length >= 2 &&
+    topLevelLabel.length >= 2 &&
+    labels.every((label) =>
+      /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label),
+    )
+  );
+};
+
+const PolicyFieldError = ({ message }) =>
+  message ? (
+    <div className="policy-field-error" role="alert">
+      {message}
+    </div>
+  ) : null;
+
+/**
+ * Toggle row for a boolean policy. Uses the same Pill + checkbox idiom as the
+ * feature-flag rows further down the screen, so the two toggle groups read alike.
+ */
+const PolicyToggle = ({ id, label, checked, onChange, onLabel, offLabel }) => (
+  <label className="policy-toggle" htmlFor={id}>
+    <span className="policy-toggle-label">{label}</span>
+    <span className="policy-toggle-control">
+      <Pill status={checked ? "accepted" : "cancelled"}>
+        {checked ? onLabel : offLabel}
+      </Pill>
+      <input
+        id={id}
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{ width: 16, height: 16, cursor: "pointer" }}
+      />
+    </span>
+  </label>
+);
+
 const OperationalPoliciesForm = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const policies = store.getOperationalPolicies();
+  const baseCancelHours = policies.adminCancelMinHoursBeforePickupStart ?? 1;
+  const baseScheduleHours =
+    policies.scheduleChangeMinHoursBeforePickupStart ?? 1;
+  const baseMinDriverMsg =
+    policies.cancellation?.adminCancelDriverMessageMinChars ?? 20;
+  const baseDefaultLimit = policies.driverAcceptance?.probationJobCount ?? 3;
+  const baseAllowOverride = policies.allowPolicyOverrideWithAuditNote ?? true;
+  const baseRequiresReasonCode =
+    policies.cancellation?.adminCancelRequiresReasonCode ?? true;
+  const baseRequiresDriverMessage =
+    policies.cancellation?.adminCancelRequiresDriverMessage ?? true;
+
   const [adminCancelHours, setAdminCancelHours] = useStateA(
-    String(policies.adminCancelMinHoursBeforePickupStart ?? 1),
+    String(baseCancelHours),
   );
-  const [scheduleHours, setScheduleHours] = useStateA(
-    String(policies.scheduleChangeMinHoursBeforePickupStart ?? 1),
+  const [scheduleHours, setScheduleHours] = useStateA(String(baseScheduleHours));
+  const [minDriverMsg, setMinDriverMsg] = useStateA(String(baseMinDriverMsg));
+  const [defaultLimit, setDefaultLimit] = useStateA(String(baseDefaultLimit));
+  const [allowOverride, setAllowOverride] = useStateA(baseAllowOverride);
+  const [requiresReasonCode, setRequiresReasonCode] = useStateA(
+    baseRequiresReasonCode,
   );
-  const [minDriverMsg, setMinDriverMsg] = useStateA(
-    String(policies.cancellation?.adminCancelDriverMessageMinChars ?? 20),
-  );
-  const [defaultLimit, setDefaultLimit] = useStateA(
-    String(policies.driverAcceptance?.probationJobCount ?? 3),
+  const [requiresDriverMessage, setRequiresDriverMessage] = useStateA(
+    baseRequiresDriverMessage,
   );
 
+  // Seed local state from the stored values, and re-seed on demand — the effect
+  // hydrates after a save, Discard changes replays it to drop unsaved edits.
+  const seedFromStore = () => {
+    setAdminCancelHours(String(baseCancelHours));
+    setScheduleHours(String(baseScheduleHours));
+    setMinDriverMsg(String(baseMinDriverMsg));
+    setDefaultLimit(String(baseDefaultLimit));
+    setAllowOverride(baseAllowOverride);
+    setRequiresReasonCode(baseRequiresReasonCode);
+    setRequiresDriverMessage(baseRequiresDriverMessage);
+  };
+
+  useEffectA(seedFromStore, [
+    baseCancelHours,
+    baseScheduleHours,
+    baseMinDriverMsg,
+    baseDefaultLimit,
+    baseAllowOverride,
+    baseRequiresReasonCode,
+    baseRequiresDriverMessage,
+  ]);
+
+  // At least one field differs from the stored values. Drives both the Save gate
+  // and whether Discard changes is offered.
+  const policiesDirty =
+    isPolicyNumberDirty(adminCancelHours, baseCancelHours) ||
+    isPolicyNumberDirty(scheduleHours, baseScheduleHours) ||
+    isPolicyNumberDirty(minDriverMsg, baseMinDriverMsg) ||
+    isPolicyNumberDirty(defaultLimit, baseDefaultLimit) ||
+    allowOverride !== baseAllowOverride ||
+    requiresReasonCode !== baseRequiresReasonCode ||
+    requiresDriverMessage !== baseRequiresDriverMessage;
+
+  // Enable Save only for a real, valid change: reverting to the stored values, or
+  // a below-min/cleared field, leaves it disabled. Toggles are always valid; only
+  // their dirtiness matters.
+  const canSavePolicies =
+    policiesDirty &&
+    isPolicyNumberValid(adminCancelHours) &&
+    isPolicyNumberValid(scheduleHours) &&
+    isPolicyNumberValid(minDriverMsg) &&
+    isPolicyNumberValid(defaultLimit);
+
+  // One message for all four fields and every failure mode, so a disabled Save
+  // is explained rather than mysterious.
+  const numericMessage = t("adminPolicyWholeNumberError");
+  const onLabel = t("adminPillOn");
+  const offLabel = t("adminPillOff");
+
   const save = () => {
+    if (!canSavePolicies) return;
+    // Every field is passed explicitly rather than spread from the stored object
+    // — a passthrough would let a value round-trip with no control behind it,
+    // which is exactly how the three toggles stayed unchangeable.
     store.setOperationalPolicies({
       operational: {
-        adminCancelMinHoursBeforePickupStart: Number(adminCancelHours) || 0,
-        scheduleChangeMinHoursBeforePickupStart: Number(scheduleHours) || 0,
+        adminCancelMinHoursBeforePickupStart: Number(adminCancelHours),
+        scheduleChangeMinHoursBeforePickupStart: Number(scheduleHours),
+        allowPolicyOverrideWithAuditNote: allowOverride,
       },
       cancellation: {
-        adminCancelDriverMessageMinChars: Number(minDriverMsg) || 20,
+        adminCancelDriverMessageMinChars: Number(minDriverMsg),
+        adminCancelRequiresReasonCode: requiresReasonCode,
+        adminCancelRequiresDriverMessage: requiresDriverMessage,
       },
       driverAcceptance: {
-        probationJobCount: Number(defaultLimit) || 3,
+        probationJobCount: Number(defaultLimit),
       },
     });
     showToast?.(t("adminOperationalPoliciesSaved"));
@@ -7693,14 +7860,23 @@ const OperationalPoliciesForm = ({ showToast }) => {
         <label className="field-label" htmlFor="policy-cancel-hours">
           {t("adminPolicyCancelHoursLabel")}
         </label>
+        {/* min/step are affordance only — HTML constraints are advisory, so
+            isPolicyNumberValid is what gates Save. */}
         <input
           id="policy-cancel-hours"
           className="input"
           type="number"
-          min={0}
-          step={0.5}
+          min={MIN_POLICY_NUMBER}
+          step={1}
           value={adminCancelHours}
           onChange={(e) => setAdminCancelHours(e.target.value)}
+        />
+        <PolicyFieldError
+          message={policyNumberError(
+            adminCancelHours,
+            baseCancelHours,
+            numericMessage,
+          )}
         />
       </div>
       <div className="policy-field">
@@ -7711,10 +7887,17 @@ const OperationalPoliciesForm = ({ showToast }) => {
           id="policy-schedule-hours"
           className="input"
           type="number"
-          min={0}
-          step={0.5}
+          min={MIN_POLICY_NUMBER}
+          step={1}
           value={scheduleHours}
           onChange={(e) => setScheduleHours(e.target.value)}
+        />
+        <PolicyFieldError
+          message={policyNumberError(
+            scheduleHours,
+            baseScheduleHours,
+            numericMessage,
+          )}
         />
       </div>
       <div className="policy-field">
@@ -7725,9 +7908,17 @@ const OperationalPoliciesForm = ({ showToast }) => {
           id="policy-min-driver-msg"
           className="input"
           type="number"
-          min={1}
+          min={MIN_POLICY_NUMBER}
+          step={1}
           value={minDriverMsg}
           onChange={(e) => setMinDriverMsg(e.target.value)}
+        />
+        <PolicyFieldError
+          message={policyNumberError(
+            minDriverMsg,
+            baseMinDriverMsg,
+            numericMessage,
+          )}
         />
       </div>
       <div className="policy-field">
@@ -7738,14 +7929,166 @@ const OperationalPoliciesForm = ({ showToast }) => {
           id="policy-default-limit"
           className="input"
           type="number"
-          min={1}
+          min={MIN_POLICY_NUMBER}
+          step={1}
           value={defaultLimit}
           onChange={(e) => setDefaultLimit(e.target.value)}
         />
+        <PolicyFieldError
+          message={policyNumberError(
+            defaultLimit,
+            baseDefaultLimit,
+            numericMessage,
+          )}
+        />
       </div>
-      <button type="button" className="btn primary touch-target" style={{ width: "fit-content" }} onClick={save}>
-        {t("adminOperationalPoliciesSave")}
-      </button>
+      <PolicyToggle
+        id="policy-allow-override"
+        label={t("adminPolicyAllowOverrideLabel")}
+        checked={allowOverride}
+        onChange={setAllowOverride}
+        onLabel={onLabel}
+        offLabel={offLabel}
+      />
+      <PolicyToggle
+        id="policy-requires-reason-code"
+        label={t("adminPolicyRequiresReasonCodeLabel")}
+        checked={requiresReasonCode}
+        onChange={setRequiresReasonCode}
+        onLabel={onLabel}
+        offLabel={offLabel}
+      />
+      <PolicyToggle
+        id="policy-requires-driver-message"
+        label={t("adminPolicyRequiresDriverMessageLabel")}
+        checked={requiresDriverMessage}
+        onChange={setRequiresDriverMessage}
+        onLabel={onLabel}
+        offLabel={offLabel}
+      />
+      <div className="policy-actions">
+        <button
+          type="button"
+          className="btn primary touch-target"
+          disabled={!canSavePolicies}
+          onClick={save}
+        >
+          {t("adminOperationalPoliciesSave")}
+        </button>
+        <button
+          type="button"
+          className="btn ghost touch-target"
+          disabled={!policiesDirty}
+          onClick={seedFromStore}
+        >
+          {t("adminDiscardChanges")}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const InfopointHelpContactsForm = ({ showToast }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const contact = store.getDriverSupportContact();
+  const baseHotline = String(contact.phone || "");
+  const baseEmail = String(contact.email || "");
+
+  const [hotline, setHotline] = useStateA(baseHotline);
+  const [email, setEmail] = useStateA(baseEmail);
+
+  const seedFromStore = () => {
+    setHotline(baseHotline);
+    setEmail(baseEmail);
+  };
+
+  useEffectA(seedFromStore, [baseHotline, baseEmail]);
+
+  // Both contacts are required and cannot be cleared: production rejects an empty
+  // string and its shallow-merge preserves any omitted key, so a blank field can
+  // never persist. A cleared field is therefore invalid (Save stays disabled, an
+  // inline "required" error explains why) rather than a change that no-ops.
+  const hotlineTrimmed = hotline.trim();
+  const emailTrimmed = email.trim();
+  const hotlineDirty = hotlineTrimmed !== baseHotline.trim();
+  const emailDirty = emailTrimmed !== baseEmail.trim();
+  const hotlineValid = hotlineTrimmed !== "" && isValidSupportPhone(hotlineTrimmed);
+  const emailValid = emailTrimmed !== "" && isValidSupportEmail(emailTrimmed);
+
+  // Surfaced only once the admin diverges from the stored value, so a freshly
+  // loaded field never nags.
+  const hotlineError = !hotlineDirty || hotlineValid
+    ? ""
+    : hotlineTrimmed === ""
+      ? t("adminHelpContactsHotlineRequired")
+      : t("adminHelpContactsHotlineError");
+  const emailError = !emailDirty || emailValid
+    ? ""
+    : emailTrimmed === ""
+      ? t("adminHelpContactsEmailRequired")
+      : t("adminHelpContactsEmailError");
+
+  const contactsDirty = hotlineDirty || emailDirty;
+  // A save must leave the form matching what persists: any blank or malformed
+  // field disables Save entirely (no partial saves that silently drop a field).
+  const canSaveContacts = contactsDirty && hotlineValid && emailValid;
+
+  const save = () => {
+    if (!canSaveContacts) return;
+    store.setDriverSupportContact({
+      phone: hotlineTrimmed,
+      email: emailTrimmed,
+    });
+    showToast?.(t("adminHelpContactsSaved"));
+  };
+
+  return (
+    <div className="policy-grid">
+      <div className="policy-field">
+        <label className="field-label" htmlFor="help-contacts-hotline">
+          {t("adminHelpContactsHotlineLabel")}
+        </label>
+        <input
+          id="help-contacts-hotline"
+          className="input contact-input"
+          type="tel"
+          value={hotline}
+          onChange={(e) => setHotline(e.target.value)}
+        />
+        <PolicyFieldError message={hotlineError} />
+      </div>
+      <div className="policy-field">
+        <label className="field-label" htmlFor="help-contacts-email">
+          {t("adminHelpContactsEmailLabel")}
+        </label>
+        <input
+          id="help-contacts-email"
+          className="input contact-input"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <PolicyFieldError message={emailError} />
+      </div>
+      <div className="policy-actions">
+        <button
+          type="button"
+          className="btn primary touch-target"
+          disabled={!canSaveContacts}
+          onClick={save}
+        >
+          {t("adminHelpContactsSave")}
+        </button>
+        <button
+          type="button"
+          className="btn ghost touch-target"
+          disabled={!contactsDirty}
+          onClick={seedFromStore}
+        >
+          {t("adminDiscardChanges")}
+        </button>
+      </div>
     </div>
   );
 };
@@ -7821,6 +8164,24 @@ const FeaturesPane = ({ showToast }) => {
           {t("adminOperationalPoliciesBlurb")}
         </p>
         <OperationalPoliciesForm showToast={showToast} />
+      </section>
+
+      <section className="card" style={{ padding: 22, marginTop: 22 }}>
+        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
+          {t("adminHelpContactsTitle")}
+        </h2>
+        <p
+          style={{
+            color: "var(--muted)",
+            marginTop: 8,
+            marginBottom: 0,
+            fontSize: 13,
+            lineHeight: 1.55,
+          }}
+        >
+          {t("adminHelpContactsBlurb")}
+        </p>
+        <InfopointHelpContactsForm showToast={showToast} />
       </section>
 
       <h2

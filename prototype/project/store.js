@@ -2806,6 +2806,30 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
+    // Both contacts are required and cannot be cleared: production rejects an
+    // empty string and shallow-merges the rest, so a blank field can never
+    // persist. The form gates Save on the same rule; this is the backstop.
+    setDriverSupportContact(next = {}) {
+      const phone = String(next.phone ?? driverSupportContact.phone).trim();
+      const email = String(next.email ?? driverSupportContact.email).trim();
+      if (!phone || !email) return { ok: false, reason: "required" };
+      if (
+        driverSupportContact.phone === phone &&
+        driverSupportContact.email === email
+      )
+        return { ok: true };
+      driverSupportContact.phone = phone;
+      driverSupportContact.email = email;
+      log(
+        "help_contacts_changed",
+        DEMO_ADMIN,
+        "infopoint.helpContacts",
+        `${phone} · ${email}`,
+      );
+      emit();
+      return { ok: true };
+    },
+
     getCancellationReasonCodes: () => CANCELLATION_REASON_CODES.slice(),
     getCancellationReasonLabel: (code) => cancellationReasonLabel(code),
 
