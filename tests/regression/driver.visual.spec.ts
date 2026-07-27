@@ -62,6 +62,54 @@ test.describe('Driver PWA visual regression @visual-regression', () => {
     });
   });
 
+  /**
+   * Applied-filter count badge on the closed filter control. One filter and
+   * three filters are captured because the badge, the button's applied state
+   * and the chip row all change together.
+   */
+  async function applyMarketplaceFilters(
+    page: import('@playwright/test').Page,
+    apply: (panel: import('@playwright/test').Locator) => Promise<void>,
+  ) {
+    await prototypeFrame(page).locator('.header-filter-btn').click();
+    const panel = prototypeFrame(page).locator('.sheet');
+    await expect(panel).toBeVisible();
+    await apply(panel);
+    await panel.locator('.sheet-foot .btn.primary').click();
+    await expect(panel).toHaveCount(0);
+    await settleForCapture(page);
+  }
+
+  test('marketplace — one applied filter (badge = 1)', async ({ page }) => {
+    await prepareDriverVisual(page);
+    await applyMarketplaceFilters(page, async (panel) => {
+      await panel.locator('.input').first().fill('80');
+    });
+    await expect(
+      prototypeFrame(page).locator('.header-filter-btn .header-btn-badge'),
+    ).toHaveText('1');
+    await expect(page).toHaveScreenshot('driver-marketplace-filter-1.png', {
+      fullPage: true,
+      mask: marketplaceDateMask(page),
+    });
+  });
+
+  test('marketplace — multiple applied filters (badge = 3)', async ({ page }) => {
+    await prepareDriverVisual(page);
+    await applyMarketplaceFilters(page, async (panel) => {
+      await panel.locator('.input').nth(0).fill('80');
+      await panel.locator('.input').nth(1).fill('10');
+      await panel.locator('.chip-btn').filter({ hasText: 'SUV' }).first().click();
+    });
+    await expect(
+      prototypeFrame(page).locator('.header-filter-btn .header-btn-badge'),
+    ).toHaveText('3');
+    await expect(page).toHaveScreenshot('driver-marketplace-filter-3.png', {
+      fullPage: true,
+      mask: marketplaceDateMask(page),
+    });
+  });
+
   test('marketplace locked job detail', async ({ page }) => {
     await prepareDriverVisual(page);
     await openMarketplaceJob(page);

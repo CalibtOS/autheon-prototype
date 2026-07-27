@@ -168,7 +168,7 @@ test.describe('driver shared screen header', () => {
     await prepareDriverVisual(page);
 
     const bell = headerBell(page);
-    const badge = bell.locator('.bell-badge');
+    const badge = bell.locator('.header-btn-badge');
 
     await expect(badge).toBeVisible();
     const count = Number((await badge.textContent())?.trim());

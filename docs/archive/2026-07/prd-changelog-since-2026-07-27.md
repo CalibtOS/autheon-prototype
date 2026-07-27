@@ -1,4 +1,4 @@
-# PRD changelog: 2026-07-26 (v2.6 → v2.8)
+# PRD changelog: 2026-07-26 / 2026-07-27 (v2.6 → v2.9)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
@@ -10,8 +10,9 @@ Two parallel feature branches were based on PRD v2.6 and both independently clai
 
 - **v2.7:** Driver PWA Figma-comment adjustments and numeric-input validation fix.
 - **v2.8:** Vehicle-domain restructuring from the confirmed “Systemlogik Fahrzeugeingabe” requirements.
+- **v2.9:** Marketplace applied-filter count badge (documentation + hardening; no data-model change).
 
-No requirement from either branch was discarded. The vehicle-domain change is assigned the higher version because it is the later business-requirement/data-model update and is merged on top of the v2.7 Driver PWA documentation state.
+No requirement from either branch was discarded.
 
 ---
 
@@ -267,6 +268,87 @@ PR #17 is **UI/UX + input-validation only** — no schema, status-model, i18n-ke
 ### Open items (unchanged)
 
 OQ-19 (cancellation T&C link placeholder) and OQ-14 (post-booking driver workflow email) remain open.
+
+---
+
+## PRD v2.9 — Marketplace applied-filter count badge (2026-07-27)
+
+
+**Previous behaviour (v2.6, as specified):** `prd.json` task 7 ("Driver Marketplace") specified *which* filters exist (postal code, date/range, vehicle type, axle) and how postal-prefix matching works, but said nothing about surfacing **how many** filters were active. Applied Marketplace filters were therefore not represented by any required numeric indicator on the closed filter control. A driver who applied filters and closed the panel had no specified way to tell how constrained the list was, which could make a short or empty result set read as "little work available" rather than "you narrowed this".
+
+**New behaviour (v2.9):** the Marketplace filter control displays a count of active filters.
+
+Thirteen acceptance criteria were appended to the **existing** task 7 — no duplicate Marketplace-filtering requirement was created:
+
+- The filter control displays a numeric badge with the number of filters currently applied.
+- The count represents filters restricting the **result set**; it is never derived from the number of matching orders returned.
+- Counting rule: postal-code fields count when non-empty; **each bound** of an active date range counts separately; vehicle type and axle type count only when set to something other than the `All` default; empty, whitespace-only, `null`, `undefined` and default values never count; each filter counts at most once.
+- The badge is **hidden entirely** at zero — no "0" badge, no reserved placeholder space.
+- The count updates on apply, on removal of a single filter, and on clear-all.
+- **Sorting is excluded** from the count, and the sorting control carries no count badge.
+- The Marketplace **search field is excluded** — filtering and free-text search are separate concerns.
+- The count reflects **committed** filters; draft selections inside the open panel do not change it until applied, and cancelling discards them.
+- The badge stays visible and correct **while the panel is closed**.
+- Active filters and their count stay displayed when the **result set is empty**, so an empty Marketplace is explained rather than ambiguous.
+- The count is exposed to assistive technology through a **translated, pluralized accessible name**; the badge is not the only indication, is not separately focusable, and the control stays one usable target with a visible focus state and adequate touch target.
+- The badge stays attached and readable across supported **phone and tablet widths**, including double-digit values, without shifting the filter control, the sorting control, the screen title or surrounding layout.
+- The badge follows the Marketplace filter state's **own** persistence behaviour; no additional persistence is introduced for the indicator.
+
+### Explicitly out of scope
+
+- **Sorting** is not part of the badge, in any form.
+- **No data-model change.** The count is derived from existing frontend Marketplace filter state. `schema.dbml`, `logical-model.md`, migrations, backend entities, DTOs and API payloads are untouched. No backend call and no persisted field was introduced to obtain or store the count.
+
+---
+
+## 2. Prototype implementation — audited and hardened
+
+The feature was **first implemented in the prototype** and is now documented and validated for production alignment.
+
+**Already correct before this pass** (verified, not changed):
+
+- The count was derived from the **committed** filter object owned by the shell, not from the filter panel's draft state.
+- No separate badge-count state and no effect-based synchronization existed — the flow was already `applied filter state → derived count → badge`.
+- The badge was already hidden at zero, already survived closing the panel, and was already independent of sort state and of the number of results.
+
+**Corrected in this pass** (implementation quality, no behaviour change):
+
+| Area | Before | After |
+|---|---|---|
+| Badge component | Raw `<span class="tabbar-badge">` — the *tab-bar* badge, with hardcoded radius/colour/mono type, no `99+` cap and no `pointer-events: none` (it could swallow taps meant for its own button) | Shared `Badge` primitive on one shared `.header-btn-badge` anchoring rule, reused with the notification bell. Visual primitive shared; notification semantics **not** copied |
+| Count derivation | `activeChips.length`, assembled inline in the Portal render body — correct but not extractable or testable | Pure `getAppliedMarketplaceFilterCount(filters)` / `getAppliedMarketplaceFilters(filters, t?)`, co-located with the shared filter predicate so the counted set and the restricting set stay paired |
+| Filter control | Markup inline in Portal | Extracted `MarketplaceFilterButton`, mounted by Portal and by the states gallery |
+| Accessible name | Concatenated `"Filters" + " (4)"` | Pluralized `filtersApplied_one` / `filtersApplied_other` (EN + DE) via a new `tPlural` i18n helper — "Filters, 3 applied" / "Filter, 3 aktiv" |
+
+**Coverage added** (the feature previously had none): 12 unit tests over the pure selector, 19 integration tests, 2 E2E journeys, a 14-story states gallery, and 4 new visual-regression baselines.
+
+---
+
+## 3. Open item — not resolved in this pass
+
+**The `This week` date preset counts but does not filter.** The Marketplace filter panel offers `Today`, `This week` and `Weekend` presets. The shared filter predicate excludes all presets from the date-range comparison and then implements only `Today` and `Weekend`; there is **no** `This week` branch. A driver selecting it sees "Filters, 1 applied" and a chip while the result set is unchanged — which contradicts the v2.7 rule that a counted filter must restrict results.
+
+This was **not** fixed here because implementing it requires defining week boundaries, and the prototype's notion of "today" is a hardcoded `05.05.` fixture date. Any implementation would be an invented rule. Product decision required: either specify and implement the predicate, or remove the preset.
+
+Tracked as item 43 in [`../../design/design-direction-board-audit.md`](../../design/design-direction-board-audit.md).
+
+---
+
+## Files touched
+
+| File | Change |
+|---|---|
+| `docs/requirements/prd.json` | Task 7 acceptance extended (13 criteria); `version` → v2.9 |
+| `prototype/project/driver.jsx` | Canonical selectors, `MarketplaceFilterButton`, shared `Badge`, pluralized label |
+| `prototype/project/i18n.js` | `tPlural` helper; `filtersApplied_one/_other` (EN + DE) |
+| `prototype/project/styles.css` | Shared `.header-btn-badge` anchor rule (replaces the duplicated `.bell-badge` rule) |
+| `prototype/project/driver-marketplace-filter-states.html` | New states gallery |
+| `prototype/project/_export-driver-i18n.mjs` | Indexes `tPlural` keys; documents the Marketplace filter key contract |
+| `docs/design/*` | brand-tokens, DDB audit (v1.5, items 39–43), DDB remediation (R32), driver-i18n-index, driver-screen-spec, ui-ux-production-plan (§7.11, v3.3) |
+| `docs/product/autheon-context-pack.md` | Marketplace filter-count behaviour |
+| `tests/` | Unit, integration, E2E and visual-regression specs |
+
+**Not touched:** `docs/database/schema.dbml`, `docs/database/logical-model.md`, migrations, backend entities, DTOs, API payloads.
 
 ---
 

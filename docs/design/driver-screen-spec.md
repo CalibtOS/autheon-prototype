@@ -197,6 +197,34 @@ below** → **filter controls around the results area**.
 - `.portal-results-row`: "N results" left, `SortSelect` + filter button right (both `.header-btn`).
 - Applied-filter chips (`.header-chips-row`) sit directly beneath that row.
 - Both render outside the loading branch, so the controls do not vanish during the skeleton state.
+### Applied-filter count badge
+
+> The badge answers **"how many filters are narrowing this list?"** — it is **not** the number of
+> matching Marketplace orders. The matching-order count is the separate "N results" caption to the
+> left of the controls, and the filter panel's CTA (`showResults`) — do not conflate the three.
+
+| Aspect | Specification |
+|--------|---------------|
+| **Location** | Upper-right of the Marketplace filter control (`.header-filter-btn`), offset `top/right: -5px`. Overlays the button; never displaces it. |
+| **Component** | Shared `Badge` primitive (`variant="destructive"`) positioned by the shared `.header-btn > .header-btn-badge` rule — the same pairing the notification bell uses. Marketplace supplies only the count. |
+| **Count source** | `getAppliedMarketplaceFilterCount(filters)` — a pure function of the **committed** filter object owned by the shell. One canonical derivation, shared with the applied-filter chip row. No separate count state exists. |
+| **Counting semantics** | Counts a filter only when it restricts the result set. `startPlz` / `endPlz`: non-empty after trimming. `from` / `to`: each active bound counts separately (they are two independently removable chips). `vehicle` / `axle`: set **and** not the `"All"` default. Empty string, whitespace-only, `null` and `undefined` never count. Each key contributes at most 1. Unknown keys are ignored. Maximum reachable count is **6**. |
+| **Excluded** | **Sorting** — never counted, and the sort control never carries a badge. **Search** — the Marketplace has no search field (search exists only on My Orders) and no requirement classifies it as a filter. **Result count** — the badge is never derived from how many orders came back. |
+| **Multi-select** | Not applicable — the Marketplace has no multi-select filter. `vehicle` and `axle` are single-select. If one is introduced, the "count each value" vs "count the category once" rule must be decided by product before implementation. |
+| **Zero count** | **No badge element is rendered at all** (`Badge` returns `null`). Nothing hidden-but-present, no reserved layout space, nothing for assistive tech to reach. The button also drops its applied/`active` fill. |
+| **Update lifecycle** | Appears/updates on Apply; decreases when a chip is removed; disappears on Reset + Apply. Draft selections in the open panel do **not** move it — they are uncommitted; Cancel discards them. Immediate, derived on render; no effect-based synchronization. |
+| **Relationship to the panel** | Independent of panel open/closed state. The whole point is that the count stays legible with the panel closed. Reopening the panel rehydrates it from the same committed filters, so the two can never disagree. |
+| **Empty result set** | Filters matching zero orders still show their count — the badge is the explanation for the empty list, so it must not vanish with the results. |
+| **Failed request** | The badge reflects filter state only; it is unaffected by request outcome. |
+| **Accessible naming** | The count lives in the button's translated, **pluralized** accessible name via `tPlural("filtersApplied", count)` → "Filters, 3 applied" / "Filter, 3 aktiv". With no filters: `t("filters")` → "Filters" / "Filter". The badge is `aria-hidden` (decorative, never announced twice) and `pointer-events: none`. The control stays one focusable, clickable target with a visible `:focus-visible` ring and a 40×40 touch target. |
+| **Responsive** | One implementation for all widths — no separate tablet layout. Verified 320 / 360 / 390 / 430 / 768 / 1024 px, EN + DE. Badge stays attached to the button, never crosses the viewport edge, sort and filter stay aligned, and showing it shifts neither control nor the screen title. |
+| **Double digits** | `tabular-nums` + `min-width` growth handles 2-digit values; the primitive caps display at `99+`. Not reachable through the product UI (max 6), but covered by the states gallery so the primitive cannot regress. |
+| **Persistence** | Follows Marketplace filter state exactly — it *is* that state. Filters live above the tab switch, so they survive navigating away and back; they reset on reload. No persistence was added for the badge, and none should be. |
+
+**Known defect (open):** `from: "This week"` is offered as a preset and **is counted**, but
+`jobMatchesDriverFilters` implements no `"This week"` branch, so it does not restrict results. See
+audit item 43 — resolving it requires a product decision on week boundaries.
+
 - **KPI row:** currently **not implemented**. The `.kpi-row` / `.kpi-chip` CSS and the
   `kpiAvailableJobs` / `kpiBookedJobs` / `kpiOpenDocuments` i18n keys exist but are unreferenced —
   the row was dropped from `Portal` at some point after the 2026-07-14 remediation. Whether it

@@ -54,9 +54,18 @@ const en = parseKeys(localeBlock("en: {", "de: {"));
 const de = parseKeys(localeBlock("de: {", "\n  };"));
 
 const used = new Set();
-const tRe = /\bt\(\s*["']([a-zA-Z0-9_.]+)["']/g;
+const tRe = /(?<![A-Za-z0-9_])t\(\s*["']([a-zA-Z0-9_.]+)["']/g;
 let tm;
 while ((tm = tRe.exec(driver))) used.add(tm[1]);
+
+// tPlural("key", count) resolves key_one / key_other at runtime — record both
+// forms so pluralized messages are not reported as unused.
+const tPluralRe = /\btPlural\(\s*["']([a-zA-Z0-9_.]+)["']/g;
+let pm;
+while ((pm = tPluralRe.exec(driver))) {
+  used.add(`${pm[1]}_one`);
+  used.add(`${pm[1]}_other`);
+}
 
 const keys = [...used].filter((k) => !k.includes(".")).sort();
 
@@ -83,6 +92,44 @@ const HEADER_SECTION = [
   `so the unread count reaches screen readers as text and the visual badge is never the only signal.`,
   `Do not remove or repurpose this key, and keep any translation short enough to stay legible as a`,
   `button label.`,
+  ``,
+  `## Marketplace filter keys`,
+  ``,
+  `**Languages:** the Driver PWA ships **English (\`en\`)** and **German (\`de\`)** only. Every key`,
+  `below exists in both; \`de\` is the client-facing locale.`,
+  ``,
+  `| Key | Used for |`,
+  `|-----|----------|`,
+  `| \`filters\` | Filter panel heading, and the filter button's accessible name when **no** filters are applied |`,
+  `| \`filtersApplied_one\` / \`filtersApplied_other\` | Filter button's accessible name when filters ARE applied — resolved by \`tPlural("filtersApplied", count)\` |`,
+  `| \`reset\` | Clears the draft selections inside the open filter panel |`,
+  `| \`showResults\` | Filter panel's apply CTA — \`{count}\` here is the number of **matching orders**, not the filter count |`,
+  `| \`removeFilterChip\` | Accessible name of each removable applied-filter chip |`,
+  ``,
+  `### Pluralization`,
+  ``,
+  `\`t()\` interpolates \`{token}\` but has no plural support. \`tPlural(key, count, vars?)\``,
+  `(added 2026-07-27, \`i18n.js\`) resolves \`<key>_one\` / \`<key>_other\` and injects \`{count}\`.`,
+  `Both driver locales have simple one/other plural categories, so two forms are sufficient.`,
+  ``,
+  `Whole sentences live in the translation files — components must **not** concatenate fragments`,
+  `(\`count + " filters applied"\`), because German word order differs and concatenation cannot be`,
+  `translated. Correct usage:`,
+  ``,
+  '```js',
+  `aria-label={count ? tPlural("filtersApplied", count) : t("filters")}`,
+  '```',
+  ``,
+  `| Count | EN | DE |`,
+  `|-------|----|----|`,
+  `| 0 | Filters | Filter |`,
+  `| 1 | Filters, 1 applied | Filter, 1 aktiv |`,
+  `| 3 | Filters, 3 applied | Filter, 3 aktiv |`,
+  ``,
+  `> The badge itself is \`aria-hidden\`; this accessible name is the only thing assistive tech`,
+  `> announces, so the count must stay inside it.`,
+  ``,
+  `---`,
   ``,
   `### Deprecated / removed`,
   ``,

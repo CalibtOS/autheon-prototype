@@ -1411,11 +1411,18 @@ select.input {
   color: var(--on-accent);
   border-color: var(--primary);
 }
-/* Bell adds ONLY the unread-badge anchor on top of .header-btn. */
-.phone-shell .header-bell-btn {
+/* Bell and filter add ONLY a badge anchor on top of .header-btn. */
+.phone-shell .header-bell-btn,
+.phone-shell .header-filter-btn {
   position: relative;
 }
-.phone-shell .header-bell-btn .bell-badge {
+/* ONE anchored-count-badge rule, shared by the notification bell (unread
+   count) and the Marketplace filter button (applied-filter count). It only
+   POSITIONS the shared `.ui-badge` primitive — colour, radius, weight and the
+   99+ cap all stay in `.ui-badge` / `.ui-badge-destructive`, so there is no
+   duplicated badge styling. `pointer-events: none` keeps the whole button one
+   click/touch target; the badge is never a separate hit area or focus stop. */
+.phone-shell .header-btn > .header-btn-badge {
   position: absolute;
   top: -5px;
   right: -5px;
@@ -1425,6 +1432,11 @@ select.input {
   font-size: 10px;
   border: 1.5px solid var(--paper);
   pointer-events: none;
+}
+/* Applied state fills the button with --primary; keep the badge ring reading
+   against that surface instead of the page surface. */
+.phone-shell .header-btn.active > .header-btn-badge {
+  border-color: var(--primary);
 }
 .phone-shell .header-chips-row {
   display: flex;

@@ -1,6 +1,6 @@
 # AUTHEON — Design Direction Board Compliance Audit
 
-> **Status:** v1.4 — 2026-07-26. Audit of the prototype implementation against the client **Design Direction Board — AUTHEON GmbH, July 2026** (DDB). See the **v1.1 addendum** (the original PDF arrived after the v1.0 audit and closed several items), the **v1.2 addendum** (post-remediation feature components), the **v1.3 addendum** (vehicle-entry audit), and the **v1.4 addendum** (primary-screen header consistency, items 36–38, from the 2026-07-26 client Figma review).
+> **Status:** v1.5 — 2026-07-27. Audit of the prototype implementation against the client **Design Direction Board — AUTHEON GmbH, July 2026** (DDB). See the **v1.1 addendum** (the original PDF arrived after the v1.0 audit and closed several items), the **v1.2 addendum** (post-remediation feature components), the **v1.3 addendum** (vehicle-entry audit), the **v1.4 addendum** (primary-screen header consistency, items 36–38, from the 2026-07-26 client Figma review), and the **v1.5 addendum** (Marketplace applied-filter visibility, items 39–43).
 > **Source:** v1.0 used the DDB requirement extract (sections A–J); v1.1 verified against the original client PDF, now in the repository at [`../../Design Direction Board.pdf`](../../Design%20Direction%20Board.pdf) (7 pages, DE, by Taner Özdemir / Carolina Offermanns).
 > **Authority:** `docs/requirements/prd.json` = behavior · DDB = client visual direction · this audit = gap record. See [`ui-ux-production-plan.md`](ui-ux-production-plan.md) §0.
 > **Evidence:** Code references are `path:line` against the pre-remediation state (commit `cae3a8a` working tree). Rendered evidence in [`audit-2026-07-14/before/`](audit-2026-07-14/before/) — driver captured as the 392×800 phone frame inside a 1440×1000 viewport (the prototype's demo frame; production target is 375px), admin at 1440×1000. Light + dark themes.
@@ -191,6 +191,37 @@ client decision on whether the KPI row returns. Not actioned here — outside th
 
 Remediation for 36–38 is tracked as R28–R31 in
 [`design-direction-board-remediation.md`](design-direction-board-remediation.md).
+
+## v1.5 addendum — Marketplace applied-filter visibility (2026-07-27)
+
+Usability review of the Marketplace filtering flow.
+
+**The issue.** A driver could open the filter panel, apply filters, and close the panel. With the
+panel closed, the Marketplace gave no numeric indication of *how many* filters were constraining the
+list. A driver returning to the tab — or landing on a short list — could reasonably read the result
+set as "there is little work available" rather than "you have narrowed this yourself". The applied
+state was inferable only from the chip row and the button's filled state, neither of which answers
+"how many".
+
+**Evidence.** The task-supplied reference for this item describes the numeric badge on the filter
+control. *(Note: the screenshot referenced in the 2026-07-27 task text was not attached to that
+request; the two images available in the thread are the 2026-07-26 header-review captures, neither
+of which shows a filter badge. The written requirement, the existing prototype behaviour and the
+gallery capture below were used as the reference instead. Flagged rather than assumed.)* Current
+rendered evidence: `tests/regression/snapshots/marketplace-filter-states.visual.spec.ts-snapshots/`
+and `driver-marketplace-filter-{1,3}-*.png`.
+
+| ID | Requirement | Surface | Status | Evidence | Gap / conflict | Recommended action | Documentation target |
+|----|-------------|---------|--------|----------|----------------|--------------------|----------------------|
+| 39 | Applied-filter count visible on the closed Marketplace filter control | Driver | **COVERED** | Badge implemented on `.header-filter-btn`; count from `getAppliedMarketplaceFilterCount(filters)` (`driver.jsx`) | Pre-existing prototype implementation already resolved the core usability issue — the badge, the applied-state fill and the chip row were all present | Keep; hardened during this pass (see 40–42) | driver-screen-spec.md, brand-tokens.md |
+| 40 | Count badge reuses the shared badge primitive and tokens | Driver | **CONFLICT** (pre-remediation) | Filter badge rendered a raw `<span class="tabbar-badge">` — the *tab-bar* badge, with hardcoded `9999px`, `#ffffff` and mono 9px — while the notification bell used the shared `Badge` primitive | Two badge implementations in one screen; the filter badge had no `99+` cap and no `pointer-events: none`, so it could swallow taps meant for its own button | Reuse `Badge` + one shared `.header-btn-badge` anchor | brand-tokens.md, remediation R32 |
+| 41 | Applied-filter count is a testable, canonical derivation | Driver | **PARTIAL** (pre-remediation) | Count was `activeChips.length`, an array assembled inline in `Portal`'s render body | Correct and non-duplicated, but not extractable, not unit-testable, and easy to fork if a second consumer appeared | Extract `getAppliedMarketplaceFilters` / `getAppliedMarketplaceFilterCount` next to the shared filter predicate | remediation R32, ui-ux-production-plan.md |
+| 42 | Accessible name states the applied-filter count in a translated, pluralized form | Driver | **PARTIAL** (pre-remediation) | `aria-label` was the concatenation `` `${t("filters")} (${count})` `` → "Filters (4)" | A parenthesised numeral is not a sentence, and the pattern hardcodes English/German-agnostic word order that translation cannot fix | Add `filtersApplied_one/_other` and a `tPlural` resolver | driver-i18n-index.md, remediation R32 |
+| 43 | Every counted filter actually restricts the result set | Driver | **CONFLICT — open** | `from: "This week"` is offered as a preset (`driver.jsx` FilterSheet), is counted by the badge and renders a chip, but `jobMatchesDriverFilters` has **no** `"This week"` branch — presets are excluded from the range comparison and only `"Today"` and `"Weekend"` are implemented | A driver selecting "This week" sees "Filters, 1 applied" and a chip while the result set is unchanged | **Not actioned** — implementing it means defining week boundaries against a prototype whose "today" is the hardcoded `05.05.`. Needs a product decision, not an invented rule | prd.json (filter semantics), driver-screen-spec.md |
+
+Remediation for 40–42 is tracked as **R32** in
+[`design-direction-board-remediation.md`](design-direction-board-remediation.md). Item 43 remains
+open.
 
 ## Method notes
 

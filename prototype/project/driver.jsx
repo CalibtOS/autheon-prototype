@@ -986,7 +986,7 @@ const NotificationBellButton = ({ onOpen, open = false, unreadCount }) => {
       <Badge
         count={unread}
         variant="destructive"
-        className="bell-badge"
+        className="header-btn-badge"
         ariaHidden
       />
     </button>
@@ -1321,42 +1321,9 @@ const Portal = ({
     return 0;
   });
 
-  const activeChips = [];
-  if (filters.startPlz)
-    activeChips.push({
-      key: "startPlz",
-      label: t("pickupPlz", { plz: filters.startPlz }),
-    });
-  if (filters.endPlz)
-    activeChips.push({
-      key: "endPlz",
-      label: t("dropPlz", { plz: filters.endPlz }),
-    });
-  if (filters.from)
-    activeChips.push({
-      key: "from",
-      label:
-        filters.from === "Today"
-          ? t("today")
-          : filters.from === "This week"
-            ? t("thisWeek")
-            : t("fromDateChip", { date: isoToDisplayDate(filters.from) }),
-    });
-  if (filters.to)
-    activeChips.push({
-      key: "to",
-      label: t("untilDateChip", { date: isoToDisplayDate(filters.to) }),
-    });
-  if (filters.vehicleType && filters.vehicleType !== "All")
-    activeChips.push({
-      key: "vehicleType",
-      label: displayVehicle(filters.vehicleType, t),
-    });
-  if (filters.transportType && filters.transportType !== "All")
-    activeChips.push({
-      key: "transportType",
-      label: displayTransportType(filters.transportType, t),
-    });
+  // Single derivation from the COMMITTED filters — feeds the chip row, the
+  // filter button's badge and its accessible name. No separate count state.
+  const activeChips = getAppliedMarketplaceFilters(filters, t);
 
   return (
     <>
@@ -1396,24 +1363,7 @@ const Portal = ({
               options={portalSortOptions}
               label={t("sortJobs")}
             />
-            <button
-              type="button"
-              className={`header-btn ${activeChips.length ? "active" : ""}`}
-              onClick={openFilter}
-              title={t("filters")}
-              aria-label={
-                activeChips.length
-                  ? `${t("filters")} (${activeChips.length})`
-                  : t("filters")
-              }
-            >
-              <Ic.Filter />
-              {activeChips.length > 0 ? (
-                <span className="tabbar-badge" aria-hidden="true">
-                  {activeChips.length}
-                </span>
-              ) : null}
-            </button>
+            <MarketplaceFilterButton filters={filters} onOpen={openFilter} />
           </div>
         </div>
         {activeChips.length > 0 ? (
@@ -1521,6 +1471,122 @@ const jobMatchesDriverFilters = (j, filters) => {
   )
     return false;
   return true;
+};
+
+// -------------------------------------------------------------------------
+// Applied-marketplace-filter model — ONE canonical derivation
+// -------------------------------------------------------------------------
+// Deliberately co-located with `jobMatchesDriverFilters` above: the set of
+// filters we *count* must mirror the set of filters that actually *restrict*
+// the result list. Keep the two in sync when either changes.
+//
+// This is a pure function of the COMMITTED filter object (the one the shell
+// owns and the marketplace list is filtered by) — never of FilterSheet's draft
+// state, never of the number of results returned, and never of sort state.
+// There is no separate badge-count state anywhere; the badge, the chip row and
+// the button's accessible name all read from this single derivation.
+//
+// A filter is "applied" only when it narrows the result set:
+//   startPlz / endPlz  text   — counted when non-empty after trimming
+//   from / to          date   — counted when set (each end of the range counts
+//                               separately, mirroring the two removable chips)
+//   vehicle / axle     single-select — counted when set AND not the "All"
+//                               default (the default is not restrictive)
+// Empty string, null, undefined and whitespace-only values never count.
+// Each filter key contributes at most 1, so the same filter cannot count twice.
+//
+// NOTE: there are currently no multi-select marketplace filters, so the
+// "count each value" vs "count the category once" question does not arise.
+const MARKETPLACE_FILTER_DEFAULTS = { vehicle: "All", axle: "All" };
+
+const isAppliedMarketplaceFilter = (key, value) => {
+  if (value == null) return false;
+  const v = typeof value === "string" ? value.trim() : value;
+  if (v === "") return false;
+  const dflt = MARKETPLACE_FILTER_DEFAULTS[key];
+  if (dflt !== undefined && v === dflt) return false;
+  return true;
+};
+
+/**
+ * Canonical list of applied marketplace filters, in display order.
+ * Returns `[{ key, value }]`. Count = `.length`.
+ * `t` is optional; when supplied each entry also carries a localized `label`
+ * for the removable chip row.
+ */
+const getAppliedMarketplaceFilters = (filters, t) => {
+  const f = filters || {};
+  const label = (key, value) => {
+    if (!t) return undefined;
+    switch (key) {
+      case "startPlz":
+        return t("pickupPlz", { plz: value });
+      case "endPlz":
+        return t("dropPlz", { plz: value });
+      case "from":
+        return value === "Today"
+          ? t("today")
+          : value === "This week"
+            ? t("thisWeek")
+            : value === "Weekend"
+              ? t("weekend")
+              : t("fromDateChip", { date: isoToDisplayDate(value) });
+      case "to":
+        return t("untilDateChip", { date: isoToDisplayDate(value) });
+      case "vehicle":
+        return displayVehicle(value, t);
+      case "axle":
+        return displayAxle(value, t);
+      default:
+        return String(value);
+    }
+  };
+  // Fixed key order — NOT Object.keys(f), so the chip order cannot depend on
+  // insertion order and an unknown key cannot leak into the count.
+  return ["startPlz", "endPlz", "from", "to", "vehicle", "axle"]
+    .filter((key) => isAppliedMarketplaceFilter(key, f[key]))
+    .map((key) => ({ key, value: f[key], label: label(key, f[key]) }));
+};
+
+/** Number of marketplace filters currently restricting the result set. */
+const getAppliedMarketplaceFilterCount = (filters) =>
+  getAppliedMarketplaceFilters(filters).length;
+
+/**
+ * Marketplace filter control + applied-filter count badge.
+ *
+ * The count is derived here from the COMMITTED `filters` object — never from
+ * FilterSheet's draft state, never from the number of results the marketplace
+ * returned, and never from sort state. There is no badge-count state to keep
+ * in sync.
+ *
+ * The badge reuses the shared `Badge` visual primitive (as the notification
+ * bell does) but none of its notification semantics; `Badge` renders nothing
+ * at all for a count of 0, so the zero state reserves no layout space. The
+ * count reaches assistive tech through the button's translated, pluralized
+ * accessible name — the badge itself is `aria-hidden` and `pointer-events:
+ * none`, so the control stays a single focusable, clickable target.
+ */
+const MarketplaceFilterButton = ({ filters, onOpen }) => {
+  const { t, tPlural } = useI18n();
+  const count = getAppliedMarketplaceFilterCount(filters);
+  return (
+    <button
+      type="button"
+      className={`header-btn header-filter-btn ${count ? "active" : ""}`}
+      onClick={onOpen}
+      title={t("filters")}
+      aria-label={count ? tPlural("filtersApplied", count) : t("filters")}
+    >
+      <Ic.Filter />
+      <Badge
+        count={count}
+        variant="destructive"
+        className="header-btn-badge"
+        ariaHidden
+      />
+    </button>
+  );
 };
 
 const FilterSheet = ({ filters, setFilters, onClose }) => {
@@ -6300,6 +6366,12 @@ Object.assign(window, {
   TabBar,
   DriverScreenHeader,
   NotificationBellButton,
+  // Canonical applied-filter derivation — exported so the marketplace badge,
+  // the chip row and the unit tests all share one implementation.
+  getAppliedMarketplaceFilters,
+  getAppliedMarketplaceFilterCount,
+  jobMatchesDriverFilters,
+  MarketplaceFilterButton,
   Portal,
   FilterSheet,
   JobCard,

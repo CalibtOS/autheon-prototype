@@ -1,6 +1,6 @@
 # AUTHEON — Design Direction Board Prototype Remediation
 
-> **Status:** v1.4 — 2026-07-26. **Vehicle domain restructure (V1–V6)** and rows **R28–R31** (primary-screen header consistency — greeting removal, shared header, notification action on all primary screens, shared icon-button border; status **DONE**) added at the end. Earlier: v1.2 — 2026-07-14, implementation pass following [`design-direction-board-audit.md`](design-direction-board-audit.md); rows R17–R21 added after the client PDF arrived (reference card layout, important-vehicle-info fields, header KPIs); rows R22–R27 added after the client review the same evening (axle localization, marketplace header removal, tag-row readability, ordered detail block, real in-app PDF viewer, conditional plate capture).
+> **Status:** v1.5 — 2026-07-27. **Vehicle domain restructure (V1–V6)**; rows **R28–R31** (primary-screen header consistency — greeting removal, shared header, notification action on all primary screens, shared icon-button border; status **DONE**); and row **R32** (Marketplace applied-filter count badge — shared badge primitive, canonical count selector, pluralized accessible name; status **DONE**) added at the end. Earlier: v1.2 — 2026-07-14, implementation pass following [`design-direction-board-audit.md`](design-direction-board-audit.md); rows R17–R21 added after the client PDF arrived (reference card layout, important-vehicle-info fields, header KPIs); rows R22–R27 added after the client review the same evening (axle localization, marketplace header removal, tag-row readability, ordered detail block, real in-app PDF viewer, conditional plate capture).
 > **Scope:** R1–R16 are presentation-only. R18/R19 additionally add the **client-directed optional vehicle-info fields** (`registrationStatus`, `electricVehicle`, `redPlates`) to the prototype store seeds/form mapping, mirrored in `prd.json` (`resolved_defaults.vehicle_important_info_v1`), `schema.dbml`, and `logical-model.md`. Workflows, statuses, permissions, and all other PRD behavior untouched — verified by `_audit-prototype.mjs` (AUDIT PASS) and `_verify-seed.mjs` (all checks passed) after every change.
 > **Evidence:** [`audit-2026-07-14/before/`](audit-2026-07-14/before/) vs [`audit-2026-07-14/after/`](audit-2026-07-14/after/) — driver = phone frame (392×800) light+dark, admin = 1440px light+dark, captured with `prototype/project/_capture-design-audit.mjs`.
 
@@ -216,3 +216,47 @@ now also rendered outside the loading branch so they no longer disappear during 
    than deleted, since whether the row returns is a client decision.
 4. **`.header-btn` 12px radius vs the `--r-2` controls rule** — pre-existing deviation, left as-is; see
    brand-tokens "Header icon buttons".
+
+---
+
+## Marketplace applied-filter count badge — R32 (2026-07-27)
+
+> **Status: DONE** (hardening of an existing implementation). Closes audit items **40, 41, 42**;
+> item **39** was already COVERED by the prototype before this pass. Audit item **43 remains OPEN**.
+> **Nature of the change:** the feature already worked — badge present, count correct, derived from
+> committed state, hidden at zero, unaffected by sorting. This pass corrected *how* it was built
+> (shared primitive, canonical selector, pluralized label) and added the coverage it never had.
+> Sorting is **not** part of the badge and was not touched.
+
+| Change ID | Screen | File(s) changed | Requirement | Before issue | After adjustment | Status |
+|---|---|---|---|---|---|---|
+| R32a | Marketplace | `driver.jsx` | Reuse the shared badge primitive | Filter badge was a raw `<span class="tabbar-badge">` — the tab-bar badge, hardcoded `9999px` / `#ffffff` / mono 9px, no `99+` cap, no `pointer-events: none` | Renders the shared `Badge` primitive (`variant="destructive"`, `ariaHidden`), same primitive the notification bell uses. Marketplace-specific *count* logic stays in the Marketplace; no notification semantics were copied across | **DONE** |
+| R32b | Driver (shared) | `styles.css` | One anchoring rule, no duplicated values | `.bell-badge` and `.tabbar-badge` were two near-identical anchored-badge rules; a third would have been added for the filter | Single `.header-btn > .header-btn-badge` rule shared by bell and filter; it only *positions* the primitive (colour/radius/weight/cap stay in `.ui-badge`). Adds `pointer-events: none` and a `--primary` ring while the button is in its applied state | **DONE** |
+| R32c | Marketplace | `driver.jsx` | Canonical, testable count derivation | Count was `activeChips.length`, an array built inline in `Portal`'s render body — correct, but not extractable or unit-testable | Pure `getAppliedMarketplaceFilters(filters, t?)` + `getAppliedMarketplaceFilterCount(filters)`, co-located with `jobMatchesDriverFilters` so the counted set and the *restricting* set stay visibly paired. Badge, chip row and accessible name all read this one derivation | **DONE** |
+| R32d | Marketplace | `driver.jsx` | One filter-button implementation | Button markup was inline in `Portal`, so a story catalogue could only duplicate it | Extracted `MarketplaceFilterButton({ filters, onOpen })`; `Portal` and the states gallery mount the same component | **DONE** |
+| R32e | Marketplace | `i18n.js`, `driver.jsx` | Translated, pluralized accessible name | `aria-label` was concatenated: `` `${t("filters")} (${count})` `` → "Filters (4)" | `filtersApplied_one` / `filtersApplied_other` (EN + DE) resolved by a new `tPlural(key, count)` helper — whole sentences live in the translation files. "Filters, 3 applied" / "Filter, 3 aktiv" | **DONE** |
+
+### Badge behaviour as specified
+
+- **Placement:** upper-right of the 40×40 filter control, `top/right: -5px`, inside the phone screen at every supported width.
+- **Zero count:** the `Badge` component returns `null`, so **no element is rendered** — nothing hidden, no reserved layout space, nothing announced.
+- **Synchronization:** derived from the **committed** filter object owned by the shell. Draft selections inside the open panel do not move it; Cancel discards them. Chip removal and Reset+Apply update it immediately.
+- **Not coupled to results:** a filter matching zero orders still shows its count (covered by test).
+- **Not coupled to sort:** sorting is excluded from the count and the sort control carries no badge (covered by test).
+- **Responsive:** verified 320 / 360 / 390 / 430 / 768 / 1024 px, EN + DE. Badge stays attached, never crosses the viewport edge, sort and filter stay aligned, no horizontal document scroll, 40×40 touch target preserved. No separate tablet layout.
+- **Accessibility:** count carried in the button's translated pluralized accessible name; badge `aria-hidden` and `pointer-events: none`; no focusable element inside the button; visible `:focus-visible` ring retained.
+
+### Verification
+
+- Unit: `tests/regression/marketplace-filter-count.unit.spec.ts` — 12 cases over the pure selector.
+- Integration: `tests/regression/marketplace-filter-badge.integration.spec.ts` — 19 cases (lifecycle, draft-vs-committed, sort isolation, result-count isolation, a11y, layout stability, 5 widths).
+- E2E: `tests/e2e/critical-flows/marketplace-filter-badge.spec.ts` — 2 journeys.
+- Visual: `tests/regression/marketplace-filter-states.visual.spec.ts` (14-story gallery + focus) and two new Marketplace baselines (`driver-marketplace-filter-1/-3`).
+- States gallery: `prototype/project/driver-marketplace-filter-states.html`.
+
+### Not changed (deliberately)
+
+1. **Sorting** — excluded from the count, no badge on the sort control, untouched.
+2. **Filter semantics** — no filter was added, removed or redefined. The set counted is exactly the set `jobMatchesDriverFilters` acts on, with the one documented exception below.
+3. **Persistence** — Marketplace filters remain in-memory session state (survive tab navigation, reset on reload). No persistence was added for the badge.
+4. **Audit item 43 — `from: "This week"` counts but does not filter.** Left as-is: implementing it requires defining week boundaries against a prototype whose "today" is a hardcoded `05.05.`. A product decision, not an invented rule.
