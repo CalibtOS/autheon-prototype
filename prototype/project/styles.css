@@ -4009,9 +4009,9 @@ select.input {
     color 0.12s;
 }
 .phone-shell .detail-tab-pill.active {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-accent);
 }
 .phone-shell .detail-tab-count {
   display: inline-flex;
@@ -4026,8 +4026,8 @@ select.input {
   color: var(--muted);
 }
 .phone-shell .detail-tab-pill.active .detail-tab-count {
-  background: color-mix(in srgb, var(--neutral-fill) 40%, transparent);
-  color: var(--paper);
+  background: color-mix(in srgb, var(--on-accent) 25%, transparent);
+  color: var(--on-accent);
 }
 
 /* My documents rows (Figma 8:2387) */
