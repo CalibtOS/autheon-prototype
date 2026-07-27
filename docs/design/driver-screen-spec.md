@@ -45,19 +45,61 @@ Implemented as `JobCardBody` (`driver.jsx`), shared by Marketplace and My Jobs:
 1. **Header row (My Jobs only)** — `Tour #…` (muted) + text-labelled status pill. **Client decision 2026-07-14:** marketplace cards hide tour number and status (every marketplace card is Published, so the pill carried no information); both stay on My Jobs cards where status varies.
 2. **Route line** — `München → Berlin` as a plain text line (17px/600), PLZ beneath each city, distance small and muted under the arrow.
 3. **Legs** — two columns *Pickup / Delivery*: purple pin icon + 500-weight label, then `date · window` (`Flexible` fallback) in tabular figures.
-4. **Footer** — vehicle icon + model left, **price right** (19px/600, factual) — always one calm line.
-5. **Tag row** — wrapping chip row beneath the footer: **important vehicle info tags** (icon + text) and the **axle chip**, all in the same `--canvas` chip treatment so any combination wraps cleanly on 375px. Axle labels are localized (`Own axle`/`Eigenachse`, `Third-party axle`/`Fremdachse`).
+4. **Footer** — vehicle-type icon + `manufacturer model` left, **price right** (19px/600, factual) — always one calm line. Falls back to the vehicle-type label when no manufacturer/model is recorded.
+5. **Tag row** — wrapping chip row beneath the footer, in this fixed order: **registration-status tag** → **characteristic tags** → **transport-type chip** → **derived red-licence-plate notice**. All share the `--canvas` chip treatment (the red-plate notice re-tints it with the Warn pair) so any combination wraps cleanly at 375px.
 
 | Slot | Content | Source |
 |------|---------|--------|
 | Route | Pickup city + PLZ → delivery city + PLZ | `startCity/startPlz/endCity/endPlz` |
 | Schedule | Pickup date + window, delivery date + window | `pickup/delivery` |
-| Vehicle | Model (icon carries type), axle chip | `vehicleModel/vehicle/axle` |
+| Vehicle | `manufacturer model` (icon carries the type), transport-type chip | `manufacturer/vehicleModel/vehicleType/transportType` |
 | Status | Text-labelled pill (`Published` on marketplace) | `status` |
 | Compensation | Driver offer, right-placed, premium/factual | `driverOffer` |
-| Important vehicle info | `Registered` / `Deregistered` / `E-vehicle` / `Red plates` — icon + text tags, rendered only when set | `registrationStatus/electricVehicle/redPlates` |
+| Registration status | `Registered` / `Deregistered` — icon + text tag | `registrationStatus` |
+| Additional characteristics | `Electric vehicle` / `Ready to drive` — icon + text tags, only when set | `electricVehicle/readyToDrive` |
+| Red licence plates | Derived notice, only when *Deregistered + Own axle* | `AuthStore.jobRequiresRedLicencePlates(job)` |
 
-**Vehicle info fields (resolved 2026-07-14, revised 2026-07-15):** `registrationStatus` (`registered`\|`deregistered`\|null), `electricVehicle`, `redPlates`, `redPlateNumber` per `prd.json` → `resolved_defaults.vehicle_important_info_v1` (client DDB §5 + direction). **Registration is one exclusive choice** in the admin job form: a four-option segment `Not specified | Registered | Deregistered | Red plates` (red plates legally require a deregistered vehicle — § 16 FZV — so selecting it stores `deregistered + redPlates`; a Registered + red-plates combination is impossible). E-vehicle remains a separate combinable chip. Conditional fields: Brand/Model/VIN always; regular plate only for Not specified/Registered (hidden+cleared otherwise); red-plate number (`K-06 1234` format) required only in the Red plates state. Shown as chips on cards; in the detail Vehicle card the flags render as an ordered block (label line, chip row beneath), the plate row hides when no plate exists, and a red-styled `Red plate no.` row appears when set (unlocked view only). Text label always present — the icon supports, it never replaces the label.
+### Vehicle domain (client confirmation “Systemlogik Fahrzeugeingabe”, 2026-07-26)
+
+Supersedes the 2026-07-14/15 “important vehicle info” spec. **Four explicit categories** plus independent characteristics — never one flat multi-select tag collection. Canonical values, cardinalities and the derived rule: `docs/database/logical-model.md` → *Vehicle domain*.
+
+**Presentation order of vehicle information** (identical in the marketplace preview and the complete order view, so the two read as the same object):
+
+1. **Vehicle type** — `Passenger car` / `Truck up to and including 7.5 t` / `Truck over 7.5 t`
+2. **Manufacturer**
+3. **Model**
+4. *(unlocked only)* **Official licence plate** — `.plate-badge`, shown whenever a plate exists **including for a deregistered vehicle** (a de-stamped plate is still recorded)
+5. *(unlocked only)* **VIN** — mono
+6. **Transport type** — `Own axle` / `Third-party axle`
+7. **Registration status** — `Registered` / `Deregistered`
+8. **Additional vehicle characteristics** — label line, then a chip row (`Electric vehicle`, `Ready to drive`); the block is omitted when neither is set
+9. **Derived red-licence-plate notice** — last, so it reads as a consequence of 6 + 7
+
+Registration status appears **once** per detail surface (as its own row, not repeated in the characteristics chips). On cards, where there are no rows, it appears as a tag.
+
+**Derived red-licence-plate notice — visibility and prominence.** Shown **when and only when** `registrationStatus === deregistered && transportType === own_axle`, from the single shared component `DriverUI.RedPlatesRequiredNotice` (never re-derived per screen). Copy: `redPlatesRequired` = “Red licence plates required” / “**Rote Kennzeichen erforderlich**”, plus the `redPlatesRequiredDetail` sentence.
+
+| Surface | Variant | Prominence |
+|---|---|---|
+| Marketplace / My Jobs card | `tag` chip | Last chip in the tag row; Warn tint makes it the only coloured chip present |
+| Marketplace preview | `banner` | Full-width tinted banner directly under the Vehicle card — above the Accept CTA |
+| Booking dialog | `banner` | **Clearly highlighted**, between the tour summary and the binding slide-to-confirm, so it cannot be committed past unseen |
+| Complete order view (after booking) | `banner` | Under the Vehicle card; **remains visible after booking** — it is an execution requirement, not a temporary marketplace message |
+
+It survives refetch, reload and the booking transition because it is derived on every render rather than stored. It is never client-writable.
+
+**“Ready to drive” applicability (final UX decision, 2026-07-26).** `readyToDrive` is decision-relevant for **third-party-axle** transport. The admin control is **always rendered and always enabled**; when transport type is *Third-party axle* an emphasised applicability note appears beneath the chips (`vehicleReadyToDriveApplicability`). The value is **never auto-cleared, defaulted away or rewritten** when the transport type or any other control changes — so temporarily switching transport type cannot silently lose a stored value. It is **not mandatory**. The repository's established "hide the non-applicable field" pattern was **deliberately not applied** here: it existed only for the licence plate, and that exact destructive behaviour is what this confirmation removes. On driver surfaces the tag is shown whenever set, regardless of transport type.
+
+**Approved vehicle types only.** The three types above are the complete set. `SUV`, `Van`, `Transporter`, `Oldtimer`, `Classic` and the older `Light truck <3.5t` / `LKW < 3,5t` band are **not storable** and never appear: the icon map covers exactly the three approved types, the filter sheet and notification preferences offer only those three, and there is no "(legacy)" label state or fallback icon.
+
+**Responsive behaviour for long values and warning text.**
+
+- The red-plate chip is the only `.vehicle-flag` with `white-space: normal`, so “Rote Kennzeichen erforderlich” **wraps** inside a 375px card instead of overflowing; the banner detail sentence wraps freely at `line-height 1.45`.
+- Long vehicle-type labels (“Truck up to and including 7.5 t”, “LKW bis einschließlich 7,5 t”) and long `manufacturer model` pairs (e.g. `Mercedes-Benz Atego 7.5 t`) sit in the footer's flexible left slot; the price keeps its right position, and the tag row wraps to further lines rather than scrolling horizontally.
+- In detail key/value rows the value column is right-aligned and wraps; VIN keeps `word-break` so a 17-character string never forces horizontal scroll.
+- The tag row wraps at every supported width (375px mobile → wider tablet), and the page body must never scroll horizontally.
+
+Text label always present — icons support, never replace, the label.
 
 **In-app document viewer:** `DocumentPreviewSheet` is a full-height in-phone page rendering the seeded real 2-page PDF (`prototype/project/assets/transport-order-sample.pdf`) via pdf.js canvases (iframe fallback), with functional Download/Share/Print. All transport-order, tour-document, and Infopoint views/downloads serve this PDF — production streams the real file to the same surface.
 
@@ -68,7 +110,7 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 ## Header & KPIs
 
 - Marketplace header: greeting/avatar, notifications bell, screen title, sort + filter controls, applied-filter chips. Restrained — orientation without dashboard weight.
-- **KPI row (implemented per PDF §4 — "reduzierter Dashboard-Charakter"):** three quiet chips — Available (published jobs), Booked (own assigned/accepted), Open documents (tours needing document correction). `--canvas` chips, 12px labels, 600-weight numbers; never dominant.
+- **KPI row — removed at client request (2026-07, PR #17).** The three quiet chips (Available / Booked / Open documents, per PDF §4 "reduzierter Dashboard-Charakter") were implemented but then removed: the same counts already surface as tab badges in **My Jobs**, so the marketplace row only duplicated them. The `.kpi-row`/`.kpi-chip` CSS and `kpiAvailableJobs`/`kpiBookedJobs`/`kpiOpenDocuments` i18n keys remain in place but unused — re-introduce only on explicit client ask.
 
 ---
 
@@ -77,7 +119,7 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 | Screen | Component | Required states | Primary CTA |
 |--------|-----------|-----------------|-------------|
 | Marketplace | `Portal` | default, filtered, empty, loading, blocked driver | Filter / open job |
-| My Jobs | `MyJobs` | 4 tabs × empty / loading / populated | Open job |
+| My Jobs | `MyJobs` | 4 tabs × empty / loading / populated (swipe between tabs) | Open job |
 | Job detail (locked) | `JobLocked` | masked addresses, dashed route card | Accept (opens sheet) |
 | Job detail (unlocked) | `JobUnlocked` | route, contacts, docs, cancellation; performed → `Job details / My documents` tab pills | Mark performed |
 | Tour documents (active tours) | `JobTourDocuments` | empty, uploading, review | Upload |
@@ -89,7 +131,7 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 | Notifications | `DriverNotificationsPane` | grouped by day, unread, empty | Deep link |
 | Profile | `ProfilePaneFull` | view, edit MDR, pending | Request changes |
 | Change email | Account nav row → `ChangeEmailSheet` | enter, confirm code (+resend), success, pending resume | Cancel \| Send code → Confirm change |
-| Infopoint | `Infopoint` | docs + news + help tabs, empty | Download / Help |
+| Infopoint | `Infopoint` | docs + news + help tabs, empty (swipe between tabs) | Download / Help |
 
 ---
 
@@ -100,6 +142,8 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 - Moderate button rounding (`--r-2`/`--r-3`); no pill-shaped primary buttons.
 - Tap feedback: subtle opacity/scale/pressed states; micro-animations minimal, transform/opacity only, `prefers-reduced-motion` respected.
 - **Slide-to-confirm** (binding acceptance, binding cancellation, **mark performed**): must clearly prevent accidental actions — full-width deliberate drag, locked until preconditions are met (e.g. 10-char reason), clear track label (sentence case), performant transform-only feedback. Shared control: `SlideToConfirm` (`driver.jsx`).
+- **Swipe between in-screen tabs** (`SwipeViews`, `driver.jsx` — 2026-07, PR #17): My Jobs (Active / Performed / Cancelled / Empty run) and Infopoint (Documents / News / Help) are a paged carousel — a horizontal drag moves the track so the adjacent tab peeks in and snaps on release; the tab pills stay in sync and tapping still works. The gesture locks to one axis after ~10px so vertical list scrolling is preserved (`touch-action: pan-y`, per-pane `overflow-y`); transform-only, reduced-motion friendly. Not the bottom nav — that switches on tap only.
+- **Digit-only numeric inputs** (2026-07, PR #17): the preferred postal-code input (profile push prefs) and the Marketplace filter PLZ fields strip non-digits on input (`inputMode="numeric"`). Mirrors the admin Create/Edit-Job numeric rules (postal code, house no., distance = digits; phone allows a leading `+`; money allows one decimal separator).
 
 ---
 
@@ -191,6 +235,7 @@ Loaded before `driver.jsx` in `AUTHEON Prototype.html`. Access via `window.Drive
 | `ConfirmSheet` | `open`, `title`, `message`, `confirmLabel?`, `cancelLabel?`, `onConfirm`, `onCancel`, `destructive?` | Centered; Cancel ghost + Confirm cta/danger |
 | `SortSelect` | `value`, `onChange`, `options`, `label?`, `size?` (`md` \| `lg`) | Icon trigger + branded dropdown list (checkmark on active); no native OS picker |
 | `AdminConfirmBridge` | — | Mount once in HTML; exposes `window.requestAdminConfirm()` |
+| `RedPlatesRequiredNotice` | `job?` **or** `registrationStatus` + `transportType`; `variant` (`tag` \| `banner` \| `admin-banner` \| `admin-pill`) | **The one** derived red-licence-plate notice, shared by the Driver PWA and the Admin Backend. Consults `AuthStore.requiresRedLicencePlates` and renders nothing unless *Deregistered + Own axle*. Lives in `driver-ui.jsx` so the two apps cannot drift or redeclare it in the shared global scope. Accepts the live admin form state (which is not yet a job) via the explicit props. |
 
 ### CSS companions
 
@@ -201,7 +246,11 @@ Loaded before `driver.jsx` in `AUTHEON Prototype.html`. Access via `window.Drive
 | `.sheet`, `.sheet-backdrop`, `.sheet-foot` | Sheet layout |
 | `.inline-alert`, `.app-banner` | Persistent feedback |
 | `.profile-nav-row`, `.profile-group` | Profile navigation list / Account group |
-| `.change-email-current`, `.code-input-row`, `.code-input-box`, `.change-email-resend-row`, `.change-email-success-check` | Change-email modal + `CodeInput` |
+| `.change-email-current`, `.code-input-row`, `.code-input-box`, `.change-email-aux-row`, `.change-email-text-link`, `.change-email-success-check` | Change-email modal + `CodeInput` |
+| `.swipe-viewport`, `.swipe-track`, `.swipe-pane`, `.swipe-pane-body` | Paged swipe tab views (`SwipeViews`) — My Jobs / Infopoint tab carousel |
+| `.vehicle-flag`, `.vehicle-flag.electric`, `.vehicle-flag.readyToDrive`, `.vehicle-flag.registered/.deregistered` | Vehicle tag chips (registration status + characteristics) |
+| `.vehicle-flag.red-plates-required`, `.red-plates-banner`, `-head`, `-detail` | Derived red-licence-plate notice — existing `--st-warn` / `--st-warn-bg` pair, no new token (see `brand-tokens.md`) |
+| `.axle-chip` | Transport-type chip (class name predates the rename; the *concept* is transport type) |
 | `.text-*`, `.stack-*`, `.row-*` | Typography / spacing utilities (see `styles.css` § TOKEN UTILITIES) |
 
 ### Formatters (`formatters.js`)
@@ -210,4 +259,4 @@ Loaded before `driver.jsx` in `AUTHEON Prototype.html`. Access via `window.Drive
 
 ### i18n
 
-Driver keys used in `driver.jsx`: see [`driver-i18n-index.md`](driver-i18n-index.md) (regenerate with `node prototype/project/_export-driver-i18n.mjs`).
+Driver keys reachable from `driver.jsx`, `driver-ui.jsx` and the shared vehicle-domain label resolvers in `store.js`: see [`driver-i18n-index.md`](driver-i18n-index.md) (regenerate with `node prototype/project/_export-driver-i18n.mjs`). Vehicle labels are **never** hardcoded in a component — `AuthStore.vehicleTypeLabel` / `transportTypeLabel` / `registrationStatusLabel` own the canonical value → key mapping for both apps.

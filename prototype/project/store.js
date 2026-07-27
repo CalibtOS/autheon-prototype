@@ -18,8 +18,180 @@ window.AuthStore = (() => {
   // Seeded real 2-page PDF served by every in-app document view/download —
   // stands in for the production file stream (see driver DocumentPreviewSheet).
   const SAMPLE_PDF_URL = "assets/transport-order-sample.pdf";
-  const AXLE_OWN = "driven on own wheels";
-  const AXLE_THIRD = "third-party axle";
+
+  // =======================================================================
+  // VEHICLE DOMAIN — client confirmation "Systemlogik Fahrzeugeingabe"
+  // (see docs/archive/2026-07/prd-changelog-since-2026-07-26.md).
+  //
+  // Four EXPLICIT, independent categories with distinct cardinalities. The
+  // earlier "one flat vehicle.tags[] multi-select" proposal is SUPERSEDED —
+  // each category keeps its own field, its own allowed values and its own
+  // business meaning:
+  //
+  //   vehicleType          exactly one   (3 approved values)
+  //   transportType        exactly one   (2 values; former "axle")
+  //   registrationStatus   exactly one   (2 values; independent of transport)
+  //   characteristics      independent booleans (electricVehicle, readyToDrive)
+  //
+  // User-facing labels NEVER live here — they come from i18n.js.
+  // =======================================================================
+
+  // 1. Vehicle type — exactly one. Approved for new/edited records.
+  const VEHICLE_TYPE_PASSENGER_CAR = "passenger_car"; // PKW
+  const VEHICLE_TYPE_TRUCK_UP_TO_7_5_T = "truck_up_to_7_5_t"; // LKW bis einschl. 7,5 t
+  const VEHICLE_TYPE_TRUCK_OVER_7_5_T = "truck_over_7_5_t"; // LKW über 7,5 t
+  const VEHICLE_TYPES = [
+    VEHICLE_TYPE_PASSENGER_CAR,
+    VEHICLE_TYPE_TRUCK_UP_TO_7_5_T,
+    VEHICLE_TYPE_TRUCK_OVER_7_5_T,
+  ];
+
+  // 2. Transport type — exactly one.
+  const TRANSPORT_TYPE_OWN_AXLE = "own_axle"; // Eigenachse
+  const TRANSPORT_TYPE_THIRD_PARTY_AXLE = "third_party_axle"; // Fremdachse
+  const TRANSPORT_TYPES = [
+    TRANSPORT_TYPE_OWN_AXLE,
+    TRANSPORT_TYPE_THIRD_PARTY_AXLE,
+  ];
+
+  // 3. Registration status — exactly one, INDEPENDENT of transport type.
+  // Never inferred from transport type, never merged into a tag array.
+  const REGISTRATION_REGISTERED = "registered"; // Zugelassen
+  const REGISTRATION_DEREGISTERED = "deregistered"; // Abgemeldet
+  const REGISTRATION_STATUSES = [
+    REGISTRATION_REGISTERED,
+    REGISTRATION_DEREGISTERED,
+  ];
+
+  const VIN_LENGTH = 17;
+
+  /**
+   * Vehicle type at the boundary. Only the three approved values exist; any
+   * other input resolves to "" so it fails validation rather than being stored.
+   */
+  function normalizeVehicleType(raw) {
+    const s = String(raw || "").trim();
+    return VEHICLE_TYPES.includes(s) ? s : "";
+  }
+
+  /** Values offered for a NEW or EDITED record. */
+  function selectableVehicleTypes() {
+    return [...VEHICLE_TYPES];
+  }
+
+  /** Reject anything outside the approved set on create + update. */
+  function isAcceptableVehicleTypeForWrite(raw) {
+    return VEHICLE_TYPES.includes(normalizeVehicleType(raw));
+  }
+
+  function normalizeTransportType(raw) {
+    const s = String(raw || "").trim();
+    return TRANSPORT_TYPES.includes(s) ? s : TRANSPORT_TYPE_OWN_AXLE;
+  }
+
+  function normalizeRegistrationStatus(raw) {
+    const s = String(raw || "").trim();
+    return REGISTRATION_STATUSES.includes(s) ? s : null;
+  }
+
+  /** VIN business rule (confirmed): exactly 17 characters when present. */
+  function isValidVin(raw) {
+    return String(raw || "").trim().length === VIN_LENGTH;
+  }
+
+  // -----------------------------------------------------------------------
+  // RED LICENCE PLATES — the ONE canonical domain policy.
+  //
+  // Red plates are brought independently by the executing service partner;
+  // their number is irrelevant to AUTHEON order creation and is NOT recorded.
+  // The requirement is DERIVED, never manually selected and never writable:
+  //
+  //   registered   + own axle          → not required
+  //   registered   + third-party axle  → not required
+  //   deregistered + own axle          → REQUIRED  ("Rote Kennzeichen erforderlich")
+  //   deregistered + third-party axle  → not required
+  //
+  // Every surface (admin form + detail, marketplace card, marketplace
+  // preview, booking dialog, complete order view, order summary/CSV) MUST
+  // consume this function — no component re-implements the condition.
+  // -----------------------------------------------------------------------
+  function requiresRedLicencePlates(registrationStatus, transportType) {
+    return (
+      normalizeRegistrationStatus(registrationStatus) ===
+        REGISTRATION_DEREGISTERED &&
+      normalizeTransportType(transportType) === TRANSPORT_TYPE_OWN_AXLE
+    );
+  }
+
+  /** Job-shaped convenience wrapper over the same single policy. */
+  function jobRequiresRedLicencePlates(job) {
+    if (!job) return false;
+    return requiresRedLicencePlates(
+      job.registrationStatus,
+      job.transportType ?? job.axle,
+    );
+  }
+
+  /**
+   * "Ready to drive" is decision-relevant for third-party-axle transport.
+   * Applicability only drives EMPHASIS in the UI — the stored value is never
+   * cleared or rewritten when another control changes (no silent data loss).
+   */
+  function isReadyToDriveApplicable(transportType) {
+    return normalizeTransportType(transportType) === TRANSPORT_TYPE_THIRD_PARTY_AXLE;
+  }
+
+  /**
+   * AUTHORITATIVE vehicle validation for every create/update. The admin form
+   * imports the same helpers for immediate feedback, but this runs on the
+   * server-equivalent write path so client state is never trusted.
+   */
+  function validateVehicleForm(form = {}) {
+    const errors = [];
+    const raw = String(form.vehicleType || "").trim();
+    if (!raw) {
+      errors.push({ field: "vehicleType", reason: "required" });
+    } else if (!isAcceptableVehicleTypeForWrite(raw)) {
+      // Anything outside the three approved values is rejected server-side.
+      errors.push({ field: "vehicleType", reason: "removed_vehicle_type" });
+    }
+    if (!String(form.manufacturer || "").trim()) {
+      errors.push({ field: "manufacturer", reason: "required" });
+    }
+    if (!String(form.model || "").trim()) {
+      errors.push({ field: "model", reason: "required" });
+    }
+    // Official plate: required while registered, optional once deregistered —
+    // but never rejected for a deregistered vehicle.
+    const registration = normalizeRegistrationStatus(form.registrationStatus);
+    if (!registration) {
+      errors.push({ field: "registrationStatus", reason: "required" });
+    } else if (
+      registration === REGISTRATION_REGISTERED &&
+      !String(form.plate || "").trim()
+    ) {
+      errors.push({ field: "plate", reason: "required" });
+    }
+    if (!isValidVin(form.vin)) {
+      errors.push({ field: "vin", reason: "vin_length" });
+    }
+    if (!TRANSPORT_TYPES.includes(normalizeTransportType(form.transportType))) {
+      errors.push({ field: "transportType", reason: "required" });
+    }
+    // Reject any attempt to write the retired manual red-plate inputs or to
+    // assert the derived requirement from the client.
+    for (const banned of [
+      "redPlates",
+      "redPlateNumber",
+      "redLicencePlateNumber",
+      "requiresRedLicencePlates",
+    ]) {
+      if (form[banned] != null && form[banned] !== "" && form[banned] !== false) {
+        errors.push({ field: banned, reason: "not_writable" });
+      }
+    }
+    return { ok: errors.length === 0, errors };
+  }
 
   // Status model (Task 2): explicit machine statuses per the Storno/empty-run
   // workflow (extended-enum approach — see prd.json client_status_mapping).
@@ -198,20 +370,18 @@ window.AuthStore = (() => {
       pickup: mkLocation(),
       delivery: mkLocation(),
       distanceKm: 0,
-      vehicle: "",
-      vehicleModel: "",
-      plate: "",
-      vin: "",
-      axle: AXLE_OWN,
-      // Important vehicle info (Design Direction Board §5 — optional metadata;
-      // PRD decision on required V1 persistence still open)
-      registrationStatus: null, // "registered" | "deregistered" | null
+      // --- Vehicle domain (client confirmation "Systemlogik Fahrzeugeingabe") ---
+      vehicleType: "", // exactly one of VEHICLE_TYPES
+      manufacturer: "", // selected from the manufacturer catalogue
+      vehicleModel: "", // free text, separate from the manufacturer
+      plate: "", // OFFICIAL plate of the TRANSPORTED vehicle (never a red plate)
+      vin: "", // exactly 17 characters when present
+      transportType: TRANSPORT_TYPE_OWN_AXLE, // exactly one — renames the former "axle"
+      registrationStatus: null, // exactly one; independent of transportType
+      // Additional vehicle characteristics — independent booleans
       electricVehicle: false,
-      redPlates: false,
-      // German red transfer plate no. (§16 FZV, dealer "06" series) — belongs
-      // to the operator, not the vehicle; captured per tour when redPlates=true
-      redPlateNumber: "",
-
+      readyToDrive: false,
+  
       revenue: null,
       driverOffer: null,
       expenses: null,
@@ -262,7 +432,26 @@ window.AuthStore = (() => {
     if (over.pickup) job.pickup = mkLocation({ ...job.pickup, ...over.pickup });
     if (over.delivery)
       job.delivery = mkLocation({ ...job.delivery, ...over.delivery });
+    normalizeVehicleDomain(job);
     syncDisplayFields(job);
+    return job;
+  }
+
+  /**
+   * Resolves every vehicle category to its canonical value. Idempotent, and the
+   * single place the four categories are coerced. The retired manual red-plate
+   * inputs are stripped defensively — the requirement is derived, never stored.
+   */
+  function normalizeVehicleDomain(job) {
+    if (!job) return job;
+    job.vehicleType = normalizeVehicleType(job.vehicleType);
+    job.manufacturer = String(job.manufacturer || "").trim();
+    job.transportType = normalizeTransportType(job.transportType);
+    job.registrationStatus = normalizeRegistrationStatus(job.registrationStatus);
+    job.electricVehicle = !!job.electricVehicle;
+    job.readyToDrive = !!job.readyToDrive;
+    delete job.redPlates;
+    delete job.redPlateNumber;
     return job;
   }
 
@@ -282,6 +471,9 @@ window.AuthStore = (() => {
   /** Copy structured pickup/delivery/customer data into flat fields for tables and CSV. */
   function syncDisplayFields(job) {
     if (!job) return job;
+    // Idempotent — guarantees every sync starts from canonical vehicle values,
+    // whatever path mutated the job.
+    normalizeVehicleDomain(job);
     const pu = job.pickup || mkLocation();
     const del = job.delivery || mkLocation();
     job.customer = job.customerName || job.customer || "";
@@ -315,20 +507,13 @@ window.AuthStore = (() => {
       secondPhone: del.secondPhone || "",
       email: del.email || "",
     };
+    // DERIVED, read-only. Recomputed from the canonical policy on every sync so
+    // it can never drift from registrationStatus + transportType, and so a
+    // client-supplied value can never survive a write (see composeDraftFields-
+    // FromForm, which does not read it). Persisting it is a documented
+    // non-goal — this denormalization exists only for table/CSV/PDF reads.
+    job.requiresRedLicencePlates = jobRequiresRedLicencePlates(job);
     return job;
-  }
-
-  function normalizeAxle(raw) {
-    const s = String(raw || "").trim();
-    const map = {
-      Eigenachse: AXLE_OWN,
-      Fremdachse: AXLE_THIRD,
-      "Own axle": AXLE_OWN,
-      "Third-party axle": AXLE_THIRD,
-      [AXLE_OWN]: AXLE_OWN,
-      [AXLE_THIRD]: AXLE_THIRD,
-    };
-    return map[s] || AXLE_OWN;
   }
 
   function seedCustomers() {
@@ -665,7 +850,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v1.3",
         updatedAt: "04.05. 09:10",
-        seed: true,
       },
       {
         id: "DOC-002",
@@ -676,7 +860,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v3.0",
         updatedAt: "02.05. 14:45",
-        seed: true,
       },
       {
         id: "DOC-003",
@@ -687,7 +870,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v1.0",
         updatedAt: "01.05. 08:00",
-        seed: true,
       },
       {
         id: "DOC-004",
@@ -698,7 +880,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v2.1",
         updatedAt: "29.04. 11:30",
-        seed: true,
       },
       {
         id: "DOC-005",
@@ -709,7 +890,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v1.0",
         updatedAt: "29.04. 11:31",
-        seed: true,
       },
       {
         id: "DOC-006",
@@ -721,7 +901,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v1.0",
         updatedAt: "20.05. 10:00",
-        seed: true,
       },
       {
         id: "DOC-007",
@@ -733,7 +912,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v1.1",
         updatedAt: "20.05. 10:15",
-        seed: true,
       },
       {
         id: "DOC-008",
@@ -745,7 +923,6 @@ window.AuthStore = (() => {
         scope: "Global",
         version: "v1.0",
         updatedAt: "20.05. 10:30",
-        seed: true,
       },
     ];
   }
@@ -864,12 +1041,15 @@ window.AuthStore = (() => {
           windowTo: "14:00",
         }),
         distanceKm: 585,
-        vehicle: "SUV",
-        vehicleModel: "VW Tiguan 2.0 TDI",
+        // Matrix case 1: registered + own axle → red plates NOT required.
+        vehicleType: VEHICLE_TYPE_TRUCK_UP_TO_7_5_T,
+        manufacturer: "Mercedes-Benz",
+        vehicleModel: "Atego 7.5 t",
         plate: "M-AB 1234",
         vin: "WVGZZZ5NZKW123456",
-        axle: AXLE_OWN,
-        registrationStatus: "registered",
+        transportType: TRANSPORT_TYPE_OWN_AXLE,
+        registrationStatus: REGISTRATION_REGISTERED,
+        readyToDrive: true,
 
         revenue: 340,
         netAmount: 285.71,
@@ -905,13 +1085,16 @@ window.AuthStore = (() => {
           windowTo: "16:00",
         }),
         distanceKm: 124,
-        vehicle: "PKW",
-        vehicleModel: "Skoda Superb",
+        // Matrix case 1: registered + own axle → red plates NOT required.
+        vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
+        manufacturer: "Skoda",
+        vehicleModel: "Superb",
         plate: "HB-NF 848",
         vin: "TMBJH7NP8P0123848",
-        axle: AXLE_OWN,
-        registrationStatus: "registered",
+        transportType: TRANSPORT_TYPE_OWN_AXLE,
+        registrationStatus: REGISTRATION_REGISTERED,
         electricVehicle: true,
+        readyToDrive: true,
 
         revenue: 185,
         driverOffer: 145,
@@ -943,11 +1126,15 @@ window.AuthStore = (() => {
           windowTo: "18:00",
         }),
         distanceKm: 232,
-        vehicle: "PKW",
-        vehicleModel: "BMW 3 Touring",
+        // Matrix case 2: registered + third-party axle → red plates NOT required.
+        vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
+        manufacturer: "BMW",
+        vehicleModel: "3 Touring",
         plate: "S-CC 220",
         vin: "WBA8E1100K5J12345",
-        axle: AXLE_THIRD,
+        transportType: TRANSPORT_TYPE_THIRD_PARTY_AXLE,
+        registrationStatus: REGISTRATION_REGISTERED,
+        readyToDrive: false,
 
         revenue: 220,
         driverOffer: 175,
@@ -1007,11 +1194,18 @@ window.AuthStore = (() => {
           windowTo: "18:00",
         }),
         distanceKm: 186,
-        vehicle: "PKW",
-        vehicleModel: "Audi A4",
+        // Matrix case 3 AFTER BOOKING: deregistered + own axle → red plates
+        // REQUIRED. This accepted job proves the derived notice survives the
+        // booking transition into the complete order view. The official plate
+        // is a known de-stamped plate — deregistration never blanks it.
+        vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
+        manufacturer: "Audi",
+        vehicleModel: "A4",
         plate: "K-AL 845",
         vin: "WAUZZZ4M5KA000001",
-        axle: AXLE_THIRD,
+        transportType: TRANSPORT_TYPE_OWN_AXLE,
+        registrationStatus: REGISTRATION_DEREGISTERED,
+        readyToDrive: true,
 
         revenue: 145,
         driverOffer: 110,
@@ -1044,14 +1238,19 @@ window.AuthStore = (() => {
           windowTo: "16:00",
         }),
         distanceKm: 156,
-        vehicle: "PKW",
-        vehicleModel: "VW Polo",
-        plate: "",
+        // Matrix case 3 ON THE MARKETPLACE: deregistered + own axle → red
+        // plates REQUIRED. Drives the notice on the marketplace card, the
+        // marketplace preview and the booking dialog.
+        vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
+        manufacturer: "Volkswagen",
+        vehicleModel: "Polo",
+        // A known previous / de-stamped official plate. Deregistration must NOT
+        // disable, hide or clear this field (the old rule blanked it).
+        plate: "HH-XY 1234",
         vin: "WVWZZZ6RZKY098765",
-        axle: AXLE_THIRD,
-        registrationStatus: "deregistered",
-        redPlates: true,
-        redPlateNumber: "HH-06 2440",
+        transportType: TRANSPORT_TYPE_OWN_AXLE,
+        registrationStatus: REGISTRATION_DEREGISTERED,
+        readyToDrive: true,
         driverOffer: 165,
         revenue: 198,
         notes: "Marketplace preview tour Hamburg → Hannover.",
@@ -1081,11 +1280,14 @@ window.AuthStore = (() => {
           windowTo: "16:00",
         }),
         distanceKm: 232,
-        vehicle: "Van",
-        vehicleModel: "Mercedes Sprinter",
+        vehicleType: VEHICLE_TYPE_TRUCK_UP_TO_7_5_T,
+        manufacturer: "Mercedes-Benz",
+        vehicleModel: "Sprinter",
         plate: "S-CC 130",
         vin: "WDB9067321V123987",
-        axle: AXLE_OWN,
+        transportType: TRANSPORT_TYPE_OWN_AXLE,
+        registrationStatus: REGISTRATION_REGISTERED,
+        readyToDrive: true,
         driverOffer: 280,
         revenue: 310,
         notesDriver:
@@ -1129,11 +1331,15 @@ window.AuthStore = (() => {
           windowTo: "15:00",
         }),
         distanceKm: 124,
-        vehicle: "PKW",
-        vehicleModel: "Skoda Octavia",
+        // Matrix case 2: registered + third-party axle → red plates NOT required.
+        vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
+        manufacturer: "Skoda",
+        vehicleModel: "Octavia",
         plate: "HH-NF 42",
         vin: "TMBJG7NE7K0123456",
-        axle: AXLE_THIRD,
+        transportType: TRANSPORT_TYPE_THIRD_PARTY_AXLE,
+        registrationStatus: REGISTRATION_REGISTERED,
+        readyToDrive: true,
         driverOffer: 110,
         revenue: 135,
         grossAmount: 135,
@@ -1165,11 +1371,13 @@ window.AuthStore = (() => {
           windowFlex: true,
         }),
         distanceKm: 188,
-        vehicle: "SUV",
-        vehicleModel: "Ford Kuga",
+        vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
+        manufacturer: "Ford",
+        vehicleModel: "Kuga",
         plate: "B-MS 200",
-        vin: "WF0AXXTTGA000111",
-        axle: AXLE_OWN,
+        vin: "WF0AXXTTGA0001110",
+        transportType: TRANSPORT_TYPE_OWN_AXLE,
+        registrationStatus: REGISTRATION_REGISTERED,
         driverOffer: 195,
         revenue: 240,
         notes:
@@ -1210,11 +1418,17 @@ window.AuthStore = (() => {
           windowTo: "18:00",
         }),
         distanceKm: 78,
-        vehicle: "PKW",
-        vehicleModel: "Audi Q3",
+        // Matrix case 4: deregistered + THIRD-PARTY axle → red plates NOT
+        // required. Negative fixture proving the notice is not triggered by
+        // deregistration alone. Not fahrbereit — decision-relevant here.
+        vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
+        manufacturer: "Audi",
+        vehicleModel: "Q3",
         plate: "D-CC 80",
         vin: "WAUZZZF38K1234567",
-        axle: AXLE_OWN,
+        transportType: TRANSPORT_TYPE_THIRD_PARTY_AXLE,
+        registrationStatus: REGISTRATION_DEREGISTERED,
+        readyToDrive: false,
         driverOffer: 110,
         revenue: 138,
         notes: "Direct assign Dusseldorf showroom to Koln hub.",
@@ -1253,11 +1467,15 @@ window.AuthStore = (() => {
           windowTo: "14:00",
         }),
         distanceKm: 632,
-        vehicle: "PKW",
-        vehicleModel: "Audi A6",
+        // Matrix case 1: registered + own axle → red plates NOT required.
+        vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
+        manufacturer: "Audi",
+        vehicleModel: "A6",
         plate: "B-AL 60",
         vin: "WAUZZZ4G9KN123456",
-        axle: AXLE_OWN,
+        transportType: TRANSPORT_TYPE_OWN_AXLE,
+        registrationStatus: REGISTRATION_REGISTERED,
+        readyToDrive: true,
         driverOffer: 365,
         revenue: 420,
         notes:
@@ -1299,8 +1517,8 @@ window.AuthStore = (() => {
         probationClearedAt: null,
         prefs: {
           postalAreas: ["80"],
-          vehicle: "PKW",
-          axle: "All",
+          vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
+          transportType: "All",
           pushEnabled: true,
           notifyNewPublished: true,
         },
@@ -1321,8 +1539,10 @@ window.AuthStore = (() => {
         probationClearedAt: "01.04.2026 10:00",
         prefs: {
           postalAreas: ["60"],
-          vehicle: "Transporter",
-          axle: AXLE_THIRD,
+          // Filter preferences only offer APPROVED types — the removed
+          // "Transporter" option is gone from the selectable set.
+          vehicleType: VEHICLE_TYPE_TRUCK_UP_TO_7_5_T,
+          transportType: TRANSPORT_TYPE_THIRD_PARTY_AXLE,
           pushEnabled: true,
           notifyNewPublished: true,
         },
@@ -1343,8 +1563,8 @@ window.AuthStore = (() => {
         probationClearedAt: null,
         prefs: {
           postalAreas: ["10"],
-          vehicle: "SUV",
-          axle: AXLE_OWN,
+          vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
+          transportType: TRANSPORT_TYPE_OWN_AXLE,
           pushEnabled: false,
           notifyNewPublished: false,
         },
@@ -1629,6 +1849,54 @@ window.AuthStore = (() => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
+  // Value validators for the Infopoint help contacts, ported unchanged from the
+  // Autheon admin console's helpContactsValidation.ts — which is itself a mirror
+  // of the backend's `infopoint.helpContacts` validators. Keeping the rules
+  // identical means a value this prototype accepts is a value the real API would
+  // accept too. Deliberately stricter than the generic isValidEmail above: these
+  // are what the help-contacts setter enforces and what the form reads for its
+  // inline messages, so the rule is stated once.
+
+  /** Phone shape the backend accepts: dial characters only, 7-15 digits. */
+  function isValidSupportPhone(value) {
+    const phone = String(value || "").trim();
+    if (!/^\+?[0-9\s()./-]+$/.test(phone)) return false;
+    const digits = phone.replace(/\D/g, "");
+    return digits.length >= 7 && digits.length <= 15;
+  }
+
+  /** Email shape the backend accepts: one @, a sane local part, a dotted domain. */
+  function isValidSupportEmail(value) {
+    const email = String(value || "").trim();
+    if (email.length > 254) return false;
+
+    const parts = email.split("@");
+    if (parts.length !== 2) return false;
+
+    const [local, domain] = parts;
+    if (
+      !local ||
+      !domain ||
+      local.length > 64 ||
+      local.startsWith(".") ||
+      local.endsWith(".") ||
+      local.includes("..") ||
+      !/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local)
+    ) {
+      return false;
+    }
+
+    const labels = domain.split(".");
+    const topLevelLabel = labels[labels.length - 1] ?? "";
+    return (
+      labels.length >= 2 &&
+      topLevelLabel.length >= 2 &&
+      labels.every((label) =>
+        /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label),
+      )
+    );
+  }
+
   const ACCESS_STATE = {
     INVITE_PENDING: "Invite pending",
     ACTIVE: "Active",
@@ -1681,16 +1949,41 @@ window.AuthStore = (() => {
           issues.push(`${j.id}:${side}: schedule`);
         }
       }
-      // Deregistered vehicles have no regular plate; a red transfer plate
-      // number may stand in (§16 FZV). VIN is always required.
+      // Official licence plate of the transported vehicle. Required while the
+      // vehicle is registered; OPTIONAL once deregistered — a previous or
+      // de-stamped plate may still be recorded when known, so deregistration
+      // must never disable or clear the field.
       const plateOk =
-        j.registrationStatus === "deregistered"
+        j.registrationStatus === REGISTRATION_DEREGISTERED
           ? true
           : !!j.plate?.trim();
-      if (!plateOk || !j.vin?.trim())
-        issues.push(`${j.id}: vehicle ids`);
-      if (!j.vehicle?.trim() || !j.vehicleModel?.trim()) {
+      if (!plateOk) issues.push(`${j.id}: official licence plate`);
+      // Confirmed VIN rule: exactly 17 characters.
+      if (!isValidVin(j.vin)) issues.push(`${j.id}: vin must be 17 characters`);
+      if (!j.vehicleType?.trim() || !j.vehicleModel?.trim()) {
         issues.push(`${j.id}: vehicle`);
+      }
+      if (!j.manufacturer?.trim()) issues.push(`${j.id}: manufacturer`);
+      if (!TRANSPORT_TYPES.includes(j.transportType)) {
+        issues.push(`${j.id}: transportType`);
+      }
+      if (!REGISTRATION_STATUSES.includes(j.registrationStatus)) {
+        issues.push(`${j.id}: registrationStatus`);
+      }
+      if (!VEHICLE_TYPES.includes(j.vehicleType)) {
+        issues.push(`${j.id}: vehicleType not an approved value`);
+      }
+      // Derived-only: must always equal the canonical policy, never a stored
+      // or client-supplied value.
+      if (
+        j.requiresRedLicencePlates !==
+        requiresRedLicencePlates(j.registrationStatus, j.transportType)
+      ) {
+        issues.push(`${j.id}: requiresRedLicencePlates drifted from policy`);
+      }
+      // The retired manual inputs must not exist on any record.
+      if ("redPlates" in j || "redPlateNumber" in j) {
+        issues.push(`${j.id}: retired red-plate input present`);
       }
       if (!(j.distanceKm > 0)) issues.push(`${j.id}: distanceKm`);
       if (j.driverOffer == null || j.driverOffer === "") {
@@ -2007,6 +2300,51 @@ window.AuthStore = (() => {
     return window.I18n?.t ? window.I18n.t(key, params) : key;
   }
 
+  // -----------------------------------------------------------------------
+  // Vehicle-domain LABEL RESOLVERS. Canonical value → i18n key, in one place,
+  // consumed by the Admin Backend and the Driver PWA alike.
+  // -----------------------------------------------------------------------
+  const VEHICLE_TYPE_I18N = {
+    [VEHICLE_TYPE_PASSENGER_CAR]: "vehicleTypePassengerCar",
+    [VEHICLE_TYPE_TRUCK_UP_TO_7_5_T]: "vehicleTypeTruckUpTo75t",
+    [VEHICLE_TYPE_TRUCK_OVER_7_5_T]: "vehicleTypeTruckOver75t",
+  };
+  const TRANSPORT_TYPE_I18N = {
+    [TRANSPORT_TYPE_OWN_AXLE]: "ownAxle",
+    [TRANSPORT_TYPE_THIRD_PARTY_AXLE]: "thirdPartyAxle",
+  };
+  const REGISTRATION_STATUS_I18N = {
+    [REGISTRATION_REGISTERED]: "vehicleInfoRegistered",
+    [REGISTRATION_DEREGISTERED]: "vehicleInfoDeregistered",
+  };
+
+  function vehicleTypeI18nKey(value) {
+    return VEHICLE_TYPE_I18N[normalizeVehicleType(value)] || null;
+  }
+
+  /** Display label for a vehicle type. */
+  function vehicleTypeLabel(value, translate) {
+    const tr = translate || t2;
+    const key = VEHICLE_TYPE_I18N[normalizeVehicleType(value)];
+    return key ? tr(key) : "—";
+  }
+
+  function transportTypeLabel(value, translate) {
+    const tr = translate || t2;
+    return tr(TRANSPORT_TYPE_I18N[normalizeTransportType(value)]);
+  }
+
+  function registrationStatusLabel(value, translate) {
+    const tr = translate || t2;
+    const key = REGISTRATION_STATUS_I18N[normalizeRegistrationStatus(value)];
+    return key ? tr(key) : "—";
+  }
+
+  /** The one canonical red-plate notice text. Never hardcoded per screen. */
+  function redPlatesRequiredLabel(translate) {
+    return (translate || t2)("redPlatesRequired");
+  }
+
   function log(action, actor, entity, meta) {
     auditLog.unshift({
       action,
@@ -2052,14 +2390,31 @@ window.AuthStore = (() => {
     };
   }
 
+  /**
+   * Filter prefs hold an approved vehicle type or the "All" sentinel (no
+   * filter). An unrecognised stored value degrades to "All" rather than
+   * silently filtering the whole marketplace away.
+   */
+  function normalizePrefVehicleType(raw) {
+    return VEHICLE_TYPES.includes(normalizeVehicleType(raw))
+      ? normalizeVehicleType(raw)
+      : "All";
+  }
+
+  function normalizePrefTransportType(raw) {
+    const s = String(raw || "").trim();
+    return TRANSPORT_TYPES.includes(s) ? s : "All";
+  }
+
   function normalizeDriverPrefs(prefs = {}) {
     const p = prefs || {};
     const legacyPush = p.push === true || p.pushEnabled === true;
     return {
       startPlz: p.startPlz || "",
       endPlz: p.endPlz || "",
-      vehicle: p.vehicle || "All",
-      axle: p.axle || "All",
+      // Marketplace filter dimensions. "All" = no filter.
+      vehicleType: normalizePrefVehicleType(p.vehicleType),
+      transportType: normalizePrefTransportType(p.transportType),
       pushEnabled: p.pushEnabled != null ? !!p.pushEnabled : legacyPush,
       notifyNewPublished:
         p.notifyNewPublished != null ? !!p.notifyNewPublished : legacyPush,
@@ -2306,9 +2661,6 @@ window.AuthStore = (() => {
     });
   }
 
-  function draftAxleToForm(axle) {
-    return axle === AXLE_THIRD ? "Fremdachse" : "Eigenachse";
-  }
 
   /** Map a draft job to the admin new-order form shape (includes jobId for updates). */
   function jobToDraftForm(job) {
@@ -2349,15 +2701,17 @@ window.AuthStore = (() => {
       deliveryFrom: del.windowFrom || "",
       deliveryTo: del.windowTo || "",
       deliveryFlex: !!del.windowFlex,
-      vehicleType: job.vehicle || "",
-      brand: job.vehicleModel || "",
-      model: "",
+      // Vehicle categories round-trip 1:1 — manufacturer and model are now
+      // separate fields on both sides (they used to be squashed into `brand`).
+      vehicleType: job.vehicleType || "",
+      manufacturer: job.manufacturer || "",
+      model: job.vehicleModel || "",
       plate: job.plate || "",
       vin: job.vin || "",
+      transportType: job.transportType || TRANSPORT_TYPE_OWN_AXLE,
       registrationStatus: job.registrationStatus || "",
       electricVehicle: !!job.electricVehicle,
-      redPlates: !!job.redPlates,
-      redPlateNumber: job.redPlateNumber || "",
+      readyToDrive: !!job.readyToDrive,
       cName1: pu.contactPerson || "",
       cPhone1: pu.phone || "",
       cName2: del.contactPerson || "",
@@ -2388,7 +2742,6 @@ window.AuthStore = (() => {
       expenses: job.expenses != null ? String(job.expenses) : "",
       notes: job.notes || "",
       notesDriver: job.notesDriver || "",
-      axle: draftAxleToForm(job.axle),
       category: job.category || "Standard",
       updatePickupMaster: false,
       updateDeliveryMaster: false,
@@ -2457,24 +2810,25 @@ window.AuthStore = (() => {
       delivery,
       distanceKm: dist,
       category: form.category || "Standard",
-      vehicle: form.vehicleType || form.vehicle || "PKW",
-      vehicleModel:
-        [form.brand, form.model].filter(Boolean).join(" ").trim() || "—",
-      // Deregistered vehicles carry no regular plate (conditional form rule)
-      plate:
-        form.registrationStatus === "deregistered" ? "" : form.plate,
-      vin: form.vin,
-      axle: normalizeAxle(form.axle),
-      registrationStatus:
-        form.registrationStatus === "registered" ||
-        form.registrationStatus === "deregistered"
-          ? form.registrationStatus
-          : null,
+      // --- Vehicle domain: four explicit categories, no flattened tag array ---
+      // Removed types are rejected before this point (validateVehicleForm).
+      vehicleType: normalizeVehicleType(form.vehicleType),
+      manufacturer: String(form.manufacturer || "").trim(),
+      vehicleModel: String(form.model || "").trim() || "—",
+      // OFFICIAL plate of the transported vehicle. Accepted for deregistered
+      // vehicles too (a previous / de-stamped plate is still useful) — the old
+      // rule that blanked it on deregistration is REMOVED.
+      plate: String(form.plate || "").trim(),
+      vin: String(form.vin || "").trim(),
+      transportType: normalizeTransportType(form.transportType),
+      registrationStatus: normalizeRegistrationStatus(form.registrationStatus),
       electricVehicle: !!form.electricVehicle,
-      redPlates: !!form.redPlates,
-      redPlateNumber: form.redPlates
-        ? String(form.redPlateNumber || "").trim()
-        : "",
+      // Never cleared because transportType changed — applicability drives
+      // emphasis only, so a stored value is not silently lost.
+      readyToDrive: !!form.readyToDrive,
+      // NOTE: no red-plate field is read from the form. The requirement is
+      // derived by requiresRedLicencePlates() and the plate NUMBER is not
+      // recorded at all — a client-submitted value has nowhere to land.
       driverOffer: driverOffer,
       expenses:
         parseFloat(String(form.expenses || "").replace(",", ".")) || null,
@@ -2534,15 +2888,20 @@ window.AuthStore = (() => {
     { key: "deliveryDate", i18n: "orderFieldDeliveryDate", dv: true, get: (j) => j.delivery?.date || "" },
     { key: "deliveryWindow", i18n: "orderFieldDeliveryWindow", dv: true, get: (j) => fmtEditWindow(j.delivery) },
     // Vehicle
-    { key: "vehicleType", i18n: "orderFieldVehicleType", dv: true, get: (j) => j.vehicle || "" },
+    { key: "vehicleType", i18n: "orderFieldVehicleType", dv: true, get: (j) => j.vehicleType || "" },
+    { key: "manufacturer", i18n: "orderFieldManufacturer", dv: true, get: (j) => j.manufacturer || "" },
     { key: "vehicleModel", i18n: "orderFieldVehicleModel", dv: true, get: (j) => j.vehicleModel || "" },
     { key: "plate", i18n: "orderFieldPlate", dv: true, get: (j) => j.plate || "" },
     { key: "vin", i18n: "orderFieldVin", dv: true, get: (j) => j.vin || "" },
-    { key: "axle", i18n: "orderFieldAxle", dv: true, get: (j) => j.axle || "" },
+    { key: "transportType", i18n: "orderFieldTransportType", dv: true, get: (j) => j.transportType || "" },
     { key: "registrationStatus", i18n: "orderFieldRegistrationStatus", dv: true, get: (j) => j.registrationStatus || "" },
     { key: "electricVehicle", i18n: "orderFieldElectricVehicle", dv: true, get: (j) => fmtEditBool(j.electricVehicle) },
-    { key: "redPlates", i18n: "orderFieldRedPlates", dv: true, get: (j) => fmtEditBool(j.redPlates) },
-    { key: "redPlateNumber", i18n: "orderFieldRedPlateNumber", dv: true, get: (j) => j.redPlateNumber || "" },
+    { key: "readyToDrive", i18n: "orderFieldReadyToDrive", dv: true, get: (j) => fmtEditBool(j.readyToDrive) },
+    // DERIVED and driver-visible: a change of registration status or transport
+    // type that flips the red-plate requirement is an execution-relevant change
+    // for the assigned partner, so it is audited and notified like any other
+    // driver-visible field. It is never editable — only ever a consequence.
+    { key: "requiresRedLicencePlates", i18n: "orderFieldRequiresRedPlates", dv: true, get: (j) => fmtEditBool(jobRequiresRedLicencePlates(j)) },
     // Commercial
     { key: "driverOffer", i18n: "orderFieldDriverOffer", dv: true, get: (j) => (j.driverOffer != null ? j.driverOffer : "") },
     { key: "expenses", i18n: "orderFieldExpenses", dv: false, get: (j) => (j.expenses != null ? j.expenses : "") },
@@ -2755,11 +3114,50 @@ window.AuthStore = (() => {
     formatJobScheduleShort,
     schedulesOnDifferentDays,
     DEMO_ADMIN,
-    AXLE_OWN,
-    AXLE_THIRD,
+
+    // ---- Vehicle domain (client confirmation "Systemlogik Fahrzeugeingabe") ----
+    // Shared contract consumed by BOTH the Admin Backend and the Driver PWA so
+    // every surface derives from one policy instead of re-implementing rules.
+    VEHICLE_TYPES,
+    VEHICLE_TYPE_PASSENGER_CAR,
+    VEHICLE_TYPE_TRUCK_UP_TO_7_5_T,
+    VEHICLE_TYPE_TRUCK_OVER_7_5_T,
+    TRANSPORT_TYPES,
+    TRANSPORT_TYPE_OWN_AXLE,
+    TRANSPORT_TYPE_THIRD_PARTY_AXLE,
+    REGISTRATION_STATUSES,
+    REGISTRATION_REGISTERED,
+    REGISTRATION_DEREGISTERED,
+    VIN_LENGTH,
+    normalizeVehicleType,
+    selectableVehicleTypes,
+    isAcceptableVehicleTypeForWrite,
+    normalizeTransportType,
+    normalizeRegistrationStatus,
+    // Exposed so the marketplace-filter boundary is verifiable: a stored pref
+    // holding a removed vehicle type must degrade to "All", not filter the
+    // whole marketplace away.
+    normalizeDriverPrefs,
+    isValidVin,
+    isReadyToDriveApplicable,
+    validateVehicleForm,
+    // THE canonical red-licence-plate policy. Do not reproduce the condition.
+    requiresRedLicencePlates,
+    jobRequiresRedLicencePlates,
+    // Shared label resolvers — one canonical value → i18n key mapping.
+    vehicleTypeI18nKey,
+    vehicleTypeLabel,
+    transportTypeLabel,
+    registrationStatusLabel,
+    redPlatesRequiredLabel,
+
     syncDisplayFields,
     jobToDraftForm,
     isValidEmail,
+    // The help-contacts format rules, so the admin form names a bad hotline or
+    // support email inline instead of relying on the setter's rejection.
+    isValidSupportPhone,
+    isValidSupportEmail,
     isAllowedTourDocumentFile,
     jobWasEverCommitted,
 
@@ -2799,6 +3197,33 @@ window.AuthStore = (() => {
     getBranding: () => ({ ...branding }),
 
     getDriverSupportContact: () => ({ ...driverSupportContact }),
+
+    // Both help contacts are required and cannot be cleared. That mirrors the
+    // production contract rather than being a preference: the backend rejects
+    // an empty value and its shallow merge preserves anything omitted, so a
+    // blank contact could never persist. Rejecting a blank or malformed value
+    // here keeps the store the single owner of the rule — the admin form reads
+    // the same validators for its inline messages instead of restating them.
+    setDriverSupportContact(next = {}) {
+      const phone = String(next.phone ?? "").trim();
+      const email = String(next.email ?? "").trim();
+      if (!phone) return { ok: false, reason: "phone_required" };
+      if (!email) return { ok: false, reason: "email_required" };
+      if (!isValidSupportPhone(phone))
+        return { ok: false, reason: "invalid_phone" };
+      if (!isValidSupportEmail(email))
+        return { ok: false, reason: "invalid_email" };
+      driverSupportContact.phone = phone;
+      driverSupportContact.email = email;
+      log(
+        "help_contacts_changed",
+        DEMO_ADMIN,
+        "app_settings",
+        JSON.stringify({ phone, email }),
+      );
+      emit();
+      return { ok: true };
+    },
 
     setAppDisplayName(name) {
       const next = String(name || "").trim() || "Transport Portal";
@@ -2879,6 +3304,11 @@ window.AuthStore = (() => {
     driverOfferAmount,
     getDrivers: () => drivers,
     getAdmins: () => admins,
+    // The demo console is always signed in as the seeded dispatcher. The
+    // sidebar footer and the User settings account forms both bind to this one
+    // record, so an email change there is the same record everywhere.
+    getCurrentAdmin: () =>
+      admins.find((x) => x.name === DEMO_ADMIN) || admins[0] || null,
     getCustomers: (opts = {}) => {
       const all = customers.slice();
       return opts.activeOnly ? all.filter((x) => x.active !== false) : all;
@@ -3308,8 +3738,8 @@ window.AuthStore = (() => {
       if (!n) return { ok: false };
       if (patch.title != null) n.title = String(patch.title).trim() || n.title;
       if (patch.body != null) n.body = String(patch.body).trim();
-      if (patch.publishedAt != null)
-        n.publishedAt = String(patch.publishedAt).trim() || n.publishedAt;
+      // `publishedAt` is deliberately not patchable — it is stamped once at
+      // publish time, and Edit only covers subject and message text.
       log("news_item_updated", DEMO_ADMIN, n.title, n.id);
       emit();
       return { ok: true, item: n };
@@ -4437,6 +4867,17 @@ window.AuthStore = (() => {
           );
         }
       }
+      // Vehicle rules are enforced HERE, not only in the form: removed vehicle
+      // types, a non-17-character VIN and any red-plate write are rejected even
+      // if the client sent them.
+      const vehicleCheck = validateVehicleForm(form);
+      if (!vehicleCheck.ok) {
+        return {
+          ok: false,
+          reason: "invalid_vehicle",
+          errors: vehicleCheck.errors,
+        };
+      }
       api._persistFormMasterAddresses(form);
       const fields = composeDraftFieldsFromForm(form);
       // Diff on a clone so an all-unchanged save does not mutate the order.
@@ -4477,6 +4918,11 @@ window.AuthStore = (() => {
         return { error: "cross_midnight_window", leg: "delivery" };
       }
       const editId = String(form.jobId || form.id || "").trim();
+      // Same authoritative vehicle gate as updateOrderFromForm.
+      const vehicleCheck = validateVehicleForm(form);
+      if (!vehicleCheck.ok) {
+        return { error: "invalid_vehicle", errors: vehicleCheck.errors };
+      }
       const opId = form.customerId || "";
       const op =
         customers.find((x) => x.id === opId) ||
@@ -4561,13 +5007,9 @@ window.AuthStore = (() => {
     },
 
     setDriverStatus(id, status) {
-      const allowed = [
-        "Active",
-        "Blocked",
-        "Inactive",
-        "Archived",
-        "Soft Deleted",
-      ];
+      // Matches FE/BE DriverStatus: active | blocked | inactive
+      // (archived / soft_deleted were removed from the live contract)
+      const allowed = ["Active", "Blocked", "Inactive"];
       const d = drivers.find((x) => x.id === id);
       if (!d || !allowed.includes(status)) return { ok: false };
       if (status !== "Active") {
@@ -4624,12 +5066,19 @@ window.AuthStore = (() => {
     updateAdmin(id, patch = {}) {
       const a = admins.find((x) => x.id === id);
       if (!a) return { ok: false, reason: "not_found" };
-      if (patch.name !== undefined) a.name = String(patch.name).trim();
-      if (patch.email !== undefined) a.email = String(patch.email).trim();
-      if (!a.name || !a.email) return { ok: false, reason: "required" };
-      if (!isValidEmail(a.email)) return { ok: false, reason: "invalid_email" };
-      if (admins.some((x) => x.id !== id && x.email === a.email))
+      // Validate the candidate values, then commit. Rules and rejection reasons
+      // are unchanged; only the ordering is — a rejected patch must leave the
+      // stored record untouched, because callers surface the reason as a field
+      // error and keep reading the record (sidebar footer, User settings form).
+      const name = patch.name !== undefined ? String(patch.name).trim() : a.name;
+      const email =
+        patch.email !== undefined ? String(patch.email).trim() : a.email;
+      if (!name || !email) return { ok: false, reason: "required" };
+      if (!isValidEmail(email)) return { ok: false, reason: "invalid_email" };
+      if (admins.some((x) => x.id !== id && x.email === email))
         return { ok: false, reason: "duplicate_email" };
+      a.name = name;
+      a.email = email;
       log("admin_updated", DEMO_ADMIN, a.name, a.email);
       emit();
       return { ok: true };
@@ -4762,7 +5211,6 @@ window.AuthStore = (() => {
         scope: data.scope || "Global",
         version: data.version || "v1.0",
         updatedAt: data.updatedAt || nowStamp(),
-        seed: false,
       };
       documents.push(item);
       log("document_created", DEMO_ADMIN, item.title, item.id);
@@ -4778,18 +5226,6 @@ window.AuthStore = (() => {
         description: meta.description || `Uploaded PDF (demo): ${name}`,
         category: meta.category || "Operations",
       });
-    },
-
-    renameGeneralDocument(id, title) {
-      const d = documents.find((x) => x.id === id);
-      if (!d) return { ok: false };
-      const next = String(title || "").trim();
-      if (!next) return { ok: false, reason: "title_required" };
-      d.title = next;
-      d.updatedAt = nowStamp();
-      log("document_renamed", DEMO_ADMIN, d.title, d.id);
-      emit();
-      return { ok: true };
     },
 
     updateGeneralDocument(id, patch = {}) {
@@ -4810,10 +5246,11 @@ window.AuthStore = (() => {
       return { ok: true, item: d };
     },
 
+    // Hard delete, seeded rows included: production has no seed concept and the
+    // admin screen offers Delete on every document.
     deleteGeneralDocument(id) {
       const d = documents.find((x) => x.id === id);
       if (!d) return { ok: false };
-      if (d.seed) return { ok: false, reason: "seed_protected" };
       const idx = documents.findIndex((x) => x.id === id);
       if (idx < 0) return { ok: false };
       documents.splice(idx, 1);
@@ -5321,9 +5758,18 @@ window.AuthStore = (() => {
         { header: "windowTo", key: "windowTo" },
         { header: "driver", key: "driver" },
         { header: "status", key: "status" },
-        { header: "vehicle", key: "vehicle" },
+        { header: "vehicleType", key: "vehicleType" },
+        { header: "manufacturer", key: "manufacturer" },
         { header: "vehicleModel", key: "vehicleModel" },
-        { header: "axle", key: "axle" },
+        { header: "licencePlate", key: "plate" },
+        { header: "vin", key: "vin" },
+        { header: "transportType", key: "transportType" },
+        { header: "registrationStatus", key: "registrationStatus" },
+        { header: "electricVehicle", key: "electricVehicle" },
+        { header: "readyToDrive", key: "readyToDrive" },
+        // Derived from the canonical policy via syncDisplayFields — the export
+        // never recomputes the condition itself.
+        { header: "requiresRedLicencePlates", key: "requiresRedLicencePlates" },
         { header: "distanceKm", key: "distanceKm" },
         { header: "documentReviewSummary", key: "documentReviewSummary" },
         { header: "settlementState", key: "settlementState" },
@@ -5377,10 +5823,19 @@ window.AuthStore = (() => {
         `Delivery: ${del.name}, ${formatStreet(del)}, ${del.postalCode} ${del.city}`,
         `Delivery contact: ${del.contactPerson} ${del.phone}`,
         `Delivery schedule: ${del.date} ${del.windowFrom}-${del.windowTo}`,
-        `Vehicle: ${j.vehicleModel} / ${j.vehicle}`,
-        `License plate: ${j.plate}`,
+        `Vehicle type: ${j.vehicleType}`,
+        `Vehicle: ${j.manufacturer} ${j.vehicleModel}`.trim(),
+        `Official licence plate: ${j.plate || "—"}`,
         `VIN: ${j.vin}`,
-        `Axle: ${j.axle}`,
+        `Transport type: ${j.transportType}`,
+        `Registration status: ${j.registrationStatus || "—"}`,
+        `Electric vehicle: ${j.electricVehicle ? "Yes" : "No"}`,
+        `Ready to drive: ${j.readyToDrive ? "Yes" : "No"}`,
+        // Execution requirement derived from the canonical policy — the order
+        // summary must carry it, and never a red-plate number.
+        ...(jobRequiresRedLicencePlates(j)
+          ? ["Red licence plates required (Rote Kennzeichen erforderlich)"]
+          : []),
         `Distance: ${j.distanceKm} km`,
         `Driver offer: ${j.driverOffer ?? "—"} | Customer gross: ${j.grossAmount ?? j.revenue ?? "—"} | Net: ${j.netAmount ?? "—"} VAT: ${j.vatRate ?? 19}%`,
         `Document review: ${j.documentReviewSummary}`,

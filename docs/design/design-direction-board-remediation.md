@@ -27,7 +27,7 @@
 | R17 | Marketplace + My Jobs | `driver.jsx` (`JobCardBody`), `styles.css` | PDF p.5–6 reference card; §5 route text line | Vertical timeline card with times column | Client reference layout: `City → City` route line with PLZ beneath, distance under the arrow, two-column Pickup/Delivery legs (pin icon + `date · window`), footer `vehicle \| info tags \| axle chip \| price right` | `after/driver-marketplace-light.png`, `after/driver-myjobs-light.png` (+dark) | One shared body for both lists; old timeline CSS removed |
 | R18 | Marketplace, My Jobs, job detail, admin detail | `store.js`, `driver.jsx`, `admin.jsx`, `i18n.js` | §5 "Wichtige Info (Zugelassen / Abgemeldet / E-Fahrzeug / Rote Kennzeichen)" | No vehicle-info data or display anywhere | `registrationStatus`/`electricVehicle`/`redPlates` job fields (seeded on 0847/0844/0848); icon+text tags on cards (E-vehicle icon purple per reference), kv row in driver vehicle detail, pill row in admin detail | `after/driver-marketplace-light.png`, `after/driver-myjobs-light.png` | Resolved via `prd.json` `vehicle_important_info_v1` + `schema.dbml`; text label always present |
 | R19 | Admin job creation | `admin.jsx` (Vehicle section 04), `i18n.js` | §5 + client direction: announce vehicle info at creation | No way to capture vehicle info | "Important vehicle info" block: Not specified / Registered / Deregistered segmented control + E-vehicle and Red plates toggle chips + helper hint; flows through `saveDraft`/`jobToDraftForm` | `after/admin-new-order-vehicle-light-1440.png` | Optional — never blocks Save Draft/Publish/Assign |
-| R20 | Marketplace header | `driver.jsx` (Portal), `styles.css` `.kpi-row/.kpi-chip`, `i18n.js` | PDF §4 reduced dashboard character | No KPIs | Quiet chip row: Available / Booked / Open documents (`--canvas` chips, 600 numbers) | `after/driver-marketplace-light.png` | Counts derived from existing store data |
+| R20 | Marketplace header | `driver.jsx` (Portal), `styles.css` `.kpi-row/.kpi-chip`, `i18n.js` | PDF §4 reduced dashboard character | No KPIs | Quiet chip row: Available / Booked / Open documents (`--canvas` chips, 600 numbers) | `after/driver-marketplace-light.png` | Counts derived from existing store data. **Later removed at client request — see F6 (PR #17).** |
 | R21 | Evidence tooling | `prototype/project/_capture-design-audit.mjs` | Evidence coverage | — | Capture script extended with the admin job-creation Vehicle-section shot | `after/admin-new-order-vehicle-light-1440.png` | — |
 | R22 | Marketplace + My Jobs | `driver.jsx` (`displayAxle`, filter predicate), `admin.jsx`, `i18n.js` | §D localized UI copy | Axle type leaked the raw store value ("driven on own wheels") in both locales; axle filter compared mismatched value spellings | Axle labels localized (EN "Own axle"/"Third-party axle", DE "Eigenachse"/"Fremdachse" — matching the client card); canonical-value comparison fixes the axle filter; acceptance modal + admin detail localized | `after/driver-marketplace-light.png` | |
 | R23 | Marketplace | `driver.jsx` `JobCard` | Client decision 2026-07-14 | Tour number + Published pill on every marketplace card (all identical) | Header removed on marketplace cards; kept on My Jobs where status varies | `after/driver-marketplace-light.png`, `after/driver-myjobs-light.png` | Deviation from board §4 "Status in Auftragslisten" recorded as client-directed |
@@ -89,5 +89,72 @@ Checked against the rendered `after/` captures:
 | F2 | Admin Create/Edit Job | `.grid-form-layout` + `> aside` + `@media (max-width:1200px)` | Task 3 — keep the section-nav and live-summary in view while the long form scrolls | `align-items: flex-start`; sidebars scrolled away with the form | Sidebars `position: sticky; top: 0; max-height: calc(100dvh - 172px); overflow-y: auto; overscroll-behavior: contain`; `align-items: start`. ≤1200px: single column + sticky dropped (`static`) so nothing overlaps or forces horizontal scroll | Tablet/mobile reviewed separately — desktop sticky only |
 | F3 | Driver Profile — Account & sign-in | `.account-signin-title/-key`, `.account-email-row/-value/-address/-verified(.dot)`, `.account-email-badge` | Task 1 — driver-owned, self-service sign-in email (verify, don't approve) | No credential surface; email was buried in read-only master data | Credential card under the identity header: current address + green **Verified account** badge (text-labelled) or amber `.pill.assigned` pending badge, + "Change email address" button | Verified green uses `var(--st-ok, #1f9d55)` — **undefined token**, flagged in brand-tokens.md |
 | F4 | Driver — Change email sheet | `.change-email-current`, `.code-input-row`, `.code-input-box (+:focus)`, `.change-email-resend-row`, `.change-email-success-check` | Task 1 — `ChangeEmailSheet` enter → confirm-code → success | No self-service email change | 6-box mono `CodeInput` (data identifier), resend-countdown row, brand-tint success check disc; moderate radii + focus ring per tokens | New `CodeInput` primitive documented in driver-screen-spec.md |
+| F5 | Driver — My Jobs + Infopoint tabs | `.swipe-viewport`, `.swipe-track`, `.swipe-pane`, `.swipe-pane-body` | PR #17 client feedback — switch tabs by swipe, like a native app | Tabs switched on pill tap only | Paged carousel (`SwipeViews`): horizontal drag pages between tabs (adjacent pane peeks in, snaps on release), per-pane vertical scroll preserved (`touch-action: pan-y`); transform-only, reduced-motion safe | Prose in production plan §4.4/§7.2/§7.8 + driver-screen-spec.md |
+| F6 | Driver — Marketplace header | `.kpi-row`, `.kpi-chip` (now unused), `i18n.js` `kpi*` (now unused) | PR #17 client feedback — KPI counts duplicate the My Jobs tab badges | Quiet KPI chip row (Available / Booked / Open documents) — see R20 | **Removed** from the marketplace header; CSS + i18n left in place but unused (re-add only on client ask) | Reverses R20 / audit item 22 |
+| F7 | Driver (profile + filters) + Admin (Create/Edit Job) | inline `onChange` sanitizers; `inputMode` | PR #17 bug report — numeric fields must accept digits only | Free text accepted letters/symbols | Digits-only on input for postal code, house no., distance; phone + second phone allow a single leading `+`; driver-offer allows one decimal separator; alternate-contact left as free text (name) | No `styles.css` change — behavior only |
 
 *Task 2 (order cancellation / empty-run "Storno", commit `23d1b4e`) added no `styles.css` changes and is out of scope for this design-doc pass.*
+
+---
+
+## Vehicle domain restructure (V1–V6, 2026-07-26)
+
+> Driven by the client confirmation **“Systemlogik Fahrzeugeingabe”**, not by a DDB compliance finding. Audit of the previous state: [`design-direction-board-audit.md`](design-direction-board-audit.md) “v1.3 addendum — vehicle-entry audit”. Business/data spec: `prd.json` v2.7 + `docs/archive/2026-07/prd-changelog-since-2026-07-26.md`.
+
+### The confirmed category-based structure
+
+The vehicle section is **four explicit semantic categories plus independent characteristics**, each with its own control, its own cardinality and its own field in the payload:
+
+| Order | Category | Control | Cardinality | Values |
+|---|---|---|---|---|
+| 1 | **Vehicle type** | Chip row (`.chip.actionable`, `role="radiogroup"` / `role="radio"`) | **exactly one** | Passenger car (PKW) · Truck up to and including 7.5 t (LKW bis einschließlich 7,5 t) · Truck over 7.5 t (LKW über 7,5 t) |
+| 2 | **Manufacturer** | `<select>` dropdown from the manufacturer catalogue | exactly one | `AuthStore.MANUFACTURER_SUGGESTIONS` |
+| 2 | **Model** | Text input (`.input`) | exactly one | free text — **separate** from the manufacturer |
+| 2 | **Official licence plate** | Text input (`.input.mono`), always enabled | 0..1 | plate of the **transported** vehicle |
+| 2 | **VIN** | Text input (`.input.mono`) | 0..1 | **exactly 17 characters** |
+| 3 | **Transport type** | Segmented control (`.seg`, `role="radiogroup"`) | **exactly one** | Own axle (Eigenachse) · Third-party axle (Fremdachse) |
+| 4 | **Registration status** | Segmented control (`.seg`, `role="radiogroup"`) | **exactly one** | Registered (Zugelassen) · Deregistered (Abgemeldet) |
+| 5 | **Additional characteristics** | Independent toggle chips (`aria-pressed`) | **independent** | Electric vehicle (E-Fahrzeug) · Ready to drive (Fahrbereit) |
+
+### The unified multi-select was rejected / superseded
+
+An earlier proposal to render **one undifferentiated multi-select tag collection** holding every vehicle classification (`["SUV", "own axle", "registered", "electric"]`) was **explicitly rejected and is superseded**. A flat tag array cannot express the cardinalities above — it permits contradictory pairs such as `["own axle", "third-party axle"]` or `["registered", "deregistered"]` — and it destroys the two *identified* inputs the derived red-licence-plate rule depends on.
+
+A **shared chip/segmented visual primitive is still reused** for visual consistency, so the section reads as one system; only the *semantics* stayed separate. Values are never flattened into a single unstructured collection and the payload keeps discrete fields.
+
+### Removal of manual red-licence-plate entry
+
+- The **“Red plates” option was removed** from the registration control, which is now purely Registered / Deregistered.
+- The **red-plate number input was removed** entirely (and its `redPlateNumber` / `newOrderRedPlatePh` / `newOrderRedPlateHint` keys retired). Partners bring their own plates; the number is not recorded.
+- The **destructive plate behaviour was reversed**: the official licence-plate field is always rendered and always enabled, and deregistration no longer hides, disables or clears it. It is required while registered and optional-but-enterable once deregistered.
+- The driver **red-plate badge row was removed** from the complete order view.
+- The requirement is now **derived** — `requiresRedLicencePlates = Deregistered AND Own axle` — from one canonical domain policy, rendered by one shared component.
+
+### The five required warning locations
+
+The notice “**Rote Kennzeichen erforderlich**” / “Red licence plates required” appears **when and only when** *Deregistered + Own axle*:
+
+| # | Surface | Treatment |
+|---|---------|-----------|
+| 1 | **Admin Backend** — Create/Edit Job vehicle section (live) + job detail | `.banner.banner-warn` |
+| 2 | **Marketplace order card** | `.vehicle-flag.red-plates-required` chip in the tag row |
+| 3 | **Marketplace preview** | `.red-plates-banner` below the vehicle card |
+| 4 | **Booking dialog** — clearly highlighted, above the binding slide-to-confirm | `.red-plates-banner` |
+| 5 | **Complete order view after booking** (and the service-partner order-details view) | `.red-plates-banner` |
+
+It **stays visible after booking**: it is an execution requirement, not a temporary marketplace message. All five render the **same** `DriverUI.RedPlatesRequiredNotice` component consuming the **same** `AuthStore.requiresRedLicencePlates` policy, so no surface can reach a conflicting decision. Token usage is documented in [`brand-tokens.md`](brand-tokens.md) — the existing `--st-warn` / `--st-warn-bg` pair, no new token.
+
+### `styles.css` changes
+
+| Change ID | Screen | `styles.css` rules | Feature / rationale | Before | After adjustment | Notes |
+|---|---|---|---|---|---|---|
+| V1 | Driver — marketplace card tag row | `.phone-shell .vehicle-flag.red-plates-required` (+ ` svg`) | Derived red-plate notice must be visible on the card | No such state; red plates were an ordinary neutral `.vehicle-flag` tag driven by a manual flag | Existing `.vehicle-flag` chip geometry re-tinted with the **existing** Warn pair (`--st-warn` text/icon on `--st-warn-bg`), `font-weight: 600`, and `white-space: normal` so the long German string wraps in a narrow card | Reuses the semantic warning pattern; no new token |
+| V2 | Driver — preview · booking dialog · complete order view | `.phone-shell .red-plates-banner`, `-head`, `-detail` | Same notice needs a prominent form in detail/commit surfaces | No equivalent; nothing warned on deregistered + own axle | Tinted surface + fine `--st-warn` border + `--r-2` radius, headline in `--st-warn`, supporting sentence in `--muted` | Same recipe as `.banner-warn`, scoped to phone-shell metrics |
+| V3 | Admin — Create/Edit Job + job detail | *(none — reuse only)* | Notice in the admin surfaces | Manual red-plate chip + conditional number input | Existing `.banner.banner-warn` and `.pill.warn.no-dot`, no new CSS | Deliberately zero new admin CSS |
+| V4 | Admin — Create/Edit Job vehicle section | *(none — reuse only)* | Category-based entry structure | Free-text manufacturer with `datalist`; 5-option chip row; fused registration/red-plates segment; conditional plate copy block | `<select>` for manufacturer; 3-option chip row; separate `.seg` controls for transport type and registration status; independent characteristic chips; always-on plate input — all with existing `.chip` / `.seg` / `.input` tokens | Only markup + a11y roles changed |
+| V5 | Driver — vehicle icons | *(none — JSX)* | Icon set must match the three confirmed types | 5 body-style icons (SUV, Van, Light truck, Classic, Car) across two vocabularies, `VehicleCar` as silent catch-all | `VehicleCar` / `VehicleLightTruck` / new `VehicleTruck` for the three approved types; **`VehicleSuv` / `VehicleVan` / `VehicleClassic` deleted** | A retired type has no icon because it has no value |
+| V6 | Admin — VIN field | *(none — reuse only)* | Confirmed exactly-17 rule | Advisory notice below 17 chars, save allowed | Inline field error in `--st-warn` with `aria-invalid` + `aria-describedby`; rejected on the authoritative write path | Reuses the Warn token as error text — no error-specific token added |
+
+### Approved vehicle types only
+
+The three approved types are the complete set. `SUV`, `Van` / `Transporter`, `Classic car` / `Oldtimer` and the older `LKW < 3,5t` band are **not storable** and never render: no "(legacy)" label state, no fallback icon, and no per-record escape hatch while editing. Detail in `logical-model.md` → “Approved values only”.

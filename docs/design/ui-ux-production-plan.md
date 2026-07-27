@@ -152,6 +152,7 @@ Line-height 1.5 body / 1.3 headings. Every current 9–11px mono label becomes `
 
 - **App shell (`.app`):** grid `52px 1fr`, pinned to `height: 100dvh` (with a `100vh` fallback), `min-height: 0`, `overflow: hidden`. The header row never scrolls; each surface below it scrolls **internally**. Do **not** use `min-height: 100vh` here — that lets the whole document scroll and breaks `position: sticky` inside the admin content.
 - **Driver:** the `.phone-shell` stage is the internal scroller (unchanged behaviour, now guaranteed a definite height).
+- **Paged tab views (`SwipeViews`, `driver.jsx` — 2026-07, PR #17):** My Jobs and Infopoint render their tab bodies as a horizontal paged carousel inside the internal scroller. A horizontal drag pages between tabs (adjacent pane peeks in, snaps on release) while each pane keeps its own vertical scroll — `.swipe-viewport { overflow:hidden; touch-action: pan-y }`, `.swipe-track` (flex, `translate3d` + snap transition), `.swipe-pane { flex:0 0 100%; overflow-y:auto }`. The gesture locks to one axis after ~10px; transform-only, reduced-motion safe. Tab pills stay in sync and still switch on tap.
 - **Admin (`.admin`):** two-column grid `248px 1fr` bounded to the shell with `grid-template-rows: minmax(0, 1fr)` + `min-height: 0`, so `.admin-main` → `.admin-content` (`flex: 1; min-height: 0; overflow: auto`) inherits a definite height and scrolls internally instead of growing the document. The sidebar `.admin-nav` scrolls independently (`min-height: 0; overflow-y: auto`).
 - **Sticky Create/Edit-Job sidebars (`.grid-form-layout`):** the three-column form (`180px 1fr 280px`, `align-items: start`) pins its left section-nav and right live-summary `> aside` to the top of the scrolling `.admin-content` (`position: sticky; top: 0`). Each sidebar caps at `max-height: calc(100dvh - 172px)` with its own `overflow-y: auto` + `overscroll-behavior: contain`, so a tall sidebar scrolls by itself and never overlaps the top bar or footer while the central form scrolls.
 - **Narrow desktop fallback (`@media (max-width: 1200px)`):** the form collapses to a single column (`minmax(0, 1fr)`) and the sidebars drop sticky (`position: static; max-height: none; overflow: visible`) so they never overlap the form or force a horizontal scrollbar. This only removes the desktop sticky behaviour; tablet/mobile layouts are reviewed separately.
@@ -185,8 +186,8 @@ Line-height 1.5 body / 1.3 headings. Every current 9–11px mono label becomes `
 
 Driver `FilterSheet` fixes:
 
-- Date fields → native `type="date"` inputs styled to token spec + preset chips (Today / This week / Weekend) that fill them.
-- PLZ inputs → `inputmode="numeric"` + the existing PLZ formatter.
+- Date fields → native `type="date"` inputs styled to token spec + preset chips (Today / This week) that fill them.
+- PLZ inputs → `inputmode="numeric"`, **digit-only (non-digits stripped on input, 2026-07 PR #17)** + the existing PLZ formatter.
 - One selection idiom: segmented control for ≤3 mutually exclusive options; checkbox-chips for multi-select. Vehicle type and axle are both multi-select → both become checkbox-chips.
 - Labels: `caption`, sentence case, sans (kill 10px mono uppercase).
 - After apply: chips row under the Marketplace header (`80339+ ×` · `SUV ×` · `Reset`), filter icon gets a count Badge, CTA keeps live count ("Show 5 jobs").
@@ -220,7 +221,7 @@ Every list/detail: skeleton (mirrors final layout, no spinners for content areas
 ### 7.2 My Jobs (`MyJobs`, L2158)
 
 **Current:** search placeholder says "Search tour, customer, **driver**, VIN…" — admin copy leaked into the driver app (a driver never searches drivers); 4 scrollable text tabs with gray numeral badges (4th badge dialect); "Assigned directly by admin" banner glued to card top; address 2nd line ("Hamburg") orphans under the timeline dot; sort icon unlabeled; no per-tab empty states.
-**Target:** driver-appropriate search ("Search tour no. or city"); tabs = segmented control with §5 Badge counts; direct-assignment marker becomes a small `assigned` StatusPill inside the card meta row, not a banner; address truncates with ellipsis (full address in detail); per-tab empty states ("No active tours — find your next job in the Marketplace" with CTA switching tabs); skeletons per §6.3.
+**Target:** driver-appropriate search ("Search tour no. or city"); tabs = segmented control with §5 Badge counts; direct-assignment marker becomes a small `assigned` StatusPill inside the card meta row, not a banner; address truncates with ellipsis (full address in detail); per-tab empty states ("No active tours — find your next job in the Marketplace" with CTA switching tabs); skeletons per §6.3. **Tabs also switch by horizontal swipe** (paged `SwipeViews`, §4.4), not only by tapping the pills (2026-07, PR #17).
 
 ### 7.3 Job detail — locked (`JobLocked`) & unlocked (`JobUnlocked`)
 
@@ -249,7 +250,7 @@ Per §6.2 — full-height page replaces the popover. Layout: day group headers (
 1. **Identity header** (not a card): avatar 56px, name `title`, `driver-id` mono caption, ACTIVE StatusPill.
 2. **Daily limit card:** heading "Daily acceptance limit", progress bar `2/3 accepted today` (`--primary` fill, `--st-warn` at limit), caption with pickup-date context, secondary button "Request higher limit" → `DailyLimitRequestSheet`.
 3. **Master data card:** heading + caption "Managed by operations — request changes below"; rows as _definition list_ (label caption above value `body`, full width — kills wrapping + asterisks; email/phone as tappable `mailto:`/`tel:` links); primary-ghost "Request changes".
-4. **Notification preferences card:** switch rows (label + description left, switch right, 44px row); vehicle type + axle both checkbox-chip groups (same idiom as FilterSheet §6.1); postal-area chip input with add field; the iOS/Android note becomes a one-line `InlineAlert info` shown _only when push permission is unavailable_.
+4. **Notification preferences card:** switch rows (label + description left, switch right, 44px row); vehicle type + axle both checkbox-chip groups (same idiom as FilterSheet §6.1); postal-area chip input with add field (**digit-only**, 2026-07 PR #17); the iOS/Android note becomes a one-line `InlineAlert info` shown _only when push permission is unavailable_.
 5. **Help & support → Infopoint Help tab**: dispatcher hotline as tappable card (`tel:`), email support (`mailto:`). No FAQ accordion in V1.
 6. **Sign out:** destructive-outline button, own section, confirm sheet (not `window.confirm`).
    All section headings = `heading` sentence case; single card style; every confirm via sheet primitive.
@@ -259,11 +260,11 @@ Per §6.2 — full-height page replaces the popover. Layout: day group headers (
 ### 7.8 Infopoint (`Infopoint`, L3729)
 
 **Current:** two text tabs with gray numeral badge; document rows OK but icon-only download buttons unlabeled; meta line mixes sans + mono mid-line (`Operations · Global · v1.3` sans, `04.05. 09:10` mono); active tab keeps red "2" badge while you're on it; news items lack read/unread logic tie-in with the tab badge; 27 inline styles, 8 font sizes.
-**Target:** segmented tabs with Badge counts (badge clears as items are read); document row = same row grammar as tour documents (§7.4) with labeled actions; news items: unread dot + semibold title, read = regular; meta = one caption line, dates via formatter; empty states per tab.
+**Target:** segmented tabs with Badge counts (badge clears as items are read); document row = same row grammar as tour documents (§7.4) with labeled actions; news items: unread dot + semibold title, read = regular; meta = one caption line, dates via formatter; empty states per tab. **Tabs also switch by horizontal swipe** (paged `SwipeViews`, §4.4), not only by tapping the pills (2026-07, PR #17).
 
 ### 7.9 App chrome (`TabBar`, header, `PhoneStatusBar`)
 
-Per §5: all 4 tab items labeled (Marketplace / My jobs / Info / Profile), `aria-current`, numeric badges; active state = neutral contrast marker (no purple capsule — board §H); welcome header (avatar, greeting, bell) only on Marketplace — other tabs use plain title header (current behavior is right, formalize it); optional restrained KPI row only on client request; `PhoneStatusBar` excluded from the design contract.
+Per §5: all 4 tab items labeled (Marketplace / My jobs / Info / Profile), `aria-current`, numeric badges; active state = neutral contrast marker (no purple capsule — board §H); welcome header (avatar, greeting, bell) only on Marketplace — other tabs use plain title header (current behavior is right, formalize it); the restrained KPI row (Available / Booked / Open documents) was implemented then **removed at client request 2026-07 (PR #17)** — the counts duplicate the My Jobs tab badges; re-add only on explicit client ask; `PhoneStatusBar` excluded from the design contract.
 
 ---
 
@@ -345,8 +346,68 @@ _For when the prototype design contract is implemented as the real driver PWA. S
 
 ---
 
+## 10. Vehicle Domain Restructure — Implementation Plan (2026-07-26, PRD v2.8)
+
+Driven by the client confirmation **“Systemlogik Fahrzeugeingabe”**. Business/data spec: `prd.json` v2.8 + `docs/archive/2026-07/prd-changelog-since-2026-07-26.md`. Visual contract: [`design-direction-board-remediation.md`](design-direction-board-remediation.md) “Vehicle domain restructure (V1–V6)”. Previous-state audit: [`design-direction-board-audit.md`](design-direction-board-audit.md) “v1.3 addendum”.
+
+### 10.1 Implementation sequencing (dependency-ordered)
+
+| Step | Work | Depends on | Notes |
+|---|---|---|---|
+| 1 | **Domain layer** — canonical constants (`VEHICLE_TYPES`, `TRANSPORT_TYPES`, `REGISTRATION_STATUSES`), normalizers, `requiresRedLicencePlates` policy, `validateVehicleForm`, label resolvers, compatibility boundary (`normalizeVehicleDomain`) | — | Must land first: every later step imports from it. Nothing downstream may re-implement a rule. |
+| 2 | **Persistence / seed + fixtures** — canonical seed values with all four matrix cases represented; approved vehicle types only | 1 | Do **not** write a destructive production migration — the two data blockers in §10.3 must be cleared first. |
+| 3 | **i18n** — EN/DE keys for all three vehicle types, the four category labels, both characteristics and the derived notice; retire old keys only after confirming zero `t()` references | 1 | Parity check (`_audit-i18n.js`) gates the step. German labels verbatim from the client source. |
+| 4 | **Shared component** — `DriverUI.RedPlatesRequiredNotice` in `driver-ui.jsx` | 1, 3 | **Must** live in the shared primitives module: `driver.jsx` and `admin.jsx` share one global lexical scope, so a same-named component declared in both silently resolves to whichever script loads last. |
+| 5 | **Admin Backend UI** — vehicle entry rebuild + job detail + jobs table + save-path rejection handling | 1, 3, 4 | |
+| 6 | **Driver PWA** — card, marketplace preview, booking dialog, complete order view, filter sheet, notification prefs, icon map | 1, 3, 4 | |
+| 7 | **Downstream outputs** — CSV export, transport-order summary text, order-edit audit/diff field list | 1 | |
+| 8 | **Tests + visual baselines** | 2–7 | Matrix + entry + approved-values-only + raw-JSX-leak guard + responsive; refresh visual baselines last. |
+| 9 | **Docs sync** | 1–8 | PRD + changelog + context pack + schema + logical model + design docs + i18n index. |
+
+### 10.2 Shared-component updates
+
+| Component | Change |
+|---|---|
+| `DriverUI.RedPlatesRequiredNotice` (**new**, `driver-ui.jsx`) | The single derived-notice component for **both** apps. Four variants: `tag`, `banner`, `admin-banner`, `admin-pill`. Accepts a `job` **or** explicit `registrationStatus`/`transportType` (the live admin form state is not yet a job). Renders nothing unless *Deregistered + Own axle*. |
+| `AuthStore` vehicle contract (**new exports**) | `VEHICLE_TYPES` · `TRANSPORT_TYPES` · `REGISTRATION_STATUSES` · `selectableVehicleTypes` · `normalizeVehicleType` · `isAcceptableVehicleTypeForWrite` · `normalizeTransportType` · `normalizeRegistrationStatus` · `isValidVin` · `isReadyToDriveApplicable` · `validateVehicleForm` · **`requiresRedLicencePlates`** / `jobRequiresRedLicencePlates` · `vehicleTypeLabel` / `transportTypeLabel` / `registrationStatusLabel` / `redPlatesRequiredLabel`. |
+| `Ic` vehicle icons (`driver.jsx`) | `VehicleCar` / `VehicleLightTruck` kept, **`VehicleTruck` added**; **`VehicleSuv` / `VehicleVan` / `VehicleClassic` deleted** with their types. The map covers exactly the three approved types. |
+| `VehicleFlagTags` (`driver.jsx`) | Gains `characteristicsOnly` so a detail view that already lists registration status as a row does not repeat it as a tag. |
+| Chip / segmented / input primitives | **Reused unchanged** — `.chip.actionable`, `.seg`, `.input`, standard focus ring. Only ARIA roles were added (`radiogroup`/`radio` for single-select, `aria-pressed` for the independent characteristics). |
+| Retired | `displayAxle` / `displayAxleAdmin` / `canonAxle` (three separate mapping tables) → the shared store resolvers. |
+
+### 10.3 Migration dependencies
+
+- **Safe and reversible now:** `axle_type` → `transport_type` (known 1:1 over every historical spelling); `PKW`/`Car` → `passenger_car`; drop `red_license_plates` **and** `red_license_plate_number` (no value is retained — back up first if production rows hold data); add `ready_to_drive default false`.
+- **BLOCKED on client approval — two data questions before the schema can tighten:**
+  1. `jobs.vehicle_type` becomes the `vehicle_type` **enum**. Any existing row holding SUV / Van / Transporter / Oldtimer / Classic / `LKW < 3,5t` has **no approved target value**, so the cast fails until the client supplies a mapping (or approves discarding those rows). Do not guess.
+  2. `vehicle_registration_status` becomes **`NOT NULL`**. Rows with a null status have no approved default — choosing one would fabricate a red-plate decision.
+- **No destructive migration is written until both are cleared.** The prototype already enforces approved-values-only because its store is seeded in memory; production data has not been surveyed against these blockers.
+- Full field-by-field table + rollback behaviour: `docs/database/logical-model.md` → “Migration notes (backend)”.
+
+### 10.4 Verification
+
+**Desktop / mobile / tablet.** Per §9 and the existing viewport policy — no separate tablet-only layout is introduced (explicit non-goal).
+
+| Viewport | Surfaces to verify |
+|---|---|
+| **Desktop 1440×1100** (Admin Backend) | Create/Edit Job vehicle section (all four category controls + derived banner), job detail, jobs table, assign/reassign dialogs, toast on `invalid_vehicle` |
+| **Mobile 375** (Driver PWA, primary) | Marketplace card tag row, marketplace preview, booking dialog, complete order view, filter sheet, notification prefs |
+| **Tablet (wider phone frame)** | Same driver surfaces — tag row wrap and banner reflow only; layout is fluid, not a distinct breakpoint |
+
+**Long-value cases to exercise at every viewport:** longest vehicle-type labels (`Truck up to and including 7.5 t` / `LKW bis einschließlich 7,5 t`), long `manufacturer model` pairs (`Mercedes-Benz Atego 7.5 t`), the wrapping warning strings (`Red licence plates required` / `Rote Kennzeichen erforderlich` + the detail sentence), and a 17-character VIN. Required outcome: content wraps, the page body **never** scrolls horizontally, and the price keeps its right position on the card footer.
+
+**Visual regression.** Affected baselines: admin job overview · job detail (draft + assigned) · new order form · edit order form · assign/reassign dialogs · admin toast · driver marketplace · marketplace locked detail · my jobs (active/performed/cancelled) · filter sheet · acceptance modal. Refresh **after** code is final (`npm run test:regression:visual:update`), both themes, and review each diff rather than blanket-accepting. The committed cross-machine `prototype-shell` baseline is intentionally left untouched.
+
+**Accessibility.** Single-select groups expose `role="radiogroup"` + `role="radio"` + `aria-checked`; the independent characteristics use `aria-pressed` (they are toggles, not a radio set) — this is what makes duplicate/contradictory selection impossible **by component design** rather than by validation. The VIN error sets `aria-invalid` + `aria-describedby`. The derived notice uses `role="status"` so it is announced when the combination changes, and is always **text-labelled** (never colour-alone). Keyboard pass, both themes, DE strings and axe-clean per the §9 Definition of Done. All controls are real `<button>`/`<select>` elements — the previous vehicle-type chips were clickable `<span>`s.
+
+**Downstream / document outputs.** CSV export gains `vehicleType`, `manufacturer`, `vehicleModel`, `licencePlate`, `vin`, `transportType`, `registrationStatus`, `electricVehicle`, `readyToDrive` and the derived `requiresRedLicencePlates` (replacing raw `vehicle`/`axle`). The transport-order summary text lists the four categories, both characteristics, and appends the red-plate requirement line **only** when derived true — and **never** a red-plate number. Any production PDF/email template rendering the old fields must be re-checked against this list.
+
+---
+
 ## Changelog
 
+- **v3.2 — 2026-07-23 (PR #17 — figma-comment adjustments).** Reflected from `driver.jsx`/`admin.jsx`/`styles.css` (merge `14526e9`): (1) **Swipe/paged tab navigation** — My Jobs and Infopoint tab bodies became a horizontal paged carousel (`SwipeViews`); a swipe pages between tabs while vertical scroll is preserved (§4.4, §7.2, §7.8; new `.swipe-*` CSS). Client-feedback request. (2) **Marketplace KPI row removed** at client request — Available / Booked / Open documents duplicated the My Jobs tab badges (§7.9; `.kpi-row`/`.kpi-chip` CSS + `kpi*` i18n now unused). (3) **Digit-only numeric inputs** — driver preferred-postal + Marketplace filter PLZ, and admin Create/Edit-Job postal/house-no/distance strip non-digits; phone fields allow a leading `+`; driver-offer allows one decimal separator; alternate-contact stays free text (§6.1, §7.7). Bug report. No token/DDB-contract changes.
+- **v3.3 — 2026-07-26.** New §10 **Vehicle Domain Restructure** implementation plan for PRD v2.8 (client confirmation “Systemlogik Fahrzeugeingabe”): dependency-ordered sequencing, shared-component updates (new `DriverUI.RedPlatesRequiredNotice` + the `AuthStore` vehicle contract; SUV/Van/Classic icons removed, neutral legacy fallback added), migration dependencies incl. the **blocked** legacy vehicle-type mapping, and desktop/mobile/tablet + visual-regression + accessibility + downstream-output verification. No new tokens: the derived red-licence-plate notice reuses the existing `--st-warn` / `--st-warn-bg` semantic pair (recorded in brand-tokens.md).
 - **v3.1 — 2026-07-21.** Post-remediation feature work reflected from `styles.css` (commits `3ef6597` Task 3, `1cdf1a7` Task 1): new §4.4 **Layout & scroll architecture** documenting the fixed-height app shell (pinned header, internally-scrolling driver/admin surfaces) and the sticky Create/Edit-Job form sidebars with the ≤1200px stack fallback; §7.7 Profile gains the driver-owned **Account & sign-in** credential card and self-service change-email flow. No token/behavior changes to the DDB remediation contract; the `--st-ok` verified-badge token is flagged as undefined in brand-tokens.md.
 - **v3.0 — 2026-07-14.** Incorporated the client **Design Direction Board (AUTHEON GmbH, July 2026)**: authority hierarchy rewritten (§0 — PRD behavior / board visuals / prototype as compliant reference / docs as contract); Inter Tight replaces Plus Jakarta Sans as primary UI font; typography re-based on 400/500/600 with 700+ as exception-only; purple active-navigation capsule requirement removed and replaced by the client's black/white/gray navigation direction ("no dominant purple navigation"); marketplace-card content, compensation placement, route line, conditional registered/deregistered/red-plate metadata (PRD scope guard), restrained KPI/header, restrained gradients, minimal micro-animations, moderate radius + subtle elevation added via canonical sections in brand-tokens/driver-screen-spec; status colors confirmed text-labelled and restrained; W6 remediation phase added from `design-direction-board-audit.md`. Accessibility, tokenization, reusable-component, async-state and visual-regression work from v2.0 is preserved; dark theme remains an internal extension that must not redefine the client's light-theme direction.
 - **v2.0 — 2026-07-10.** Original source-of-truth contract + prototype remediation plan (W1–W5).

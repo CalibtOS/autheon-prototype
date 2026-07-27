@@ -141,6 +141,29 @@ Retained under the board's conditions: consistently tokenized, **always paired w
 
 Always pair status pills with a **text label** — never color-only. Pill text is sans, sentence case, caption-sized (uppercase mono pill text retired 2026-07-14).
 
+### Derived red-licence-plate notice (2026-07-26) [INTERNAL]
+
+The derived “**Rote Kennzeichen erforderlich**” / “Red licence plates required” notice (see `logical-model.md` → *Red licence plates*) uses the **existing** `Warn` semantic pair — **no new token was introduced**, per the rule that a suitable warning/attention pattern must be reused rather than duplicated:
+
+| Purpose | Token | Notes |
+|---------|-------|-------|
+| Notice text / icon / border | `--st-warn` `#EA580C` | Existing Warn semantic. Carries attention meaning app-wide. |
+| Notice background | `--st-warn-bg` `#FFEDD5` light · `#4A2B12` dark | Existing tinted pair — soft surface, no large saturated fill. |
+| Supporting detail line | `--muted` | Explanatory sentence sits one level below the headline. |
+
+Reused **existing** components and primitives across the five required surfaces — nothing bespoke was added:
+
+| Surface | Treatment | Existing pattern reused |
+|---------|-----------|-------------------------|
+| Admin Backend (Create/Edit Job, job detail) | `.banner.banner-warn` | Existing admin banner, already backed by `--st-warn-bg` |
+| Admin inline (compact) | `.pill.warn.no-dot` | Existing warn pill |
+| Driver marketplace card | `.vehicle-flag.red-plates-required` | Existing `.vehicle-flag` chip geometry, re-tinted with the Warn pair |
+| Driver preview / booking dialog / complete order view | `.red-plates-banner` | Same tinted-surface + fine-border recipe as `.banner-warn`, scoped to `.phone-shell` metrics |
+
+Because the notice is always **text-labelled** it satisfies the never-color-only rule. Related input/selection states in the rebuilt vehicle form also reuse existing tokens only: **chip + selected state** via `.chip` / `.chip.actionable` / `.chip.on` (`--primary` selected fill), **segmented single-select** via `.seg` / `.seg button.on`, **inputs** via `.input` + `--line` borders, and **focus** via the standard `--primary` focus ring. The VIN length error re-uses `--st-warn` as inline field-error text rather than introducing an error-specific token.
+
+**Wrapping:** unlike the other single-word `.vehicle-flag` chips, the red-plate chip sets `white-space: normal` so the long German string wraps inside a narrow card instead of overflowing.
+
 > **Gap — `--st-ok` (2026-07):** the driver Account & sign-in "Verified account" badge (`.account-email-verified`) references `var(--st-ok, #1f9d55)`, but **`--st-ok` is not defined** in `:root`/`[data-theme="dark"]` — it silently falls back to the hardcoded green `#1F9D55`, which is *not* the existing `--st-accepted #059669`. This is an off-token hex by the back door. Resolve by either **defining `--st-ok`** (light + dark, contrast-checked) as a first-class positive/confirmation semantic, or **reusing `--st-accepted`** for the badge. The badge is always text-labelled, so it satisfies the "never color-only" rule regardless.
 
 ---

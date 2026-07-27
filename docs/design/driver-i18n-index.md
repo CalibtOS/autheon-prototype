@@ -1,7 +1,46 @@
-# Driver PWA — i18n Key Index
-
-> Auto-generated from `i18n.js` + `driver.jsx` t() usage.
+Wrote /Users/youssefelkondakly/calibtos/autheon/autheon-prototype-dif-branch/autheon-prototype/docs/design/driver-i18n-index.md (325 keys)
+in label resolvers in `store.js`.
 > Regenerate: `node prototype/project/_export-driver-i18n.mjs`
+
+## Vehicle domain (client confirmation "Systemlogik Fahrzeugeingabe", 2026-07-26)
+
+Canonical value → key mapping. Labels are **never** hardcoded in a component; the
+resolvers `AuthStore.vehicleTypeLabel` / `transportTypeLabel` /
+`registrationStatusLabel` own this mapping for both apps.
+
+| Category | Canonical value | Key |
+|---|---|---|
+| Vehicle type (exactly one) | `passenger_car` | `vehicleTypePassengerCar` |
+| Vehicle type | `truck_up_to_7_5_t` | `vehicleTypeTruckUpTo75t` |
+| Vehicle type | `truck_over_7_5_t` | `vehicleTypeTruckOver75t` |
+| Transport type (exactly one) | `own_axle` | `ownAxle` |
+| Transport type | `third_party_axle` | `thirdPartyAxle` |
+| Registration status (exactly one) | `registered` | `vehicleInfoRegistered` |
+| Registration status | `deregistered` | `vehicleInfoDeregistered` |
+| Characteristic (independent) | `electricVehicle` | `vehicleInfoElectric` |
+| Characteristic (independent) | `readyToDrive` | `vehicleReadyToDrive` (+ `vehicleReadyToDriveApplicability`) |
+| Derived requirement | `requiresRedLicencePlates === true` | `redPlatesRequired` (+ `redPlatesRequiredDetail`) |
+
+Field labels: `vehicleType` · `manufacturer` (+ `manufacturerPh`) · `newOrderModel` ·
+`officialLicencePlate` (+ `officialLicencePlateHint`) · `vin` (+ `newOrderVinLen`,
+`newOrderVinLengthError`) · `transportType` · `registrationStatus` ·
+`vehicleCharacteristics`.
+
+**Deprecated / removed 2026-07-26** (confirmed unused before removal — no `t()`
+reference remained in `admin.jsx`, `driver.jsx`, `driver-ui.jsx` or `store.js`):
+`axle`, `axleConfiguration`, `orderFieldAxle` (→ `orderFieldTransportType`),
+`vehicleInfoRedPlates`, `redPlateNumber`, `orderFieldRedPlates`,
+`orderFieldRedPlateNumber`, `newOrderRedPlatePh`, `newOrderRedPlateHint`,
+`newOrderPlateHiddenDeregistered`, `newOrderRegistrationNone`,
+`newOrderRegistrationLabel`, `newOrderVtSuv`, `newOrderVtPkw`,
+`newOrderVtTransporter`, `newOrderVtClassic`, `lightTruck`, `adminVehicleTrp`,
+`newOrderVinShortNotice`, `newOrderBrand`, `newOrderBrandPh`,
+`vehicleTypeLegacy`, `vehicleTypeLegacyHint`.
+Removed vehicle types have no key at all — they are not storable values.
+
+---
+
+## All driver-reachable keys
 
 | Key | EN | DE |
 |-----|----|----|
@@ -19,8 +58,6 @@
 | `appTheme` | Theme | Design |
 | `assignedDirectlyNotice` | Assigned directly by admin. | Direkt vom Administrator zugewiesen. |
 | `assignedShort` | Assigned | Zugewiesen |
-| `axle` | Axle | Achse |
-| `axleConfiguration` | Axle configuration | Achsentyp |
 | `back` | Back | Zurück |
 | `bindingAcceptance` | Binding acceptance | Verbindliche Annahme |
 | `blockedDriverBody` | Marketplace access and new tour acceptance are restricted for blocked drivers. Use My Jobs to correct documents on existing tours. Profile, Info, and historical jobs remain visible in this prototype. | Marktplatzzugriff und neue Tour-Annahmen sind für blockierte Fahrer eingeschränkt. Nutzen Sie Meine Aufträge, um Dokumente bestehender Touren zu korrigieren. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar. |
@@ -50,6 +87,7 @@
 | `chars30Required` | characters (min. 30) | Zeichen (mind. 30) |
 | `close` | Close | Schließen |
 | `completionBlocked` | Completion is only available while the tour is Assigned or Accepted. | Abschluss ist nur bei Zugewiesen oder Akzeptiert verfügbar. |
+| `confirm` | — | — |
 | `contact` | Contact | Kontakt |
 | `contactsPhones` | On-site contacts and phones | Vor-Ort-Kontakte und Telefonnummern |
 | `correctionRequiredBadge` | Correction | Korrektur |
@@ -144,11 +182,10 @@
 | `jobDetailsTab` | Job details | Auftragsdetails |
 | `legal` | Legal | Rechtliches |
 | `legalSub` | Terms · privacy · imprint | AGB · Datenschutz · Impressum |
-| `licensePlate` | License plate | Kennzeichen |
 | `licenseVin` | License plate and VIN | Kennzeichen und FIN |
-| `lightTruck` | Light truck <3.5t | Leicht-Lkw <3,5 t |
 | `loadingJobs` | Loading jobs… | Touren werden geladen… |
 | `mailtoSubjectSupport` | AUTHEON driver support — {driverCode} | AUTHEON Fahrer-Support — {driverCode} |
+| `manufacturer` | Manufacturer | Hersteller |
 | `markAllRead` | Mark all read | Alle als gelesen markieren |
 | `markPerformed` | Mark as performed | Als durchgeführt markieren |
 | `markPerformedConfirmBody` | This confirms the vehicle was handed over at the destination. Slide to confirm — or cancel if this was tapped by mistake. | Damit wird bestätigt, dass das Fahrzeug am Ziel übergeben wurde. Zum Bestätigen schieben – oder abbrechen, falls versehentlich getippt. |
@@ -179,6 +216,7 @@
 | `notifications` | Notifications | Benachrichtigungen |
 | `notificationsSub` | Push filters mirror Portal preferences | Push-Filter spiegeln die Portal-Einstellungen |
 | `offer` | Offer | Angebot |
+| `officialLicencePlate` | Official licence plate | Amtliches Kennzeichen |
 | `officialTourDocFromDispatch` | From dispatch | Von Disposition |
 | `officialTourDocHint` | Provided by dispatch alongside the transport order. View or download only. | Von der Disposition bereitgestellt — neben dem Transportauftrag. Nur ansehen oder herunterladen. |
 | `officialTourDocumentsSection` | Reference documents | Referenzdokumente |
@@ -240,8 +278,10 @@
 | `pushNotifyPostalPrefix` | Orders in pickup postal code area | Aufträge im Abhol-PLZ-Gebiet |
 | `pushPostalPrefixHint` | 1–2 digit prefix, e.g. 4, 40, or 41 | 1–2-stelliges Präfix, z. B. 4, 40 oder 41 |
 | `pushSupportNotice` | Android supported in app flow. iOS requires home-screen installation, compatible iOS version, and permission. | Android wird im App-Ablauf unterstützt. iOS erfordert Installation auf dem Homescreen, eine kompatible iOS-Version und Berechtigung. |
-| `redPlateNumber` | Red plate no. | Rotes Kennzeichen (Nr.) |
+| `redPlatesRequired` | Red licence plates required | Rote Kennzeichen erforderlich |
+| `redPlatesRequiredDetail` | Deregistered vehicle transferred on its own axle. The executing service partner brings their own red licence plates; the plate number is not recorded. | Abgemeldetes Fahrzeug wird auf eigener Achse \u00fcberf\u00fchrt. Der ausf\u00fchrende Servicepartner bringt eigene rote Kennzeichen mit; die Kennzeichennummer wird nicht erfasst. |
 | `refreshDemo` | Refresh | Aktualisieren |
+| `registrationStatus` | Registration status | Zulassungsstatus |
 | `removeDocBlocked` | Documents already in review can't be removed. Contact dispatch if needed. | Dokumente in Prüfung können nicht entfernt werden. Bei Bedarf Disposition kontaktieren. |
 | `removeDocBody` | This will permanently remove the file from this tour. Upload a replacement if this document is required for processing. | Die Datei wird dauerhaft von dieser Tour entfernt. Falls das Dokument für die Abrechnung erforderlich ist, muss ein Ersatz hochgeladen werden. |
 | `removeDocConfirm` | Remove | Entfernen |
@@ -297,6 +337,8 @@
 | `thirdPartyAxle` | Third-party axle | Fremdachse |
 | `thisWeek` | This week | Diese Woche |
 | `today` | Today | Heute |
+| `tourBookedSuccessBody` | The tour is now active — you'll find it under My jobs. | Die Tour ist jetzt aktiv — du findest sie unter Meine Aufträge. |
+| `tourBookedSuccessTitle` | Tour booked successfully. | Tour erfolgreich gebucht. |
 | `tourDocChooseCategory` | Choose document type | Dokumenttyp wählen |
 | `tourDocDeliveryNote` | Delivery note | Lieferschein |
 | `tourDocEmptyAction` | Add receipts, delivery notes, or proof while this tour is active. | Belege, Lieferscheine oder Nachweise während der aktiven Tour hinzufügen. |
@@ -326,19 +368,22 @@
 | `tourDocWaitingTimeEvidence` | Waiting time evidence | Wartezeitnachweis |
 | `tourDocumentsSection` | Tour documents | Tour-Dokumente |
 | `tourInExecutionBanner` | Tour in execution — complete pickup, delivery, and documents from this screen. | Tour in Ausführung — Abholung, Zustellung und Dokumente hier abschließen. |
-| `type` | Type | Typ |
+| `transportType` | Transport type | Transportart |
 | `uiDismiss` | Dismiss | Schließen |
 | `unlockedAfterAcceptance` | Unlocked after acceptance | Nach Annahme freigeschaltet |
 | `until` | Until | Bis |
 | `untilDateChip` | Until {date} | Bis {date} |
 | `vatBankingReadonly` | Address · VAT · banking | Adresse · USt. · Bankdaten |
 | `vehicle` | Vehicle | Fahrzeug |
+| `vehicleCharacteristics` | Additional vehicle characteristics | Weitere Fahrzeugmerkmale |
 | `vehicleInfoDeregistered` | Deregistered | Abgemeldet |
-| `vehicleInfoElectric` | E-vehicle | E-Fahrzeug |
-| `vehicleInfoLabel` | Important vehicle info | Wichtige Fahrzeug-Info |
-| `vehicleInfoRedPlates` | Red plates | Rote Kennzeichen |
+| `vehicleInfoElectric` | Electric vehicle | E-Fahrzeug |
 | `vehicleInfoRegistered` | Registered | Zugelassen |
+| `vehicleReadyToDrive` | Ready to drive | Fahrbereit |
 | `vehicleType` | Vehicle type | Fahrzeugtyp |
+| `vehicleTypePassengerCar` | Passenger car | PKW |
+| `vehicleTypeTruckOver75t` | Truck over 7.5 t | LKW \u00fcber 7,5 t |
+| `vehicleTypeTruckUpTo75t` | Truck up to and including 7.5 t | LKW bis einschlie\u00dflich 7,5 t |
 | `view` | View | Ansehen |
 | `viewDriverPolicy` | View driver policy | Fahrerrichtlinie ansehen |
 | `viewOnMap` | View on map | Auf Karte anzeigen |
@@ -347,5 +392,4 @@
 | `warnEntryCancelSub` | End the tour and notify dispatch. | Beendet den Auftrag und informiert die Disposition. |
 | `warnEntryEmptyRunOption` | Report empty run | Leerfahrt melden |
 | `warnEntryEmptyRunSub` | The order itself can't be executed — Autheon reviews it. | Der Auftrag selbst kann nicht durchgeführt werden — Autheon prüft die Meldung. |
-| `weekend` | Weekend | Wochenende |
 | `welcomeBack` | Welcome back, | Willkommen zurück, |

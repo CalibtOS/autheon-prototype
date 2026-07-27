@@ -19,7 +19,14 @@
       href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=23" />
+<link rel="stylesheet" href="styles.css?v=27" />
+    <!--
+      Floating Theme Editor — a movable, persistent design-evaluation tool.
+      Loaded synchronously in <head> so any locally stored colour overrides are
+      applied before the first paint (no flash of the default theme). Mounts one
+      launcher for the whole prototype, including the embedded mobile preview.
+    -->
+    <script src="theme-editor.js?v=2"></script>
   </head>
   <body>
     <div id="root"></div>
@@ -41,12 +48,12 @@
     ></script>
 
     <script src="feature-flags.js"></script>
-    <script src="i18n.js?v=24"></script>
+    <script src="i18n.js?v=28"></script>
     <script src="formatters.js"></script>
     <script src="inputFormatters.js"></script>
     <script src="store.js"></script>
     <script type="text/babel" src="driver-ui.jsx"></script>
-    <script type="text/babel" src="driver.jsx?v=10"></script>
+<script type="text/babel" src="driver.jsx?v=12"></script>
     <script type="text/babel" src="admin.jsx"></script>
 
     <script type="text/babel" data-presets="env,react">
@@ -97,6 +104,7 @@
         const [probationLimitModal, setProbationLimitModal] = useState(null);
         const [overlapConfirm, setOverlapConfirm] = useState(null);
         const [banner, setBanner] = useState(null);
+        const [bookedSuccess, setBookedSuccess] = useState(false);
         const [showNotifications, setShowNotifications] = useState(false);
 
         const handleOpenJob = (j, fromTab = tab) => {
@@ -258,6 +266,7 @@
                         }
                         setAcceptModal(null);
                         setActiveJob({ id, mode: "unlocked" });
+                        setBookedSuccess(true);
                       };
                       tryAccept(false);
                     }}
@@ -333,7 +342,13 @@
                         return;
                       }
                       setActiveJob({ id, mode: "unlocked" });
+                      setBookedSuccess(true);
                     }}
+                  />
+                )}
+                {bookedSuccess && (
+                  <TourBookedSuccessSheet
+                    onClose={() => setBookedSuccess(false)}
                   />
                 )}
               </div>
@@ -414,6 +429,33 @@
           setSection("invoices");
         };
 
+        // Renders AuthStore.validateVehicleForm() failures for the toast. Field
+        // labels come from i18n — nothing about the vehicle rules is restated
+        // here, only the reasons the authoritative validator returned.
+        const describeVehicleErrors = (errors, t) => {
+          const labels = {
+            vehicleType: "vehicleType",
+            manufacturer: "manufacturer",
+            model: "newOrderModel",
+            plate: "officialLicencePlate",
+            vin: "vin",
+            transportType: "transportType",
+            registrationStatus: "registrationStatus",
+          };
+          return (errors || [])
+            .map((e) => {
+              if (e.reason === "removed_vehicle_type")
+                return t("newOrderRemovedVehicleType");
+              if (e.reason === "vin_length")
+                return t("newOrderVinLengthError", { count: 0 });
+              if (e.reason === "not_writable")
+                return t("adminVehicleFieldNotWritable");
+              return labels[e.field] ? t(labels[e.field]) : e.field;
+            })
+            .filter(Boolean)
+            .join(" · ");
+        };
+
         const showToast = (msg, sub, action) => {
           setToast({ msg, sub, action });
           clearTimeout(window.__t);
@@ -436,6 +478,13 @@
                 saved.leg === "delivery"
                   ? t("newOrderDeliverySchedule")
                   : t("newOrderPickupSchedule"),
+              );
+            } else if (saved?.error === "invalid_vehicle") {
+              // Server-authoritative vehicle rejection (removed vehicle type,
+              // VIN not 17 characters, red-plate write attempt).
+              showToast(
+                t("adminVehicleInvalid"),
+                describeVehicleErrors(saved.errors, t),
               );
             } else {
               showToast(
@@ -467,6 +516,11 @@
                 r.leg === "delivery"
                   ? t("newOrderDeliverySchedule")
                   : t("newOrderPickupSchedule"),
+              );
+            } else if (r.reason === "invalid_vehicle") {
+              showToast(
+                t("adminVehicleInvalid"),
+                describeVehicleErrors(r.errors, t),
               );
             } else if (r.reason === "no_changes") {
               showToast(t("adminNoChanges"), "");
@@ -739,7 +793,7 @@
             />
           );
         } else if (section === "features") {
-          body = <FeaturesPane showToast={showToast} />;
+          body = <SettingsPane showToast={showToast} />;
         } else {
           const stubTitles = {
             customers: [
@@ -985,9 +1039,9 @@
                     <button
                       className="btn xs"
                       style={{
-                        background: "#fff",
-                        color: "#000",
-                        borderColor: "#fff",
+                        background: "var(--paper)",
+                        color: "var(--text)",
+                        borderColor: "var(--paper)",
                       }}
                       onClick={() => {
                         toast.action.run();
@@ -999,7 +1053,7 @@
                   )}
                   <button
                     className="btn icon sm"
-                    style={{ borderColor: "transparent", color: "#fff" }}
+                    style={{ borderColor: "transparent", color: "var(--on-accent)" }}
                     onClick={() => setToast(null)}
                   >
                     <Ic.X />
@@ -1020,9 +1074,26 @@
       function App() {
         const store = useAuthStore();
         const [view, setView] = useState("driver"); // driver | admin
-        const [theme, setTheme] = useState(
-          localStorage.getItem("autheon-theme") || "light",
-        );
+        // Theme state is the same global store the admin Settings "Appearance"
+        // row drives (window.AutheonTheme.useTheme), so the two controls stay
+        // in sync in both directions. The shell keeps its data-theme effect so
+        // first-paint behaviour is byte-for-byte unchanged.
+        const { theme, setTheme } = window.AutheonTheme
+          ? window.AutheonTheme.useTheme()
+          : {
+              theme: localStorage.getItem("autheon-theme") || "light",
+              setTheme: (next) => {
+                document.documentElement.setAttribute("data-theme", next);
+                localStorage.setItem("autheon-theme", next);
+              },
+            };
+        const [themeEditorOn, setThemeEditorOn] = useState(() => {
+          try {
+            return !!window.AutheonThemeEditor?.isVisible?.();
+          } catch (_) {
+            return false;
+          }
+        });
         const { locale, setLocale, t } = useI18n();
         const pwaHref = resolvePwaHref();
 
@@ -1030,6 +1101,33 @@
           document.documentElement.setAttribute("data-theme", theme);
           localStorage.setItem("autheon-theme", theme);
         }, [theme]);
+
+        useEffect(() => {
+          const sync = () => {
+            try {
+              setThemeEditorOn(!!window.AutheonThemeEditor?.isVisible?.());
+            } catch (_) {
+              /* ignore */
+            }
+          };
+          const onVis = (e) => {
+            if (e?.detail && typeof e.detail.visible === "boolean") {
+              setThemeEditorOn(e.detail.visible);
+            } else {
+              sync();
+            }
+          };
+          sync();
+          document.addEventListener(
+            "autheon-theme-editor:visibility",
+            onVis,
+          );
+          return () =>
+            document.removeEventListener(
+              "autheon-theme-editor:visibility",
+              onVis,
+            );
+        }, []);
 
         return (
           <div className="app">
@@ -1073,6 +1171,23 @@
                 >
                   {t("openPwaViewport")}
                 </a>
+                <button
+                  type="button"
+                  className={
+                    "theme-editor-entry" + (themeEditorOn ? " on" : "")
+                  }
+                  aria-pressed={themeEditorOn}
+                  title={t("themeEditorTitle")}
+                  onClick={() => {
+                    try {
+                      window.AutheonThemeEditor?.toggle?.();
+                    } catch (_) {
+                      /* ignore */
+                    }
+                  }}
+                >
+                  {t("themeEditor")}
+                </button>
                 <div className="switcher locale-switch">
                   <button
                     className={locale === "en" ? "on" : ""}

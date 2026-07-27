@@ -24,7 +24,7 @@
 | Tour documents | Sidebar | Review / reject / replace |
 | Users / drivers | Sidebar | Driver profile incl. **daily job limit** |
 | Profile change requests | Sidebar | Approve / reject queue |
-| Settings | Sidebar Features | Branding display name + **operational policies** (cutoffs, message rules) |
+| Settings | Sidebar Features | Three tabs: **User settings** (change email + change password, language + appearance) · **System settings** (operational policies: cutoffs, message rules · Infopoint help contacts: dispatcher hotline + support email) · **Prototype settings** (branding display name + finance-module flag) |
 | Infopoint | Sidebar | General docs + news |
 | Audit log | Sidebar | Immutable actions |
 

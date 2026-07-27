@@ -1,26 +1,15 @@
-/* global React, ReactDOM, AuthStore, useAuthStore */
+﻿/* global React, AuthStore, useAuthStore */
 const { useState, useEffect, useRef, useMemo } = React;
 
 const UI = window.DriverUI || {};
 const { Badge, EmptyState, SkeletonList, Sheet, ConfirmSheet, SortSelect } = UI;
 const F = () => window.AutheonFormatters || {};
 
-// Portal target for full-frame overlays. The tab bar is a later sibling of
-// the tab body inside .phone-screen and ties it on z-index (both 40), so an
-// overlay rendered inline in a tab pane loses the paint order and the nav
-// swallows taps meant for the overlay. Portaling to .phone-screen appends
-// after the tab bar and wins the tie — same trick SortSelect uses for its
-// dropdown (driver-ui.jsx).
-const getPhoneScreen = () => {
-  if (typeof document === "undefined") return null;
-  return document.querySelector(".phone-screen");
-};
-
-// Draggable paged views — a dependency-free carousel for tab content.
+// Draggable paged views ΓÇö a dependency-free carousel for tab content.
 // All panes are rendered side-by-side in a horizontal track; the track
 // follows the finger during a horizontal drag so the adjacent tab peeks in,
 // then snaps to the nearest tab on release. Vertical drags are left to the
-// pane's own scrolling. Swipe left → next tab, swipe right → previous tab.
+// pane's own scrolling. Swipe left ΓåÆ next tab, swipe right ΓåÆ previous tab.
 const SwipeViews = ({
   index,
   count,
@@ -55,7 +44,7 @@ const SwipeViews = ({
       if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
       g.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
     }
-    if (g.axis !== "x") return; // vertical → let the pane scroll
+    if (g.axis !== "x") return; // vertical ΓåÆ let the pane scroll
     if (e.cancelable) e.preventDefault(); // own the horizontal gesture
     let d = dx;
     // Rubber-band resistance when dragging past the first/last tab.
@@ -120,27 +109,48 @@ const Lbl = ({ children, className = "", ...props }) => (
   </span>
 );
 
-// Vehicle-domain display helpers delegate to the SHARED store resolvers
-// (client confirmation "Systemlogik Fahrzeugeingabe") so the Driver PWA and the
-// Admin Backend can never render a different label or a different derived
-// red-licence-plate decision.
-const displayTransportType = (value, t) =>
-  value === "All" ? t("all") : AuthStore.transportTypeLabel(value, t);
+const displayAxle = (value, t) =>
+  ({
+    All: t("all"),
+    "driven on own wheels": t("ownAxle"),
+    "third-party axle": t("thirdPartyAxle"),
+    "Own axle": t("ownAxle"),
+    "Third-party axle": t("thirdPartyAxle"),
+    Eigenachse: t("ownAxle"),
+    Fremdachse: t("thirdPartyAxle"),
+  })[value] || value;
 
-// Canonical transport-type value for filter comparisons.
-const canonTransportType = (v) =>
-  v === "All" ? "All" : AuthStore.normalizeTransportType(v);
+// Canonical store axle values for filter comparisons
+const canonAxle = (v) =>
+  ({
+    "Own axle": "driven on own wheels",
+    "Third-party axle": "third-party axle",
+    Eigenachse: "driven on own wheels",
+    Fremdachse: "third-party axle",
+  })[v] || v;
 
 const displayVehicle = (value, t) =>
-  value === "All" ? t("all") : AuthStore.vehicleTypeLabel(value, t);
+  ({
+    All: t("all"),
+    "Light truck <3.5t": t("lightTruck"),
+  })[value] || value;
 
-// Icon mapping for the three confirmed vehicle types.
-const vehicleTypeIcon = (vehicleType) => {
-  switch (AuthStore.normalizeVehicleType(vehicleType)) {
-    case AuthStore.VEHICLE_TYPE_TRUCK_UP_TO_7_5_T:
+// Vehicle values come from two sources: seed data (SUV, PKW, Van,
+// Light truck <3.5t) and the admin New Order form (SUV, PKW, Transporter,
+// LKW < 3,5t, Oldtimer) ΓÇö map both to one icon per type.
+const vehicleTypeIcon = (vehicle) => {
+  switch (vehicle) {
+    case "SUV":
+      return <Ic.VehicleSuv />;
+    case "Van":
+    case "Transporter":
+      return <Ic.VehicleVan />;
+    case "Light truck <3.5t":
+    case "LKW < 3,5t":
       return <Ic.VehicleLightTruck />;
-    case AuthStore.VEHICLE_TYPE_TRUCK_OVER_7_5_T:
-      return <Ic.VehicleTruck />;
+    case "Oldtimer":
+    case "Classic":
+      return <Ic.VehicleClassic />;
     default:
       return <Ic.VehicleCar />;
   }
@@ -232,14 +242,14 @@ const InlineAlert = ({ tone = "error", message, onDismiss }) => {
           onClick={onDismiss}
           aria-label={t("uiDismiss")}
         >
-          ×
+          ├ù
         </button>
       ) : null}
     </div>
   );
 };
 
-// Inline policy disclosure — replaces window.alert (plan §6.2 feedback hierarchy)
+// Inline policy disclosure ΓÇö replaces window.alert (plan ┬º6.2 feedback hierarchy)
 const PolicyDisclosure = ({ introKey = "partnerTermsApply" }) => {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -354,13 +364,14 @@ const SlideLockIcon = () => (
 );
 
 const Ic = {
-  // Vehicle type icons for the THREE confirmed types (client confirmation
-  // "Systemlogik Fahrzeugeingabe", 2026-07-26):
-  //   VehicleCar         → passenger_car        (tabler:car, MIT)
-  //   VehicleLightTruck  → truck_up_to_7_5_t    (hugeicons:delivery-truck-01, MIT)
-  //   VehicleTruck       → truck_over_7_5_t     (tabler:truck, MIT)
-  // The SUV / Van / Classic icons were REMOVED with their vehicle types: no
-  // retired type may render as an active selectable option.
+  // Vehicle type icons ΓÇö mdi:car-suv (Apache-2.0), tabler:car (MIT),
+  // lucide:van (ISC), hugeicons:delivery-truck-01 (MIT),
+  // mdi:car-convertible (Apache-2.0)
+  VehicleSuv: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M3 6h13l3 4h2c1.11 0 2 .89 2 2v3h-2a3 3 0 0 1-3 3a3 3 0 0 1-3-3H9a3 3 0 0 1-3 3a3 3 0 0 1-3-3H1V8c0-1.11.89-2 2-2m-.5 1.5V10h8V7.5zm9.5 0V10h5.14l-1.89-2.5zm-6 6A1.5 1.5 0 0 0 4.5 15A1.5 1.5 0 0 0 6 16.5A1.5 1.5 0 0 0 7.5 15A1.5 1.5 0 0 0 6 13.5m12 0a1.5 1.5 0 0 0-1.5 1.5a1.5 1.5 0 0 0 1.5 1.5a1.5 1.5 0 0 0 1.5-1.5a1.5 1.5 0 0 0-1.5-1.5" />
+    </svg>
+  ),
   VehicleCar: () => (
     <svg
       width="20"
@@ -374,6 +385,23 @@ const Ic = {
     >
       <path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0-4 0m10 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0" />
       <path d="M5 17H3v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0H9m-6-6h15m-6 0V6" />
+    </svg>
+  ),
+  VehicleVan: () => (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M13 6v5a1 1 0 0 0 1 1h6.102a1 1 0 0 1 .712.298l.898.91a1 1 0 0 1 .288.702V17a1 1 0 0 1-1 1h-3" />
+      <path d="M5 18H3a1 1 0 0 1-1-1V8a2 2 0 0 1 2-2h12c1.1 0 2.1.8 2.4 1.8l1.176 4.2M9 18h5" />
+      <circle cx="16" cy="18" r="2" />
+      <circle cx="7" cy="18" r="2" />
     </svg>
   ),
   VehicleLightTruck: () => (
@@ -391,20 +419,9 @@ const Ic = {
       <path d="M14.5 17.5h-5m10 0h.763c.22 0 .33 0 .422-.012a1.5 1.5 0 0 0 1.303-1.302c.012-.093.012-.203.012-.423V13a6.5 6.5 0 0 0-6.5-6.5M2 4h10c1.414 0 2.121 0 2.56.44C15 4.878 15 5.585 15 7v8.5M2 12.75V15c0 .935 0 1.402.201 1.75a1.5 1.5 0 0 0 .549.549c.348.201.815.201 1.75.201M2 7h6m-6 3h4" />
     </svg>
   ),
-  // Truck over 7.5 t — heavier silhouette than the up-to-7.5 t icon.
-  VehicleTruck: () => (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M7 17a2 2 0 1 0 4 0a2 2 0 0 0-4 0m9 0a2 2 0 1 0 4 0a2 2 0 0 0-4 0" />
-      <path d="M11 17H9.5A1.5 1.5 0 0 1 8 15.5V6.5A1.5 1.5 0 0 1 9.5 5h5A1.5 1.5 0 0 1 16 6.5V17m0-8h3.5l2 4v3.5A1.5 1.5 0 0 1 20 18M8 9H4m1 4h3" />
+  VehicleClassic: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="m16 6l-1 .75L17.5 10h-4V8.5H12V10H3c-1.11 0-2 .89-2 2v3h2a3 3 0 0 0 3 3a3 3 0 0 0 3-3h6a3 3 0 0 0 3 3a3 3 0 0 0 3-3h2v-3c0-1.11-.89-2-2-2h-2zM6 13.5A1.5 1.5 0 0 1 7.5 15A1.5 1.5 0 0 1 6 16.5A1.5 1.5 0 0 1 4.5 15A1.5 1.5 0 0 1 6 13.5m12 0a1.5 1.5 0 0 1 1.5 1.5a1.5 1.5 0 0 1-1.5 1.5a1.5 1.5 0 0 1-1.5-1.5a1.5 1.5 0 0 1 1.5-1.5" />
     </svg>
   ),
   Filter: () => (
@@ -657,7 +674,7 @@ const Ic = {
       />
     </svg>
   ),
-  /** Double-check — Material "done_all" (filled paths render cleanly at small sizes) */
+  /** Double-check ΓÇö Material "done_all" (filled paths render cleanly at small sizes) */
   CheckAll: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
@@ -846,7 +863,7 @@ const Ic = {
 };
 
 // =========================================================================
-// ROUTE STACK (vertical Start → End)
+// ROUTE STACK (vertical Start ΓåÆ End)
 // =========================================================================
 const RouteStack = ({ job, big = true }) => {
   const { t, locale } = useI18n();
@@ -863,7 +880,7 @@ const RouteStack = ({ job, big = true }) => {
             {job.startCity}
           </div>
           <div className="meta">
-            {job.startPlz} · {t("pickup")}
+            {job.startPlz} ┬╖ {t("pickup")}
           </div>
         </div>
         <div className="end">
@@ -871,7 +888,7 @@ const RouteStack = ({ job, big = true }) => {
             {job.endCity}
           </div>
           <div className="meta">
-            {job.endPlz} · {t("destination")} · {job.distanceKm} km
+            {job.endPlz} ┬╖ {t("destination")} ┬╖ {job.distanceKm} km
           </div>
         </div>
       </div>
@@ -880,7 +897,7 @@ const RouteStack = ({ job, big = true }) => {
 };
 
 // =========================================================================
-// DRIVER PWA — STATUS BAR & TAB BAR
+// DRIVER PWA ΓÇö STATUS BAR & TAB BAR
 // =========================================================================
 const PhoneStatusBar = () => (
   <div className="statusbar">
@@ -952,17 +969,17 @@ const estimateDriveTime = (km) => {
   return h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
 };
 
-// Compact leg line for job cards: "23.04. · 08:00–12:00" (or "Flexible")
+// Compact leg line for job cards: "23.04. ┬╖ 08:00ΓÇô12:00" (or "Flexible")
 const legWhen = (loc, t) => {
-  if (!loc) return "—";
+  if (!loc) return "ΓÇö";
   const date = loc.date || "";
   const win = loc.windowFlex
     ? t("flexible")
-    : [loc.windowFrom, loc.windowTo].filter(Boolean).join("–");
-  return [date, win].filter(Boolean).join(" · ") || "—";
+    : [loc.windowFrom, loc.windowTo].filter(Boolean).join("ΓÇô");
+  return [date, win].filter(Boolean).join(" ┬╖ ") || "ΓÇö";
 };
 
-// Small supporting icons for the important-vehicle-info tags (board §5)
+// Small supporting icons for the important-vehicle-info tags (board ┬º5)
 const FlagIc = {
   Bolt: () => (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -989,42 +1006,24 @@ const FlagIc = {
   ),
 };
 
-// Registration status + additional vehicle characteristics, shown to the
-// service partner as discrete tags. Registration status is its OWN category —
-// it is never inferred from the transport type. The retired manual "Red plates"
-// tag is gone; the requirement is derived and rendered by RedPlatesNotice.
-// The two INDEPENDENT additional characteristics. Kept separate from
-// registration status so a detail view that already lists registration status on
-// its own row does not repeat it as a tag.
-const vehicleCharacteristicFlags = (job, t) => {
+// Important vehicle info (registered / deregistered / e-vehicle / red plates).
+// Optional announcement metadata ΓÇö renders nothing when unset.
+const vehicleInfoFlags = (job, t) => {
   const flags = [];
+  if (job.registrationStatus === "registered")
+    flags.push({ key: "registered", Icon: FlagIc.CheckCircle, label: t("vehicleInfoRegistered") });
+  if (job.registrationStatus === "deregistered")
+    flags.push({ key: "deregistered", Icon: FlagIc.Slash, label: t("vehicleInfoDeregistered") });
   if (job.electricVehicle)
     flags.push({ key: "electric", Icon: FlagIc.Bolt, label: t("vehicleInfoElectric") });
-  // "Ready to drive" is decision-relevant for third-party-axle transport and is
-  // always shown to the service partner when set, on every surface.
-  if (job.readyToDrive)
-    flags.push({ key: "readyToDrive", Icon: FlagIc.CheckCircle, label: t("vehicleReadyToDrive") });
+  if (job.redPlates)
+    flags.push({ key: "redPlates", Icon: FlagIc.Plate, label: t("vehicleInfoRedPlates") });
   return flags;
 };
 
-// Card-level tag row: registration status (its own category — never inferred
-// from the transport type) plus the additional characteristics. The retired
-// manual "Red plates" tag is gone; the requirement is derived and rendered by
-// RedPlatesRequiredNotice.
-const vehicleInfoFlags = (job, t) => {
-  const flags = [];
-  if (job.registrationStatus === AuthStore.REGISTRATION_REGISTERED)
-    flags.push({ key: "registered", Icon: FlagIc.CheckCircle, label: t("vehicleInfoRegistered") });
-  if (job.registrationStatus === AuthStore.REGISTRATION_DEREGISTERED)
-    flags.push({ key: "deregistered", Icon: FlagIc.Slash, label: t("vehicleInfoDeregistered") });
-  return [...flags, ...vehicleCharacteristicFlags(job, t)];
-};
-
-const VehicleFlagTags = ({ job, characteristicsOnly = false }) => {
+const VehicleFlagTags = ({ job }) => {
   const { t } = useI18n();
-  const flags = characteristicsOnly
-    ? vehicleCharacteristicFlags(job, t)
-    : vehicleInfoFlags(job, t);
+  const flags = vehicleInfoFlags(job, t);
   if (!flags.length) return null;
   return (
     <>
@@ -1037,13 +1036,7 @@ const VehicleFlagTags = ({ job, characteristicsOnly = false }) => {
   );
 };
 
-// DERIVED red-licence-plate notice. Defined ONCE in driver-ui.jsx and shared
-// with the Admin Backend so no surface can reach a conflicting decision.
-const RedPlatesNotice = (props) => (
-  <DriverUI.RedPlatesRequiredNotice {...props} />
-);
-
-// Shared card body (marketplace + My Jobs) — client reference layout
+// Shared card body (marketplace + My Jobs) ΓÇö client reference layout
 // (Design Direction Board p.5): route line, pickup/delivery legs,
 // footer meta + price right.
 const JobCardBody = ({ job }) => {
@@ -1056,7 +1049,7 @@ const JobCardBody = ({ job }) => {
           <div className="route-city-plz">{job.startPlz}</div>
         </div>
         <div className="route-mid" aria-hidden="true">
-          <span className="route-arrow">→</span>
+          <span className="route-arrow">ΓåÆ</span>
           {job.distanceKm ? (
             <span className="route-distance">{job.distanceKm} km</span>
           ) : null}
@@ -1083,24 +1076,20 @@ const JobCardBody = ({ job }) => {
       <hr className="jobcard-divider" />
       <div className="jobcard-footer">
         <span className="vehicle-meta">
-          {vehicleTypeIcon(job.vehicleType)}
-          {[job.manufacturer, job.vehicleModel]
-            .filter((v) => v && v !== "—")
-            .join(" ") || displayVehicle(job.vehicleType, t)}
+          {vehicleTypeIcon(job.vehicle)}
+          {job.vehicleModel && job.vehicleModel !== "ΓÇö"
+            ? job.vehicleModel
+            : displayVehicle(job.vehicle, t)}
         </span>
         <div className="jobcard-price tnum">
           {F().formatMoney
             ? F().formatMoney(fmtDriverOffer(job))
-            : `€ ${fmtDriverOffer(job).toFixed(2)}`}
+            : `Γé¼ ${fmtDriverOffer(job).toFixed(2)}`}
         </div>
       </div>
       <div className="jobcard-tags">
         <VehicleFlagTags job={job} />
-        <span className="axle-chip">
-          {displayTransportType(job.transportType, t)}
-        </span>
-        {/* Derived notice — location 2 of 5: marketplace order card (also My Jobs). */}
-        <RedPlatesNotice job={job} variant="tag" />
+        <span className="axle-chip">{displayAxle(job.axle, t)}</span>
       </div>
     </>
   );
@@ -1257,23 +1246,22 @@ const Portal = ({
           ? t("today")
           : filters.from === "This week"
             ? t("thisWeek")
-            : t("fromDateChip", { date: isoToDisplayDate(filters.from) }),
+            : filters.from === "Weekend"
+              ? t("weekend")
+              : t("fromDateChip", { date: isoToDisplayDate(filters.from) }),
     });
   if (filters.to)
     activeChips.push({
       key: "to",
       label: t("untilDateChip", { date: isoToDisplayDate(filters.to) }),
     });
-  if (filters.vehicleType && filters.vehicleType !== "All")
+  if (filters.vehicle && filters.vehicle !== "All")
     activeChips.push({
-      key: "vehicleType",
-      label: displayVehicle(filters.vehicleType, t),
+      key: "vehicle",
+      label: displayVehicle(filters.vehicle, t),
     });
-  if (filters.transportType && filters.transportType !== "All")
-    activeChips.push({
-      key: "transportType",
-      label: displayTransportType(filters.transportType, t),
-    });
+  if (filters.axle && filters.axle !== "All")
+    activeChips.push({ key: "axle", label: displayAxle(filters.axle, t) });
 
   return (
     <>
@@ -1406,7 +1394,7 @@ const Portal = ({
               />
             )}
             {ordered.length > 0 ? (
-              <div className="list-end">— {t("endOfList")} —</div>
+              <div className="list-end">ΓÇö {t("endOfList")} ΓÇö</div>
             ) : null}
           </>
         )}
@@ -1418,9 +1406,9 @@ const Portal = ({
 // =========================================================================
 // FILTER SHEET
 // =========================================================================
-// Shared marketplace filter predicate (plan §6.1) — single source of truth
+// Shared marketplace filter predicate (plan ┬º6.1) ΓÇö single source of truth
 // for Portal's list AND the FilterSheet's live result count.
-const FILTER_DATE_PRESETS = ["Today", "This week"];
+const FILTER_DATE_PRESETS = ["Today", "This week", "Weekend"];
 const parseJobDdMm = (raw) => {
   const m = String(raw || "").match(/(\d{2})\.(\d{2})/);
   if (!m) return null;
@@ -1460,18 +1448,18 @@ const jobMatchesDriverFilters = (j, filters) => {
     if (toDate && jobDate && jobDate > toDate) return false;
   }
   if (filters.from === "Today" && j.date !== "05.05.") return false;
+  if (filters.from === "Weekend" && !String(j.dateLong || "").match(/Sat|Sun/i))
+    return false;
   if (
-    filters.vehicleType &&
-    filters.vehicleType !== "All" &&
-    AuthStore.normalizeVehicleType(j.vehicleType) !==
-      AuthStore.normalizeVehicleType(filters.vehicleType)
+    filters.vehicle &&
+    filters.vehicle !== "All" &&
+    j.vehicle !== filters.vehicle
   )
     return false;
   if (
-    filters.transportType &&
-    filters.transportType !== "All" &&
-    canonTransportType(j.transportType) !==
-      canonTransportType(filters.transportType)
+    filters.axle &&
+    filters.axle !== "All" &&
+    canonAxle(j.axle) !== canonAxle(filters.axle)
   )
     return false;
   return true;
@@ -1480,8 +1468,8 @@ const jobMatchesDriverFilters = (j, filters) => {
 const FilterSheet = ({ filters, setFilters, onClose }) => {
   const { t } = useI18n();
   const [local, setLocal] = useState({
-    vehicleType: "All",
-    transportType: "All",
+    vehicle: "All",
+    axle: "All",
     ...filters,
   });
   const reset = () =>
@@ -1490,14 +1478,17 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
       endPlz: "",
       from: "",
       to: "",
-      vehicleType: "All",
-      transportType: "All",
+      vehicle: "All",
+      axle: "All",
     });
-  // Only the three approved vehicle types are filterable.
-  const types = AuthStore.selectableVehicleTypes();
-  const transportOptions = ["All", ...AuthStore.TRANSPORT_TYPES];
+  const types = ["SUV", "PKW", "Van", "Light truck <3.5t"];
+  const axles = [
+    { val: "All", label: "All" },
+    { val: "Own axle", label: "Own axle" },
+    { val: "Third-party axle", label: "Third-party axle" },
+  ];
   const store = useAuthStore();
-  // Same predicate as the marketplace list — the CTA count is exact
+  // Same predicate as the marketplace list ΓÇö the CTA count is exact
   const preview = store
     .getJobs()
     .filter(
@@ -1581,6 +1572,7 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
             {[
               [t("today"), "Today"],
               [t("thisWeek"), "This week"],
+              [t("weekend"), "Weekend"],
             ].map(([label, value]) => (
               <button
                 key={value}
@@ -1610,13 +1602,13 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
                 key={type}
                 type="button"
                 className={`chip actionable chip-btn ${
-                  local.vehicleType === type ? "on" : ""
+                  local.vehicle === type ? "on" : ""
                 }`}
-                aria-pressed={local.vehicleType === type}
+                aria-pressed={local.vehicle === type}
                 onClick={() =>
                   setLocal({
                     ...local,
-                    vehicleType: local.vehicleType === type ? "All" : type,
+                    vehicle: local.vehicle === type ? "All" : type,
                   })
                 }
               >
@@ -1625,19 +1617,21 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
             ))}
           </div>
 
-          <div className="field-label mt-field">{t("transportType")}</div>
+          <div className="field-label mt-field">
+            {t("axleConfiguration")}
+          </div>
           <div className="chip-row-wrap">
-            {transportOptions.map((val) => (
+            {axles.map((a) => (
               <button
-                key={val}
+                key={a.val}
                 type="button"
                 className={`chip actionable chip-btn ${
-                  local.transportType === val ? "on" : ""
+                  local.axle === a.val ? "on" : ""
                 }`}
-                aria-pressed={local.transportType === val}
-                onClick={() => setLocal({ ...local, transportType: val })}
+                aria-pressed={local.axle === a.val}
+                onClick={() => setLocal({ ...local, axle: a.val })}
               >
-                {displayTransportType(val, t)}
+                {displayAxle(a.val, t)}
               </button>
             ))}
           </div>
@@ -1663,7 +1657,7 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
 };
 
 // =========================================================================
-// JOB DETAIL — LOCKED (before acceptance)
+// JOB DETAIL ΓÇö LOCKED (before acceptance)
 // =========================================================================
 const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
   const { t } = useI18n();
@@ -1706,7 +1700,7 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
             <div className="detail-route-info">
               <div className="dist">{job.distanceKm}km</div>
               <div className="time">
-                {estimateDriveTime(job.distanceKm) || "—"}
+                {estimateDriveTime(job.distanceKm) || "ΓÇö"}
               </div>
             </div>
             <div className="detail-route-dash" aria-hidden="true"></div>
@@ -1743,46 +1737,28 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
             <Ic.Pkg />
             <span>{t("vehicle")}</span>
           </div>
-          {/* Pre-acceptance reduced projection: vehicle type, manufacturer,
-              model, transport type, registration status and characteristics are
-              decision-relevant and shown; plate and VIN stay hidden until
-              acceptance. Presentation order matches driver-screen-spec.md. */}
           <div className="detail-kv-list">
             <div className="detail-kv-row">
-              <div className="label">{t("vehicleType")}</div>
-              <div className="value">{displayVehicle(job.vehicleType, t)}</div>
-            </div>
-            <div className="detail-kv-row">
-              <div className="label">{t("manufacturer")}</div>
-              <div className="value">{job.manufacturer || "—"}</div>
+              <div className="label">{t("type")}</div>
+              <div className="value">{displayVehicle(job.vehicle, t)}</div>
             </div>
             <div className="detail-kv-row">
               <div className="label">{t("model")}</div>
               <div className="value">{job.vehicleModel}</div>
             </div>
             <div className="detail-kv-row">
-              <div className="label">{t("transportType")}</div>
-              <div className="value">
-                {displayTransportType(job.transportType, t)}
-              </div>
+              <div className="label">{t("axle")}</div>
+              <div className="value">{displayAxle(job.axle, t)}</div>
             </div>
-            <div className="detail-kv-row">
-              <div className="label">{t("registrationStatus")}</div>
-              <div className="value">
-                {AuthStore.registrationStatusLabel(job.registrationStatus, t)}
-              </div>
-            </div>
-            {vehicleCharacteristicFlags(job, t).length ? (
+            {vehicleInfoFlags(job, t).length ? (
               <div className="detail-flag-block">
-                <div className="label">{t("vehicleCharacteristics")}</div>
+                <div className="label">{t("vehicleInfoLabel")}</div>
                 <div className="jobcard-tags">
-                  <VehicleFlagTags job={job} characteristicsOnly />
+                  <VehicleFlagTags job={job} />
                 </div>
               </div>
             ) : null}
           </div>
-          {/* Derived notice — location 3 of 5: marketplace preview. */}
-          <RedPlatesNotice job={job} variant="banner" />
         </div>
 
         {/* Unlocked after acceptance Card */}
@@ -1793,19 +1769,19 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
           </div>
           <ul className="detail-check-list">
             <li>
-              <span className="check-icon">✓</span>
+              <span className="check-icon">Γ£ô</span>
               <span>{t("fullAddresses")}</span>
             </li>
             <li>
-              <span className="check-icon">✓</span>
+              <span className="check-icon">Γ£ô</span>
               <span>{t("contactsPhones")}</span>
             </li>
             <li>
-              <span className="check-icon">✓</span>
+              <span className="check-icon">Γ£ô</span>
               <span>{t("licenseVin")}</span>
             </li>
             <li>
-              <span className="check-icon">✓</span>
+              <span className="check-icon">Γ£ô</span>
               <span>{t("instructionsPdf")}</span>
             </li>
           </ul>
@@ -1816,7 +1792,7 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
       <div className="pwa-detail-bottom">
         <div className="bottom-price-info">
           <div className="label">{t("offer")}</div>
-          <div className="price">€ {fmtDriverOffer(job).toFixed(2)}</div>
+          <div className="price">Γé¼ {fmtDriverOffer(job).toFixed(2)}</div>
         </div>
         <button type="button" className="btn primary lg-cta" onClick={onAccept}>
           {t("acceptTour")}
@@ -1827,7 +1803,7 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
 };
 
 // =========================================================================
-// SLIDE TO CONFIRM — shared control for binding actions (acceptance,
+// SLIDE TO CONFIRM ΓÇö shared control for binding actions (acceptance,
 // mark-performed). Deliberate gesture prevents accidental taps.
 // =========================================================================
 const SlideToConfirm = ({ text, doneText, onConfirm }) => {
@@ -1903,7 +1879,7 @@ const SlideToConfirm = ({ text, doneText, onConfirm }) => {
 };
 
 // =========================================================================
-// ACCEPTANCE MODAL — slide to confirm
+// ACCEPTANCE MODAL ΓÇö slide to confirm
 // =========================================================================
 const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
   const { t } = useI18n();
@@ -1939,25 +1915,19 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
             Tour #{job.id}
           </div>
           <div className="mono mono-strong">
-            {job.startPlz} → {job.endPlz} · {job.distanceKm} km
+            {job.startPlz} ΓåÆ {job.endPlz} ┬╖ {job.distanceKm} km
           </div>
           <div className="mono text-muted-sm" style={{ marginTop: 6 }}>
-            {AuthStore.formatJobScheduleShort(job, t("flexible"))} ·{" "}
-            {displayVehicle(job.vehicleType, t)} ·{" "}
-            {displayTransportType(job.transportType, t)}
+            {AuthStore.formatJobScheduleShort(job, t("flexible"))} ┬╖{" "}
+            {displayVehicle(job.vehicle, t)} ┬╖ {displayAxle(job.axle, t)}
           </div>
           <div
             style={{ fontSize: 18, fontWeight: 600, marginTop: 10 }}
             className="tnum"
           >
-            € {fmtDriverOffer(job).toFixed(2)}
+            Γé¼ {fmtDriverOffer(job).toFixed(2)}
           </div>
         </div>
-
-        {/* Derived notice — location 4 of 5: booking dialog, clearly
-            highlighted before the binding slide-to-confirm so the partner sees
-            the execution requirement while committing. */}
-        <RedPlatesNotice job={job} variant="banner" />
 
         <p className="para-intro">
           {t("acceptanceLegal")}
@@ -2007,7 +1977,7 @@ const tourDocReviewPillStatus = (st) => {
 // Full-height in-app document viewer (fits the phone frame). Renders the
 // seeded real PDF via the browser's native viewer; Download/Share/Print are
 // functional. Production streams the actual file to the same surface.
-// UMD build — Babel standalone transpiles import() to require(), so the
+// UMD build ΓÇö Babel standalone transpiles import() to require(), so the
 // module build is unusable here; the classic script attaches window.pdfjsLib.
 const PDFJS_URL = "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js";
 const PDFJS_WORKER_URL =
@@ -2033,7 +2003,7 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
   const iframeRef = useRef(null);
   const pagesRef = useRef(null);
   const [shareMsg, setShareMsg] = useState("");
-  // pdf.js renders the document to canvases inside the phone frame —
+  // pdf.js renders the document to canvases inside the phone frame ΓÇö
   // works on every browser (iframe PDF viewers don't on mobile Safari).
   const [pdfState, setPdfState] = useState("loading"); // loading|ready|fallback
 
@@ -2148,12 +2118,12 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
         return;
       }
     } catch (_) {
-      /* PDF viewer frames are opaque — fall through */
+      /* PDF viewer frames are opaque ΓÇö fall through */
     }
     if (preview.pdfUrl) window.open(preview.pdfUrl, "_blank");
   };
 
-  const sheet = (
+  return (
     <>
       <button
         type="button"
@@ -2191,7 +2161,7 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
                   <SkeletonList count={2} />
                 </div>
               ) : null}
-              {/* canvases are appended manually — keep out of React's children */}
+              {/* canvases are appended manually ΓÇö keep out of React's children */}
               <div ref={pagesRef} />
             </div>
           ) : preview.previewable !== false && src ? (
@@ -2231,16 +2201,9 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
       </div>
     </>
   );
-
-  // Render above the tab bar, not inside whichever pane opened us. Job
-  // detail unmounts the tab bar anyway, so this only changes Infopoint —
-  // where the nav used to paint over the Download/Share/Print row and eat
-  // its taps. Falls back to inline if the frame is missing.
-  const portalTarget = getPhoneScreen();
-  return portalTarget ? ReactDOM.createPortal(sheet, portalTarget) : sheet;
 };
 
-// Document-type chooser — used by the tour-documents card and the
+// Document-type chooser ΓÇö used by the tour-documents card and the
 // mark-performed success screen. Grouped per client feedback: core /
 // operational / other.
 const TourDocCategoryModal = ({ open, onClose, onPick }) => {
@@ -2350,7 +2313,7 @@ const TourDocCategoryModal = ({ open, onClose, onPick }) => {
   );
 };
 
-// File-extension badge (Figma 8:2387) — folded-corner file shape with
+// File-extension badge (Figma 8:2387) ΓÇö folded-corner file shape with
 // the uppercase extension.
 const fileExt = (name) => {
   const m = /\.([a-z0-9]+)$/i.exec(String(name || ""));
@@ -2363,8 +2326,8 @@ const FileTypeBadge = ({ fileName }) => (
   </span>
 );
 
-// Driver document row (Figma 8:2387): ext badge · name + size ·
-// type right-aligned · remove (only while the upload is not yet reviewed).
+// Driver document row (Figma 8:2387): ext badge ┬╖ name + size ┬╖
+// type right-aligned ┬╖ remove (only while the upload is not yet reviewed).
 const MyDocRow = ({ doc, onRemove, t }) => (
   <div className="mydoc-row">
     <FileTypeBadge fileName={doc.fileName} />
@@ -2561,7 +2524,7 @@ const JobOfficialTourDocuments = ({ job, onPreview }) => {
           <TourDocumentRow
             key={doc.id}
             fileName={doc.fileName}
-            metaLine={`${t("officialTourDocFromDispatch")} · ${displayTourDocType(doc.documentType, t)} · ${F().formatFileSize(doc.sizeBytes)}`}
+            metaLine={`${t("officialTourDocFromDispatch")} ┬╖ ${displayTourDocType(doc.documentType, t)} ┬╖ ${F().formatFileSize(doc.sizeBytes)}`}
             onView={() => {
               const r = store.getTourDocumentPreview(doc.id);
               if (r.ok) onPreview?.(r.preview);
@@ -2694,7 +2657,7 @@ const JobTourDocuments = ({ job, onPreview }) => {
             <TourDocumentRow
               key={u.id}
               fileName={u.fileName}
-              metaLine={`${displayTourDocType(u.documentType, t)} · ${F().formatFileSize(u.sizeBytes)}`}
+              metaLine={`${displayTourDocType(u.documentType, t)} ┬╖ ${F().formatFileSize(u.sizeBytes)}`}
               statusNode={
                 <Pill status={tourDocReviewPillStatus(u.reviewStatus)} className="no-dot">
                   {displayDocReviewStatus(u.reviewStatus, t)}
@@ -2743,7 +2706,7 @@ const JobTourDocuments = ({ job, onPreview }) => {
 const JobInvoiceUpload = JobTourDocuments;
 
 // =========================================================================
-// JOB DETAIL — UNLOCKED (after acceptance / running)
+// JOB DETAIL ΓÇö UNLOCKED (after acceptance / running)
 // =========================================================================
 const JobUnlocked = ({
   job,
@@ -2759,15 +2722,10 @@ const JobUnlocked = ({
   const onReport = onReportProblem || onReturn;
   const onMarkPerformed = onPerform || onComplete;
   const isPerformed = job.status === "performed";
-  const isCancelled = store.isCancelledStatus(job.status);
-  const isEmptyRunReported = job.status === "empty_run_reported";
-  const isEmptyRunTerminal = store.isEmptyRunTerminal(job.status);
+  const isCancelled = job.status === "cancelled";
+  const isSpecialCase = job.status === "special_case";
   const canPerform = ["assigned", "accepted"].includes(job.status);
-  const inExecution =
-    canPerform || isEmptyRunReported || job.status === "assigned";
-  // ⚠ action availability (§10): booked orders only; hidden for terminal
-  // states and while an empty-run report is pending review.
-  const canReportProblem = store.canServicePartnerReport(job);
+  const inExecution = canPerform || isSpecialCase || job.status === "assigned";
   const pickup = job.contactPickup || {};
   const drop = job.contactDelivery || {};
   const pickupMaps = googleMapsSearchUrl(
@@ -2849,12 +2807,10 @@ const JobUnlocked = ({
                 {AuthStore.statusLabel("performed")}
               </Pill>
             ) : isCancelled ? (
-              <Pill status={job.status}>{AuthStore.statusLabel(job.status)}</Pill>
-            ) : isEmptyRunTerminal ? (
-              <Pill status={job.status}>{AuthStore.statusLabel(job.status)}</Pill>
-            ) : isEmptyRunReported ? (
-              <Pill status={job.status}>
-                {AuthStore.statusLabel(job.status)}
+              <Pill status="cancelled">{t("cancelled")}</Pill>
+            ) : isSpecialCase ? (
+              <Pill status="special_case">
+                {AuthStore.statusLabel("special_case")}
               </Pill>
             ) : job.status === "assigned" ? (
               <Pill status="assigned">{t("assignedShort")}</Pill>
@@ -2955,7 +2911,7 @@ const JobUnlocked = ({
           <div className="customer-row">
             <span className="customer-title">{t("customerLabel")}</span>
             <span className="customer-name">
-              {job.customerName || job.customer || "—"}
+              {job.customerName || job.customer || "ΓÇö"}
             </span>
           </div>
         </div>
@@ -2976,7 +2932,7 @@ const JobUnlocked = ({
                 <div className="city-info">
                   <div className="city-name">{job.startCity}</div>
                   <div className="city-address">
-                    {job.startStreet} · {job.startPlz} {job.startCity}
+                    {job.startStreet} ┬╖ {job.startPlz} {job.startCity}
                   </div>
                 </div>
                 <a
@@ -2990,9 +2946,9 @@ const JobUnlocked = ({
               </div>
             </div>
             <div className="timeline-item-middle">
-              <span className="info-badge">🚙 {job.distanceKm} km</span>
+              <span className="info-badge">≡ƒÜÖ {job.distanceKm} km</span>
               <span className="info-badge">
-                ⏱ {estimateDriveTime(job.distanceKm) || "—"}
+                ΓÅ▒ {estimateDriveTime(job.distanceKm) || "ΓÇö"}
               </span>
             </div>
             <div className="timeline-item">
@@ -3003,7 +2959,7 @@ const JobUnlocked = ({
                 <div className="city-info">
                   <div className="city-name">{job.endCity}</div>
                   <div className="city-address">
-                    {job.endStreet} · {job.endPlz} {job.endCity}
+                    {job.endStreet} ┬╖ {job.endPlz} {job.endCity}
                   </div>
                 </div>
                 <a
@@ -3040,28 +2996,25 @@ const JobUnlocked = ({
             <Ic.Pkg />
             <span>{t("vehicle")}</span>
           </div>
-          {/* Complete order view after booking — full vehicle data. No
-              red-plate NUMBER row: the number is brought by the partner and is
-              never recorded by AUTHEON. */}
           <div className="detail-kv-list">
             <div className="detail-kv-row">
-              <div className="label">{t("vehicleType")}</div>
-              <div className="value">{displayVehicle(job.vehicleType, t)}</div>
-            </div>
-            <div className="detail-kv-row">
-              <div className="label">{t("manufacturer")}</div>
-              <div className="value">{job.manufacturer || "—"}</div>
+              <div className="label">{t("type")}</div>
+              <div className="value">{displayVehicle(job.vehicle, t)}</div>
             </div>
             <div className="detail-kv-row">
               <div className="label">{t("model")}</div>
               <div className="value">{job.vehicleModel}</div>
             </div>
-            {/* Official plate of the transported vehicle — shown whenever known,
-                including for a deregistered (de-stamped) vehicle. */}
             {job.plate ? (
               <div className="detail-kv-row">
-                <div className="label">{t("officialLicencePlate")}</div>
+                <div className="label">{t("licensePlate")}</div>
                 <div className="plate-badge">{job.plate}</div>
+              </div>
+            ) : null}
+            {job.redPlateNumber ? (
+              <div className="detail-kv-row">
+                <div className="label">{t("redPlateNumber")}</div>
+                <div className="plate-badge plate-red">{job.redPlateNumber}</div>
               </div>
             ) : null}
             <div className="detail-kv-row">
@@ -3071,29 +3024,18 @@ const JobUnlocked = ({
               </div>
             </div>
             <div className="detail-kv-row">
-              <div className="label">{t("transportType")}</div>
-              <div className="value">
-                {displayTransportType(job.transportType, t)}
-              </div>
+              <div className="label">{t("axle")}</div>
+              <div className="value">{displayAxle(job.axle, t)}</div>
             </div>
-            <div className="detail-kv-row">
-              <div className="label">{t("registrationStatus")}</div>
-              <div className="value">
-                {AuthStore.registrationStatusLabel(job.registrationStatus, t)}
-              </div>
-            </div>
-            {vehicleCharacteristicFlags(job, t).length ? (
+            {vehicleInfoFlags(job, t).length ? (
               <div className="detail-flag-block">
-                <div className="label">{t("vehicleCharacteristics")}</div>
+                <div className="label">{t("vehicleInfoLabel")}</div>
                 <div className="jobcard-tags">
-                  <VehicleFlagTags job={job} characteristicsOnly />
+                  <VehicleFlagTags job={job} />
                 </div>
               </div>
             ) : null}
           </div>
-          {/* Derived notice — location 5 of 5: complete order view AFTER
-              booking. Stays visible because it is an execution requirement. */}
-          <RedPlatesNotice job={job} variant="banner" />
         </div>
 
         {/* Contact Card */}
@@ -3105,7 +3047,7 @@ const JobUnlocked = ({
           <div className="detail-contacts-grid">
             <div className="contact-column">
               <div className="contact-role">{t("pickupContact")}</div>
-              <div className="contact-name">{pickup.name || "—"}</div>
+              <div className="contact-name">{pickup.name || "ΓÇö"}</div>
               <div className="contact-actions">
                 {pickup.phone ? (
                   <a
@@ -3129,7 +3071,7 @@ const JobUnlocked = ({
             </div>
             <div className="contact-column">
               <div className="contact-role">{t("deliveryContact")}</div>
-              <div className="contact-name">{drop.name || "—"}</div>
+              <div className="contact-name">{drop.name || "ΓÇö"}</div>
               <div className="contact-actions">
                 {drop.phone ? (
                   <a
@@ -3209,7 +3151,7 @@ const JobUnlocked = ({
         {/* Official Documents Component */}
         <JobOfficialTourDocuments job={job} onPreview={setDocPreview} />
 
-        {/* Tour Documents Component — performed tours show these in the
+        {/* Tour Documents Component ΓÇö performed tours show these in the
             dedicated My documents tab instead */}
         {!isPerformed && (
           <JobTourDocuments job={job} onPreview={setDocPreview} />
@@ -3221,11 +3163,10 @@ const JobUnlocked = ({
             <div>
               <div className="price-label">{t("driverOffer")}</div>
               <div className="price-meta">
-                {job.distanceKm} km ·{" "}
-                {displayTransportType(job.transportType, t)}
+                {job.distanceKm} km ┬╖ {displayAxle(job.axle, t)}
               </div>
             </div>
-            <div className="price-val">€ {fmtDriverOffer(job).toFixed(2)}</div>
+            <div className="price-val">Γé¼ {fmtDriverOffer(job).toFixed(2)}</div>
           </div>
         </div>
         </>
@@ -3233,13 +3174,7 @@ const JobUnlocked = ({
       </div>
 
       {/* Bottom Bar */}
-      {/* Empty-run report pending review — locked for the partner (§3.4). */}
-      {isEmptyRunReported && (
-        <div style={{ padding: "0 16px 12px" }}>
-          <InlineAlert tone="info" message={t("emptyRunPendingLock")} />
-        </div>
-      )}
-      {canPerform && (
+      {!isPerformed && !isCancelled && !isSpecialCase && (
         <div className="pwa-unlocked-bottom">
           <button
             type="button"
@@ -3254,26 +3189,23 @@ const JobUnlocked = ({
           >
             {t("markPerformed")}
           </button>
-          {canReportProblem && (
-            <button
-              type="button"
-              className="btn outline"
-              onClick={onReport}
-              aria-label={t("reportProblem")}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                padding: "12px 24px",
-                fontSize: 15,
-                fontWeight: 600,
-              }}
-            >
-              <Ic.Alert />
-              {t("reportProblem")}
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn outline"
+            onClick={onReport}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              padding: "12px 24px",
+              fontSize: 15,
+              fontWeight: 600,
+            }}
+          >
+            <Ic.Alert />
+            {t("reportProblem")}
+          </button>
         </div>
       )}
 
@@ -3335,7 +3267,7 @@ const parseDottedDateToTimestamp = (dateStr, fallbackStr) => {
 const MyJobs = ({ onOpen }) => {
   const { t } = useI18n();
   const [tab, setTab] = useState("active");
-  const TAB_IDS = ["active", "performed", "cancelled", "review"];
+  const TAB_IDS = ["active", "performed", "cancelled", "special"];
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date_desc");
   const store = useAuthStore();
@@ -3345,15 +3277,8 @@ const MyJobs = ({ onOpen }) => {
     ["assigned", "accepted"].includes(j.status),
   );
   const performed = mine.filter((j) => j.status === "performed");
-  // Cancelled bucket = generic + service-partner + Autheon cancellations, and
-  // (as a terminal outcome) a not-recognised empty run belongs in history too.
-  const cancelled = mine.filter(
-    (j) =>
-      store.isCancelledStatus(j.status) ||
-      store.isEmptyRunTerminal(j.status),
-  );
-  // Review bucket = empty-run reports pending Autheon review.
-  const review = mine.filter((j) => j.status === "empty_run_reported");
+  const cancelled = mine.filter((j) => j.status === "cancelled");
+  const special = mine.filter((j) => j.status === "special_case");
 
   const listFor = (tabId) =>
     tabId === "active"
@@ -3362,7 +3287,7 @@ const MyJobs = ({ onOpen }) => {
         ? performed
         : tabId === "cancelled"
           ? cancelled
-          : review;
+          : special;
 
   const buildList = (tabId) =>
     listFor(tabId)
@@ -3373,7 +3298,6 @@ const MyJobs = ({ onOpen }) => {
           job.tour.toString().includes(q) ||
           (job.customer || "").toLowerCase().includes(q) ||
           (job.customerName || "").toLowerCase().includes(q) ||
-          (job.manufacturer || "").toLowerCase().includes(q) ||
           (job.vehicleModel || "").toLowerCase().includes(q) ||
           (job.plate || "").toLowerCase().includes(q) ||
           (job.vin || "").toLowerCase().includes(q) ||
@@ -3442,7 +3366,7 @@ const MyJobs = ({ onOpen }) => {
               }
             : {
                 title: t("nothingHereYet"),
-                description: t("emptyRunReviewTab"),
+                description: t("specialCaseTab"),
               };
 
   const renderJobCard = (job) => (
@@ -3460,10 +3384,9 @@ const MyJobs = ({ onOpen }) => {
       <div className="jobcard-header-row">
         <span className="jobcard-tour-num">Tour #{job.tour}</span>
         <div style={{ display: "flex", gap: 6 }}>
-          {(job.status === "empty_run_reported" ||
-            store.isEmptyRunTerminal(job.status)) && (
-            <span className={"pill " + AuthStore.statusCls(job.status)}>
-              {AuthStore.statusLabel(job.status)}
+          {job.status === "special_case" && (
+            <span className="pill special_case">
+              {AuthStore.statusLabel("special_case")}
             </span>
           )}
           {job.status === "accepted" && (
@@ -3474,10 +3397,8 @@ const MyJobs = ({ onOpen }) => {
               {AuthStore.statusLabel("performed")}
             </span>
           )}
-          {store.isCancelledStatus(job.status) && (
-            <span className="pill cancelled">
-              {AuthStore.statusLabel(job.status)}
-            </span>
+          {job.status === "cancelled" && (
+            <span className="pill cancelled">{t("cancelled")}</span>
           )}
           {job.status === "assigned" && (
             <span className="pill assigned">{t("assignedShort")}</span>
@@ -3518,7 +3439,7 @@ const MyJobs = ({ onOpen }) => {
         )}
         {jobs.map(renderJobCard)}
         {jobs.length > 0 ? (
-          <div className="list-end">— {t("endOfList")} —</div>
+          <div className="list-end">ΓÇö {t("endOfList")} ΓÇö</div>
         ) : null}
       </div>
     );
@@ -3556,7 +3477,7 @@ const MyJobs = ({ onOpen }) => {
           ["active", t("active"), active.length],
           ["performed", t("performedTab"), performed.length],
           ["cancelled", t("cancelled"), cancelled.length],
-          ["review", t("emptyRunReviewTab"), review.length],
+          ["special", t("specialCaseTab"), special.length],
         ].map(([id, lbl, n]) => (
           <button
             key={id}
@@ -3570,7 +3491,7 @@ const MyJobs = ({ onOpen }) => {
         ))}
       </div>
 
-      {/* Swipeable list content — drag left/right to switch tabs */}
+      {/* Swipeable list content ΓÇö drag left/right to switch tabs */}
       <SwipeViews
         index={TAB_IDS.indexOf(tab)}
         count={TAB_IDS.length}
@@ -3588,82 +3509,87 @@ const MyJobs = ({ onOpen }) => {
 // =========================================================================
 // REPORT PROBLEM SHEET
 // =========================================================================
-// ⚠ Service-partner entry (Storno-Workflow §1): a single sheet whose two
-// options start SEPARATE flows — Cancel order (immediate, slide-to-confirm)
-// and Report empty run (submitted for Autheon review). Both require a reason
-// and a ≥30-character explanation and confirm via slide-to-confirm so the
-// final action can't be triggered accidentally.
 const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   const { t } = useI18n();
-  const [path, setPath] = useState(null); // 'cancel' | 'not_performable'
-  const [cancelStep, setCancelStep] = useState("warn"); // 'warn' | 'form'
-  const [termsOpen, setTermsOpen] = useState(false);
-  const [reason, setReason] = useState("");
+  const [path, setPath] = useState(null);
+  const [reason, setReason] = useState("driver_unavailable");
   const [text, setText] = useState("");
-  const [evidenceFiles, setEvidenceFiles] = useState([]);
-  const [evidenceNotice, setEvidenceNotice] = useState(null);
   const [slidePos, setSlidePos] = useState(0);
   const [slideDone, setSlideDone] = useState(false);
   const [slideDragging, setSlideDragging] = useState(false);
+  const [evidenceFiles, setEvidenceFiles] = useState([]);
+  const [evidenceNotice, setEvidenceNotice] = useState(null);
   const trackRef = useRef(null);
   const evidenceInputRef = useRef(null);
-  const MIN = 30;
-  const valid = text.trim().length >= MIN;
+  const valid = text.trim().length >= 10;
 
+  const pathOptions = [
+    ["cancel", t("reportProblemCancelTitle"), t("reportProblemCancelSub")],
+    [
+      "not_performable",
+      t("reportProblemNotPerformableTitle"),
+      t("reportProblemNotPerformableSub"),
+    ],
+  ];
   const cancelReasons = [
-    ["appointment_not_kept", t("spCancelReasonAppointment")],
-    ["booked_accidentally", t("spCancelReasonAccidental")],
-    ["org_not_possible", t("spCancelReasonOrgImpossible")],
-    ["other", t("spCancelReasonOther")],
+    [
+      "driver_unavailable",
+      t("reportCancelDriverUnavailable"),
+      t("reportCancelDriverUnavailableSub"),
+    ],
+    [
+      "vehicle_not_available",
+      t("reportCancelVehicleNotAvailable"),
+      t("reportCancelVehicleNotAvailableSub"),
+    ],
+    [
+      "customer_cancelled",
+      t("reportCancelCustomerCancelled"),
+      t("reportCancelCustomerCancelledSub"),
+    ],
+    [
+      "appointment_not_possible",
+      t("reportCancelAppointmentNotPossible"),
+      t("reportCancelAppointmentNotPossibleSub"),
+    ],
+    [
+      "incorrect_order_data",
+      t("reportCancelIncorrectData"),
+      t("reportCancelIncorrectDataSub"),
+    ],
+    [
+      "vehicle_not_roadworthy",
+      t("reportCancelVehicleNotRoadworthy"),
+      t("reportCancelVehicleNotRoadworthySub"),
+    ],
+    ["other", t("reportCancelOther"), t("reportCancelOtherSub")],
   ];
-  const emptyRunReasons = [
-    ["not_operational", t("emptyRunReasonNotOperational")],
-    ["not_roadworthy", t("emptyRunReasonNotRoadworthy")],
-    ["not_present", t("emptyRunReasonNotPresent")],
-    ["not_released", t("emptyRunReasonNotReleased")],
-    ["key_docs_missing", t("emptyRunReasonKeyDocs")],
-    ["other", t("emptyRunReasonOther")],
+  const notPerformableReasons = [
+    [
+      "vehicle_not_on_site",
+      t("problemReasonNotOnSite"),
+      t("problemReasonNotOnSiteSub"),
+    ],
+    [
+      "vehicle_not_roadworthy",
+      t("problemReasonNotRoadworthy"),
+      t("problemReasonNotRoadworthySub"),
+    ],
+    [
+      "contact_unreachable",
+      t("problemReasonNoContact"),
+      t("problemReasonNoContactSub"),
+    ],
+    [
+      "wrong_address",
+      t("problemReasonWrongAddress"),
+      t("problemReasonWrongAddressSub"),
+    ],
+    ["other", t("problemReasonOther"), t("problemReasonOtherSub")],
   ];
-  const isCancel = path === "cancel";
-  const reasonList = isCancel ? cancelReasons : emptyRunReasons;
-  const reasonLabel = isCancel ? t("spCancelReasonLabel") : t("emptyRunReasonLabel");
-  const explLabel = isCancel
-    ? t("spCancelExplanationLabel")
-    : t("emptyRunDescLabel");
-  const explPlaceholder = isCancel
-    ? t("spCancelExplanationPlaceholder")
-    : t("emptyRunDescPlaceholder");
-  const slideLabel = isCancel ? t("spCancelSlide") : t("emptyRunSlide");
-  const slideDoneLabel = isCancel ? t("spCancelSlideDone") : t("emptyRunSlideDone");
-  const slideLockedLabel = isCancel
-    ? t("spCancelSlideLocked")
-    : t("emptyRunSlideLocked");
-
-  // Latest submit closure for the slide gesture (evidence only for empty run).
-  const submitRef = useRef(() => {});
-  submitRef.current = () =>
-    onSubmit(path, reason, text.trim(), isCancel ? [] : evidenceFiles);
+  const reasonList = path === "cancel" ? cancelReasons : notPerformableReasons;
 
   const slideEnabled = valid && !slideDone;
-
-  const choosePath = (id) => {
-    setPath(id);
-    setReason(id === "cancel" ? "appointment_not_kept" : "not_operational");
-    setText("");
-    setEvidenceFiles([]);
-    setEvidenceNotice(null);
-    setSlidePos(0);
-    setSlideDone(false);
-    setCancelStep("warn");
-    setTermsOpen(false);
-  };
-  const backToEntry = () => {
-    setPath(null);
-    setEvidenceFiles([]);
-    setSlidePos(0);
-    setSlideDone(false);
-    setTermsOpen(false);
-  };
 
   const onSlideStart = (e) => {
     e.preventDefault();
@@ -3691,7 +3617,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
         setSlidePos(maxX);
         setSlideDone(true);
         cleanup();
-        setTimeout(() => submitRef.current(), 380);
+        setTimeout(() => onSubmit("cancel", reason, text.trim(), []), 380);
       }
     };
     const up = (ev) => {
@@ -3715,53 +3641,6 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
   };
-
-  // Which UI to show: entry → (cancel: warn → form) | (empty run: form).
-  const showCancelWarn = isCancel && cancelStep === "warn";
-  const showForm = path && !showCancelWarn;
-
-  const slideBlock = (
-    <div className="slide-confirm-wrap mt-16">
-      <div
-        ref={trackRef}
-        className={
-          "slide-confirm" +
-          (slideDone ? " done" : "") +
-          (slideDragging ? " dragging" : "") +
-          (!slideEnabled ? " disabled" : "")
-        }
-        aria-disabled={!slideEnabled}
-      >
-        <div className="track-text">
-          {slideDone ? slideDoneLabel : valid ? slideLabel : slideLockedLabel}
-        </div>
-        <div className="slide-fill" style={{ width: valid ? slidePos : 0 }} />
-        <div
-          className="track-text track-text-fill"
-          style={{
-            clipPath: `inset(0 calc(100% - ${valid ? slidePos : 0}px) 0 0)`,
-          }}
-        >
-          {slideDone ? slideDoneLabel : valid ? slideLabel : slideLockedLabel}
-        </div>
-        <div
-          className="thumb"
-          style={{ transform: `translateX(${valid ? slidePos : 0}px)` }}
-          onPointerDown={slideEnabled ? onSlideStart : undefined}
-          tabIndex={slideEnabled ? 0 : -1}
-        >
-          {slideDone ? (
-            <SlideCheckIcon />
-          ) : valid ? (
-            <SlideArrowIcon />
-          ) : (
-            <SlideLockIcon />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
@@ -3773,35 +3652,26 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
             </span>
             {t("reportProblem")}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn icon sm"
-            aria-label={t("dismiss")}
-          >
+          <button type="button" onClick={onClose} className="btn icon sm" aria-label={t("dismiss")}>
             <Ic.X />
           </button>
         </div>
         <div className="sheet-body">
           {!path ? (
             <div className="flex-col-gap-10">
-              {[
-                [
-                  "cancel",
-                  t("warnEntryCancelOption"),
-                  t("warnEntryCancelSub"),
-                ],
-                [
-                  "not_performable",
-                  t("warnEntryEmptyRunOption"),
-                  t("warnEntryEmptyRunSub"),
-                ],
-              ].map(([id, label, sub]) => (
+              {pathOptions.map(([id, label, sub]) => (
                 <button
                   key={id}
                   type="button"
                   className="radio-card"
-                  onClick={() => choosePath(id)}
+                  onClick={() => {
+                    setPath(id);
+                    setReason(id === "cancel" ? "driver_unavailable" : "other");
+                    setText("");
+                    setEvidenceFiles([]);
+                    setSlidePos(0);
+                    setSlideDone(false);
+                  }}
                 >
                   <span className="ring"></span>
                   <div>
@@ -3811,68 +3681,24 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                 </button>
               ))}
             </div>
-          ) : showCancelWarn ? (
-            <>
-              <button
-                type="button"
-                className="btn ghost xs"
-                style={{ marginBottom: 12, padding: 0 }}
-                onClick={backToEntry}
-              >
-                {t("back")}
-              </button>
-              <div
-                role="alert"
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(234, 179, 8, 0.45)",
-                  background: "rgba(234, 179, 8, 0.1)",
-                  fontSize: 12.5,
-                  lineHeight: 1.55,
-                }}
-              >
-                <p style={{ margin: 0 }}>{t("spCancelBindingWarning")}</p>
-                <p style={{ margin: "10px 0 0" }}>
-                  <button
-                    type="button"
-                    className="btn ghost xs"
-                    style={{
-                      color: "var(--primary)",
-                      padding: 0,
-                      textDecoration: "underline",
-                      textUnderlineOffset: 3,
-                    }}
-                    aria-expanded={termsOpen}
-                    onClick={() => setTermsOpen((v) => !v)}
-                  >
-                    {t("spCancelTermsLink")}
-                  </button>
-                </p>
-                {termsOpen ? (
-                  <div className="stack-8">
-                    <InlineAlert
-                      tone="info"
-                      message={t("spCancelTermsPlaceholderNotice")}
-                      onDismiss={() => setTermsOpen(false)}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            </>
           ) : (
             <>
               <button
                 type="button"
                 className="btn ghost xs"
                 style={{ marginBottom: 12, padding: 0 }}
-                onClick={isCancel ? () => setCancelStep("warn") : backToEntry}
+                onClick={() => {
+                  setPath(null);
+                  setEvidenceFiles([]);
+                  setSlidePos(0);
+                  setSlideDone(false);
+                }}
               >
                 {t("back")}
               </button>
-              <div className="field-label">{reasonLabel}</div>
+              <div className="field-label">{t("reason")}</div>
               <div className="flex-col-gap-10" style={{ marginBottom: 18 }}>
-                {reasonList.map(([id, label]) => (
+                {reasonList.map(([id, label, sub]) => (
                   <button
                     key={id}
                     type="button"
@@ -3882,37 +3708,40 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                     <span className="ring"></span>
                     <div>
                       <div className="t">{label}</div>
+                      <div className="s">{sub}</div>
                     </div>
                   </button>
                 ))}
               </div>
-              <div className="field-label">{explLabel}</div>
+              <div className="field-label">{t("explanationRequired")}</div>
               <textarea
                 className="input"
-                placeholder={explPlaceholder}
+                placeholder={t("reportProblemPlaceholder")}
                 value={text}
                 onChange={(e) => {
                   const next = e.target.value;
                   setText(next);
-                  if (next.trim().length < MIN) {
+                  if (next.trim().length < 10) {
                     setSlidePos(0);
                     setSlideDone(false);
                   }
                 }}
               />
               <div className="label" style={{ marginTop: 6 }}>
+                {t("charsRequired")}{" "}
                 <span
                   className={"slide-char-count " + (valid ? "ok" : "need-more")}
                 >
-                  {text.trim().length}
-                </span>{" "}
-                {t("chars30Required")}
+                  {text.trim().length}/10
+                </span>
               </div>
-              {!isCancel ? (
+              {path === "not_performable" ? (
                 <div className="mt-16">
-                  <div className="field-label">{t("emptyRunEvidenceLabel")}</div>
+                  <div className="field-label">
+                    {t("reportProblemEvidenceLabel")}
+                  </div>
                   <p className="req-panel-desc" style={{ margin: "6px 0 10px" }}>
-                    {t("emptyRunEvidenceHint")}
+                    {t("reportProblemEvidenceHint")}
                   </p>
                   <input
                     ref={evidenceInputRef}
@@ -3977,7 +3806,9 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                             borderRadius: "var(--r-2)",
                           }}
                         >
-                          <span className="pdf-name">{f.name}</span>
+                          <span className="pdf-name">
+                            {f.name}
+                          </span>
                           <button
                             type="button"
                             className="btn ghost xs"
@@ -3993,40 +3824,125 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                       ))}
                     </ul>
                   ) : null}
+                </div>
+              ) : null}
+              {path === "cancel" ? (
+                <>
                   <div
                     role="alert"
                     style={{
                       marginTop: 16,
                       padding: "12px 14px",
                       borderRadius: 10,
-                      border: "1px solid color-mix(in srgb, var(--st-warn) 45%, transparent)",
-                      background: "color-mix(in srgb, var(--st-warn) 10%, transparent)",
+                      border: "1px solid rgba(234, 179, 8, 0.45)",
+                      background: "rgba(234, 179, 8, 0.1)",
                       fontSize: 12.5,
                       lineHeight: 1.55,
                     }}
                   >
-                    {t("emptyRunWarning")}
+                    <p style={{ margin: 0 }}>
+                      {t("reportProblemCancelBindingWarning")}
+                    </p>
+                    <p
+                      style={{
+                        margin: "10px 0 0",
+                        fontSize: 12,
+                        color: "var(--muted)",
+                      }}
+                    >
+                      <PolicyDisclosure introKey="reportProblemCancelTermsIntro" />
+                    </p>
                   </div>
-                </div>
-              ) : null}
-              {slideBlock}
+                  <div className="slide-confirm-wrap mt-16">
+                    <div
+                      ref={trackRef}
+                      className={
+                        "slide-confirm" +
+                        (slideDone ? " done" : "") +
+                        (slideDragging ? " dragging" : "") +
+                        (!slideEnabled ? " disabled" : "")
+                      }
+                      aria-disabled={!slideEnabled}
+                    >
+                      <div className="track-text">
+                        {slideDone
+                          ? t("reportProblemCancelConfirmed")
+                          : valid
+                            ? t("slideToCancelOrder")
+                            : t("slideToCancelOrderLocked")}
+                      </div>
+                      <div
+                        className="slide-fill"
+                        style={{ width: valid ? slidePos : 0 }}
+                      />
+                      <div
+                        className="track-text track-text-fill"
+                        style={{
+                          clipPath: `inset(0 calc(100% - ${valid ? slidePos : 0}px) 0 0)`,
+                        }}
+                      >
+                        {slideDone
+                          ? t("reportProblemCancelConfirmed")
+                          : valid
+                            ? t("slideToCancelOrder")
+                            : t("slideToCancelOrderLocked")}
+                      </div>
+                      <div
+                        className="thumb"
+                        style={{
+                          transform: `translateX(${valid ? slidePos : 0}px)`,
+                        }}
+                        onPointerDown={slideEnabled ? onSlideStart : undefined}
+                        tabIndex={slideEnabled ? 0 : -1}
+                      >
+                        {slideDone ? (
+                          <SlideCheckIcon />
+                        ) : valid ? (
+                          <SlideArrowIcon />
+                        ) : (
+                          <SlideLockIcon />
+                        )}
+                      </div>
+                    </div>
+                    {!valid && !slideDone && (
+                      <p className="slide-confirm-hint">
+                        {t("slideToCancelOrderHint")}
+                      </p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p
+                  style={{
+                    margin: "14px 0 0",
+                    fontSize: 12,
+                    color: "var(--muted)",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {t("reportProblemSpecialCaseNotice")}
+                </p>
+              )}
             </>
           )}
         </div>
-        {showCancelWarn ? (
+        {path === "not_performable" ? (
           <div className="sheet-foot">
             <button type="button" className="btn" onClick={onClose}>
-              {t("spCancelAbort")}
+              {t("close")}
             </button>
             <button
               type="button"
               className="btn primary"
-              onClick={() => setCancelStep("form")}
+              disabled={!valid}
+              onClick={() =>
+                onSubmit("not_performable", reason, text.trim(), evidenceFiles)
+              }
             >
-              {t("spCancelContinue")}
+              {t("submit")}
             </button>
           </div>
-        ) : showForm ? (
+        ) : path ? (
           <div className="sheet-foot">
             <button type="button" className="btn block" onClick={onClose}>
               {t("close")}
@@ -4083,7 +3999,7 @@ const PendingNotice = ({ onClose, kind }) => {
           </svg>
         </div>
         <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 600 }}>
-          {isCancel ? t("spCancelSuccessTitle") : t("emptyRunSuccessTitle")}
+          {t("requestSent")}
         </h3>
         <p
           style={{
@@ -4093,72 +4009,9 @@ const PendingNotice = ({ onClose, kind }) => {
             lineHeight: 1.55,
           }}
         >
-          {isCancel ? t("spCancelSuccessBody") : t("emptyRunSuccessBody")}
-        </p>
-        <button
-          type="button"
-          className="btn block primary mt-20"
-          onClick={onClose}
-        >
-          {t("ok")}
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Confirmation popup shown after a tour is booked (binding acceptance).
-// Mirrors the "Tour performed successfully" popup: a green check, a title,
-// a short body, and an OK button that dismisses back to the tour.
-const TourBookedSuccessSheet = ({ onClose }) => {
-  const { t } = useI18n();
-  return (
-    <div className="sheet-backdrop center" onClick={onClose}>
-      <div
-        className="sheet modal"
-        onClick={(e) => e.stopPropagation()}
-        style={{ padding: 26, textAlign: "center", maxWidth: 320 }}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="tour-booked-success-title"
-      >
-        <div
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: "50%",
-            background: "var(--st-accepted-bg)",
-            margin: "0 auto 16px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M6 12l4 4 8-9"
-              stroke="var(--st-accepted)"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-        <h3
-          id="tour-booked-success-title"
-          style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 600 }}
-        >
-          {t("tourBookedSuccessTitle")}
-        </h3>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13.5,
-            color: "var(--muted)",
-            lineHeight: 1.55,
-          }}
-        >
-          {t("tourBookedSuccessBody")}
+          {isCancel
+            ? t("reportProblemCancelSent")
+            : t("reportProblemSpecialCaseSent")}
         </p>
         <button
           type="button"
@@ -4173,10 +4026,10 @@ const TourBookedSuccessSheet = ({ onClose }) => {
 };
 
 // =========================================================================
-// MARK PERFORMED — deliberate two-stage flow (Figma 07/2026):
+// MARK PERFORMED ΓÇö deliberate two-stage flow (Figma 07/2026):
 //   1. slide-to-confirm (same binding gesture as acceptance; a plain tap
-//      could be accidental — Cancel backs out without any state change)
-//   2. success screen with optional document upload (invoice, receipts…)
+//      could be accidental ΓÇö Cancel backs out without any state change)
+//   2. success screen with optional document upload (invoice, receiptsΓÇª)
 //      reusing the tour-document type chooser; documents can also be added
 //      later from the tour's documents tab.
 // =========================================================================
@@ -4282,7 +4135,7 @@ const MarkPerformedSheet = ({ job, onClose }) => {
               Tour #{job.id}
             </div>
             <div className="mono mono-strong">
-              {job.startPlz} → {job.endPlz} · {job.distanceKm} km
+              {job.startPlz} ΓåÆ {job.endPlz} ┬╖ {job.distanceKm} km
             </div>
           </div>
           <p className="para-intro">{t("markPerformedConfirmBody")}</p>
@@ -4323,7 +4176,7 @@ const MarkPerformedSheet = ({ job, onClose }) => {
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
               <path
                 d="M6 12l4 4 8-9"
-                stroke="currentColor"
+                stroke="#fff"
                 strokeWidth="2.4"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -4434,7 +4287,7 @@ const ProfilePane = () => {
             {AuthStore.DEMO_DRIVER}
           </div>
           <div className="mono text-muted-sm">
-            {t("driverCode")}: AU-41-0228 · {t("driverStatusActive")}
+            {t("driverCode")}: AU-41-0228 ┬╖ {t("driverStatusActive")}
           </div>
         </div>
       </div>
@@ -4554,7 +4407,7 @@ const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
                     ) : null}
                     <span className="notification-row-meta mono">
                       {row.createdAt}
-                      {row.tour ? ` · ${row.tour}` : ""}
+                      {row.tour ? ` ┬╖ ${row.tour}` : ""}
                     </span>
                   </span>
                 </>
@@ -4667,18 +4520,17 @@ const DriverNotificationsPane = ({ onClose, onBack, onOpenJob, onOpenInfopoint }
   );
 };
 
-// Email intentionally excluded — it is the driver's own sign-in credential
-// and is managed self-serve in the Account & sign-in card, not through the
-// ops-approval master-data flow.
 const PROFILE_MDR_FIELDS = [
   { key: "company", required: true },
   { key: "address" },
+  { key: "email", required: true, type: "email" },
   { key: "phone" },
 ];
 
 const emptyMasterDataChangeForm = (driver) => ({
   company: driver?.company || "",
   address: driver?.address || "",
+  email: driver?.email || "",
   phone: driver?.phone || "",
 });
 
@@ -4687,302 +4539,7 @@ const fieldChanged = (before, after) =>
 
 const formatCalendarDayLabel = (dayKey) => {
   const m = String(dayKey || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return m ? `${m[3]}.${m[2]}.${m[1]}` : dayKey || "—";
-};
-
-// 6-digit confirmation-code entry (auto-advance + paste support).
-const CODE_LEN = 6;
-const CodeInput = ({ value, onChange, disabled }) => {
-  const { t } = useI18n();
-  const refs = useRef([]);
-  const digits = String(value || "")
-    .padEnd(CODE_LEN, " ")
-    .slice(0, CODE_LEN)
-    .split("")
-    .map((c) => (c === " " ? "" : c));
-
-  const setDigit = (idx, ch) => {
-    const clean = ch.replace(/\D/g, "");
-    const next = digits.slice();
-    if (clean.length > 1) {
-      // paste / multiple chars: fill forward from idx
-      for (let i = 0; i < clean.length && idx + i < CODE_LEN; i++) {
-        next[idx + i] = clean[i];
-      }
-      onChange(next.join("").trim());
-      const landing = Math.min(idx + clean.length, CODE_LEN - 1);
-      refs.current[landing]?.focus();
-      return;
-    }
-    next[idx] = clean;
-    onChange(next.join(""));
-    if (clean && idx < CODE_LEN - 1) refs.current[idx + 1]?.focus();
-  };
-
-  const onKeyDown = (idx, e) => {
-    if (e.key === "Backspace" && !digits[idx] && idx > 0) {
-      refs.current[idx - 1]?.focus();
-    }
-  };
-
-  return (
-    <div
-      className="code-input-row"
-      role="group"
-      aria-label={t("changeEmailCodeGroupLabel")}
-    >
-      {Array.from({ length: CODE_LEN }, (_, i) => (
-        <input
-          key={i}
-          ref={(el) => (refs.current[i] = el)}
-          className="code-input-box"
-          type="text"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={1}
-          disabled={disabled}
-          value={digits[i]}
-          aria-label={t("changeEmailDigitLabel", { n: i + 1 })}
-          onChange={(e) => setDigit(i, e.target.value)}
-          onKeyDown={(e) => onKeyDown(i, e)}
-          onFocus={(e) => e.target.select()}
-        />
-      ))}
-    </div>
-  );
-};
-
-// Self-serve email change — centered modal (same Sheet grammar as ConfirmSheet)
-// advancing enter-new-address → confirm-with-code → updated. The address only
-// becomes active after the code sent to the NEW inbox is confirmed; the old
-// inbox stays live until then and is notified on success. No ops approval.
-const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
-  const { t } = useI18n();
-  const store = useAuthStore();
-  const [step, setStep] = useState("enter"); // enter | code | done
-  const [newEmail, setNewEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-  const [demoCode, setDemoCode] = useState("");
-  const [confirmedEmail, setConfirmedEmail] = useState("");
-  const [resendLeft, setResendLeft] = useState(0);
-
-  // Open: resume a pending change at the code step so the driver cannot
-  // silently start a second flow over an in-flight verification.
-  useEffect(() => {
-    if (!open) return;
-    const pending = store.getDriverEmailChange()?.pending;
-    setCode("");
-    setError("");
-    setConfirmedEmail("");
-    if (pending?.newEmail) {
-      setStep("code");
-      setNewEmail(pending.newEmail);
-      setDemoCode(pending.code || "");
-      const elapsed = Date.now() - (pending.sentAt || 0);
-      setResendLeft(
-        Math.max(0, Math.ceil((store.EMAIL_CODE_RESEND_MS - elapsed) / 1000)),
-      );
-      return;
-    }
-    setStep("enter");
-    setNewEmail("");
-    setDemoCode("");
-    setResendLeft(0);
-  }, [open, store]);
-
-  // Resend cooldown countdown.
-  useEffect(() => {
-    if (resendLeft <= 0) return undefined;
-    const id = setInterval(() => setResendLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
-    return () => clearInterval(id);
-  }, [resendLeft]);
-
-  const errKey = {
-    invalid_email: "changeEmailErrInvalid",
-    same_email: "changeEmailErrSame",
-    duplicate_email: "changeEmailErrDuplicate",
-    invalid_code: "changeEmailErrCodeInvalid",
-    expired: "changeEmailErrCodeExpired",
-    restricted: "changeEmailErrRestricted",
-  };
-  const mapErr = (reason) => t(errKey[reason] || "changeEmailErrGeneric");
-
-  const close = () => {
-    if (step !== "done") store.cancelDriverEmailChange();
-    onClose();
-  };
-
-  const sendCode = () => {
-    const r = store.startDriverEmailChange(newEmail);
-    if (!r.ok) {
-      setError(mapErr(r.reason));
-      return;
-    }
-    setError("");
-    setCode("");
-    setDemoCode(r.code);
-    setResendLeft(30);
-    setStep("code");
-  };
-
-  const resend = () => {
-    if (resendLeft > 0) return;
-    const r = store.resendDriverEmailCode();
-    if (!r.ok) {
-      setError(mapErr(r.reason));
-      return;
-    }
-    setError("");
-    setCode("");
-    setDemoCode(r.code);
-    setResendLeft(30);
-  };
-
-  const confirm = () => {
-    const r = store.confirmDriverEmailChange(code);
-    if (!r.ok) {
-      setError(mapErr(r.reason));
-      return;
-    }
-    setConfirmedEmail(r.email);
-    setError("");
-    setStep("done");
-  };
-
-  const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-
-  let title = t("changeEmailTitle");
-  let body = null;
-  let footer = null;
-
-  if (step === "enter") {
-    body = (
-      <div className="stack-4" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <p className="section-hint" style={{ margin: 0 }}>
-          {t("accountSigninHint")}
-        </p>
-        <div className="change-email-current">
-          {t("changeEmailCurrentPrefix")} · <span className="mono">{currentEmail}</span>
-        </div>
-        <div>
-          <label className="field-label" htmlFor="change-email-new">
-            {t("changeEmailNewLabel")}
-          </label>
-          <input
-            id="change-email-new"
-            className="input"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            placeholder={t("changeEmailNewPlaceholder")}
-            value={newEmail}
-            onChange={(e) => {
-              setNewEmail(e.target.value);
-              if (error) setError("");
-            }}
-          />
-        </div>
-        <p className="section-hint" style={{ margin: 0 }}>
-          {t("changeEmailCodeNotice")}
-        </p>
-        {error ? <InlineAlert tone="error" message={error} /> : null}
-      </div>
-    );
-    footer = (
-      <>
-        <button type="button" className="btn ghost" onClick={close}>
-          {t("cancel")}
-        </button>
-        <button
-          type="button"
-          className="btn primary"
-          disabled={!newEmail.trim()}
-          onClick={sendCode}
-        >
-          {t("changeEmailSendCode")}
-        </button>
-      </>
-    );
-  } else if (step === "code") {
-    title = t("changeEmailCodeTitle");
-    body = (
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div className="change-email-current">
-          {t("changeEmailCodeSentTo", { email: newEmail })}
-        </div>
-        <CodeInput value={code} onChange={(v) => { setCode(v); if (error) setError(""); }} />
-        <div className="change-email-aux-row">
-          {resendLeft > 0 ? (
-            <span className="section-hint change-email-resend-wait">
-              {t("changeEmailResendIn", { time: mmss(resendLeft) })}
-            </span>
-          ) : (
-            <button type="button" className="change-email-text-link" onClick={resend}>
-              {t("changeEmailResend")}
-            </button>
-          )}
-          <button
-            type="button"
-            className="change-email-text-link"
-            onClick={() => {
-              setStep("enter");
-              setError("");
-            }}
-          >
-            {t("changeEmailBack")}
-          </button>
-        </div>
-        {demoCode ? (
-          <InlineAlert tone="info" message={t("changeEmailDemoHint", { code: demoCode })} />
-        ) : null}
-        {error ? <InlineAlert tone="error" message={error} /> : null}
-      </div>
-    );
-    footer = (
-      <>
-        <button type="button" className="btn ghost" onClick={close}>
-          {t("cancel")}
-        </button>
-        <button
-          type="button"
-          className="btn primary"
-          disabled={code.replace(/\D/g, "").length !== CODE_LEN}
-          onClick={confirm}
-        >
-          {t("changeEmailConfirm")}
-        </button>
-      </>
-    );
-  } else {
-    title = t("changeEmailSuccessTitle");
-    body = (
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", textAlign: "center" }}>
-        <span className="change-email-success-check" aria-hidden="true">✓</span>
-        <p style={{ margin: 0 }}>
-          {t("changeEmailSuccessBody", { email: confirmedEmail })}
-        </p>
-      </div>
-    );
-    footer = (
-      <button type="button" className="btn primary block" onClick={onClose}>
-        {t("changeEmailDone")}
-      </button>
-    );
-  }
-
-  return (
-    <Sheet
-      open={open}
-      onClose={close}
-      title={title}
-      footer={footer}
-      centered
-      className="change-email-sheet"
-    >
-      {body}
-    </Sheet>
-  );
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : dayKey || "ΓÇö";
 };
 
 const DriverProbationCard = () => {
@@ -5053,7 +4610,7 @@ const ProbationLimitSheet = ({ limitInfo, onClose }) => {
   return (
     <div className="sheet-backdrop center" onClick={onClose}>
       <div
-        className="sheet modal confirm-sheet confirm-sheet-panel"
+        className="sheet card confirm-sheet confirm-sheet-panel"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -5079,7 +4636,7 @@ const ProbationLimitSheet = ({ limitInfo, onClose }) => {
   );
 };
 
-// Help — Infopoint tab only (dispatcher hotline + email; no FAQ accordion)
+// Help ΓÇö Infopoint tab only (dispatcher hotline + email; no FAQ accordion)
 const HelpSupportContent = () => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -5144,15 +4701,11 @@ function applyAppTheme(theme) {
   } catch (_) {
     /* no-op */
   }
-  const canvas = getComputedStyle(document.documentElement)
-    .getPropertyValue("--brand-canvas")
-    .trim();
-  if (canvas) {
-    document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
-      meta.setAttribute("content", canvas);
-      meta.removeAttribute("media");
-    });
-  }
+  const color = theme === "dark" ? "#1C1C1E" : "#FFFFFF";
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.setAttribute("content", color);
+    meta.removeAttribute("media");
+  });
   const appleStatus = document.querySelector(
     'meta[name="apple-mobile-web-app-status-bar-style"]',
   );
@@ -5164,49 +4717,10 @@ function applyAppTheme(theme) {
   }
 }
 
-// Global theme store — mirrors the useI18n subscription shape so the admin
-// Settings "Appearance" row and the prototype demo shell chrome drive the
-// SAME theme state in both directions. applyAppTheme() remains the single DOM
-// writer (data-theme + localStorage + meta); this store layers notification
-// on top so every subscriber (chrome App, admin SettingsPane) re-renders when
-// any one of them changes the theme. The PWA ProfilePaneFull keeps its own
-// isPwaSurface-gated applyAppTheme call and does not subscribe here.
-const THEME_LISTENERS = new Set();
-const notifyTheme = (next) => THEME_LISTENERS.forEach((fn) => fn(next));
-const subscribeTheme = (fn) => {
-  THEME_LISTENERS.add(fn);
-  return () => THEME_LISTENERS.delete(fn);
-};
-function setThemeGlobal(next) {
-  if (next !== "light" && next !== "dark") return;
-  applyAppTheme(next);
-  notifyTheme(next);
-}
-function useTheme() {
-  // Match the chrome's pre-existing default (light when nothing stored) so
-  // the shell's first paint and button highlight are unchanged.
-  const [theme, setTheme] = useState(() => {
-    try {
-      const stored = localStorage.getItem(THEME_KEY);
-      return stored === "dark" || stored === "light" ? stored : "light";
-    } catch (_) {
-      return "light";
-    }
-  });
-  useEffect(() => subscribeTheme((next) => setTheme(next)), []);
-  return { theme, setTheme: setThemeGlobal };
-}
-window.AutheonTheme = { subscribe: subscribeTheme, useTheme };
-
 // Full-row navigation entry: left icon, label (+ optional supporting text),
 // trailing chevron. The whole row is a single accessible button.
-const ProfileNavRow = ({ icon: Icon, label, sub, onClick, rowId }) => (
-  <button
-    type="button"
-    className="profile-nav-row"
-    onClick={onClick}
-    data-profile-row={rowId}
-  >
+const ProfileNavRow = ({ icon: Icon, label, sub, onClick }) => (
+  <button type="button" className="profile-nav-row" onClick={onClick}>
     <span className="profile-nav-row-icon" aria-hidden="true">
       <Icon />
     </span>
@@ -5229,7 +4743,7 @@ const ProfileGroup = ({ label, children }) => (
 );
 
 // Deferred subpage shell (Feedback / Report an error): a visually complete
-// prototype form whose submit is intentionally inert — no backend workflow yet.
+// prototype form whose submit is intentionally inert ΓÇö no backend workflow yet.
 const DeferredFormCard = ({ intro, placeholder, submitLabel, deferredNote }) => (
   <div className="section-card">
     <p className="section-hint" style={{ marginTop: 0 }}>
@@ -5248,10 +4762,8 @@ const DeferredFormCard = ({ intro, placeholder, submitLabel, deferredNote }) => 
 );
 
 // In-page back header for a drill-down subpage (mirrors pwa-detail-header).
-// The heading takes focus on entry (tabIndex -1) so a state-based drill-down
-// announces the new view instead of leaving focus stranded on <body>.
-const ProfileSubpageHeader = ({ title, backLabel, onBack, titleRef }) => (
-  <div className="pwa-detail-header profile-subpage-header">
+const ProfileSubpageHeader = ({ title, backLabel, onBack }) => (
+  <div className="pwa-detail-header">
     <button
       type="button"
       className="detail-back-btn"
@@ -5260,12 +4772,11 @@ const ProfileSubpageHeader = ({ title, backLabel, onBack, titleRef }) => (
     >
       <Ic.Back />
     </button>
-    <h1 className="detail-header-title" ref={titleRef} tabIndex={-1}>
-      {title}
-    </h1>
+    <h1 className="detail-header-title">{title}</h1>
     <div className="w-40-spacer" />
   </div>
 );
+
 const ProfilePaneFull = () => {
   const { t, locale, setLocale } = useI18n();
   const store = useAuthStore();
@@ -5323,48 +4834,10 @@ const ProfilePaneFull = () => {
   };
   const [mdFeedback, setMdFeedback] = useState(null); // {tone, message}
   const [signOutOpen, setSignOutOpen] = useState(false);
-  const [emailSheetOpen, setEmailSheetOpen] = useState(false);
-  const emailChange = store.getDriverEmailChange();
   // Drill-down navigation: null = main list; otherwise a subpage id.
   // State-based routing mirrors the job-detail pattern (PwaDriverApp.activeJob),
   // keeping the bottom tab bar visible on the Profile tab.
   const [subpage, setSubpage] = useState(null);
-  const scrollBodyRef = useRef(null); // .scroll-body (shared by both views)
-  const listScrollTop = useRef(0); // list offset to restore when coming back
-  const lastSubpage = useRef(null); // row to re-focus when coming back
-  const subpageTitleRef = useRef(null);
-
-  // Swapping views by state alone leaves focus on <body>, so a keyboard or
-  // screen-reader user gets no announcement of the change and loses their place
-  // in the list (plan §7: every interactive element keeps a visible focus and an
-  // accessible name). Entering a subpage moves focus to its heading; returning
-  // restores the list offset and re-focuses the originating row.
-  //
-  // Both views render `.scroll-body` at the same position, so React reuses that
-  // one DOM node: its scrollTop survives the swap and has to be reset explicitly,
-  // or a subpage opens already scrolled down. The rows themselves *do* unmount,
-  // so the row is re-queried by data attribute rather than stored as a node.
-  const openSubpage = (id) => () => {
-    listScrollTop.current = scrollBodyRef.current?.scrollTop || 0;
-    lastSubpage.current = id;
-    setSubpage(id);
-  };
-
-  useEffect(() => {
-    const container = scrollBodyRef.current;
-    if (subpage) {
-      if (container) container.scrollTop = 0;
-      subpageTitleRef.current?.focus({ preventScroll: true });
-      return;
-    }
-    const returningFrom = lastSubpage.current;
-    if (!container || !returningFrom) return;
-    container.scrollTop = listScrollTop.current;
-    container
-      .querySelector(`[data-profile-row="${returningFrom}"]`)
-      ?.focus({ preventScroll: true });
-    lastSubpage.current = null;
-  }, [subpage]);
   const submitMasterDataRequest = () => {
     const r = store.requestMasterDataChange(mdForm);
     if (r.ok) {
@@ -5397,7 +4870,7 @@ const ProfilePaneFull = () => {
 
   // ---- Moved content (reused verbatim inside their drill-down subpages) ----
 
-  // Basic data → existing read-only master data + "Request a change" flow.
+  // Basic data ΓåÆ existing read-only master data + "Request a change" flow.
   const masterDataCard = (
     <div className="section-card mdr-card">
       <div className="row-between">
@@ -5455,7 +4928,7 @@ const ProfilePaneFull = () => {
                     <div
                       className={`mdr-field-value${changed ? " is-new" : ""}`}
                     >
-                      {pendingAfter || "—"}
+                      {pendingAfter || "ΓÇö"}
                       {changed ? (
                         <span className="mdr-field-badge stack-4">
                           {t("masterDataChangeUpdatedBadge")}
@@ -5464,12 +4937,12 @@ const ProfilePaneFull = () => {
                     </div>
                     {changed ? (
                       <div className="mdr-field-old">
-                        {pendingBefore || "—"}
+                        {pendingBefore || "ΓÇö"}
                       </div>
                     ) : null}
                   </>
                 ) : (
-                  <div className="mdr-field-value">{current || "—"}</div>
+                  <div className="mdr-field-value">{current || "ΓÇö"}</div>
                 )}
               </div>
             </div>
@@ -5534,7 +5007,7 @@ const ProfilePaneFull = () => {
     </div>
   );
 
-  // Notification settings → existing push/vehicle/axle/postal controls.
+  // Notification settings ΓåÆ existing push/vehicle/axle/postal controls.
   const notificationsCard = (
     <div className="section-card">
       <div
@@ -5615,9 +5088,9 @@ const ProfilePaneFull = () => {
                 type="button"
                 className="postal-chip-delete"
                 onClick={() => removePostal(idx)}
-                aria-label={t("removePostalCode", { code: chip })}
+                aria-label={`Remove postal code ${chip}`}
               >
-                ×
+                ├ù
               </button>
             </span>
           ))}
@@ -5643,7 +5116,7 @@ const ProfilePaneFull = () => {
     </div>
   );
 
-  // Appearance and language → reused theme control + language DROPDOWN.
+  // Appearance and language ΓåÆ reused theme control + language DROPDOWN.
   const appearanceCard = (
     <div className="section-card">
       <p className="section-hint" style={{ marginTop: 0 }}>
@@ -5687,7 +5160,7 @@ const ProfilePaneFull = () => {
     </div>
   );
 
-  // Deferred shells — visually complete, no submission/validation/backend.
+  // Deferred shells ΓÇö visually complete, no submission/validation/backend.
   const passwordCard = (
     <div className="section-card">
       <p className="section-hint" style={{ marginTop: 0 }}>
@@ -5774,19 +5247,16 @@ const ProfilePaneFull = () => {
             title={activeSub.title}
             backLabel={t("profileBackLabel")}
             onBack={() => setSubpage(null)}
-            titleRef={subpageTitleRef}
           />
-          <div className="scroll scroll-body" ref={scrollBodyRef}>
-            {activeSub.body}
-          </div>
+          <div className="scroll scroll-body">{activeSub.body}</div>
         </>
       ) : (
         <>
           <div className="pwa-screen-header">
             <h1 className="header-title">{t("profileTitle")}</h1>
           </div>
-          <div className="scroll scroll-body" ref={scrollBodyRef}>
-            {/* Identity card — avatar, name, partner id */}
+          <div className="scroll scroll-body">
+            {/* Identity card ΓÇö avatar, name, partner id */}
             <div className="section-card profile-identity-card">
               <span className="avatar">{initials}</span>
               <div className="flex-1-min-0">
@@ -5797,10 +5267,7 @@ const ProfilePaneFull = () => {
               </div>
             </div>
 
-            {/* Probation progress — second on the main list while on probation */}
-            <DriverProbationCard />
-
-            {/* Summary card — status, joined, log out */}
+            {/* Summary card ΓÇö status, joined, log out */}
             <div className="section-card profile-summary-card">
               <div className="profile-summary-row">
                 <span
@@ -5829,7 +5296,7 @@ const ProfilePaneFull = () => {
                     {t("profileDateJoined")}
                   </span>
                   <span className="profile-summary-value">
-                    {d?.joinedAt || "—"}
+                    {d?.joinedAt || "ΓÇö"}
                   </span>
                 </span>
               </div>
@@ -5852,30 +5319,20 @@ const ProfilePaneFull = () => {
               </button>
             </div>
 
+            {/* Probation progress ΓÇö only while the driver is on probation */}
+            <DriverProbationCard />
+
             <ProfileGroup label={t("profileGroupAccount")}>
               <ProfileNavRow
                 icon={Ic.TabUser}
                 label={t("profileNavBasicData")}
                 sub={t("profileNavBasicDataSub")}
-                rowId="masterData"
-                onClick={openSubpage("masterData")}
-              />
-              <ProfileNavRow
-                icon={Ic.Mail}
-                label={t("profileNavChangeEmail")}
-                sub={
-                  emailChange?.pending
-                    ? t("accountEmailPending")
-                    : d?.email || "—"
-                }
-                rowId="changeEmail"
-                onClick={() => setEmailSheetOpen(true)}
+                onClick={() => setSubpage("masterData")}
               />
               <ProfileNavRow
                 icon={Ic.Lock}
                 label={t("profileNavChangePassword")}
-                rowId="password"
-                onClick={openSubpage("password")}
+                onClick={() => setSubpage("password")}
               />
             </ProfileGroup>
 
@@ -5883,14 +5340,12 @@ const ProfilePaneFull = () => {
               <ProfileNavRow
                 icon={Ic.Bell}
                 label={t("profileNavNotifications")}
-                rowId="notifications"
-                onClick={openSubpage("notifications")}
+                onClick={() => setSubpage("notifications")}
               />
               <ProfileNavRow
                 icon={Ic.Globe}
                 label={t("profileNavAppearance")}
-                rowId="appearance"
-                onClick={openSubpage("appearance")}
+                onClick={() => setSubpage("appearance")}
               />
             </ProfileGroup>
 
@@ -5898,14 +5353,12 @@ const ProfilePaneFull = () => {
               <ProfileNavRow
                 icon={Ic.Chat}
                 label={t("profileNavFeedback")}
-                rowId="feedback"
-                onClick={openSubpage("feedback")}
+                onClick={() => setSubpage("feedback")}
               />
               <ProfileNavRow
                 icon={Ic.Alert}
                 label={t("profileNavReportError")}
-                rowId="reportError"
-                onClick={openSubpage("reportError")}
+                onClick={() => setSubpage("reportError")}
               />
             </ProfileGroup>
 
@@ -5915,12 +5368,6 @@ const ProfilePaneFull = () => {
           </div>
         </>
       )}
-
-      <ChangeEmailSheet
-        open={emailSheetOpen}
-        onClose={() => setEmailSheetOpen(false)}
-        currentEmail={d?.email || ""}
-      />
 
       <ConfirmSheet
         open={signOutOpen}
@@ -6028,7 +5475,7 @@ const Infopoint = () => {
         </div>
       </div>
 
-      {/* Swipeable tab content — drag left/right to switch tabs */}
+      {/* Swipeable tab content ΓÇö drag left/right to switch tabs */}
       <SwipeViews
         index={INFO_TABS.indexOf(subTab)}
         count={INFO_TABS.length}
@@ -6069,14 +5516,14 @@ const Infopoint = () => {
                         fontWeight: 500,
                       }}
                     >
-                      {displayDocCategory(d.category, t)} ·{" "}
-                      {displayDocScope(d.scope, t)} · {d.version}
+                      {displayDocCategory(d.category, t)} ┬╖{" "}
+                      {displayDocScope(d.scope, t)} ┬╖ {d.version}
                     </div>
                     <div
                       className="mono text-muted-sm"
                       style={{ marginTop: 4 }}
                     >
-                      {d.size ? `${d.size} · ` : ""}
+                      {d.size ? `${d.size} ┬╖ ` : ""}
                       {d.updatedAt}
                     </div>
                   </div>
@@ -6208,7 +5655,7 @@ const Infopoint = () => {
                           {expanded
                             ? n.body
                             : `${(n.body || "").slice(0, 100)}${
-                                (n.body || "").length > 100 ? "…" : ""
+                                (n.body || "").length > 100 ? "ΓÇª" : ""
                               }`}
                         </p>
                       </div>
@@ -6244,7 +5691,7 @@ const SameDayOverlapSheet = ({ onCancel, onConfirm }) => {
   return (
     <div className="sheet-backdrop center" onClick={onCancel}>
       <div
-        className="sheet modal confirm-sheet confirm-sheet-panel"
+        className="sheet card confirm-sheet confirm-sheet-panel"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -6291,7 +5738,6 @@ Object.assign(window, {
   MyJobs,
   ReportProblemSheet,
   PendingNotice,
-  TourBookedSuccessSheet,
   MarkPerformedSheet,
   ProbationLimitSheet,
   DocumentPreviewSheet,

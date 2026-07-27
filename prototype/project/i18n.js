@@ -74,7 +74,6 @@ window.I18n = (() => {
       postalCodeAbbr: "PLZ",
       type: "Type",
       model: "Model",
-      axle: "Axle",
       contact: "Contact",
       pickupTime: "Pickup Time",
       deliveryTime: "Delivery Time",
@@ -132,6 +131,9 @@ window.I18n = (() => {
       },
       themeLight: "Light",
       themeDark: "Dark",
+      themeEditor: "Theme editor",
+      themeEditorTitle:
+        "Show or hide the floating Theme Color Changer on this preview",
       appAppearance: "Appearance",
       appAppearanceHint: "Language and display preferences for this device.",
       appLanguage: "Language",
@@ -146,7 +148,6 @@ window.I18n = (() => {
       date: "Date",
       timeWindow: "Time window",
       vehicle: "Vehicle",
-      axle: "Axle",
       driverOffer: "Driver offer",
       back: "Back",
       acceptTour: "Accept tour",
@@ -163,31 +164,46 @@ window.I18n = (() => {
       today: "Today",
       yesterday: "Yesterday",
       thisWeek: "This week",
-      weekend: "Weekend",
       from: "From",
       until: "Until",
       postalArea: "Postal code / area",
       dateWindow: "Date window",
+      // --- Vehicle domain: client confirmation "Systemlogik Fahrzeugeingabe" ---
+      // Four explicit categories. Every label lives here, never in a component.
+      // 1. Vehicle type \u2014 exactly one of three approved values
       vehicleType: "Vehicle type",
+      vehicleTypePassengerCar: "Passenger car",
+      vehicleTypeTruckUpTo75t: "Truck up to and including 7.5 t",
+      vehicleTypeTruckOver75t: "Truck over 7.5 t",
+      // 2. Vehicle data
+      manufacturer: "Manufacturer",
+      manufacturerPh: "Select manufacturer",
+      officialLicencePlate: "Official licence plate",
+      officialLicencePlateHint:
+        "Licence plate of the transported vehicle. A previous or de-stamped plate may still be entered when known.",
+      // 3. Transport type (replaces the former \u201cAxle\u201d concept)
+      transportType: "Transport type",
+      // 4. Registration status \u2014 independent of transport type
+      registrationStatus: "Registration status",
       vehicleInfoRegistered: "Registered",
       vehicleInfoDeregistered: "Deregistered",
-      vehicleInfoElectric: "E-vehicle",
-      vehicleInfoRedPlates: "Red plates",
-      redPlateNumber: "Red plate no.",
-      newOrderRedPlatePh: "e.g. K-06 1234",
-      newOrderRedPlateHint:
-        "Dealer transfer plate (\u00a7 16 FZV): district code + number starting with 06. Assigned to the operator, not the vehicle.",
-      newOrderPlateHiddenDeregistered:
-        "Deregistered vehicle \u2014 no regular license plate. Add a red plate if the tour runs on its own wheels.",
+      // 5. Additional vehicle characteristics \u2014 independent attributes
+      vehicleCharacteristics: "Additional vehicle characteristics",
+      vehicleInfoElectric: "Electric vehicle",
+      vehicleReadyToDrive: "Ready to drive",
+      vehicleReadyToDriveApplicability:
+        "Decision-relevant for third-party-axle transport.",
       vehicleInfoLabel: "Important vehicle info",
-      newOrderRegistrationLabel: "Registration",
-      newOrderRegistrationNone: "Not specified",
       newOrderVehicleInfoHint:
         "Announced to drivers on the marketplace card and in the tour detail.",
+      // Derived red-licence-plate requirement \u2014 never manually selected and
+      // never a captured plate number. One canonical notice for all surfaces.
+      redPlatesRequired: "Red licence plates required",
+      redPlatesRequiredDetail:
+        "Deregistered vehicle transferred on its own axle. The executing service partner brings their own red licence plates; the plate number is not recorded.",
       kpiAvailableJobs: "Available",
       kpiBookedJobs: "Booked",
       kpiOpenDocuments: "Open documents",
-      axleConfiguration: "Axle configuration",
       showResults: "Show {count} results",
       myJobsExecutionDetail: "My jobs · execution detail",
       active: "Active",
@@ -215,6 +231,9 @@ window.I18n = (() => {
         "This confirms the vehicle was handed over at the destination. Slide to confirm — or cancel if this was tapped by mistake.",
       slidePerformed: "Marked as performed",
       performedSuccessTitle: "Tour performed successfully.",
+      tourBookedSuccessTitle: "Tour booked successfully.",
+      tourBookedSuccessBody:
+        "The tour is now active — you'll find it under My jobs.",
       performedSuccessBody:
         "Upload your invoice and related documents so payment can be processed. You can skip this step and add them later in the tour's My documents tab.",
       performedUploadCta: "Click to upload",
@@ -263,20 +282,35 @@ window.I18n = (() => {
       adminInfopointHideNews: "Hide",
       adminInfopointShowNews: "Show",
       adminInfopointAddDoc: "Add document",
-      adminInfopointRenameDoc: "Rename",
-      adminInfopointUploadPdf: "Upload PDF",
+      adminInfopointEditDocTitle: "Edit document",
+      adminInfopointDeleteDocTitle: "Delete document",
+      adminInfopointDeleteDocConfirm:
+        "Delete “{title}” permanently? This cannot be undone.",
+      adminInfopointDocTitle: "Title",
       adminInfopointDocDescription: "Description",
       adminInfopointDocCategory: "Category",
-      adminInfopointDocUploadedDemo: "PDF stored (demo)",
+      adminInfopointDocFile: "PDF file",
+      adminInfopointDocFileHint: "PDF files only.",
       adminInfopointEditNewsTitle: "Edit message",
       adminInfopointReadCount: "Read by {count}",
       adminInfopointColDescription: "Description",
       adminInfopointColUpdated: "Updated",
       adminInfopointColRead: "Read count",
       adminInfopointDocAdded: "Document added",
-      adminInfopointDocRenamed: "Document renamed",
+      adminInfopointDocUpdated: "Document updated",
+      adminInfopointDocDeleted: "Document deleted",
+      adminInfopointDocShown: "Document is now visible to drivers",
+      adminInfopointDocHidden: "Document is now hidden from drivers",
       adminInfopointNewsUpdated: "Message updated",
+      adminInfopointNewsShown: "Message is now visible to drivers",
+      adminInfopointNewsHidden: "Message is now hidden from drivers",
       adminInfopointPublishRequired: "Subject and message text are required.",
+      adminInfopointDocsEmptyTitle: "No documents yet",
+      adminInfopointDocsEmptyDesc:
+        "Add a document to share PDFs with drivers. Use the button above to add the first one.",
+      adminInfopointNewsEmptyTitle: "No messages yet",
+      adminInfopointNewsEmptyDesc:
+        "Published messages will appear here. Use the form above to publish the first one.",
       tourDocumentsSection: "Tour documents",
       tourDocUploadHint:
         "Upload tour documents such as invoice, receipts, delivery note, waiting time evidence, or other proof. PDF or images.",
@@ -637,7 +671,6 @@ window.I18n = (() => {
       adminBadgePhase1: "Admin-only · Phase 1",
       adminRowDemo: "Demo",
       adminWindowFlex: "flex",
-      adminVehicleTrp: "Trp.",
       adminColTour: "Tour",
       adminColCustomer: "Customer",
       adminColOrigin: "Origin",
@@ -790,6 +823,10 @@ window.I18n = (() => {
       adminUsersBlock: "Block",
       adminUsersActivate: "Activate",
       adminUsersDeactivate: "Deactivate",
+      adminUsersChangeStatus: "Change status",
+      adminUsersStatus_Active: "Active",
+      adminUsersStatus_Blocked: "Blocked",
+      adminUsersStatus_Inactive: "Inactive",
       adminUsersResetPw: "Resend invite",
       adminUsersResendInvite: "Resend invite",
       adminUsersTriggerPwReset: "Resend invite",
@@ -1050,6 +1087,91 @@ window.I18n = (() => {
         "Lets drivers set push and email preferences from their profile tab.",
       adminPillOn: "ON",
       adminPillOff: "OFF",
+      // Admin Settings tabs — mirrors the Autheon admin console (common.json).
+      // The console's in-page h1 ("settings.title") is owned by the prototype
+      // shell chrome (navFeatures), so the pane opens with "settings.subtitle"
+      // as its lead. Copy is lifted verbatim from the console locales; the
+      // prototype-only "prototype" tab has no console counterpart and is the
+      // only translated (not verbatim) branch here.
+      settings: {
+        title: "Settings",
+        subtitle: "Manage account and console preferences.",
+        user: {
+          title: "User settings",
+          subtitle:
+            "Manage your account email, password, language, and appearance.",
+          languageLabel: "Language",
+          languageHint: "Choose the language used across the admin console.",
+          langEn: "EN",
+          langDe: "DE",
+          appearanceLabel: "Appearance",
+          appearanceHint: "Switch between light and dark mode.",
+          appearanceLight: "Switch to light mode",
+          appearanceDark: "Switch to dark mode",
+        },
+        // Account forms on the User settings tab. Copy is lifted verbatim from
+        // the console's auth.json (changeEmail.*, changePassword.*), its
+        // resetPassword.* password rules, and errors.json validation.required.
+        account: {
+          fieldRequired: "This field is required.",
+          changeEmail: {
+            title: "Change email",
+            description: "Update the email address for your account.",
+            emailLabel: "Email",
+            invalidEmail: "Enter a valid email address",
+            unchanged: "Enter a different email address",
+            submitButton: "Change email",
+            successToast: "Email changed successfully.",
+          },
+          changePassword: {
+            title: "Change password",
+            description: "Update the password for your account.",
+            currentPasswordLabel: "Current password",
+            newPasswordLabel: "New password",
+            confirmPasswordLabel: "Confirm new password",
+            passwordMinLength: "Password must be at least 8 characters",
+            confirmPasswordRequired: "Please confirm your new password",
+            passwordMismatch: "Passwords do not match",
+            submitButton: "Change password",
+            successToast: "Password changed successfully.",
+          },
+        },
+        system: {
+          title: "System settings",
+          subtitle: "App settings",
+          // Operational-policies controls the console has and the prototype
+          // was missing: the three cancellation switches, the single numeric
+          // validation message (one message covers cleared, zero and
+          // fractional alike), and Discard. Lifted verbatim from the console's
+          // common.json settings.system.*.
+          policyAllowOverrideLabel: "Allow policy override with audit note",
+          policyRequiresReasonCodeLabel: "Cancellation requires a reason code",
+          policyRequiresDriverMessageLabel:
+            "Cancellation requires a driver message",
+          policyWholeNumberError: "Enter a whole number of 1 or more.",
+          discardChanges: "Discard changes",
+          // Infopoint help contacts — the hotline and support email drivers see
+          // on the Infopoint Help tab. Also verbatim from the console's
+          // common.json settings.system.*. Both fields are required, so each has
+          // a "required" message beside its format message.
+          helpContactsTitle: "Infopoint — Help contacts",
+          helpContactsBlurb:
+            "Dispatcher hotline and support email shown to drivers on the Infopoint Help tab.",
+          helpContactsHotlineLabel: "Dispatcher hotline",
+          helpContactsEmailLabel: "Support email",
+          helpContactsSave: "Save contacts",
+          helpContactsSaved: "Help contacts updated.",
+          helpContactsHotlineError: "Enter a valid phone number.",
+          helpContactsEmailError: "Enter a valid email address.",
+          helpContactsHotlineRequired: "Dispatcher hotline is required.",
+          helpContactsEmailRequired: "Support email is required.",
+        },
+        prototype: {
+          title: "Prototype settings",
+          subtitle:
+            "Prototype-only — these have no Autheon counterpart.",
+        },
+      },
       newOrderFooterHint:
         "Required fields must be complete for marketplace publish and direct assignment",
       newOrderCancel: "Cancel",
@@ -1108,15 +1230,17 @@ window.I18n = (() => {
         "Delivery date is before pickup date. You can still save if this is intentional.",
       newOrderTimeWindowWarning:
         "End time is before start time. You can still save if this is intentional.",
-      newOrderVinShortNotice:
-        "VIN has fewer than 17 characters — you can still save if it is missing on the order.",
+      // Confirmed rule: exactly 17 characters. Replaces the former soft
+      // "fewer than 17 — you can still save" notice.
+      newOrderVinLengthError:
+        "VIN must be exactly 17 characters ({count}/17 entered).",
       newOrderDatePh: "DD.MM.YYYY",
       newOrderWindowFrom: "Window from",
       newOrderWindowTo: "Window until",
       newOrderTimePh: "—:—",
-      newOrderBrand: "Brand",
+      // "Brand" → "Manufacturer" (confirmed terminology); the manufacturer is
+      // now chosen from the catalogue dropdown, not typed freely.
       newOrderModel: "Model",
-      newOrderBrandPh: "e.g. Volkswagen",
       newOrderModelPh: "e.g. Passat Variant",
       newOrderPlatePh: "XX-XX 0000",
       newOrderVinLen: "17 characters",
@@ -1140,10 +1264,12 @@ window.I18n = (() => {
       newOrderProgressComplete: "{filled} / {total} COMPLETE",
       newOrderDatePreview: "DD.MM.",
       newOrderDriverOfferZero: "0.00",
-      newOrderVtSuv: "SUV",
-      newOrderVtPkw: "Car",
-      newOrderVtTransporter: "Van",
-      newOrderVtClassic: "Classic",
+      // Removed 2026-07-26 by client confirmation: newOrderVtSuv,
+      // newOrderVtPkw, newOrderVtTransporter, newOrderVtClassic and lightTruck
+      // — superseded by the three vehicleType* keys above. SUV, Van/Transporter
+      // and Classic car/Oldtimer are no longer selectable vehicle types.
+      newOrderRemovedVehicleType:
+        "This vehicle type is no longer available for new orders.",
       adminOverviewPage: "· page {cur} / {max}",
       publishBlockedDraftOnly: "Tour must be in Draft.",
       draftSavedTour: "Draft saved · Tour {tour}",
@@ -1345,6 +1471,9 @@ window.I18n = (() => {
         "Changes are saved immediately and the assigned service partner is notified with the changed values. No re-confirmation required.",
       adminSaveAndNotify: "Save & notify partner",
       adminNoChanges: "No changes to save.",
+      adminVehicleInvalid: "Vehicle data could not be saved.",
+      adminVehicleFieldNotWritable:
+        "Red licence plates are derived automatically and cannot be set manually.",
       // Full order editing (Storno §7)
       adminEditOrderStatusNote:
         "This order is {status}. Editing changes the order data only — the operational status does not change and the assigned service partner is notified of the actual changes with no re-confirmation required.",
@@ -1384,14 +1513,16 @@ window.I18n = (() => {
       orderFieldDeliveryDate: "Delivery date",
       orderFieldDeliveryWindow: "Delivery time window",
       orderFieldVehicleType: "Vehicle type",
-      orderFieldVehicleModel: "Vehicle make/model",
+      orderFieldManufacturer: "Manufacturer",
+      orderFieldVehicleModel: "Model",
       orderFieldPlate: "License plate",
       orderFieldVin: "VIN",
-      orderFieldAxle: "Axle / transport type",
+      orderFieldTransportType: "Transport type",
       orderFieldRegistrationStatus: "Registration status",
       orderFieldElectricVehicle: "Electric vehicle",
-      orderFieldRedPlates: "Red license plates",
-      orderFieldRedPlateNumber: "Red plate number",
+      orderFieldReadyToDrive: "Ready to drive",
+      // Derived, read-only — audited/notified as a consequence, never edited.
+      orderFieldRequiresRedPlates: "Red licence plates required",
       orderFieldDriverOffer: "Driver offer (€)",
       orderFieldExpenses: "Expenses (€)",
       orderFieldNotesDriver: "Driver-visible notes",
@@ -1450,7 +1581,6 @@ window.I18n = (() => {
       all: "All",
       ownAxle: "Own axle",
       thirdPartyAxle: "Third-party axle",
-      lightTruck: "Light truck <3.5t",
       emergencyDispatchNotice:
         "Emergency dispatch: Mon-Fri 07:00-22:00 CET. Incidents, delays, and anomalies must be reported immediately.",
       vatBankingReadonly: "Address · VAT · banking",
@@ -1552,7 +1682,6 @@ window.I18n = (() => {
       postalCodeAbbr: "PLZ",
       type: "Typ",
       model: "Modell",
-      axle: "Achse",
       contact: "Kontakt",
       pickupTime: "Abholzeit",
       deliveryTime: "Lieferzeit",
@@ -1611,6 +1740,9 @@ window.I18n = (() => {
       },
       themeLight: "Hell",
       themeDark: "Dunkel",
+      themeEditor: "Theme-Editor",
+      themeEditorTitle:
+        "Schwebenden Theme-Farbwechsler in dieser Vorschau ein- oder ausblenden",
       appAppearance: "Erscheinungsbild",
       appAppearanceHint: "Sprache und Anzeigeeinstellungen für dieses Gerät.",
       appLanguage: "Sprache",
@@ -1625,7 +1757,6 @@ window.I18n = (() => {
       date: "Datum",
       timeWindow: "Zeitfenster",
       vehicle: "Fahrzeug",
-      axle: "Achse",
       driverOffer: "Fahrerangebot",
       back: "Zurück",
       acceptTour: "Tour annehmen",
@@ -1642,31 +1773,41 @@ window.I18n = (() => {
       today: "Heute",
       yesterday: "Gestern",
       thisWeek: "Diese Woche",
-      weekend: "Wochenende",
       from: "Von",
       until: "Bis",
       postalArea: "PLZ / Gebiet",
       dateWindow: "Datumsfenster",
+      // --- Fahrzeugdom\u00e4ne: Kundenbest\u00e4tigung "Systemlogik Fahrzeugeingabe" ---
+      // Deutsche Labels w\u00f6rtlich aus der Kundenquelle \u00fcbernommen.
       vehicleType: "Fahrzeugtyp",
+      vehicleTypePassengerCar: "PKW",
+      vehicleTypeTruckUpTo75t: "LKW bis einschlie\u00dflich 7,5 t",
+      vehicleTypeTruckOver75t: "LKW \u00fcber 7,5 t",
+      manufacturer: "Hersteller",
+      manufacturerPh: "Hersteller w\u00e4hlen",
+      officialLicencePlate: "Amtliches Kennzeichen",
+      officialLicencePlateHint:
+        "Kennzeichen des transportierten Fahrzeugs. Ein fr\u00fcheres oder entstempeltes Kennzeichen kann weiterhin erfasst werden, wenn es bekannt ist.",
+      transportType: "Transportart",
+      registrationStatus: "Zulassungsstatus",
       vehicleInfoRegistered: "Zugelassen",
       vehicleInfoDeregistered: "Abgemeldet",
+      vehicleCharacteristics: "Weitere Fahrzeugmerkmale",
       vehicleInfoElectric: "E-Fahrzeug",
-      vehicleInfoRedPlates: "Rote Kennzeichen",
-      redPlateNumber: "Rotes Kennzeichen (Nr.)",
-      newOrderRedPlatePh: "z. B. K-06 1234",
-      newOrderRedPlateHint:
-        "H\u00e4ndlerkennzeichen (\u00a7 16 FZV): Unterscheidungszeichen + Nummer beginnend mit 06. Dem Betrieb zugeteilt, nicht dem Fahrzeug.",
-      newOrderPlateHiddenDeregistered:
-        "Abgemeldetes Fahrzeug \u2014 kein amtliches Kennzeichen. F\u00fcr \u00dcberf\u00fchrung auf eigener Achse rotes Kennzeichen erg\u00e4nzen.",
+      vehicleReadyToDrive: "Fahrbereit",
+      vehicleReadyToDriveApplicability:
+        "Entscheidungsrelevant bei Transport auf Fremdachse.",
       vehicleInfoLabel: "Wichtige Fahrzeug-Info",
-      newOrderRegistrationLabel: "Zulassung",
-      newOrderRegistrationNone: "Keine Angabe",
       newOrderVehicleInfoHint:
         "Wird Fahrern auf der Marktplatz-Card und im Tour-Detail angezeigt.",
+      // Abgeleitete Rote-Kennzeichen-Pflicht \u2014 nie manuell gew\u00e4hlt, keine
+      // Kennzeichennummer. Kanonischer Hinweistext f\u00fcr alle Oberfl\u00e4chen.
+      redPlatesRequired: "Rote Kennzeichen erforderlich",
+      redPlatesRequiredDetail:
+        "Abgemeldetes Fahrzeug wird auf eigener Achse \u00fcberf\u00fchrt. Der ausf\u00fchrende Servicepartner bringt eigene rote Kennzeichen mit; die Kennzeichennummer wird nicht erfasst.",
       kpiAvailableJobs: "Verf\u00fcgbar",
       kpiBookedJobs: "Gebucht",
       kpiOpenDocuments: "Offene Nachweise",
-      axleConfiguration: "Achsentyp",
       showResults: "{count} Ergebnisse anzeigen",
       myJobsExecutionDetail: "Meine Aufträge · Ausführungsdetail",
       active: "Aktiv",
@@ -1694,6 +1835,9 @@ window.I18n = (() => {
         "Damit wird bestätigt, dass das Fahrzeug am Ziel übergeben wurde. Zum Bestätigen schieben – oder abbrechen, falls versehentlich getippt.",
       slidePerformed: "Als durchgeführt markiert",
       performedSuccessTitle: "Tour erfolgreich durchgeführt.",
+      tourBookedSuccessTitle: "Tour erfolgreich gebucht.",
+      tourBookedSuccessBody:
+        "Die Tour ist jetzt aktiv — du findest sie unter Meine Aufträge.",
       performedSuccessBody:
         "Rechnung und zugehörige Dokumente hochladen, damit die Auszahlung bearbeitet werden kann. Dieser Schritt kann übersprungen und die Dokumente später im Tab „Meine Dokumente“ hinzugefügt werden.",
       performedUploadCta: "Zum Hochladen tippen",
@@ -1742,21 +1886,36 @@ window.I18n = (() => {
       adminInfopointHideNews: "Ausblenden",
       adminInfopointShowNews: "Einblenden",
       adminInfopointAddDoc: "Dokument hinzufügen",
-      adminInfopointRenameDoc: "Umbenennen",
-      adminInfopointUploadPdf: "PDF hochladen",
+      adminInfopointEditDocTitle: "Dokument bearbeiten",
+      adminInfopointDeleteDocTitle: "Dokument löschen",
+      adminInfopointDeleteDocConfirm:
+        "„{title}“ endgültig löschen? Dies kann nicht rückgängig gemacht werden.",
+      adminInfopointDocTitle: "Titel",
       adminInfopointDocDescription: "Beschreibung",
       adminInfopointDocCategory: "Kategorie",
-      adminInfopointDocUploadedDemo: "PDF gespeichert (Demo)",
+      adminInfopointDocFile: "PDF-Datei",
+      adminInfopointDocFileHint: "Nur PDF-Dateien.",
       adminInfopointEditNewsTitle: "Nachricht bearbeiten",
       adminInfopointReadCount: "Gelesen von {count}",
       adminInfopointColDescription: "Beschreibung",
       adminInfopointColUpdated: "Aktualisiert",
       adminInfopointColRead: "Gelesen",
       adminInfopointDocAdded: "Dokument hinzugefügt",
-      adminInfopointDocRenamed: "Dokument umbenannt",
+      adminInfopointDocUpdated: "Dokument aktualisiert",
+      adminInfopointDocDeleted: "Dokument gelöscht",
+      adminInfopointDocShown: "Dokument ist jetzt für Fahrer sichtbar",
+      adminInfopointDocHidden: "Dokument ist jetzt für Fahrer ausgeblendet",
       adminInfopointNewsUpdated: "Nachricht aktualisiert",
+      adminInfopointNewsShown: "Nachricht ist jetzt für Fahrer sichtbar",
+      adminInfopointNewsHidden: "Nachricht ist jetzt für Fahrer ausgeblendet",
       adminInfopointPublishRequired:
         "Betreff und Nachrichtentext sind erforderlich.",
+      adminInfopointDocsEmptyTitle: "Noch keine Dokumente",
+      adminInfopointDocsEmptyDesc:
+        "Fügen Sie ein Dokument hinzu, um PDFs mit Fahrern zu teilen. Nutzen Sie die Schaltfläche oben, um das erste hinzuzufügen.",
+      adminInfopointNewsEmptyTitle: "Noch keine Nachrichten",
+      adminInfopointNewsEmptyDesc:
+        "Veröffentlichte Nachrichten erscheinen hier. Nutzen Sie das Formular oben, um die erste zu veröffentlichen.",
       tourDocumentsSection: "Tour-Dokumente",
       tourDocUploadHint:
         "Tour-Dokumente wie Rechnung, Belege, Lieferschein, Wartezeitnachweis oder sonstige Nachweise hochladen. PDF oder Bilder.",
@@ -2128,7 +2287,6 @@ window.I18n = (() => {
       adminBadgePhase1: "Nur Admin · Phase 1",
       adminRowDemo: "Demo",
       adminWindowFlex: "flex",
-      adminVehicleTrp: "Trans.",
       adminColTour: "Tour",
       adminColCustomer: "Kunde",
       adminColOrigin: "Start",
@@ -2282,6 +2440,10 @@ window.I18n = (() => {
       adminUsersBlock: "Sperren",
       adminUsersActivate: "Aktivieren",
       adminUsersDeactivate: "Deaktivieren",
+      adminUsersChangeStatus: "Status ändern",
+      adminUsersStatus_Active: "Aktiv",
+      adminUsersStatus_Blocked: "Gesperrt",
+      adminUsersStatus_Inactive: "Inaktiv",
       adminUsersResetPw: "Einladung erneut senden",
       adminUsersResendInvite: "Einladung erneut senden",
       adminUsersTriggerPwReset: "Einladung erneut senden",
@@ -2545,6 +2707,87 @@ window.I18n = (() => {
         "Erlaubt Fahrern, Push- und E-Mail-Einstellungen im Profil zu setzen.",
       adminPillOn: "AN",
       adminPillOff: "AUS",
+      // Admin Settings tabs — Kopie wörtlich aus der Admin-Konsole (de locale).
+      // Der in-page-h1 der Konsole (settings.title) liegt beim Prototyp-Shell
+      // (navFeatures); das Pane öffnet daher mit settings.subtitle als Lead.
+      // Nur der prototype-only Tab hat keine Konsolen-Vorlage.
+      settings: {
+        title: "Einstellungen",
+        subtitle: "Konto- und Konsolenpräferenzen verwalten.",
+        user: {
+          title: "Benutzereinstellungen",
+          subtitle:
+            "E-Mail, Passwort, Sprache und Darstellung deines Kontos verwalten.",
+          languageLabel: "Sprache",
+          languageHint: "Wähle die Sprache für die Admin-Konsole.",
+          langEn: "EN",
+          langDe: "DE",
+          appearanceLabel: "Darstellung",
+          appearanceHint: "Zwischen hellem und dunklem Modus wechseln.",
+          appearanceLight: "Zum hellen Modus wechseln",
+          appearanceDark: "Zum dunklen Modus wechseln",
+        },
+        // Kontoformulare auf dem Tab Benutzereinstellungen. Copy wörtlich aus
+        // auth.json (changeEmail.*, changePassword.*), den Passwortregeln aus
+        // resetPassword.* und errors.json validation.required der Konsole.
+        account: {
+          fieldRequired: "Dieses Feld ist erforderlich.",
+          changeEmail: {
+            title: "E-Mail ändern",
+            description:
+              "Aktualisieren Sie die E-Mail-Adresse für Ihr Konto.",
+            emailLabel: "E-Mail",
+            invalidEmail: "Geben Sie eine gültige E-Mail-Adresse ein",
+            unchanged: "Geben Sie eine andere E-Mail-Adresse ein",
+            submitButton: "E-Mail ändern",
+            successToast: "E-Mail erfolgreich geändert.",
+          },
+          changePassword: {
+            title: "Passwort ändern",
+            description: "Aktualisieren Sie das Passwort für Ihr Konto.",
+            currentPasswordLabel: "Aktuelles Passwort",
+            newPasswordLabel: "Neues Passwort",
+            confirmPasswordLabel: "Neues Passwort bestätigen",
+            passwordMinLength:
+              "Das Passwort muss mindestens 8 Zeichen lang sein",
+            confirmPasswordRequired:
+              "Bitte bestätigen Sie Ihr neues Passwort",
+            passwordMismatch: "Die Passwörter stimmen nicht überein",
+            submitButton: "Passwort ändern",
+            successToast: "Passwort erfolgreich geändert.",
+          },
+        },
+        system: {
+          title: "Systemeinstellungen",
+          subtitle: "App-Einstellungen",
+          // Wörtlich aus common.json settings.system.* der Konsole.
+          policyAllowOverrideLabel:
+            "Richtlinien-Ausnahme mit Audit-Notiz erlauben",
+          policyRequiresReasonCodeLabel: "Storno erfordert Grundcode",
+          policyRequiresDriverMessageLabel:
+            "Storno erfordert Nachricht an Fahrer",
+          policyWholeNumberError: "Bitte eine ganze Zahl ab 1 eingeben.",
+          discardChanges: "Änderungen verwerfen",
+          // Infopoint-Kontakte — ebenfalls wörtlich aus common.json
+          // settings.system.* der Konsole.
+          helpContactsTitle: "Infopoint — Kontakte",
+          helpContactsBlurb:
+            "Disponent-Hotline und Support-E-Mail, die Fahrer im Infopoint-Hilfe-Tab sehen.",
+          helpContactsHotlineLabel: "Disponent-Hotline",
+          helpContactsEmailLabel: "Support-E-Mail",
+          helpContactsSave: "Kontakte speichern",
+          helpContactsSaved: "Hilfskontakte aktualisiert.",
+          helpContactsHotlineError: "Bitte gültige Telefonnummer eingeben.",
+          helpContactsEmailError: "Bitte gültige E-Mail-Adresse eingeben.",
+          helpContactsHotlineRequired: "Disponent-Hotline ist erforderlich.",
+          helpContactsEmailRequired: "Support-E-Mail ist erforderlich.",
+        },
+        prototype: {
+          title: "Prototyp-Einstellungen",
+          subtitle:
+            "Nur im Prototyp — keine Autheon-Entsprechung.",
+        },
+      },
       newOrderFooterHint:
         "Pflichtfelder müssen ausgefüllt sein für Marktplatz-Veröffentlichung und direkte Zuweisung",
       newOrderCancel: "Abbrechen",
@@ -2603,15 +2846,14 @@ window.I18n = (() => {
         "Lieferdatum liegt vor dem Abholdatum. Speichern ist dennoch möglich, wenn beabsichtigt.",
       newOrderTimeWindowWarning:
         "Endzeit liegt vor der Startzeit. Speichern ist dennoch möglich, wenn beabsichtigt.",
-      newOrderVinShortNotice:
-        "FIN hat weniger als 17 Zeichen — Speichern ist möglich, wenn sie im Auftrag fehlt.",
+      // Bestätigte Regel: genau 17 Zeichen.
+      newOrderVinLengthError:
+        "FIN muss genau 17 Zeichen haben ({count}/17 erfasst).",
       newOrderDatePh: "TT.MM.JJJJ",
       newOrderWindowFrom: "Zeitfenster von",
       newOrderWindowTo: "Zeitfenster bis",
       newOrderTimePh: "—:—",
-      newOrderBrand: "Marke",
       newOrderModel: "Modell",
-      newOrderBrandPh: "z.B. Volkswagen",
       newOrderModelPh: "z.B. Passat Variant",
       newOrderPlatePh: "XX-XX 0000",
       newOrderVinLen: "17-stellig",
@@ -2635,10 +2877,10 @@ window.I18n = (() => {
       newOrderProgressComplete: "{filled} / {total} KOMPLETT",
       newOrderDatePreview: "TT.MM.",
       newOrderDriverOfferZero: "0,00",
-      newOrderVtSuv: "SUV",
-      newOrderVtPkw: "PKW",
-      newOrderVtTransporter: "Transporter",
-      newOrderVtClassic: "Oldtimer",
+      // Entfernt 2026-07-26 durch Kundenbestätigung: SUV, Transporter und
+      // Oldtimer sind keine wählbaren Fahrzeugtypen mehr.
+      newOrderRemovedVehicleType:
+        "Dieser Fahrzeugtyp ist für neue Aufträge nicht mehr verfügbar.",
       adminOverviewPage: "· Seite {cur} / {max}",
       publishBlockedDraftOnly: "Tour muss im Entwurf sein.",
       draftSavedTour: "Entwurf gespeichert · Tour {tour}",
@@ -2884,19 +3126,23 @@ window.I18n = (() => {
       orderFieldDeliveryDate: "Zustelldatum",
       orderFieldDeliveryWindow: "Zustellzeitfenster",
       orderFieldVehicleType: "Fahrzeugtyp",
-      orderFieldVehicleModel: "Fahrzeug (Marke/Modell)",
+      orderFieldManufacturer: "Hersteller",
+      orderFieldVehicleModel: "Modell",
       orderFieldPlate: "Kennzeichen",
       orderFieldVin: "FIN",
-      orderFieldAxle: "Achse / Transportart",
+      orderFieldTransportType: "Transportart",
       orderFieldRegistrationStatus: "Zulassungsstatus",
       orderFieldElectricVehicle: "Elektrofahrzeug",
-      orderFieldRedPlates: "Rote Kennzeichen",
-      orderFieldRedPlateNumber: "Rote Kennzeichennummer",
+      orderFieldReadyToDrive: "Fahrbereit",
+      orderFieldRequiresRedPlates: "Rote Kennzeichen erforderlich",
       orderFieldDriverOffer: "Fahrerangebot (€)",
       orderFieldExpenses: "Auslagen (€)",
       orderFieldNotesDriver: "Fahrer-sichtbare Notizen",
       orderFieldNotesInternal: "Interne Auftragsnotizen",
       adminNoChanges: "Keine Änderungen zum Speichern.",
+      adminVehicleInvalid: "Fahrzeugdaten konnten nicht gespeichert werden.",
+      adminVehicleFieldNotWritable:
+        "Rote Kennzeichen werden automatisch abgeleitet und können nicht manuell gesetzt werden.",
       notificationPreferences: "Benachrichtigungseinstellungen",
       pickupPostalArea: "Abhol-PLZ-Gebiet",
       pushNotificationsEnabled: "Push-Benachrichtigungen aktiviert",
@@ -2952,7 +3198,6 @@ window.I18n = (() => {
       all: "Alle",
       ownAxle: "Eigenachse",
       thirdPartyAxle: "Fremdachse",
-      lightTruck: "Leicht-Lkw <3,5 t",
       emergencyDispatchNotice:
         "Notfall-Disposition: Mo-Fr 07:00-22:00 CET. Vorfälle, Verzögerungen und Auffälligkeiten müssen sofort gemeldet werden.",
       vatBankingReadonly: "Adresse · USt. · Bankdaten",

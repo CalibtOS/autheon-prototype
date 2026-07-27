@@ -17,6 +17,10 @@ import {
  * EN language, light theme, on a single desktop viewport (see
  * playwright.config.ts). This helper puts the prototype into that known state
  * so every screen/popup snapshot is comparable and deterministic.
+ *
+ * The Floating Theme Editor is hidden by default (it only appears with
+ * `?themecolorchanger=1`), so a clean navigation keeps it out of every pixel
+ * baseline automatically — no suppression needed.
  */
 async function prepareVisualBaseline(page: Page): Promise<void> {
   await gotoPrototype(page);

@@ -26,6 +26,10 @@ playwright-report/
 npm-debug.log*
 snapshots/
 
+# Local portrait-lock QA runner + screenshots (ad-hoc; do not commit)
+portrait-qa-artifacts/
+portrait-qa-run.mjs
+
 # Windows reserved device names (cmd-style `2>nul` in bash creates a real file)
 nul
 NUL
