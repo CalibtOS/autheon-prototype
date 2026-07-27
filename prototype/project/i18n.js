@@ -144,8 +144,6 @@ window.I18n = (() => {
       blockedDriverBody:
         "Marketplace access and new tour acceptance are restricted for blocked drivers. Use My Jobs to correct documents on existing tours. Profile, Info, and historical jobs remain visible in this prototype.",
       backToMarketplace: "Marketplace",
-      tourInExecutionBanner:
-        "Tour in execution — complete pickup, delivery, and documents from this screen.",
       date: "Date",
       timeWindow: "Time window",
       vehicle: "Vehicle",
@@ -166,7 +164,6 @@ window.I18n = (() => {
       today: "Today",
       yesterday: "Yesterday",
       thisWeek: "This week",
-      weekend: "Weekend",
       from: "From",
       until: "Until",
       postalArea: "Postal code / area",
@@ -218,6 +215,9 @@ window.I18n = (() => {
         "This confirms the vehicle was handed over at the destination. Slide to confirm — or cancel if this was tapped by mistake.",
       slidePerformed: "Marked as performed",
       performedSuccessTitle: "Tour performed successfully.",
+      tourBookedSuccessTitle: "Tour booked successfully.",
+      tourBookedSuccessBody:
+        "The tour is now active — you'll find it under My jobs.",
       performedSuccessBody:
         "Upload your invoice and related documents so payment can be processed. You can skip this step and add them later in the tour's My documents tab.",
       performedUploadCta: "Click to upload",
@@ -1592,8 +1592,6 @@ window.I18n = (() => {
       blockedDriverBody:
         "Marktplatzzugriff und neue Tour-Annahmen sind für blockierte Fahrer eingeschränkt. Nutzen Sie Meine Aufträge, um Dokumente bestehender Touren zu korrigieren. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar.",
       backToMarketplace: "Marktplatz",
-      tourInExecutionBanner:
-        "Tour in Ausführung — Abholung, Zustellung und Dokumente hier abschließen.",
       date: "Datum",
       timeWindow: "Zeitfenster",
       vehicle: "Fahrzeug",
@@ -1614,7 +1612,6 @@ window.I18n = (() => {
       today: "Heute",
       yesterday: "Gestern",
       thisWeek: "Diese Woche",
-      weekend: "Wochenende",
       from: "Von",
       until: "Bis",
       postalArea: "PLZ / Gebiet",
@@ -1666,6 +1663,9 @@ window.I18n = (() => {
         "Damit wird bestätigt, dass das Fahrzeug am Ziel übergeben wurde. Zum Bestätigen schieben – oder abbrechen, falls versehentlich getippt.",
       slidePerformed: "Als durchgeführt markiert",
       performedSuccessTitle: "Tour erfolgreich durchgeführt.",
+      tourBookedSuccessTitle: "Tour erfolgreich gebucht.",
+      tourBookedSuccessBody:
+        "Die Tour ist jetzt aktiv — du findest sie unter Meine Aufträge.",
       performedSuccessBody:
         "Rechnung und zugehörige Dokumente hochladen, damit die Auszahlung bearbeitet werden kann. Dieser Schritt kann übersprungen und die Dokumente später im Tab „Meine Dokumente“ hinzugefügt werden.",
       performedUploadCta: "Zum Hochladen tippen",

@@ -194,6 +194,8 @@
 | `performedDone` | Done | Fertig |
 | `performedSuccessBody` | Upload your invoice and related documents so payment can be processed. You can skip this step and add them later in the tour's My documents tab. | Rechnung und zugehörige Dokumente hochladen, damit die Auszahlung bearbeitet werden kann. Dieser Schritt kann übersprungen und die Dokumente später im Tab „Meine Dokumente“ hinzugefügt werden. |
 | `performedSuccessTitle` | Tour performed successfully. | Tour erfolgreich durchgeführt. |
+| `tourBookedSuccessBody` | The tour is now active — you'll find it under My jobs. | Die Tour ist jetzt aktiv — du findest sie unter Meine Aufträge. |
+| `tourBookedSuccessTitle` | Tour booked successfully. | Tour erfolgreich gebucht. |
 | `performedTab` | Performed | Durchgeführt |
 | `performedUploadCta` | Click to upload | Zum Hochladen tippen |
 | `performedUploadHintEmpty` | Max file size: 25 MB | Max. Dateigröße: 25 MB |
@@ -303,7 +305,6 @@
 | `tourDocUploadSuccess` | Document uploaded. Dispatch will review it. | Dokument hochgeladen. Die Disposition prüft es. |
 | `tourDocWaitingTimeEvidence` | Waiting time evidence | Wartezeitnachweis |
 | `tourDocumentsSection` | Tour documents | Tour-Dokumente |
-| `tourInExecutionBanner` | Tour in execution — complete pickup, delivery, and documents from this screen. | Tour in Ausführung — Abholung, Zustellung und Dokumente hier abschließen. |
 | `type` | Type | Typ |
 | `uiDismiss` | Dismiss | Schließen |
 | `unlockedAfterAcceptance` | Unlocked after acceptance | Nach Annahme freigeschaltet |
@@ -325,5 +326,4 @@
 | `warnEntryCancelSub` | End the tour and notify dispatch. | Beendet den Auftrag und informiert die Disposition. |
 | `warnEntryEmptyRunOption` | Report empty run | Leerfahrt melden |
 | `warnEntryEmptyRunSub` | The order itself can't be executed — Autheon reviews it. | Der Auftrag selbst kann nicht durchgeführt werden — Autheon prüft die Meldung. |
-| `weekend` | Weekend | Wochenende |
 | `welcomeBack` | Welcome back, | Willkommen zurück, |

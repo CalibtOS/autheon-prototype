@@ -186,7 +186,7 @@ Line-height 1.5 body / 1.3 headings. Every current 9–11px mono label becomes `
 
 Driver `FilterSheet` fixes:
 
-- Date fields → native `type="date"` inputs styled to token spec + preset chips (Today / This week / Weekend) that fill them.
+- Date fields → native `type="date"` inputs styled to token spec + preset chips (Today / This week) that fill them.
 - PLZ inputs → `inputmode="numeric"`, **digit-only (non-digits stripped on input, 2026-07 PR #17)** + the existing PLZ formatter.
 - One selection idiom: segmented control for ≤3 mutually exclusive options; checkbox-chips for multi-select. Vehicle type and axle are both multi-select → both become checkbox-chips.
 - Labels: `caption`, sentence case, sans (kill 10px mono uppercase).
