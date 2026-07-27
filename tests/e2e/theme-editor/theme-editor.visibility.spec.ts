@@ -1,31 +1,39 @@
 import { test, expect } from '../../regression/support/fixtures/prototype-test.ts';
 import type { Page } from '@playwright/test';
 import { prototypeFrame } from '../../regression/support/helpers/selectors.ts';
-import { gotoPrototype } from '../../regression/support/helpers/stable-page.ts';
+import {
+  gotoPrototype,
+  waitForPrototypeShell,
+} from '../../regression/support/helpers/stable-page.ts';
 import {
   gotoEditor,
   launcher,
   openEditor,
   panel,
+  pwaLauncher,
+  readStorage,
+  UI_KEY,
 } from '../../regression/support/helpers/theme-editor.ts';
 
 /**
- * Visibility controls: the tool is hidden by default and only appears with
- * ?themecolorchanger=1; a keyboard shortcut and a red launcher badge toggle the
- * whole feature. The console-error fixture guards against runtime errors.
+ * Visibility controls: hidden on first visit; ?themecolorchanger=1|0 overrides
+ * and persists; otherwise localStorage wins. Keyboard shortcut, hide badge, and
+ * header toggle all persist. The console-error fixture guards runtime errors.
  */
 
 const TOGGLE = 'Control+Alt+Shift+T';
 const hideBadge = (p: Page) =>
   prototypeFrame(p).getByRole('button', { name: 'Hide Theme Color Changer' });
 
+const headerToggle = (p: Page) =>
+  prototypeFrame(p).getByRole('button', { name: 'Theme editor', exact: true });
+
 test.describe('visibility gate — ?themecolorchanger', () => {
   test('hidden by default on a clean URL (no flash)', async ({ page }) => {
-    await gotoPrototype(page); // no gate param
+    await gotoPrototype(page); // no gate param, no localStorage
     await expect(launcher(page)).toHaveCount(0);
     await page.waitForTimeout(300); // catch any late/deferred mount
     await expect(launcher(page)).toHaveCount(0);
-    // The application itself still works (shell rendered).
     await expect(prototypeFrame(page).getByRole('main')).toBeVisible();
   });
 
@@ -34,11 +42,46 @@ test.describe('visibility gate — ?themecolorchanger', () => {
     await expect(launcher(page)).toBeVisible();
   });
 
-  test('invalid gate values do not activate it', async ({ page }) => {
-    for (const v of ['0', 'false', '2', 'on', '']) {
+  test('?themecolorchanger=1 on load sets localStorage to visible', async ({
+    page,
+  }) => {
+    await gotoPrototype(page, '/?themecolorchanger=1');
+    await expect(launcher(page)).toBeVisible();
+    const raw = await readStorage(page, UI_KEY);
+    expect(JSON.parse(raw!)).toEqual({ visible: true });
+  });
+
+  test('?themecolorchanger=0 on load hides and sets localStorage to false', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await page.evaluate((key) => {
+      localStorage.setItem(key, JSON.stringify({ visible: true }));
+    }, UI_KEY);
+    await gotoPrototype(page, '/?themecolorchanger=0');
+    await expect(launcher(page)).toHaveCount(0);
+    const raw = await readStorage(page, UI_KEY);
+    expect(JSON.parse(raw!)).toEqual({ visible: false });
+  });
+
+  test('invalid gate values fall through to localStorage (default hidden)', async ({
+    page,
+  }) => {
+    for (const v of ['false', '2', 'on', '']) {
       await gotoPrototype(page, '/?themecolorchanger=' + v);
       await expect(launcher(page)).toHaveCount(0);
     }
+  });
+
+  test('restores from localStorage when URL has no gate param', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await page.evaluate((key) => {
+      localStorage.setItem(key, JSON.stringify({ visible: true }));
+    }, UI_KEY);
+    await gotoPrototype(page);
+    await expect(launcher(page)).toBeVisible();
   });
 
   test('works alongside unrelated params, which are preserved', async ({ page }) => {
@@ -50,10 +93,79 @@ test.describe('visibility gate — ?themecolorchanger', () => {
   });
 });
 
+test.describe('visibility persistence — toggles and navigation', () => {
+  test('header toggle without URL param → reload → launcher still visible', async ({
+    page,
+  }) => {
+    await gotoPrototype(page);
+    await headerToggle(page).click();
+    await expect(launcher(page)).toBeVisible();
+    await page.reload();
+    await waitForPrototypeShell(page);
+    await expect(launcher(page)).toBeVisible();
+    expect(JSON.parse((await readStorage(page, UI_KEY))!)).toEqual({
+      visible: true,
+    });
+  });
+
+  test('keyboard shortcut hide → reload → stays hidden', async ({ page }) => {
+    await gotoPrototype(page);
+    await headerToggle(page).click();
+    await expect(launcher(page)).toBeVisible();
+    await page.keyboard.press(TOGGLE);
+    await expect(launcher(page)).toBeHidden();
+    await page.reload();
+    await waitForPrototypeShell(page);
+    await expect(launcher(page)).toHaveCount(0);
+    expect(JSON.parse((await readStorage(page, UI_KEY))!)).toEqual({
+      visible: false,
+    });
+  });
+
+  test('red hide badge → reload → stays hidden', async ({ page }) => {
+    await gotoPrototype(page);
+    await headerToggle(page).click();
+    await expect(launcher(page)).toBeVisible();
+    await hideBadge(page).click();
+    await expect(launcher(page)).toBeHidden();
+    await page.reload();
+    await waitForPrototypeShell(page);
+    await expect(launcher(page)).toHaveCount(0);
+    expect(JSON.parse((await readStorage(page, UI_KEY))!)).toEqual({
+      visible: false,
+    });
+  });
+
+  test('toggle on in prototype → navigate to /pwa/ → launcher visible', async ({
+    page,
+  }) => {
+    await gotoPrototype(page);
+    await headerToggle(page).click();
+    await expect(launcher(page)).toBeVisible();
+    await page.goto('/pwa/');
+    await expect(pwaLauncher(page)).toBeVisible();
+  });
+
+  test('cross-tab sync between prototype and PWA', async ({ page, context }) => {
+    await gotoPrototype(page);
+    const pwaPage = await context.newPage();
+    await pwaPage.goto('/pwa/');
+    await expect(pwaLauncher(pwaPage)).toHaveCount(0);
+
+    await headerToggle(page).click();
+    await expect(launcher(page)).toBeVisible();
+    await expect(pwaLauncher(pwaPage)).toBeVisible();
+
+    await page.keyboard.press(TOGGLE);
+    await expect(launcher(page)).toBeHidden();
+    await expect(pwaLauncher(pwaPage)).toHaveCount(0);
+  });
+});
+
 test.describe('keyboard shortcut — Ctrl/⌘ + Alt + Shift + T', () => {
   test('hides then restores the whole feature', async ({ page }) => {
     await gotoEditor(page);
-    await openEditor(page); // launcher + overlay visible
+    await openEditor(page);
     await page.keyboard.press(TOGGLE);
     await expect(launcher(page)).toBeHidden();
     await expect(panel(page)).toBeHidden();
@@ -81,7 +193,6 @@ test.describe('keyboard shortcut — Ctrl/⌘ + Alt + Shift + T', () => {
     });
     await hex.click();
     await hex.pressSequentially('abcdef');
-    // Typing the value must not have toggled the feature away.
     await expect(launcher(page)).toBeVisible();
     await expect(hex).toHaveValue(/abcdef/i);
   });
@@ -96,7 +207,7 @@ test.describe('red hide badge', () => {
 
     await hideBadge(page).click();
     await expect(launcher(page)).toBeHidden();
-    await expect(panel(page)).toHaveCount(0); // did NOT open the editor
+    await expect(panel(page)).toHaveCount(0);
 
     await page.keyboard.press(TOGGLE);
     await expect(launcher(page)).toBeVisible();
@@ -116,9 +227,7 @@ test.describe('red hide badge', () => {
     const bb = await hideBadge(page).boundingBox();
     expect(lb).not.toBeNull();
     expect(bb).not.toBeNull();
-    // Launcher actually moved off its default corner…
     expect(lb!.x).toBeLessThan(start!.x - 100);
-    // …and the badge is still pinned to its top-right.
     expect(bb!.x + bb!.width).toBeGreaterThan(lb!.x + lb!.width - 2);
     expect(bb!.y).toBeLessThan(lb!.y + 4);
   });
@@ -126,40 +235,33 @@ test.describe('red hide badge', () => {
 
 test.describe('framed-preview header toggle', () => {
   test('shows and hides the theme editor from the navbar', async ({ page }) => {
-    await gotoPrototype(page); // clean URL — tool starts hidden
-    const frame = prototypeFrame(page);
-    const headerToggle = frame.getByRole('button', {
-      name: 'Theme editor',
-      exact: true,
-    });
+    await gotoPrototype(page);
+    const toggle = headerToggle(page);
 
-    await expect(headerToggle).toBeVisible();
-    await expect(headerToggle).toHaveAttribute('aria-pressed', 'false');
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
     await expect(launcher(page)).toHaveCount(0);
 
-    await headerToggle.click();
+    await toggle.click();
     await expect(launcher(page)).toBeVisible();
-    await expect(headerToggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
 
-    await headerToggle.click();
+    await toggle.click();
     await expect(launcher(page)).toBeHidden();
-    await expect(headerToggle).toHaveAttribute('aria-pressed', 'false');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   });
 
   test('stays in sync when the keyboard shortcut hides the tool', async ({
     page,
   }) => {
     await gotoEditor(page);
-    const headerToggle = prototypeFrame(page).getByRole('button', {
-      name: 'Theme editor',
-      exact: true,
-    });
-    await expect(headerToggle).toHaveAttribute('aria-pressed', 'true');
+    const toggle = headerToggle(page);
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
     await expect(launcher(page)).toBeVisible();
 
     await page.keyboard.press(TOGGLE);
     await expect(launcher(page)).toBeHidden();
-    await expect(headerToggle).toHaveAttribute('aria-pressed', 'false');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   });
 });
 
@@ -168,10 +270,7 @@ test.describe('overlay shortcut hint', () => {
     await gotoEditor(page);
     await openEditor(page);
     const frame = prototypeFrame(page);
-    // Anchored on the visible copy, not a CSS class.
     await expect(frame.getByText('Show / hide tool:')).toBeVisible();
-    // The keycaps live in a presentational row with no ARIA role (like the
-    // backdrop / picker-catcher elsewhere); scope the keycap check to it.
     const hint = frame.locator('.ate-help');
     await expect(hint).toContainText('Shift');
     await expect(hint).toContainText('T');

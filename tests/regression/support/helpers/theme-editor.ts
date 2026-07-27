@@ -23,9 +23,13 @@ export async function gotoEditor(page: Page, path = '/'): Promise<void> {
 export const ACCENT_VAR = '--brand-accent';
 export const OVERRIDE_KEY = 'autheon.themeEditor.overrides.v1';
 export const LAUNCHER_KEY = 'autheon.themeEditor.launcher.v1';
+export const UI_KEY = 'autheon.themeEditor.ui.v1';
 
 export const launcher = (p: Page) =>
   prototypeFrame(p).getByRole('button', { name: 'Open Theme Editor' });
+
+export const pwaLauncher = (p: Page) =>
+  p.getByRole('button', { name: 'Open Theme Editor' });
 
 export const panel = (p: Page) =>
   prototypeFrame(p).getByRole('dialog', { name: 'Theme Editor' });

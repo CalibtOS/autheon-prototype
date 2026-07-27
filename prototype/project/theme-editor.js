@@ -425,17 +425,33 @@
     return lines.join('\n');
   }
 
-  // Visibility gate: the tool is hidden by default and only appears on initial
-  // load when `?themecolorchanger=1` is present (clean screenshots by default).
+  // Visibility gate: hidden on first visit; `?themecolorchanger=1|0` overrides and
+  // persists; otherwise the last choice in localStorage wins (prototype + PWA).
   const VISIBILITY_PARAM = 'themecolorchanger';
 
   /** True only when the visibility gate param is exactly "1". */
   function wantsVisible(search) {
+    return parseVisibilityParam(search) === true;
+  }
+
+  /** URL override: true (=1), false (=0), or null (absent / invalid → use storage). */
+  function parseVisibilityParam(search) {
     try {
-      return new URLSearchParams(search || '').get(VISIBILITY_PARAM) === '1';
+      const v = new URLSearchParams(search || '').get(VISIBILITY_PARAM);
+      if (v === '1') return true;
+      if (v === '0') return false;
+      return null;
     } catch (_) {
-      return false;
+      return null;
     }
+  }
+
+  /** Pure init precedence: URL param → stored preference → hidden. */
+  function resolveInitialVisibility(search, storedVisible) {
+    const param = parseVisibilityParam(search);
+    if (param !== null) return param;
+    if (typeof storedVisible === 'boolean') return storedVisible;
+    return false;
   }
 
   /** Match the show/hide shortcut: Ctrl/⌘ + Alt/⌥ + Shift + T. Matched by
@@ -479,6 +495,8 @@
     buildThemeJson,
     buildThemeMarkdown,
     wantsVisible,
+    parseVisibilityParam,
+    resolveInitialVisibility,
     isToggleShortcut,
     shortcutLabel,
   };
@@ -521,6 +539,22 @@
       storageOk = false;
     }
     return storageOk;
+  }
+
+  function loadStoredVisibility() {
+    const raw = safeGet(STORAGE.ui);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.visible === 'boolean') return parsed.visible;
+    } catch (_) {
+      /* corrupt payload → treat as unset */
+    }
+    return null;
+  }
+
+  function persistVisibility(visible) {
+    safeSet(STORAGE.ui, JSON.stringify({ visible: !!visible }));
   }
 
   function loadOverrides() {
@@ -1835,13 +1869,18 @@
   // ===========================================================================
   // Visibility / lifecycle
   // ===========================================================================
-  // Visibility is a purely in-memory concern gated by the URL on load:
-  //   ?themecolorchanger=1 → shown; otherwise hidden (clean screenshots).
-  // The keyboard shortcut and the red badge toggle it during the session; we
-  // deliberately do NOT persist visibility, so a clean URL never shows the tool
-  // and there is one unambiguous source of truth.
-  function urlWantsVisible() {
-    return wantsVisible(hostWindow.location.search);
+  // Init precedence: ?themecolorchanger=1|0 (writes storage) → localStorage → hidden.
+  // User toggles (header, shortcut, hide badge) persist to STORAGE.ui; other tabs
+  // adopt via the storage event listener in watchStorage().
+  function resolveAndPersistInitialVisibility() {
+    const param = parseVisibilityParam(hostWindow.location.search);
+    if (param !== null) {
+      persistVisibility(param);
+      return param;
+    }
+    const stored = loadStoredVisibility();
+    if (stored !== null) return stored;
+    return false;
   }
 
   function ensureLauncher() {
@@ -1861,18 +1900,26 @@
     }
   }
 
-  function showFeature() {
-    ensureLauncher();
-    els.launcherWrap.style.display = '';
-    state.visible = true;
+  function applyVisibility(visible, persist) {
+    if (visible) {
+      ensureLauncher();
+      els.launcherWrap.style.display = '';
+      state.visible = true;
+    } else {
+      state.visible = false;
+      if (state.open) closePanel();
+      if (els.launcherWrap) els.launcherWrap.style.display = 'none';
+    }
+    if (persist) persistVisibility(visible);
     notifyVisibility();
   }
 
+  function showFeature() {
+    applyVisibility(true, true);
+  }
+
   function hideFeature() {
-    state.visible = false;
-    if (state.open) closePanel();
-    if (els.launcherWrap) els.launcherWrap.style.display = 'none';
-    notifyVisibility();
+    applyVisibility(false, true);
   }
 
   function toggleFeature() {
@@ -1907,13 +1954,20 @@
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
 
-  // Cross-tab sync: another tab edited the theme → adopt it here.
+  // Cross-tab sync: another tab edited the theme or visibility → adopt it here.
   function watchStorage() {
     window.addEventListener('storage', function (e) {
-      if (e.key !== STORAGE.overrides) return;
-      state.overrides = loadOverrides();
-      applyOverrides();
-      if (state.open) renderRows();
+      if (e.key === STORAGE.overrides) {
+        state.overrides = loadOverrides();
+        applyOverrides();
+        if (state.open) renderRows();
+        return;
+      }
+      if (e.key === STORAGE.ui) {
+        const stored = loadStoredVisibility();
+        if (stored === null || stored === state.visible) return;
+        applyVisibility(stored, false);
+      }
     });
   }
 
@@ -1964,8 +2018,7 @@
         /* cross-origin host — the local listener still covers the tool */
       }
 
-      // Hidden by default: only mount the launcher when the gate param is set.
-      state.visible = urlWantsVisible();
+      state.visible = resolveAndPersistInitialVisibility();
       if (state.visible) buildLauncher();
       notifyVisibility();
     }

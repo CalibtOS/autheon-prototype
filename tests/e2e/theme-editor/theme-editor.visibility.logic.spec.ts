@@ -36,7 +36,42 @@ test.describe('theme editor — themecolorchanger visibility gate', () => {
         (s) => w(s),
       );
     });
-    expect(out.every((v) => v === false)).toBe(true);
+    expect(out).toEqual([false, false, false, false, false, false, false]);
+  });
+});
+
+test.describe('theme editor — parseVisibilityParam', () => {
+  test('returns true/false only for exact 1 and 0', async ({ page }) => {
+    const out = await page.evaluate(() => {
+      const p = (window as any).AutheonThemeEditor.__test.parseVisibilityParam;
+      return {
+        one: p('?themecolorchanger=1'),
+        zero: p('?themecolorchanger=0'),
+        invalid: p('?themecolorchanger=2'),
+        missing: p('?foo=bar'),
+      };
+    });
+    expect(out).toEqual({ one: true, zero: false, invalid: null, missing: null });
+  });
+});
+
+test.describe('theme editor — resolveInitialVisibility', () => {
+  test('URL param overrides stored preference', async ({ page }) => {
+    const out = await page.evaluate(() => {
+      const r = (window as any).AutheonThemeEditor.__test.resolveInitialVisibility;
+      return {
+        paramShow: r('?themecolorchanger=1', false),
+        paramHide: r('?themecolorchanger=0', true),
+        stored: r('?foo=bar', true),
+        defaultHidden: r('', null),
+      };
+    });
+    expect(out).toEqual({
+      paramShow: true,
+      paramHide: false,
+      stored: true,
+      defaultHidden: false,
+    });
   });
 });
 
