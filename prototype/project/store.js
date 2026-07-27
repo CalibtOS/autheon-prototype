@@ -4558,13 +4558,9 @@ window.AuthStore = (() => {
     },
 
     setDriverStatus(id, status) {
-      const allowed = [
-        "Active",
-        "Blocked",
-        "Inactive",
-        "Archived",
-        "Soft Deleted",
-      ];
+      // Matches FE/BE DriverStatus: active | blocked | inactive
+      // (archived / soft_deleted were removed from the live contract)
+      const allowed = ["Active", "Blocked", "Inactive"];
       const d = drivers.find((x) => x.id === id);
       if (!d || !allowed.includes(status)) return { ok: false };
       if (status !== "Active") {

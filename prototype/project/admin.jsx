@@ -3952,9 +3952,15 @@ const DriversPane = ({ showToast }) => {
                 <td className="mono">{d.driverCode}</td>
                 <td>
                   <Pill
-                    status={d.status === "Active" ? "accepted" : "cancelled"}
+                    status={
+                      d.status === "Active"
+                        ? "accepted"
+                        : d.status === "Blocked"
+                          ? "cancelled"
+                          : "published"
+                    }
                   >
-                    {d.status}
+                    {t(`adminUsersStatus_${d.status}`)}
                   </Pill>
                 </td>
                 <td>
@@ -3975,31 +3981,34 @@ const DriversPane = ({ showToast }) => {
                     >
                       {t("adminUsersEdit")}
                     </button>
-                    <button
-                      className="btn xs"
-                      onClick={() => {
-                        applyDriverStatus(
-                          d,
-                          d.status === "Active" ? "Blocked" : "Active",
-                        );
+                    <label className="sr-only" htmlFor={`driver-status-${d.id}`}>
+                      {t("adminUsersChangeStatus")}
+                    </label>
+                    <select
+                      id={`driver-status-${d.id}`}
+                      className="input"
+                      style={{
+                        width: "auto",
+                        minWidth: 120,
+                        padding: "4px 8px",
+                        fontSize: 12,
+                      }}
+                      defaultValue=""
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        e.target.value = "";
+                        if (next) applyDriverStatus(d, next);
                       }}
                     >
-                      {d.status === "Active"
-                        ? t("adminUsersBlock")
-                        : t("adminUsersActivate")}
-                    </button>
-                    {["Inactive", "Archived", "Soft Deleted"].map((st) => (
-                      <button
-                        key={st}
-                        type="button"
-                        className="btn xs"
-                        onClick={() => {
-                          applyDriverStatus(d, st);
-                        }}
-                      >
-                        {st}
-                      </button>
-                    ))}
+                      <option value="" disabled>
+                        {t("adminUsersChangeStatus")}
+                      </option>
+                      {["Active", "Blocked", "Inactive"].map((st) => (
+                        <option key={st} value={st}>
+                          {t(`adminUsersStatus_${st}`)}
+                        </option>
+                      ))}
+                    </select>
                     <button
                       className="btn xs"
                       onClick={() => triggerResendAccess(d)}
@@ -4140,35 +4149,24 @@ const StaffPane = ({ showToast }) => {
     setAdminModal("new");
   };
 
-  const openEditAdmin = (a) => {
-    setAdminForm({
-      name: a.name || "",
-      email: a.email || "",
-    });
-    setAdminErrors({});
-    setAdminModal(a.id);
-  };
-
   const adminFormValid =
     Object.keys(validateAdminFormLocal(adminForm, t)).length === 0;
 
+  // Create-only — matches FE staff table (no edit dialog in production admin)
   const saveAdmin = () => {
     const localErrors = validateAdminFormLocal(adminForm, t);
     if (Object.keys(localErrors).length) {
       setAdminErrors(localErrors);
       return;
     }
-    const r =
-      adminModal === "new"
-        ? store.addAdmin(adminForm)
-        : store.updateAdmin(adminModal, adminForm);
+    const r = store.addAdmin(adminForm);
     if (!r.ok) {
       showToast?.(t("adminUsersSaveFailed"), userSaveErr(r, "admin", t));
       return;
     }
     setAdminModal(null);
     setAdminErrors({});
-    if (adminModal === "new" && r.access) {
+    if (r.access) {
       showAccountAccess(r.admin, r.access);
       showToast?.(t("adminUsersAdminCreated"), adminForm.name);
     } else {
@@ -4239,13 +4237,6 @@ const StaffPane = ({ showToast }) => {
             >
               <button
                 type="button"
-                className="btn xs primary"
-                onClick={() => openEditAdmin(a)}
-              >
-                {t("adminUsersEdit")}
-              </button>
-              <button
-                type="button"
                 className="btn xs"
                 onClick={() =>
                   applyAdminStatus(
@@ -4296,9 +4287,7 @@ const StaffPane = ({ showToast }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 style={{ margin: "0 0 16px", fontSize: 18 }}>
-              {adminModal === "new"
-                ? t("adminUsersNewAdminTitle")
-                : t("adminUsersEditAdminTitle")}
+              {t("adminUsersNewAdminTitle")}
             </h2>
             <AdminUserFormFields
               form={adminForm}
