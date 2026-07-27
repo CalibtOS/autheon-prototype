@@ -2392,6 +2392,13 @@ select.input {
   border: 1px solid var(--line);
   animation: modalIn 0.22s cubic-bezier(0.2, 0.8, 0.25, 1);
 }
+/* Phone-shell bottom-sheet rules must not clip centered modals (top-only radius). */
+.phone-shell .sheet.modal {
+  border-radius: var(--r-4);
+  border: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  box-shadow: var(--sh-3);
+}
 @keyframes sheetIn {
   from {
     transform: translateY(20px);
@@ -5953,6 +5960,10 @@ button.notifications-dropdown-backdrop {
   max-width: 420px;
   width: 100%;
   padding: 22px;
+  /* Full modal radius — never inherit bottom-sheet top-only corners */
+  border-radius: var(--r-4);
+  border: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
 /* DEMO ONLY — excluded from production design contract */

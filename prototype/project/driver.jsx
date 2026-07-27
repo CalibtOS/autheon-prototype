@@ -4960,7 +4960,7 @@ const ProbationLimitSheet = ({ limitInfo, onClose }) => {
   return (
     <div className="sheet-backdrop center" onClick={onClose}>
       <div
-        className="sheet card confirm-sheet confirm-sheet-panel"
+        className="sheet modal confirm-sheet confirm-sheet-panel"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -5908,7 +5908,7 @@ const SameDayOverlapSheet = ({ onCancel, onConfirm }) => {
   return (
     <div className="sheet-backdrop center" onClick={onCancel}>
       <div
-        className="sheet card confirm-sheet confirm-sheet-panel"
+        className="sheet modal confirm-sheet confirm-sheet-panel"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
