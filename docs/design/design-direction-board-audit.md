@@ -119,6 +119,49 @@ Feature commits landed after the v1.1 remediation (`3ef6597` sticky sidebars + f
 
 **New gap:** the verified badge references `var(--st-ok, #1f9d55)` — `--st-ok` is **not defined** in the token set, so it falls back to a hardcoded green (an off-token hex, cf. audit item #6). Recommended action: define `--st-ok` (light + dark, contrast-checked) or reuse `--st-accepted`. Recorded in [`brand-tokens.md`](brand-tokens.md) status section. All other new rules stay within tokens.
 
+## v1.3 addendum — vehicle-entry audit (2026-07-26)
+
+Audit of the vehicle-entry and vehicle-display surfaces **as they stood before** the client confirmation “Systemlogik Fahrzeugeingabe”. Remediation is tracked in [`design-direction-board-remediation.md`](design-direction-board-remediation.md) “Vehicle domain restructure (V1–V6)”.
+
+### Fragmented previous vehicle-input structure
+
+| # | Finding | Why it was a problem |
+|---|---------|----------------------|
+| A1 | **Vehicle type mixed weight classes and body styles** in one five-option chip row: `SUV`, `PKW`, `Transporter`, `LKW < 3,5t`, `Oldtimer`. Body style (SUV, Transporter, Oldtimer) and weight class (`LKW < 3,5t`) were presented as peers of one another. | No consistent classification axis, so no option set could be complete or mutually exclusive by construction. |
+| A2 | **Admin and driver offered different vehicle-type vocabularies.** Admin: `SUV / PKW / Transporter / LKW < 3,5t / Oldtimer`. Driver filters: `SUV / PKW / Van / Light truck <3.5t`. `Transporter`↔`Van` and `LKW < 3,5t`↔`Light truck <3.5t` were the same concept under two stored spellings. | A driver filter could silently fail to match an admin-created job. The icon mapper had to hard-code both vocabularies. |
+| A3 | **Manufacturer and model were concatenated on save** (`[brand, model].join(" ")` → one `vehicleModel` string), then re-loaded into the *manufacturer* field on edit with the model field left blank. | Lossy round-trip: editing a job silently moved the model text into the manufacturer field. |
+| A4 | **Manufacturer was free text** with a `datalist` hint, so the catalogue was advisory only. | Uncontrolled values in a field intended to be a controlled list. |
+| A5 | **Registration status and red plates were fused into one four-way segmented control** (`Not specified / Registered / Deregistered / Red plates`), where picking *Red plates* wrote two different fields at once (`registrationStatus = deregistered` **and** `redPlates = true`). | A legal/operational requirement was disguised as a registration status. Two independent concepts could not be set independently. |
+| A6 | **Transport type was labelled “Axle” / “Axle configuration”** (`axle`, `axleConfiguration`, `orderFieldAxle` = “Axle / transport type”) and stored under four spellings (`driven on own wheels`, `third-party axle`, `Eigenachse`, `Fremdachse`) requiring per-screen mapping tables in both `admin.jsx` and `driver.jsx`. | The same concept had two names in one label key, and every display site re-implemented its own value mapping. |
+| A7 | **VIN validation was advisory**: a notice appeared below 17 characters and the order saved anyway. | A data-quality rule stated as a hint rather than a constraint. |
+| A8 | The whole group sat under one soft heading, **“Important vehicle info”**, described in-product as “optional announcement metadata”. | Required operational data read as optional garnish. |
+
+### Incorrect red-licence-plate interaction
+
+| # | Finding | Why it was wrong |
+|---|---------|------------------|
+| B1 | Red plates were a **manually selected option**. | The requirement is fully determined by registration status + transport type. Leaving it to the operator permitted states that contradict the business rule (e.g. red plates on a registered vehicle, or omitted on a deregistered own-axle transfer). |
+| B2 | A **red-plate number input** (`redPlateNumber`) was required whenever the flag was set, with §16 FZV formatting guidance. | Red plates are brought by the executing service partner; the number is irrelevant to AUTHEON order creation and should never have been collected. |
+| B3 | Selecting “Red plates” **replaced the official licence-plate field** with explanatory copy and **cleared the stored plate** (`plate: registrationStatus === "deregistered" ? "" : form.plate`). | Destructive. A known previous / de-stamped official plate is still useful information, and the two plates are unrelated objects. |
+| B4 | The captured red-plate number was **displayed to the driver** in the complete order view as a dedicated `.plate-badge.plate-red` row. | Presented irrelevant data with the visual weight of the real vehicle plate. |
+| B5 | No warning appeared for **deregistered + own axle** unless the operator had manually ticked “Red plates”. | The one case that genuinely requires red plates could ship with no notice at all. |
+
+### Inconsistent downstream display of vehicle classifications
+
+| # | Finding | Where |
+|---|---------|-------|
+| C1 | **Three independent label-mapping tables** for the same axle values — `displayAxle` (driver), `displayAxleAdmin` (admin), `canonAxle` (filter comparison) — each with its own key set. | `driver.jsx`, `admin.jsx` |
+| C2 | **Admin jobs table special-cased one vehicle type** (`j.vehicle === "Transporter" ? t("adminVehicleTrp") : j.vehicle`) and otherwise printed the **raw stored value**, untranslated. | `admin.jsx` job overview |
+| C3 | **Admin job detail printed raw `job.vehicle`**, so the same job showed “PKW” in admin and a translated label in the driver PWA. | `admin.jsx` job detail |
+| C4 | The **vehicle-info tag block was conditional on there being any tag at all**, so transport type — always present — was shown as a bare chip on cards but omitted from the detail tag group. | `driver.jsx` card vs detail |
+| C5 | **Registration status appeared twice** in detail views once an explicit row existed: as a key/value row *and* inside the characteristics tag row. | `driver.jsx` preview + complete order view |
+| C6 | **CSV export and the transport-order summary emitted raw internal values** (`vehicle`, `axle`) with no manufacturer, registration status or characteristics columns. | `store.js` `exportJobsCsv`, `transportOrderText` |
+| C7 | **Icon mapping covered five body styles** (SUV, Van, Light truck, Classic, Car) across both vocabularies, with `VehicleCar` as a silent catch-all — so an unknown value rendered as a passenger car. | `driver.jsx` `vehicleTypeIcon` |
+
+### Method
+
+Static read of `admin.jsx` (vehicle section + job detail + jobs table), `driver.jsx` (card, preview, booking dialog, complete order view, filter sheet, profile prefs, icon map), `store.js` (job factory, seed, form round-trip, write path, order-edit field list, exports), `i18n.js` (EN/DE vehicle keys) and `styles.css`; cross-checked against `prd.json` v2.6, `schema.dbml` and `logical-model.md`. Rendered verification via Playwright against the framed prototype.
+
 ## Method notes
 
 - Rendered checks: Chromium via Playwright (`prototype/project/_capture-design-audit.mjs`), driver phone frame light+dark, admin 1440px light+dark. Screenshot set in [`audit-2026-07-14/before/`](audit-2026-07-14/before/).

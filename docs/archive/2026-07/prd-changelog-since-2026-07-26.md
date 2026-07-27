@@ -6,6 +6,8 @@
 **Baseline:** PRD v2.6 (2026-07-23, legacy special-case model removed)
 **Source:** Figma-comment client feedback + a numeric-input bug report, implemented in **PR #17** (merge `14526e9`, 2026-07-23); plus work order 2026-07-26 — remove the **Weekend** marketplace quick-filter preset and add a **tour booked successfully** confirmation sheet after binding acceptance.
 
+> **Note:** this is the standalone v2.7 entry. [`prd-changelog-since-2026-07-27.md`](prd-changelog-since-2026-07-27.md) carries the merged v2.7 → v2.8 sequence (this entry plus the vehicle-domain restructuring) after two branches independently claimed v2.7.
+
 Scope note: the deliverable is an updated **clickable prototype** plus updated **requirements/design docs**. Backend behaviour remains **simulated** in the prototype and captured here as requirements for the dev team.
 
 PR #17 is **UI/UX + input-validation only** — no schema, status-model, i18n-key, or business-rule change — so it takes a **minor v2.7** bump. The three items below were the client's actual questions/bug and are recorded verbatim-in-spirit under `client_feedback_resolved`. The 2026-07-26 filter/success-sheet work is also UI + i18n only.

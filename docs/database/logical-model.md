@@ -80,7 +80,7 @@ This is intentional. A dispatch edit to a saved address or a customer name must 
 
 `jobs.assignment_mode` distinguishes between `marketplace` (the job is published and visible to eligible drivers) and `direct` (the job is assigned directly to a specific driver). This determines which notification path fires at publish time.
 
-When `assignment_mode = 'marketplace'`, the columns `required_vehicle_type`, `required_axle_type`, and `pickup_postal_area` drive the eligibility match against `notification_preferences.postal_areas`, `vehicle_type`, and `axle_type`. These are set at publish time and must not change after the job leaves `draft`.
+When `assignment_mode = 'marketplace'`, the columns `required_vehicle_type`, `required_transport_type`, and `pickup_postal_area` drive the eligibility match against `notification_preferences.postal_areas`, `vehicle_type`, and `transport_type`. These are set at publish time and must not change after the job leaves `draft`. Filter preferences hold an approved vehicle type or null (no filter).
 
 `notification_preferences.postal_areas` is a `text[]` array — drivers subscribe to multiple postal areas. A single `pickup_postal_prefix` was insufficient for multi-area subscriptions.
 
@@ -173,17 +173,86 @@ Keycloak is the identity source of truth for authentication. Application service
 
 Marketplace queries must project a deliberately reduced view. They must not return full locations, contacts, vehicle identifiers, customer details, internal notes, or PDFs before acceptance. The base `jobs` and `job_locations` tables are never exposed directly to an untrusted driver client.
 
-## Important vehicle info (Design Direction Board 07/2026)
+## Vehicle domain (client confirmation "Systemlogik Fahrzeugeingabe", 2026-07-26)
 
-`jobs.vehicle_registration_status` (`registered` | `deregistered`, nullable = not specified), `jobs.electric_vehicle` (boolean, default false), `jobs.red_license_plates` (boolean, default false), and `jobs.red_license_plate_number` (varchar(32)) are announcement metadata, resolved 2026-07-14 (see `prd.json` → `resolved_defaults.vehicle_important_info_v1` and the v2.1 changelog). They are captured in the admin job form's Vehicle section and — unlike VIN and regular license plate — the three flags are **included in the reduced marketplace projection** pre-acceptance: decision-relevant for service partners and non-sensitive.
+The vehicle model is **four explicit categories plus independent characteristics**, each with its own field, allowed values and business meaning. An earlier internal proposal to collapse every vehicle classification into one unstructured multi-select tag collection (`vehicle.tags = ["SUV", "own axle", "registered", "electric"]`) was **rejected and superseded** by the client confirmation: the categories carry different cardinalities and different rules, so they must stay distinct. There is no `vehicle_tags` / `vehicle_classifications` structure.
 
-**Conditional capture rules (application-enforced, not database constraints):**
+### Entity and field semantics
 
-- registration `registered` / null → `licenseplate` required by the job form (unchanged rule).
-- registration `deregistered` → `licenseplate` must be **null**; a deregistered vehicle carries no valid plate.
-- `red_license_plates = true` → `red_license_plate_number` required. German § 16 FZV red transfer plates carry a district code plus a recognition number starting **06** (dealer/workshop series; 05 = inspection bodies, 07 = classic cars), e.g. `K-06 1234`, and are assigned to the **operator, not the vehicle** — which is why the number lives per tour on `jobs` instead of a vehicle master table.
+| Field                                    | Cardinality                     | Semantics                                                                                                                                                             |
+| ---------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `jobs.vehicle_type`                      | **exactly one**                 | `passenger_car` (PKW), `truck_up_to_7_5_t` (LKW bis einschl. 7,5 t), `truck_over_7_5_t` (LKW über 7,5 t). The `vehicle_type` enum — only these three values are storable. Single-select, never a multi-select attribute group. |
+| `jobs.vehicle_manufacturer`              | exactly one                     | Selected from the manufacturer catalogue via a **dropdown**, not free text. Required.                                                                                  |
+| `jobs.vehicle_model`                     | exactly one                     | **Separate** free-text field. Manufacturer and model are no longer squashed into one string.                                                                           |
+| `jobs.licenseplate`                      | 0..1                            | **Official** licence plate of the **transported vehicle**. Never a red plate, never replaced by one.                                                                    |
+| `jobs.vin`                               | 0..1                            | Exactly **17 characters** when present (confirmed rule). Existing normalization (uppercase, strip spaces/invalid chars, truncate at 17) runs before validation.         |
+| `jobs.transport_type`                    | **exactly one**                 | `own_axle` (Eigenachse) / `third_party_axle` (Fremdachse). Renames the former "axle" concept.                                                                           |
+| `jobs.vehicle_registration_status`       | **exactly one**, NOT NULL       | `registered` (Zugelassen) / `deregistered` (Abgemeldet). **Independent of transport type** — explicitly represented, never inferred, never merged into a tag array.      |
+| `jobs.electric_vehicle`                  | independent boolean             | E-Fahrzeug. Combinable with any other characteristic.                                                                                                                  |
+| `jobs.ready_to_drive`                    | independent boolean             | Fahrbereit. Combinable. See "Ready-to-drive applicability" below.                                                                                                       |
 
-The flags drive no marketplace filter or acceptance rule in V1.
+Vehicle type, manufacturer, model, transport type, registration status and both characteristics are **included in the reduced marketplace projection** pre-acceptance (decision-relevant for service partners, non-sensitive). The licence plate and VIN remain hidden until acceptance.
+
+### Official licence plate and deregistration
+
+- registration `registered` → `licenseplate` **required** by the job form.
+- registration `deregistered` → `licenseplate` is **optional but fully accepted**. A previous or de-stamped official plate may still be entered when known.
+
+This **replaces** the earlier rule, which hid the input and forced the stored plate to null on deregistration. The plate field must never be disabled, hidden, cleared or replaced by a red-plate field merely because the vehicle is deregistered.
+
+### Red licence plates — derived, never stored, never entered
+
+Red licence plates are brought **independently by the executing service partner**. Their specific number is irrelevant to AUTHEON order creation and is **not recorded**. The requirement is a **derived** system behaviour:
+
+```
+requiresRedLicencePlates =
+  registrationStatus === DEREGISTERED
+  AND transportType    === OWN_AXLE
+```
+
+**Four-case decision table:**
+
+| Registration status | Transport type   | Outcome                                              | Notice                          |
+| ------------------- | ---------------- | ---------------------------------------------------- | ------------------------------- |
+| `registered`        | `own_axle`       | Regular transfer on own axle                         | none                            |
+| `registered`        | `third_party_axle` | Regular transfer on third-party axle               | none                            |
+| `deregistered`      | `own_axle`       | **Red licence plates required**                      | "Rote Kennzeichen erforderlich" |
+| `deregistered`      | `third_party_axle` | No red plates required (vehicle is being carried)  | none                            |
+
+
+**Source-of-truth layer.** The rule lives in exactly one domain function, `requiresRedLicencePlates(registrationStatus, transportType)` (prototype: `store.js`, exported on `AuthStore`; production: the backend domain layer). The **backend/domain layer is authoritative**: it computes and returns the value, validates writes, and never trusts a client-supplied one. The frontend imports the same shared helper only for immediate form feedback. No UI component re-implements the condition.
+
+It is deliberately **not persisted**: a stored column could drift from its two inputs and would be writable. The API exposes it as a **read-only derived property** `requiresRedLicencePlates: boolean`. There is no red-plate column of any kind — a manually writable red-plate boolean and any red-plate **number** field are rejected on create/update.
+
+### Ready-to-drive applicability
+
+`ready_to_drive` is decision-relevant for **third-party-axle** transport. Applicability drives **UI emphasis only** (an applicability note under third-party axle): the control stays available in every context and the stored value is **never auto-cleared or rewritten** when the transport type or any other control changes. There is no requirement making it mandatory, so none was added. Final UX behaviour is recorded in `docs/design/driver-screen-spec.md`.
+
+### Approved values only
+
+The three `vehicle_type` values above are the **complete** set. `SUV`, `Van` / `Transporter`, `Classic car` / `Oldtimer` and the older `Light truck <3.5t` / `LKW < 3,5t` band were removed by the client confirmation and are **not storable**: the column is the `vehicle_type` enum, the application rejects anything outside the set on create and update, and no compatibility or preservation layer exists. There is no "(legacy)" display state and no per-value escape hatch while editing a record.
+
+### Migration notes (backend)
+
+| Change                                                         | Strategy                                                                                                                                                          |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `axle_type varchar` → `transport_type transport_type`           | 1:1 rename (`driven on own wheels`/`Own axle`/`Eigenachse` → `own_axle`; `third-party axle`/`Third-party axle`/`Fremdachse` → `third_party_axle`). Reversible.       |
+| `vehicle_type varchar` → `vehicle_type` enum                    | `PKW`/`Car` → `passenger_car`. **Every other pre-existing value requires an explicit client-approved target before the enum cast can run** — see the blocker below. |
+| `required_vehicle_type` → `vehicle_type` enum                   | Same constraint as above; it is a publish-time copy of the job's type.                                                                                             |
+| `vehicle_manufacturer` / `vehicle_model` split                  | Manufacturer was previously folded into the model string. Backfill required before `vehicle_manufacturer` becomes `not null`.                                       |
+| Drop `red_license_plates`                                       | Safe: the boolean carried no information beyond the derived rule.                                                                                                   |
+| Drop `red_license_plate_number`                                 | The number is not recorded at all. Take a backup before dropping if any production rows hold a value.                                                               |
+| Add `ready_to_drive`                                            | `default false`. No historical source exists, so no backfill is attempted.                                                                                          |
+| `vehicle_registration_status` → `not null`                      | Requires a value on every existing row before the constraint can be added — see the blocker below.                                                                  |
+
+All migrations must be reversible and verified against representative data. Rollback restores `axle_type` from `transport_type` via the inverse 1:1 map; the dropped `red_license_plates` boolean is recomputed from the derived rule.
+
+**Blockers before the enum cast and the NOT NULL constraint can be applied:**
+
+1. **Vehicle type.** Rows holding `SUV`, `Van`, `Transporter`, `Oldtimer`, `Classic` or the `<3.5t` light-truck band have **no approved target value**. The cast to the enum fails until the client approves a mapping (or approves discarding those rows). Do not guess a mapping.
+2. **Registration status.** Rows with a null status have no approved default. Defaulting to `registered` or `deregistered` would fabricate a red-plate decision, so the client must supply the value or approve a default.
+
+**Prototype note:** the prototype store is seeded in memory with no persistence layer, so no runtime data migration exists there. The table above is the requirement for the production backend, whose existing data has not yet been surveyed against these two blockers.
 
 ## Open decisions that affect the physical schema
 

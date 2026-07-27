@@ -404,7 +404,7 @@ const Overview = ({ onOpen, freshId }) => {
                 <td className="mono date" style={{ fontSize: 12 }}>
                   {AuthStore.formatJobScheduleShort(j, t("adminWindowFlex"))}
                 </td>
-                <td>{j.vehicle === "Transporter" ? t("adminVehicleTrp") : j.vehicle}</td>
+                <td>{displayVehicleTypeAdmin(j.vehicleType, t)}</td>
                 <td>{j.driver || "—"}</td>
                 <td>
                   <Pill status={j.status} />
@@ -1443,7 +1443,8 @@ const AdminDetail = ({
               marginTop: 2,
             }}
           >
-            {displayAxleAdmin(job.axle, t)} · {t("adminDriverOfferLumpSum")}
+            {displayTransportType(job.transportType, t)} ·{" "}
+            {t("adminDriverOfferLumpSum")}
           </div>
         </div>
       </div>
@@ -1621,17 +1622,19 @@ const AdminDetail = ({
               <div>
                 <div className="label">{t("type")}</div>
                 <div style={{ fontWeight: 600, marginTop: 6 }}>
-                  {job.vehicle}
+                  {displayVehicleTypeAdmin(job.vehicleType, t)}
                 </div>
               </div>
               <div>
                 <div className="label">{t("details")}</div>
                 <div style={{ fontWeight: 600, marginTop: 6 }}>
-                  {job.vehicleModel}
+                  {[job.manufacturer, job.vehicleModel]
+                    .filter((v) => v && v !== "—")
+                    .join(" ") || "—"}
                 </div>
               </div>
               <div>
-                <div className="label">{t("plate")}</div>
+                <div className="label">{t("officialLicencePlate")}</div>
                 <div
                   className="mono"
                   style={{
@@ -1657,45 +1660,44 @@ const AdminDetail = ({
                 </div>
               </div>
             </div>
-            {job.registrationStatus || job.electricVehicle || job.redPlates ? (
-              <div style={{ marginTop: 16 }}>
-                <div className="label">{t("vehicleInfoLabel")}</div>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    flexWrap: "wrap",
-                    marginTop: 6,
-                  }}
-                >
-                  {job.registrationStatus === "registered" ? (
-                    <span className="pill outline no-dot">
-                      {t("vehicleInfoRegistered")}
-                    </span>
-                  ) : null}
-                  {job.registrationStatus === "deregistered" ? (
-                    <span className="pill outline no-dot">
-                      {t("vehicleInfoDeregistered")}
-                    </span>
-                  ) : null}
-                  {job.electricVehicle ? (
-                    <span className="pill outline no-dot">
-                      {t("vehicleInfoElectric")}
-                    </span>
-                  ) : null}
-                  {job.redPlates ? (
-                    <span className="pill outline no-dot">
-                      {t("vehicleInfoRedPlates")}
-                      {job.redPlateNumber ? (
-                        <span className="mono" style={{ marginLeft: 6 }}>
-                          {job.redPlateNumber}
-                        </span>
-                      ) : null}
-                    </span>
-                  ) : null}
-                </div>
+            {/* Transport type + registration status + characteristics, each as
+                its own explicit value. No red-plate number is shown anywhere:
+                the number is not recorded, only the derived requirement. */}
+            <div style={{ marginTop: 16 }}>
+              <div className="label">{t("vehicleInfoLabel")}</div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  marginTop: 6,
+                }}
+              >
+                <span className="pill outline no-dot">
+                  {t("transportType")}: {displayTransportType(job.transportType, t)}
+                </span>
+                {job.registrationStatus ? (
+                  <span className="pill outline no-dot">
+                    {AuthStore.registrationStatusLabel(job.registrationStatus, t)}
+                  </span>
+                ) : null}
+                {job.electricVehicle ? (
+                  <span className="pill outline no-dot">
+                    {t("vehicleInfoElectric")}
+                  </span>
+                ) : null}
+                {job.readyToDrive ? (
+                  <span className="pill outline no-dot">
+                    {t("vehicleReadyToDrive")}
+                  </span>
+                ) : null}
               </div>
-            ) : null}
+            </div>
+            {/* DERIVED red-licence-plate notice — Admin Backend job detail. */}
+            <AdminRedPlatesNotice
+              registrationStatus={job.registrationStatus}
+              transportType={job.transportType}
+            />
           </section>
 
           {/* Contacts */}
@@ -2203,8 +2205,10 @@ const EMPTY_NEW_ORDER_FORM = {
   deliveryFrom: "",
   deliveryTo: "",
   deliveryFlex: false,
+  // Vehicle domain — four explicit categories (client confirmation
+  // "Systemlogik Fahrzeugeingabe"). NOT one flattened tag collection.
   vehicleType: "",
-  brand: "",
+  manufacturer: "",
   model: "",
   plate: "",
   vin: "",
@@ -2227,26 +2231,38 @@ const EMPTY_NEW_ORDER_FORM = {
   driverOffer: "",
   notes: "",
   notesDriver: "",
-  axle: "Eigenachse",
+  transportType: AuthStore.TRANSPORT_TYPE_OWN_AXLE,
   registrationStatus: "",
   electricVehicle: false,
-  redPlates: false,
-  redPlateNumber: "",
+  readyToDrive: false,
+  // No red-plate fields: the requirement is DERIVED by
+  // AuthStore.requiresRedLicencePlates and the plate number is never captured.
   pickupLocationId: "",
   deliveryLocationId: "",
   savePickupToMaster: false,
   saveDeliveryToMaster: false,
 };
 
-const displayAxleAdmin = (value, t) =>
-  ({
-    "driven on own wheels": t("ownAxle"),
-    "third-party axle": t("thirdPartyAxle"),
-    Eigenachse: t("ownAxle"),
-    Fremdachse: t("thirdPartyAxle"),
-    "Own axle": t("ownAxle"),
-    "Third-party axle": t("thirdPartyAxle"),
-  })[value] || value;
+// Vehicle-domain display helpers delegate to the SHARED store resolvers so the
+// Admin Backend and the Driver PWA can never disagree on a label or on the
+// derived red-licence-plate requirement.
+const displayTransportType = (value, t) => AuthStore.transportTypeLabel(value, t);
+const displayVehicleTypeAdmin = (value, t) => AuthStore.vehicleTypeLabel(value, t);
+
+/**
+ * Derived red-licence-plate notice for Admin Backend surfaces. Renders the ONE
+ * shared component from driver-ui.jsx (which consults
+ * AuthStore.requiresRedLicencePlates) using the existing semantic warning
+ * treatments — .banner.banner-warn and .pill.warn / --st-warn tokens. No admin
+ * component re-derives "deregistered + own axle".
+ */
+const AdminRedPlatesNotice = ({ registrationStatus, transportType, compact }) => (
+  <DriverUI.RedPlatesRequiredNotice
+    registrationStatus={registrationStatus}
+    transportType={transportType}
+    variant={compact ? "admin-pill" : "admin-banner"}
+  />
+);
 
 const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
   const store = useAuthStore();
@@ -2269,18 +2285,22 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
   // (persist + notify partner + audit prev→new) instead of the draft path.
   const isBookedEdit = !!editingJob && editingJob.status !== "draft";
 
-  const vehicleTypes = [
-    { value: "SUV", label: t("newOrderVtSuv") },
-    { value: "PKW", label: t("newOrderVtPkw") },
-    { value: "Transporter", label: t("newOrderVtTransporter") },
-    { value: "LKW < 3,5t", label: t("lightTruck") },
-    { value: "Oldtimer", label: t("newOrderVtClassic") },
-  ];
-  const axles = [
-    { value: "Eigenachse", label: t("ownAxle") },
-    { value: "Fremdachse", label: t("thirdPartyAxle") },
-  ];
   const [form, setForm] = useStateA(buildFormState);
+  // Exactly the three approved vehicle types. SUV, Van/Transporter and
+  // Classic car/Oldtimer were removed by the client confirmation and are NOT
+  // offered here.
+  const vehicleTypes = AuthStore.selectableVehicleTypes().map((value) => ({
+    value,
+    label: displayVehicleTypeAdmin(value, t),
+  }));
+  const transportTypes = AuthStore.TRANSPORT_TYPES.map((value) => ({
+    value,
+    label: displayTransportType(value, t),
+  }));
+  const registrationStatuses = AuthStore.REGISTRATION_STATUSES.map((value) => ({
+    value,
+    label: AuthStore.registrationStatusLabel(value, t),
+  }));
   const [activeSec, setActiveSec] = useStateA("01");
   const [adminAttachFiles, setAdminAttachFiles] = useStateA([]);
   const [scheduleOverrideNote, setScheduleOverrideNote] = useStateA("");
@@ -2392,10 +2412,18 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
     "pickupDate",
     "deliveryDate",
     "vehicleType",
-    // Registered (or unspecified) vehicles need the regular plate; a
-    // deregistered vehicle has none (§16 FZV transfer runs use a red plate)
-    ...(form.registrationStatus === "deregistered" ? [] : ["plate"]),
-    ...(form.redPlates ? ["redPlateNumber"] : []),
+    "manufacturer",
+    "model",
+    "vin",
+    // Registration status is its own single-select category and must be stated
+    // explicitly — it is never inferred from the transport type.
+    "registrationStatus",
+    // The OFFICIAL licence plate stays required while the vehicle is
+    // registered and becomes optional (but still enterable, never disabled)
+    // once it is deregistered — a de-stamped plate is still useful.
+    ...(form.registrationStatus === AuthStore.REGISTRATION_DEREGISTERED
+      ? []
+      : ["plate"]),
     "driverOffer",
   ];
   const scheduleDateWarning =
@@ -2410,8 +2438,15 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
     form.deliveryFrom &&
     form.deliveryTo &&
     AuthStore.compareTimeStrings(form.deliveryFrom, form.deliveryTo) > 0;
-  const vinShortNotice =
-    form.vin && String(form.vin).trim().length > 0 && String(form.vin).length < 17;
+  // Confirmed VIN rule: exactly 17 characters. Same helper the authoritative
+  // write path uses (AuthStore.validateVehicleForm) — no second rule here.
+  const vinLength = String(form.vin || "").trim().length;
+  const vinLengthError = vinLength > 0 && !AuthStore.isValidVin(form.vin);
+  // Applicability of "Ready to drive" — drives EMPHASIS only. The stored value
+  // is never cleared when the transport type changes.
+  const readyToDriveApplicable = AuthStore.isReadyToDriveApplicable(
+    form.transportType,
+  );
   const blurDate = (key) => (e) => {
     const next = AuthStore.formatDateInput(e.target.value);
     if (next !== form[key]) set(key, next);
@@ -2878,22 +2913,44 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 <span className="num">04</span> {t("newOrderSecVehicle")}
               </h3>
             </div>
+            {/* ------------------------------------------------------------
+                Vehicle entry per client confirmation "Systemlogik
+                Fahrzeugeingabe". Four SEPARATE semantic categories with their
+                own cardinalities — deliberately NOT one flat multi-select tag
+                collection (that earlier proposal was superseded). The chip and
+                segmented-control primitives are reused only for visual
+                consistency; the payload keeps discrete fields.
+                ------------------------------------------------------------ */}
+            {/* 1. Vehicle type — exactly one (single-select, 3 approved values) */}
             <div style={{ marginTop: 14 }}>
-              <label className="field-label">{t("vehicleType")} *</label>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <label className="field-label" id="new-order-vehicle-type-label">
+                {t("vehicleType")} *
+              </label>
+              <div
+                style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+                role="radiogroup"
+                aria-labelledby="new-order-vehicle-type-label"
+              >
                 {vehicleTypes.map((vt) => (
-                  <span
+                  <button
                     key={vt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.vehicleType === vt.value}
                     className={
-                      "chip " + (form.vehicleType === vt.value ? "on" : "")
+                      "chip actionable " +
+                      (form.vehicleType === vt.value ? "on" : "")
                     }
                     onClick={() => set("vehicleType", vt.value)}
                   >
                     {vt.label}
-                  </span>
+                  </button>
                 ))}
               </div>
             </div>
+
+            {/* 2. Vehicle data — manufacturer (dropdown), model, official
+                   licence plate and VIN are each their own field. */}
             <div
               style={{
                 display: "grid",
@@ -2903,95 +2960,161 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
               }}
             >
               <div>
-                <label className="field-label">{t("newOrderBrand")}</label>
-                <input
+                <label className="field-label" htmlFor="new-order-manufacturer">
+                  {t("manufacturer")} *
+                </label>
+                {/* Manufacturer is SELECTED from the existing catalogue
+                    (AuthStore.MANUFACTURER_SUGGESTIONS), not typed freely. */}
+                <select
+                  id="new-order-manufacturer"
                   className="input"
-                  list="new-order-brand-suggestions"
-                  placeholder={t("newOrderBrandPh")}
-                  value={form.brand}
-                  onChange={(e) => set("brand", e.target.value)}
-                />
-                <datalist id="new-order-brand-suggestions">
+                  value={form.manufacturer}
+                  onChange={(e) => set("manufacturer", e.target.value)}
+                >
+                  <option value="">{t("manufacturerPh")}</option>
                   {(AuthStore.MANUFACTURER_SUGGESTIONS || []).map((name) => (
-                    <option key={name} value={name} />
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </div>
               <div>
-                <label className="field-label">{t("newOrderModel")}</label>
+                <label className="field-label" htmlFor="new-order-model">
+                  {t("newOrderModel")} *
+                </label>
                 <input
+                  id="new-order-model"
                   className="input"
                   placeholder={t("newOrderModelPh")}
                   value={form.model}
                   onChange={(e) => set("model", e.target.value)}
                 />
               </div>
-              {form.registrationStatus === "deregistered" ? (
-                <div>
-                  <label className="field-label">{t("plate")}</label>
-                  <p
-                    className="label"
-                    style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.5 }}
-                  >
-                    {t("newOrderPlateHiddenDeregistered")}
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <label className="field-label">{t("plate")} *</label>
-                  <input
-                    className="input mono"
-                    placeholder={t("newOrderPlatePh")}
-                    value={form.plate}
-                    onChange={(e) => set("plate", e.target.value)}
-                    onBlur={(e) => set("plate", AuthStore.normalizePlate(e.target.value))}
-                  />
-                </div>
-              )}
+              {/* Official licence plate of the TRANSPORTED vehicle. Always
+                  rendered and always enabled — deregistration no longer hides,
+                  disables or clears it, and it is never replaced by a
+                  red-plate field. */}
               <div>
-                <label className="field-label">
-                  {t("vin")} ({t("newOrderVinLen")})
+                <label className="field-label" htmlFor="new-order-plate">
+                  {t("officialLicencePlate")}
+                  {form.registrationStatus === AuthStore.REGISTRATION_DEREGISTERED
+                    ? ""
+                    : " *"}
                 </label>
                 <input
+                  id="new-order-plate"
+                  className="input mono"
+                  placeholder={t("newOrderPlatePh")}
+                  value={form.plate}
+                  onChange={(e) => set("plate", e.target.value)}
+                  onBlur={(e) =>
+                    set("plate", AuthStore.normalizePlate(e.target.value))
+                  }
+                />
+                <p
+                  className="label"
+                  style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}
+                >
+                  {t("officialLicencePlateHint")}
+                </p>
+              </div>
+              <div>
+                <label className="field-label" htmlFor="new-order-vin">
+                  {t("vin")} * ({t("newOrderVinLen")})
+                </label>
+                <input
+                  id="new-order-vin"
                   className="input mono"
                   placeholder={t("newOrderVinLen")}
                   value={form.vin}
+                  aria-invalid={vinLengthError || undefined}
+                  aria-describedby={
+                    vinLengthError ? "new-order-vin-error" : undefined
+                  }
                   onChange={(e) =>
                     set("vin", AuthStore.normalizeVin(e.target.value))
                   }
                 />
-                {vinShortNotice ? (
+                {vinLengthError ? (
                   <p
+                    id="new-order-vin-error"
                     className="label"
-                    style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}
+                    style={{
+                      marginTop: 6,
+                      fontSize: 11.5,
+                      lineHeight: 1.45,
+                      color: "var(--st-warn)",
+                    }}
                   >
-                    {t("newOrderVinShortNotice")}
+                    {t("newOrderVinLengthError", { count: vinLength })}
                   </p>
                 ) : null}
               </div>
             </div>
+
+            {/* 3. Transport type — exactly one. Renames the former "Axle". */}
             <div style={{ marginTop: 14 }}>
-              <label className="field-label">{t("axle")}</label>
+              <label className="field-label" id="new-order-transport-type-label">
+                {t("transportType")} *
+              </label>
               <div
                 className="seg"
                 style={{ display: "inline-grid", gridAutoFlow: "column" }}
+                role="radiogroup"
+                aria-labelledby="new-order-transport-type-label"
               >
-                {axles.map((a) => (
+                {transportTypes.map((tt) => (
                   <button
-                    key={a.value}
+                    key={tt.value}
                     type="button"
-                    className={form.axle === a.value ? "on" : ""}
-                    onClick={() => set("axle", a.value)}
+                    role="radio"
+                    aria-checked={form.transportType === tt.value}
+                    className={form.transportType === tt.value ? "on" : ""}
+                    /* Only transportType changes — readyToDrive and every other
+                       category are left exactly as the user set them. */
+                    onClick={() => set("transportType", tt.value)}
                   >
-                    {a.label}
+                    {tt.label}
                   </button>
                 ))}
               </div>
             </div>
-            {/* Important vehicle info — optional announcement metadata
-                (Design Direction Board §5; prd.json vehicle_important_info_v1) */}
+
+            {/* 4. Registration status — exactly one, INDEPENDENT of transport
+                   type. No "Red plates" pseudo-option any more: the red-plate
+                   requirement is derived, never selected. */}
             <div style={{ marginTop: 14 }}>
-              <label className="field-label">{t("vehicleInfoLabel")}</label>
+              <label className="field-label" id="new-order-registration-label">
+                {t("registrationStatus")} *
+              </label>
+              <div
+                className="seg"
+                style={{ display: "inline-grid", gridAutoFlow: "column" }}
+                role="radiogroup"
+                aria-labelledby="new-order-registration-label"
+              >
+                {registrationStatuses.map((rs) => (
+                  <button
+                    key={rs.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.registrationStatus === rs.value}
+                    className={form.registrationStatus === rs.value ? "on" : ""}
+                    onClick={() => set("registrationStatus", rs.value)}
+                  >
+                    {rs.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 5. Additional vehicle characteristics — INDEPENDENT attributes,
+                   each individually selectable. */}
+            <div style={{ marginTop: 14 }}>
+              <label className="field-label">
+                {t("vehicleCharacteristics")}
+              </label>
               <div
                 style={{
                   display: "flex",
@@ -3000,70 +3123,38 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   alignItems: "center",
                 }}
               >
-                {/* Registration is one exclusive choice. Red plates legally
-                    require a deregistered vehicle (§16 FZV), so "Red plates"
-                    lives inside the segment instead of being a combinable
-                    chip — selecting it stores deregistered + redPlates. */}
-                <div
-                  className="seg"
-                  style={{ display: "inline-grid", gridAutoFlow: "column" }}
-                >
-                  {[
-                    ["", t("newOrderRegistrationNone")],
-                    ["registered", t("vehicleInfoRegistered")],
-                    ["deregistered", t("vehicleInfoDeregistered")],
-                    ["red_plates", t("vehicleInfoRedPlates")],
-                  ].map(([val, label]) => (
-                    <button
-                      key={val || "none"}
-                      type="button"
-                      className={
-                        (form.redPlates
-                          ? "red_plates"
-                          : form.registrationStatus || "") === val
-                          ? "on"
-                          : ""
-                      }
-                      onClick={() =>
-                        setForm((f) => ({
-                          ...f,
-                          registrationStatus:
-                            val === "red_plates" ? "deregistered" : val,
-                          redPlates: val === "red_plates",
-                          redPlateNumber:
-                            val === "red_plates" ? f.redPlateNumber : "",
-                        }))
-                      }
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <span
-                  className={"chip " + (form.electricVehicle ? "on" : "")}
+                <button
+                  type="button"
+                  aria-pressed={form.electricVehicle}
+                  className={"chip actionable " + (form.electricVehicle ? "on" : "")}
                   onClick={() => set("electricVehicle", !form.electricVehicle)}
                 >
                   {t("vehicleInfoElectric")}
-                </span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={form.readyToDrive}
+                  className={"chip actionable " + (form.readyToDrive ? "on" : "")}
+                  onClick={() => set("readyToDrive", !form.readyToDrive)}
+                >
+                  {t("vehicleReadyToDrive")}
+                </button>
               </div>
-              {form.redPlates ? (
-                <div style={{ marginTop: 12, maxWidth: 260 }}>
-                  <label className="field-label">
-                    {t("redPlateNumber")} *
-                  </label>
-                  <input
-                    className="input mono"
-                    placeholder={t("newOrderRedPlatePh")}
-                    value={form.redPlateNumber}
-                    onChange={(e) => set("redPlateNumber", e.target.value)}
-                  />
-                  <p
-                    className="label"
-                    style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}
-                  >
-                    {t("newOrderRedPlateHint")}
-                  </p>
-                </div>
+              {/* Applicability is communicated, not enforced: the control stays
+                  available and a stored value is never cleared just because the
+                  transport type changed. */}
+              {readyToDriveApplicable ? (
+                <p
+                  className="label"
+                  style={{
+                    marginTop: 6,
+                    fontSize: 11.5,
+                    lineHeight: 1.45,
+                    fontWeight: 600,
+                  }}
+                >
+                  {t("vehicleReadyToDriveApplicability")}
+                </p>
               ) : null}
               <p
                 className="label"
@@ -3072,6 +3163,13 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 {t("newOrderVehicleInfoHint")}
               </p>
             </div>
+
+            {/* DERIVED red-licence-plate notice — location 1 of 5. Rendered
+                from the single canonical policy, not from a manual selection. */}
+            <AdminRedPlatesNotice
+              registrationStatus={form.registrationStatus}
+              transportType={form.transportType}
+            />
           </section>
 
           <section id="sec-05" className="card" style={{ padding: 22 }}>

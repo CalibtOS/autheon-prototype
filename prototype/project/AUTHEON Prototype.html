@@ -429,6 +429,33 @@
           setSection("invoices");
         };
 
+        // Renders AuthStore.validateVehicleForm() failures for the toast. Field
+        // labels come from i18n — nothing about the vehicle rules is restated
+        // here, only the reasons the authoritative validator returned.
+        const describeVehicleErrors = (errors, t) => {
+          const labels = {
+            vehicleType: "vehicleType",
+            manufacturer: "manufacturer",
+            model: "newOrderModel",
+            plate: "officialLicencePlate",
+            vin: "vin",
+            transportType: "transportType",
+            registrationStatus: "registrationStatus",
+          };
+          return (errors || [])
+            .map((e) => {
+              if (e.reason === "removed_vehicle_type")
+                return t("newOrderRemovedVehicleType");
+              if (e.reason === "vin_length")
+                return t("newOrderVinLengthError", { count: 0 });
+              if (e.reason === "not_writable")
+                return t("adminVehicleFieldNotWritable");
+              return labels[e.field] ? t(labels[e.field]) : e.field;
+            })
+            .filter(Boolean)
+            .join(" · ");
+        };
+
         const showToast = (msg, sub, action) => {
           setToast({ msg, sub, action });
           clearTimeout(window.__t);
@@ -451,6 +478,13 @@
                 saved.leg === "delivery"
                   ? t("newOrderDeliverySchedule")
                   : t("newOrderPickupSchedule"),
+              );
+            } else if (saved?.error === "invalid_vehicle") {
+              // Server-authoritative vehicle rejection (removed vehicle type,
+              // VIN not 17 characters, red-plate write attempt).
+              showToast(
+                t("adminVehicleInvalid"),
+                describeVehicleErrors(saved.errors, t),
               );
             } else {
               showToast(
@@ -482,6 +516,11 @@
                 r.leg === "delivery"
                   ? t("newOrderDeliverySchedule")
                   : t("newOrderPickupSchedule"),
+              );
+            } else if (r.reason === "invalid_vehicle") {
+              showToast(
+                t("adminVehicleInvalid"),
+                describeVehicleErrors(r.errors, t),
               );
             } else if (r.reason === "no_changes") {
               showToast(t("adminNoChanges"), "");

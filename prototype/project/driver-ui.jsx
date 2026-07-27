@@ -414,6 +414,78 @@ function AdminConfirmBridge() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// RedPlatesRequiredNotice — the ONE derived red-licence-plate notice component,
+// shared by the Admin Backend and the Driver PWA (client confirmation
+// "Systemlogik Fahrzeugeingabe"). It lives here, in the shared primitives
+// module loaded before both apps, precisely so the two cannot drift apart or
+// redeclare a same-named component in the shared global scope.
+//
+// It NEVER re-implements the rule: the requirement comes from
+// AuthStore.requiresRedLicencePlates (deregistered + own axle). Because it is
+// derived on every render, it cannot go stale after a value change, a refetch,
+// a reload or the booking transition — and it deliberately keeps showing after
+// booking, being an execution requirement rather than a marketplace message.
+//
+// Accepts either a whole `job` or explicit `registrationStatus`/`transportType`
+// (the live admin form state, which is not yet a job).
+//
+// variant: "tag"          compact chip for dense card/tag rows (Driver PWA)
+//          "banner"       full notice for driver detail/booking surfaces
+//          "admin-banner" existing .banner.banner-warn treatment (Admin)
+//          "admin-pill"   existing .pill.warn treatment (Admin, inline)
+// ---------------------------------------------------------------------------
+function RedPlatesRequiredNotice({
+  job,
+  registrationStatus,
+  transportType,
+  variant = "tag",
+}) {
+  const { t } = window.useI18n();
+  const reg = job ? job.registrationStatus : registrationStatus;
+  const transport = job ? job.transportType : transportType;
+  if (!window.AuthStore.requiresRedLicencePlates(reg, transport)) return null;
+  const label = t("redPlatesRequired");
+  const detail = t("redPlatesRequiredDetail");
+
+  if (variant === "admin-pill") {
+    return (
+      <span className="pill warn no-dot" role="status">
+        {label}
+      </span>
+    );
+  }
+  if (variant === "admin-banner") {
+    return (
+      <div
+        className="banner banner-warn"
+        role="status"
+        style={{ margin: "12px 0 0" }}
+      >
+        <strong>{label}</strong>
+        <div style={{ marginTop: 4, fontSize: 12, lineHeight: 1.45 }}>
+          {detail}
+        </div>
+      </div>
+    );
+  }
+  if (variant === "banner") {
+    return (
+      <div className="red-plates-banner" role="status">
+        <span className="red-plates-banner-head">
+          <strong>{label}</strong>
+        </span>
+        <span className="red-plates-banner-detail">{detail}</span>
+      </div>
+    );
+  }
+  return (
+    <span className="vehicle-flag red-plates-required" role="status">
+      {label}
+    </span>
+  );
+}
+
 window.DriverUI = {
   StatusPill,
   Badge,
@@ -424,4 +496,5 @@ window.DriverUI = {
   ConfirmSheet,
   SortSelect,
   AdminConfirmBridge,
+  RedPlatesRequiredNotice,
 };

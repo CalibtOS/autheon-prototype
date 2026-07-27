@@ -346,9 +346,68 @@ _For when the prototype design contract is implemented as the real driver PWA. S
 
 ---
 
+## 10. Vehicle Domain Restructure — Implementation Plan (2026-07-26, PRD v2.8)
+
+Driven by the client confirmation **“Systemlogik Fahrzeugeingabe”**. Business/data spec: `prd.json` v2.8 + `docs/archive/2026-07/prd-changelog-since-2026-07-26.md`. Visual contract: [`design-direction-board-remediation.md`](design-direction-board-remediation.md) “Vehicle domain restructure (V1–V6)”. Previous-state audit: [`design-direction-board-audit.md`](design-direction-board-audit.md) “v1.3 addendum”.
+
+### 10.1 Implementation sequencing (dependency-ordered)
+
+| Step | Work | Depends on | Notes |
+|---|---|---|---|
+| 1 | **Domain layer** — canonical constants (`VEHICLE_TYPES`, `TRANSPORT_TYPES`, `REGISTRATION_STATUSES`), normalizers, `requiresRedLicencePlates` policy, `validateVehicleForm`, label resolvers, compatibility boundary (`normalizeVehicleDomain`) | — | Must land first: every later step imports from it. Nothing downstream may re-implement a rule. |
+| 2 | **Persistence / seed + fixtures** — canonical seed values with all four matrix cases represented; approved vehicle types only | 1 | Do **not** write a destructive production migration — the two data blockers in §10.3 must be cleared first. |
+| 3 | **i18n** — EN/DE keys for all three vehicle types, the four category labels, both characteristics and the derived notice; retire old keys only after confirming zero `t()` references | 1 | Parity check (`_audit-i18n.js`) gates the step. German labels verbatim from the client source. |
+| 4 | **Shared component** — `DriverUI.RedPlatesRequiredNotice` in `driver-ui.jsx` | 1, 3 | **Must** live in the shared primitives module: `driver.jsx` and `admin.jsx` share one global lexical scope, so a same-named component declared in both silently resolves to whichever script loads last. |
+| 5 | **Admin Backend UI** — vehicle entry rebuild + job detail + jobs table + save-path rejection handling | 1, 3, 4 | |
+| 6 | **Driver PWA** — card, marketplace preview, booking dialog, complete order view, filter sheet, notification prefs, icon map | 1, 3, 4 | |
+| 7 | **Downstream outputs** — CSV export, transport-order summary text, order-edit audit/diff field list | 1 | |
+| 8 | **Tests + visual baselines** | 2–7 | Matrix + entry + approved-values-only + raw-JSX-leak guard + responsive; refresh visual baselines last. |
+| 9 | **Docs sync** | 1–8 | PRD + changelog + context pack + schema + logical model + design docs + i18n index. |
+
+### 10.2 Shared-component updates
+
+| Component | Change |
+|---|---|
+| `DriverUI.RedPlatesRequiredNotice` (**new**, `driver-ui.jsx`) | The single derived-notice component for **both** apps. Four variants: `tag`, `banner`, `admin-banner`, `admin-pill`. Accepts a `job` **or** explicit `registrationStatus`/`transportType` (the live admin form state is not yet a job). Renders nothing unless *Deregistered + Own axle*. |
+| `AuthStore` vehicle contract (**new exports**) | `VEHICLE_TYPES` · `TRANSPORT_TYPES` · `REGISTRATION_STATUSES` · `selectableVehicleTypes` · `normalizeVehicleType` · `isAcceptableVehicleTypeForWrite` · `normalizeTransportType` · `normalizeRegistrationStatus` · `isValidVin` · `isReadyToDriveApplicable` · `validateVehicleForm` · **`requiresRedLicencePlates`** / `jobRequiresRedLicencePlates` · `vehicleTypeLabel` / `transportTypeLabel` / `registrationStatusLabel` / `redPlatesRequiredLabel`. |
+| `Ic` vehicle icons (`driver.jsx`) | `VehicleCar` / `VehicleLightTruck` kept, **`VehicleTruck` added**; **`VehicleSuv` / `VehicleVan` / `VehicleClassic` deleted** with their types. The map covers exactly the three approved types. |
+| `VehicleFlagTags` (`driver.jsx`) | Gains `characteristicsOnly` so a detail view that already lists registration status as a row does not repeat it as a tag. |
+| Chip / segmented / input primitives | **Reused unchanged** — `.chip.actionable`, `.seg`, `.input`, standard focus ring. Only ARIA roles were added (`radiogroup`/`radio` for single-select, `aria-pressed` for the independent characteristics). |
+| Retired | `displayAxle` / `displayAxleAdmin` / `canonAxle` (three separate mapping tables) → the shared store resolvers. |
+
+### 10.3 Migration dependencies
+
+- **Safe and reversible now:** `axle_type` → `transport_type` (known 1:1 over every historical spelling); `PKW`/`Car` → `passenger_car`; drop `red_license_plates` **and** `red_license_plate_number` (no value is retained — back up first if production rows hold data); add `ready_to_drive default false`.
+- **BLOCKED on client approval — two data questions before the schema can tighten:**
+  1. `jobs.vehicle_type` becomes the `vehicle_type` **enum**. Any existing row holding SUV / Van / Transporter / Oldtimer / Classic / `LKW < 3,5t` has **no approved target value**, so the cast fails until the client supplies a mapping (or approves discarding those rows). Do not guess.
+  2. `vehicle_registration_status` becomes **`NOT NULL`**. Rows with a null status have no approved default — choosing one would fabricate a red-plate decision.
+- **No destructive migration is written until both are cleared.** The prototype already enforces approved-values-only because its store is seeded in memory; production data has not been surveyed against these blockers.
+- Full field-by-field table + rollback behaviour: `docs/database/logical-model.md` → “Migration notes (backend)”.
+
+### 10.4 Verification
+
+**Desktop / mobile / tablet.** Per §9 and the existing viewport policy — no separate tablet-only layout is introduced (explicit non-goal).
+
+| Viewport | Surfaces to verify |
+|---|---|
+| **Desktop 1440×1100** (Admin Backend) | Create/Edit Job vehicle section (all four category controls + derived banner), job detail, jobs table, assign/reassign dialogs, toast on `invalid_vehicle` |
+| **Mobile 375** (Driver PWA, primary) | Marketplace card tag row, marketplace preview, booking dialog, complete order view, filter sheet, notification prefs |
+| **Tablet (wider phone frame)** | Same driver surfaces — tag row wrap and banner reflow only; layout is fluid, not a distinct breakpoint |
+
+**Long-value cases to exercise at every viewport:** longest vehicle-type labels (`Truck up to and including 7.5 t` / `LKW bis einschließlich 7,5 t`), long `manufacturer model` pairs (`Mercedes-Benz Atego 7.5 t`), the wrapping warning strings (`Red licence plates required` / `Rote Kennzeichen erforderlich` + the detail sentence), and a 17-character VIN. Required outcome: content wraps, the page body **never** scrolls horizontally, and the price keeps its right position on the card footer.
+
+**Visual regression.** Affected baselines: admin job overview · job detail (draft + assigned) · new order form · edit order form · assign/reassign dialogs · admin toast · driver marketplace · marketplace locked detail · my jobs (active/performed/cancelled) · filter sheet · acceptance modal. Refresh **after** code is final (`npm run test:regression:visual:update`), both themes, and review each diff rather than blanket-accepting. The committed cross-machine `prototype-shell` baseline is intentionally left untouched.
+
+**Accessibility.** Single-select groups expose `role="radiogroup"` + `role="radio"` + `aria-checked`; the independent characteristics use `aria-pressed` (they are toggles, not a radio set) — this is what makes duplicate/contradictory selection impossible **by component design** rather than by validation. The VIN error sets `aria-invalid` + `aria-describedby`. The derived notice uses `role="status"` so it is announced when the combination changes, and is always **text-labelled** (never colour-alone). Keyboard pass, both themes, DE strings and axe-clean per the §9 Definition of Done. All controls are real `<button>`/`<select>` elements — the previous vehicle-type chips were clickable `<span>`s.
+
+**Downstream / document outputs.** CSV export gains `vehicleType`, `manufacturer`, `vehicleModel`, `licencePlate`, `vin`, `transportType`, `registrationStatus`, `electricVehicle`, `readyToDrive` and the derived `requiresRedLicencePlates` (replacing raw `vehicle`/`axle`). The transport-order summary text lists the four categories, both characteristics, and appends the red-plate requirement line **only** when derived true — and **never** a red-plate number. Any production PDF/email template rendering the old fields must be re-checked against this list.
+
+---
+
 ## Changelog
 
 - **v3.2 — 2026-07-23 (PR #17 — figma-comment adjustments).** Reflected from `driver.jsx`/`admin.jsx`/`styles.css` (merge `14526e9`): (1) **Swipe/paged tab navigation** — My Jobs and Infopoint tab bodies became a horizontal paged carousel (`SwipeViews`); a swipe pages between tabs while vertical scroll is preserved (§4.4, §7.2, §7.8; new `.swipe-*` CSS). Client-feedback request. (2) **Marketplace KPI row removed** at client request — Available / Booked / Open documents duplicated the My Jobs tab badges (§7.9; `.kpi-row`/`.kpi-chip` CSS + `kpi*` i18n now unused). (3) **Digit-only numeric inputs** — driver preferred-postal + Marketplace filter PLZ, and admin Create/Edit-Job postal/house-no/distance strip non-digits; phone fields allow a leading `+`; driver-offer allows one decimal separator; alternate-contact stays free text (§6.1, §7.7). Bug report. No token/DDB-contract changes.
+- **v3.3 — 2026-07-26.** New §10 **Vehicle Domain Restructure** implementation plan for PRD v2.8 (client confirmation “Systemlogik Fahrzeugeingabe”): dependency-ordered sequencing, shared-component updates (new `DriverUI.RedPlatesRequiredNotice` + the `AuthStore` vehicle contract; SUV/Van/Classic icons removed, neutral legacy fallback added), migration dependencies incl. the **blocked** legacy vehicle-type mapping, and desktop/mobile/tablet + visual-regression + accessibility + downstream-output verification. No new tokens: the derived red-licence-plate notice reuses the existing `--st-warn` / `--st-warn-bg` semantic pair (recorded in brand-tokens.md).
 - **v3.1 — 2026-07-21.** Post-remediation feature work reflected from `styles.css` (commits `3ef6597` Task 3, `1cdf1a7` Task 1): new §4.4 **Layout & scroll architecture** documenting the fixed-height app shell (pinned header, internally-scrolling driver/admin surfaces) and the sticky Create/Edit-Job form sidebars with the ≤1200px stack fallback; §7.7 Profile gains the driver-owned **Account & sign-in** credential card and self-service change-email flow. No token/behavior changes to the DDB remediation contract; the `--st-ok` verified-badge token is flagged as undefined in brand-tokens.md.
 - **v3.0 — 2026-07-14.** Incorporated the client **Design Direction Board (AUTHEON GmbH, July 2026)**: authority hierarchy rewritten (§0 — PRD behavior / board visuals / prototype as compliant reference / docs as contract); Inter Tight replaces Plus Jakarta Sans as primary UI font; typography re-based on 400/500/600 with 700+ as exception-only; purple active-navigation capsule requirement removed and replaced by the client's black/white/gray navigation direction ("no dominant purple navigation"); marketplace-card content, compensation placement, route line, conditional registered/deregistered/red-plate metadata (PRD scope guard), restrained KPI/header, restrained gradients, minimal micro-animations, moderate radius + subtle elevation added via canonical sections in brand-tokens/driver-screen-spec; status colors confirmed text-labelled and restrained; W6 remediation phase added from `design-direction-board-audit.md`. Accessibility, tokenization, reusable-component, async-state and visual-regression work from v2.0 is preserved; dark theme remains an internal extension that must not redefine the client's light-theme direction.
 - **v2.0 — 2026-07-10.** Original source-of-truth contract + prototype remediation plan (W1–W5).
