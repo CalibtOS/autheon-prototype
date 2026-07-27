@@ -99,7 +99,7 @@ Status changes vs the v1.0 matrix (implementation evidence in [`design-direction
 | 17 | PARTIAL | **COVERED** | Status pill on marketplace and My-Jobs cards |
 | 19 | NOT VERIFIABLE | **COVERED** | Registered/deregistered + electric-vehicle + red-plates resolved as optional V1 job fields (client direction 2026-07-14; `prd.json` → `resolved_defaults.vehicle_important_info_v1`, `schema.dbml` jobs columns + enum); rendered as text-labelled tags on cards/detail, editable in the admin job form Vehicle section |
 | 20 | COVERED | **COVERED+** | Route now the literal `City → City` text line from the PDF |
-| 22 | PARTIAL | **COVERED** | Restrained KPI row implemented (Available / Booked / Open documents) in the marketplace header |
+| 22 | PARTIAL | **COVERED → later REMOVED** | Restrained KPI row implemented (Available / Booked / Open documents), then removed at client request (2026-07, PR #17) — the counts duplicate the My Jobs tab badges. DDB marks KPIs as *may contain*, so absence stays compliant |
 
 New finding from the PDF: the **button board renders the primary button dark/near-black**, while §2 explicitly allows purple for "primäre CTAs". The prototype keeps purple primaries (allowed by §2); black-vs-purple primary buttons is recorded as a new client decision below.
 
@@ -115,6 +115,7 @@ Feature commits landed after the v1.1 remediation (`3ef6597` sticky sidebars + f
 | Account & sign-in verified badge (F3) | #10/#34 status text-labelled, not color-alone | **COVERED** | Dot + "Verified account" label always present; pending state is a text-labelled `.pill.assigned` |
 | Change-email code input (F4) | #4 mono only for data identifiers | **COVERED** | 6-box `CodeInput` uses `--font-mono` for a one-time code (a data identifier, like PLZ/timestamps) — consistent with the mono-usage rule |
 | Change-email sheet radii/focus (F4) | #13 moderate radius · #14 subtle elevation · focus ring | **COVERED** | `--r-2` boxes, brand focus ring `rgba(var(--primary-rgb),…)`; success disc is a restrained brand tint, not a large purple surface |
+| Swipe tab navigation + digit-only inputs + KPI-row removal (F5, PR #17 `14526e9`) | #22 restrained KPIs · #29 minimal motion · #30 reduced-motion | **COVERED / n/a to visuals** | My Jobs + Infopoint tabs became a paged swipe carousel (`SwipeViews`) — transform-only, reduced-motion safe (within #29/#30); the marketplace KPI row was **removed** (reverses item 22's "COVERED" — counts duplicated the My Jobs badges); numeric inputs (postal / house-no / distance / phone / money) restricted to digits. No color/type/token impact |
 
 **New gap:** the verified badge references `var(--st-ok, #1f9d55)` — `--st-ok` is **not defined** in the token set, so it falls back to a hardcoded green (an off-token hex, cf. audit item #6). Recommended action: define `--st-ok` (light + dark, contrast-checked) or reuse `--st-accepted`. Recorded in [`brand-tokens.md`](brand-tokens.md) status section. All other new rules stay within tokens.
 
