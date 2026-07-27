@@ -2286,6 +2286,16 @@ window.AuthStore = (() => {
     return ["pdf", "jpg", "jpeg", "png", "webp", "gif"].includes(ext);
   }
 
+  // 25 MB — the limit the driver PWA advertises on the upload dropzone
+  // ("Max. Dateigröße: 25 MB"). Enforced here so every upload path (camera
+  // photo, device file, PDF, admin off-channel registration) shares one rule.
+  const MAX_TOUR_DOCUMENT_BYTES = 25 * 1024 * 1024;
+
+  function exceedsTourDocumentSizeLimit(file) {
+    const size = file && typeof file.size === "number" ? file.size : 0;
+    return size > MAX_TOUR_DOCUMENT_BYTES;
+  }
+
   function nowStamp() {
     const d = new Date();
     const dd = String(d.getDate()).padStart(2, "0");
@@ -3159,6 +3169,8 @@ window.AuthStore = (() => {
     isValidSupportPhone,
     isValidSupportEmail,
     isAllowedTourDocumentFile,
+    exceedsTourDocumentSizeLimit,
+    MAX_TOUR_DOCUMENT_BYTES,
     jobWasEverCommitted,
 
     statusLabel: (s) => {
@@ -3919,6 +3931,7 @@ window.AuthStore = (() => {
       const evidence = [];
       for (const file of list) {
         if (!file || !isAllowedTourDocumentFile(file)) continue;
+        if (exceedsTourDocumentSizeLimit(file)) continue;
         const mime = (file.type || guessMimeFromName(file.name) || "").trim();
         const isImage = /^image\//i.test(mime);
         // Keep an in-session object URL for image evidence so the admin review
@@ -5294,6 +5307,8 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
+      if (exceedsTourDocumentSizeLimit(file))
+        return { ok: false, reason: "file_too_large" };
       const gate = api.canDriverUploadTourDocument(opts.jobId);
       if (!gate.ok) return gate;
       const jobId = gate.jobId;
@@ -5411,6 +5426,8 @@ window.AuthStore = (() => {
         if (!file) return { ok: false, reason: "no_file" };
         if (!isAllowedTourDocumentFile(file))
           return { ok: false, reason: "invalid_type" };
+        if (exceedsTourDocumentSizeLimit(file))
+          return { ok: false, reason: "file_too_large" };
         doc.fileName = file.name;
         doc.mimeType =
           (file.type || guessMimeFromName(file.name) || "").trim() ||
@@ -5513,6 +5530,8 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
+      if (exceedsTourDocumentSizeLimit(file))
+        return { ok: false, reason: "file_too_large" };
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false, reason: "not_found" };
       const jobId = doc.jobId;
@@ -5602,6 +5621,8 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
+      if (exceedsTourDocumentSizeLimit(file))
+        return { ok: false, reason: "file_too_large" };
       const dr = jobDriverRecord(j);
       const mime =
         (file.type || guessMimeFromName(file.name) || "").trim() ||
@@ -5656,6 +5677,8 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
+      if (exceedsTourDocumentSizeLimit(file))
+        return { ok: false, reason: "file_too_large" };
       const mime =
         (file.type || guessMimeFromName(file.name) || "").trim() ||
         "application/octet-stream";

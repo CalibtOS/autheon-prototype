@@ -92,8 +92,23 @@ Checked against the rendered `after/` captures:
 | F5 | Driver — My Jobs + Infopoint tabs | `.swipe-viewport`, `.swipe-track`, `.swipe-pane`, `.swipe-pane-body` | PR #17 client feedback — switch tabs by swipe, like a native app | Tabs switched on pill tap only | Paged carousel (`SwipeViews`): horizontal drag pages between tabs (adjacent pane peeks in, snaps on release), per-pane vertical scroll preserved (`touch-action: pan-y`); transform-only, reduced-motion safe | Prose in production plan §4.4/§7.2/§7.8 + driver-screen-spec.md |
 | F6 | Driver — Marketplace header | `.kpi-row`, `.kpi-chip` (now unused), `i18n.js` `kpi*` (now unused) | PR #17 client feedback — KPI counts duplicate the My Jobs tab badges | Quiet KPI chip row (Available / Booked / Open documents) — see R20 | **Removed** from the marketplace header; CSS + i18n left in place but unused (re-add only on client ask) | Reverses R20 / audit item 22 |
 | F7 | Driver (profile + filters) + Admin (Create/Edit Job) | inline `onChange` sanitizers; `inputMode` | PR #17 bug report — numeric fields must accept digits only | Free text accepted letters/symbols | Digits-only on input for postal code, house no., distance; phone + second phone allow a single leading `+`; driver-offer allows one decimal separator; alternate-contact left as free text (name) | No `styles.css` change — behavior only |
+| F8 | Driver — all document-upload entry points (tour-completion success modal, tour-detail **Tour documents** card, performed-tour **Meine Dokumente** tab) | `.upload-source-sheet`, `.upload-source-body`, `.upload-source-title`, `.upload-source-actions`, `.upload-source-action`, `.upload-source-icn`, `.upload-source-text`, `.upload-source-label`, `.upload-source-desc` | Stakeholder report (2026-07-27) — the upload control opened the camera directly, so a PDF invoice already on the device could not be attached. Audit v1.6 addendum U1–U4 | One shared hidden `<input type="file" capture="environment">` per screen; tapping the dropzone jumped straight into the camera; no size validation despite the advertised 25 MB | **Upload-source action sheet** between the document-type choice and the device: *Foto aufnehmen* (camera-capable input, `capture="environment"`, images only) and *Datei auswählen* (plain OS picker, no `capture`, `application/pdf` + supported images). Both actions live in one shared `UploadSourcePicker`; the 25 MB limit is now enforced on every store upload path | Reuses existing tokens only (see [`brand-tokens.md`](brand-tokens.md) "Component token map — driver document upload"); bottom sheet on the existing `.sheet` surface with safe-area padding; keyboard/Escape dismissible with focus return |
 
 *Task 2 (order cancellation / empty-run "Storno", commit `23d1b4e`) added no `styles.css` changes and is out of scope for this design-doc pass.*
+
+### F8 remediation status (2026-07-27)
+
+| Item | Status |
+|------|--------|
+| Generic upload control no longer opens the camera | **Implemented** — the `capture` attribute now exists only on the photo input inside `UploadSourcePicker` (`driver.jsx`) |
+| "Take photo" invokes camera capture | **Implemented** — `accept` limited to `image/jpeg,image/png,image/webp,image/gif` (+ extensions), `capture="environment"` for the rear camera; a PDF cannot be produced by this action |
+| "Choose file" invokes the device file picker | **Implemented** — no `capture` attribute, `accept="application/pdf,…"` so the OS shows stored documents |
+| PDF supported through file selection | **Implemented** — already accepted by the store/contract; the frontend interaction that hid it is fixed. PDFs render as a document row (extension badge + filename + size + accessible kind label), never in an `<img>` |
+| Existing image-upload behaviour preserved | **Implemented** — same store call, same validation, same success/error/replace/remove flow |
+| Shared document-upload flow reused | **Implemented** — one `UploadSourcePicker` + `UploadSourceSheet` pair used by all three entry points, including *Replace file* |
+| 25 MB limit enforced | **Implemented** — new store guard on add / replace / admin attach / admin register / patch-with-file / empty-run evidence; surfaced via the existing `InlineAlert` error tone |
+| Dismissal is a no-op | **Implemented** — cancelling the sheet or picker creates no attachment and shows no error |
+| Automated tests / visual baselines | **Not part of this change** — testing was explicitly out of scope |
 
 ---
 

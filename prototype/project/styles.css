@@ -4340,6 +4340,79 @@ select.input {
   margin: 6px 4px 0;
 }
 
+/* Upload-source action sheet — "Foto aufnehmen" vs. "Datei auswählen".
+   Bottom sheet so it reads as a source choice, not a form; the camera only
+   opens once the driver picks the photo action. Reuses the .sheet surface,
+   .category-group row rhythm and the paper/line/muted semantic tokens. */
+.phone-shell .upload-source-sheet {
+  padding-bottom: var(--phone-chrome-bottom);
+}
+.phone-shell .upload-source-body {
+  padding: 4px 20px 20px;
+  overflow-y: auto;
+  /* The tour-completion modal centres its text; the sheet must read the
+     same from every entry point. */
+  text-align: left;
+}
+.phone-shell .upload-source-title {
+  margin: 14px 4px 12px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.phone-shell .upload-source-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.phone-shell .upload-source-action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.phone-shell .upload-source-action:hover {
+  background: var(--canvas);
+}
+/* Focus ring comes from the global :focus-visible rule (--primary). */
+.phone-shell .upload-source-icn {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--canvas);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.phone-shell .upload-source-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.phone-shell .upload-source-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+.phone-shell .upload-source-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
 .limit-meter {
   margin-top: 12px;
 }

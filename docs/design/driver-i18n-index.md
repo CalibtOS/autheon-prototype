@@ -4,6 +4,10 @@
 > vehicle-domain label resolvers in `store.js`.
 > Regenerate: `node prototype/project/_export-driver-i18n.mjs`
 
+Supported languages: **EN** and **DE**. Every driver-facing string is looked up through `t()`;
+no language literal belongs in a component. Pluralized accessible names use `tPlural(key, count)`
+(resolving `<key>_one` / `<key>_other`) — see Marketplace filter keys below.
+
 ## Vehicle domain (client confirmation "Systemlogik Fahrzeugeingabe", 2026-07-26)
 
 Canonical value → key mapping. Labels are **never** hardcoded in a component; the
@@ -109,6 +113,30 @@ aria-label={count ? tPlural("filtersApplied", count) : t("filters")}
 
 ---
 
+## Document upload (source selection, 2026-07-27)
+
+The upload-source action sheet and the document rows use these keys. Where a concept already had a key,
+it was reused rather than duplicated.
+
+| Concept | Key | Note |
+|---------|-----|------|
+| Add document (sheet title) | `uploadSourceTitle` | new |
+| Take photo | `uploadSourcePhoto` | new |
+| Camera (photo action description) | `uploadSourcePhotoDesc` | new |
+| Choose file | `uploadSourceFile` | new |
+| Select PDF or image from device | `uploadSourceFileDesc` | new |
+| Unsupported file type | `invoiceUploadInvalidType` | existing, reused |
+| File too large | `invoiceUploadTooLarge` | new — mirrors the advertised 25 MB limit |
+| PDF document (accessible file kind) | `docKindPdf` (+ `docKindImage`, `docKindFile`) | new — the extension badge is decorative, so the kind is also exposed as text |
+| Upload failed | reason-specific keys via `tourDocUploadErrorMessage()`: `invoiceUploadInvalidType`, `invoiceUploadTooLarge`, `invoiceUploadRestricted`, `invoiceUploadNotYourTour`, `invoiceUploadTourRequired`, `tourDocRequiresPerformed`, `tourDocReplaceNotAllowed`, `tourDocReplaceNotOwner`, `tourDocOfficialNotReplaceable` | existing — there is deliberately no generic "upload failed" string; the driver always gets the actual reason |
+| Upload in progress | — | **no key**: the prototype store commits the attachment synchronously, so there is no progress state to label. Add one only when a real async upload lands |
+| Remove document | `removeDocTitle`, `removeDocBody`, `removeDocConfirm`, `removeDocBlocked` | existing, reused |
+| Replace document | `tourDocReplaceButton`, `tourDocReplaceNotAllowed`, `tourDocReplaceNotOwner` | existing, reused |
+| Upload succeeded | `tourDocUploadSuccess` | existing, reused |
+| Size/type hints on the dropzone | `performedUploadHintEmpty`, `myDocsUploadHint` | existing — must stay in sync with the enforced 25 MB limit |
+
+---
+
 ## All driver keys in use
 
 | Key | EN | DE |
@@ -177,6 +205,9 @@ aria-label={count ? tPlural("filtersApplied", count) : t("filters")}
 | `docEmergencyContacts` | Emergency contacts | Notfallkontakte |
 | `docGeneralWorkInstructions` | General work instructions | Allgemeine Arbeitsanweisungen |
 | `docImprint` | Imprint | Impressum |
+| `docKindFile` | File | Datei |
+| `docKindImage` | Image file | Bilddatei |
+| `docKindPdf` | PDF document | PDF-Dokument |
 | `docPrivacyPolicy` | Privacy policy | Datenschutzerklärung |
 | `docReviewAccepted` | Accepted | Akzeptiert |
 | `docReviewCorrectionRequired` | Correction required | Korrektur nötig |
@@ -249,6 +280,7 @@ aria-label={count ? tPlural("filtersApplied", count) : t("filters")}
 | `invoiceUploadInvalidType` | Only PDF or image files are accepted. | Nur PDF- oder Bilddateien sind erlaubt. |
 | `invoiceUploadNotYourTour` | You can only upload invoices for tours assigned to you. | Rechnungen können nur für Ihnen zugewiesene Touren hochgeladen werden. |
 | `invoiceUploadRestricted` | Uploads are unavailable while your account is restricted. | Upload nicht möglich, solange das Konto eingeschränkt ist. |
+| `invoiceUploadTooLarge` | File is too large. Max file size: 25 MB. | Datei ist zu groß. Max. Dateigröße: 25 MB. |
 | `invoiceUploadTourRequired` | Invoice upload must be linked to a valid tour. | Der Upload muss einer gültigen Tour zugeordnet sein. |
 | `jobDetailsTab` | Job details | Auftragsdetails |
 | `legal` | Legal | Rechtliches |
@@ -445,6 +477,11 @@ aria-label={count ? tPlural("filtersApplied", count) : t("filters")}
 | `unlockedAfterAcceptance` | Unlocked after acceptance | Nach Annahme freigeschaltet |
 | `until` | Until | Bis |
 | `untilDateChip` | Until {date} | Bis {date} |
+| `uploadSourceFile` | Choose file | Datei auswählen |
+| `uploadSourceFileDesc` | Select a PDF or image from your device | PDF oder Bild vom Gerät auswählen |
+| `uploadSourcePhoto` | Take photo | Foto aufnehmen |
+| `uploadSourcePhotoDesc` | Open the camera | Kamera öffnen |
+| `uploadSourceTitle` | Add document | Dokument hinzufügen |
 | `vatBankingReadonly` | Address · VAT · banking | Adresse · USt. · Bankdaten |
 | `vehicle` | Vehicle | Fahrzeug |
 | `vehicleCharacteristics` | Additional vehicle characteristics | Weitere Fahrzeugmerkmale |
