@@ -1130,29 +1130,40 @@ select.input {
 
 /* Tabbar Redesign Styles */
 .phone-shell .tabbar-container {
-  padding: 0 16px 20px;
-  /* Same as scroll canvas so the floating capsule has contrast (not white-on-white) */
-  background: var(--canvas);
-  flex-shrink: 0;
-  position: relative;
+  padding: 0 16px max(20px, calc(8px + env(safe-area-inset-bottom, 0px)));
+  /* Transparent ground — list content peeks around the floating capsule */
+  background: transparent;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 40;
+  pointer-events: none;
 }
-/* Board §H: white nav surface, fine border, subtle shadow; active/inactive
+/* Board §H: frosted nav surface, fine border, subtle shadow; active/inactive
    through black/gray contrast — dominant purple navigation is prohibited.
    Floating vs fixed geometry remains an open client decision (kept floating). */
 .phone-shell .tabbar-capsule {
   display: flex;
   align-items: stretch;
-  background: var(--paper);
+  pointer-events: auto;
+  background: color-mix(in srgb, var(--paper) 85%, transparent);
   border: 1px solid var(--line);
   border-radius: 24px;
   padding: 6px 8px;
   box-shadow:
     0 6px 20px color-mix(in srgb, var(--shadow-ink) 8%, transparent),
     0 1px 2px color-mix(in srgb, var(--shadow-ink) 5%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .phone-shell .tabbar-capsule {
+    background: var(--paper);
+  }
 }
 [data-theme="dark"] .phone-shell .tabbar-capsule {
-  background: var(--paper);
+  background: color-mix(in srgb, var(--paper) 78%, transparent);
   border-color: var(--line);
   box-shadow: var(--sh-2);
 }
@@ -5376,7 +5387,8 @@ select.input {
   margin: 0;
 }
 .scroll-body {
-  padding: 16px 18px 24px;
+  /* Extra bottom pad clears the absolute floating tab capsule */
+  padding: 16px 18px calc(24px + 72px + env(safe-area-inset-bottom, 0px));
   background: var(--canvas); /* client canvas #F5F5F7 (board §E) */
   flex: 1;
 }
