@@ -702,6 +702,65 @@ const Ic = {
       />
     </svg>
   ),
+  Lock: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect
+        x="4.5"
+        y="10.5"
+        width="15"
+        height="10"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M8 10.5V8a4 4 0 0 1 8 0v2.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="15.2" r="1.4" fill="currentColor" />
+    </svg>
+  ),
+  Globe: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M3 12h18M12 3c2.5 2.4 3.8 5.6 3.8 9S14.5 18.6 12 21C9.5 18.6 8.2 15.4 8.2 12S9.5 5.4 12 3Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  Chat: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 4v-4H6a2 2 0 0 1-2-2V6Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.5 10h.01M12 10h.01M15.5 10h.01"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
+  CheckCircle: () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="m8.2 12.4 2.6 2.6 5-5.4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
   N: {
     Tour: () => (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -4634,6 +4693,7 @@ const formatCalendarDayLabel = (dayKey) => {
 // 6-digit confirmation-code entry (auto-advance + paste support).
 const CODE_LEN = 6;
 const CodeInput = ({ value, onChange, disabled }) => {
+  const { t } = useI18n();
   const refs = useRef([]);
   const digits = String(value || "")
     .padEnd(CODE_LEN, " ")
@@ -4666,7 +4726,11 @@ const CodeInput = ({ value, onChange, disabled }) => {
   };
 
   return (
-    <div className="code-input-row" role="group" aria-label={CODE_LEN + "-digit code"}>
+    <div
+      className="code-input-row"
+      role="group"
+      aria-label={t("changeEmailCodeGroupLabel")}
+    >
       {Array.from({ length: CODE_LEN }, (_, i) => (
         <input
           key={i}
@@ -4678,7 +4742,7 @@ const CodeInput = ({ value, onChange, disabled }) => {
           maxLength={1}
           disabled={disabled}
           value={digits[i]}
-          aria-label={`Digit ${i + 1}`}
+          aria-label={t("changeEmailDigitLabel", { n: i + 1 })}
           onChange={(e) => setDigit(i, e.target.value)}
           onKeyDown={(e) => onKeyDown(i, e)}
           onFocus={(e) => e.target.select()}
@@ -4688,10 +4752,10 @@ const CodeInput = ({ value, onChange, disabled }) => {
   );
 };
 
-// Self-serve email change — a single bottom sheet advancing through
-// enter-new-address → confirm-with-code → updated. The address only becomes
-// active after the code sent to the NEW inbox is confirmed; the old inbox
-// stays live until then and is notified on success. No ops approval.
+// Self-serve email change — centered modal (same Sheet grammar as ConfirmSheet)
+// advancing enter-new-address → confirm-with-code → updated. The address only
+// becomes active after the code sent to the NEW inbox is confirmed; the old
+// inbox stays live until then and is notified on success. No ops approval.
 const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -4703,18 +4767,29 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
   const [confirmedEmail, setConfirmedEmail] = useState("");
   const [resendLeft, setResendLeft] = useState(0);
 
-  // Reset everything whenever the sheet opens.
+  // Open: resume a pending change at the code step so the driver cannot
+  // silently start a second flow over an in-flight verification.
   useEffect(() => {
-    if (open) {
-      setStep("enter");
-      setNewEmail("");
-      setCode("");
-      setError("");
-      setDemoCode("");
-      setConfirmedEmail("");
-      setResendLeft(0);
+    if (!open) return;
+    const pending = store.getDriverEmailChange()?.pending;
+    setCode("");
+    setError("");
+    setConfirmedEmail("");
+    if (pending?.newEmail) {
+      setStep("code");
+      setNewEmail(pending.newEmail);
+      setDemoCode(pending.code || "");
+      const elapsed = Date.now() - (pending.sentAt || 0);
+      setResendLeft(
+        Math.max(0, Math.ceil((store.EMAIL_CODE_RESEND_MS - elapsed) / 1000)),
+      );
+      return;
     }
-  }, [open]);
+    setStep("enter");
+    setNewEmail("");
+    setDemoCode("");
+    setResendLeft(0);
+  }, [open, store]);
 
   // Resend cooldown countdown.
   useEffect(() => {
@@ -4784,6 +4859,9 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
   if (step === "enter") {
     body = (
       <div className="stack-4" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <p className="section-hint" style={{ margin: 0 }}>
+          {t("accountSigninHint")}
+        </p>
         <div className="change-email-current">
           {t("changeEmailCurrentPrefix")} · <span className="mono">{currentEmail}</span>
         </div>
@@ -4812,14 +4890,19 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
       </div>
     );
     footer = (
-      <button
-        type="button"
-        className="btn primary block"
-        disabled={!newEmail.trim()}
-        onClick={sendCode}
-      >
-        {t("changeEmailSendCode")}
-      </button>
+      <>
+        <button type="button" className="btn ghost" onClick={close}>
+          {t("cancel")}
+        </button>
+        <button
+          type="button"
+          className="btn primary"
+          disabled={!newEmail.trim()}
+          onClick={sendCode}
+        >
+          {t("changeEmailSendCode")}
+        </button>
+      </>
     );
   } else if (step === "code") {
     title = t("changeEmailCodeTitle");
@@ -4829,16 +4912,26 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
           {t("changeEmailCodeSentTo", { email: newEmail })}
         </div>
         <CodeInput value={code} onChange={(v) => { setCode(v); if (error) setError(""); }} />
-        <div className="change-email-resend-row">
+        <div className="change-email-aux-row">
           {resendLeft > 0 ? (
-            <span className="section-hint">
+            <span className="section-hint change-email-resend-wait">
               {t("changeEmailResendIn", { time: mmss(resendLeft) })}
             </span>
           ) : (
-            <button type="button" className="btn ghost xs" onClick={resend}>
+            <button type="button" className="change-email-text-link" onClick={resend}>
               {t("changeEmailResend")}
             </button>
           )}
+          <button
+            type="button"
+            className="change-email-text-link"
+            onClick={() => {
+              setStep("enter");
+              setError("");
+            }}
+          >
+            {t("changeEmailBack")}
+          </button>
         </div>
         {demoCode ? (
           <InlineAlert tone="info" message={t("changeEmailDemoHint", { code: demoCode })} />
@@ -4848,15 +4941,8 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
     );
     footer = (
       <>
-        <button
-          type="button"
-          className="btn ghost"
-          onClick={() => {
-            setStep("enter");
-            setError("");
-          }}
-        >
-          {t("changeEmailBack")}
+        <button type="button" className="btn ghost" onClick={close}>
+          {t("cancel")}
         </button>
         <button
           type="button"
@@ -4886,7 +4972,14 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
   }
 
   return (
-    <Sheet open={open} onClose={close} title={title} footer={footer}>
+    <Sheet
+      open={open}
+      onClose={close}
+      title={title}
+      footer={footer}
+      centered
+      className="change-email-sheet"
+    >
       {body}
     </Sheet>
   );
@@ -5105,6 +5198,74 @@ function useTheme() {
 }
 window.AutheonTheme = { subscribe: subscribeTheme, useTheme };
 
+// Full-row navigation entry: left icon, label (+ optional supporting text),
+// trailing chevron. The whole row is a single accessible button.
+const ProfileNavRow = ({ icon: Icon, label, sub, onClick, rowId }) => (
+  <button
+    type="button"
+    className="profile-nav-row"
+    onClick={onClick}
+    data-profile-row={rowId}
+  >
+    <span className="profile-nav-row-icon" aria-hidden="true">
+      <Icon />
+    </span>
+    <span className="profile-nav-row-text">
+      <span className="profile-nav-row-label">{label}</span>
+      {sub ? <span className="profile-nav-row-sub">{sub}</span> : null}
+    </span>
+    <span className="profile-nav-row-chevron" aria-hidden="true">
+      <Ic.Chev />
+    </span>
+  </button>
+);
+
+// Labelled group of navigation rows (KONTO / EINSTELLUNGEN / HILFE).
+const ProfileGroup = ({ label, children }) => (
+  <section className="profile-group">
+    <h2 className="profile-group-label">{label}</h2>
+    <div className="section-card profile-nav-card">{children}</div>
+  </section>
+);
+
+// Deferred subpage shell (Feedback / Report an error): a visually complete
+// prototype form whose submit is intentionally inert — no backend workflow yet.
+const DeferredFormCard = ({ intro, placeholder, submitLabel, deferredNote }) => (
+  <div className="section-card">
+    <p className="section-hint" style={{ marginTop: 0 }}>
+      {intro}
+    </p>
+    <div className="stack-16">
+      <textarea className="input" rows={5} placeholder={placeholder} />
+    </div>
+    <button type="button" className="btn primary block stack-16" disabled>
+      {submitLabel}
+    </button>
+    <div className="stack-16">
+      <InlineAlert tone="info" message={deferredNote} />
+    </div>
+  </div>
+);
+
+// In-page back header for a drill-down subpage (mirrors pwa-detail-header).
+// The heading takes focus on entry (tabIndex -1) so a state-based drill-down
+// announces the new view instead of leaving focus stranded on <body>.
+const ProfileSubpageHeader = ({ title, backLabel, onBack, titleRef }) => (
+  <div className="pwa-detail-header profile-subpage-header">
+    <button
+      type="button"
+      className="detail-back-btn"
+      onClick={onBack}
+      aria-label={backLabel}
+    >
+      <Ic.Back />
+    </button>
+    <h1 className="detail-header-title" ref={titleRef} tabIndex={-1}>
+      {title}
+    </h1>
+    <div className="w-40-spacer" />
+  </div>
+);
 const ProfilePaneFull = () => {
   const { t, locale, setLocale } = useI18n();
   const store = useAuthStore();
@@ -5115,14 +5276,10 @@ const ProfilePaneFull = () => {
   const [postalText, setPostalText] = useState("");
   const [theme, setTheme] = useState(readStoredTheme);
   const postalAreas = prefs.postalAreas || [];
-  const isPwaSurface =
-    typeof document !== "undefined" &&
-    document.body.classList.contains("pwa-page");
 
   useEffect(() => {
-    if (!isPwaSurface) return;
     applyAppTheme(theme);
-  }, [theme, isPwaSurface]);
+  }, [theme]);
 
   const handleAddPostal = (val) => {
     const trimmed = val.trim();
@@ -5168,6 +5325,46 @@ const ProfilePaneFull = () => {
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [emailSheetOpen, setEmailSheetOpen] = useState(false);
   const emailChange = store.getDriverEmailChange();
+  // Drill-down navigation: null = main list; otherwise a subpage id.
+  // State-based routing mirrors the job-detail pattern (PwaDriverApp.activeJob),
+  // keeping the bottom tab bar visible on the Profile tab.
+  const [subpage, setSubpage] = useState(null);
+  const scrollBodyRef = useRef(null); // .scroll-body (shared by both views)
+  const listScrollTop = useRef(0); // list offset to restore when coming back
+  const lastSubpage = useRef(null); // row to re-focus when coming back
+  const subpageTitleRef = useRef(null);
+
+  // Swapping views by state alone leaves focus on <body>, so a keyboard or
+  // screen-reader user gets no announcement of the change and loses their place
+  // in the list (plan §7: every interactive element keeps a visible focus and an
+  // accessible name). Entering a subpage moves focus to its heading; returning
+  // restores the list offset and re-focuses the originating row.
+  //
+  // Both views render `.scroll-body` at the same position, so React reuses that
+  // one DOM node: its scrollTop survives the swap and has to be reset explicitly,
+  // or a subpage opens already scrolled down. The rows themselves *do* unmount,
+  // so the row is re-queried by data attribute rather than stored as a node.
+  const openSubpage = (id) => () => {
+    listScrollTop.current = scrollBodyRef.current?.scrollTop || 0;
+    lastSubpage.current = id;
+    setSubpage(id);
+  };
+
+  useEffect(() => {
+    const container = scrollBodyRef.current;
+    if (subpage) {
+      if (container) container.scrollTop = 0;
+      subpageTitleRef.current?.focus({ preventScroll: true });
+      return;
+    }
+    const returningFrom = lastSubpage.current;
+    if (!container || !returningFrom) return;
+    container.scrollTop = listScrollTop.current;
+    container
+      .querySelector(`[data-profile-row="${returningFrom}"]`)
+      ?.focus({ preventScroll: true });
+    lastSubpage.current = null;
+  }, [subpage]);
   const submitMasterDataRequest = () => {
     const r = store.requestMasterDataChange(mdForm);
     if (r.ok) {
@@ -5190,395 +5387,534 @@ const ProfilePaneFull = () => {
     });
   };
 
-  return (
-    <>
-      <div className="pwa-screen-header">
-        <h1 className="header-title">{t("profileTitle")}</h1>
-        <div className="header-subtitle">{t("profileSubtitle")}</div>
-      </div>
-      <div className="scroll scroll-body">
-        {/* Identity — header block, not a card (plan §7.7.1) */}
-        <div className="profile-identity">
-          <span className="avatar">
-            {d?.name
-              ? d.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-              : "JB"}
+  const initials = d?.name
+    ? d.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+    : "JB";
+  const statusActive = String(d?.status || "").toLowerCase() === "active";
+
+  // ---- Moved content (reused verbatim inside their drill-down subpages) ----
+
+  // Basic data → existing read-only master data + "Request a change" flow.
+  const masterDataCard = (
+    <div className="section-card mdr-card">
+      <div className="row-between">
+        <h2 className="section-title">{t("profileMasterData")}</h2>
+        {profileMode === "pending" ? (
+          <span className="pill assigned">
+            {t("masterDataChangePendingBadge")}
           </span>
-          <div className="flex-1-min-0">
-            <div className="profile-identity-name">
-              {d?.name}
-              {d?.status === "active" && (
-                <span
-                  className="profile-verified-badge"
-                  title={t("profileVerifiedAccount")}
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                  </svg>
-                </span>
-              )}
-            </div>
-            <div className="profile-identity-code">{d?.driverCode}</div>
-            <div className="stack-4">
-              <span className="pill accepted">
-                {displayDriverStatus(d?.status, t)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Account & sign-in — driver-owned credential, directly under the
-            identity block. Self-serve email change (verify, don't approve). */}
-        <div className="section-card account-signin-card">
-          <h2 className="section-title account-signin-title">
-            <span className="account-signin-key" aria-hidden="true">
-              🔑
-            </span>
-            {t("accountSigninTitle")}
-          </h2>
-          <div className="account-email-row">
-            <div className="mdr-field-label">{t("accountEmailLabel")}</div>
-            <div className="account-email-value">
-              <span className="account-email-address">{d?.email || "—"}</span>
-              {emailChange?.pending ? (
-                <span className="pill assigned account-email-badge">
-                  {t("accountEmailPending")}
-                </span>
-              ) : (
-                <span className="account-email-verified">
-                  <span className="dot" aria-hidden="true">
-                    ●
-                  </span>{" "}
-                  {t("accountEmailVerified")}
-                </span>
-              )}
-            </div>
-          </div>
-          <button
-            type="button"
-            className="btn block stack-16"
-            onClick={() => setEmailSheetOpen(true)}
-          >
-            {t("accountEmailChangeBtn")}
-          </button>
-        </div>
-
-        {/* Probation progress card (hidden after release) */}
-        <DriverProbationCard />
-
-        {/* Master Data Card */}
-        <div className="section-card mdr-card">
-          <div className="row-between">
-            <h2 className="section-title">{t("profileMasterData")}</h2>
-            {profileMode === "pending" ? (
-              <span className="pill assigned">
-                {t("masterDataChangePendingBadge")}
-              </span>
-            ) : null}
-          </div>
-          {profileMode === "pending" ? (
-            <div className="mdr-status-banner stack-12" role="status">
-              <strong>{t("masterDataChangePendingTitle")}</strong>
-              <div className="stack-4">
-                {t("masterDataChangePendingBody", { date: openMdr.createdAt })}
-              </div>
-            </div>
-          ) : (
-            <p className="section-hint">
-              {profileMode === "edit"
-                ? t("masterDataChangeFormHint")
-                : t("masterDataChangeNotice")}
-            </p>
-          )}
-          <div className="mdr-field-list stack-16">
-            {PROFILE_MDR_FIELDS.map(({ key, required, type }) => {
-              const label = t(key);
-              const current = d?.[key] || "";
-              const pendingBefore = openMdr?.snapshot?.[key] || "";
-              const pendingAfter = openMdr?.proposed?.[key] || "";
-              const changed =
-                profileMode === "pending" &&
-                fieldChanged(pendingBefore, pendingAfter);
-              const inputId = `profile-mdr-${key}`;
-              return (
-                <div
-                  key={key}
-                  className={`mdr-field-row${changed ? " is-changed" : ""}`}
-                >
-                  <label className="mdr-field-label" htmlFor={inputId}>
-                    {label}
-                    {required && profileMode === "edit" ? " *" : ""}
-                  </label>
-                  <div className="mdr-field-body">
-                    {profileMode === "edit" ? (
-                      <input
-                        id={inputId}
-                        className="input"
-                        type={type || "text"}
-                        value={mdForm[key]}
-                        onChange={(e) => setMdField(key, e.target.value)}
-                      />
-                    ) : profileMode === "pending" ? (
-                      <>
-                        <div
-                          className={`mdr-field-value${changed ? " is-new" : ""}`}
-                        >
-                          {pendingAfter || "—"}
-                          {changed ? (
-                            <span className="mdr-field-badge stack-4">
-                              {t("masterDataChangeUpdatedBadge")}
-                            </span>
-                          ) : null}
-                        </div>
-                        {changed ? (
-                          <div className="mdr-field-old">
-                            {pendingBefore || "—"}
-                          </div>
-                        ) : null}
-                      </>
-                    ) : (
-                      <div className="mdr-field-value">{current || "—"}</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            <div className="mdr-field-row">
-              <div className="mdr-field-label">{t("accountStatus")}</div>
-              <div className="mdr-field-body">
-                <div className="mdr-field-value">
-                  {displayDriverStatus(d?.status, t)}
-                </div>
-              </div>
-            </div>
-          </div>
-          {mdFeedback ? (
-            <div className="stack-12">
-              <InlineAlert
-                tone={mdFeedback.tone}
-                message={mdFeedback.message}
-                onDismiss={() => setMdFeedback(null)}
-              />
-            </div>
-          ) : null}
-          {profileMode === "view" ? (
-            <button
-              type="button"
-              className="btn block stack-16"
-              onClick={startProfileEdit}
-            >
-              {t("masterDataChangeEditBtn")}
-            </button>
-          ) : null}
-          {profileMode === "edit" ? (
-            <div
-              className="mdr-actions stack-16"
-              style={{ display: "flex", gap: 10 }}
-            >
-              <button
-                type="button"
-                className="btn ghost block"
-                onClick={() => {
-                  cancelProfileEdit();
-                  setMdFeedback(null);
-                }}
-              >
-                {t("masterDataChangeCancel")}
-              </button>
-              <button
-                type="button"
-                className="btn primary block"
-                onClick={submitMasterDataRequest}
-              >
-                {t("masterDataChangeSubmit")}
-              </button>
-            </div>
-          ) : null}
-          {profileMode === "pending" && openMdr?.note && !openMdr?.proposed ? (
-            <p className="section-hint" style={{ fontStyle: "italic" }}>
-              {openMdr.note}
-            </p>
-          ) : null}
-        </div>
-
-        {/* Preferences & Notification Card */}
-        <div className="section-card">
-          <h2 className="section-title">{t("notificationPreferences")}</h2>
-
-          <div
-            className="stack-12"
-            style={{ display: "flex", flexDirection: "column", gap: 4 }}
-          >
-            <label className="switch-row">
-              <span className="switch-row-text">{t("pushEnabledMaster")}</span>
-              <span className="switch-toggle-wrap">
-                <input
-                  type="checkbox"
-                  className="switch-toggle-input"
-                  checked={prefs.pushEnabled !== false}
-                  onChange={(e) => setPref({ pushEnabled: e.target.checked })}
-                />
-                <span className="switch-slider" />
-              </span>
-            </label>
-            <label className="switch-row">
-              <span className="switch-row-text">
-                {t("pushNotifyNewPublished")}
-              </span>
-              <span className="switch-toggle-wrap">
-                <input
-                  type="checkbox"
-                  className="switch-toggle-input"
-                  checked={prefs.notifyNewPublished !== false}
-                  onChange={(e) =>
-                    setPref({ notifyNewPublished: e.target.checked })
-                  }
-                />
-                <span className="switch-slider" />
-              </span>
-            </label>
-          </div>
-
-          <div className="stack-16">
-            <label className="field-label">{t("vehicleType")}</label>
-            <div className="stack-4">
-              {/* Notification preferences offer only the three approved
-                  vehicle types — removed types are not selectable. */}
-              <select
-                className="input"
-                value={prefs.vehicleType || "All"}
-                onChange={(e) => setPref({ vehicleType: e.target.value })}
-              >
-                {["All", ...AuthStore.selectableVehicleTypes()].map((x) => (
-                  <option key={x} value={x}>
-                    {displayVehicle(x, t)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="stack-16">
-            <label className="field-label">{t("transportType")}</label>
-            <div className="seg full">
-              {["All", ...AuthStore.TRANSPORT_TYPES].map((x) => (
-                <button
-                  key={x}
-                  type="button"
-                  className={(prefs.transportType || "All") === x ? "on" : ""}
-                  onClick={() => setPref({ transportType: x })}
-                >
-                  {displayTransportType(x, t)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="stack-16">
-            <label className="field-label" htmlFor="profile-postal-input">
-              {t("pushNotifyPostalPrefix")}
-            </label>
-            <div className="postal-chip-container stack-4">
-              {postalAreas.map((chip, idx) => (
-                <span key={idx} className="postal-chip">
-                  {chip}
-                  <button
-                    type="button"
-                    className="postal-chip-delete"
-                    onClick={() => removePostal(idx)}
-                    aria-label={`Remove postal code ${chip}`}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-              <input
-                id="profile-postal-input"
-                type="text"
-                className="postal-chip-input"
-                value={postalText}
-                inputMode="numeric"
-                maxLength={5}
-                onChange={(e) =>
-                  setPostalText(e.target.value.replace(/\D/g, ""))
-                }
-                onKeyDown={handleKeyDown}
-                onBlur={handleBlur}
-                placeholder={
-                  postalAreas.length === 0 ? t("pushPostalPrefixHint") : ""
-                }
-              />
-            </div>
-          </div>
-          <div className="stack-16">
-            <InlineAlert tone="info" message={t("pushSupportNotice")} />
-          </div>
-        </div>
-
-        {isPwaSurface ? (
-          <div className="section-card">
-            <h2 className="section-title">{t("appAppearance")}</h2>
-            <p className="section-hint">{t("appAppearanceHint")}</p>
-            <div className="stack-16">
-              <label className="field-label">{t("appLanguage")}</label>
-              <div className="seg full" role="group" aria-label={t("appLanguage")}>
-                <button
-                  type="button"
-                  className={locale === "en" ? "on" : ""}
-                  aria-pressed={locale === "en"}
-                  onClick={() => setLocale("en")}
-                >
-                  English
-                </button>
-                <button
-                  type="button"
-                  className={locale === "de" ? "on" : ""}
-                  aria-pressed={locale === "de"}
-                  onClick={() => setLocale("de")}
-                >
-                  Deutsch
-                </button>
-              </div>
-            </div>
-            <div className="stack-16">
-              <label className="field-label">{t("appTheme")}</label>
-              <div className="seg full" role="group" aria-label={t("appTheme")}>
-                <button
-                  type="button"
-                  className={theme === "light" ? "on" : ""}
-                  aria-pressed={theme === "light"}
-                  onClick={() => setTheme("light")}
-                >
-                  {t("themeLight")}
-                </button>
-                <button
-                  type="button"
-                  className={theme === "dark" ? "on" : ""}
-                  aria-pressed={theme === "dark"}
-                  onClick={() => setTheme("dark")}
-                >
-                  {t("themeDark")}
-                </button>
-              </div>
-            </div>
-          </div>
         ) : null}
-
+      </div>
+      {profileMode === "pending" ? (
+        <div className="mdr-status-banner stack-12" role="status">
+          <strong>{t("masterDataChangePendingTitle")}</strong>
+          <div className="stack-4">
+            {t("masterDataChangePendingBody", { date: openMdr.createdAt })}
+          </div>
+        </div>
+      ) : (
+        <p className="section-hint">
+          {profileMode === "edit"
+            ? t("masterDataChangeFormHint")
+            : t("masterDataChangeNotice")}
+        </p>
+      )}
+      <div className="mdr-field-list stack-16">
+        {PROFILE_MDR_FIELDS.map(({ key, required, type }) => {
+          const label = t(key);
+          const current = d?.[key] || "";
+          const pendingBefore = openMdr?.snapshot?.[key] || "";
+          const pendingAfter = openMdr?.proposed?.[key] || "";
+          const changed =
+            profileMode === "pending" &&
+            fieldChanged(pendingBefore, pendingAfter);
+          const inputId = `profile-mdr-${key}`;
+          return (
+            <div
+              key={key}
+              className={`mdr-field-row${changed ? " is-changed" : ""}`}
+            >
+              <label className="mdr-field-label" htmlFor={inputId}>
+                {label}
+                {required && profileMode === "edit" ? " *" : ""}
+              </label>
+              <div className="mdr-field-body">
+                {profileMode === "edit" ? (
+                  <input
+                    id={inputId}
+                    className="input"
+                    type={type || "text"}
+                    value={mdForm[key]}
+                    onChange={(e) => setMdField(key, e.target.value)}
+                  />
+                ) : profileMode === "pending" ? (
+                  <>
+                    <div
+                      className={`mdr-field-value${changed ? " is-new" : ""}`}
+                    >
+                      {pendingAfter || "—"}
+                      {changed ? (
+                        <span className="mdr-field-badge stack-4">
+                          {t("masterDataChangeUpdatedBadge")}
+                        </span>
+                      ) : null}
+                    </div>
+                    {changed ? (
+                      <div className="mdr-field-old">
+                        {pendingBefore || "—"}
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="mdr-field-value">{current || "—"}</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        <div className="mdr-field-row">
+          <div className="mdr-field-label">{t("accountStatus")}</div>
+          <div className="mdr-field-body">
+            <div className="mdr-field-value">
+              {displayDriverStatus(d?.status, t)}
+            </div>
+          </div>
+        </div>
+      </div>
+      {mdFeedback ? (
+        <div className="stack-12">
+          <InlineAlert
+            tone={mdFeedback.tone}
+            message={mdFeedback.message}
+            onDismiss={() => setMdFeedback(null)}
+          />
+        </div>
+      ) : null}
+      {profileMode === "view" ? (
         <button
           type="button"
-          className="btn destructive-outline block stack-16"
-          onClick={() => setSignOutOpen(true)}
+          className="btn block stack-16"
+          onClick={startProfileEdit}
         >
-          <Ic.Logout /> {t("signOut")}
+          {t("masterDataChangeEditBtn")}
         </button>
+      ) : null}
+      {profileMode === "edit" ? (
+        <div
+          className="mdr-actions stack-16"
+          style={{ display: "flex", gap: 10 }}
+        >
+          <button
+            type="button"
+            className="btn ghost block"
+            onClick={() => {
+              cancelProfileEdit();
+              setMdFeedback(null);
+            }}
+          >
+            {t("masterDataChangeCancel")}
+          </button>
+          <button
+            type="button"
+            className="btn primary block"
+            onClick={submitMasterDataRequest}
+          >
+            {t("masterDataChangeSubmit")}
+          </button>
+        </div>
+      ) : null}
+      {profileMode === "pending" && openMdr?.note && !openMdr?.proposed ? (
+        <p className="section-hint" style={{ fontStyle: "italic" }}>
+          {openMdr.note}
+        </p>
+      ) : null}
+    </div>
+  );
+
+  // Notification settings → existing push/vehicle/axle/postal controls.
+  const notificationsCard = (
+    <div className="section-card">
+      <div
+        className="stack-12"
+        style={{ display: "flex", flexDirection: "column", gap: 4 }}
+      >
+        <label className="switch-row">
+          <span className="switch-row-text">{t("pushEnabledMaster")}</span>
+          <span className="switch-toggle-wrap">
+            <input
+              type="checkbox"
+              className="switch-toggle-input"
+              checked={prefs.pushEnabled !== false}
+              onChange={(e) => setPref({ pushEnabled: e.target.checked })}
+            />
+            <span className="switch-slider" />
+          </span>
+        </label>
+        <label className="switch-row">
+          <span className="switch-row-text">
+            {t("pushNotifyNewPublished")}
+          </span>
+          <span className="switch-toggle-wrap">
+            <input
+              type="checkbox"
+              className="switch-toggle-input"
+              checked={prefs.notifyNewPublished !== false}
+              onChange={(e) =>
+                setPref({ notifyNewPublished: e.target.checked })
+              }
+            />
+            <span className="switch-slider" />
+          </span>
+        </label>
       </div>
+
+      <div className="stack-16">
+        <label className="field-label">{t("vehicleType")}</label>
+        <div className="stack-4">
+          <select
+            className="input"
+            value={prefs.vehicle || "All"}
+            onChange={(e) => setPref({ vehicle: e.target.value })}
+          >
+            {["All", "PKW", "SUV", "Van", "Light truck <3.5t"].map((x) => (
+              <option key={x} value={x}>
+                {displayVehicle(x, t)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="stack-16">
+        <label className="field-label">{t("axle")}</label>
+        <div className="seg full">
+          {["All", "Own axle", "Third-party axle"].map((x) => (
+            <button
+              key={x}
+              type="button"
+              className={(prefs.axle || "All") === x ? "on" : ""}
+              onClick={() => setPref({ axle: x })}
+            >
+              {displayAxle(x, t)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="stack-16">
+        <label className="field-label" htmlFor="profile-postal-input">
+          {t("pushNotifyPostalPrefix")}
+        </label>
+        <div className="postal-chip-container stack-4">
+          {postalAreas.map((chip, idx) => (
+            <span key={idx} className="postal-chip">
+              {chip}
+              <button
+                type="button"
+                className="postal-chip-delete"
+                onClick={() => removePostal(idx)}
+                aria-label={t("removePostalCode", { code: chip })}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          <input
+            id="profile-postal-input"
+            type="text"
+            className="postal-chip-input"
+            value={postalText}
+            inputMode="numeric"
+            maxLength={5}
+            onChange={(e) => setPostalText(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+            placeholder={
+              postalAreas.length === 0 ? t("pushPostalPrefixHint") : ""
+            }
+          />
+        </div>
+      </div>
+      <div className="stack-16">
+        <InlineAlert tone="info" message={t("pushSupportNotice")} />
+      </div>
+    </div>
+  );
+
+  // Appearance and language → reused theme control + language DROPDOWN.
+  const appearanceCard = (
+    <div className="section-card">
+      <p className="section-hint" style={{ marginTop: 0 }}>
+        {t("appAppearanceHint")}
+      </p>
+      <div className="stack-16">
+        <label className="field-label" htmlFor="profile-language-select">
+          {t("appLanguage")}
+        </label>
+        <select
+          id="profile-language-select"
+          className="input"
+          value={locale}
+          onChange={(e) => setLocale(e.target.value)}
+        >
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+      <div className="stack-16">
+        <label className="field-label">{t("appTheme")}</label>
+        <div className="seg full" role="group" aria-label={t("appTheme")}>
+          <button
+            type="button"
+            className={theme === "light" ? "on" : ""}
+            aria-pressed={theme === "light"}
+            onClick={() => setTheme("light")}
+          >
+            {t("themeLight")}
+          </button>
+          <button
+            type="button"
+            className={theme === "dark" ? "on" : ""}
+            aria-pressed={theme === "dark"}
+            onClick={() => setTheme("dark")}
+          >
+            {t("themeDark")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Deferred shells — visually complete, no submission/validation/backend.
+  const passwordCard = (
+    <div className="section-card">
+      <p className="section-hint" style={{ marginTop: 0 }}>
+        {t("profilePasswordIntro")}
+      </p>
+      <div className="stack-16">
+        <label className="field-label" htmlFor="profile-pw-current">
+          {t("profilePasswordCurrent")}
+        </label>
+        <input
+          id="profile-pw-current"
+          className="input"
+          type="password"
+          autoComplete="current-password"
+        />
+      </div>
+      <div className="stack-16">
+        <label className="field-label" htmlFor="profile-pw-new">
+          {t("profilePasswordNew")}
+        </label>
+        <input
+          id="profile-pw-new"
+          className="input"
+          type="password"
+          autoComplete="new-password"
+        />
+      </div>
+      <div className="stack-16">
+        <label className="field-label" htmlFor="profile-pw-confirm">
+          {t("profilePasswordConfirm")}
+        </label>
+        <input
+          id="profile-pw-confirm"
+          className="input"
+          type="password"
+          autoComplete="new-password"
+        />
+      </div>
+      <button type="button" className="btn primary block stack-16" disabled>
+        {t("profilePasswordSubmit")}
+      </button>
+      <div className="stack-16">
+        <InlineAlert tone="info" message={t("profilePasswordDeferred")} />
+      </div>
+    </div>
+  );
+
+  const feedbackCard = (
+    <DeferredFormCard
+      intro={t("profileFeedbackIntro")}
+      placeholder={t("profileFeedbackPlaceholder")}
+      submitLabel={t("profileFeedbackSubmit")}
+      deferredNote={t("profileFeedbackDeferred")}
+    />
+  );
+
+  const reportErrorCard = (
+    <DeferredFormCard
+      intro={t("profileReportErrorIntro")}
+      placeholder={t("profileReportErrorPlaceholder")}
+      submitLabel={t("profileReportErrorSubmit")}
+      deferredNote={t("profileReportErrorDeferred")}
+    />
+  );
+
+  const SUBPAGES = {
+    masterData: { title: t("profileNavBasicData"), body: masterDataCard },
+    password: { title: t("profileNavChangePassword"), body: passwordCard },
+    notifications: {
+      title: t("profileNavNotifications"),
+      body: notificationsCard,
+    },
+    appearance: { title: t("profileNavAppearance"), body: appearanceCard },
+    feedback: { title: t("profileNavFeedback"), body: feedbackCard },
+    reportError: { title: t("profileNavReportError"), body: reportErrorCard },
+  };
+  const activeSub = subpage ? SUBPAGES[subpage] : null;
+
+  return (
+    <>
+      {activeSub ? (
+        <>
+          <ProfileSubpageHeader
+            title={activeSub.title}
+            backLabel={t("profileBackLabel")}
+            onBack={() => setSubpage(null)}
+            titleRef={subpageTitleRef}
+          />
+          <div className="scroll scroll-body" ref={scrollBodyRef}>
+            {activeSub.body}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="pwa-screen-header">
+            <h1 className="header-title">{t("profileTitle")}</h1>
+          </div>
+          <div className="scroll scroll-body" ref={scrollBodyRef}>
+            {/* Identity card — avatar, name, partner id */}
+            <div className="section-card profile-identity-card">
+              <span className="avatar">{initials}</span>
+              <div className="flex-1-min-0">
+                <div className="profile-identity-name">{d?.name}</div>
+                <div className="profile-identity-partner">
+                  {t("profilePartnerId")}: {d?.driverCode}
+                </div>
+              </div>
+            </div>
+
+            {/* Probation progress — second on the main list while on probation */}
+            <DriverProbationCard />
+
+            {/* Summary card — status, joined, log out */}
+            <div className="section-card profile-summary-card">
+              <div className="profile-summary-row">
+                <span
+                  className={`profile-summary-icon${statusActive ? " is-status" : ""}`}
+                  aria-hidden="true"
+                >
+                  <Ic.CheckCircle />
+                </span>
+                <span className="profile-summary-text">
+                  <span className="profile-summary-label">
+                    {t("accountStatus")}
+                  </span>
+                  <span
+                    className={`profile-summary-value${statusActive ? " is-active" : ""}`}
+                  >
+                    {displayDriverStatus(d?.status, t)}
+                  </span>
+                </span>
+              </div>
+              <div className="profile-summary-row">
+                <span className="profile-summary-icon" aria-hidden="true">
+                  <Ic.Calendar />
+                </span>
+                <span className="profile-summary-text">
+                  <span className="profile-summary-label">
+                    {t("profileDateJoined")}
+                  </span>
+                  <span className="profile-summary-value">
+                    {d?.joinedAt || "—"}
+                  </span>
+                </span>
+              </div>
+              <button
+                type="button"
+                className="profile-summary-row profile-summary-action"
+                onClick={() => setSignOutOpen(true)}
+              >
+                <span className="profile-summary-icon" aria-hidden="true">
+                  <Ic.Logout />
+                </span>
+                <span className="profile-summary-text">
+                  <span className="profile-summary-action-label">
+                    {t("signOut")}
+                  </span>
+                </span>
+                <span className="profile-nav-row-chevron" aria-hidden="true">
+                  <Ic.Chev />
+                </span>
+              </button>
+            </div>
+
+            <ProfileGroup label={t("profileGroupAccount")}>
+              <ProfileNavRow
+                icon={Ic.TabUser}
+                label={t("profileNavBasicData")}
+                sub={t("profileNavBasicDataSub")}
+                rowId="masterData"
+                onClick={openSubpage("masterData")}
+              />
+              <ProfileNavRow
+                icon={Ic.Mail}
+                label={t("profileNavChangeEmail")}
+                sub={
+                  emailChange?.pending
+                    ? t("accountEmailPending")
+                    : d?.email || "—"
+                }
+                rowId="changeEmail"
+                onClick={() => setEmailSheetOpen(true)}
+              />
+              <ProfileNavRow
+                icon={Ic.Lock}
+                label={t("profileNavChangePassword")}
+                rowId="password"
+                onClick={openSubpage("password")}
+              />
+            </ProfileGroup>
+
+            <ProfileGroup label={t("profileGroupSettings")}>
+              <ProfileNavRow
+                icon={Ic.Bell}
+                label={t("profileNavNotifications")}
+                rowId="notifications"
+                onClick={openSubpage("notifications")}
+              />
+              <ProfileNavRow
+                icon={Ic.Globe}
+                label={t("profileNavAppearance")}
+                rowId="appearance"
+                onClick={openSubpage("appearance")}
+              />
+            </ProfileGroup>
+
+            <ProfileGroup label={t("profileGroupHelp")}>
+              <ProfileNavRow
+                icon={Ic.Chat}
+                label={t("profileNavFeedback")}
+                rowId="feedback"
+                onClick={openSubpage("feedback")}
+              />
+              <ProfileNavRow
+                icon={Ic.Alert}
+                label={t("profileNavReportError")}
+                rowId="reportError"
+                onClick={openSubpage("reportError")}
+              />
+            </ProfileGroup>
+
+            <div className="profile-version">
+              {t("profileAppVersion", { version: "1.2.0" })}
+            </div>
+          </div>
+        </>
+      )}
 
       <ChangeEmailSheet
         open={emailSheetOpen}
