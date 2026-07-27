@@ -172,7 +172,6 @@
     transparent
   );
 }
-}
 
 [data-theme="dark"] {
   --brand-accent: #8f5bff;
