@@ -275,6 +275,7 @@ const PolicyDisclosure = ({ introKey = "partnerTermsApply" }) => {
 
 const tourDocUploadErrorMessage = (reason, t) => {
   if (reason === "invalid_type") return t("invoiceUploadInvalidType");
+  if (reason === "file_too_large") return t("invoiceUploadTooLarge");
   if (reason === "driver_restricted") return t("invoiceUploadRestricted");
   if (reason === "job_not_performed" || reason === "job_not_uploadable")
     return t("tourDocRequiresPerformed");
@@ -619,6 +620,40 @@ const Ic = {
       >
         PDF
       </text>
+    </svg>
+  ),
+  // Upload-source action sheet (camera vs. device file picker).
+  Camera: () => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2a1 1 0 0 0 .84-.46l.92-1.42A1 1 0 0 1 9.3 4.7h5.4a1 1 0 0 1 .84.42l.92 1.42a1 1 0 0 0 .84.46h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-9z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="13" r="3.6" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  ),
+  FolderFile: () => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M13.5 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8.5L13.5 3z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.5 3v4a1.5 1.5 0 0 0 1.5 1.5h4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.5 12.5h7M8.5 16h4.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   ),
   Eye: () => (
@@ -2352,9 +2387,169 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
   return portalTarget ? ReactDOM.createPortal(sheet, portalTarget) : sheet;
 };
 
+// =========================================================================
+// UPLOAD SOURCE SELECTION
+// -------------------------------------------------------------------------
+// Every driver document upload goes through this pair. The generic upload
+// control must never open the camera by itself — it opens the action sheet,
+// and only the explicit "Take photo" action clicks the capture input.
+// =========================================================================
+
+// Device file picker: PDF plus the image types the store accepts
+// (store.js -> isAllowedTourDocumentFile). No capture attribute, so the OS
+// shows files already stored on the device.
+const DOC_FILE_ACCEPT =
+  "application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif";
+// Camera capture: images only — a PDF can never come out of this input.
+const DOC_PHOTO_ACCEPT =
+  "image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif";
+
+const UploadSourceSheet = ({ open, onClose, onTakePhoto, onChooseFile }) => {
+  const { t } = useI18n();
+  const firstActionRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    document.addEventListener("keydown", onKey);
+    firstActionRef.current?.focus();
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="sheet-backdrop" onClick={onClose} role="presentation">
+      <div
+        className="sheet upload-source-sheet"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="upload-source-title"
+      >
+        <div className="grabber" aria-hidden="true"></div>
+        <div className="upload-source-body">
+          <h2 id="upload-source-title" className="upload-source-title">
+            {t("uploadSourceTitle")}
+          </h2>
+          <div className="upload-source-actions">
+            <button
+              ref={firstActionRef}
+              type="button"
+              className="upload-source-action touch-target"
+              onClick={onTakePhoto}
+            >
+              <span className="upload-source-icn">
+                <Ic.Camera />
+              </span>
+              <span className="upload-source-text">
+                <span className="upload-source-label">
+                  {t("uploadSourcePhoto")}
+                </span>
+                <span className="upload-source-desc">
+                  {t("uploadSourcePhotoDesc")}
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              className="upload-source-action touch-target"
+              onClick={onChooseFile}
+            >
+              <span className="upload-source-icn">
+                <Ic.FolderFile />
+              </span>
+              <span className="upload-source-text">
+                <span className="upload-source-label">
+                  {t("uploadSourceFile")}
+                </span>
+                <span className="upload-source-desc">
+                  {t("uploadSourceFileDesc")}
+                </span>
+              </span>
+            </button>
+          </div>
+          <button
+            type="button"
+            className="btn block touch-target mt-20"
+            onClick={onClose}
+          >
+            {t("cancel")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Shared picker: action sheet + the two hidden inputs. Stays mounted while
+// the sheet is closed so the native picker can be opened from a ref, and
+// resets `value` on every change so re-picking the same file still fires.
+const UploadSourcePicker = ({ open, onClose, onFile, returnFocusRef }) => {
+  const photoInputRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const busyRef = useRef(false);
+
+  const openInput = (ref) => {
+    // Guards against a double tap opening two native pickers.
+    if (busyRef.current) return;
+    busyRef.current = true;
+    onClose?.();
+    window.setTimeout(() => {
+      busyRef.current = false;
+      ref.current?.click();
+    }, 0);
+  };
+
+  const onChange = (e) => {
+    const f = e.target.files?.[0] || null;
+    e.target.value = "";
+    // A dismissed picker usually fires no event at all; if it does, treat it
+    // as a no-op — never create an empty attachment or an upload error.
+    if (!f) {
+      returnFocusRef?.current?.focus?.();
+      return;
+    }
+    onFile?.(f);
+  };
+
+  const dismiss = () => {
+    onClose?.();
+    returnFocusRef?.current?.focus?.();
+  };
+
+  return (
+    <>
+      <UploadSourceSheet
+        open={open}
+        onClose={dismiss}
+        onTakePhoto={() => openInput(photoInputRef)}
+        onChooseFile={() => openInput(fileInputRef)}
+      />
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept={DOC_PHOTO_ACCEPT}
+        capture="environment"
+        className="hidden"
+        onChange={onChange}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={DOC_FILE_ACCEPT}
+        className="hidden"
+        onChange={onChange}
+      />
+    </>
+  );
+};
+
 // Document-type chooser — used by the tour-documents card and the
 // mark-performed success screen. Grouped per client feedback: core /
-// operational / other.
+// operational / other. Runs BEFORE the upload-source sheet above.
 const TourDocCategoryModal = ({ open, onClose, onPick }) => {
   const { t } = useI18n();
   if (!open) return null;
@@ -2475,6 +2670,17 @@ const FileTypeBadge = ({ fileName }) => (
   </span>
 );
 
+// The extension badge is decorative, so the document kind is also exposed as
+// text for screen readers — a PDF must never read as just an unnamed icon.
+const docKindLabel = (doc, t) => {
+  const mime = String(doc?.mimeType || "").toLowerCase();
+  const ext = String(doc?.fileName || "").split(".").pop().toLowerCase();
+  if (mime === "application/pdf" || ext === "pdf") return t("docKindPdf");
+  if (/^image\//.test(mime) || ["jpg", "jpeg", "png", "webp", "gif"].includes(ext))
+    return t("docKindImage");
+  return t("docKindFile");
+};
+
 // Driver document row (Figma 8:2387): ext badge · name + size ·
 // type right-aligned · remove (only while the upload is not yet reviewed).
 const MyDocRow = ({ doc, onRemove, t }) => (
@@ -2484,7 +2690,10 @@ const MyDocRow = ({ doc, onRemove, t }) => (
       <div className="mydoc-name" title={doc.fileName}>
         {doc.fileName}
       </div>
-      <div className="mydoc-size">{F().formatFileSize(doc.sizeBytes)}</div>
+      <div className="mydoc-size">
+        <span className="sr-only">{docKindLabel(doc, t)} · </span>
+        {F().formatFileSize(doc.sizeBytes)}
+      </div>
     </div>
     <div className="mydoc-side">
       <div className="mydoc-type">
@@ -2691,13 +2900,13 @@ const JobOfficialTourDocuments = ({ job, onPreview }) => {
 const JobTourDocuments = ({ job, onPreview }) => {
   const { t } = useI18n();
   const store = useAuthStore();
-  const inputRef = useRef(null);
-  const replaceInputRef = useRef(null);
+  const uploadBtnRef = useRef(null);
   const jobId = job.id;
   const uploadGate = store.canDriverUploadTourDocument(jobId);
   const canUpload = uploadGate.ok;
   const uploads = store.getDriverTourDocumentsForJob(jobId);
   const [categoryModal, setCategoryModal] = useState(false);
+  const [sourceOpen, setSourceOpen] = useState(false);
   const [pendingType, setPendingType] = useState(null);
   const [replaceDocId, setReplaceDocId] = useState(null);
   const [feedback, setFeedback] = useState(null);
@@ -2716,14 +2925,13 @@ const JobTourDocuments = ({ job, onPreview }) => {
       return;
     }
     setFeedback(null);
+    setReplaceDocId(null);
     setPendingType(documentType);
     setCategoryModal(false);
-    inputRef.current?.click();
+    setSourceOpen(true);
   };
 
-  const onPick = (e) => {
-    const f = e.target.files?.[0];
-    e.target.value = "";
+  const onPick = (f) => {
     if (!f) return;
     if (replaceDocId) {
       const r = store.replaceTourDocument(replaceDocId, f);
@@ -2745,9 +2953,10 @@ const JobTourDocuments = ({ job, onPreview }) => {
       return;
     }
     setFeedback(null);
+    setPendingType(null);
     setReplaceDocId(docId);
     setCategoryModal(false);
-    replaceInputRef.current?.click();
+    setSourceOpen(true);
   };
 
   const canReplaceDoc = (u) =>
@@ -2778,6 +2987,7 @@ const JobTourDocuments = ({ job, onPreview }) => {
       />
       {canUpload ? (
         <button
+          ref={uploadBtnRef}
           type="button"
           className="btn touch-target tour-doc-upload-btn"
           onClick={() => setCategoryModal(true)}
@@ -2785,20 +2995,11 @@ const JobTourDocuments = ({ job, onPreview }) => {
           <Ic.Plus /> {t("tourDocUploadReceiptButton")}
         </button>
       ) : null}
-      <input
-        ref={inputRef}
-        type="file"
-        capture="environment"
-        accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
-        className="hidden"
-        onChange={onPick}
-      />
-      <input
-        ref={replaceInputRef}
-        type="file"
-        accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
-        className="hidden"
-        onChange={onPick}
+      <UploadSourcePicker
+        open={sourceOpen}
+        onClose={() => setSourceOpen(false)}
+        onFile={onPick}
+        returnFocusRef={uploadBtnRef}
       />
       {uploads.length > 0 ? (
         <div className="tour-doc-list">
@@ -2904,16 +3105,15 @@ const JobUnlocked = ({
   const [docsPendingType, setDocsPendingType] = useState(null);
   const [docsFeedback, setDocsFeedback] = useState(null);
   const [removeDocId, setRemoveDocId] = useState(null);
-  const docsInputRef = useRef(null);
+  const [docsSourceOpen, setDocsSourceOpen] = useState(false);
+  const docsUploadBtnRef = useRef(null);
 
   const docsPickType = (documentType) => {
     setDocsCategoryOpen(false);
     setDocsPendingType(documentType);
-    docsInputRef.current?.click();
+    setDocsSourceOpen(true);
   };
-  const docsOnFile = (e) => {
-    const f = e.target.files?.[0];
-    e.target.value = "";
+  const docsOnFile = (f) => {
     if (!f || !docsPendingType) return;
     const r = store.addTourDocument(f, {
       jobId: job.id,
@@ -3393,6 +3593,7 @@ const JobUnlocked = ({
       {showDocsTab && (
         <div className="pwa-unlocked-bottom mydocs-upload-bar">
           <button
+            ref={docsUploadBtnRef}
             type="button"
             className="btn primary"
             onClick={() => setDocsCategoryOpen(true)}
@@ -3404,13 +3605,11 @@ const JobUnlocked = ({
       )}
       {showDocsTab && (
         <>
-          <input
-            ref={docsInputRef}
-            type="file"
-            capture="environment"
-            accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
-            className="hidden"
-            onChange={docsOnFile}
+          <UploadSourcePicker
+            open={docsSourceOpen}
+            onClose={() => setDocsSourceOpen(false)}
+            onFile={docsOnFile}
+            returnFocusRef={docsUploadBtnRef}
           />
           <TourDocCategoryModal
             open={docsCategoryOpen}
@@ -4320,7 +4519,8 @@ const MarkPerformedSheet = ({ job, onClose }) => {
   const [pendingType, setPendingType] = useState(null);
   const [uploadFeedback, setUploadFeedback] = useState(null);
   const [removeId, setRemoveId] = useState(null);
-  const inputRef = useRef(null);
+  const [sourceOpen, setSourceOpen] = useState(false);
+  const dropzoneRef = useRef(null);
   const uploads = store.getDriverTourDocumentsForJob(job.id);
 
   const confirmRemove = () => {
@@ -4342,12 +4542,10 @@ const MarkPerformedSheet = ({ job, onClose }) => {
   const pickType = (documentType) => {
     setCategoryOpen(false);
     setPendingType(documentType);
-    inputRef.current?.click();
+    setSourceOpen(true);
   };
 
-  const onPickFile = (e) => {
-    const f = e.target.files?.[0];
-    e.target.value = "";
+  const onPickFile = (f) => {
     if (!f || !pendingType) return;
     const r = store.addTourDocument(f, {
       jobId: job.id,
@@ -4449,6 +4647,7 @@ const MarkPerformedSheet = ({ job, onClose }) => {
           </h3>
           <p className="performed-success-body">{t("performedSuccessBody")}</p>
           <button
+            ref={dropzoneRef}
             type="button"
             className="performed-upload-drop touch-target"
             onClick={() => setCategoryOpen(true)}
@@ -4494,13 +4693,11 @@ const MarkPerformedSheet = ({ job, onClose }) => {
         >
           {t("performedDone")}
         </button>
-        <input
-          ref={inputRef}
-          type="file"
-          capture="environment"
-          accept="application/pdf,image/jpeg,image/png,image/webp,image/gif,.pdf,.jpg,.jpeg,.png,.webp,.gif"
-          className="hidden"
-          onChange={onPickFile}
+        <UploadSourcePicker
+          open={sourceOpen}
+          onClose={() => setSourceOpen(false)}
+          onFile={onPickFile}
+          returnFocusRef={dropzoneRef}
         />
         <TourDocCategoryModal
           open={categoryOpen}

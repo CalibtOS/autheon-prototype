@@ -279,9 +279,9 @@ audit item 43 — resolving it requires a product decision on week boundaries.
 
 Source of truth: Figma file `CgaMrN7nmXS8xub0RxyzsJ` — nodes `8:2268` (details tab), `8:2387` (My documents tab), `8:2545` (remove confirmation), `8:2663`/`8:2567` (performed success, empty / with uploads).
 
-- **Mark performed** opens `MarkPerformedSheet`: slide-to-confirm stage (tour summary card, protective copy, Cancel) → on slide, the store transition runs and the **success stage** appears: green disc check (`--st-accepted` disc, white check, `--st-accepted-bg` ring), "Tour performed successfully.", upload guidance with explicit skip option, dashed **Click to upload** dropzone (hint: `Max file size: 25 MB` when empty, file-type hint once uploads exist), document rows, Done.
+- **Mark performed** opens `MarkPerformedSheet`: slide-to-confirm stage (tour summary card, protective copy, Cancel) → on slide, the store transition runs and the **success stage** appears: green disc check (`--st-accepted` disc, white check, `--st-accepted-bg` ring), "Tour performed successfully.", upload guidance with explicit skip option, dashed **Click to upload** dropzone (hint: `Max file size: 25 MB` when empty, file-type hint once uploads exist), document rows, Done. Activating the dropzone opens the document-type picker and then the **upload-source sheet** — see "Document upload — source selection" below. It never opens the camera.
 - **Performed tour detail** gets tab pills under the header: inactive = white pill, fine `--line` outline; active = `--ink` fill with `--paper` text (board §H contrast, no purple); My documents carries a count badge.
-- **My documents tab**: clean rows — `FileTypeBadge` (40×48, `--muted-2` file shape with folded corner, uppercase extension), filename + size, document type right-aligned, review-status pill only when the document left the `uploaded` state, × remove. Fixed bottom action bar with `Upload document` (design-system `btn primary`, radius `--r-2` — **not** the Figma pill shape) + file-type hint. Upload reuses the grouped `TourDocCategoryModal`.
+- **My documents tab** ("Meine Dokumente"): clean rows — `FileTypeBadge` (40×48, `--muted-2` file shape with folded corner, uppercase extension), filename + size, document type right-aligned, review-status pill only when the document left the `uploaded` state, × remove. Fixed bottom action bar with `Upload document` (design-system `btn primary`, radius `--r-2` — **not** the Figma pill shape) + file-type hint. Upload reuses the grouped `TourDocCategoryModal` and then the shared **upload-source sheet** — identical behaviour to the tour-completion dropzone.
 - **Remove document** (`RemoveDocModal`): red-tinted trash icon (`--st-cancelled-bg`/`--st-cancelled`), title/body copy, Cancel + Remove. Remove follows the app's **outline danger** convention (board §I) instead of Figma's filled red. Store rule: `removeDriverTourDocument` allows removal only while `reviewStatus === "uploaded"` — reviewed documents are audit-relevant and can only be replaced.
 - **Marketplace preview Route card** (locked detail): city + 8px dot (`--primary` start, `--ink` end), dashed `--line-dash` connectors both sides of a centered distance (14/600) over estimated duration (12, muted), PLZ beneath each city. Marketplace **cards** keep the original arrow route line.
 - Deliberate deviations from the Figma mocks: no `docx` in the accepted-types hint (store accepts PDF + images only), no simulated failed-upload/Retry row (prototype uploads resolve synchronously), review-status pills added to rows (PRD requires visible correction needs).
@@ -289,7 +289,105 @@ Source of truth: Figma file `CgaMrN7nmXS8xub0RxyzsJ` — nodes `8:2268` (details
 
 ---
 
+## Document upload — source selection (2026-07-27)
+
+> **The general upload control must not open the camera directly. The camera is opened only after the driver
+> chooses the photo-capture action.**
+
+One shared implementation, `UploadSourcePicker` + `UploadSourceSheet` (`driver.jsx`), serves **every** Driver PWA
+document-upload entry point. Do not add a second upload implementation.
+
+### Entry points
+
+| Entry point | Control | Component |
+|-------------|---------|-----------|
+| Tour-completion success modal | dashed **Click to upload** / *Zum Hochladen tippen* dropzone | `MarkPerformedSheet` |
+| Tour detail → **Tour documents** card | `Upload document / receipt` button, and **Replace file** on an existing row | `JobTourDocuments` |
+| Performed tour → **Meine Dokumente** tab | fixed bottom `Upload document` bar | job-detail documents tab |
+
+### Flow
+
+1. Driver activates the upload control (tap, or keyboard Enter/Space — it is a real `<button>`).
+2. `TourDocCategoryModal` asks for the **document type** (invoice, fuel receipt, toll receipt, delivery note,
+   waiting-time evidence, other receipt, other proof). *Replace file* skips this step — the type is inherited.
+3. The **upload-source bottom sheet** opens. Nothing device-side has happened yet.
+4. The driver picks a source; the sheet closes and only then is the matching hidden input clicked.
+
+### Source sheet
+
+Bottom sheet on the standard `.sheet` surface (grabber, `--paper`, `--line`, ≤24px radius), title
+`uploadSourceTitle` ("Add document" / "Dokument hinzufügen"), two full-width action rows, then Cancel.
+
+| Action | Keys | Input |
+|--------|------|-------|
+| **Take photo** / *Foto aufnehmen* | `uploadSourcePhoto` + `uploadSourcePhotoDesc` ("Open the camera" / "Kamera öffnen") | `accept="image/jpeg,image/png,image/webp,image/gif"` (+ extensions), `capture="environment"` |
+| **Choose file** / *Datei auswählen* | `uploadSourceFile` + `uploadSourceFileDesc` ("Select a PDF or image from your device" / "PDF oder Bild vom Gerät auswählen") | `accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"` (+ extensions), **no `capture`** |
+
+Each row is icon + label + one-line description; the label carries the meaning, the icon never does. Rows are
+`.touch-target` (≥44px), 10px apart, and visually distinct from the Cancel button.
+
+### Camera behaviour
+
+- **Mobile browser / PWA:** *Take photo* opens the camera-capable flow with the rear camera preferred;
+  *Choose file* opens the device file picker and can select PDFs.
+- **Desktop:** *Choose file* opens the normal desktop file picker. *Take photo* follows whatever the browser
+  supports for `capture`; where direct capture is unavailable the browser falls back to its normal picker —
+  the upload flow continues unchanged rather than erroring.
+- No platform sniffing, no `navigator.mediaDevices` / `getUserMedia`: standards-based file inputs only.
+
+### Supported file types and size
+
+- Accepted everywhere: `application/pdf`, `image/jpeg`, `image/png`, `image/webp`, `image/gif`.
+  *Take photo* is images-only — a PDF can never come from that action.
+- Validation is MIME-first with an extension fallback (`isAllowedTourDocumentFile`, `store.js`) — never extension
+  alone.
+- **Maximum file size: 25 MB**, identical for captured photos, existing images and PDFs. Enforced in the store on
+  every upload path (driver add, driver replace, admin attach/register, patch-with-file, empty-run evidence), not
+  only in the picker's `accept`. The advertised hints (`performedUploadHintEmpty`, `myDocsUploadHint`) and the
+  enforced limit must be changed together.
+- **Single file per selection** — no `multiple` attribute. The source sheet simply reappears for the next document.
+
+### PDF representation
+
+A PDF is shown as a document, never as an image: `FileTypeBadge` renders the uppercase extension (`PDF`), with
+filename, size and review state beside it. The badge is `aria-hidden`, so the kind is additionally exposed as text
+(`docKindPdf` / `docKindImage` / `docKindFile`) for screen readers. PDFs are never placed in an `<img>`, and the
+driver is never asked to photograph one. Opening a row uses the existing in-PWA `DocumentPreviewSheet`
+(pdf.js canvas rendering).
+
+### Cancellation
+
+Dismissing the source sheet (Cancel, backdrop tap, Escape) or the OS picker is a **no-op**: no attachment row is
+created, no error is shown, the screen is unchanged.
+
+### Error states
+
+Failures surface through the existing `InlineAlert` on the host screen, mapped from typed store reasons by
+`tourDocUploadErrorMessage()` — unsupported type (`invoiceUploadInvalidType`), too large
+(`invoiceUploadTooLarge`), restricted account, not-your-tour, tour-not-uploadable, not replaceable, not owner,
+official document not replaceable. There is no generic "upload failed" string; the driver always gets the reason.
+
+### Accessibility
+
+- The upload control stays a focusable `<button>`; Enter/Space opens the source sheet.
+- The sheet is `role="dialog" aria-modal="true"` labelled by `#upload-source-title`; focus moves to the first
+  action on open, Escape closes it, and focus returns to the upload control on dismissal.
+- Both actions have translated accessible names (text, not icon-only).
+- Selected filename, file kind, size and review state are all readable text.
+- Errors are announced through the existing `InlineAlert` mechanism.
+
+### Mobile / desktop layout & stacking
+
+Mobile-first bottom sheet with `padding-bottom: env(safe-area-inset-bottom)`. It renders inside the host screen's
+overlay tree, so within the tour-completion modal it correctly paints **above** the modal panel (same pattern as
+`TourDocCategoryModal`) instead of being trapped behind it. A double tap cannot open two pickers — the picker
+guards re-entry while a native dialog is being opened.
+
+---
+
+
 ## Account & sign-in (self-service email change, 2026-07; nav IA 2026-07-27)
+
 
 Driver-owned sign-in email lives under the Profile **Account** group as a `ProfileNavRow` (`profileNavChangeEmail`, `Ic.Mail`, subline = current email or "Change pending"). It is **not** a drill-down subpage and **not** a standalone credential card. Master data stays "request changes" (ops approval); the **sign-in email is self-service** — verify-not-approve.
 

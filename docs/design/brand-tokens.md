@@ -239,6 +239,37 @@ Because the notice is always **text-labelled** it satisfies the never-color-only
 
 ---
 
+## Component token map — driver document upload (2026-07-27)
+
+The upload-source action sheet (*Foto aufnehmen* / *Datei auswählen*) introduced **no new tokens**. Every surface,
+border, icon and state below resolves to an existing semantic alias, which is why the sheet themes correctly in
+light and dark without its own palette.
+
+| Element | CSS | Token(s) | Class |
+|---------|-----|----------|-------|
+| Upload dropzone border (tour completion) | `.performed-upload-drop` | `--line-dash` (1px dashed), radius `--r-3` | [INTERNAL] |
+| Upload dropzone background | `.performed-upload-drop` | `--paper`; hover `--paper-2` | [CLIENT] |
+| Upload dropzone icon disc | `.performed-upload-icn` | `--canvas` fill, `--text` glyph | [CLIENT] |
+| Upload dropzone CTA / hint text | `.performed-upload-cta` / `.performed-upload-hint` | `--text` / `--muted-2` | [CLIENT] / [INTERNAL] |
+| Action-sheet surface | `.sheet` + `.upload-source-sheet` | `--paper`, 1px `--line`, sheet radius 24px (≤ the 24px sheet cap) | [CLIENT] |
+| Action-sheet scrim | `.sheet-backdrop` | `--scrim-ink` at 45% | [INTERNAL] |
+| Action-sheet grabber | `.sheet .grabber` | `--line-3` | [INTERNAL] |
+| Action-row spacing | `.upload-source-actions` | 10px gap, 14px/16px row padding (4pt scale), min touch target 44px via `.touch-target` | — |
+| Action row surface / border | `.upload-source-action` | `--paper` on `--line`, radius 12px (`--r-3` equivalent); hover `--canvas` | [CLIENT] |
+| Action icon disc (camera / file) | `.upload-source-icn` | `--canvas` fill, `--text` glyph — same treatment as the dropzone disc | [CLIENT] |
+| Action label / description | `.upload-source-label` / `.upload-source-desc` | `--text` 600 / `--muted` | [CLIENT] |
+| Selected-document row | `.mydoc-row` | `--paper` on `--line`; filename `--text`, size + kind `--muted` | [CLIENT] |
+| PDF / document representation | `.doc-file-badge`, `Ic.Pdf` | Neutral badge on `--paper-2`, `currentColor` glyph — **never** an `<img>` thumbnail | [INTERNAL] |
+| Focus state | global `:where(button, [role="button"], a):focus-visible` | `--primary` 2px outline, 2px offset, `--r-1` | [CLIENT] |
+| Error state (unsupported type, too large) | `InlineAlert` tone `error` | `--st-cancelled` family | [INTERNAL] |
+| Success state (upload accepted) | `InlineAlert` tone `success` | `--st-accepted` family | [INTERNAL] |
+| Upload-progress state | — | **Not applicable in the prototype** — the store commits the attachment synchronously, so there is no determinate progress affordance to tokenize. If production adds one, reuse `--primary` on `--paper-3` (the existing `.limit-meter` treatment) rather than introducing a token. |
+
+Safe-area: the sheet adds `padding-bottom: var(--phone-chrome-bottom)` (`env(safe-area-inset-bottom)`), matching the
+other bottom-anchored driver surfaces.
+
+---
+
 ## Do / Don't
 
 **Do**

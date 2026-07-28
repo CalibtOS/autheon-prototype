@@ -1,4 +1,4 @@
-# PRD changelog: 2026-07-26 / 2026-07-27 (v2.6 → v2.9)
+# PRD changelog: 2026-07-26 / 2026-07-27 (v2.6 → v2.10)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
@@ -6,13 +6,14 @@
 
 ## Merge resolution
 
-Two parallel feature branches were based on PRD v2.6 and both independently claimed version v2.7. The merged canonical sequence is:
+Three feature streams converged on PRD v2.6+ and independently claimed overlapping version numbers. The merged canonical sequence is:
 
 - **v2.7:** Driver PWA Figma-comment adjustments and numeric-input validation fix.
 - **v2.8:** Vehicle-domain restructuring from the confirmed “Systemlogik Fahrzeugeingabe” requirements.
 - **v2.9:** Marketplace applied-filter count badge (documentation + hardening; no data-model change).
+- **v2.10:** Driver PWA document-upload source selection and 25 MB enforcement (2026-07-27).
 
-No requirement from either branch was discarded.
+No requirement from any branch was discarded. Document upload is **v2.10** because it lands after v2.9 and is UI/validation-only — it stacks on top of the vehicle-domain state and the filter-badge requirement without altering schema or attachment contracts.
 
 ---
 
@@ -349,6 +350,84 @@ Tracked as item 43 in [`../../design/design-direction-board-audit.md`](../../des
 | `tests/` | Unit, integration, E2E and visual-regression specs |
 
 **Not touched:** `docs/database/schema.dbml`, `docs/database/logical-model.md`, migrations, backend entities, DTOs, API payloads.
+
+## PRD v2.10 — Document upload source selection
+
+**Baseline:** PRD v2.8 (2026-07-26, vehicle-domain restructuring)
+**Source:** Stakeholder comment on the tour-completion upload screen ("Tour erfolgreich durchgeführt." → *Zum Hochladen tippen* / *Max. Dateigröße: 25 MB*), reported against the Driver PWA prototype with a screenshot of that dropzone.
+
+Scope note: the deliverable is an updated **clickable prototype** plus updated **requirements/design docs**. Backend behaviour remains **simulated** in the prototype and captured here as requirements for the dev team.
+
+This change is **UI/UX + validation only** — no schema, status-model or attachment-contract change — so it takes a **minor v2.10** bump.
+
+---
+
+## 1. Document upload asks for a source before it opens anything [v2.10]
+
+**Previous behaviour (v2.8):** every Driver PWA document-upload control ended in a single hidden
+`<input type="file" capture="environment">`. Because `capture` was set on the one shared input, activating the
+upload area jumped straight into the device camera. The accept list already contained `application/pdf`, but on a
+phone the camera-capture intent wins, so the OS document browser was effectively unreachable — a service partner
+whose invoice was already saved as a PDF could not select it and would have had to photograph the PDF on screen.
+
+**New behaviour (v2.9):** the upload control opens an explicit **source action sheet** after the document-type
+choice, and nothing device-side happens until the driver picks one of two actions:
+
+| Action | German label | Behaviour |
+|--------|--------------|-----------|
+| Take photo | *Foto aufnehmen* | Camera-capable input, `capture="environment"` (rear camera preferred), accept restricted to the supported image types — a PDF can never come out of this action. |
+| Choose file | *Datei auswählen* | Normal OS file picker, **no** `capture` attribute, accept `application/pdf` plus the supported image MIME types — files already stored on the device are selectable. |
+
+Cancelling the sheet or the picker is a no-op: no empty attachment, no upload error, screen unchanged.
+
+- Affected entry points, all served by the **same** shared component: the tour-completion success modal
+  (`MarkPerformedSheet`), the tour-detail **Tour documents** card (`JobTourDocuments`, including *Replace file*),
+  and the performed-tour **Meine Dokumente** tab.
+- Accepted types are unchanged and stay aligned front-to-back: `application/pdf`, `image/jpeg`, `image/png`,
+  `image/webp`, `image/gif`.
+- Single-file selection is preserved — no `multiple` attribute was added.
+
+### 2. The advertised 25 MB limit is now actually enforced [v2.10]
+
+**Previous behaviour (v2.8):** the dropzone advertised *Max. Dateigröße: 25 MB* / *JPG, PNG oder PDF (max. 25 MB)*,
+but no upload path validated file size. The displayed limit and the enforced limit had drifted apart.
+
+**New behaviour (v2.9):** 25 MB is enforced in the store for **every** upload path — driver add, driver replace,
+admin attach/register, admin patch-with-file, and empty-run evidence — and applies identically to captured photos,
+existing image files and PDFs. Oversize files are rejected with the existing inline error UI
+(`invoiceUploadTooLarge`). The limit itself is unchanged; only the missing enforcement was added.
+
+### PRD file changes
+
+- **`prd.json`** → **v2.10**: `version` string prepended with the v2.10 entry (old v2.8 head demoted to a `[v2.8]`
+  tag); **Task 27** acceptance criterion on camera capture reworded (camera only via the explicit photo action) and
+  **9 new acceptance criteria** added (source choice, photo action, file action, size parity + dual-side
+  validation, cancellation is a no-op, PDF-as-document representation, shared component, mobile/stacking/a11y
+  requirements, no duplicate uploads on double activation); **Task 11** gained one cross-reference criterion for
+  the tour-completion upload; `resolved_defaults.camera_and_document_helpers` rewritten; two new resolved defaults
+  (`document_upload_source_selection_v1`, `document_upload_max_file_size_v1`); **1 new
+  `client_feedback_resolved` entry**.
+- **Design docs** synced the same day: `driver-screen-spec.md`, `driver-i18n-index.md`, `brand-tokens.md`,
+  `design-direction-board-audit.md`, `design-direction-board-remediation.md`, `ui-ux-production-plan.md`.
+- **Context pack** synced: `docs/product/autheon-context-pack.md`.
+
+### Deliberately unchanged
+
+- **`docs/database/schema.dbml` and `docs/database/logical-model.md`.** The attachment model is already generic:
+  `job_documents` carries the business document type and review state, `document_files` carries
+  `original_filename`, `mime_type`, `file_size_bytes`, `sha256` and `storage_key`, and `upload_assets` is the
+  binary source of truth. Nothing is image-specific — no image URL field, no required image dimensions, no
+  image-only entity — so PDFs are representable today and no migration is needed.
+- The **upload endpoint contract**. PDFs were already an accepted type; only the frontend interaction that made
+  them unreachable changed.
+- The **25 MB value**, the accepted file-type list, the document-type taxonomy, the review workflow, and the
+  single-attachment-per-selection behaviour.
+
+### Not part of this task
+
+No automated tests, E2E specs, Storybook stories or visual-regression baselines were added — testing was
+explicitly out of scope for this change.
+
 
 ---
 

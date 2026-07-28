@@ -1,6 +1,6 @@
 # AUTHEON — Design Direction Board Compliance Audit
 
-> **Status:** v1.5 — 2026-07-27. Audit of the prototype implementation against the client **Design Direction Board — AUTHEON GmbH, July 2026** (DDB). See the **v1.1 addendum** (the original PDF arrived after the v1.0 audit and closed several items), the **v1.2 addendum** (post-remediation feature components), the **v1.3 addendum** (vehicle-entry audit), the **v1.4 addendum** (primary-screen header consistency, items 36–38, from the 2026-07-26 client Figma review), and the **v1.5 addendum** (Marketplace applied-filter visibility, items 39–43).
+> **Status:** v1.6 — 2026-07-27. Audit of the prototype implementation against the client **Design Direction Board — AUTHEON GmbH, July 2026** (DDB). See the **v1.1 addendum** (the original PDF arrived after the v1.0 audit and closed several items), the **v1.2 addendum** (post-remediation feature components), the **v1.3 addendum** (vehicle-entry audit), the **v1.4 addendum** (primary-screen header consistency, items 36–38, from the 2026-07-26 client Figma review), the **v1.5 addendum** (Marketplace applied-filter visibility, items 39–43), and the **v1.6 addendum** (document-upload source selection, U1–U4).
 > **Source:** v1.0 used the DDB requirement extract (sections A–J); v1.1 verified against the original client PDF, now in the repository at [`../../Design Direction Board.pdf`](../../Design%20Direction%20Board.pdf) (7 pages, DE, by Taner Özdemir / Carolina Offermanns).
 > **Authority:** `docs/requirements/prd.json` = behavior · DDB = client visual direction · this audit = gap record. See [`ui-ux-production-plan.md`](ui-ux-production-plan.md) §0.
 > **Evidence:** Code references are `path:line` against the pre-remediation state (commit `cae3a8a` working tree). Rendered evidence in [`audit-2026-07-14/before/`](audit-2026-07-14/before/) — driver captured as the 392×800 phone frame inside a 1440×1000 viewport (the prototype's demo frame; production target is 375px), admin at 1440×1000. Light + dark themes.
@@ -222,6 +222,33 @@ and `driver-marketplace-filter-{1,3}-*.png`.
 Remediation for 40–42 is tracked as **R32** in
 [`design-direction-board-remediation.md`](design-direction-board-remediation.md). Item 43 remains
 open.
+
+## v1.6 addendum — document-upload source selection (2026-07-27)
+
+**Task evidence:** stakeholder comment on the Driver PWA tour-completion screen, supplied as a screenshot of the
+success modal — *"Tour erfolgreich durchgeführt."* → dashed dropzone *"Zum Hochladen tippen"* / *"Max. Dateigröße:
+25 MB"*. The reporter's point: a service partner whose invoice is already a PDF on the phone cannot attach it.
+
+**UX problem found (pre-2026-07-27 behaviour):**
+
+These are **interaction-semantics** findings. The DDB matrix (items 1–35) covers typography, color, surfaces and
+motion, so most of them have no matching matrix row; the DDB column below is filled in only where a matrix item
+genuinely applies.
+
+| # | Finding | DDB dimension | Severity |
+|---|---------|---------------|----------|
+| U1 | The generic document-upload action **immediately opened the device camera**. Every driver upload control ended in one hidden input carrying `capture="environment"`, so tapping the dropzone was a camera intent, not a "choose a document" intent | — (no matrix item; interaction semantics) | **High** — the control's label (*Zum Hochladen tippen* / "Click to upload") did not describe what it did |
+| U2 | The driver **could not intentionally choose** between capturing a new image and selecting an existing file. There was no intermediate step at all — document type was picked, then the camera opened | item 26 (button variants must read as clear, functional actions — here there was no action to read) | **High** |
+| U3 | **PDFs already stored on the device were unreachable** through the expected flow, even though `application/pdf` was in the `accept` list and the backend contract accepted PDFs. The `capture` intent overrides the picker on mobile, so the OS document browser never appeared | item 35 (effects/behaviour must never reduce scanability — forcing a photo of a PDF degrades exactly the artefact dispatch has to read) | **High** |
+| U4 | The dropzone advertised *Max. Dateigröße: 25 MB* but **no upload path validated size**. Displayed rule ≠ enforced rule | — (no matrix item; stated-vs-enforced rule mismatch) | **Medium** |
+
+Affected entry points (all sharing the one input pattern): tour-completion success modal, tour-detail **Tour
+documents** card (including *Replace file*), and the performed-tour **Meine Dokumente** tab.
+
+No color, type, motion or token violation was involved — this is an **interaction-semantics** finding, not a
+visual one. Remediation is tracked as **F8** in
+[`design-direction-board-remediation.md`](design-direction-board-remediation.md).
+
 
 ## Method notes
 

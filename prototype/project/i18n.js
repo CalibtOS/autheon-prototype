@@ -249,6 +249,16 @@ window.I18n = (() => {
       jobDetailsTab: "Job details",
       myDocumentsTab: "My documents",
       myDocsUploadHint: "JPG, PNG or PDF (max. 25 MB)",
+      // Upload-source action sheet — the driver picks camera or device file
+      // before any picker opens (the upload control never opens the camera).
+      uploadSourceTitle: "Add document",
+      uploadSourcePhoto: "Take photo",
+      uploadSourcePhotoDesc: "Open the camera",
+      uploadSourceFile: "Choose file",
+      uploadSourceFileDesc: "Select a PDF or image from your device",
+      docKindPdf: "PDF document",
+      docKindImage: "Image file",
+      docKindFile: "File",
       removeDocTitle: "Remove document?",
       removeDocBody:
         "This will permanently remove the file from this tour. Upload a replacement if this document is required for processing.",
@@ -615,6 +625,7 @@ window.I18n = (() => {
         "Submit billing documents for this tour only. PDF or images (JPEG, PNG, WebP, GIF). Demo: file contents are not stored — only the name and metadata.",
       invoiceUploadButton: "Upload invoice",
       invoiceUploadInvalidType: "Only PDF or image files are accepted.",
+      invoiceUploadTooLarge: "File is too large. Max file size: 25 MB.",
       invoiceUploadRestricted:
         "Uploads are unavailable while your account is restricted.",
       invoiceUploadAfterCompleteHint:
@@ -1856,6 +1867,15 @@ window.I18n = (() => {
       jobDetailsTab: "Auftragsdetails",
       myDocumentsTab: "Meine Dokumente",
       myDocsUploadHint: "JPG, PNG oder PDF (max. 25 MB)",
+      // Upload-Quellenauswahl — die Kamera öffnet erst nach expliziter Wahl.
+      uploadSourceTitle: "Dokument hinzufügen",
+      uploadSourcePhoto: "Foto aufnehmen",
+      uploadSourcePhotoDesc: "Kamera öffnen",
+      uploadSourceFile: "Datei auswählen",
+      uploadSourceFileDesc: "PDF oder Bild vom Gerät auswählen",
+      docKindPdf: "PDF-Dokument",
+      docKindImage: "Bilddatei",
+      docKindFile: "Datei",
       removeDocTitle: "Dokument entfernen?",
       removeDocBody:
         "Die Datei wird dauerhaft von dieser Tour entfernt. Falls das Dokument für die Abrechnung erforderlich ist, muss ein Ersatz hochgeladen werden.",
@@ -2234,6 +2254,7 @@ window.I18n = (() => {
         "Rechnungsnachweise nur für diese Tour. Nur PDF oder Bilder (JPEG, PNG, WebP, GIF). Demo: keine Speicherung der Datei — nur Name und Metadaten.",
       invoiceUploadButton: "Rechnung hochladen",
       invoiceUploadInvalidType: "Nur PDF- oder Bilddateien sind erlaubt.",
+      invoiceUploadTooLarge: "Datei ist zu groß. Max. Dateigröße: 25 MB.",
       invoiceUploadRestricted:
         "Upload nicht möglich, solange das Konto eingeschränkt ist.",
       invoiceUploadAfterCompleteHint:
