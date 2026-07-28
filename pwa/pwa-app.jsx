@@ -117,12 +117,24 @@ function PwaDriverApp() {
         onOpen={(j) =>
           setActiveJob({ id: j.id, mode: "unlocked", fromTab: "mine" })
         }
+        onOpenNotifications={() => setShowNotifications(true)}
+        notificationsOpen={showNotifications}
       />
     );
   } else if (tab === "info") {
-    body = <Infopoint />;
+    body = (
+      <Infopoint
+        onOpenNotifications={() => setShowNotifications(true)}
+        notificationsOpen={showNotifications}
+      />
+    );
   } else {
-    body = <ProfilePaneFull />;
+    body = (
+      <ProfilePaneFull
+        onOpenNotifications={() => setShowNotifications(true)}
+        notificationsOpen={showNotifications}
+      />
+    );
   }
 
   return (

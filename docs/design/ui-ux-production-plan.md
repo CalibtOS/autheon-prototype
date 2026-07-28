@@ -264,9 +264,90 @@ Per §6.2 — full-height page replaces the popover. Layout: day group headers (
 
 ### 7.9 App chrome (`TabBar`, header, `PhoneStatusBar`)
 
-Per §5: all 4 tab items labeled (Marketplace / My jobs / Info / Profile), `aria-current`, numeric badges; active state = neutral contrast marker (no purple capsule — board §H); welcome header (avatar, greeting, bell) only on Marketplace — other tabs use plain title header (current behavior is right, formalize it); the restrained KPI row (Available / Booked / Open documents) was implemented then **removed at client request 2026-07 (PR #17)** — the counts duplicate the My Jobs tab badges; re-add only on explicit client ask; `PhoneStatusBar` excluded from the design contract.
+Per §5: all 4 tab items labeled (Marketplace / My jobs / Info / Profile), `aria-current`, numeric badges; active state = neutral contrast marker (no purple capsule — board §H); optional restrained KPI row only on client request; `PhoneStatusBar` excluded from the design contract.
+
+**Screen header — superseded 2026-07-26.** The previous rule ("welcome header (avatar, greeting, bell) only on Marketplace — other tabs use plain title header") is **withdrawn by client decision**. All four primary screens now use **one shared header component**, `DriverScreenHeader`, and the notification action is part of it on every screen. See §7.10 and [`driver-screen-spec.md`](driver-screen-spec.md) "Primary-screen header".
+
+### 7.10 Shared primary-screen header (`DriverScreenHeader`) — implemented 2026-07-26
+
+**Client decision (Taner Özdemir / Ferhat Catak, Figma review):** remove the Marketplace greeting field, move the Marketplace heading up, align the header of every menu item at the same height, make the notification action available on all primary screens (explicitly including My Orders), and give the notification button exactly the same border as the sorting and filter controls.
+
+**Was:** three divergent header implementations — Marketplace's own `.pwa-header` with a greeting row above the title, `.pwa-screen-header` on My Orders + Profile, and a third hardcoded inline-style header on Infopoint. The greeting pushed the Marketplace title ~52px below the other three. The bell existed only on Marketplace and was a borderless circle next to two bordered square controls.
+
+**Now:** one `DriverScreenHeader` (+ `NotificationBellButton`) in `driver.jsx` rendering the pre-existing `.pwa-screen-header`. Title/subtitle left, `.header-controls` right (optional screen `actions`, then the bell). A single `padding` declaration is what enforces the shared title height — per-screen top margins are prohibited. Screen actions cannot shift the title baseline (`align-items: flex-start` + `min-width: 0` on the title column). The bell reuses `.header-btn`, so border/radius/size/surface/shadow have exactly one definition shared with sort and filter.
+
+**State ownership is unchanged:** unread count from `store.getDriverNotificationUnreadCount()`, open/close in the shell (`showNotifications`), destination the existing `DriverNotificationsPane`. Both shells (`AUTHEON Prototype.html`, `pwa/pwa-app.jsx`) pass the same existing handler to all four screens. No new notification state, store method, or route.
+
+**Marketplace results area** follows the client's agreed structure: results count directly below the header, with sort + filter and the applied-filter chips in that results area rather than the header.
+
+**Verification performed**
+
+| Dimension | What was done |
+|---|---|
+| States catalogue | `prototype/project/driver-header-states.html` — a states gallery mounting the real component in 13 states (no badge · single/multi-digit unread · `99+` cap · each of the four screen titles · screen actions + bell together · long title/subtitle · 320px · 720px column · keyboard focus). **The repo has no Storybook and no bundler** (static React + Babel-standalone over CDN scripts), so this page is the story catalogue in the repo's own idiom; it imports the component rather than re-implementing markup, so it cannot drift. |
+| Component/integration tests | `tests/regression/driver-header.structural.spec.ts` — 10 cases: greeting absent · Marketplace title in the standard position · one shared title baseline across all four · bell present on every screen · shared right-edge position · **computed** border-treatment parity vs sort *and* filter · badge + count preserved and `aria-hidden` · pane opens from every screen · Marketplace sort/filter still functional · focus-visible ring. |
+| Visual regression | `tests/regression/driver-header-states.visual.spec.ts` (gallery + focus state) and refreshed Driver baselines for Marketplace, My Orders (all 4 tabs), Infopoint, Profile, plus the filter sheet and daily-limit sheet whose backgrounds are those screens. Captured on the existing single desktop viewport (`1440×1100`, EN + light) — the Driver suite's established configuration. Unrelated baselines were deliberately not regenerated. |
+| Responsive | 320 / 360 / 390 / 430 / 768 / 1024 px, EN + DE, light + dark. Titles share one offset at every width; no title↔bell collision (min gap 8px at ≤360px); no horizontal document scroll. Single implementation — no separate tablet design. |
+| Accessibility | Translated accessible name carrying the unread count as text (badge is not the only signal); badge `aria-hidden`; `aria-haspopup="dialog"` + `aria-expanded` preserved; 40×40 touch target; keyboard-reachable with a visible focus ring. Scoped the `.header-btn` transition (was `all`, which animated the focus outline). |
+
+**Follow-ups — recorded, not silently absorbed into this task**
+
+1. **Marketplace KPI row is absent** though the remediation log marks it COVERED. Orphaned `.kpi-row`/`.kpi-chip` CSS and three unreferenced `kpi*` i18n keys remain. Needs a client decision on whether the row returns; audit item 22 should revert to PARTIAL.
+2. **`driver-daily-limit-sheet` visual test is dead** — it targets a "Request higher limit" button removed with the legacy limit-request UI (PRD v2.1); neither the button nor its i18n keys exist. The test can never pass. Deleting it (and its baseline) is a test-ownership decision.
+3. **Pre-existing stale visual baselines** on job-detail sheets (`driver-acceptance-modal`, `driver-report-problem-sheet`) and `prototype-shell` reflect PRD v2.4–v2.6 copy changes, not this work. Left untouched.
+4. **`.header-btn` uses `--r-3` (12px)** while the Controls rule in brand-tokens specifies `--r-2` (8px) for all button variants. Pre-existing; harmonizing means moving sort, filter and the bell together, with client sign-off.
 
 ---
+
+### 7.11 Marketplace applied-filter count badge — audited + hardened 2026-07-27
+
+**Prototype audit outcome.** The feature was already implemented and behaviourally correct: the badge
+existed on the filter control, the count was derived from the **committed** filter object (not the
+panel's draft), it was hidden at zero, it survived closing the panel, and it was already independent
+of sorting and of the result count. **No separate badge-count state existed** and there was no
+effect-based synchronization — the architecture was already `applied state → derived count → badge`.
+Four implementation defects were corrected, and the feature's complete absence of test coverage was
+addressed. See remediation **R32** and audit items **39–43**.
+
+| Corrected | From | To |
+|---|---|---|
+| Badge primitive | raw `<span class="tabbar-badge">` (the *tab-bar* badge: hardcoded `9999px`, `#ffffff`, mono 9px, no cap, no `pointer-events`) | shared `Badge` primitive + one shared `.header-btn-badge` anchor rule |
+| Count derivation | `activeChips.length` assembled inline in `Portal`'s render | pure `getAppliedMarketplaceFilterCount` / `getAppliedMarketplaceFilters`, co-located with `jobMatchesDriverFilters` |
+| Control | markup inline in `Portal` | extracted `MarketplaceFilterButton`, mounted by both `Portal` and the states gallery |
+| Accessible name | concatenated `` `${t("filters")} (${count})` `` | `tPlural("filtersApplied", count)` → "Filters, 3 applied" / "Filter, 3 aktiv" |
+
+**Production component alignment.** Maps to shadcn Button + a `CountBadge` on Badge (see Appendix A).
+The count selector is framework-agnostic and ports unchanged; in the production app it becomes a
+plain selector over whichever store holds Marketplace filters (per Appendix A, `nuqs`/URL state is
+the natural home so filters survive reload and are shareable — at which point the badge follows for
+free, with **no** badge-specific persistence). Keep the derived-count rule: never introduce a
+`filterBadgeCount` state, never source the count from the API response, never fold sort into it.
+
+**Shared badge primitive reuse.** One primitive (`Badge`) and one anchoring rule
+(`.header-btn > .header-btn-badge`) serve both the notification bell and the filter button. The
+visual is shared; the semantics are not — notification behaviour was deliberately **not** copied into
+the filter control.
+
+**Verification performed**
+
+| Dimension | What was done |
+|---|---|
+| Unit | `tests/regression/marketplace-filter-count.unit.spec.ts` — 12 cases driving the pure selector directly (empty/null/undefined, non-restrictive defaults, single-selects, text, both range bounds, sort excluded, search excluded, unknown keys ignored, no double counting, cleared → 0, purity/no-mutation, chips-and-count agree). The repo has no JS unit runner, so the pure function is exercised in the page realm via Playwright — no DOM, no store. |
+| Component/integration | `tests/regression/marketplace-filter-badge.integration.spec.ts` — 19 cases: zero → no element, appears on Apply, increments, decrements on chip removal, disappears on Reset+Apply, **draft does not move the badge**, panel-closed indication, reopen stays in sync, sort isolation, **zero results still badged**, badge not focusable + `pointer-events: none` + click-through, focus ring, DE pluralized label, and layout stability (sort/filter/title do not move). |
+| E2E | `tests/e2e/critical-flows/marketplace-filter-badge.spec.ts` — full journey plus a reload case. Result counts asserted only as relative changes; the fixture guarantees no exact totals. |
+| Storybook | No Storybook exists (no bundler). `prototype/project/driver-marketplace-filter-states.html` is the story catalogue: 14 stories mounting the **real** component — 0 / non-restrictive-only / 1 / 3 / max-6 / focus, the primitive at 0-1-9-12-128, anchored double-digit and `99+`, and Marketplace compositions (no filters, 3 filters + chips, filters with zero results, 320px, 720px). |
+| Visual regression | `tests/regression/marketplace-filter-states.visual.spec.ts` (gallery + focus) and two new Marketplace baselines, `driver-marketplace-filter-1` / `-3`. The zero-filter Marketplace baseline was re-run and **still matches**, confirming the badge adds nothing when the count is 0. No unrelated baselines regenerated. |
+| Mobile/tablet | 320 / 360 / 390 / 430 / 768 / 1024 px, EN + DE. Badge attached, inside the viewport, sort+filter aligned, 40×40 target, no horizontal scroll. |
+| Accessibility | Pluralized translated accessible name carries the count; badge `aria-hidden` + `pointer-events: none`; zero focusable descendants; visible focus ring; the badge is never the only indication. |
+| Data model | **None touched.** Derived from existing in-memory frontend filter state. |
+
+**Follow-up — recorded, not absorbed**
+
+1. **Audit item 43 — `from: "This week"` counts but does not filter.** `jobMatchesDriverFilters` has
+   no `"This week"` branch (presets bypass the range comparison; only `"Today"` and `"Weekend"` are
+   implemented). A driver selecting it sees "Filters, 1 applied" over an unchanged list. Needs a
+   product decision on week boundaries — the prototype's "today" is a hardcoded `05.05.`, so any
+   implementation would be invented. Either implement the predicate or remove the preset.
 
 ## 8. Prototype Remediation Worklist (phased, in-place)
 
@@ -406,6 +487,8 @@ Driven by the client confirmation **“Systemlogik Fahrzeugeingabe”**. Busines
 
 ## Changelog
 
+- **v3.4 — 2026-07-27.** Marketplace applied-filter count badge audited and hardened (new §7.11). The feature was already implemented and behaviourally correct (committed-state derived, hidden at zero, sort- and result-count independent, no duplicated state); this pass replaced the bespoke `.tabbar-badge` span with the shared `Badge` primitive on one shared `.header-btn-badge` anchor, extracted the canonical pure selectors `getAppliedMarketplaceFilterCount` / `getAppliedMarketplaceFilters` and the `MarketplaceFilterButton` component, and replaced the concatenated `aria-label` with pluralized `filtersApplied_one/_other` resolved by a new `tPlural` i18n helper. Added the feature's first coverage: 12 unit, 19 integration, 2 E2E, a 14-story states gallery and 4 new visual baselines. Documented in brand-tokens ("Count badges on header icon buttons"), audit v1.4 (items 39–43), remediation R32, driver-screen-spec ("Applied-filter count badge"), driver-i18n-index ("Marketplace filter keys" + pluralization). **prd.json, PRD changelog and the context pack updated** — this is a confirmed functional Marketplace requirement. **No data-model change.** Open: audit item 43 (`"This week"` preset counts but does not filter).
+- **v3.3 — 2026-07-26.** Primary-screen header consolidation (client decision, Figma review): new §7.10 **Shared primary-screen header** documenting `DriverScreenHeader`; the §7.9 rule limiting the welcome header + bell to Marketplace is **withdrawn**. Marketplace greeting/avatar block removed (not relocated); `welcomeBack` i18n key deleted; all four primary screen titles aligned by one shared padding declaration; notification action added to My Orders, Infopoint and Profile reusing the existing shell handler and store count; notification button reuses the `.header-btn` treatment so its border/radius/size/surface/shadow are identical to sort and filter (`12px` literal replaced with `--r-3`); Marketplace sort/filter + filter chips moved into the results area per the client's agreed Marketplace structure; `.header-btn` gains a `:focus-visible` ring and a scoped transition. New: header states gallery + two test specs. Documented in brand-tokens ("Header icon buttons"), audit v1.3 addendum (items 36–38), remediation R28–R31, driver-screen-spec ("Primary-screen header"), driver-i18n-index (header key contract). **No PRD or context-pack change** — none of these were normative product requirements. No data-model change.
 - **v3.2 — 2026-07-23 (PR #17 — figma-comment adjustments).** Reflected from `driver.jsx`/`admin.jsx`/`styles.css` (merge `14526e9`): (1) **Swipe/paged tab navigation** — My Jobs and Infopoint tab bodies became a horizontal paged carousel (`SwipeViews`); a swipe pages between tabs while vertical scroll is preserved (§4.4, §7.2, §7.8; new `.swipe-*` CSS). Client-feedback request. (2) **Marketplace KPI row removed** at client request — Available / Booked / Open documents duplicated the My Jobs tab badges (§7.9; `.kpi-row`/`.kpi-chip` CSS + `kpi*` i18n now unused). (3) **Digit-only numeric inputs** — driver preferred-postal + Marketplace filter PLZ, and admin Create/Edit-Job postal/house-no/distance strip non-digits; phone fields allow a leading `+`; driver-offer allows one decimal separator; alternate-contact stays free text (§6.1, §7.7). Bug report. No token/DDB-contract changes.
 - **v3.3 — 2026-07-26.** New §10 **Vehicle Domain Restructure** implementation plan for PRD v2.8 (client confirmation “Systemlogik Fahrzeugeingabe”): dependency-ordered sequencing, shared-component updates (new `DriverUI.RedPlatesRequiredNotice` + the `AuthStore` vehicle contract; SUV/Van/Classic icons removed, neutral legacy fallback added), migration dependencies incl. the **blocked** legacy vehicle-type mapping, and desktop/mobile/tablet + visual-regression + accessibility + downstream-output verification. No new tokens: the derived red-licence-plate notice reuses the existing `--st-warn` / `--st-warn-bg` semantic pair (recorded in brand-tokens.md).
 - **v3.1 — 2026-07-21.** Post-remediation feature work reflected from `styles.css` (commits `3ef6597` Task 3, `1cdf1a7` Task 1): new §4.4 **Layout & scroll architecture** documenting the fixed-height app shell (pinned header, internally-scrolling driver/admin surfaces) and the sticky Create/Edit-Job form sidebars with the ≤1200px stack fallback; §7.7 Profile gains the driver-owned **Account & sign-in** credential card and self-service change-email flow. No token/behavior changes to the DDB remediation contract; the `--st-ok` verified-badge token is flagged as undefined in brand-tokens.md.

@@ -107,10 +107,137 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 
 ---
 
-## Header & KPIs
+## Primary-screen header — `DriverScreenHeader` (shared)
 
-- Marketplace header: greeting/avatar, notifications bell, screen title, sort + filter controls, applied-filter chips. Restrained — orientation without dashboard weight.
-- **KPI row — removed at client request (2026-07, PR #17).** The three quiet chips (Available / Booked / Open documents, per PDF §4 "reduzierter Dashboard-Charakter") were implemented but then removed: the same counts already surface as tab badges in **My Jobs**, so the marketplace row only duplicated them. The `.kpi-row`/`.kpi-chip` CSS and `kpiAvailableJobs`/`kpiBookedJobs`/`kpiOpenDocuments` i18n keys remain in place but unused — re-introduce only on explicit client ask.
+> Client decision 2026-07-26 (Taner Özdemir / Ferhat Catak). **One** component renders the header of
+> **all four** primary screens. Do not hand-roll a screen header; do not add per-screen top margins.
+> Remediation: R28–R31 · Audit items 36–38.
+
+**Component:** `DriverScreenHeader` in `driver.jsx`, rendering `.pwa-screen-header`.
+
+```
+DriverScreenHeader
+  title              required — screen title (h1)
+  subtitle           optional — one supporting line
+  actions            optional — screen-specific header actions, rendered LEFT of the bell
+  onOpenNotifications  handler from the shell; when present the bell renders
+  notificationsOpen    drives aria-expanded
+  unreadCount        presentation-only override — states gallery ONLY, never the app
+  children           optional — extra header content below the title row (e.g. Infopoint sub-tabs)
+```
+
+### Structure
+
+| Region | Contents |
+|--------|----------|
+| `.screen-header-row` | `.screen-header-titles` (h1 `.header-title` + `.header-subtitle`) on the left; `.header-controls` (screen `actions`, then the notification bell) on the right |
+| `children` | Optional screen-specific header content beneath the title row |
+
+### Per-screen configuration
+
+| Screen | Component | Title key | Subtitle key | Header actions | Header children |
+|--------|-----------|-----------|--------------|----------------|-----------------|
+| Marketplace | `Portal` | `marketplace` | `exploreJobs` | — (sort/filter live in the results area) | — |
+| My Orders | `MyJobs` | `myJobs` | `myJobsSubtitle` | — (search + sort live below the header) | — |
+| Infopoint | `Infopoint` | `infopoint` | `infopointSubtitle` | — | — (sub-tabs are a sibling band *below* the header — see next section) |
+| Profile | `ProfilePaneFull` | `profileTitle` | `profileSubtitle` | — | — |
+
+All four carry the notification action. No screen currently passes `actions`; the slot exists so a
+future screen action cannot reintroduce a bespoke header.
+
+### Alignment rules
+
+- **Titles start at the same visual height on all four screens.** Guaranteed by the single
+  `padding: 16px 20px 14px` on `.pwa-screen-header` — verified by test, not by inspection.
+- **The header's grey divider ends at the same height on all four screens** (client review
+  2026-07-28). The header renders title + subtitle + `actions` only; anything a screen adds
+  underneath — My orders' search row and tab pills, Infopoint's sub-tab pills — is a **sibling after
+  the header**, never a header child. Putting sub-tabs *inside* `.pwa-screen-header` pushes that grey
+  line ~65px lower on one screen and breaks the row of four. Verified by test.
+- Screen-specific bands under the header (`.myjobs-tabs-slider`, `.infopoint-tabs-slider`) are
+  full-bleed white with their own `border-bottom`, and repeat the header's 20px side padding (14px at
+  ≤360px) so their first item lines up with the title above.
+- Status bar / safe-area / notch offset is owned by `.phone-screen` (`pwa.css`: `padding-top:
+  env(safe-area-inset-top)`), i.e. *above* the header. The header adds no device-chrome compensation.
+- `.screen-header-row` uses `align-items: flex-start`, and `.screen-header-titles` has `min-width: 0`
+  + `flex: 1`. Consequence: **screen actions never shift the title baseline**, and a long title wraps
+  inside its own column instead of colliding with the bell.
+- Subtitle length is free — a wrapping subtitle grows the header downward but never moves the title.
+
+### Notification action
+
+- Right-most item in `.header-controls` on every primary screen (same right edge on all four).
+- Rendered as `class="header-btn header-bell-btn"` — the shared header icon-button treatment
+  (border, radius, 40×40, surface, shadow) identical to sort and filter. See brand-tokens
+  "Header icon buttons". `header-bell-btn` contributes only `position: relative` + the badge anchor.
+- **Badge:** `Badge count={unread} variant="destructive"` anchored top-right, `aria-hidden`, caps at
+  `99+`. Not the only unread signal.
+- **Accessible name:** `driverNotifications`, with the count appended when unread > 0 →
+  `"Notifications (3)"` / `"Benachrichtigungen (3)"`. Plus `aria-haspopup="dialog"` and
+  `aria-expanded`. Focus-visible ring: `2px solid --primary`, `outline-offset: 2px`.
+- **State:** the unread count comes from `store.getDriverNotificationUnreadCount()`; open/close state
+  stays in the shell (`showNotifications`) and the destination is the existing
+  `DriverNotificationsPane`. The header owns no notification state.
+
+### Responsive
+
+- One implementation for all widths — **no separate tablet design**. Verified 320 / 360 / 390 / 430 /
+  768 / 1024 px, EN + DE, light + dark.
+- ≤360px (`pwa.css`): header side padding 14px, title steps to 22px, row gap 8px. This is the only
+  width-specific header adjustment, and it exists to protect long German titles from the bell.
+- ≥720px the PWA caps the column at 720px; the header follows the column, it does not re-lay-out.
+
+### Removed 2026-07-26 — do not reintroduce
+
+The Marketplace **greeting/avatar block** is gone: the `JB` initials avatar, "Willkommen zurück," /
+"Welcome back," and the driver name are **removed from the Marketplace header** and were deliberately
+**not** moved to another screen. The `welcomeBack` i18n key is deleted. Removed CSS: `.pwa-header`,
+`.header-top-row`, `.driver-welcome`, `.driver-avatar`, `.welcome-text`, `.welcome-sub`,
+`.welcome-name`.
+
+*The Profile identity block (avatar + name inside the Profile body) is unaffected and stays.*
+
+## Marketplace results area
+
+Client-agreed Marketplace structure (2026-07-26): bell top-right → title → **results count directly
+below** → **filter controls around the results area**.
+
+- `.portal-results-row`: "N results" left, `SortSelect` + filter button right (both `.header-btn`).
+- Applied-filter chips (`.header-chips-row`) sit directly beneath that row.
+- Both render outside the loading branch, so the controls do not vanish during the skeleton state.
+### Applied-filter count badge
+
+> The badge answers **"how many filters are narrowing this list?"** — it is **not** the number of
+> matching Marketplace orders. The matching-order count is the separate "N results" caption to the
+> left of the controls, and the filter panel's CTA (`showResults`) — do not conflate the three.
+
+| Aspect | Specification |
+|--------|---------------|
+| **Location** | Upper-right of the Marketplace filter control (`.header-filter-btn`), offset `top/right: -5px`. Overlays the button; never displaces it. |
+| **Component** | Shared `Badge` primitive (`variant="destructive"`) positioned by the shared `.header-btn > .header-btn-badge` rule — the same pairing the notification bell uses. Marketplace supplies only the count. |
+| **Count source** | `getAppliedMarketplaceFilterCount(filters)` — a pure function of the **committed** filter object owned by the shell. One canonical derivation, shared with the applied-filter chip row. No separate count state exists. |
+| **Counting semantics** | Counts a filter only when it restricts the result set. `startPlz` / `endPlz`: non-empty after trimming. `from` / `to`: each active bound counts separately (they are two independently removable chips). `vehicle` / `axle`: set **and** not the `"All"` default. Empty string, whitespace-only, `null` and `undefined` never count. Each key contributes at most 1. Unknown keys are ignored. Maximum reachable count is **6**. |
+| **Excluded** | **Sorting** — never counted, and the sort control never carries a badge. **Search** — the Marketplace has no search field (search exists only on My Orders) and no requirement classifies it as a filter. **Result count** — the badge is never derived from how many orders came back. |
+| **Multi-select** | Not applicable — the Marketplace has no multi-select filter. `vehicle` and `axle` are single-select. If one is introduced, the "count each value" vs "count the category once" rule must be decided by product before implementation. |
+| **Zero count** | **No badge element is rendered at all** (`Badge` returns `null`). Nothing hidden-but-present, no reserved layout space, nothing for assistive tech to reach. The button also drops its applied/`active` fill. |
+| **Update lifecycle** | Appears/updates on Apply; decreases when a chip is removed; disappears on Reset + Apply. Draft selections in the open panel do **not** move it — they are uncommitted; Cancel discards them. Immediate, derived on render; no effect-based synchronization. |
+| **Relationship to the panel** | Independent of panel open/closed state. The whole point is that the count stays legible with the panel closed. Reopening the panel rehydrates it from the same committed filters, so the two can never disagree. |
+| **Empty result set** | Filters matching zero orders still show their count — the badge is the explanation for the empty list, so it must not vanish with the results. |
+| **Failed request** | The badge reflects filter state only; it is unaffected by request outcome. |
+| **Accessible naming** | The count lives in the button's translated, **pluralized** accessible name via `tPlural("filtersApplied", count)` → "Filters, 3 applied" / "Filter, 3 aktiv". With no filters: `t("filters")` → "Filters" / "Filter". The badge is `aria-hidden` (decorative, never announced twice) and `pointer-events: none`. The control stays one focusable, clickable target with a visible `:focus-visible` ring and a 40×40 touch target. |
+| **Responsive** | One implementation for all widths — no separate tablet layout. Verified 320 / 360 / 390 / 430 / 768 / 1024 px, EN + DE. Badge stays attached to the button, never crosses the viewport edge, sort and filter stay aligned, and showing it shifts neither control nor the screen title. |
+| **Double digits** | `tabular-nums` + `min-width` growth handles 2-digit values; the primitive caps display at `99+`. Not reachable through the product UI (max 6), but covered by the states gallery so the primitive cannot regress. |
+| **Persistence** | Follows Marketplace filter state exactly — it *is* that state. Filters live above the tab switch, so they survive navigating away and back; they reset on reload. No persistence was added for the badge, and none should be. |
+
+**Known defect (open):** `from: "This week"` is offered as a preset and **is counted**, but
+`jobMatchesDriverFilters` implements no `"This week"` branch, so it does not restrict results. See
+audit item 43 — resolving it requires a product decision on week boundaries.
+
+- **KPI row:** currently **not implemented**. The `.kpi-row` / `.kpi-chip` CSS and the
+  `kpiAvailableJobs` / `kpiBookedJobs` / `kpiOpenDocuments` i18n keys exist but are unreferenced —
+  the row was dropped from `Portal` at some point after the 2026-07-14 remediation. Whether it
+  returns (PDF §4 "reduzierter Dashboard-Charakter" marks KPIs as *may contain*) is an open client
+  decision; see audit item 22.
 
 ---
 
@@ -118,6 +245,7 @@ Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline a
 
 | Screen | Component | Required states | Primary CTA |
 |--------|-----------|-----------------|-------------|
+| **Shared primary header** | `DriverScreenHeader` | no badge, unread single/multi digit (`99+` cap), long title/subtitle, with/without screen actions, narrow (320px), tablet column, keyboard focus | Notifications |
 | Marketplace | `Portal` | default, filtered, empty, loading, blocked driver | Filter / open job |
 | My Jobs | `MyJobs` | 4 tabs × empty / loading / populated (swipe between tabs) | Open job |
 | Job detail (locked) | `JobLocked` | masked addresses, dashed route card | Accept (opens sheet) |

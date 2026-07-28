@@ -1,6 +1,6 @@
 # AUTHEON — Design Direction Board Prototype Remediation
 
-> **Status:** v1.2 — 2026-07-14. Implementation pass following [`design-direction-board-audit.md`](design-direction-board-audit.md); rows R17–R21 added after the client PDF arrived (reference card layout, important-vehicle-info fields, header KPIs); rows R22–R27 added after the client review the same evening (axle localization, marketplace header removal, tag-row readability, ordered detail block, real in-app PDF viewer, conditional plate capture).
+> **Status:** v1.5 — 2026-07-27. **Vehicle domain restructure (V1–V6)**; rows **R28–R31** (primary-screen header consistency — greeting removal, shared header, notification action on all primary screens, shared icon-button border; status **DONE**); and row **R32** (Marketplace applied-filter count badge — shared badge primitive, canonical count selector, pluralized accessible name; status **DONE**) added at the end. Earlier: v1.2 — 2026-07-14, implementation pass following [`design-direction-board-audit.md`](design-direction-board-audit.md); rows R17–R21 added after the client PDF arrived (reference card layout, important-vehicle-info fields, header KPIs); rows R22–R27 added after the client review the same evening (axle localization, marketplace header removal, tag-row readability, ordered detail block, real in-app PDF viewer, conditional plate capture).
 > **Scope:** R1–R16 are presentation-only. R18/R19 additionally add the **client-directed optional vehicle-info fields** (`registrationStatus`, `electricVehicle`, `redPlates`) to the prototype store seeds/form mapping, mirrored in `prd.json` (`resolved_defaults.vehicle_important_info_v1`), `schema.dbml`, and `logical-model.md`. Workflows, statuses, permissions, and all other PRD behavior untouched — verified by `_audit-prototype.mjs` (AUDIT PASS) and `_verify-seed.mjs` (all checks passed) after every change.
 > **Evidence:** [`audit-2026-07-14/before/`](audit-2026-07-14/before/) vs [`audit-2026-07-14/after/`](audit-2026-07-14/after/) — driver = phone frame (392×800) light+dark, admin = 1440px light+dark, captured with `prototype/project/_capture-design-audit.mjs`.
 
@@ -16,7 +16,7 @@
 | R6 | Admin | `styles.css` `.nav-item.on` | §B/§H no purple sidebar active | Purple-filled active nav item | Neutral `--paper-2` fill + darker 600 text (dark: white 9% wash) | `after/admin-overview-light-1440.png` | |
 | R7 | Marketplace | `driver.jsx` `JobCard` | §F operational status + identity on card | No status or tour number on marketplace cards | Header row: `Tour #… ` + text-labelled `Published` pill (existing `job.status` only) | `after/driver-marketplace-light.png` | No new data invented; registered/deregistered/EV/red-plates remain pending PRD |
 | R8 | All | `styles.css` `--paper-3`, `--sh-2`, chip glow, `.toast` | §B purple very sparse; §E subtle neutral elevation | Purple-tinted hover wash on all surfaces, purple-glow hover shadow, purple chip glow, purple toast surface | Neutral gray wash `rgba(17,17,17,0.04)`, slate shadows, glow removed, toast on neutral `#111` chrome surface | `after/admin-overview-light-1440.png` | Focus rings, selected chips, slide fill keep purple (allowed accents) |
-| R9 | Driver | `styles.css` `.driver-avatar` | §B no purple decorative fills | Solid purple avatar disc | 12% brand tint + purple initials (restrained accent) | `after/driver-marketplace-light.png` | |
+| R9 | Driver | `styles.css` `.driver-avatar` | §B no purple decorative fills | Solid purple avatar disc | 12% brand tint + purple initials (restrained accent) | `after/driver-marketplace-light.png` | **Superseded by R28 (2026-07-26):** `.driver-avatar` and the whole Marketplace greeting block were removed. Do not re-add this rule. The Profile identity avatar (`.profile-identity .avatar`) is a different element and keeps the restrained tint. |
 | R10 | Driver | `styles.css` `.phone-shell .jobcard`, `.phone-shell .sheet`, `.lg-cta`, `driver.jsx` bottom buttons | §E moderate rounding; §I no pill buttons | 24px cards, 32px sheets, 9999px primary buttons | Cards ≤16px, sheets 24px, action buttons `--r-3` | `after/driver-job-unlocked-light.png`, `after/driver-filter-sheet-light.png` | Small price chip stays pill-shaped (chip idiom) |
 | R11 | Both | `styles.css` `.btn` | §I secondary = white + fine gray outline | Secondary buttons outlined in `#111` black | Border → `--line-2` fine gray | `after/driver-job-unlocked-light.png` | |
 | R12 | Both | `styles.css` `.pill.performed` (+ dark pair) | §C restrained status colors | Solid near-black chip, white text | Tinted slate bg + dark text; dark-theme pair added | `after/admin-overview-light-1440.png` | |
@@ -158,3 +158,107 @@ It **stays visible after booking**: it is an execution requirement, not a tempor
 ### Approved vehicle types only
 
 The three approved types are the complete set. `SUV`, `Van` / `Transporter`, `Classic car` / `Oldtimer` and the older `LKW < 3,5t` band are **not storable** and never render: no "(legacy)" label state, no fallback icon, and no per-record escape hatch while editing. Detail in `logical-model.md` → “Approved values only”.
+
+## Primary-screen header consistency — R28–R31 (2026-07-26)
+
+> **Status: DONE** — implemented, verified, and covered by tests. Closes audit items **36, 37, 38**
+> ([`design-direction-board-audit.md`](design-direction-board-audit.md) v1.4 addendum).
+> **Client authority:** Taner Özdemir + Ferhat Catak on the shared Figma link, 2026-07-26.
+> Also resolves the 2026-06-25 meeting's **deferred** Point 9 ("no separate 'Welcome back' header
+> with name/photo") — the client has now decided: remove it.
+> **Architecture:** one new shared component, `DriverScreenHeader` (+ `NotificationBellButton`) in
+> `driver.jsx`, replacing three divergent header implementations. It renders the pre-existing
+> `.pwa-screen-header` class, so this **extends** the header that My Orders and Profile already used
+> rather than inventing a parallel one.
+
+| Change ID | Screen | File(s) changed | Requirement | Before issue | After adjustment | Status |
+|---|---|---|---|---|---|---|
+| R28 | Marketplace | `driver.jsx` (`Portal`), `styles.css`, `i18n.js` | Client: remove the greeting field so the heading can move up | `.header-top-row` held a `JB` initials avatar + "Willkommen zurück," + "Jordan Blake" above the title, pushing "Marktplatz" ~52px below the other three screens' titles | Greeting block **removed entirely** — avatar, "Welcome back," and the name. Deliberately **not** relocated to another screen. `.pwa-header`, `.header-top-row`, `.driver-welcome`, `.driver-avatar`, `.welcome-text/-sub/-name` CSS deleted; `welcomeBack` i18n key (EN+DE) deleted (no other consumer) | **DONE** |
+| R29 | Marketplace, My Orders, Infopoint, Profile | `driver.jsx` (new `DriverScreenHeader`), `styles.css` `.pwa-screen-header` | Client: "important to me for the header of every menu item to be at the same height" | Three implementations: Marketplace `.pwa-header`, My Orders + Profile `.pwa-screen-header`, **Infopoint inline styles** with its own `fontSize:24`/`marginTop:4` | One component, one `padding: 16px 20px 14px` declaration. All four `<h1>` titles verified at the **same y** (226px at the desktop capture viewport; 68px in the PWA at 320/360/390/430/768/1024px). No per-screen top margins anywhere | **DONE** |
+| R30 | All four | `driver.jsx`, `AUTHEON Prototype.html`, `pwa/pwa-app.jsx` | Client: "The button should also be available in the 'My Orders' menu item" | Bell existed only on Marketplace; the other three screens were never passed a handler | `NotificationBellButton` lives in the shared header; both shells pass the **existing** `setShowNotifications` handler + `showNotifications` flag to all four screens. Unread count still read from `store.getDriverNotificationUnreadCount()` — no duplicated notification state, no new store surface, unchanged destination pane | **DONE** |
+| R31 | All four | `styles.css` `.header-btn` / `.header-bell-btn` | Client: "exactly the same border as the sorting and filter function" | Bell = 40×40 circle, `--canvas` surface, `border: 0`, no shadow. Sort/filter = 40×40, 12px radius, `--paper`, `1px solid --line`, `--sh-1` | Bell is now `class="header-btn header-bell-btn"`; `.header-bell-btn` contributes **only** `position: relative` + the badge anchor. Hardcoded `12px` radius replaced with the existing `--r-3` token. Added `:focus-visible` ring and scoped the `transition` (was `all`, which animated the focus outline) | **DONE** |
+
+### Also changed by the client's agreed Marketplace structure
+
+The client confirmed the Marketplace layout as: bell top-right · title moved up · **results count directly
+below** · **filter controls around the results area**. Sort + filter therefore moved out of the header
+into `.portal-results-row` next to "N results", and the applied-filter chip row moved with them
+(`.header-chips-row` regains a normal `margin-bottom` now that it is in the scroll body, not the
+header). This is what keeps the Marketplace header byte-identical in structure to the other three.
+Sort/filter **behaviour is unchanged** — same components, same handlers, same filter sheet. They are
+now also rendered outside the loading branch so they no longer disappear during the skeleton state.
+
+### Verification
+
+- **Alignment/parity measured, not eyeballed:** computed `border-width/style/color`, `border-radius`,
+  `background-color`, `box-shadow`, `width`, `height` of the bell compared against the sort trigger
+  **and** the filter button on all four screens — identical.
+- **Tests:** `tests/regression/driver-header.structural.spec.ts` (10 cases: greeting absent, standard
+  title position, one shared title baseline, bell on every screen, shared right-edge position,
+  border-treatment parity, badge + count preserved, pane opens from every screen, sort/filter still
+  work, focus-visible). `tests/regression/driver-header-states.visual.spec.ts` (states gallery + focus).
+- **States gallery:** `prototype/project/driver-header-states.html` — the repo has no Storybook, so
+  this page is the story catalogue and mounts the real component (see production plan §Verification).
+- **Viewports:** 320 / 360 / 390 / 430 / 768 / 1024 px, EN + DE, light + dark. No title↔bell
+  collision (min gap 8px at ≤360px, where the title steps to 22px), no horizontal document scroll.
+- **Accessibility:** translated `aria-label` carries the unread count as text, so the badge is not the
+  only unread signal; badge is `aria-hidden`; `aria-haspopup="dialog"` + `aria-expanded` preserved;
+  40×40 touch target; keyboard-reachable with a visible focus ring.
+
+### Not changed (deliberately)
+
+1. **Profile identity block** — the `JB` avatar + "Jordan Blake" inside the Profile *body* stay. The
+   client removed the *Marketplace header greeting*, not the Profile identity card.
+2. **Infopoint sub-tabs / My Orders search + tabs** — still screen-specific, rendered below the shared
+   header. Their inline positioning styles were replaced with a class (`.infopoint-tabs-slider`) but
+   the spacing is pixel-preserved. *(Amended 2026-07-28 — Infopoint's sub-tabs initially passed through
+   the header's `children` slot, which dropped Infopoint's grey header divider ~65px below the other
+   three screens'. They are now a sibling band after the header, exactly like My Orders'.)*
+3. **KPI row** — remains absent (see audit item 22 note); its orphaned CSS was left in place rather
+   than deleted, since whether the row returns is a client decision.
+4. **`.header-btn` 12px radius vs the `--r-2` controls rule** — pre-existing deviation, left as-is; see
+   brand-tokens "Header icon buttons".
+
+---
+
+## Marketplace applied-filter count badge — R32 (2026-07-27)
+
+> **Status: DONE** (hardening of an existing implementation). Closes audit items **40, 41, 42**;
+> item **39** was already COVERED by the prototype before this pass. Audit item **43 remains OPEN**.
+> **Nature of the change:** the feature already worked — badge present, count correct, derived from
+> committed state, hidden at zero, unaffected by sorting. This pass corrected *how* it was built
+> (shared primitive, canonical selector, pluralized label) and added the coverage it never had.
+> Sorting is **not** part of the badge and was not touched.
+
+| Change ID | Screen | File(s) changed | Requirement | Before issue | After adjustment | Status |
+|---|---|---|---|---|---|---|
+| R32a | Marketplace | `driver.jsx` | Reuse the shared badge primitive | Filter badge was a raw `<span class="tabbar-badge">` — the tab-bar badge, hardcoded `9999px` / `#ffffff` / mono 9px, no `99+` cap, no `pointer-events: none` | Renders the shared `Badge` primitive (`variant="destructive"`, `ariaHidden`), same primitive the notification bell uses. Marketplace-specific *count* logic stays in the Marketplace; no notification semantics were copied across | **DONE** |
+| R32b | Driver (shared) | `styles.css` | One anchoring rule, no duplicated values | `.bell-badge` and `.tabbar-badge` were two near-identical anchored-badge rules; a third would have been added for the filter | Single `.header-btn > .header-btn-badge` rule shared by bell and filter; it only *positions* the primitive (colour/radius/weight/cap stay in `.ui-badge`). Adds `pointer-events: none` and a `--primary` ring while the button is in its applied state | **DONE** |
+| R32c | Marketplace | `driver.jsx` | Canonical, testable count derivation | Count was `activeChips.length`, an array built inline in `Portal`'s render body — correct, but not extractable or unit-testable | Pure `getAppliedMarketplaceFilters(filters, t?)` + `getAppliedMarketplaceFilterCount(filters)`, co-located with `jobMatchesDriverFilters` so the counted set and the *restricting* set stay visibly paired. Badge, chip row and accessible name all read this one derivation | **DONE** |
+| R32d | Marketplace | `driver.jsx` | One filter-button implementation | Button markup was inline in `Portal`, so a story catalogue could only duplicate it | Extracted `MarketplaceFilterButton({ filters, onOpen })`; `Portal` and the states gallery mount the same component | **DONE** |
+| R32e | Marketplace | `i18n.js`, `driver.jsx` | Translated, pluralized accessible name | `aria-label` was concatenated: `` `${t("filters")} (${count})` `` → "Filters (4)" | `filtersApplied_one` / `filtersApplied_other` (EN + DE) resolved by a new `tPlural(key, count)` helper — whole sentences live in the translation files. "Filters, 3 applied" / "Filter, 3 aktiv" | **DONE** |
+
+### Badge behaviour as specified
+
+- **Placement:** upper-right of the 40×40 filter control, `top/right: -5px`, inside the phone screen at every supported width.
+- **Zero count:** the `Badge` component returns `null`, so **no element is rendered** — nothing hidden, no reserved layout space, nothing announced.
+- **Synchronization:** derived from the **committed** filter object owned by the shell. Draft selections inside the open panel do not move it; Cancel discards them. Chip removal and Reset+Apply update it immediately.
+- **Not coupled to results:** a filter matching zero orders still shows its count (covered by test).
+- **Not coupled to sort:** sorting is excluded from the count and the sort control carries no badge (covered by test).
+- **Responsive:** verified 320 / 360 / 390 / 430 / 768 / 1024 px, EN + DE. Badge stays attached, never crosses the viewport edge, sort and filter stay aligned, no horizontal document scroll, 40×40 touch target preserved. No separate tablet layout.
+- **Accessibility:** count carried in the button's translated pluralized accessible name; badge `aria-hidden` and `pointer-events: none`; no focusable element inside the button; visible `:focus-visible` ring retained.
+
+### Verification
+
+- Unit: `tests/regression/marketplace-filter-count.unit.spec.ts` — 12 cases over the pure selector.
+- Integration: `tests/regression/marketplace-filter-badge.integration.spec.ts` — 19 cases (lifecycle, draft-vs-committed, sort isolation, result-count isolation, a11y, layout stability, 5 widths).
+- E2E: `tests/e2e/critical-flows/marketplace-filter-badge.spec.ts` — 2 journeys.
+- Visual: `tests/regression/marketplace-filter-states.visual.spec.ts` (14-story gallery + focus) and two new Marketplace baselines (`driver-marketplace-filter-1/-3`).
+- States gallery: `prototype/project/driver-marketplace-filter-states.html`.
+
+### Not changed (deliberately)
+
+1. **Sorting** — excluded from the count, no badge on the sort control, untouched.
+2. **Filter semantics** — no filter was added, removed or redefined. The set counted is exactly the set `jobMatchesDriverFilters` acts on, with the one documented exception below.
+3. **Persistence** — Marketplace filters remain in-memory session state (survive tab navigation, reset on reload). No persistence was added for the badge.
+4. **Audit item 43 — `from: "This week"` counts but does not filter.** Left as-is: implementing it requires defining week boundaries against a prototype whose "today" is a hardcoded `05.05.`. A product decision, not an invented rule.

@@ -941,6 +941,90 @@ const TabBar = ({ tab, setTab }) => {
   );
 };
 
+// =========================================================================
+// SHARED SCREEN HEADER (all four primary driver screens)
+// =========================================================================
+// Client decision 2026-07-26 (Taner Özdemir / Ferhat Catak): every primary
+// menu item's header sits at the SAME height, so the header is one component
+// instead of four hand-rolled title blocks. The Marketplace greeting block
+// (avatar initials + "Welcome back, <name>") is removed entirely and is NOT
+// relocated to another screen — with it gone the title moves up into the
+// standard position the other three screens already used.
+//
+// The notification action is part of this header, so it is available on every
+// primary screen. It owns no state: the unread count comes from the store and
+// the open/close state stays in the shell (`onOpenNotifications`).
+
+const NotificationBellButton = ({ onOpen, open = false, unreadCount }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  // The store is the single source of truth for the unread count. `unreadCount`
+  // is a presentation-only override for the header states gallery
+  // (driver-header-states.html) — the app never passes it.
+  const storeUnread = store.getDriverNotificationUnreadCount();
+  const unread = unreadCount == null ? storeUnread : unreadCount;
+  return (
+    <button
+      type="button"
+      // `header-btn` is the shared header icon-button treatment (border,
+      // radius, size, surface, shadow) used by sort + filter — the bell must
+      // not re-declare any of it. `header-bell-btn` only anchors the badge.
+      className="header-btn header-bell-btn"
+      title={t("driverNotifications")}
+      // The count is in the accessible name, so the visual badge is never the
+      // only signal that notifications are unread.
+      aria-label={
+        unread > 0
+          ? `${t("driverNotifications")} (${unread})`
+          : t("driverNotifications")
+      }
+      aria-expanded={open}
+      aria-haspopup="dialog"
+      onClick={() => onOpen?.()}
+    >
+      <Ic.Bell />
+      <Badge
+        count={unread}
+        variant="destructive"
+        className="header-btn-badge"
+        ariaHidden
+      />
+    </button>
+  );
+};
+
+const DriverScreenHeader = ({
+  title,
+  subtitle,
+  actions,
+  onOpenNotifications,
+  notificationsOpen = false,
+  unreadCount,
+  children,
+}) => (
+  <div className="pwa-screen-header">
+    <div className="screen-header-row">
+      <div className="screen-header-titles">
+        <h1 className="header-title">{title}</h1>
+        {subtitle ? <div className="header-subtitle">{subtitle}</div> : null}
+      </div>
+      {actions || onOpenNotifications ? (
+        <div className="header-controls">
+          {actions}
+          {onOpenNotifications ? (
+            <NotificationBellButton
+              onOpen={onOpenNotifications}
+              open={notificationsOpen}
+              unreadCount={unreadCount}
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+    {children}
+  </div>
+);
+
 // Rough drive-time estimate for display (~75 km/h average, 5-min steps).
 // The prototype has no routing service; production replaces this with the
 // real route duration.
@@ -1213,7 +1297,6 @@ const Portal = ({
       </div>
     );
   }
-  const unreadNotif = store.getDriverNotificationUnreadCount();
   const all = store.getJobs().filter((j) => j.status === "published");
   const filtered = all.filter((j) => jobMatchesDriverFilters(j, filters));
 
@@ -1238,91 +1321,41 @@ const Portal = ({
     return 0;
   });
 
-  const activeChips = [];
-  if (filters.startPlz)
-    activeChips.push({
-      key: "startPlz",
-      label: t("pickupPlz", { plz: filters.startPlz }),
-    });
-  if (filters.endPlz)
-    activeChips.push({
-      key: "endPlz",
-      label: t("dropPlz", { plz: filters.endPlz }),
-    });
-  if (filters.from)
-    activeChips.push({
-      key: "from",
-      label:
-        filters.from === "Today"
-          ? t("today")
-          : filters.from === "This week"
-            ? t("thisWeek")
-            : t("fromDateChip", { date: isoToDisplayDate(filters.from) }),
-    });
-  if (filters.to)
-    activeChips.push({
-      key: "to",
-      label: t("untilDateChip", { date: isoToDisplayDate(filters.to) }),
-    });
-  if (filters.vehicleType && filters.vehicleType !== "All")
-    activeChips.push({
-      key: "vehicleType",
-      label: displayVehicle(filters.vehicleType, t),
-    });
-  if (filters.transportType && filters.transportType !== "All")
-    activeChips.push({
-      key: "transportType",
-      label: displayTransportType(filters.transportType, t),
-    });
+  // Single derivation from the COMMITTED filters — feeds the chip row, the
+  // filter button's badge and its accessible name. No separate count state.
+  const activeChips = getAppliedMarketplaceFilters(filters, t);
 
   return (
     <>
-      <div className="pwa-header">
-        {/* Top welcome row */}
-        <div className="header-top-row">
-          <div className="driver-welcome">
-            <div className="driver-avatar">
-              {(store.getCurrentDriver()?.name || "Jakob Arsin")
-                .split(" ")
-                .map((n) => n[0])
-                .join("")}
-            </div>
-            <div className="welcome-text">
-              <div className="welcome-sub">{t("welcomeBack")}</div>
-              <div className="welcome-name">
-                {store.getCurrentDriver()?.name || "Jakob Arsin"}
-              </div>
-            </div>
+      {/* Client decision 2026-07-26: title/subtitle + bell only — the sort and
+          filter controls live with the results count below (see client's agreed
+          Marketplace structure), which also keeps this header identical in
+          height to My Orders / Infopoint / Profile. */}
+      <DriverScreenHeader
+        title={t("marketplace")}
+        subtitle={t("exploreJobs")}
+        onOpenNotifications={onOpenNotifications}
+        notificationsOpen={notificationsOpen}
+      />
+      <div
+        ref={scrollRef}
+        className="scroll scroll-body"
+        onTouchStart={onScrollTouchStart}
+        onTouchMove={onScrollTouchMove}
+        onTouchEnd={onScrollTouchEnd}
+      >
+        {refreshing ? (
+          <div className="label portal-refresh-hint">
+            <Ic.Refresh /> {t("refreshDemo")}
           </div>
-          <button
-            type="button"
-            className="header-bell-btn"
-            title={t("driverNotifications")}
-            aria-label={
-              unreadNotif > 0
-                ? `${t("driverNotifications")} (${unreadNotif})`
-                : t("driverNotifications")
-            }
-            aria-expanded={notificationsOpen}
-            aria-haspopup="dialog"
-            onClick={() => onOpenNotifications?.()}
-          >
-            <Ic.Bell />
-            <Badge
-              count={unreadNotif}
-              variant="destructive"
-              className="bell-badge"
-              ariaHidden
-            />
-          </button>
-        </div>
-
-        {/* Title and control buttons row */}
-        <div className="header-title-row">
-          <div>
-            <h1 className="header-title">{t("marketplace")}</h1>
-            <div className="header-subtitle">{t("exploreJobs")}</div>
-          </div>
+        ) : null}
+        {/* Results count + sort/filter controls sit together directly under the
+            header (client-agreed Marketplace structure 2026-07-26). Rendered
+            outside the loading branch so the controls never disappear. */}
+        <div className="portal-results-row">
+          <span className="text-caption" aria-live="polite">
+            {loading ? "" : `${ordered.length} ${t("results")}`}
+          </span>
           <div className="header-controls">
             <SortSelect
               value={sortBy}
@@ -1330,28 +1363,9 @@ const Portal = ({
               options={portalSortOptions}
               label={t("sortJobs")}
             />
-            <button
-              type="button"
-              className={`header-btn ${activeChips.length ? "active" : ""}`}
-              onClick={openFilter}
-              title={t("filters")}
-              aria-label={
-                activeChips.length
-                  ? `${t("filters")} (${activeChips.length})`
-                  : t("filters")
-              }
-            >
-              <Ic.Filter />
-              {activeChips.length > 0 ? (
-                <span className="tabbar-badge" aria-hidden="true">
-                  {activeChips.length}
-                </span>
-              ) : null}
-            </button>
+            <MarketplaceFilterButton filters={filters} onOpen={openFilter} />
           </div>
         </div>
-
-        {/* Active chips row */}
         {activeChips.length > 0 ? (
           <div className="header-chips-row">
             {activeChips.map((c) => (
@@ -1370,30 +1384,12 @@ const Portal = ({
             ))}
           </div>
         ) : null}
-      </div>
-      <div
-        ref={scrollRef}
-        className="scroll scroll-body"
-        onTouchStart={onScrollTouchStart}
-        onTouchMove={onScrollTouchMove}
-        onTouchEnd={onScrollTouchEnd}
-      >
-        {refreshing ? (
-          <div className="label portal-refresh-hint">
-            <Ic.Refresh /> {t("refreshDemo")}
-          </div>
-        ) : null}
         {loading ? (
           <div aria-busy="true" aria-label={t("loadingJobs")}>
             <SkeletonList count={3} />
           </div>
         ) : (
           <>
-            <div className="portal-results-row">
-              <span className="text-caption" aria-live="polite">
-                {ordered.length} {t("results")}
-              </span>
-            </div>
             {ordered.map((j) => (
               <JobCard key={j.id} job={j} onOpen={onOpenJob} />
             ))}
@@ -1475,6 +1471,122 @@ const jobMatchesDriverFilters = (j, filters) => {
   )
     return false;
   return true;
+};
+
+// -------------------------------------------------------------------------
+// Applied-marketplace-filter model — ONE canonical derivation
+// -------------------------------------------------------------------------
+// Deliberately co-located with `jobMatchesDriverFilters` above: the set of
+// filters we *count* must mirror the set of filters that actually *restrict*
+// the result list. Keep the two in sync when either changes.
+//
+// This is a pure function of the COMMITTED filter object (the one the shell
+// owns and the marketplace list is filtered by) — never of FilterSheet's draft
+// state, never of the number of results returned, and never of sort state.
+// There is no separate badge-count state anywhere; the badge, the chip row and
+// the button's accessible name all read from this single derivation.
+//
+// A filter is "applied" only when it narrows the result set:
+//   startPlz / endPlz  text   — counted when non-empty after trimming
+//   from / to          date   — counted when set (each end of the range counts
+//                               separately, mirroring the two removable chips)
+//   vehicle / axle     single-select — counted when set AND not the "All"
+//                               default (the default is not restrictive)
+// Empty string, null, undefined and whitespace-only values never count.
+// Each filter key contributes at most 1, so the same filter cannot count twice.
+//
+// NOTE: there are currently no multi-select marketplace filters, so the
+// "count each value" vs "count the category once" question does not arise.
+const MARKETPLACE_FILTER_DEFAULTS = { vehicle: "All", axle: "All" };
+
+const isAppliedMarketplaceFilter = (key, value) => {
+  if (value == null) return false;
+  const v = typeof value === "string" ? value.trim() : value;
+  if (v === "") return false;
+  const dflt = MARKETPLACE_FILTER_DEFAULTS[key];
+  if (dflt !== undefined && v === dflt) return false;
+  return true;
+};
+
+/**
+ * Canonical list of applied marketplace filters, in display order.
+ * Returns `[{ key, value }]`. Count = `.length`.
+ * `t` is optional; when supplied each entry also carries a localized `label`
+ * for the removable chip row.
+ */
+const getAppliedMarketplaceFilters = (filters, t) => {
+  const f = filters || {};
+  const label = (key, value) => {
+    if (!t) return undefined;
+    switch (key) {
+      case "startPlz":
+        return t("pickupPlz", { plz: value });
+      case "endPlz":
+        return t("dropPlz", { plz: value });
+      case "from":
+        return value === "Today"
+          ? t("today")
+          : value === "This week"
+            ? t("thisWeek")
+            : value === "Weekend"
+              ? t("weekend")
+              : t("fromDateChip", { date: isoToDisplayDate(value) });
+      case "to":
+        return t("untilDateChip", { date: isoToDisplayDate(value) });
+      case "vehicle":
+        return displayVehicle(value, t);
+      case "axle":
+        return displayAxle(value, t);
+      default:
+        return String(value);
+    }
+  };
+  // Fixed key order — NOT Object.keys(f), so the chip order cannot depend on
+  // insertion order and an unknown key cannot leak into the count.
+  return ["startPlz", "endPlz", "from", "to", "vehicle", "axle"]
+    .filter((key) => isAppliedMarketplaceFilter(key, f[key]))
+    .map((key) => ({ key, value: f[key], label: label(key, f[key]) }));
+};
+
+/** Number of marketplace filters currently restricting the result set. */
+const getAppliedMarketplaceFilterCount = (filters) =>
+  getAppliedMarketplaceFilters(filters).length;
+
+/**
+ * Marketplace filter control + applied-filter count badge.
+ *
+ * The count is derived here from the COMMITTED `filters` object — never from
+ * FilterSheet's draft state, never from the number of results the marketplace
+ * returned, and never from sort state. There is no badge-count state to keep
+ * in sync.
+ *
+ * The badge reuses the shared `Badge` visual primitive (as the notification
+ * bell does) but none of its notification semantics; `Badge` renders nothing
+ * at all for a count of 0, so the zero state reserves no layout space. The
+ * count reaches assistive tech through the button's translated, pluralized
+ * accessible name — the badge itself is `aria-hidden` and `pointer-events:
+ * none`, so the control stays a single focusable, clickable target.
+ */
+const MarketplaceFilterButton = ({ filters, onOpen }) => {
+  const { t, tPlural } = useI18n();
+  const count = getAppliedMarketplaceFilterCount(filters);
+  return (
+    <button
+      type="button"
+      className={`header-btn header-filter-btn ${count ? "active" : ""}`}
+      onClick={onOpen}
+      title={t("filters")}
+      aria-label={count ? tPlural("filtersApplied", count) : t("filters")}
+    >
+      <Ic.Filter />
+      <Badge
+        count={count}
+        variant="destructive"
+        className="header-btn-badge"
+        ariaHidden
+      />
+    </button>
+  );
 };
 
 const FilterSheet = ({ filters, setFilters, onClose }) => {
@@ -3332,7 +3444,7 @@ const parseDottedDateToTimestamp = (dateStr, fallbackStr) => {
 // =========================================================================
 // MY JOBS
 // =========================================================================
-const MyJobs = ({ onOpen }) => {
+const MyJobs = ({ onOpen, onOpenNotifications, notificationsOpen = false }) => {
   const { t } = useI18n();
   const [tab, setTab] = useState("active");
   const TAB_IDS = ["active", "performed", "cancelled", "review"];
@@ -3526,10 +3638,12 @@ const MyJobs = ({ onOpen }) => {
 
   return (
     <>
-      <div className="pwa-screen-header">
-        <h1 className="header-title">{t("myJobs")}</h1>
-        <div className="header-subtitle">{t("myJobsSubtitle")}</div>
-      </div>
+      <DriverScreenHeader
+        title={t("myJobs")}
+        subtitle={t("myJobsSubtitle")}
+        onOpenNotifications={onOpenNotifications}
+        notificationsOpen={notificationsOpen}
+      />
 
       {/* Search and control buttons */}
       <div className="myjobs-search-row">
@@ -5266,7 +5380,8 @@ const ProfileSubpageHeader = ({ title, backLabel, onBack, titleRef }) => (
     <div className="w-40-spacer" />
   </div>
 );
-const ProfilePaneFull = () => {
+
+const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => {
   const { t, locale, setLocale } = useI18n();
   const store = useAuthStore();
   const d = store.getCurrentDriver();
@@ -5782,9 +5897,12 @@ const ProfilePaneFull = () => {
         </>
       ) : (
         <>
-          <div className="pwa-screen-header">
-            <h1 className="header-title">{t("profileTitle")}</h1>
-          </div>
+          <DriverScreenHeader
+            title={t("profileTitle")}
+            subtitle={t("profileSubtitle")}
+            onOpenNotifications={onOpenNotifications}
+            notificationsOpen={notificationsOpen}
+          />
           <div className="scroll scroll-body" ref={scrollBodyRef}>
             {/* Identity card — avatar, name, partner id */}
             <div className="section-card profile-identity-card">
@@ -5935,7 +6053,7 @@ const ProfilePaneFull = () => {
   );
 };
 
-const Infopoint = () => {
+const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [subTab, setSubTab] = useState("documents");
@@ -5968,64 +6086,36 @@ const Infopoint = () => {
           onClose={() => setDocPreview(null)}
         />
       ) : null}
-      <div
-        style={{
-          background: "var(--paper)",
-          padding: "16px 20px 14px",
-          borderBottom: "1px solid var(--line)",
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 24,
-            fontWeight: 600,
-            letterSpacing: "-0.015em",
-            lineHeight: 1.2,
-          }}
-        >
-          {t("infopoint")}
-        </h1>
-        <div
-          style={{
-            fontSize: 13.5,
-            color: "var(--muted)",
-            marginTop: 4,
-            lineHeight: 1.3,
-          }}
-        >
-          {t("infopointSubtitle")}
-        </div>
+      <DriverScreenHeader
+        title={t("infopoint")}
+        subtitle={t("infopointSubtitle")}
+        onOpenNotifications={onOpenNotifications}
+        notificationsOpen={notificationsOpen}
+      />
 
-        {/* Horizontal Tab Pills Selector */}
-        <div
-          className="myjobs-tabs-slider"
-          style={{
-            marginTop: 16,
-            padding: "0 0 12px 0",
-            borderBottom: "none",
-            justifyContent: "flex-start",
-            gap: "20px",
-          }}
-        >
-          {[
-            ["documents", t("infopointDocsTab")],
-            ["news", t("infopointNewsTab"), unreadCount],
-            ["help", t("infopointHelpTab")],
-          ].map(([id, lbl, n]) => (
-            <button
-              key={id}
-              type="button"
-              className={`myjobs-tab-pill ${subTab === id ? "active" : ""}`}
-              onClick={() => setSubTab(id)}
-            >
-              <span>{lbl}</span>
-              {id === "news" && n > 0 ? (
-                <span className="pill-badge">{n}</span>
-              ) : null}
-            </button>
-          ))}
-        </div>
+      {/* Horizontal Tab Pills Selector — a sibling band BELOW the header, the
+          same way My orders places its search row and tabs. Keeping the tabs
+          out of `.pwa-screen-header` is what keeps the header's grey divider at
+          the identical height on all four primary screens; the band then draws
+          its own divider under the tabs. */}
+      <div className="myjobs-tabs-slider infopoint-tabs-slider">
+        {[
+          ["documents", t("infopointDocsTab")],
+          ["news", t("infopointNewsTab"), unreadCount],
+          ["help", t("infopointHelpTab")],
+        ].map(([id, lbl, n]) => (
+          <button
+            key={id}
+            type="button"
+            className={`myjobs-tab-pill ${subTab === id ? "active" : ""}`}
+            onClick={() => setSubTab(id)}
+          >
+            <span>{lbl}</span>
+            {id === "news" && n > 0 ? (
+              <span className="pill-badge">{n}</span>
+            ) : null}
+          </button>
+        ))}
       </div>
 
       {/* Swipeable tab content — drag left/right to switch tabs */}
@@ -6278,6 +6368,14 @@ Object.assign(window, {
   RouteStack,
   PhoneStatusBar,
   TabBar,
+  DriverScreenHeader,
+  NotificationBellButton,
+  // Canonical applied-filter derivation — exported so the marketplace badge,
+  // the chip row and the unit tests all share one implementation.
+  getAppliedMarketplaceFilters,
+  getAppliedMarketplaceFilterCount,
+  jobMatchesDriverFilters,
+  MarketplaceFilterButton,
   Portal,
   FilterSheet,
   JobCard,

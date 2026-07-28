@@ -70,6 +70,11 @@ window.I18n = (() => {
       info: "Info",
       profile: "Profile",
       filters: "Filters",
+      // Accessible name of the Marketplace filter button when filters are
+      // active. Whole sentences (not fragments) so translations stay natural;
+      // resolved via tPlural("filtersApplied", count).
+      filtersApplied_one: "Filters, 1 applied",
+      filtersApplied_other: "Filters, {count} applied",
       sortDir: "Sort direction",
       postalCodeAbbr: "PLZ",
       type: "Type",
@@ -82,7 +87,9 @@ window.I18n = (() => {
       viewOnMap: "View on map",
       offer: "Offer",
       exploreJobs: "Explore available jobs",
-      welcomeBack: "Welcome back,",
+      // `welcomeBack` removed 2026-07-26: the Marketplace greeting block
+      // (avatar + "Welcome back, <name>") was dropped by client decision and
+      // is not relocated to another screen. No other surface used the key.
       assignedDirectlyNotice: "Assigned directly by admin.",
       statusAll: "Status: all",
       searchJobsPlaceholder: "Search tour, customer, driver, VIN…",
@@ -1678,6 +1685,9 @@ window.I18n = (() => {
       info: "Info",
       profile: "Profil",
       filters: "Filter",
+      // Siehe EN-Hinweis — via tPlural("filtersApplied", count).
+      filtersApplied_one: "Filter, 1 aktiv",
+      filtersApplied_other: "Filter, {count} aktiv",
       sortDir: "Sortierrichtung",
       postalCodeAbbr: "PLZ",
       type: "Typ",
@@ -1690,7 +1700,7 @@ window.I18n = (() => {
       viewOnMap: "Auf Karte anzeigen",
       offer: "Angebot",
       exploreJobs: "Verfügbare Aufträge durchsuchen",
-      welcomeBack: "Willkommen zurück,",
+      // `welcomeBack` ("Willkommen zurück,") removed 2026-07-26 — see EN note.
       assignedDirectlyNotice: "Direkt vom Administrator zugewiesen.",
       statusAll: "Status: alle",
       searchJobsPlaceholder: "Tour, Kunde, Fahrer, FIN suchen…",
@@ -3281,11 +3291,40 @@ window.I18n = (() => {
     );
   }
 
+  // Plural-aware lookup: resolves `<key>_one` / `<key>_other` and interpolates
+  // `{count}`. Both driver locales (en, de) have simple one/other plural
+  // categories, so a two-form resolver is sufficient — and it keeps whole
+  // sentences inside the translation files instead of letting components
+  // concatenate fragments like `count + " filters applied"`, which does not
+  // survive translation (DE word order differs).
+  //
+  // Usage: tPlural("filtersApplied", 3) -> "Filters, 3 applied"
+  function tPlural(key, count, vars) {
+    const n = Number(count) || 0;
+    const form = n === 1 ? "one" : "other";
+    const merged = { count: n, ...(vars || {}) };
+    const resolved = t(`${key}_${form}`, merged);
+    // `t` echoes the key back when a message is missing; fall back to the
+    // other plural form rather than rendering a raw key into the UI.
+    if (resolved === `${key}_${form}`) {
+      const alt = t(`${key}_${form === "one" ? "other" : "one"}`, merged);
+      return alt === `${key}_${form === "one" ? "other" : "one"}` ? key : alt;
+    }
+    return resolved;
+  }
+
   window.useI18n = function useI18n() {
     const [, setTick] = React.useState(0);
     React.useEffect(() => subscribe(() => setTick((v) => v + 1)), []);
-    return { locale, setLocale, t };
+    return { locale, setLocale, t, tPlural };
   };
 
-  return { MESSAGES, subscribe, getLocale: () => locale, setLocale, t };
+  return {
+    MESSAGES,
+    subscribe,
+    getLocale: () => locale,
+    setLocale,
+    t,
+    tPlural,
+  };
 })();

@@ -77,6 +77,77 @@ These map 1:1 in `styles.css`:
 
 Primär (filled) · Sekundär (white + fine gray outline) · Tertiär (text) · Deaktiviert · Mit-Icon variants. The board renders the **Primär button near-black**, while §2 permits `#6F29FF` for primary CTAs — the prototype keeps purple primaries until the client decides (**open decision: dark vs purple primary**). Secondary/tertiary/disabled treatments match the board.
 
+### Header icon buttons — one shared treatment [INTERNAL]
+
+Driver primary-screen header actions (sort, filter, **notification bell**) all render as
+`.header-btn` in `styles.css`. That class is the **single** declaration of the treatment; a
+header action must never re-declare border, radius, size, surface or shadow.
+
+| Property | Token | Value |
+|----------|-------|-------|
+| Border | `--line` | `1px solid #E5E5EA` |
+| Radius | `--r-3` | 12px |
+| Surface | `--paper` | `#FFFFFF` |
+| Elevation | `--sh-1` | `0 1px 2px rgba(15,23,42,0.06)` |
+| Size | — | 40 × 40 (adequate touch target; the single literal, declared once) |
+| Hover border | `--line-3` | brand text color |
+| Active/applied | `--primary` | filled purple + white icon (restrained marker, not a surface) |
+| Focus | `--primary` | `outline: 2px solid`, `outline-offset: 2px` |
+
+Client requirement (Taner Özdemir, 2026-07-26): *"The button should have exactly the same border
+as the sorting and filter function."* Satisfied structurally — the bell is
+`class="header-btn header-bell-btn"`, where `header-bell-btn` contributes **only**
+`position: relative` plus the unread-badge anchor. Asserted in
+`tests/regression/driver-header.structural.spec.ts` by comparing computed styles.
+
+> No new token was introduced for this: 12px was already `--r-3` (the previous hardcoded `12px`
+> literal is now the token) and border/surface/shadow already had tokens. The 40px square is the
+> only remaining literal and is declared exactly once.
+
+The `.header-btn` radius is `--r-3` (12px), not the `--r-2` (8px) named in the *Controls* row of
+"Surfaces, radius, elevation" below. That 12px predates this change
+and is left as-is — it is a pre-existing deviation to reconcile with the client separately, and
+harmonizing the bell to the *existing* sort/filter value is exactly what was asked for. Do not
+"fix" one of the three buttons in isolation; they move together or not at all.
+
+### Count badges on header icon buttons [INTERNAL]
+
+Two controls carry a numeric count badge: the **notification bell** (unread notifications) and the
+**Marketplace filter button** (applied filters). Both reuse the same shared `Badge` primitive
+(`driver-ui.jsx`) and the same anchoring rule — there is **one** badge implementation, not one per
+feature. Only the *count semantics* differ, and those live in the feature code.
+
+**Visual primitive — `.ui-badge` + `.ui-badge-destructive`** (`styles.css`):
+
+| Property | Token | Value |
+|----------|-------|-------|
+| Background | `--destructive` | `#DC2626` |
+| Text | — | `#FFFFFF` (on-destructive; the only literal, inherited from the existing primitive) |
+| Radius | `--r-pill` | `999px` |
+| Typography | `--text-overline` + weight 600 + `tabular-nums` | 0.6875rem base, overridden to 10px when anchored |
+| Min size | — | `min-width: 18px` / `height: 18px` (anchored variant: 16px) |
+| Padding | — | `0 5px` (anchored variant: `0 4px`) |
+| Overflow | — | caps at `99+` (in the `Badge` component, not CSS) |
+
+**Anchoring — `.header-btn > .header-btn-badge`** (one rule, shared by bell and filter):
+
+| Property | Token | Value |
+|----------|-------|-------|
+| Placement offset | — | `top: -5px; right: -5px` (upper-right of the 40×40 control) |
+| Ring | `--paper` | `1.5px` border so the badge separates from the button surface |
+| Ring when button is applied/active | `--primary` | the applied filter button is `--primary`-filled; the ring follows the surface it sits on |
+| Hit testing | — | `pointer-events: none` — the badge never steals a tap from its button |
+
+**Host control — `.header-btn`** (unchanged by this feature): border `--line`, radius `--r-3`,
+surface `--paper`, elevation `--sh-1`, 40×40, focus `2px solid --primary` at `outline-offset: 2px`,
+applied/active state `--primary` fill. See "Header icon buttons" above.
+
+> **No new token was introduced.** Background, text, radius, typography and the focus ring all
+> resolve to existing semantic tokens; the anchored size/offset values are declared exactly once in
+> the shared `.header-btn-badge` rule rather than duplicated per feature. Zero count renders **no
+> element at all** (the `Badge` component returns `null`), so there is nothing to hide and no
+> reserved space.
+
 ### `--cta` orange — under review [INTERNAL]
 
 The orange binding-action rule is a **prototype invention** (functional semantic), not a Design Direction Board color. Implementation is currently inconsistent (accept / mark-performed render as purple primaries; only the overlap-confirm uses orange). It is *compatible* with the board (functional, restrained, text-labelled) but requires explicit client approval as the binding-CTA treatment. Until decided: keep the token, do not extend its use, do not present it as client-selected.

@@ -1,6 +1,6 @@
 # AUTHEON — Design Direction Board Compliance Audit
 
-> **Status:** v1.1 — 2026-07-14. Audit of the prototype implementation against the client **Design Direction Board — AUTHEON GmbH, July 2026** (DDB). See the **v1.1 addendum** at the end — the original PDF arrived after the v1.0 audit and closed several items.
+> **Status:** v1.5 — 2026-07-27. Audit of the prototype implementation against the client **Design Direction Board — AUTHEON GmbH, July 2026** (DDB). See the **v1.1 addendum** (the original PDF arrived after the v1.0 audit and closed several items), the **v1.2 addendum** (post-remediation feature components), the **v1.3 addendum** (vehicle-entry audit), the **v1.4 addendum** (primary-screen header consistency, items 36–38, from the 2026-07-26 client Figma review), and the **v1.5 addendum** (Marketplace applied-filter visibility, items 39–43).
 > **Source:** v1.0 used the DDB requirement extract (sections A–J); v1.1 verified against the original client PDF, now in the repository at [`../../Design Direction Board.pdf`](../../Design%20Direction%20Board.pdf) (7 pages, DE, by Taner Özdemir / Carolina Offermanns).
 > **Authority:** `docs/requirements/prd.json` = behavior · DDB = client visual direction · this audit = gap record. See [`ui-ux-production-plan.md`](ui-ux-production-plan.md) §0.
 > **Evidence:** Code references are `path:line` against the pre-remediation state (commit `cae3a8a` working tree). Rendered evidence in [`audit-2026-07-14/before/`](audit-2026-07-14/before/) — driver captured as the 392×800 phone frame inside a 1440×1000 viewport (the prototype's demo frame; production target is 375px), admin at 1440×1000. Light + dark themes.
@@ -161,6 +161,67 @@ Audit of the vehicle-entry and vehicle-display surfaces **as they stood before**
 ### Method
 
 Static read of `admin.jsx` (vehicle section + job detail + jobs table), `driver.jsx` (card, preview, booking dialog, complete order view, filter sheet, profile prefs, icon map), `store.js` (job factory, seed, form round-trip, write path, order-edit field list, exports), `i18n.js` (EN/DE vehicle keys) and `styles.css`; cross-checked against `prd.json` v2.6, `schema.dbml` and `logical-model.md`. Rendered verification via Playwright against the framed prototype.
+
+## v1.4 addendum — primary-screen header consistency (2026-07-26)
+
+Client review of the shared Figma link (Taner Özdemir / Ferhat Catak). Two inconsistencies were
+raised that the earlier audits had not treated as findings, because each screen was assessed on its
+own rather than **across** the four primary screens.
+
+**Visual evidence supplied by the client** (in-repo, gitignored per the design-image rule — see
+[`screenshots/README.md`](screenshots/README.md)): `Screenshot 2026-07-26 at 19.49.49.png` (zoom on
+the Marketplace greeting block: `JB` avatar + "Willkommen zurück," + "Jordan Blake") and
+`Screenshot 2026-07-26 at 19.50.17.png` (all four primary screens side by side, with a green rule
+across the aligned My-Orders / Infopoint / Profil titles and a red underline marking "Marktplatz"
+sitting lower).
+
+| ID | Requirement | Surface | Status | Evidence | Gap / conflict | Recommended action | Documentation target |
+|----|-------------|---------|--------|----------|----------------|--------------------|----------------------|
+| 36 | Primary-screen headers start at the same visual height across menu items | Driver | **CONFLICT** (pre-remediation) | Marketplace used its own `.pwa-header` wrapper with a greeting row above the title (`driver.jsx:1209-1247`, `styles.css:1149-1194`); My Orders (`:3417`) and Profile (`:5039`) used `.pwa-screen-header`; **Infopoint hardcoded a third header inline** (`:5476-5503`, `fontSize:24` / `marginTop:4` vs `.header-subtitle`'s `margin-top:2px`) | The greeting block pushed the Marketplace title ~52px below the other three; three separate header implementations meant no single place enforced alignment | Remove the greeting block; extract ONE `DriverScreenHeader` used by all four screens | driver-screen-spec.md, ui-ux-production-plan.md |
+| 37 | Notification action available on all primary screens | Driver | **MISSING** (pre-remediation) | Bell existed only inside the Marketplace header (`driver.jsx:1226-1246`); `MyJobs`, `Infopoint`, `ProfilePaneFull` received no `onOpenNotifications` prop from either shell | A driver on My Orders / Infopoint / Profile had no way to reach notifications except by returning to Marketplace | Move the bell into the shared header and pass the existing shell handler to all four screens | driver-screen-spec.md |
+| 38 | Header icon buttons share one border treatment | Driver | **CONFLICT** (pre-remediation) | Bell was `.header-bell-btn`: 40×40 **circle**, `background: var(--canvas)`, `border: 0`, **no** shadow (`styles.css:1195-1207`). Sort + filter were `.header-btn`: 40×40, `border-radius: 12px`, `background: var(--paper)`, `1px solid var(--line)`, `box-shadow: var(--sh-1)` (`:1242-1254`) | Two visually different icon-button treatments sat in the same header row — the client called this out directly ("exactly the same border as the sorting and filter function") | Make the bell reuse `.header-btn`; keep a bell-only class solely for the badge anchor | brand-tokens.md, driver-screen-spec.md |
+
+Consequential note on **item 22** (restrained header KPIs): the v1.1 addendum recorded the KPI row
+as COVERED, but the KPI row is **no longer in the code** — `driver.jsx` has no `.kpi-row`, and
+`kpiAvailableJobs` / `kpiBookedJobs` / `kpiOpenDocuments` are unreferenced by `t()` (they dropped
+out of the regenerated `driver-i18n-index.md`). Only the orphaned `.kpi-row` / `.kpi-chip` CSS
+(`styles.css:952-977`) and a `pwa.css` ≤360px wrap rule remain. This regression predates the
+2026-07-26 change and was **not** introduced by it; item 22 should revert to PARTIAL pending a
+client decision on whether the KPI row returns. Not actioned here — outside the client's ask.
+
+Remediation for 36–38 is tracked as R28–R31 in
+[`design-direction-board-remediation.md`](design-direction-board-remediation.md).
+
+## v1.5 addendum — Marketplace applied-filter visibility (2026-07-27)
+
+Usability review of the Marketplace filtering flow.
+
+**The issue.** A driver could open the filter panel, apply filters, and close the panel. With the
+panel closed, the Marketplace gave no numeric indication of *how many* filters were constraining the
+list. A driver returning to the tab — or landing on a short list — could reasonably read the result
+set as "there is little work available" rather than "you have narrowed this yourself". The applied
+state was inferable only from the chip row and the button's filled state, neither of which answers
+"how many".
+
+**Evidence.** The task-supplied reference for this item describes the numeric badge on the filter
+control. *(Note: the screenshot referenced in the 2026-07-27 task text was not attached to that
+request; the two images available in the thread are the 2026-07-26 header-review captures, neither
+of which shows a filter badge. The written requirement, the existing prototype behaviour and the
+gallery capture below were used as the reference instead. Flagged rather than assumed.)* Current
+rendered evidence: `tests/regression/snapshots/marketplace-filter-states.visual.spec.ts-snapshots/`
+and `driver-marketplace-filter-{1,3}-*.png`.
+
+| ID | Requirement | Surface | Status | Evidence | Gap / conflict | Recommended action | Documentation target |
+|----|-------------|---------|--------|----------|----------------|--------------------|----------------------|
+| 39 | Applied-filter count visible on the closed Marketplace filter control | Driver | **COVERED** | Badge implemented on `.header-filter-btn`; count from `getAppliedMarketplaceFilterCount(filters)` (`driver.jsx`) | Pre-existing prototype implementation already resolved the core usability issue — the badge, the applied-state fill and the chip row were all present | Keep; hardened during this pass (see 40–42) | driver-screen-spec.md, brand-tokens.md |
+| 40 | Count badge reuses the shared badge primitive and tokens | Driver | **CONFLICT** (pre-remediation) | Filter badge rendered a raw `<span class="tabbar-badge">` — the *tab-bar* badge, with hardcoded `9999px`, `#ffffff` and mono 9px — while the notification bell used the shared `Badge` primitive | Two badge implementations in one screen; the filter badge had no `99+` cap and no `pointer-events: none`, so it could swallow taps meant for its own button | Reuse `Badge` + one shared `.header-btn-badge` anchor | brand-tokens.md, remediation R32 |
+| 41 | Applied-filter count is a testable, canonical derivation | Driver | **PARTIAL** (pre-remediation) | Count was `activeChips.length`, an array assembled inline in `Portal`'s render body | Correct and non-duplicated, but not extractable, not unit-testable, and easy to fork if a second consumer appeared | Extract `getAppliedMarketplaceFilters` / `getAppliedMarketplaceFilterCount` next to the shared filter predicate | remediation R32, ui-ux-production-plan.md |
+| 42 | Accessible name states the applied-filter count in a translated, pluralized form | Driver | **PARTIAL** (pre-remediation) | `aria-label` was the concatenation `` `${t("filters")} (${count})` `` → "Filters (4)" | A parenthesised numeral is not a sentence, and the pattern hardcodes English/German-agnostic word order that translation cannot fix | Add `filtersApplied_one/_other` and a `tPlural` resolver | driver-i18n-index.md, remediation R32 |
+| 43 | Every counted filter actually restricts the result set | Driver | **CONFLICT — open** | `from: "This week"` is offered as a preset (`driver.jsx` FilterSheet), is counted by the badge and renders a chip, but `jobMatchesDriverFilters` has **no** `"This week"` branch — presets are excluded from the range comparison and only `"Today"` and `"Weekend"` are implemented | A driver selecting "This week" sees "Filters, 1 applied" and a chip while the result set is unchanged | **Not actioned** — implementing it means defining week boundaries against a prototype whose "today" is the hardcoded `05.05.`. Needs a product decision, not an invented rule | prd.json (filter semantics), driver-screen-spec.md |
+
+Remediation for 40–42 is tracked as **R32** in
+[`design-direction-board-remediation.md`](design-direction-board-remediation.md). Item 43 remains
+open.
 
 ## Method notes
 
