@@ -139,7 +139,7 @@ DriverScreenHeader
 |--------|-----------|-----------|--------------|----------------|-----------------|
 | Marketplace | `Portal` | `marketplace` | `exploreJobs` | — (sort/filter live in the results area) | — |
 | My Orders | `MyJobs` | `myJobs` | `myJobsSubtitle` | — (search + sort live below the header) | — |
-| Infopoint | `Infopoint` | `infopoint` | `infopointSubtitle` | — | sub-tab pills (`.infopoint-tabs-slider`) |
+| Infopoint | `Infopoint` | `infopoint` | `infopointSubtitle` | — | — (sub-tabs are a sibling band *below* the header — see next section) |
 | Profile | `ProfilePaneFull` | `profileTitle` | `profileSubtitle` | — | — |
 
 All four carry the notification action. No screen currently passes `actions`; the slot exists so a
@@ -149,6 +149,14 @@ future screen action cannot reintroduce a bespoke header.
 
 - **Titles start at the same visual height on all four screens.** Guaranteed by the single
   `padding: 16px 20px 14px` on `.pwa-screen-header` — verified by test, not by inspection.
+- **The header's grey divider ends at the same height on all four screens** (client review
+  2026-07-28). The header renders title + subtitle + `actions` only; anything a screen adds
+  underneath — My orders' search row and tab pills, Infopoint's sub-tab pills — is a **sibling after
+  the header**, never a header child. Putting sub-tabs *inside* `.pwa-screen-header` pushes that grey
+  line ~65px lower on one screen and breaks the row of four. Verified by test.
+- Screen-specific bands under the header (`.myjobs-tabs-slider`, `.infopoint-tabs-slider`) are
+  full-bleed white with their own `border-bottom`, and repeat the header's 20px side padding (14px at
+  ≤360px) so their first item lines up with the title above.
 - Status bar / safe-area / notch offset is owned by `.phone-screen` (`pwa.css`: `padding-top:
   env(safe-area-inset-top)`), i.e. *above* the header. The header adds no device-chrome compensation.
 - `.screen-header-row` uses `align-items: flex-start`, and `.screen-header-titles` has `min-width: 0`

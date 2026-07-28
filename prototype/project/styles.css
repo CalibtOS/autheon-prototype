@@ -270,7 +270,7 @@
     transparent
   );
 }
-}
+
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -5868,13 +5868,17 @@ select.input {
 .pwa-screen-header .header-controls {
   flex-shrink: 0;
 }
-/* Infopoint sub-tabs are header children — spacing only, no header offsets. */
-.pwa-screen-header .infopoint-tabs-slider {
-  margin-top: 16px;
-  padding: 0 0 12px 0;
-  border-bottom: none;
+/* Infopoint sub-tabs: a white band directly UNDER the header divider, not header
+   children. The header therefore ends at the same height on all four primary
+   screens (that shared grey line is the one the client aligns against) and this
+   band contributes the second divider, under the tabs. Base treatment —
+   `background: var(--paper)` + `border-bottom` — comes from
+   `.phone-shell .myjobs-tabs-slider`; only the alignment differs. The left pad
+   matches the header's 20px so the first tab lines up with the title. */
+.phone-shell .infopoint-tabs-slider {
   justify-content: flex-start;
   gap: 20px;
+  padding: 0 20px;
 }
 .scroll-body {
   /* Extra bottom pad clears the absolute floating tab capsule */

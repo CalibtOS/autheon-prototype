@@ -210,8 +210,10 @@ now also rendered outside the loading branch so they no longer disappear during 
 1. **Profile identity block** — the `JB` avatar + "Jordan Blake" inside the Profile *body* stay. The
    client removed the *Marketplace header greeting*, not the Profile identity card.
 2. **Infopoint sub-tabs / My Orders search + tabs** — still screen-specific, rendered below the shared
-   header (Infopoint's pass through the header's `children` slot). Their inline positioning styles were
-   replaced with a class (`.infopoint-tabs-slider`) but the spacing is pixel-preserved.
+   header. Their inline positioning styles were replaced with a class (`.infopoint-tabs-slider`) but
+   the spacing is pixel-preserved. *(Amended 2026-07-28 — Infopoint's sub-tabs initially passed through
+   the header's `children` slot, which dropped Infopoint's grey header divider ~65px below the other
+   three screens'. They are now a sibling band after the header, exactly like My Orders'.)*
 3. **KPI row** — remains absent (see audit item 22 note); its orphaned CSS was left in place rather
    than deleted, since whether the row returns is a client decision.
 4. **`.header-btn` 12px radius vs the `--r-2` controls rule** — pre-existing deviation, left as-is; see

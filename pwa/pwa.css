@@ -184,6 +184,12 @@ body.pwa-standalone .phone-shell.pwa-viewport {
     padding-left: 14px;
     padding-right: 14px;
   }
+  /* Infopoint's sub-tab band sits under the header — keep its first tab on the
+     same left edge as the (narrowed) header title. */
+  .phone-shell.pwa-viewport .infopoint-tabs-slider {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
   /* 24px title + a long DE subtitle next to a 40px action: give the title room
      rather than letting it wrap into the notification button. */
   .phone-shell.pwa-viewport .pwa-screen-header .header-title {

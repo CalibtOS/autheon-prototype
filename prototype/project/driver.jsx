@@ -6091,28 +6091,32 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
         subtitle={t("infopointSubtitle")}
         onOpenNotifications={onOpenNotifications}
         notificationsOpen={notificationsOpen}
-      >
-        {/* Horizontal Tab Pills Selector */}
-        <div className="myjobs-tabs-slider infopoint-tabs-slider">
-          {[
-            ["documents", t("infopointDocsTab")],
-            ["news", t("infopointNewsTab"), unreadCount],
-            ["help", t("infopointHelpTab")],
-          ].map(([id, lbl, n]) => (
-            <button
-              key={id}
-              type="button"
-              className={`myjobs-tab-pill ${subTab === id ? "active" : ""}`}
-              onClick={() => setSubTab(id)}
-            >
-              <span>{lbl}</span>
-              {id === "news" && n > 0 ? (
-                <span className="pill-badge">{n}</span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-      </DriverScreenHeader>
+      />
+
+      {/* Horizontal Tab Pills Selector — a sibling band BELOW the header, the
+          same way My orders places its search row and tabs. Keeping the tabs
+          out of `.pwa-screen-header` is what keeps the header's grey divider at
+          the identical height on all four primary screens; the band then draws
+          its own divider under the tabs. */}
+      <div className="myjobs-tabs-slider infopoint-tabs-slider">
+        {[
+          ["documents", t("infopointDocsTab")],
+          ["news", t("infopointNewsTab"), unreadCount],
+          ["help", t("infopointHelpTab")],
+        ].map(([id, lbl, n]) => (
+          <button
+            key={id}
+            type="button"
+            className={`myjobs-tab-pill ${subTab === id ? "active" : ""}`}
+            onClick={() => setSubTab(id)}
+          >
+            <span>{lbl}</span>
+            {id === "news" && n > 0 ? (
+              <span className="pill-badge">{n}</span>
+            ) : null}
+          </button>
+        ))}
+      </div>
 
       {/* Swipeable tab content — drag left/right to switch tabs */}
       <SwipeViews

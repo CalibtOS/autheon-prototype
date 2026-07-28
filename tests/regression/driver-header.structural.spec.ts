@@ -104,6 +104,62 @@ test.describe('driver shared screen header', () => {
     ).toBe(1);
   });
 
+  test('the header grey divider ends at the same height on all four screens', async ({ page }) => {
+    // Client review 2026-07-28: the four screens are reviewed side by side, so the
+    // header's bottom rule must form one straight line across them. It broke when
+    // Infopoint's sub-tabs were rendered as header *children* (the divider moved
+    // below the tabs). Screen-specific rows belong AFTER the header, not inside it.
+    await prepareDriverVisual(page);
+
+    const bottoms: Record<string, number> = {};
+
+    for (const screen of SCREENS) {
+      await openDriverTab(page, screen.tab);
+
+      const header = screenHeader(page);
+      await expect(header.getByRole('heading', { level: 1 })).toHaveText(screen.title);
+
+      // The divider IS the header's bottom border, so its position is the header's
+      // bottom edge — measured in the phone's own coordinate space.
+      bottoms[screen.key] = await header.evaluate((el) => {
+        const screenEl = el.closest('.phone-screen') ?? el.ownerDocument.body;
+        return Math.round(el.getBoundingClientRect().bottom - screenEl.getBoundingClientRect().top);
+      });
+
+      // A visible 1px rule, not a collapsed/absent border.
+      const border = await header.evaluate((el) => {
+        const s = getComputedStyle(el);
+        return { width: s.borderBottomWidth, style: s.borderBottomStyle };
+      });
+      expect(parseFloat(border.width), `${screen.key} divider must be drawn`).toBeGreaterThan(0);
+      expect(border.style).not.toBe('none');
+    }
+
+    expect(
+      new Set(Object.values(bottoms)).size,
+      `header dividers must share one height, got ${JSON.stringify(bottoms)}`,
+    ).toBe(1);
+  });
+
+  test('Infopoint sub-tabs sit below the header, not inside it', async ({ page }) => {
+    await prepareDriverVisual(page);
+    await openDriverTab(page, TAB.info);
+
+    const frame = prototypeFrame(page);
+    const tabs = frame.locator('.infopoint-tabs-slider');
+    await expect(tabs).toBeVisible();
+    // Not a descendant of the shared header…
+    await expect(screenHeader(page).locator('.infopoint-tabs-slider')).toHaveCount(0);
+    // …and positioned directly under it, carrying its own divider.
+    const gap = await tabs.evaluate((el) => {
+      const header = el.ownerDocument.querySelector('.pwa-screen-header')!;
+      return Math.round(el.getBoundingClientRect().top - header.getBoundingClientRect().bottom);
+    });
+    expect(gap, 'sub-tab band must start where the header divider ends').toBe(0);
+    const border = await tabs.evaluate((el) => getComputedStyle(el).borderBottomWidth);
+    expect(parseFloat(border), 'sub-tab band draws the divider under the tabs').toBeGreaterThan(0);
+  });
+
   test('notification action is in the header of every primary screen', async ({ page }) => {
     await prepareDriverVisual(page);
 
