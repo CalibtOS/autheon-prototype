@@ -1,0 +1,8 @@
+- navigation "Primary navigation":
+  - button "Marketplace"
+  - button "My jobs":
+    - img
+  - button "Infopoint (2)":
+    - img
+  - button "Profile":
+    - img

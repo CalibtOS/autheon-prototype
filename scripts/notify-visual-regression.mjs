@@ -8,6 +8,8 @@ import nodemailer from 'nodemailer';
 import { chromium } from '@playwright/test';
 import { config as loadDotenv } from 'dotenv';
 
+import { classifySmtpError, smtpPreflight } from './lib/smtp-preflight.mjs';
+
 const repoRoot = process.cwd();
 
 for (const fileName of ['.env.testing', '.env.e2e', '.env']) {
@@ -42,6 +44,15 @@ const classification = classify(summary);
 
 if (classification.kind === 'success' && !notifyOnSuccess) {
   console.log('[visual-regression-notify] No notification sent for a clean successful run.');
+  await recordNotificationStatus({
+    status: 'skipped-passing',
+    attempted: false,
+    delivered: false,
+    failureKind: null,
+    missingVariables: [],
+    message:
+      'Run passed with no visual differences. Success notifications are off; set REGRESSION_NOTIFY_ON_SUCCESS=true to enable them.',
+  });
   process.exit(0);
 }
 
@@ -118,8 +129,34 @@ function buildReportModel(summaryJson, classification) {
     summary: summaryJson,
     generatedAt: new Date().toISOString(),
     metadata: {
-      branch: gitMetadata('branch'),
-      commit: gitMetadata('commit'),
+      // summaryJson.git is authoritative: the container has no .git, so the
+      // launcher/workflow passes provenance in. gitMetadata() is the local
+      // fallback for a developer running outside Docker.
+      repository: summaryJson.git?.repository || null,
+      workflow: summaryJson.git?.workflow || null,
+      runNumber: summaryJson.git?.runNumber || null,
+      runAttempt: summaryJson.git?.runAttempt || null,
+      event: summaryJson.git?.event || null,
+      pullRequest: summaryJson.git?.pullRequestNumber || null,
+      baseSha: summaryJson.git?.baseSha || null,
+      headSha: summaryJson.git?.headSha || null,
+      mergeSha: summaryJson.git?.mergeSha || null,
+      baselineSha: summaryJson.baseline?.baselineRevision || null,
+      baselineCount: summaryJson.baseline?.foundCount ?? summaryJson.visualBaselineCount ?? null,
+      baselineVerified: summaryJson.baseline?.verifiedCount ?? null,
+      baselineManifest: summaryJson.baseline?.manifestPresent ? 'present' : 'MISSING',
+      profile: summaryJson.environment?.profile || null,
+      playwrightVersion: summaryJson.environment?.playwrightVersion || null,
+      dockerBaseImage: summaryJson.environment?.dockerBaseImage || null,
+      expectedSnapshots: summaryJson.coverage?.counts?.expectedInProfile ?? null,
+      producedSnapshots: summaryJson.coverage?.counts?.producedSnapshots ?? null,
+      approvedBaselines: summaryJson.coverage?.counts?.approvedBaselines ?? null,
+      coveragePercent: summaryJson.coverage?.coveragePercent ?? null,
+      missingCoverageCount: summaryJson.coverage?.missingCoverage?.length ?? null,
+      orphanBaselineCount: summaryJson.coverage?.orphanBaselines?.length ?? null,
+      blocking: summaryJson.gate?.blocking ?? null,
+      branch: summaryJson.git?.branch || gitMetadata('branch'),
+      commit: summaryJson.git?.headSha || gitMetadata('commit'),
       runTimestamp: summaryJson.createdAt,
       environment: firstEnv([
         'REGRESSION_ENVIRONMENT',
@@ -152,6 +189,9 @@ function buildReportModel(summaryJson, classification) {
         summaryJson.archiveName || 'autheon-visual-regression-artifact.tar.gz',
       ),
       artifactUrl: firstEnv(['REGRESSION_ARTIFACT_URL', 'VISUAL_REGRESSION_ARTIFACT_URL']),
+      artifactName: process.env.REGRESSION_ARTIFACT_NAME || 'visual-regression-artifacts',
+      runId: summaryJson.git?.runId || null,
+      archiveSha256: summaryJson.archiveSha256 || null,
       playwrightReport: summaryJson.playwrightReport,
       testResults: summaryJson.testResults,
     },
@@ -340,6 +380,29 @@ async function buildFileAttachments(model, reportArtifacts) {
     });
   }
 
+  // summary.json is small and is the machine-readable source of truth, so it
+  // travels with the mail. Everything large (traces, videos, the full HTML
+  // report, the tar.gz) is LINKED, not attached: those routinely exceed SMTP
+  // message limits and getting the mail rejected loses the report entirely.
+  if (fsSync.existsSync(summaryPath)) {
+    const stat = await fs.stat(summaryPath);
+    const maxKb = Number(process.env.REGRESSION_SUMMARY_ATTACHMENT_MAX_KB || '512');
+
+    if (stat.size <= maxKb * 1024) {
+      attachments.push({
+        filename: 'summary.json',
+        path: summaryPath,
+        contentType: 'application/json',
+      });
+    } else {
+      console.warn(
+        `[visual-regression-notify] summary.json not attached because it is ${formatBytes(
+          stat.size,
+        )}, above REGRESSION_SUMMARY_ATTACHMENT_MAX_KB=${maxKb}. It is still in the uploaded artifact.`,
+      );
+    }
+  }
+
   const archiveAttachment = await optionalArchiveAttachment(model);
   if (archiveAttachment) attachments.push(archiveAttachment);
 
@@ -394,76 +457,190 @@ async function notify({ classification, email, reportArtifacts }) {
 
   await refreshExistingArtifactArchive(reportArtifacts);
 
+  // Configuration preflight. Reports missing variable NAMES only — never a
+  // value, and never a partially masked value either.
+  const preflight = smtpPreflight({ dryRun });
+
   if (dryRun) {
     console.log(
       `[visual-regression-notify] Dry run: ${classification.label} email payload written to ${toWorkspacePath(
         path.join(summaryDir, 'notification-email.json'),
       )}`,
     );
+    await recordNotificationStatus({
+      status: 'dry-run',
+      attempted: false,
+      delivered: false,
+      failureKind: null,
+      missingVariables: preflight.missingVariables,
+      message: preflight.message,
+      config: preflight.config,
+    });
     return { ok: true };
   }
 
-  const missing = requiredSmtpVars().filter((name) => !process.env[name]);
-  if (missing.length > 0) {
-    console.warn(
-      `[visual-regression-notify] Email not sent. Missing SMTP environment variable(s): ${missing.join(
-        ', ',
-      )}. Set REGRESSION_NOTIFICATION_DRY_RUN=true for local notification-path validation.`,
+  if (!preflight.ok) {
+    console.warn(`[visual-regression-notify] ${preflight.message}`);
+    for (const problem of preflight.problems) {
+      console.warn(`[visual-regression-notify] SMTP config problem: ${problem}`);
+    }
+    await recordNotificationStatus({
+      status: preflight.status,
+      attempted: false,
+      delivered: false,
+      failureKind: preflight.failureKind,
+      missingVariables: preflight.missingVariables,
+      problems: preflight.problems,
+      message: preflight.message,
+      context: preflight.availability,
+      config: preflight.config,
+    });
+    return { ok: false };
+  }
+
+  for (const problem of preflight.problems) {
+    console.warn(`[visual-regression-notify] SMTP config warning: ${problem}`);
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: preflight.config.port,
+    secure: preflight.config.secure,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASSWORD,
+    },
+    connectionTimeout: 20_000,
+    greetingTimeout: 20_000,
+    socketTimeout: 30_000,
+  });
+
+  // Verify connection + credentials separately from sending, so a transport
+  // problem is never reported as a message-construction problem.
+  try {
+    await transporter.verify();
+    console.log(
+      `[visual-regression-notify] SMTP connection verified (port ${preflight.config.port}, secure ${preflight.config.secure}).`,
     );
+  } catch (error) {
+    const classified = classifySmtpError(error);
+    console.warn(`[visual-regression-notify] SMTP connection failed: ${classified.message}`);
+    await recordNotificationStatus({
+      status: 'failed',
+      attempted: true,
+      delivered: false,
+      failureKind: classified.failureKind,
+      missingVariables: [],
+      message: classified.message,
+      config: preflight.config,
+    });
     return { ok: false };
   }
 
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || '587'),
-      secure: isTruthy(process.env.SMTP_SECURE),
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD,
-      },
-    });
-
     const sent = await transporter.sendMail(email);
     console.log(`[visual-regression-notify] Email sent to ${recipient}: ${sent.messageId}`);
+    await recordNotificationStatus({
+      status: 'delivered',
+      attempted: true,
+      delivered: true,
+      failureKind: null,
+      missingVariables: [],
+      message: `Delivered to ${preflight.config.recipientCount} recipient(s).`,
+      messageId: sent.messageId || null,
+      config: preflight.config,
+    });
     return { ok: true };
   } catch (error) {
-    console.warn(`[visual-regression-notify] Email failed: ${error.message || String(error)}`);
+    const classified = classifySmtpError(error);
+    console.warn(`[visual-regression-notify] Email failed: ${classified.message}`);
+    await recordNotificationStatus({
+      status: 'failed',
+      attempted: true,
+      delivered: false,
+      failureKind: classified.failureKind,
+      missingVariables: [],
+      message: classified.message,
+      config: preflight.config,
+    });
     return { ok: false };
   }
 }
 
+/**
+ * Write the notification outcome back into the canonical summary.json.
+ *
+ * The regression verdict is already decided and written; this only fills the
+ * `notification` field, so a mail outage is visible without ever changing the
+ * regression classification. Failing to record the status must not fail the run.
+ */
+async function recordNotificationStatus(status) {
+  const record = { ...status, recordedAt: new Date().toISOString() };
+
+  try {
+    const current = JSON.parse(await fs.readFile(summaryPath, 'utf8'));
+    current.notification = record;
+    await fs.writeFile(summaryPath, `${JSON.stringify(current, null, 2)}\n`, 'utf8');
+  } catch (error) {
+    console.warn(
+      `[visual-regression-notify] Could not record notification status in summary.json: ${error.message}`,
+    );
+  }
+
+  // Mirror it as a standalone file too, so the status survives even when
+  // summary.json itself was the thing that was missing.
+  try {
+    await fs.mkdir(summaryDir, { recursive: true });
+    await fs.writeFile(
+      path.join(summaryDir, 'notification-status.json'),
+      `${JSON.stringify(record, null, 2)}\n`,
+      'utf8',
+    );
+  } catch {
+    // Nothing further to do: the console log above is the fallback record.
+  }
+}
+
+/**
+ * Subject line.
+ *
+ * The subject is the only part many recipients read, so it carries the
+ * classification, the count, and the PR — in that order. Missing baselines get
+ * their own BLOCKED subject rather than being folded into "execution failures",
+ * because the fix is completely different (approve baselines vs. fix a test).
+ */
 function subjectFor(model) {
   const visualCount = model.visualDifferences.length;
   const executionCount = model.executionFailures.length;
   const missingCount = model.missingBaselines.length;
-  const failureCount = executionCount + missingCount;
+  const scope = model.metadata.pullRequest
+    ? ` — PR #${model.metadata.pullRequest}`
+    : model.metadata.branch
+      ? ` — ${model.metadata.branch}`
+      : '';
 
-  if (model.classification.kind === 'warning') {
-    return `[AUTHEON Visual Regression] ⚠️ ${visualCount} visual ${plural(
-      visualCount,
-      'change',
-      'changes',
-    )} detected — CI passed`;
+  if (missingCount > 0) {
+    return `[AUTHEON Visual Regression] BLOCKED — Missing baselines (${missingCount})${scope}`;
   }
 
-  if (model.classification.kind === 'failure') {
-    if (failureCount > 0) {
-      return `[AUTHEON Visual Regression] ❌ CI failed — ${failureCount} execution ${plural(
-        failureCount,
-        'failure',
-        'failures',
-      )}`;
-    }
-
-    return `[AUTHEON Visual Regression] ❌ CI failed — ${visualCount} visual ${plural(
-      visualCount,
-      'change',
-      'changes',
-    )}`;
+  if (executionCount > 0) {
+    return `[AUTHEON Visual Regression] INFRA FAILURE — ${executionCount} execution ${plural(
+      executionCount,
+      'failure',
+      'failures',
+    )}${scope}`;
   }
 
-  return '[AUTHEON Visual Regression] ✅ Passed — no visual changes';
+  if (visualCount > 0) {
+    const strictLabel = model.summary.strict ? 'BLOCKED — ' : '';
+    return `[AUTHEON Visual Regression] ${strictLabel}${visualCount} visual ${plural(
+      visualCount,
+      'difference',
+      'differences',
+    )}${scope}`;
+  }
+
+  return `[AUTHEON Visual Regression] Passed${scope}`;
 }
 
 function renderTextEmail(model, reportArtifacts) {
@@ -810,11 +987,29 @@ function renderFailureCards(model) {
     .join('');
 }
 
+/**
+ * Where the evidence is and how to get it.
+ *
+ * The artifact-specific download URL is not knowable at notification time: the
+ * notifier runs inside the pipeline, before actions/upload-artifact has created
+ * the artifact. So the email links the RUN and names the artifact plus the exact
+ * download command, rather than guessing an artifact ID that would 404.
+ */
 function renderArtifactReferences(model, reportArtifacts) {
+  const runId = model.artifact.runId;
+  const artifactName = model.artifact.artifactName;
+  const downloadCommand = runId
+    ? `gh run download ${runId} --name ${artifactName}`
+    : `gh run download <run-id> --name ${artifactName}`;
+
   const rows = [
-    ['Host artifact directory', model.artifact.hostDir],
-    ['Artifact archive', model.artifact.archivePath],
-    ['CI artifact URL', model.artifact.artifactUrl],
+    ['GitHub run (start here)', model.artifact.artifactUrl],
+    ['Artifact name', artifactName],
+    ['Download with GitHub CLI', downloadCommand],
+    ['Traces / videos / HTML report', `${artifactName} → autheon-visual-regression-artifact.tar.gz`],
+    ['Open a trace', 'npx playwright show-trace <extracted>/test-results/<test-dir>/trace.zip'],
+    ['Archive SHA-256', model.artifact.archiveSha256],
+    ['Artifact archive (in-run path)', model.artifact.archivePath],
     ['Playwright HTML report', model.artifact.playwrightReport],
     ['Test results', model.artifact.testResults],
     ['PDF report', reportArtifacts.pdfPath ? hostSummaryPath('visual-regression-report.pdf') : null],
@@ -1215,21 +1410,42 @@ Error: ${error.message || String(error)}
 function metadataRows(model) {
   const metadata = model.metadata;
   return [
+    ['Repository', metadata.repository],
+    ['Workflow', metadata.workflow],
+    ['Run number', metadata.runNumber],
+    ['Run attempt', metadata.runAttempt],
+    ['Event', metadata.event],
     ['Branch', metadata.branch],
-    ['Commit SHA', metadata.commit],
+    ['Pull request', metadata.pullRequest ? `#${metadata.pullRequest}` : null],
+    ['Base SHA', metadata.baseSha],
+    ['Head SHA', metadata.headSha],
+    ['Merge SHA', metadata.mergeSha],
+    ['Baseline SHA', metadata.baselineSha],
+    ['Baseline manifest', metadata.baselineManifest],
+    ['Approved baselines', formatNumber(metadata.baselineCount)],
+    ['Checksum-verified baselines', formatNumber(metadata.baselineVerified)],
     ['Run date/time', metadata.runTimestamp],
     ['Environment', metadata.environment],
+    ['Execution profile', metadata.profile],
     ['Browser/project', metadata.browser],
+    ['Playwright version', metadata.playwrightVersion],
+    ['Docker base image', metadata.dockerBaseImage],
     ['Viewport/image dimensions', metadata.viewport],
+    ['Regression status', metadata.wrapperStatus],
+    ['Blocking result', hasValue(metadata.blocking) ? (metadata.blocking ? 'YES' : 'no') : null],
+    ['Strict visual mode', hasValue(metadata.strict) ? (metadata.strict ? 'yes' : 'no') : null],
     ['Total tests', formatNumber(metadata.totalTests)],
-    ['Passed', formatNumber(metadata.passed)],
+    ['Passed snapshots', formatNumber(metadata.passed)],
     ['Skipped', formatNumber(metadata.skipped)],
     ['Visual differences', formatNumber(metadata.visualDifferences)],
     ['Execution failures', formatNumber(metadata.executionFailures)],
     ['Missing baselines', formatNumber(metadata.missingBaselines)],
-    ['Wrapper status', metadata.wrapperStatus],
+    ['Expected snapshots (profile)', formatNumber(metadata.expectedSnapshots)],
+    ['Produced snapshots', formatNumber(metadata.producedSnapshots)],
+    ['Coverage', hasValue(metadata.coveragePercent) ? `${metadata.coveragePercent}%` : null],
+    ['Declared missing coverage', formatNumber(metadata.missingCoverageCount)],
+    ['Orphan baselines', formatNumber(metadata.orphanBaselineCount)],
     ['Playwright exit code', hasValue(metadata.playwrightExitCode) ? String(metadata.playwrightExitCode) : null],
-    ['Strict visual mode', hasValue(metadata.strict) ? (metadata.strict ? 'yes' : 'no') : null],
     ['Platform', metadata.platform],
   ].filter(([, value]) => hasValue(value));
 }
@@ -1421,10 +1637,6 @@ function gitMetadata(kind) {
 
 function firstEnv(names) {
   return names.map((name) => process.env[name]).find((value) => hasValue(value)) || null;
-}
-
-function requiredSmtpVars() {
-  return ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD'];
 }
 
 function snapshotNameFromPath(filePath) {

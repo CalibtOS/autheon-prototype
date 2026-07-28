@@ -7,6 +7,23 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
+import {
+  APPROVED_PLATFORM,
+  CANONICAL_PLATFORM,
+  baselineVerificationBlocking,
+  baselineVerificationMessages,
+  git,
+  playwrightVersion,
+  verifyBaselines,
+} from './lib/visual-baseline.mjs';
+import {
+  buildCoverage,
+  coverageBlockingReasons,
+  readPlaywrightOutcomes,
+  scenariosForProfile,
+  readRegistry,
+} from './lib/visual-coverage.mjs';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 
@@ -16,11 +33,22 @@ const options = {
   noClean: args.includes('--no-clean'),
   reuseResults: args.includes('--reuse-results'),
   help: args.includes('--help') || args.includes('-h'),
+  profile:
+    readFlagValue('--profile') || process.env.VISUAL_REGRESSION_PROFILE || 'full',
 };
 
-const passthroughArgs = args.filter(
-  (arg) => !['--strict', '--no-clean', '--reuse-results', '--help', '-h'].includes(arg),
-);
+const RESERVED_FLAGS = ['--strict', '--no-clean', '--reuse-results', '--help', '-h'];
+const passthroughArgs = args.filter((arg, index) => {
+  if (RESERVED_FLAGS.includes(arg)) return false;
+  if (arg === '--profile') return false;
+  if (args[index - 1] === '--profile') return false;
+  return true;
+});
+
+function readFlagValue(name) {
+  const index = args.indexOf(name);
+  return index >= 0 ? args[index + 1] : null;
+}
 
 const settings = {
   testDir: process.env.VISUAL_REGRESSION_TEST_DIR || 'tests/regression',
@@ -53,11 +81,16 @@ if (options.help) {
 }
 
 const startedAt = new Date();
+
+// The execution profile decides which tests Playwright selects. `changed` is
+// intentionally not narrowed — see the registry note; a wrong change-impact
+// heuristic silently skips the screen the PR actually broke.
+const profileGrep = await resolveProfileGrep(options.profile);
 const playwrightArgs = [
   'test',
   settings.testDir,
   '--grep',
-  settings.grep,
+  profileGrep,
   '--project',
   settings.project,
   ...(passthroughArgs.some((arg) => arg.startsWith('--retries'))
@@ -75,27 +108,31 @@ let archivePath = path.resolve(paths.artifactDir, settings.archiveName);
 try {
   await prepareOutputDirectories();
 
-  // Baselines are platform-specific (snapshotPathTemplate includes
-  // {platform}), so only baselines approved for this OS count. Darwin PNGs
-  // are irrelevant to a Linux run and vice versa.
-  const platformSuffix = `-${process.platform}.png`;
-  const visualBaselineCount = await countFiles(paths.baselineDir, (filePath) =>
-    filePath.endsWith(platformSuffix),
-  );
-
   log(`Visual regression CI run started at ${startedAt.toISOString()}`);
   log(`Command: ${command}`);
-  log(
-    `Baseline directory: ${settings.baselineDir} (${visualBaselineCount} approved ${process.platform} PNG files)`,
-  );
+  log(`Execution profile: ${options.profile}`);
   log(`Playwright report directory: ${settings.playwrightReportDir}`);
   log(`Test results directory: ${settings.testResultsDir}`);
 
-  if (visualBaselineCount === 0) {
-    analysis = createPreflightFailure(
-      `No approved visual baselines for platform "${process.platform}" were found in ${settings.baselineDir}. Generate candidates with "npm run test:regression:visual:baseline:docker", review them, then approve with "npm run test:regression:visual:baseline:approve" and commit the snapshots.`,
-      visualBaselineCount,
-    );
+  // ---------------------------------------------------------------------------
+  // Preflight. Runs BEFORE Playwright so a baseline problem is reported as a
+  // classified, blocking framework failure instead of 46 opaque test failures.
+  // ---------------------------------------------------------------------------
+  const preflight = await runPreflight();
+  const visualBaselineCount = preflight.baseline.foundCount;
+
+  log(
+    `Baseline directory: ${settings.baselineDir} (${visualBaselineCount} approved ${APPROVED_PLATFORM} PNG files, ${preflight.baseline.verifiedCount} checksum-verified)`,
+  );
+  log(`Baseline revision: ${preflight.baseline.baselineRevision || 'unknown'}`);
+  log(
+    `Coverage registry: ${preflight.registryValid ? 'valid' : 'INVALID'} (${
+      preflight.coverage?.counts.registered ?? 0
+    } registered scenarios, ${preflight.coverage?.counts.expectedSnapshots ?? 0} expected snapshots)`,
+  );
+
+  if (preflight.blocking.length > 0) {
+    analysis = createPreflightFailure(preflight);
   } else {
     if (!options.reuseResults) {
       playwrightExitCode = await runPlaywright();
@@ -104,8 +141,14 @@ try {
     }
 
     analysis = await analyzeRun(playwrightExitCode, visualBaselineCount);
+    analysis.baseline = preflight.baseline;
+    analysis.environment = environmentMetadata();
+    analysis.git = gitMetadata();
+    analysis.coverage = await buildRunCoverage();
+    applyCoverageToAnalysis(analysis);
   }
 
+  analysis.gate = buildGate(analysis);
   summaryMarkdown = renderSummaryMarkdown(analysis);
   await writeSummaryFiles(analysis, summaryMarkdown);
   await appendGitHubStepSummary(summaryMarkdown);
@@ -114,32 +157,281 @@ try {
 
   archivePath = await createArchive(analysis, summaryMarkdown);
   const archiveSha256 = await sha256File(archivePath);
+  analysis.archiveSha256 = archiveSha256;
+  // Re-write summary.json so the archive checksum is part of the canonical
+  // machine-readable result the notifier and the workflow gate read.
+  await writeSummaryFiles(analysis, summaryMarkdown);
   log(`Artifact archive: ${toWorkspacePath(archivePath)}`);
   log(`Archive SHA-256: ${archiveSha256}`);
 
-  if (analysis.executionFailures.length > 0 || analysis.missingBaselines.length > 0) {
-    process.exitCode = playwrightExitCode || 1;
-  } else if (analysis.visualDifferences.length > 0 && options.strict) {
-    process.exitCode = 1;
-  } else {
-    process.exitCode = 0;
-  }
+  process.exitCode = analysis.gate.exitCode;
 } catch (error) {
   console.error(`[visual-regression] ERROR: ${error.stack || error.message || String(error)}`);
   process.exitCode = 1;
 }
 
+/**
+ * Baseline + coverage preflight.
+ *
+ * Both checks must pass before Playwright is allowed to start:
+ *   - the approved baseline set exists, is intact, and matches its manifest;
+ *   - the coverage registry is valid JSON with a usable expected-snapshot list.
+ *
+ * A failure here is deliberately NOT "continue-on-error": comparing against an
+ * unknown or corrupt baseline set produces results nobody can act on.
+ */
+async function runPreflight() {
+  const result = {
+    baseline: null,
+    coverage: null,
+    registryValid: false,
+    blocking: [],
+  };
+
+  result.baseline = await verifyBaselines({ platform: APPROVED_PLATFORM });
+
+  if (baselineVerificationBlocking(result.baseline)) {
+    result.blocking.push(
+      ...baselineVerificationMessages(result.baseline).map((message) => ({
+        kind: 'missing-baseline',
+        title: 'Approved baseline preflight',
+        file: settings.baselineDir,
+        message,
+      })),
+    );
+  }
+
+  // Guard against comparing baselines with a different renderer. macOS and
+  // Linux rasterize fonts differently, so a Darwin screenshot against a Linux
+  // baseline reports 1-3% false diffs on every text-bearing screen.
+  if (process.platform !== APPROVED_PLATFORM) {
+    result.blocking.push({
+      kind: 'execution-failure',
+      title: 'Wrong rendering platform',
+      file: settings.baselineDir,
+      message:
+        `This wrapper compares against approved "${APPROVED_PLATFORM}" baselines but is running on "${process.platform}". ` +
+        'Run the pipeline through Docker instead: "npm run test:regression:ci".',
+    });
+  } else if (APPROVED_PLATFORM !== CANONICAL_PLATFORM) {
+    // Not blocking — but loud, and recorded in the summary.
+    log(
+      `NON-CANONICAL RUN: comparing against "${APPROVED_PLATFORM}" baselines via VISUAL_REGRESSION_APPROVED_PLATFORM. ` +
+        `Only "${CANONICAL_PLATFORM}" baselines are approved for merge decisions.`,
+    );
+  }
+
+  try {
+    result.coverage = await buildCoverage({
+      platform: APPROVED_PLATFORM,
+      profile: options.profile,
+    });
+    result.registryValid = true;
+
+    for (const reason of coverageBlockingReasons(result.coverage)) {
+      result.blocking.push({
+        kind: reason.startsWith('Missing approved baseline')
+          ? 'missing-baseline'
+          : 'execution-failure',
+        title: 'Visual coverage preflight',
+        file: result.coverage.registry,
+        message: reason,
+      });
+    }
+  } catch (error) {
+    result.blocking.push({
+      kind: 'execution-failure',
+      title: 'Invalid visual coverage registry',
+      file: 'tests/regression/visual-coverage.manifest.json',
+      message: error.message,
+    });
+  }
+
+  return result;
+}
+
+/** Coverage scored against what the run actually produced. */
+async function buildRunCoverage() {
+  try {
+    const outcomes = await readPlaywrightOutcomes(paths.resultsJson);
+    return await buildCoverage({
+      platform: APPROVED_PLATFORM,
+      profile: options.profile,
+      outcomes,
+    });
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+/**
+ * Fold post-run coverage findings into the classified result lists.
+ *
+ * A snapshot that was expected but never captured is a *missing capture*, not a
+ * passing test. Without this, a suite whose test silently stopped short would
+ * report "all green".
+ */
+function applyCoverageToAnalysis(analysis) {
+  const coverage = analysis.coverage;
+  if (!coverage || coverage.error) return;
+
+  for (const entry of coverage.missingCaptures) {
+    analysis.executionFailures.push({
+      title: `Expected snapshot never captured: ${entry.snapshotId}`,
+      file: entry.spec,
+      status: 'missing-capture',
+      durationMs: 0,
+      message: entry.reason,
+    });
+  }
+
+  if (analysis.executionFailures.length > 0 || analysis.missingBaselines.length > 0) {
+    analysis.status = 'failed';
+  }
+}
+
+/**
+ * The single gate decision.
+ *
+ * Everything downstream — the terminal summary, the GitHub step summary, the
+ * annotations, the email, and the workflow's final exit code — reads this
+ * object. Nothing re-derives the verdict from raw counters.
+ */
+function buildGate(analysis) {
+  const reasons = [];
+
+  for (const failure of analysis.missingBaselines) {
+    reasons.push({ classification: 'missing-baseline', blocking: true, detail: firstLine(failure.message) });
+  }
+
+  for (const failure of analysis.executionFailures) {
+    reasons.push({ classification: 'execution-failure', blocking: true, detail: firstLine(failure.message) });
+  }
+
+  for (const diff of analysis.visualDifferences) {
+    reasons.push({
+      classification: 'visual-difference',
+      blocking: Boolean(analysis.strict),
+      detail: `${diff.snapshot || diff.title} changed.`,
+    });
+  }
+
+  const blocking = reasons.some((reason) => reason.blocking);
+
+  return {
+    blocking,
+    strict: Boolean(analysis.strict),
+    exitCode: blocking ? 1 : 0,
+    // Notification is reported separately and never overwrites this verdict.
+    // The notifier fills in `analysis.notification`.
+    policy: {
+      'visual-difference': analysis.strict ? 'blocking (strict mode)' : 'non-blocking',
+      'missing-baseline': 'blocking',
+      'missing-capture': 'blocking',
+      'execution-failure': 'blocking',
+      'corrupt-baseline': 'blocking',
+      'invalid-coverage-registry': 'blocking',
+      'notification-failure': 'reported separately, never blocking the regression verdict',
+    },
+    reasons,
+  };
+}
+
+function environmentMetadata() {
+  return {
+    platform: process.platform,
+    approvedPlatform: APPROVED_PLATFORM,
+    canonicalPlatform: CANONICAL_PLATFORM,
+    canonicalBaselineSet: APPROVED_PLATFORM === CANONICAL_PLATFORM,
+    node: process.version,
+    playwrightVersion: playwrightVersion(),
+    dockerBaseImage: process.env.VISUAL_REGRESSION_DOCKER_BASE_IMAGE || 'node:24-bookworm-slim',
+    dockerImage: process.env.VISUAL_REGRESSION_DOCKER_IMAGE || null,
+    project: settings.project,
+    profile: options.profile,
+    retries: settings.retries,
+    timezone: process.env.TZ || null,
+    ci: Boolean(process.env.CI),
+    diagnosticMode: isTruthy(process.env.VISUAL_REGRESSION_DIAGNOSTIC),
+  };
+}
+
+/**
+ * Run provenance. In CI these come from the workflow (the container has no
+ * .git, so the launcher passes them in); locally they come from git directly.
+ */
+function gitMetadata() {
+  return {
+    branch: process.env.GIT_BRANCH || git(['rev-parse', '--abbrev-ref', 'HEAD']),
+    headSha: process.env.GITHUB_HEAD_SHA || process.env.GIT_COMMIT || git(['rev-parse', 'HEAD']),
+    baseSha: process.env.GITHUB_BASE_SHA || null,
+    mergeSha: process.env.GITHUB_MERGE_SHA || null,
+    baseRef: process.env.GITHUB_BASE_REF || null,
+    pullRequestNumber: process.env.GITHUB_PR_NUMBER || null,
+    event: process.env.GITHUB_EVENT_NAME || null,
+    repository: process.env.GITHUB_REPOSITORY || null,
+    runId: process.env.GITHUB_RUN_ID || null,
+    runNumber: process.env.GITHUB_RUN_NUMBER || null,
+    runAttempt: process.env.GITHUB_RUN_ATTEMPT || null,
+    workflow: process.env.GITHUB_WORKFLOW || null,
+  };
+}
+
+/**
+ * Playwright `--grep` for an execution profile.
+ *
+ * `VISUAL_REGRESSION_GREP` still wins when set explicitly, so the controlled
+ * failure-simulation commands in the docs keep working unchanged.
+ */
+async function resolveProfileGrep(profile) {
+  if (process.env.VISUAL_REGRESSION_GREP) return process.env.VISUAL_REGRESSION_GREP;
+
+  try {
+    const registry = await readRegistry();
+    const entry = registry.profiles?.[profile];
+
+    if (!entry) {
+      log(
+        `Unknown execution profile "${profile}"; falling back to the full set (${settings.grep}).`,
+      );
+      return settings.grep;
+    }
+
+    if (profile === 'changed') {
+      log(
+        'Profile "changed" is not implemented as a narrowed selection: it runs the full registered set so a change-impact miss cannot hide a broken screen.',
+      );
+    }
+
+    return entry.grep || settings.grep;
+  } catch {
+    // A broken registry is caught and classified by the preflight; do not fail
+    // here, or the run would die before it can report *why*.
+    return settings.grep;
+  }
+}
+
 function printHelp() {
-  console.log(`Usage: node scripts/visual-regression-ci.mjs [--strict] [--no-clean] [--reuse-results] [playwright args...]
+  console.log(`Usage: node scripts/visual-regression-ci.mjs [--strict] [--no-clean] [--reuse-results] [--profile <name>] [playwright args...]
 
 Runs the @visual-regression Playwright suite, writes structured summaries, and
 packages one CI artifact archive without auto-updating approved baselines.
 
+Profiles (see tests/regression/visual-coverage.manifest.json):
+  full         Every non-excluded registered scenario. Default.
+  smoke        Critical representative subset (@visual-smoke).
+  changed      Falls back to full on purpose; never silently narrows.
+  baseline     Same set as full, used by candidate generation.
+  diagnostic   Same set as full with traces/video retained for every scenario.
+
 Environment:
-  VISUAL_REGRESSION_GREP          Playwright grep filter. Default: @visual-regression
+  VISUAL_REGRESSION_PROFILE       Execution profile. Default: full
+  VISUAL_REGRESSION_GREP          Explicit Playwright grep filter; overrides the profile.
   VISUAL_REGRESSION_PROJECT       Playwright project. Default: chromium
   VISUAL_REGRESSION_RETRIES       Playwright retries for the visual suite. Default: 0
+  VISUAL_REGRESSION_DIAGNOSTIC    When true, retain traces/video for every scenario.
   VISUAL_BASELINE_DIR             Approved snapshots. Default: tests/regression/snapshots
+  VISUAL_COVERAGE_REGISTRY        Coverage registry path.
   VISUAL_REGRESSION_ARTIFACT_DIR  Artifact output directory. Default: visual-regression-artifacts
   VISUAL_REGRESSION_STRICT        When true, visual diffs return exit code 1.
 `);
@@ -209,6 +501,17 @@ async function analyzeRun(playwrightExitCode, visualBaselineCount) {
     missingBaselines: [],
     executionFailures: [],
     status: 'unknown',
+    preflightFailed: false,
+    // Filled in by scripts/notify-visual-regression.mjs. Present up front so
+    // consumers can rely on the field existing even if notification never ran.
+    notification: {
+      status: 'not-attempted',
+      attempted: false,
+      delivered: false,
+      failureKind: null,
+      missingVariables: [],
+      message: 'Notification has not run yet.',
+    },
   };
 
   const resultsJson = await readJsonIfExists(paths.resultsJson);
@@ -288,7 +591,20 @@ async function analyzeRun(playwrightExitCode, visualBaselineCount) {
   return base;
 }
 
-function createPreflightFailure(message, visualBaselineCount) {
+/**
+ * Result shape for a preflight that refused to start Playwright.
+ *
+ * Every blocking preflight finding keeps its own classification, so a missing
+ * baseline is never reported as an execution failure and vice versa.
+ */
+function createPreflightFailure(preflight) {
+  const missingBaselines = preflight.blocking
+    .filter((entry) => entry.kind === 'missing-baseline')
+    .map(({ kind, ...record }) => record);
+  const executionFailures = preflight.blocking
+    .filter((entry) => entry.kind !== 'missing-baseline')
+    .map(({ kind, ...record }) => record);
+
   return {
     createdAt: new Date().toISOString(),
     command,
@@ -297,8 +613,13 @@ function createPreflightFailure(message, visualBaselineCount) {
     platform: process.platform,
     node: process.version,
     playwrightExitCode: 1,
+    preflightFailed: true,
     baselineDir: settings.baselineDir,
-    visualBaselineCount,
+    visualBaselineCount: preflight.baseline?.foundCount ?? 0,
+    baseline: preflight.baseline,
+    coverage: preflight.coverage,
+    environment: environmentMetadata(),
+    git: gitMetadata(),
     playwrightReport: path.join(settings.playwrightReportDir, 'index.html'),
     testResults: settings.testResultsDir,
     archiveName: settings.archiveName,
@@ -307,14 +628,8 @@ function createPreflightFailure(message, visualBaselineCount) {
     skipped: 0,
     flaky: [],
     visualDifferences: [],
-    missingBaselines: [
-      {
-        title: 'Approved baseline preflight',
-        file: settings.baselineDir,
-        message,
-      },
-    ],
-    executionFailures: [],
+    missingBaselines,
+    executionFailures,
     status: 'failed',
   };
 }
@@ -751,12 +1066,15 @@ function renderSummaryMarkdown(run) {
     'visual-differences-failed': 'Visual Differences Detected',
   }[run.status] || run.status;
 
+  const coverage = run.coverage && !run.coverage.error ? run.coverage : null;
+
   const lines = [
     '# Visual Regression CI Summary',
     '',
     `- Status: ${statusLabel}`,
     `- Blocking result: ${isBlocking(run) ? 'yes' : 'no'}`,
     `- Strict visual mode: ${run.strict ? 'yes' : 'no'}`,
+    `- Execution profile: ${run.environment?.profile || options.profile}`,
     `- Playwright exit code: ${run.playwrightExitCode}`,
     `- Total tests: ${run.totalTests}`,
     `- Expected/pass count: ${run.expected}`,
@@ -764,11 +1082,64 @@ function renderSummaryMarkdown(run) {
     `- Missing baselines: ${run.missingBaselines.length}`,
     `- Execution failures: ${run.executionFailures.length}`,
     `- Approved baseline: ${run.baselineDir} (${run.visualBaselineCount} PNG files)`,
+    `- Baseline revision: ${run.baseline?.baselineRevision || 'unknown'}`,
+    `- Baseline manifest: ${run.baseline?.manifestPresent ? `present, ${run.baseline.verifiedCount} checksum-verified` : 'MISSING'}`,
     `- HTML report: ${run.playwrightReport}`,
     `- Test results: ${run.testResults}`,
     `- Archive: ${path.join(settings.artifactDir, run.archiveName)}`,
     '',
   ];
+
+  if (run.git?.headSha) {
+    lines.push(
+      '## Run Provenance',
+      '',
+      `- Repository: ${run.git.repository || 'n/a'}`,
+      `- Event: ${run.git.event || 'local'}`,
+      `- Branch: ${run.git.branch || 'n/a'}`,
+      `- Pull request: ${run.git.pullRequestNumber ? `#${run.git.pullRequestNumber}` : 'n/a'}`,
+      `- Base SHA: ${run.git.baseSha || 'n/a'}`,
+      `- Head SHA: ${run.git.headSha || 'n/a'}`,
+      `- Merge SHA: ${run.git.mergeSha || 'n/a'}`,
+      `- Baseline SHA: ${run.baseline?.baselineRevision || 'n/a'}`,
+      `- Playwright: ${run.environment?.playwrightVersion || 'n/a'}`,
+      `- Docker base image: ${run.environment?.dockerBaseImage || 'n/a'}`,
+      `- Platform: ${run.environment?.platform || run.platform}`,
+      '',
+    );
+  }
+
+  if (coverage) {
+    lines.push(
+      '## Coverage',
+      '',
+      `- Registered scenarios: ${coverage.counts.registered} (active ${coverage.counts.active}, planned ${coverage.counts.planned}, excluded ${coverage.counts.excluded}, deprecated ${coverage.counts.deprecated})`,
+      `- Expected snapshots: ${coverage.counts.expectedSnapshots} (${coverage.counts.expectedInProfile} selected by the "${coverage.profile}" profile)`,
+      `- Produced snapshots: ${coverage.counts.producedSnapshots ?? 'n/a'}`,
+      `- Approved baselines: ${coverage.counts.approvedBaselines}`,
+      `- Coverage: ${coverage.coveragePercent}% (${coverage.coverageBasis})`,
+      `- Surfaces ${coverage.counts.surfaces} · screens ${coverage.counts.screens} · viewports ${coverage.counts.viewports} · locales ${coverage.counts.locales} · themes ${coverage.counts.themes}`,
+      `- Orphan baselines: ${coverage.orphanBaselines.length}`,
+      `- Declared missing coverage: ${coverage.missingCoverage.length}`,
+      '',
+    );
+
+    if (coverage.missingCoverage.length > 0) {
+      lines.push('### Declared Missing Coverage (non-blocking)', '');
+      for (const entry of coverage.missingCoverage) {
+        lines.push(`- **${entry.group || entry.snapshotId}** — ${firstLine(entry.reason)}`);
+      }
+      lines.push('');
+    }
+
+    if (coverage.orphanBaselines.length > 0) {
+      lines.push('### Orphan Baselines', '');
+      for (const entry of coverage.orphanBaselines) {
+        lines.push(`- ${entry.snapshotId} — ${firstLine(entry.reason)}`);
+      }
+      lines.push('');
+    }
+  }
 
   if (run.visualDifferences.length > 0) {
     lines.push('## Visual Differences', '');
@@ -813,9 +1184,20 @@ function renderSummaryMarkdown(run) {
   }
 
   lines.push(
+    '## Gate Classification',
+    '',
+    '| Finding | Policy |',
+    '| --- | --- |',
+  );
+  for (const [classification, policy] of Object.entries(run.gate?.policy || {})) {
+    lines.push(`| ${classification} | ${policy} |`);
+  }
+  lines.push('');
+
+  lines.push(
     '## Baseline Approval Rule',
     '',
-    'Detected visual differences do not update approved baselines automatically. Review the HTML report and image evidence first. Only after approval, run `npm run test:regression:visual:update` and commit the changed files under `tests/regression/snapshots`.',
+    'Detected visual differences do not update approved baselines automatically. Review the HTML report and image evidence first. Only after approval, regenerate candidates with `npm run test:regression:baseline` (or the **Visual Regression Baseline** workflow), promote them with `npm run test:regression:baseline:approve`, and commit the changed files under `tests/regression/snapshots` together with the regenerated `baseline-manifest.json`.',
     '',
   );
 
@@ -827,6 +1209,28 @@ async function writeSummaryFiles(run, summaryMarkdown) {
   await fs.mkdir(summaryDir, { recursive: true });
   await fs.writeFile(path.join(summaryDir, 'summary.md'), summaryMarkdown, 'utf8');
   await fs.writeFile(path.join(summaryDir, 'summary.json'), `${JSON.stringify(run, null, 2)}\n`, 'utf8');
+
+  // Coverage result as its own artifact so the gap can be tracked over time
+  // without parsing the whole run summary.
+  if (run.coverage) {
+    await fs.writeFile(
+      path.join(summaryDir, 'coverage.json'),
+      `${JSON.stringify(run.coverage, null, 2)}\n`,
+      'utf8',
+    );
+  }
+
+  // The exact coverage registry and baseline manifest used by this run travel
+  // with the artifact, so a failure can be reproduced against the same inputs.
+  await copyIfExists(
+    path.resolve(repoRoot, 'tests/regression/visual-coverage.manifest.json'),
+    path.join(summaryDir, 'visual-coverage.manifest.json'),
+  );
+  await copyIfExists(
+    path.join(paths.baselineDir, 'baseline-manifest.json'),
+    path.join(summaryDir, 'baseline-manifest.json'),
+  );
+
   await fs.writeFile(
     path.join(summaryDir, 'manifest.json'),
     `${JSON.stringify(
@@ -834,7 +1238,12 @@ async function writeSummaryFiles(run, summaryMarkdown) {
         createdAt: run.createdAt,
         status: run.status,
         blocking: isBlocking(run),
+        gate: run.gate ?? null,
         archiveName: settings.archiveName,
+        archiveSha256: run.archiveSha256 ?? null,
+        baselineRevision: run.baseline?.baselineRevision ?? null,
+        environment: run.environment ?? null,
+        git: run.git ?? null,
         includedPaths: [
           'README.md',
           'visual-regression-summary/',
@@ -850,6 +1259,11 @@ async function writeSummaryFiles(run, summaryMarkdown) {
   );
 }
 
+async function copyIfExists(source, target) {
+  if (!fsSync.existsSync(source)) return;
+  await fs.copyFile(source, target);
+}
+
 async function appendGitHubStepSummary(summaryMarkdown) {
   if (!process.env.GITHUB_STEP_SUMMARY) return;
   await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, `\n${summaryMarkdown}\n`, 'utf8');
@@ -857,9 +1271,19 @@ async function appendGitHubStepSummary(summaryMarkdown) {
 
 function printTerminalSummary(run) {
   const blocking = isBlocking(run);
+  const coverage = run.coverage && !run.coverage.error ? run.coverage : null;
+
   log(
     `Completed with status=${run.status}, blocking=${blocking ? 'yes' : 'no'}, visualDifferences=${run.visualDifferences.length}, executionFailures=${run.executionFailures.length}, missingBaselines=${run.missingBaselines.length}`,
   );
+
+  if (coverage) {
+    log(
+      `Coverage: ${coverage.coveragePercent}% — expected ${coverage.counts.expectedSnapshots}, produced ${
+        coverage.counts.producedSnapshots ?? 'n/a'
+      }, approved baselines ${coverage.counts.approvedBaselines}, orphans ${coverage.orphanBaselines.length}, declared gaps ${coverage.missingCoverage.length}`,
+    );
+  }
 
   for (const diff of run.visualDifferences) {
     log(

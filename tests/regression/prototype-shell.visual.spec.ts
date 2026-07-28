@@ -15,7 +15,7 @@ import {
 } from './support/helpers/stable-page.ts';
 
 test.describe('prototype shell visual regression', () => {
-  test('default DriverPWA EN light shell matches approved baseline @visual-regression', async ({
+  test('default DriverPWA EN light shell matches approved baseline @visual-regression @visual-smoke', async ({
     page,
   }) => {
     // The theme editor is hidden by default (needs ?themecolorchanger=1), so a

@@ -54,7 +54,7 @@ async function openMyJobsExecution(page: import('@playwright/test').Page) {
 }
 
 test.describe('Driver PWA visual regression @visual-regression', () => {
-  test('marketplace screen', async ({ page }) => {
+  test('marketplace screen @visual-smoke', async ({ page }) => {
     await prepareDriverVisual(page);
     await expect(page).toHaveScreenshot('driver-marketplace.png', {
       fullPage: true,

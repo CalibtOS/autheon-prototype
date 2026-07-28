@@ -3,29 +3,43 @@ import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { config as loadDotenv } from 'dotenv';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 
-for (const fileName of ['.env.testing', '.env.e2e', '.env']) {
-  loadDotenv({
-    path: path.join(repoRoot, fileName),
-    override: false,
-  });
+// dotenv only loads local .env* files for convenience. In CI the environment is
+// supplied directly and a fresh checkout may not have run `npm install` yet, so a
+// missing dotenv must not crash the launcher.
+try {
+  const { config: loadDotenv } = await import('dotenv');
+  for (const fileName of ['.env.testing', '.env.e2e', '.env']) {
+    loadDotenv({ path: path.join(repoRoot, fileName), override: false });
+  }
+} catch (error) {
+  if (error?.code !== 'ERR_MODULE_NOT_FOUND') throw error;
+  console.warn('[docker-visual-ci] dotenv not installed; relying on the ambient environment only.');
 }
 
 const args = process.argv.slice(2);
+const profileIndex = args.indexOf('--profile');
 const options = {
   help: args.includes('--help') || args.includes('-h'),
   noBuild: args.includes('--no-build'),
   baseline: args.includes('--baseline'),
+  diagnostic: args.includes('--diagnostic'),
+  profile:
+    (profileIndex >= 0 ? args[profileIndex + 1] : null) ||
+    process.env.VISUAL_REGRESSION_PROFILE ||
+    'full',
 };
 
 if (options.help) {
-  console.log(`Usage: npm run test:regression:visual:docker-ci -- [--no-build] [--baseline]
+  console.log(`Usage:
+  npm run test:regression:ci -- [--no-build] [--profile <name>]   Full CI pipeline
+  npm run test:regression:baseline -- [--no-build]                Baseline candidates
+  npm run test:regression:diagnostic                              Full traces/video
 
-Builds and runs the local Docker CI simulation for visual regression testing.
+Builds and runs the Docker/Linux visual regression pipeline.
 Docker/Linux is the canonical visual-regression environment: comparisons run
 against approved *-linux.png baselines committed in tests/regression/snapshots.
 
@@ -76,7 +90,9 @@ if (!options.noBuild) {
 const dockerEnv = dockerEnvironment({
   REGRESSION_ARTIFACT_HOST_DIR: artifactHostDir,
   VISUAL_REGRESSION_ARTIFACT_DIR: '/app/visual-regression-artifacts',
+  VISUAL_REGRESSION_PROFILE: options.profile,
   ...(options.baseline ? { VISUAL_REGRESSION_MODE: 'baseline' } : {}),
+  ...(options.diagnostic ? { VISUAL_REGRESSION_DIAGNOSTIC: 'true' } : {}),
   // .git is excluded from the build context, so resolve git metadata on the
   // host and hand it to the container for the notification report.
   ...gitEnvironment(),
@@ -113,6 +129,35 @@ function dockerEnvironment(extra) {
     'VISUAL_REGRESSION_CI_ARGS',
     'VISUAL_REGRESSION_MODE',
     'VISUAL_REGRESSION_RETRIES',
+    'VISUAL_REGRESSION_PROFILE',
+    'VISUAL_REGRESSION_DIAGNOSTIC',
+    'VISUAL_REGRESSION_APPROVED_PLATFORM',
+    'REGRESSION_ARTIFACT_URL',
+    'REGRESSION_ARTIFACT_NAME',
+    'REGRESSION_ATTACH_ARCHIVE',
+    'REGRESSION_ARCHIVE_ATTACHMENT_MAX_MB',
+    'REGRESSION_SUMMARY_ATTACHMENT_MAX_KB',
+    'REGRESSION_ENVIRONMENT',
+    'BASELINE_REASON',
+    'IS_FORK_PR',
+    // GitHub provenance: the container has no .git (excluded from the build
+    // context), so run identity has to be handed in explicitly.
+    'GITHUB_ACTIONS',
+    'GITHUB_REPOSITORY',
+    'GITHUB_WORKFLOW',
+    'GITHUB_RUN_ID',
+    'GITHUB_RUN_NUMBER',
+    'GITHUB_RUN_ATTEMPT',
+    'GITHUB_EVENT_NAME',
+    'GITHUB_ACTOR',
+    'GITHUB_REF',
+    'GITHUB_REF_NAME',
+    'GITHUB_HEAD_REPOSITORY',
+    'GITHUB_BASE_REF',
+    'GITHUB_BASE_SHA',
+    'GITHUB_HEAD_SHA',
+    'GITHUB_MERGE_SHA',
+    'GITHUB_PR_NUMBER',
   ];
 
   const pairs = Object.entries(extra);

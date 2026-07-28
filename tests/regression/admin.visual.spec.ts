@@ -51,7 +51,7 @@ async function openJob(page: import('@playwright/test').Page, tour: string) {
 test.describe('Admin Backend visual regression @visual-regression', () => {
   // ----- Screens -----
 
-  test('job overview screen', async ({ page }) => {
+  test('job overview screen @visual-smoke', async ({ page }) => {
     await prepareAdminVisual(page);
     await expect(page).toHaveScreenshot('admin-overview.png', { fullPage: true });
   });

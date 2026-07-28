@@ -7,6 +7,17 @@ It is project-agnostic. Replace placeholders such as `[PROJECT_NAME]`,
 `[BASE_URL]`, `[LOGIN_PATH]`, `[DASHBOARD_PATH]`, `[ROLE_NAME]`, and
 `[CI_PROVIDER]` with the target project's real values.
 
+> **AUTHEON-specific operational docs.** This guide stays project-agnostic. For
+> how the visual regression pipeline is actually wired in this repository, read:
+>
+> | Document | Covers |
+> | --- | --- |
+> | [`visual-regression-ci.md`](./visual-regression-ci.md) | Architecture, gate policy, commands, workflows, artifacts |
+> | [`visual-regression-baselines.md`](./visual-regression-baselines.md) | Approved-baseline source of truth, manifest, approval process |
+> | [`visual-regression-coverage.md`](./visual-regression-coverage.md) | Coverage registry, profiles, declared gaps |
+> | [`visual-regression-notifications.md`](./visual-regression-notifications.md) | GitHub secrets/variables setup, fork policy, email content |
+> | [`visual-regression-traces.md`](./visual-regression-traces.md) | Downloading artifacts, opening traces, first five minutes |
+
 The framework is designed for:
 
 - real E2E user flows
@@ -336,8 +347,14 @@ Recommended scripts:
   "test:smoke": "playwright test --grep \"@smoke|@public-regression\" --project=chromium",
   "test:regression": "playwright test tests/regression",
   "test:regression:update": "playwright test tests/regression --update-snapshots",
-  "test:regression:visual:ci": "node scripts/visual-regression-ci.mjs",
-  "test:regression:visual:ci:strict": "node scripts/visual-regression-ci.mjs --strict",
+  "test:regression:ci": "node scripts/run-visual-regression-docker-ci.mjs",
+  "test:regression:full": "node scripts/run-visual-regression-docker-ci.mjs --profile full",
+  "test:regression:smoke": "node scripts/run-visual-regression-docker-ci.mjs --profile smoke",
+  "test:regression:diagnostic": "node scripts/run-visual-regression-docker-ci.mjs --profile diagnostic --diagnostic",
+  "test:regression:baseline": "node scripts/run-visual-regression-docker-ci.mjs --baseline",
+  "test:regression:baseline:approve": "node scripts/approve-visual-baselines.mjs",
+  "test:regression:coverage": "node scripts/visual-coverage-audit.mjs",
+  "test:regression:notify-check": "node scripts/visual-regression-notify-check.mjs --verify-only",
   "test:regression:lab": "playwright test tests/regression/lab",
   "test:regression:lab:update": "playwright test tests/regression/lab --update-snapshots",
   "test:regression:network": "playwright test tests/regression/lab/signals/browser-network-regression.spec.ts",
@@ -358,8 +375,14 @@ Recommended scripts:
 | `test:smoke`                 | Fast smoke/public-regression gate    | PR CI and local              | PR safety check                                 |
 | `test:regression`            | Run regression suite                 | CI and local                 | Compare approved UI/browser behavior            |
 | `test:regression:update`     | Update approved regression baselines | Local only                   | After approved UI/behavior change               |
-| `test:regression:visual:ci`  | Run visual CI wrapper and archive    | CI and local artifact checks | Warn on visual diffs; fail execution failures    |
-| `test:regression:visual:ci:strict` | Run visual CI wrapper as a gate  | CI only when policy requires | Fail on visual diffs too                         |
+| `test:regression:ci`         | Run the full pipeline and archive    | CI and local artifact checks | Warn on visual diffs; fail framework failures    |
+| `test:regression:full`       | Pipeline, complete registered matrix | CI and nightly               | Default profile                                  |
+| `test:regression:smoke`      | Pipeline, representative subset      | Fast local check             | Iterating on the framework                       |
+| `test:regression:diagnostic` | Pipeline, traces/video for every test| Local and manual CI dispatch | Deep debugging                                   |
+| `test:regression:baseline`   | Render baseline candidates           | Local (Docker) or workflow   | Approves nothing                                 |
+| `test:regression:baseline:approve` | Promote reviewed candidates    | Local only                   | After human review                               |
+| `test:regression:coverage`   | Coverage audit: gaps, orphans        | CI and local                 | Answer "what is not covered?"                    |
+| `test:regression:notify-check` | SMTP smoke check                   | Local and manual CI dispatch | After adding/rotating SMTP secrets               |
 | `test:regression:lab`        | Run signal lab                       | Local and optional CI        | Validate framework signal examples              |
 | `test:regression:lab:update` | Update lab baselines                 | Local only                   | After approved lab baseline change              |
 | `test:regression:network`    | Run browser network signal           | Local and CI if stable       | Investigate network behavior                    |
@@ -413,15 +436,60 @@ Visual difference in strict mode -> CI failure
 Use a small wrapper script around the visual suite instead of changing local
 Playwright assertions. The wrapper should:
 
-1. run the visual regression tests with the normal Playwright reporters
-2. read `test-results/results.json`
-3. classify screenshot mismatches separately from execution failures
-4. write a human summary and a machine-readable JSON summary
-5. append the human summary to `GITHUB_STEP_SUMMARY` when available
-6. print concise terminal log lines for Jenkins and other CI logs
-7. package one archive file for the CI artifact store
-8. exit `0` for non-strict visual differences, but non-zero for execution
-   failures or missing baselines
+1. **preflight before running anything** — verify the approved baseline set
+   exists, is intact, and matches a committed checksum manifest, and that the
+   coverage registry is valid. A baseline problem must be reported as one
+   classified failure, not as N opaque test failures.
+2. run the visual regression tests with the normal Playwright reporters
+3. read `test-results/results.json`
+4. classify screenshot mismatches separately from execution failures
+5. **score coverage** — compare produced snapshots against an expected registry,
+   so a suite that silently stopped short cannot report "all green"
+6. write a human summary and a machine-readable JSON summary
+7. append the human summary to `GITHUB_STEP_SUMMARY` when available
+8. print concise terminal log lines for Jenkins and other CI logs
+9. package one archive file for the CI artifact store
+10. exit `0` for non-strict visual differences, but non-zero for execution
+    failures, missing baselines, and missing captures
+
+### The workflow gate belongs in a script, not inline shell
+
+A classifier written as inline `run:` bash inherits GitHub's default `bash -e`
+shell, and that combination has a trap worth naming:
+
+```bash
+# WRONG. Aborts the step before it writes the summary or a single annotation.
+read STATUS VISUAL EXECFAIL MISSING < <(node -e '
+  const s = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+  process.stdout.write([s.status, s.visualDifferences.length].join(" "));
+' "$SUMMARY")
+```
+
+`process.stdout.write` emits no trailing newline, so `read` reaches EOF and
+returns `1` *after* assigning the variables. Under `set -e` that aborts the step
+immediately. The result is a step that exits `1` on **every** run — pass, warn, or
+fail — while printing nothing. A run whose real verdict happened to be "blocking"
+looks correct, and the bug hides.
+
+Reproduce it in one line:
+
+```bash
+printf '%s' 'a b' > /tmp/x; bash -ec 'read A B < /tmp/x; echo reached'   # prints nothing, exits 1
+```
+
+Keep the classifier in a real script. It removes this entire class of shell
+quoting, word-splitting, and exit-status surprise:
+
+```yaml
+- name: Classify result
+  id: classify
+  if: always()
+  run: node scripts/visual-regression-gate.mjs      # writes outputs; never exits non-zero
+
+- name: Apply gate                                  # LAST step
+  if: always()
+  run: |
+    if [ "${{ steps.classify.outputs.blocking }}" = "true" ]; then exit 1; fi
 
 Recommended archive shape:
 
@@ -430,10 +498,14 @@ visual-regression-artifact/
   README.md
   visual-regression-summary/
     summary.md
-    summary.json
-    manifest.json
+    summary.json                    canonical machine-readable result
+    manifest.json                   archive metadata + SHA-256 + gate verdict
+    coverage.json                   expected vs produced, gaps, orphans
+    visual-coverage.manifest.json   the registry this run used
+    baseline-manifest.json          the baseline provenance it verified
     notification-email.json
     notification-email.html
+    notification-status.json        delivery outcome + classified cause
     visual-regression-report.pdf
   playwright-report/
     index.html
@@ -442,19 +514,28 @@ visual-regression-artifact/
   test-results/
     results.xml
     results.json
-    ...
+    <suite>-<test>-<project>/
+      <snapshot>-expected.png
+      <snapshot>-actual.png
+      <snapshot>-diff.png
+      trace.zip
+      video.webm
+      error-context.md
   approved-baseline/
     tests/regression/snapshots/
 ```
+
+Carry the exact registry and baseline manifest the run consumed inside the
+archive. Without them a failure cannot be reproduced against the same inputs.
 
 Keep the Playwright folders intact inside the archive. This preserves the HTML
 report's expected/current/diff, side-by-side, and slider views after the archive
 is extracted.
 
-For AUTHEON, the CI wrapper is:
+For AUTHEON, the pipeline entry point is:
 
 ```bash
-npm run test:regression:visual:ci
+npm run test:regression:ci
 ```
 
 It writes:
@@ -562,7 +643,7 @@ For local Jenkins-like validation, wrap the visual CI command in a disposable
 Docker environment:
 
 ```bash
-REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:visual:docker-ci
+REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:ci
 ```
 
 The local Docker runner:
@@ -570,7 +651,7 @@ The local Docker runner:
 1. builds `docker/visual-regression-ci.Dockerfile`
 2. installs dependencies inside the image with `npm ci`
 3. mounts the host artifact directory to `/app/visual-regression-artifacts`
-4. runs `npm run test:regression:visual:ci`
+4. runs the visual CI wrapper (`scripts/visual-regression-ci.mjs`)
 5. sends or dry-runs notification email from `summary.json`
 6. exits with the visual CI wrapper's effective exit code
 
@@ -585,7 +666,7 @@ Override it with:
 ```bash
 VISUAL_REGRESSION_DOCKER_ARTIFACT_DIR=/absolute/or/repo-relative/path \
 REGRESSION_NOTIFICATION_DRY_RUN=true \
-npm run test:regression:visual:docker-ci
+npm run test:regression:ci
 ```
 
 The Dockerfile defaults to `node:24-bookworm-slim` and installs only Chromium
@@ -595,7 +676,7 @@ mirror or a compatible cached base image:
 ```bash
 VISUAL_REGRESSION_DOCKER_BASE_IMAGE=registry.example.com/node:24-bookworm-slim \
 REGRESSION_NOTIFICATION_DRY_RUN=true \
-npm run test:regression:visual:docker-ci
+npm run test:regression:ci
 ```
 
 Docker/Linux is the canonical visual-regression environment. The container
@@ -610,13 +691,13 @@ separate from normal CI:
 
 ```bash
 # 1. Render baseline CANDIDATES inside the canonical Docker image.
-npm run test:regression:visual:baseline:docker
+npm run test:regression:baseline
 # Candidates land in visual-regression-artifacts/docker-ci/baseline-candidates/
 # together with manifest.json. Nothing is approved automatically.
 
 # 2. After manual review, promote candidates into the approved baseline
 #    directory, then commit the diff to finalize the approval.
-npm run test:regression:visual:baseline:approve
+npm run test:regression:baseline:approve
 ```
 
 If a run finds no approved baseline for its platform, the visual CI wrapper
@@ -655,12 +736,12 @@ Safe validation commands:
 
 ```bash
 # Warning path: known visual differences should exit 0 and dry-run a warning email.
-REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:visual:docker-ci
+REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:ci
 
 # Failure path: missing test dir simulates execution failure without editing specs.
 REGRESSION_NOTIFICATION_DRY_RUN=true \
 VISUAL_REGRESSION_TEST_DIR=tests/regression/__missing__ \
-npm run test:regression:visual:docker-ci
+npm run test:regression:ci
 ```
 
 ### Persistent Visual Baseline
@@ -672,6 +753,22 @@ baseline through one of these mechanisms:
 Preferred for this prototype: committed snapshots under tests/regression/snapshots
 Alternative for larger products: restore a previously approved baseline artifact before running Playwright
 ```
+
+Committing them is not enough on its own — check that they are actually tracked.
+A broad ignore rule such as a bare `snapshots/` silently matches
+`tests/regression/snapshots/`, so the baselines exist on the author's disk, look
+present locally, and are absent from every CI checkout. The symptom is a
+missing-baseline failure that nobody can reproduce locally. Verify with:
+
+```bash
+git check-ignore -v tests/regression/snapshots/<any>-linux.png   # expect: no match
+git ls-files tests/regression/snapshots | wc -l                  # expect: the real count
+```
+
+Pair the committed images with a checksum manifest (`baseline-manifest.json`)
+regenerated by the same command that promotes them. A manifest maintained
+separately from the images drifts, and then a legitimate approval looks like
+tampering.
 
 Do not restore the current run's `actual` screenshots as the next baseline.
 Only a reviewed and approved baseline archive may be restored into
@@ -761,7 +858,7 @@ pipeline {
 
     stage('Visual Regression Evidence') {
       steps {
-        sh 'npm run test:regression:visual:ci'
+        sh 'npm run test:regression:ci'
       }
     }
 
@@ -1594,11 +1691,11 @@ Run normally first:
 pnpm test:regression
 ```
 
-Run the CI visual wrapper when you need the same artifact and non-blocking
-classification policy used in pipelines:
+Run the pipeline when you need the same artifact and non-blocking
+classification policy used in CI:
 
 ```bash
-npm run test:regression:visual:ci
+npm run test:regression:ci
 ```
 
 If a baseline fails:
@@ -1633,6 +1730,121 @@ Do not let CI run update commands automatically. Current-run `actual`
 screenshots may be archived as evidence, but they are not approved baselines
 until a person reviews the diff and commits or publishes the new baseline
 through the project's approval process.
+
+### Guard Rails Against Accidental Mass Approval
+
+A bulk baseline update is the single easiest way to approve a bug. Generate an
+old-versus-candidate review report before promoting anything, and classify:
+
+```text
+added      new snapshot, no previous baseline
+changed    different pixels under the same ID
+removed    previously approved, not re-rendered by this run
+renamed    identical pixels under a new ID
+```
+
+Then check the signals that mean the *candidate run* is suspect, not the design:
+
+| Signal | Usual real cause |
+| ------------------------------------------- | ---------------------------------------------- |
+| More than half the set changed or vanished  | Broken CSS, a 404'd stylesheet, a failed fixture |
+| Zero candidates rendered                    | Approving deletes the whole approved set        |
+| Large canvas, tiny file size                | Blank page: failed data load or auth redirect   |
+| Dimensions changed                          | Wrong viewport or device scale factor           |
+| File size dropped sharply                   | Content or webfonts failed to render            |
+| Non-zero exit code on the candidate run     | Hard stop — refuse to promote                   |
+
+Record the candidate run's exit code in the candidate manifest and have the
+approval command refuse to promote a non-zero one. A partially failed render
+still writes PNG files, and they look perfectly plausible.
+
+## 12A. Visual Coverage Registry
+
+A suite where every executed test passes says nothing about coverage. It cannot
+tell "the screen is verified" apart from "the test was deleted last week", and
+Playwright has no concept of a snapshot that *should* exist.
+
+Add an explicit registry so there is a second side to the comparison:
+
+```text
+registry    what MUST be captured        (machine-readable, reviewed)
+specs       what IS captured             (the toHaveScreenshot calls)
+baselines   what is APPROVED             (committed PNGs)
+run report  what was actually PRODUCED   (results.json)
+```
+
+Any disagreement between the four is a finding. Register per snapshot: stable ID,
+surface, route, screen, scenario, state, role, fixture, locale, theme,
+viewport/project, orientation, screenshot mode, required interactions, masks,
+animation policy, owner, tags, and status.
+
+Use a status field rather than deleting entries, and require a reason for the
+non-active ones:
+
+| Status | Must have spec | Must have baseline | Missing → |
+| ------------ | -------------- | ------------------ | ----------------------- |
+| `active`     | yes            | yes                | blocking                |
+| `planned`    | no             | no                 | reported gap            |
+| `excluded`   | no             | no                 | reported, reason required |
+| `deprecated` | no             | baseline is orphan | reported, reason required |
+
+`planned` is what makes a coverage claim honest: a gap you have *named* is
+reported on every run instead of being invisible. Flip an entry to `active` in
+the same commit that adds its approved baseline, so a scenario becomes blocking
+at exactly the moment it becomes verifiable.
+
+Score the percentage against the profile's own expected set, not the whole
+registry — otherwise a narrowed profile always reports a low number that says
+nothing about whether the run did its job.
+
+### Screenshot Modes
+
+Do not use only full-page captures. A full-page render stitches the document at
+its full height, so it cannot prove that fixed or sticky chrome sits correctly at
+real viewport height.
+
+| Mode | Proves |
+| ----------------- | ------------------------------------------------------- |
+| `viewport`        | Fixed headers, bottom navigation, sticky controls, modal placement |
+| `fullPage`        | Complete scrollable content, long forms                 |
+| `segmentedScroll` | Sticky behaviour *while* scrolling, lazy-loaded sections |
+| `locator`         | Reusable components isolated from page-level noise      |
+
+## 12B. Gate Classification
+
+Separate "the UI changed" from "the framework is broken". They need different
+reactions, and conflating them trains people to ignore the check.
+
+| Classification | Blocking? | Why |
+| ---------------------------------- | --------- | ---------------------------------- |
+| Confirmed visual difference        | no        | Comparison worked; this is review work |
+| Visual difference in strict mode   | yes       | Explicit opt-in policy             |
+| Missing approved baseline          | **yes**   | Nothing was compared               |
+| Missing expected capture           | **yes**   | The test died before its assertion |
+| Execution failure                  | **yes**   | Broken test or broken app          |
+| Corrupt baseline / checksum mismatch | **yes** | Provenance cannot be established   |
+| Corrupt or absent summary          | **yes**   | Nothing to classify                |
+| Invalid coverage registry          | **yes**   | The expected list is untrustworthy |
+| Incomplete shard                   | **yes**   | Do not average away a missing shard |
+| Documented exclusion               | no        | Only with a recorded reason        |
+| Notification failure               | no        | Reported separately; never overwrites the verdict |
+
+Never downgrade a missing baseline to a warning. And put the ordering in the
+workflow, not just the policy: run diagnostics, artifact upload, notification and
+the job summary **before** the step that applies the gate. An early `exit 1`
+skips artifact upload, so the evidence explaining the failure never leaves the
+runner.
+
+```text
+1. run regression, capture raw exit code   (never abort here)
+2. write normalized summary.json
+3. generate report
+4. collect diagnostics
+5. upload artifact
+6. attempt notification
+7. write job summary
+8. apply the blocking gate                 (last)
+```
 
 ## 13. Tags And Test Categories
 
