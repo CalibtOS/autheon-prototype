@@ -3,7 +3,8 @@
  * Driver PWA UI primitives — shared building blocks of the driver design contract.
  * Loaded before driver.jsx in AUTHEON Prototype.html
  */
-const { useEffect, useLayoutEffect, useRef, useCallback, useState, useId } = React;
+const { useEffect, useLayoutEffect, useRef, useCallback, useState, useId } =
+  React;
 
 const fmt = () => window.AutheonFormatters || {};
 
@@ -12,15 +13,18 @@ const fmt = () => window.AutheonFormatters || {};
 // ---------------------------------------------------------------------------
 function StatusPill({ status, children, className = "" }) {
   const key = String(status || "draft").replace(/-/g, "_");
-  return (
-    <span className={`pill ${key} ${className}`.trim()}>{children}</span>
-  );
+  return <span className={`pill ${key} ${className}`.trim()}>{children}</span>;
 }
 
 // ---------------------------------------------------------------------------
 // Badge — numeric notification badge (99+ cap)
 // ---------------------------------------------------------------------------
-function Badge({ count, variant = "primary", className = "", ariaHidden = false }) {
+function Badge({
+  count,
+  variant = "primary",
+  className = "",
+  ariaHidden = false,
+}) {
   const n = Number(count) || 0;
   if (n <= 0) return null;
   const label = n > 99 ? "99+" : String(n);
@@ -38,7 +42,13 @@ function Badge({ count, variant = "primary", className = "", ariaHidden = false 
 // ---------------------------------------------------------------------------
 // EmptyState
 // ---------------------------------------------------------------------------
-function EmptyState({ title, description, actionLabel, onAction, className = "" }) {
+function EmptyState({
+  title,
+  description,
+  actionLabel,
+  onAction,
+  className = "",
+}) {
   return (
     <div className={`empty-state ${className}`.trim()}>
       {title ? <p className="empty-state-title">{title}</p> : null}
@@ -76,8 +86,104 @@ function SkeletonList({ count = 3 }) {
 }
 
 // ---------------------------------------------------------------------------
-// Sheet — bottom sheet / centered modal primitive
+// Sheet — bottom sheet / centered modal primitive (pull-to-dismiss on bottom)
 // ---------------------------------------------------------------------------
+const SHEET_DISMISS_DISTANCE_PX = 96;
+const SHEET_DISMISS_VELOCITY = 0.55;
+
+function shouldDismissSheetDrag(distancePx, velocityPxPerMs) {
+  return (
+    distancePx >= SHEET_DISMISS_DISTANCE_PX ||
+    velocityPxPerMs >= SHEET_DISMISS_VELOCITY
+  );
+}
+
+/**
+ * Attach pull-down dismiss to a bottom-sheet panel via its grabber (and optional
+ * head). Returns an unsubscribe fn. Use for ad-hoc sheets that still render
+ * raw `.sheet` markup; prefer `<Sheet>` for new work.
+ */
+function bindBottomSheetPullDismiss(panel, handle, onClose) {
+  if (!panel || !handle || typeof onClose !== "function") return () => {};
+  let startY = 0;
+  let lastY = 0;
+  let lastT = 0;
+  let dragging = false;
+  let pointerId = null;
+
+  const reset = () => {
+    panel.style.transform = "";
+    panel.style.transition = "";
+    dragging = false;
+    pointerId = null;
+  };
+
+  const onDown = (event) => {
+    if (event.button !== 0) return;
+    if (event.pointerType === "touch" && !event.isPrimary) return;
+    if (
+      event.target &&
+      event.target.closest &&
+      event.target.closest(
+        'button, a, input, select, textarea, label, [role="button"]',
+      )
+    ) {
+      return;
+    }
+    event.preventDefault();
+    dragging = true;
+    pointerId = event.pointerId;
+    startY = event.clientY;
+    lastY = event.clientY;
+    lastT = performance.now();
+    panel.style.transition = "none";
+    if (handle.setPointerCapture) handle.setPointerCapture(event.pointerId);
+  };
+
+  const onMove = (event) => {
+    if (!dragging || event.pointerId !== pointerId) return;
+    const dy = Math.max(0, event.clientY - startY);
+    panel.style.transform = `translate3d(0, ${dy}px, 0)`;
+    lastY = event.clientY;
+    lastT = performance.now();
+  };
+
+  const onUp = (event) => {
+    if (!dragging || event.pointerId !== pointerId) return;
+    const distance = Math.max(0, event.clientY - startY);
+    const elapsed = Math.max(1, performance.now() - lastT);
+    const velocity = (event.clientY - lastY) / elapsed;
+    if (shouldDismissSheetDrag(distance, velocity)) {
+      reset();
+      onClose();
+      return;
+    }
+    panel.style.transition = "transform 200ms ease-out";
+    panel.style.transform = "translate3d(0, 0, 0)";
+    const clear = () => {
+      panel.style.transition = "";
+      panel.style.transform = "";
+      panel.removeEventListener("transitionend", clear);
+    };
+    panel.addEventListener("transitionend", clear);
+    dragging = false;
+    pointerId = null;
+  };
+
+  handle.addEventListener("pointerdown", onDown);
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+  window.addEventListener("pointercancel", onUp);
+
+  return () => {
+    handle.removeEventListener("pointerdown", onDown);
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
+    reset();
+  };
+}
+
 function Sheet({
   open,
   onClose,
@@ -87,8 +193,11 @@ function Sheet({
   footer,
   centered = false,
   className = "",
+  hideHandle = false,
 }) {
   const panelRef = useRef(null);
+  const grabberRef = useRef(null);
+  const headRef = useRef(null);
   const tid = titleId || "sheet-title";
 
   useEffect(() => {
@@ -99,6 +208,20 @@ function Sheet({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open || centered) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const unsubs = [];
+    if (grabberRef.current) {
+      unsubs.push(bindBottomSheetPullDismiss(panel, grabberRef.current, onClose));
+    }
+    if (headRef.current) {
+      unsubs.push(bindBottomSheetPullDismiss(panel, headRef.current, onClose));
+    }
+    return () => unsubs.forEach((fn) => fn());
+  }, [open, centered, onClose]);
 
   if (!open) return null;
 
@@ -116,15 +239,70 @@ function Sheet({
         aria-modal="true"
         aria-labelledby={title ? tid : undefined}
       >
-        {!centered ? <div className="grabber" aria-hidden="true" /> : null}
+        {!centered ? (
+          <div
+            ref={grabberRef}
+            className={`grabber-hit${hideHandle ? " grabber-hit--hidden" : ""}`}
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="Drag down to close"
+          >
+            {!hideHandle ? <div className="grabber" aria-hidden="true" /> : null}
+          </div>
+        ) : null}
         {title ? (
-          <div className="sheet-head">
+          <div className="sheet-head" ref={headRef}>
             <h2 id={tid}>{title}</h2>
           </div>
         ) : null}
         <div className="sheet-body">{children}</div>
         {footer ? <div className="sheet-foot">{footer}</div> : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Drop-in grabber for ad-hoc bottom sheets that still use raw `.sheet` markup.
+ * Finds the closest `.sheet` ancestor and binds pull-to-dismiss.
+ */
+function SheetGrabber({ onClose, hidden = false }) {
+  const hitRef = useRef(null);
+
+  useEffect(() => {
+    const handle = hitRef.current;
+    const panel = handle?.closest?.(".sheet");
+    if (!handle || !panel || typeof onClose !== "function") return undefined;
+    return bindBottomSheetPullDismiss(panel, handle, onClose);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={hitRef}
+      className={`grabber-hit${hidden ? " grabber-hit--hidden" : ""}`}
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Drag down to close"
+    >
+      {!hidden ? <div className="grabber" aria-hidden="true" /> : null}
+    </div>
+  );
+}
+
+/** Make any region (e.g. `.sheet-head`) start a pull-to-dismiss drag. */
+function SheetPullRegion({ onClose, className = "", children, ...rest }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handle = ref.current;
+    const panel = handle?.closest?.(".sheet");
+    if (!handle || !panel || typeof onClose !== "function") return undefined;
+    return bindBottomSheetPullDismiss(panel, handle, onClose);
+  }, [onClose]);
+
+  return (
+    <div ref={ref} className={className} {...rest}>
+      {children}
     </div>
   );
 }
@@ -138,8 +316,10 @@ function ConfirmSheet({
   message,
   confirmLabel,
   cancelLabel,
+  tertiaryLabel,
   onConfirm,
   onCancel,
+  onTertiary,
   destructive = false,
 }) {
   const { t } = useI18n();
@@ -152,6 +332,11 @@ function ConfirmSheet({
       className="confirm-sheet"
       footer={
         <>
+          {tertiaryLabel ? (
+            <button type="button" className="btn ghost" onClick={onTertiary}>
+              {tertiaryLabel}
+            </button>
+          ) : null}
           <button type="button" className="btn ghost" onClick={onCancel}>
             {cancelLabel || t("cancel")}
           </button>
@@ -175,7 +360,13 @@ function ConfirmSheet({
 // ---------------------------------------------------------------------------
 function SortIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <path
         d="M7 6v12M4 14l3 3 3-3M17 18V6M20 10l-3-3-3 3"
         stroke="currentColor"
@@ -189,7 +380,13 @@ function SortIcon() {
 
 function CheckIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <path
         d="M5 12l5 5L19 7"
         stroke="currentColor"
@@ -376,6 +573,7 @@ function SortSelect({ value, onChange, options, label }) {
 function AdminConfirmBridge() {
   const { t } = useI18n();
   const [pending, setPending] = useState(null);
+  const [pendingChoice, setPendingChoice] = useState(null);
 
   useEffect(() => {
     window.requestAdminConfirm = (message, opts = {}) =>
@@ -388,29 +586,70 @@ function AdminConfirmBridge() {
           resolve,
         });
       });
+    // Three-way leave-page decision (Save as draft / Discard / Continue
+    // editing) — distinct from requestAdminConfirm's binary yes/no because
+    // "cancel the dialog" here means "keep editing", not "do nothing".
+    window.requestLeavePageDecision = (message, opts = {}) =>
+      new Promise((resolve) => {
+        setPendingChoice({
+          message,
+          title: opts.title,
+          saveLabel: opts.saveLabel,
+          discardLabel: opts.discardLabel,
+          continueLabel: opts.continueLabel,
+          resolve,
+        });
+      });
     return () => {
       window.requestAdminConfirm = null;
+      window.requestLeavePageDecision = null;
     };
   }, []);
 
-  if (!pending) return null;
-
   return (
-    <ConfirmSheet
-      open
-      title={pending.title || t("confirm")}
-      message={pending.message}
-      confirmLabel={pending.confirmLabel}
-      destructive={pending.destructive}
-      onConfirm={() => {
-        pending.resolve(true);
-        setPending(null);
-      }}
-      onCancel={() => {
-        pending.resolve(false);
-        setPending(null);
-      }}
-    />
+    <>
+      {pending ? (
+        <ConfirmSheet
+          open
+          title={pending.title || t("confirm")}
+          message={pending.message}
+          confirmLabel={pending.confirmLabel}
+          destructive={pending.destructive}
+          onConfirm={() => {
+            pending.resolve(true);
+            setPending(null);
+          }}
+          onCancel={() => {
+            pending.resolve(false);
+            setPending(null);
+          }}
+        />
+      ) : null}
+      {pendingChoice ? (
+        <ConfirmSheet
+          open
+          title={pendingChoice.title || t("leavePageTitle")}
+          message={pendingChoice.message}
+          tertiaryLabel={pendingChoice.discardLabel || t("leavePageDiscard")}
+          cancelLabel={
+            pendingChoice.continueLabel || t("leavePageContinueEditing")
+          }
+          confirmLabel={pendingChoice.saveLabel || t("leavePageSaveDraft")}
+          onTertiary={() => {
+            pendingChoice.resolve("discard");
+            setPendingChoice(null);
+          }}
+          onCancel={() => {
+            pendingChoice.resolve("continue");
+            setPendingChoice(null);
+          }}
+          onConfirm={() => {
+            pendingChoice.resolve("save");
+            setPendingChoice(null);
+          }}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -493,6 +732,9 @@ window.DriverUI = {
   SkeletonJobCard,
   SkeletonList,
   Sheet,
+  SheetGrabber,
+  SheetPullRegion,
+  bindBottomSheetPullDismiss,
   ConfirmSheet,
   SortSelect,
   AdminConfirmBridge,

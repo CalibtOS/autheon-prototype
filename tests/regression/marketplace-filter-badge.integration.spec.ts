@@ -72,7 +72,7 @@ prototypeTest.describe('Marketplace applied-filter badge', () => {
   prototypeTest('draft selections do not move the badge until applied', async ({ page }) => {
     await openFilterPanel(page);
     await sheet(page).locator('.input').first().fill('80');
-    await sheet(page).locator('.chip-btn').filter({ hasText: 'SUV' }).first().click();
+    await sheet(page).locator('.chip-btn').filter({ hasText: 'Passenger car' }).first().click();
 
     // Panel still open, draft dirty — the committed state has not changed.
     await expect(filterBadge(page)).toHaveCount(0);
@@ -98,7 +98,7 @@ prototypeTest.describe('Marketplace applied-filter badge', () => {
     await expectBadge(page, '1');
 
     await openFilterPanel(page);
-    await sheet(page).locator('.chip-btn').filter({ hasText: 'SUV' }).first().click();
+    await sheet(page).locator('.chip-btn').filter({ hasText: 'Passenger car' }).first().click();
     await applyFilters(page);
     await expectBadge(page, '2');
   });
@@ -106,7 +106,7 @@ prototypeTest.describe('Marketplace applied-filter badge', () => {
   prototypeTest('badge decreases when one filter is removed', async ({ page }) => {
     await openFilterPanel(page);
     await sheet(page).locator('.input').first().fill('80');
-    await sheet(page).locator('.chip-btn').filter({ hasText: 'SUV' }).first().click();
+    await sheet(page).locator('.chip-btn').filter({ hasText: 'Passenger car' }).first().click();
     await applyFilters(page);
     await expectBadge(page, '2');
 
@@ -119,7 +119,7 @@ prototypeTest.describe('Marketplace applied-filter badge', () => {
   prototypeTest('badge disappears after clearing all filters', async ({ page }) => {
     await openFilterPanel(page);
     await sheet(page).locator('.input').first().fill('80');
-    await sheet(page).locator('.chip-btn').filter({ hasText: 'SUV' }).first().click();
+    await sheet(page).locator('.chip-btn').filter({ hasText: 'Passenger car' }).first().click();
     await applyFilters(page);
     await expectBadge(page, '2');
 
@@ -240,7 +240,7 @@ prototypeTest.describe('Marketplace applied-filter badge', () => {
     await expect(filterButton(page)).toHaveAttribute('aria-label', 'Filter, 1 aktiv');
 
     await openFilterPanel(page);
-    await sheet(page).locator('.chip-btn').filter({ hasText: 'SUV' }).first().click();
+    await sheet(page).locator('.chip-btn').filter({ hasText: 'Passenger car' }).first().click();
     await applyFilters(page);
     await expect(filterButton(page)).toHaveAttribute('aria-label', 'Filter, 2 aktiv');
   });
@@ -256,7 +256,7 @@ prototypeTest.describe('Marketplace applied-filter badge', () => {
 
     await openFilterPanel(page);
     await sheet(page).locator('.input').first().fill('80');
-    await sheet(page).locator('.chip-btn').filter({ hasText: 'SUV' }).first().click();
+    await sheet(page).locator('.chip-btn').filter({ hasText: 'Passenger car' }).first().click();
     await applyFilters(page);
     await expectBadge(page, '2');
 
@@ -308,7 +308,7 @@ test.describe('Marketplace applied-filter badge — responsive', () => {
       await expect(panel).toBeVisible();
       await panel.locator('.input').nth(0).fill('80');
       await panel.locator('.input').nth(1).fill('10');
-      await panel.locator('.chip-btn').filter({ hasText: 'SUV' }).first().click();
+      await panel.locator('.chip-btn').filter({ hasText: 'Passenger car' }).first().click();
       await panel.locator('.sheet-foot .btn.primary').click();
       await expect(panel).toHaveCount(0);
 

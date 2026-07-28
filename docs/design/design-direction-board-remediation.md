@@ -276,4 +276,4 @@ now also rendered outside the loading branch so they no longer disappear during 
 1. **Sorting** — excluded from the count, no badge on the sort control, untouched.
 2. **Filter semantics** — no filter was added, removed or redefined. The set counted is exactly the set `jobMatchesDriverFilters` acts on, with the one documented exception below.
 3. **Persistence** — Marketplace filters remain in-memory session state (survive tab navigation, reset on reload). No persistence was added for the badge.
-4. **Audit item 43 — `from: "This week"` counts but does not filter.** Left as-is: implementing it requires defining week boundaries against a prototype whose "today" is a hardcoded `05.05.`. A product decision, not an invented rule.
+4. ~~**Audit item 43 — `from: "This week"` counts but does not filter.**~~ **Resolved 2026-07-28:** Mon–Sun week containing fixture today `05.05.`; predicate + unit coverage added.

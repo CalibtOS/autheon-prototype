@@ -28,7 +28,9 @@ const displayTourDocType = (type, t) => {
       waiting_time_evidence: t("tourDocWaitingTimeEvidence"),
       other_proof: t("tourDocOtherProof"),
       other_receipt: t("tourDocOtherReceipt"),
-    }[code] || code || "—"
+    }[code] ||
+    code ||
+    "—"
   );
 };
 
@@ -203,13 +205,157 @@ const AdminNav = ({ section, setSection }) => {
 // =========================================================================
 // ADMIN — OVERVIEW (TABLE)
 // =========================================================================
-const Overview = ({ onOpen, freshId }) => {
+/**
+ * Per-row action menu (client change plan Phase 4): unavailable actions are
+ * HIDDEN, never shown-and-disabled. Cancel routes to the detail view — the
+ * reason-code cancellation dialog lives there and isn't duplicated per row.
+ */
+const RowActionsMenu = ({
+  job,
+  onOpen,
+  onEdit,
+  onDuplicate,
+  onDeleteDraft,
+}) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const [open, setOpen] = useStateA(false);
+  const canEdit = store.canAdminEditOrder(job);
+  const canCancel =
+    store.canAdminEditOrder(job) ||
+    ["accepted", "assigned", "empty_run_reported", "published"].includes(
+      job.status,
+    );
+  const isDraft = job.status === "draft";
+  return (
+    <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className="btn icon sm"
+        aria-label={t("adminRowActionsLabel")}
+        onClick={() => setOpen((v) => !v)}
+      >
+        ⋮
+      </button>
+      {open ? (
+        <>
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 30 }}
+            onClick={() => setOpen(false)}
+          />
+          <ul
+            role="menu"
+            style={{
+              position: "absolute",
+              right: 0,
+              top: "100%",
+              zIndex: 31,
+              margin: "2px 0 0",
+              padding: 4,
+              listStyle: "none",
+              background: "var(--surface, #fff)",
+              border: "1px solid var(--border, #ccc)",
+              borderRadius: 8,
+              minWidth: 160,
+            }}
+          >
+            <li>
+              <button
+                type="button"
+                className="btn ghost xs"
+                style={{ width: "100%", textAlign: "left" }}
+                onClick={() => {
+                  setOpen(false);
+                  onOpen(job);
+                }}
+              >
+                {t("adminRowActionOpen")}
+              </button>
+            </li>
+            {canEdit ? (
+              <li>
+                <button
+                  type="button"
+                  className="btn ghost xs"
+                  style={{ width: "100%", textAlign: "left" }}
+                  onClick={() => {
+                    setOpen(false);
+                    onEdit(job.id);
+                  }}
+                >
+                  {t("adminRowActionEdit")}
+                </button>
+              </li>
+            ) : null}
+            <li>
+              <button
+                type="button"
+                className="btn ghost xs"
+                style={{ width: "100%", textAlign: "left" }}
+                onClick={() => {
+                  setOpen(false);
+                  onDuplicate(job);
+                }}
+              >
+                {t("adminRowActionDuplicate")}
+              </button>
+            </li>
+            {canCancel ? (
+              <li>
+                <button
+                  type="button"
+                  className="btn ghost xs"
+                  style={{ width: "100%", textAlign: "left" }}
+                  onClick={() => {
+                    setOpen(false);
+                    onOpen(job);
+                  }}
+                >
+                  {t("adminRowActionCancel")}
+                </button>
+              </li>
+            ) : null}
+            {isDraft ? (
+              <li>
+                <button
+                  type="button"
+                  className="btn ghost xs danger"
+                  style={{ width: "100%", textAlign: "left" }}
+                  onClick={() => {
+                    setOpen(false);
+                    onDeleteDraft(job);
+                  }}
+                >
+                  {t("adminRowActionDeleteDraft")}
+                </button>
+              </li>
+            ) : null}
+          </ul>
+        </>
+      ) : null}
+    </div>
+  );
+};
+
+const Overview = ({
+  onOpen,
+  freshId,
+  page = 1,
+  rows = 50,
+  onFilteredCountChange,
+  onEdit,
+  onDuplicate,
+  onDeleteDraft,
+}) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [statusFilter, setStatusFilter] = useStateA(null); // null = all active
   const [search, setSearch] = useStateA("");
   const [density, setDensity] = useStateA("comfort");
   const [filtersOpen, setFiltersOpen] = useStateA(false);
+  // Tour-number sort (client change plan Phase 4): the header indicator was
+  // previously decorative (no onClick). Toggling reverses natural tour order.
+  const [sortDesc, setSortDesc] = useStateA(true);
   const counts = store.countsByStatus();
 
   const all = store.getJobs();
@@ -221,19 +367,27 @@ const Overview = ({ onOpen, freshId }) => {
       return false;
     if (search) {
       const q = search.toLowerCase();
-      if (
-        !(
-          j.tour.toLowerCase().includes(q) ||
-          j.customer.toLowerCase().includes(q) ||
-          (j.driver || "").toLowerCase().includes(q) ||
-          j.startCity.toLowerCase().includes(q) ||
-          j.endCity.toLowerCase().includes(q)
-        )
-      )
+      if (!(
+        j.tour.toLowerCase().includes(q) ||
+        j.customer.toLowerCase().includes(q) ||
+        (j.driver || "").toLowerCase().includes(q) ||
+        j.startCity.toLowerCase().includes(q) ||
+        j.endCity.toLowerCase().includes(q) ||
+        (j.vin || "").toLowerCase().includes(q) ||
+        (j.plate || "").toLowerCase().includes(q)
+      ))
         return false;
     }
     return true;
   });
+
+  const sorted = [...filtered].sort((a, b) =>
+    sortDesc ? b.tour.localeCompare(a.tour) : a.tour.localeCompare(b.tour),
+  );
+  useEffectA(() => {
+    onFilteredCountChange?.(sorted.length);
+  }, [sorted.length]);
+  const paged = sorted.slice((page - 1) * rows, page * rows);
 
   const stats = [
     ["draft", AuthStore.statusLabel("draft")],
@@ -326,8 +480,7 @@ const Overview = ({ onOpen, freshId }) => {
             style={{ cursor: "pointer" }}
             onClick={() => setStatusFilter(null)}
           >
-            {t("adminFilterStatusPrefix")}{" "}
-            {AuthStore.statusLabel(statusFilter)}{" "}
+            {t("adminFilterStatusPrefix")} {AuthStore.statusLabel(statusFilter)}{" "}
             <span className="x">
               <Ic.X />
             </span>
@@ -352,12 +505,21 @@ const Overview = ({ onOpen, freshId }) => {
             {t("adminDense")}
           </button>
         </div>
-        <span
+        <button
+          type="button"
           className="label"
-          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+          }}
+          onClick={() => setSortDesc((v) => !v)}
         >
-          <Ic.Sort /> {t("tourNo")} ↓
-        </span>
+          <Ic.Sort /> {t("tourNo")} {sortDesc ? "↓" : "↑"}
+        </button>
       </div>
 
       {filtersOpen && (
@@ -402,17 +564,18 @@ const Overview = ({ onOpen, freshId }) => {
             <tr>
               <th style={{ width: 96 }}>{t("adminColTour")}</th>
               <th>{t("adminColCustomer")}</th>
+              <th>{t("adminColPlateOrVin")}</th>
               <th>{t("adminColOrigin")}</th>
               <th>{t("adminColDestination")}</th>
               <th>{t("adminColAppointment")}</th>
-              <th>{t("adminColVehicle")}</th>
               <th>{t("adminColDriver")}</th>
               <th>{t("adminColStatusHeader")}</th>
               <th>{t("adminColDocuments") || "Documents"}</th>
+              <th style={{ width: 44 }}></th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((j) => (
+            {paged.map((j) => (
               <tr
                 key={j.id}
                 className={"row " + (j.id === freshId ? "fresh" : "")}
@@ -433,12 +596,18 @@ const Overview = ({ onOpen, freshId }) => {
                     </div>
                   )}
                 </td>
-                <td className="mono num">{j.startPlz}</td>
-                <td className="mono num">{j.endPlz}</td>
+                <td className="mono">
+                  {j.plate
+                    ? j.plate
+                    : j.vin
+                      ? `…${String(j.vin).slice(-6)}`
+                      : "—"}
+                </td>
+                <td>{j.startCity || j.startPlz}</td>
+                <td>{j.endCity || j.endPlz}</td>
                 <td className="mono date" style={{ fontSize: 12 }}>
                   {AuthStore.formatJobScheduleShort(j, t("adminWindowFlex"))}
                 </td>
-                <td>{displayVehicleTypeAdmin(j.vehicleType, t)}</td>
                 <td>{j.driver || "—"}</td>
                 <td>
                   <Pill status={j.status} />
@@ -452,12 +621,21 @@ const Overview = ({ onOpen, freshId }) => {
                     <span style={{ color: "var(--muted-2)" }}>—</span>
                   )}
                 </td>
+                <td>
+                  <RowActionsMenu
+                    job={j}
+                    onOpen={onOpen}
+                    onEdit={onEdit}
+                    onDuplicate={onDuplicate}
+                    onDeleteDraft={onDeleteDraft}
+                  />
+                </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {paged.length === 0 && (
               <tr>
                 <td
-                  colSpan="9"
+                  colSpan="10"
                   style={{
                     padding: 40,
                     textAlign: "center",
@@ -475,11 +653,18 @@ const Overview = ({ onOpen, freshId }) => {
   );
 };
 
-const OverviewFooter = ({ filteredCount, totalCount }) => {
+const OverviewFooter = ({
+  filteredCount,
+  totalCount,
+  page,
+  rows,
+  onPageChange,
+  onRowsChange,
+}) => {
   const { t } = useI18n();
-  const [page, setPage] = useStateA(1);
-  const [rows, setRows] = useStateA(25);
-  const maxPage = Math.max(1, Math.ceil(totalCount / rows));
+  const maxPage = Math.max(1, Math.ceil(filteredCount / rows));
+  const setPage = onPageChange;
+  const setRows = onRowsChange;
   return (
     <>
       <span className="label">
@@ -598,7 +783,9 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenTourBilling }) => {
         accepted: t("docReviewAccepted"),
         rejected: t("docReviewRejected"),
         correction_required: t("docReviewCorrectionRequired"),
-      }[code] || code || "—"
+      }[code] ||
+      code ||
+      "—"
     );
   };
   return (
@@ -701,35 +888,35 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenTourBilling }) => {
             {linkedInvoices.map((u) => {
               const invId = tourDocSupplierInvoiceId(u);
               return (
-              <tr key={u.id}>
-                <td style={{ fontSize: 12, minWidth: 140 }}>
-                  <div className="mono" style={{ fontWeight: 600 }}>
-                    {invId || "—"}
-                  </div>
-                  <div
-                    className="label"
-                    style={{ fontSize: 11, marginTop: 4, lineHeight: 1.35 }}
-                  >
-                    {displayTourDocType(u.documentType, t)}
-                  </div>
-                </td>
-                <td style={{ fontSize: 13 }}>{u.fileName}</td>
-                <td>
-                  <Pill
-                    status={
-                      u.reviewStatus === "accepted"
-                        ? "accepted"
-                        : u.reviewStatus === "rejected" ||
-                            u.reviewStatus === "correction_required"
-                          ? "cancelled"
-                          : "assigned"
-                    }
-                  >
-                    {displayDocReviewStatus(u.reviewStatus)}
-                  </Pill>
-                </td>
-              </tr>
-            );
+                <tr key={u.id}>
+                  <td style={{ fontSize: 12, minWidth: 140 }}>
+                    <div className="mono" style={{ fontWeight: 600 }}>
+                      {invId || "—"}
+                    </div>
+                    <div
+                      className="label"
+                      style={{ fontSize: 11, marginTop: 4, lineHeight: 1.35 }}
+                    >
+                      {displayTourDocType(u.documentType, t)}
+                    </div>
+                  </td>
+                  <td style={{ fontSize: 13 }}>{u.fileName}</td>
+                  <td>
+                    <Pill
+                      status={
+                        u.reviewStatus === "accepted"
+                          ? "accepted"
+                          : u.reviewStatus === "rejected" ||
+                              u.reviewStatus === "correction_required"
+                            ? "cancelled"
+                            : "assigned"
+                      }
+                    >
+                      {displayDocReviewStatus(u.reviewStatus)}
+                    </Pill>
+                  </td>
+                </tr>
+              );
             })}
           </tbody>
         </table>
@@ -762,7 +949,11 @@ const JobFinancePanel = ({ job, onEditFinances, onOpenTourBilling }) => {
         }}
       >
         {onEditFinances && (
-          <button type="button" className="btn primary" onClick={onEditFinances}>
+          <button
+            type="button"
+            className="btn primary"
+            onClick={onEditFinances}
+          >
             {t("adminEditFinancesBtn")}
           </button>
         )}
@@ -890,7 +1081,11 @@ const EmptyRunReviewPanel = ({ job, showToast }) => {
                   <img
                     src={ev.previewUrl}
                     alt={ev.fileName}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
                   />
                 </a>
               ) : (
@@ -938,7 +1133,14 @@ const EmptyRunReviewPanel = ({ job, showToast }) => {
           <p className="label" style={{ marginTop: 14 }}>
             {t("adminEmptyRunReviewHint")}
           </p>
-          <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              marginTop: 10,
+              flexWrap: "wrap",
+            }}
+          >
             <button
               type="button"
               className="btn primary"
@@ -1017,7 +1219,10 @@ const InternalNotesPanel = ({ job, showToast }) => {
                   padding: "10px 12px",
                 }}
               >
-                <div className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>
+                <div
+                  className="mono"
+                  style={{ fontSize: 12, color: "var(--muted)" }}
+                >
                   {n.author} · {n.at}
                 </div>
                 <div style={{ fontSize: 13.5, marginTop: 4, lineHeight: 1.5 }}>
@@ -1065,13 +1270,7 @@ const assignDriverErr = (r, t) => {
   return t("adminInvoiceErrGeneric");
 };
 
-const AssignDriverDialog = ({
-  open,
-  mode,
-  job,
-  onClose,
-  onConfirm,
-}) => {
+const AssignDriverDialog = ({ open, mode, job, onClose, onConfirm }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const drivers = store.getAssignableDrivers();
@@ -1122,7 +1321,10 @@ const AssignDriverDialog = ({
         style={{ maxWidth: 480, width: "100%", padding: 22 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="assign-driver-title" style={{ margin: "0 0 6px", fontSize: 18 }}>
+        <h2
+          id="assign-driver-title"
+          style={{ margin: "0 0 6px", fontSize: 18 }}
+        >
           {title}
         </h2>
         <p
@@ -1231,8 +1433,11 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
   const [reasonCode, setReasonCode] = useStateA("");
   const [driverMessage, setDriverMessage] = useStateA("");
   const [overrideNote, setOverrideNote] = useStateA("");
-  const policy = job ? store.checkAdminCancelPolicy(job, { overrideNote }) : { ok: true };
-  const needsOverride = job && !policy.ok && policy.reason === "within_cancel_cutoff";
+  const policy = job
+    ? store.checkAdminCancelPolicy(job, { overrideNote })
+    : { ok: true };
+  const needsOverride =
+    job && !policy.ok && policy.reason === "within_cancel_cutoff";
 
   const submit = () => {
     const r = store.cancelJob(job.id, {
@@ -1245,13 +1450,9 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
       if (r.reason === "reason_code_required")
         showToast?.(t("adminCancelReasonRequired"));
       else if (r.reason === "driver_message_too_short")
-        showToast?.(
-          t("adminCancelMessageTooShort", { min: r.min || minMsg }),
-        );
+        showToast?.(t("adminCancelMessageTooShort", { min: r.min || minMsg }));
       else if (r.reason === "within_cancel_cutoff")
-        showToast?.(
-          t("adminCancelCutoffBlocked", { hours: r.minHours || 1 }),
-        );
+        showToast?.(t("adminCancelCutoffBlocked", { hours: r.minHours || 1 }));
       else showToast?.(t("cancellationBlocked"), t("cancellationRules"));
       return;
     }
@@ -1264,11 +1465,23 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
         <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 600 }}>
           {t("adminCancelJobModalTitle")}
         </h2>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>
-          {dr ? t("adminCancelJobModalHintDriver") : t("adminCancelJobModalHintNoDriver")}
+        <p
+          style={{
+            margin: 0,
+            fontSize: 13,
+            color: "var(--muted)",
+            lineHeight: 1.5,
+          }}
+        >
+          {dr
+            ? t("adminCancelJobModalHintDriver")
+            : t("adminCancelJobModalHintNoDriver")}
         </p>
         {needsOverride ? (
-          <div className="banner banner-warn" style={{ marginTop: 14, fontSize: 13 }}>
+          <div
+            className="banner banner-warn"
+            style={{ marginTop: 14, fontSize: 13 }}
+          >
             {t("adminCancelCutoffBlocked", {
               hours: policy.minHours || 1,
             })}
@@ -1288,7 +1501,8 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
             <option value="">{t("adminCancelReasonPlaceholder")}</option>
             {codes.map((c) => (
               <option key={c} value={c}>
-                {t(`cancellationReason_${c}`) || store.getCancellationReasonLabel(c)}
+                {t(`cancellationReason_${c}`) ||
+                  store.getCancellationReasonLabel(c)}
               </option>
             ))}
           </select>
@@ -1335,7 +1549,14 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
             />
           </div>
         ) : null}
-        <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginTop: 20,
+            justifyContent: "flex-end",
+          }}
+        >
           <button type="button" className="btn" onClick={onClose}>
             {t("adminInvoiceCancel")}
           </button>
@@ -1448,7 +1669,10 @@ const AdminDetail = ({
             }}
           >
             {job.startPlz} {job.startCity} → {job.endPlz} {job.endCity} ·{" "}
-            {job.distanceKm} km ·{" "}
+            {job.distanceKm
+              ? `${job.distanceKm} km`
+              : t("distanceNotYetCalculated")}{" "}
+            ·{" "}
             {AuthStore.schedulesOnDifferentDays(job)
               ? `${AuthStore.formatLocationSchedule(job.pickup, t("flexible"))} → ${AuthStore.formatLocationSchedule(job.delivery, t("flexible"))}`
               : AuthStore.formatLocationSchedule(job.pickup, t("flexible"))}
@@ -1498,9 +1722,7 @@ const AdminDetail = ({
           {job.spCancellation?.reason
             ? ` · ${t(SP_CANCEL_REASON_KEY[job.spCancellation.reason] || "spCancelReasonOther")}`
             : ""}
-          {job.cancellationReasonText
-            ? ` — ${job.cancellationReasonText}`
-            : ""}
+          {job.cancellationReasonText ? ` — ${job.cancellationReasonText}` : ""}
         </div>
       ) : null}
 
@@ -1597,16 +1819,30 @@ const AdminDetail = ({
                   }}
                   className="tnum"
                 >
-                  {job.distanceKm}
-                  <span
-                    style={{
-                      fontSize: 14,
-                      color: "var(--muted)",
-                      marginLeft: 4,
-                    }}
-                  >
-                    km
-                  </span>
+                  {job.distanceKm ? (
+                    <>
+                      {job.distanceKm}
+                      <span
+                        style={{
+                          fontSize: 14,
+                          color: "var(--muted)",
+                          marginLeft: 4,
+                        }}
+                      >
+                        km
+                      </span>
+                    </>
+                  ) : (
+                    <span
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 400,
+                        color: "var(--muted)",
+                      }}
+                    >
+                      {t("distanceNotYetCalculated")}
+                    </span>
+                  )}
                 </div>
                 <div className="label" style={{ marginTop: 24 }}>
                   {t("schedule")}
@@ -1708,11 +1944,15 @@ const AdminDetail = ({
                 }}
               >
                 <span className="pill outline no-dot">
-                  {t("transportType")}: {displayTransportType(job.transportType, t)}
+                  {t("transportType")}:{" "}
+                  {displayTransportType(job.transportType, t)}
                 </span>
                 {job.registrationStatus ? (
                   <span className="pill outline no-dot">
-                    {AuthStore.registrationStatusLabel(job.registrationStatus, t)}
+                    {AuthStore.registrationStatusLabel(
+                      job.registrationStatus,
+                      t,
+                    )}
                   </span>
                 ) : null}
                 {job.electricVehicle ? (
@@ -1785,14 +2025,22 @@ const AdminDetail = ({
                   {c.secondPhone ? (
                     <div
                       className="mono"
-                      style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}
+                      style={{
+                        fontSize: 12,
+                        color: "var(--muted)",
+                        marginTop: 4,
+                      }}
                     >
                       {t("phone")} 2: {c.secondPhone}
                     </div>
                   ) : null}
                   {c.email ? (
                     <div
-                      style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}
+                      style={{
+                        fontSize: 12,
+                        color: "var(--muted)",
+                        marginTop: 4,
+                      }}
                     >
                       {t("email")}: {c.email}
                     </div>
@@ -1981,10 +2229,7 @@ const AdminDetail = ({
             >
               {job.driver || t("adminDriverNone")}
               {job.driverId ? (
-                <div
-                  className="label"
-                  style={{ marginTop: 4, fontSize: 10.5 }}
-                >
+                <div className="label" style={{ marginTop: 4, fontSize: 10.5 }}>
                   {job.driverId}
                 </div>
               ) : null}
@@ -1999,8 +2244,9 @@ const AdminDetail = ({
                 {t("adminAssignDriver")}
               </button>
             ) : null}
-            {["assigned", "accepted", "empty_run_reported"].includes(job.status) &&
-            onRequestReassign ? (
+            {["assigned", "accepted", "empty_run_reported"].includes(
+              job.status,
+            ) && onRequestReassign ? (
               <button
                 type="button"
                 className="btn block"
@@ -2190,7 +2436,11 @@ const AdminDetailFooter = ({
             draft. Primary entry per spec is the row three-dot menu; this
             footer action provides the same capability from the detail view. */}
         {job.status !== "draft" && onDuplicate && (
-          <button type="button" className="btn" onClick={() => onDuplicate(job)}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => onDuplicate(job)}
+          >
             {t("adminDuplicateOrder")}
           </button>
         )}
@@ -2223,13 +2473,13 @@ const EMPTY_NEW_ORDER_FORM = {
   startHouseNo: "",
   startPlz: "",
   startCity: "",
-  startCountry: "DE",
+  startCountry: "D",
   endCompany: "",
   endStreet: "",
   endHouseNo: "",
   endPlz: "",
   endCity: "",
-  endCountry: "DE",
+  endCountry: "D",
   distance: "",
   pickupDate: "",
   pickupFrom: "",
@@ -2280,8 +2530,10 @@ const EMPTY_NEW_ORDER_FORM = {
 // Vehicle-domain display helpers delegate to the SHARED store resolvers so the
 // Admin Backend and the Driver PWA can never disagree on a label or on the
 // derived red-licence-plate requirement.
-const displayTransportType = (value, t) => AuthStore.transportTypeLabel(value, t);
-const displayVehicleTypeAdmin = (value, t) => AuthStore.vehicleTypeLabel(value, t);
+const displayTransportType = (value, t) =>
+  AuthStore.transportTypeLabel(value, t);
+const displayVehicleTypeAdmin = (value, t) =>
+  AuthStore.vehicleTypeLabel(value, t);
 
 /**
  * Derived red-licence-plate notice for Admin Backend surfaces. Renders the ONE
@@ -2290,13 +2542,196 @@ const displayVehicleTypeAdmin = (value, t) => AuthStore.vehicleTypeLabel(value, 
  * treatments — .banner.banner-warn and .pill.warn / --st-warn tokens. No admin
  * component re-derives "deregistered + own axle".
  */
-const AdminRedPlatesNotice = ({ registrationStatus, transportType, compact }) => (
+const AdminRedPlatesNotice = ({
+  registrationStatus,
+  transportType,
+  compact,
+}) => (
   <DriverUI.RedPlatesRequiredNotice
     registrationStatus={registrationStatus}
     transportType={transportType}
     variant={compact ? "admin-pill" : "admin-banner"}
   />
 );
+
+/**
+ * Manufacturer field with quick search (client change plan Phase 3 #3):
+ * ranked exact/starts-with/contains matches via AuthStore.searchManufacturers,
+ * so typing "G" surfaces manufacturers starting with G before "Volkswagen".
+ * Free text is allowed but a value is only committed via onChange when it
+ * exactly matches a catalogue entry or a suggestion is clicked — this keeps
+ * `form.manufacturer` restricted to the approved catalogue as before, while
+ * adding search instead of a long alphabetical dropdown.
+ */
+const ManufacturerSearchField = ({ id, value, onChange, placeholder }) => {
+  const [query, setQuery] = useStateA(value || "");
+  const [open, setOpen] = useStateA(false);
+  useEffectA(() => setQuery(value || ""), [value]);
+  const results = AuthStore.searchManufacturers(
+    query,
+    AuthStore.MANUFACTURER_SUGGESTIONS,
+  ).slice(0, 8);
+  return (
+    <div style={{ position: "relative" }}>
+      <input
+        id={id}
+        className="input"
+        placeholder={placeholder}
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          if (AuthStore.MANUFACTURER_SUGGESTIONS.includes(e.target.value)) {
+            onChange(e.target.value);
+          }
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => {
+          setTimeout(() => setOpen(false), 120);
+          if (!AuthStore.MANUFACTURER_SUGGESTIONS.includes(query)) {
+            // Revert to the last committed value — manufacturer stays
+            // restricted to the approved catalogue (unlike model, which is
+            // free text).
+            setQuery(value || "");
+          }
+        }}
+      />
+      {open && query && results.length ? (
+        <ul
+          role="listbox"
+          style={{
+            position: "absolute",
+            zIndex: 20,
+            top: "100%",
+            left: 0,
+            right: 0,
+            margin: "2px 0 0",
+            padding: 4,
+            listStyle: "none",
+            background: "var(--surface, #fff)",
+            border: "1px solid var(--border, #ccc)",
+            borderRadius: 8,
+            maxHeight: 220,
+            overflowY: "auto",
+          }}
+        >
+          {results.map((name) => (
+            <li key={name}>
+              <button
+                type="button"
+                className="btn ghost xs"
+                style={{ width: "100%", textAlign: "left" }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setQuery(name);
+                  onChange(name);
+                  setOpen(false);
+                }}
+              >
+                {name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+};
+
+function dateErrorLabelStandalone(reason, t) {
+  if (reason === "invalid_format") return t("dateInvalidFormat");
+  if (reason === "invalid_calendar_date") return t("dateInvalidCalendar");
+  if (reason === "past_date") return t("dateInThePast");
+  return "";
+}
+
+/**
+ * Manual-entry date field with calendar-icon picker and "Today" action
+ * (client change plan Phase 1 #1). Keeps the existing manual DD.MM.YYYY text
+ * entry + blur reformat — the native <input type="date"> is an additive
+ * picker, not a replacement, so keyboard-only entry keeps working exactly as
+ * before. `error` renders the parseStrictDate rejection reason inline.
+ */
+const DateField = ({ value, onChange, onBlur, placeholder, error, testId }) => {
+  const { t } = useI18n();
+  const [pickerOpen, setPickerOpen] = useStateA(false);
+  return (
+    <div>
+      <div style={{ position: "relative" }}>
+        <input
+          className="input mono"
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
+          style={{ paddingRight: 60 }}
+          data-testid={testId}
+        />
+        <div
+          style={{
+            position: "absolute",
+            right: 4,
+            top: "50%",
+            transform: "translateY(-50%)",
+            display: "flex",
+            gap: 2,
+          }}
+        >
+          <button
+            type="button"
+            title={t("today")}
+            onClick={() => onChange(AuthStore.todayDdmmyyyy())}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 4,
+              fontSize: 11,
+              color: "var(--muted)",
+            }}
+          >
+            {t("today")}
+          </button>
+          <button
+            type="button"
+            aria-label={t("newOrderOpenCalendar")}
+            onClick={() => setPickerOpen((v) => !v)}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 4,
+              color: "var(--muted)",
+            }}
+          >
+            <Ic.Calendar />
+          </button>
+        </div>
+      </div>
+      {pickerOpen ? (
+        <input
+          type="date"
+          className="input mono"
+          style={{ marginTop: 6 }}
+          value={AuthStore.ddmmyyyyToIso(value)}
+          onChange={(e) => {
+            const next = AuthStore.isoToDdmmyyyy(e.target.value);
+            if (next) onChange(next);
+            setPickerOpen(false);
+          }}
+        />
+      ) : null}
+      {error ? (
+        <div
+          style={{ color: "var(--destructive)", fontSize: 12, marginTop: 4 }}
+          role="alert"
+        >
+          {error}
+        </div>
+      ) : null}
+    </div>
+  );
+};
 
 const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
   const store = useAuthStore();
@@ -2336,17 +2771,26 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
     label: AuthStore.registrationStatusLabel(value, t),
   }));
   const [activeSec, setActiveSec] = useStateA("01");
+  const [showGeneralNote, setShowGeneralNote] = useStateA(
+    () => !!buildFormState().notesDriver,
+  );
+  const [showInternalNote, setShowInternalNote] = useStateA(
+    () => !!buildFormState().notes,
+  );
   const [adminAttachFiles, setAdminAttachFiles] = useStateA([]);
   const [scheduleOverrideNote, setScheduleOverrideNote] = useStateA("");
   const [distanceEstimateNote, setDistanceEstimateNote] = useStateA("");
   const adminDocFileRef = useRefA(null);
 
   useEffectA(() => {
-    setForm(buildFormState());
+    const next = buildFormState();
+    setForm(next);
     setActiveSec("01");
     setAdminAttachFiles([]);
     setScheduleOverrideNote("");
     setDistanceEstimateNote("");
+    setShowGeneralNote(!!next.notesDriver);
+    setShowInternalNote(!!next.notes);
   }, [editJobId]);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const runDistanceEstimate = () => {
@@ -2385,7 +2829,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
         startHouseNo: a.houseNumber || "",
         startPlz: a.postalCode || "",
         startCity: a.city || "",
-        startCountry: a.country || "DE",
+        startCountry: a.country || "D",
         cName1: a.contactPerson || "",
         cPhone1: a.phone || "",
         pickupSecondPhone: a.secondPhone || "",
@@ -2403,7 +2847,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
         endHouseNo: a.houseNumber || "",
         endPlz: a.postalCode || "",
         endCity: a.city || "",
-        endCountry: a.country || "DE",
+        endCountry: a.country || "D",
         cName2: a.contactPerson || "",
         cPhone2: a.phone || "",
         deliverySecondPhone: a.secondPhone || "",
@@ -2464,6 +2908,36 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
     form.pickupDate &&
     form.deliveryDate &&
     AuthStore.compareDottedDates(form.pickupDate, form.deliveryDate) > 0;
+  // Strict calendar validation (Phase 1 #2): rejects bad day/month, letters,
+  // extra digits, incomplete input and past dates. Only evaluated once the
+  // field has content — an empty required field is reported via `required`.
+  const pickupDateCheck = form.pickupDate
+    ? AuthStore.parseStrictDate(form.pickupDate)
+    : null;
+  const deliveryDateCheck = form.deliveryDate
+    ? AuthStore.parseStrictDate(form.deliveryDate)
+    : null;
+  const dateErrorLabel = (check) =>
+    !check || check.valid ? "" : dateErrorLabelStandalone(check.reason, t);
+  const pickupDateError = dateErrorLabel(pickupDateCheck);
+  const deliveryDateError = dateErrorLabel(deliveryDateCheck);
+  // Driver-offer bounds (Phase 2 #7) — configurable in Settings, defaults
+  // 0.01 / 999.99 EUR. Letters can't be typed at all (input filter above).
+  const offerPolicies = store.getOperationalPolicies();
+  const driverOfferNum = parseFloat(
+    String(form.driverOffer || "").replace(",", "."),
+  );
+  const driverOfferError = (() => {
+    if (!form.driverOffer) return "";
+    if (!Number.isFinite(driverOfferNum)) return t("driverOfferInvalid");
+    if (driverOfferNum < (offerPolicies.driverOfferMinEur ?? 0.01))
+      return t("driverOfferTooLow");
+    if (driverOfferNum > (offerPolicies.driverOfferMaxEur ?? 999.99))
+      return t("driverOfferTooHigh", {
+        max: (offerPolicies.driverOfferMaxEur ?? 999.99).toFixed(2),
+      });
+    return "";
+  })();
   const pickupTimeWarning =
     form.pickupFrom &&
     form.pickupTo &&
@@ -2494,15 +2968,17 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
   ).length;
   const total = required.length;
   const sameDayWindowBlocked = pickupTimeWarning || deliveryTimeWarning;
-  const valid = filled === total && !sameDayWindowBlocked;
-  const wasCommitted =
-    editingJob && AuthStore.jobWasEverCommitted(editingJob);
+  const valid =
+    filled === total &&
+    !sameDayWindowBlocked &&
+    !pickupDateError &&
+    !deliveryDateError &&
+    !driverOfferError;
+  const wasCommitted = editingJob && AuthStore.jobWasEverCommitted(editingJob);
   const existingAdminDocs = editJobId
     ? store
         .getTourDocumentsForJob(editJobId)
-        .filter(
-          (d) => d.source === "admin_off_channel" || d.source === "admin",
-        )
+        .filter((d) => d.source === "admin_off_channel" || d.source === "admin")
     : [];
 
   const appendAdminFiles = (fileList) => {
@@ -2637,6 +3113,16 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   </option>
                 ))}
               </select>
+              {form.customerId ? (
+                <button
+                  type="button"
+                  className="btn ghost xs"
+                  style={{ marginTop: 6 }}
+                  onClick={() => onCustomerSelect("")}
+                >
+                  {t("manualEntryToggleLabel")}
+                </button>
+              ) : null}
               <p
                 className="label"
                 style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.45 }}
@@ -2778,7 +3264,8 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 }}
                 role="alert"
               >
-                {t("adminScheduleSameDayWindowError")} ({t("newOrderPickupSchedule")})
+                {t("adminScheduleSameDayWindowError")} (
+                {t("newOrderPickupSchedule")})
               </div>
             ) : null}
             {deliveryTimeWarning ? (
@@ -2793,7 +3280,8 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 }}
                 role="alert"
               >
-                {t("adminScheduleSameDayWindowError")} ({t("newOrderDeliverySchedule")})
+                {t("adminScheduleSameDayWindowError")} (
+                {t("newOrderDeliverySchedule")})
               </div>
             ) : null}
             <div style={{ marginTop: 16 }}>
@@ -2809,17 +3297,22 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 }}
               >
                 <div>
-                  <label className="field-label">{t("newOrderPickupDate")} *</label>
-                  <input
-                    className="input mono"
-                    placeholder={t("newOrderDatePh")}
+                  <label className="field-label">
+                    {t("newOrderPickupDate")} *
+                  </label>
+                  <DateField
                     value={form.pickupDate}
-                    onChange={(e) => set("pickupDate", e.target.value)}
+                    onChange={(v) => set("pickupDate", v)}
                     onBlur={blurDate("pickupDate")}
+                    placeholder={t("newOrderDatePh")}
+                    error={pickupDateError}
+                    testId="pickup-date"
                   />
                 </div>
                 <div>
-                  <label className="field-label">{t("newOrderWindowFrom")}</label>
+                  <label className="field-label">
+                    {t("newOrderWindowFrom")}
+                  </label>
                   <input
                     className="input mono"
                     placeholder={t("newOrderTimePh")}
@@ -2870,17 +3363,22 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 }}
               >
                 <div>
-                  <label className="field-label">{t("newOrderDeliveryDate")} *</label>
-                  <input
-                    className="input mono"
-                    placeholder={t("newOrderDatePh")}
+                  <label className="field-label">
+                    {t("newOrderDeliveryDate")} *
+                  </label>
+                  <DateField
                     value={form.deliveryDate}
-                    onChange={(e) => set("deliveryDate", e.target.value)}
+                    onChange={(v) => set("deliveryDate", v)}
                     onBlur={blurDate("deliveryDate")}
+                    placeholder={t("newOrderDatePh")}
+                    error={deliveryDateError}
+                    testId="delivery-date"
                   />
                 </div>
                 <div>
-                  <label className="field-label">{t("newOrderWindowFrom")}</label>
+                  <label className="field-label">
+                    {t("newOrderWindowFrom")}
+                  </label>
                   <input
                     className="input mono"
                     placeholder={t("newOrderTimePh")}
@@ -2997,33 +3495,38 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 <label className="field-label" htmlFor="new-order-manufacturer">
                   {t("manufacturer")} *
                 </label>
-                {/* Manufacturer is SELECTED from the existing catalogue
-                    (AuthStore.MANUFACTURER_SUGGESTIONS), not typed freely. */}
-                <select
+                {/* Manufacturer is picked from the existing catalogue
+                    (AuthStore.MANUFACTURER_SUGGESTIONS) via ranked quick
+                    search, not a long alphabetical dropdown. */}
+                <ManufacturerSearchField
                   id="new-order-manufacturer"
-                  className="input"
                   value={form.manufacturer}
-                  onChange={(e) => set("manufacturer", e.target.value)}
-                >
-                  <option value="">{t("manufacturerPh")}</option>
-                  {(AuthStore.MANUFACTURER_SUGGESTIONS || []).map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => set("manufacturer", v)}
+                  placeholder={t("manufacturerPh")}
+                />
               </div>
               <div>
                 <label className="field-label" htmlFor="new-order-model">
                   {t("newOrderModel")} *
                 </label>
+                {/* Manufacturer-dependent suggestions via <datalist> — the
+                    field stays free text, so a model missing from the list
+                    can still be typed and is never overwritten. */}
                 <input
                   id="new-order-model"
                   className="input"
+                  list="new-order-model-options"
                   placeholder={t("newOrderModelPh")}
                   value={form.model}
                   onChange={(e) => set("model", e.target.value)}
                 />
+                <datalist id="new-order-model-options">
+                  {(AuthStore.MANUFACTURER_MODELS[form.manufacturer] || []).map(
+                    (m) => (
+                      <option key={m} value={m} />
+                    ),
+                  )}
+                </datalist>
               </div>
               {/* Official licence plate of the TRANSPORTED vehicle. Always
                   rendered and always enabled — deregistration no longer hides,
@@ -3032,7 +3535,8 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
               <div>
                 <label className="field-label" htmlFor="new-order-plate">
                   {t("officialLicencePlate")}
-                  {form.registrationStatus === AuthStore.REGISTRATION_DEREGISTERED
+                  {form.registrationStatus ===
+                  AuthStore.REGISTRATION_DEREGISTERED
                     ? ""
                     : " *"}
                 </label>
@@ -3089,7 +3593,10 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
 
             {/* 3. Transport type — exactly one. Renames the former "Axle". */}
             <div style={{ marginTop: 14 }}>
-              <label className="field-label" id="new-order-transport-type-label">
+              <label
+                className="field-label"
+                id="new-order-transport-type-label"
+              >
                 {t("transportType")} *
               </label>
               <div
@@ -3160,7 +3667,9 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 <button
                   type="button"
                   aria-pressed={form.electricVehicle}
-                  className={"chip actionable " + (form.electricVehicle ? "on" : "")}
+                  className={
+                    "chip actionable " + (form.electricVehicle ? "on" : "")
+                  }
                   onClick={() => set("electricVehicle", !form.electricVehicle)}
                 >
                   {t("vehicleInfoElectric")}
@@ -3168,7 +3677,9 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 <button
                   type="button"
                   aria-pressed={form.readyToDrive}
-                  className={"chip actionable " + (form.readyToDrive ? "on" : "")}
+                  className={
+                    "chip actionable " + (form.readyToDrive ? "on" : "")
+                  }
                   onClick={() => set("readyToDrive", !form.readyToDrive)}
                 >
                   {t("vehicleReadyToDrive")}
@@ -3213,7 +3724,9 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
               </h3>
             </div>
             <div style={{ marginTop: 14 }}>
-              <label className="field-label">{t("newOrderDriverOfferEur")}</label>
+              <label className="field-label">
+                {t("newOrderDriverOfferEur")}
+              </label>
               <input
                 className="input mono"
                 style={{ maxWidth: 200, fontSize: 18, fontWeight: 600 }}
@@ -3222,6 +3735,8 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                 value={form.driverOffer}
                 onChange={(e) => {
                   // Digits plus a single decimal separator (comma or dot).
+                  // A leading '-' is stripped too, so negative amounts can't
+                  // be typed at all (client change plan Phase 2 #7).
                   let v = e.target.value.replace(/[^\d.,]/g, "");
                   const sep = v.search(/[.,]/);
                   if (sep !== -1) {
@@ -3231,44 +3746,82 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   }
                   set("driverOffer", v);
                 }}
+                onBlur={() => {
+                  const n = parseFloat(
+                    String(form.driverOffer || "").replace(",", "."),
+                  );
+                  if (Number.isFinite(n)) set("driverOffer", n.toFixed(2));
+                }}
               />
+              {driverOfferError ? (
+                <div
+                  style={{
+                    color: "var(--destructive)",
+                    fontSize: 12,
+                    marginTop: 4,
+                  }}
+                  role="alert"
+                >
+                  {driverOfferError}
+                </div>
+              ) : null}
             </div>
           </section>
 
           <section id="sec-06" className="card" style={{ padding: 22 }}>
-            <div
-              className="sec-head"
-              style={{ justifyContent: "space-between" }}
-            >
+            <div className="sec-head">
               <h3>
                 <span className="num">06</span> {t("newOrderSecNotes")}
               </h3>
-              <button
-                type="button"
-                className="btn ghost xs"
-                onClick={() => set("notes", t("newOrderStandardNotesText"))}
-              >
-                {t("newOrderStandardWording")}
-              </button>
+            </div>
+            {/* Split per client change plan Phase 2 #9: pickup/delivery notes
+                live in section 02 with each address. Here: general notes
+                (driver/service-partner-visible, ORDER_EDIT_FIELDS dv:true on
+                `notesDriver`) and internal notes (admin-only, dv:false on
+                `notes`) — both optional and hidden until explicitly added. */}
+            <div style={{ marginTop: 14 }}>
+              {showGeneralNote ? (
+                <>
+                  <label className="field-label">
+                    {t("newOrderGeneralNoteLabel")}
+                  </label>
+                  <textarea
+                    className="input"
+                    value={form.notesDriver || ""}
+                    onChange={(e) => set("notesDriver", e.target.value)}
+                  />
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="btn ghost xs"
+                  onClick={() => setShowGeneralNote(true)}
+                >
+                  + {t("newOrderGeneralNoteLabel")}
+                </button>
+              )}
             </div>
             <div style={{ marginTop: 14 }}>
-              <label className="field-label">{t("newOrderNotesFree")}</label>
-              <textarea
-                className="input"
-                placeholder={t("newOrderNotesDriverPh")}
-                value={form.notes}
-                onChange={(e) => set("notes", e.target.value)}
-              />
-            </div>
-            <div style={{ marginTop: 14 }}>
-              <label className="field-label">
-                {t("orderFieldNotesDriver")}
-              </label>
-              <textarea
-                className="input"
-                value={form.notesDriver || ""}
-                onChange={(e) => set("notesDriver", e.target.value)}
-              />
+              {showInternalNote ? (
+                <>
+                  <label className="field-label">
+                    {t("newOrderInternalNoteLabel")}
+                  </label>
+                  <textarea
+                    className="input"
+                    value={form.notes}
+                    onChange={(e) => set("notes", e.target.value)}
+                  />
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="btn ghost xs"
+                  onClick={() => setShowInternalNote(true)}
+                >
+                  + {t("newOrderInternalNoteLabel")}
+                </button>
+              )}
             </div>
           </section>
 
@@ -3286,14 +3839,20 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
             </p>
             {existingAdminDocs.length ? (
               <>
-                <div className="label" style={{ marginTop: 14, marginBottom: 8 }}>
+                <div
+                  className="label"
+                  style={{ marginTop: 14, marginBottom: 8 }}
+                >
                   {t("newOrderAdminDocsExisting")}
                 </div>
                 <ul className="doc-card-list">
                   {existingAdminDocs.map((doc) => (
                     <li key={doc.id} className="doc-card">
                       <div className="doc-card-head">
-                        <span className="mono" style={{ wordBreak: "break-all" }}>
+                        <span
+                          className="mono"
+                          style={{ wordBreak: "break-all" }}
+                        >
                           {doc.fileName}
                         </span>
                       </div>
@@ -3355,7 +3914,9 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
               </ul>
             ) : (
               <div className="empty-state">
-                <p className="empty-state-title">{t("newOrderAdminDocsEmpty")}</p>
+                <p className="empty-state-title">
+                  {t("newOrderAdminDocsEmpty")}
+                </p>
               </div>
             )}
           </section>
@@ -3731,7 +4292,9 @@ const DriverUserFormFields = ({
       />
     </div>
     <div>
-      <label className="field-label">{t("adminUsersFieldProbationLimit")}</label>
+      <label className="field-label">
+        {t("adminUsersFieldProbationLimit")}
+      </label>
       <input
         className="input mono"
         type="number"
@@ -3815,8 +4378,10 @@ const userSaveErr = (r, kind, t) => {
   if (reason === "email_required") return t("adminUsersErrEmailRequired");
   if (reason === "invalid_email") return t("adminUsersErrEmailInvalid");
   if (reason === "duplicate_email") return t("adminUsersEmailDuplicate");
-  if (reason === "duplicate_driver_code") return t("adminUsersErrDriverCodeDuplicate");
-  if (reason === "driver_code_required") return t("adminUsersErrDriverCodeRequired");
+  if (reason === "duplicate_driver_code")
+    return t("adminUsersErrDriverCodeDuplicate");
+  if (reason === "driver_code_required")
+    return t("adminUsersErrDriverCodeRequired");
   if (reason === "driver_code_immutable")
     return t("adminUsersErrDriverCodeImmutable");
   if (reason === "invalid_probation_limit")
@@ -3897,7 +4462,9 @@ const AccountAccessDialog = ({ open, data, onClose, onResend, showToast }) => {
                 className="label"
                 style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}
               >
-                {t("adminUsersAccessLastInvite", { at: data.user.lastInviteAt })}
+                {t("adminUsersAccessLastInvite", {
+                  at: data.user.lastInviteAt,
+                })}
               </div>
             ) : null}
           </div>
@@ -4114,7 +4681,10 @@ const DriversPane = ({ showToast }) => {
                     >
                       {t("adminUsersEdit")}
                     </button>
-                    <label className="sr-only" htmlFor={`driver-status-${d.id}`}>
+                    <label
+                      className="sr-only"
+                      htmlFor={`driver-status-${d.id}`}
+                    >
                       {t("adminUsersChangeStatus")}
                     </label>
                     <select
@@ -4350,23 +4920,22 @@ const StaffPane = ({ showToast }) => {
             >
               <div>
                 <strong>{a.name}</strong>
-                <div
-                  className="label"
-                  style={{ fontSize: 9.5, marginTop: 3 }}
-                >
+                <div className="label" style={{ fontSize: 9.5, marginTop: 3 }}>
                   {a.email}
                 </div>
               </div>
               <Pill status="accepted">{a.status}</Pill>
             </div>
-            <div
-              className="label"
-              style={{ fontSize: 11.5, marginTop: 6 }}
-            >
+            <div className="label" style={{ fontSize: 11.5, marginTop: 6 }}>
               {t("adminUsersColAccess")}: {accessStateLabel(a.accessState, t)}
             </div>
             <div
-              style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}
+              style={{
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+                marginTop: 10,
+              }}
             >
               <button
                 type="button"
@@ -4498,7 +5067,7 @@ const emptyAddressForm = () => ({
   houseNumber: "",
   postalCode: "",
   city: "",
-  country: "DE",
+  country: "D",
   contactPerson: "",
   phone: "",
   secondPhone: "",
@@ -4519,7 +5088,9 @@ const AddressMasterFields = ({ form, setF }) => {
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <div>
-        <label className="field-label">{t("adminMasterDataLocationName")} *</label>
+        <label className="field-label">
+          {t("adminMasterDataLocationName")} *
+        </label>
         <input
           className="input"
           value={form.label}
@@ -4567,6 +5138,19 @@ const AddressMasterFields = ({ form, setF }) => {
               setF("postalCode", e.target.value.replace(/\D/g, ""))
             }
           />
+          {(() => {
+            const suggestion = AuthStore.suggestGermanTown(form.postalCode);
+            return suggestion && suggestion !== form.city ? (
+              <button
+                type="button"
+                className="btn ghost xs"
+                style={{ marginTop: 4 }}
+                onClick={() => setF("city", suggestion)}
+              >
+                {t("addressPlzSuggestion")}: {suggestion}
+              </button>
+            ) : null;
+          })()}
         </div>
         <div>
           <label className="field-label">{t("newOrderCityPh")} *</label>
@@ -4577,17 +5161,23 @@ const AddressMasterFields = ({ form, setF }) => {
           />
         </div>
         <div>
-          <label className="field-label">{t("adminMasterDataCountry")}</label>
-          <input
+          <label className="field-label">{t("countryFieldLabel")}</label>
+          <select
             className="input mono"
-            value={form.country}
+            value={AuthStore.normalizeCountrySign(form.country)}
             onChange={(e) => setF("country", e.target.value)}
-          />
+          >
+            {[...AuthStore.COUNTRY_SIGNS]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} — {c.name}
+                </option>
+              ))}
+          </select>
         </div>
       </div>
-      <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
-      >
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
           <label className="field-label">{t("adminMasterDataContact")}</label>
           <input
@@ -4624,7 +5214,34 @@ const AddressMasterFields = ({ form, setF }) => {
         />
       </div>
       <div>
-        <label className="field-label">{t("adminMasterDataNotes")}</label>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <label className="field-label">{t("adminMasterDataNotes")}</label>
+          <select
+            className="input xs"
+            style={{ width: "auto", fontSize: 11.5 }}
+            value=""
+            onChange={(e) => {
+              const key = e.target.value;
+              if (!key) return;
+              const wording = t(key);
+              const existing = String(form.notes || "").trim();
+              setF("notes", existing ? `${existing} ${wording}` : wording);
+            }}
+          >
+            <option value="">{t("addStandardWording")}</option>
+            {AuthStore.STANDARD_WORDINGS.map((key) => (
+              <option key={key} value={key}>
+                {t(key)}
+              </option>
+            ))}
+          </select>
+        </div>
         <textarea
           className="input"
           rows={2}
@@ -4691,7 +5308,7 @@ const NewOrderAddressFields = ({
     houseNumber: form[keys.houseNumber] || "",
     postalCode: form[keys.postalCode] || "",
     city: form[keys.city] || "",
-    country: form[keys.country] || "DE",
+    country: form[keys.country] || "D",
     contactPerson: form[keys.contactPerson] || "",
     phone: form[keys.phone] || "",
     secondPhone: form[keys.secondPhone] || "",
@@ -4886,11 +5503,16 @@ const CustomersPane = ({ showToast }) => {
         ? store.addCustomer(payload)
         : store.updateCustomer(modal, payload);
     if (!r.ok) {
-      showToast?.(t("adminMasterDataSaveFailed"), masterDataErr(r, t, "customer"));
+      showToast?.(
+        t("adminMasterDataSaveFailed"),
+        masterDataErr(r, t, "customer"),
+      );
       return;
     }
     showToast?.(
-      modal === "new" ? t("adminCustomersCreated") : t("adminMasterDataUpdated"),
+      modal === "new"
+        ? t("adminCustomersCreated")
+        : t("adminMasterDataUpdated"),
       r.customer?.name || form.name,
     );
     closeModal();
@@ -4906,7 +5528,9 @@ const CustomersPane = ({ showToast }) => {
       return;
     }
     void window
-      .requestAdminConfirm(t("adminMasterDataDeleteConfirm"), { destructive: true })
+      .requestAdminConfirm(t("adminMasterDataDeleteConfirm"), {
+        destructive: true,
+      })
       .then((ok) => {
         if (!ok) return;
         const r = store.deleteCustomer(op.id);
@@ -5041,7 +5665,9 @@ const CustomersPane = ({ showToast }) => {
             style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
           >
             <div>
-              <label className="field-label">{t("adminMasterDataContact")}</label>
+              <label className="field-label">
+                {t("adminMasterDataContact")}
+              </label>
               <input
                 className="input"
                 value={form.contact}
@@ -5066,7 +5692,9 @@ const CustomersPane = ({ showToast }) => {
             />
           </div>
           <div>
-            <label className="field-label">{t("adminMasterDataBillingNotes")}</label>
+            <label className="field-label">
+              {t("adminMasterDataBillingNotes")}
+            </label>
             <textarea
               className="input"
               rows={2}
@@ -5075,7 +5703,9 @@ const CustomersPane = ({ showToast }) => {
             />
           </div>
           <div>
-            <label className="field-label">{t("adminMasterDataInstructions")}</label>
+            <label className="field-label">
+              {t("adminMasterDataInstructions")}
+            </label>
             <textarea
               className="input"
               rows={2}
@@ -5116,7 +5746,7 @@ const AddressesPane = ({ showToast }) => {
       houseNumber: a.houseNumber || "",
       postalCode: a.postalCode || "",
       city: a.city || "",
-      country: a.country || "DE",
+      country: a.country || "D",
       contactPerson: a.contactPerson || "",
       phone: a.phone || "",
       secondPhone: a.secondPhone || "",
@@ -5157,7 +5787,9 @@ const AddressesPane = ({ showToast }) => {
       return;
     }
     void window
-      .requestAdminConfirm(t("adminMasterDataDeleteConfirm"), { destructive: true })
+      .requestAdminConfirm(t("adminMasterDataDeleteConfirm"), {
+        destructive: true,
+      })
       .then((ok) => {
         if (!ok) return;
         const r = store.deleteAddress(a.id);
@@ -5205,13 +5837,22 @@ const AddressesPane = ({ showToast }) => {
                   {[a.postalCode, a.city, a.country].filter(Boolean).join(" ")}
                 </td>
                 <td>
-                  <div style={{ fontWeight: 600 }}>{a.contactPerson || "—"}</div>
-                  <div className="mono" style={{ fontSize: 11.5, marginTop: 2 }}>
+                  <div style={{ fontWeight: 600 }}>
+                    {a.contactPerson || "—"}
+                  </div>
+                  <div
+                    className="mono"
+                    style={{ fontSize: 11.5, marginTop: 2 }}
+                  >
                     {a.phone || "—"}
                   </div>
                   {a.email ? (
                     <div
-                      style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}
+                      style={{
+                        fontSize: 11,
+                        color: "var(--muted)",
+                        marginTop: 2,
+                      }}
                     >
                       {a.email}
                     </div>
@@ -5630,7 +6271,10 @@ const InfopointPane = ({ showToast }) => {
                   type="checkbox"
                   checked={newsForm.notifyInApp}
                   onChange={(e) =>
-                    setNewsForm((f) => ({ ...f, notifyInApp: e.target.checked }))
+                    setNewsForm((f) => ({
+                      ...f,
+                      notifyInApp: e.target.checked,
+                    }))
                   }
                 />
                 {t("adminInfopointNotifyInApp")}
@@ -5766,7 +6410,9 @@ const InfopointPane = ({ showToast }) => {
       >
         <div style={{ display: "grid", gap: 12 }}>
           <div>
-            <label className="field-label">{t("adminInfopointDocTitle")} *</label>
+            <label className="field-label">
+              {t("adminInfopointDocTitle")} *
+            </label>
             <input
               className="input"
               value={docForm.title}
@@ -5827,7 +6473,11 @@ const InfopointPane = ({ showToast }) => {
             {docFile ? (
               <p
                 className="label mono"
-                style={{ margin: "8px 0 0", fontSize: 12.5, wordBreak: "break-all" }}
+                style={{
+                  margin: "8px 0 0",
+                  fontSize: 12.5,
+                  wordBreak: "break-all",
+                }}
               >
                 {docFile.name}
               </p>
@@ -5872,7 +6522,9 @@ const InfopointPane = ({ showToast }) => {
       >
         <div style={{ display: "grid", gap: 12 }}>
           <div>
-            <label className="field-label">{t("adminInfopointDocTitle")} *</label>
+            <label className="field-label">
+              {t("adminInfopointDocTitle")} *
+            </label>
             <input
               className="input"
               value={editDocForm.title}
@@ -5964,7 +6616,11 @@ const InfopointPane = ({ showToast }) => {
               justifyContent: "flex-end",
             }}
           >
-            <button type="button" className="btn" onClick={() => setEditNews(null)}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setEditNews(null)}
+            >
               {t("adminInvoiceCancel")}
             </button>
             <button
@@ -5980,7 +6636,9 @@ const InfopointPane = ({ showToast }) => {
       >
         <div style={{ display: "grid", gap: 12 }}>
           <div>
-            <label className="field-label">{t("adminInfopointSubject")} *</label>
+            <label className="field-label">
+              {t("adminInfopointSubject")} *
+            </label>
             <input
               className="input"
               value={editNewsForm.title}
@@ -5990,7 +6648,9 @@ const InfopointPane = ({ showToast }) => {
             />
           </div>
           <div>
-            <label className="field-label">{t("adminInfopointMessage")} *</label>
+            <label className="field-label">
+              {t("adminInfopointMessage")} *
+            </label>
             <textarea
               className="input"
               rows={5}
@@ -6019,9 +6679,7 @@ const TourBillingPane = ({
   const [viewId, setViewId] = useStateA(null);
   const [editId, setEditId] = useStateA(null);
   const [editForm, setEditForm] = useStateA(null);
-  const [regJobId, setRegJobId] = useStateA(
-    () => store.getJobs()[0]?.id ?? "",
-  );
+  const [regJobId, setRegJobId] = useStateA(() => store.getJobs()[0]?.id ?? "");
   const [regDriverId, setRegDriverId] = useStateA(
     () => store.getDrivers()[0]?.id ?? "",
   );
@@ -6049,8 +6707,7 @@ const TourBillingPane = ({
     : uploads;
   const visibleUploads = useMemoA(() => {
     let list = scopedUploads;
-    if (filterType)
-      list = list.filter((u) => u.documentType === filterType);
+    if (filterType) list = list.filter((u) => u.documentType === filterType);
     if (filterReview)
       list = list.filter((u) => u.reviewStatus === filterReview);
     if (filterSource) list = list.filter((u) => u.source === filterSource);
@@ -6097,14 +6754,17 @@ const TourBillingPane = ({
         accepted: t("docReviewAccepted"),
         rejected: t("docReviewRejected"),
         correction_required: t("docReviewCorrectionRequired"),
-      }[code] || code || "—"
+      }[code] ||
+      code ||
+      "—"
     );
   };
 
   const reviewPillStatus = (st) => {
     const code = AuthStore.normalizeTourDocumentReviewStatus(st);
     if (code === "accepted") return "accepted";
-    if (code === "rejected" || code === "correction_required") return "cancelled";
+    if (code === "rejected" || code === "correction_required")
+      return "cancelled";
     if (code === "uploaded") return "warn";
     return "draft";
   };
@@ -6118,9 +6778,9 @@ const TourBillingPane = ({
       return t("adminInvoiceErrNoFile");
     if (reason === "invalid_type") return t("invoiceUploadInvalidType");
     if (reason === "job_required") return t("adminInvoiceErrJobRequired");
-    if (reason === "no_invoice_id") return t("adminInvoiceErrInvoiceIdRequired");
-    if (reason === "already_accepted")
-      return t("adminDocErrAlreadyAccepted");
+    if (reason === "no_invoice_id")
+      return t("adminInvoiceErrInvoiceIdRequired");
+    if (reason === "already_accepted") return t("adminDocErrAlreadyAccepted");
     if (reason === "not_pending") return t("adminDocErrNotPending");
     if (reason === "not_rejected") return t("adminDocErrNotRejected");
     if (reason === "invoice_number_required")
@@ -6167,9 +6827,7 @@ const TourBillingPane = ({
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f) return;
-    setEditForm((p) =>
-      p ? { ...p, replaceFile: f, fileName: f.name } : p,
-    );
+    setEditForm((p) => (p ? { ...p, replaceFile: f, fileName: f.name } : p));
   };
 
   useEffectA(() => {
@@ -6197,7 +6855,15 @@ const TourBillingPane = ({
       <p className="pane-lead">{t("tourBillingDesc")}</p>
 
       {filterJobId && filterJob && (
-        <div style={{ marginTop: -6, marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+        <div
+          style={{
+            marginTop: -6,
+            marginBottom: 14,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
           <button
             type="button"
             className="billing-filter-chip"
@@ -6345,10 +7011,19 @@ const TourBillingPane = ({
         >
           <div
             className="card elev"
-            style={{ maxWidth: 520, width: "100%", padding: 22, maxHeight: "90vh", overflow: "auto" }}
+            style={{
+              maxWidth: 520,
+              width: "100%",
+              padding: 22,
+              maxHeight: "90vh",
+              overflow: "auto",
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="reg-invoice-title" style={{ margin: "0 0 8px", fontSize: 17 }}>
+            <h2
+              id="reg-invoice-title"
+              style={{ margin: "0 0 8px", fontSize: 17 }}
+            >
               {t("adminTourDocRegisterTitle")}
             </h2>
             <p
@@ -6431,7 +7106,11 @@ const TourBillingPane = ({
                 {regFile ? (
                   <p
                     className="label mono"
-                    style={{ margin: "8px 0 0", fontSize: 12.5, wordBreak: "break-all" }}
+                    style={{
+                      margin: "8px 0 0",
+                      fontSize: 12.5,
+                      wordBreak: "break-all",
+                    }}
                   >
                     {regFile.name}
                   </p>
@@ -6518,172 +7197,174 @@ const TourBillingPane = ({
             </tr>
           ) : (
             visibleUploads.map((u) => {
-              const actions = AuthStore.tourDocumentReviewActions(u.reviewStatus);
+              const actions = AuthStore.tourDocumentReviewActions(
+                u.reviewStatus,
+              );
               return (
-              <tr key={u.id}>
-                <td>
-                  <input
-                    type="checkbox"
-                    checked={selected.has(u.id)}
-                    onChange={() => toggleSelect(u.id)}
-                    aria-label={u.fileName}
-                  />
-                </td>
-                <td>
-                  <strong className="mono" style={{ fontSize: 13 }}>
-                    {u.fileName}
-                  </strong>
-                  <div className="label" style={{ fontSize: 10.5 }}>
-                    {u.mimeType}
-                  </div>
-                </td>
-                <td style={{ fontSize: 12.5, minWidth: 120 }}>
-                  {displayTourDocType(u.documentType, t)}
-                </td>
-                <td>{u.driverName}</td>
-                <td style={{ minWidth: 220 }}>
-                  {u.jobId ? (
-                    (() => {
-                      const j = jobs.find((x) => x.id === u.jobId);
-                      return j ? (
-                        <div>
-                          <span style={{ fontSize: 13 }}>
-                            {j.tour} · {j.customer}
+                <tr key={u.id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(u.id)}
+                      onChange={() => toggleSelect(u.id)}
+                      aria-label={u.fileName}
+                    />
+                  </td>
+                  <td>
+                    <strong className="mono" style={{ fontSize: 13 }}>
+                      {u.fileName}
+                    </strong>
+                    <div className="label" style={{ fontSize: 10.5 }}>
+                      {u.mimeType}
+                    </div>
+                  </td>
+                  <td style={{ fontSize: 12.5, minWidth: 120 }}>
+                    {displayTourDocType(u.documentType, t)}
+                  </td>
+                  <td>{u.driverName}</td>
+                  <td style={{ minWidth: 220 }}>
+                    {u.jobId ? (
+                      (() => {
+                        const j = jobs.find((x) => x.id === u.jobId);
+                        return j ? (
+                          <div>
+                            <span style={{ fontSize: 13 }}>
+                              {j.tour} · {j.customer}
+                            </span>
+                            {onOpenJob && (
+                              <button
+                                type="button"
+                                className="btn xs"
+                                style={{ marginTop: 6, display: "block" }}
+                                onClick={() => onOpenJob(j.id)}
+                              >
+                                {t("adminOpenTourFromInvoice")}
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="mono label" style={{ fontSize: 12 }}>
+                            {u.jobId}
                           </span>
-                          {onOpenJob && (
-                            <button
-                              type="button"
-                              className="btn xs"
-                              style={{ marginTop: 6, display: "block" }}
-                              onClick={() => onOpenJob(j.id)}
-                            >
-                              {t("adminOpenTourFromInvoice")}
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="mono label" style={{ fontSize: 12 }}>
-                          {u.jobId}
-                        </span>
-                      );
-                    })()
-                  ) : (
-                    <span className="label">{t("invoiceJobNone")}</span>
-                  )}
-                </td>
-                <td className="mono" style={{ fontSize: 12 }}>
-                  {fmtIso(u.uploadedAt)}
-                </td>
-                <td className="label" style={{ fontSize: 12 }}>
-                  {sourceLabel(u)}
-                </td>
-                <td>
-                  <Pill status={reviewPillStatus(u.reviewStatus)}>
-                    {displayDocReviewStatus(u.reviewStatus)}
-                  </Pill>
-                </td>
-                <td style={{ whiteSpace: "nowrap" }}>
-                  <button
-                    type="button"
-                    className="btn xs"
-                    onClick={() => setViewId(u.id)}
-                  >
-                    {t("invoiceView")}
-                  </button>
-                  {actions.canAccept ? (
-                    <button
-                      type="button"
-                      className="btn xs primary"
-                      style={{ marginLeft: 6 }}
-                      onClick={() => onAcceptClick(u)}
-                    >
-                      {t("adminDocAccept")}
-                    </button>
-                  ) : null}
-                  {actions.canReject ? (
-                    <button
-                      type="button"
-                      className="btn xs danger"
-                      style={{ marginLeft: 6 }}
-                      onClick={() => {
-                        const preset = window.prompt(
-                          `${t("adminRejectNotePlaceholder")}\n${t("rejectionPresetLegible")} / ${t("rejectionPresetRegistration")} / ${t("rejectionPresetWaiting")}`,
-                          t("rejectionPresetLegible"),
                         );
-                        if (preset == null) return;
-                        const reason = preset.trim();
-                        if (!reason) return;
-                        const r = store.rejectTourDocument(u.id, reason);
-                        if (r.ok)
-                          showToast?.(
-                            t("adminDocRejected") || "Rejected",
-                            u.fileName,
-                          );
-                        else showToast?.(invoiceActionErr(r));
-                      }}
-                    >
-                      {t("adminDocReject") || "Reject"}
-                    </button>
-                  ) : null}
-                  {actions.canRequireCorrection ? (
-                    <button
-                      type="button"
-                      className="btn xs warn"
-                      style={{ marginLeft: 6 }}
-                      onClick={() => {
-                        const r = store.requireTourDocumentCorrection(u.id);
-                        if (r.ok)
-                          showToast?.(
-                            t("adminDocCorrectionRequired"),
-                            u.fileName,
-                          );
-                        else showToast?.(invoiceActionErr(r));
-                      }}
-                    >
-                      {t("adminDocRequireCorrection")}
-                    </button>
-                  ) : null}
-                  {actions.canDownload ? (
+                      })()
+                    ) : (
+                      <span className="label">{t("invoiceJobNone")}</span>
+                    )}
+                  </td>
+                  <td className="mono" style={{ fontSize: 12 }}>
+                    {fmtIso(u.uploadedAt)}
+                  </td>
+                  <td className="label" style={{ fontSize: 12 }}>
+                    {sourceLabel(u)}
+                  </td>
+                  <td>
+                    <Pill status={reviewPillStatus(u.reviewStatus)}>
+                      {displayDocReviewStatus(u.reviewStatus)}
+                    </Pill>
+                  </td>
+                  <td style={{ whiteSpace: "nowrap" }}>
                     <button
                       type="button"
                       className="btn xs"
-                      style={{ marginLeft: 6 }}
-                      onClick={() =>
-                        showToast?.(t("invoiceDownload"), u.fileName)
-                      }
+                      onClick={() => setViewId(u.id)}
                     >
-                      {t("invoiceDownload")}
+                      {t("invoiceView")}
                     </button>
-                  ) : null}
-                  {actions.canReplace && (
-                    <label
-                      className="btn xs"
-                      style={{ marginLeft: 6, cursor: "pointer" }}
-                    >
-                      {t("tourDocReplaceButton")}
-                      <input
-                        type="file"
-                        accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
-                        style={{ display: "none" }}
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          e.target.value = "";
-                          if (!f) return;
-                          const r = store.replaceTourDocument(u.id, f, {
-                            actor: "admin",
-                          });
+                    {actions.canAccept ? (
+                      <button
+                        type="button"
+                        className="btn xs primary"
+                        style={{ marginLeft: 6 }}
+                        onClick={() => onAcceptClick(u)}
+                      >
+                        {t("adminDocAccept")}
+                      </button>
+                    ) : null}
+                    {actions.canReject ? (
+                      <button
+                        type="button"
+                        className="btn xs danger"
+                        style={{ marginLeft: 6 }}
+                        onClick={() => {
+                          const preset = window.prompt(
+                            `${t("adminRejectNotePlaceholder")}\n${t("rejectionPresetLegible")} / ${t("rejectionPresetRegistration")} / ${t("rejectionPresetWaiting")}`,
+                            t("rejectionPresetLegible"),
+                          );
+                          if (preset == null) return;
+                          const reason = preset.trim();
+                          if (!reason) return;
+                          const r = store.rejectTourDocument(u.id, reason);
                           if (r.ok)
                             showToast?.(
-                              t("tourDocReplaceButton"),
+                              t("adminDocRejected") || "Rejected",
                               u.fileName,
                             );
+                          else showToast?.(invoiceActionErr(r));
                         }}
-                      />
-                    </label>
-                  )}
-                </td>
-              </tr>
-            );
+                      >
+                        {t("adminDocReject") || "Reject"}
+                      </button>
+                    ) : null}
+                    {actions.canRequireCorrection ? (
+                      <button
+                        type="button"
+                        className="btn xs warn"
+                        style={{ marginLeft: 6 }}
+                        onClick={() => {
+                          const r = store.requireTourDocumentCorrection(u.id);
+                          if (r.ok)
+                            showToast?.(
+                              t("adminDocCorrectionRequired"),
+                              u.fileName,
+                            );
+                          else showToast?.(invoiceActionErr(r));
+                        }}
+                      >
+                        {t("adminDocRequireCorrection")}
+                      </button>
+                    ) : null}
+                    {actions.canDownload ? (
+                      <button
+                        type="button"
+                        className="btn xs"
+                        style={{ marginLeft: 6 }}
+                        onClick={() =>
+                          showToast?.(t("invoiceDownload"), u.fileName)
+                        }
+                      >
+                        {t("invoiceDownload")}
+                      </button>
+                    ) : null}
+                    {actions.canReplace && (
+                      <label
+                        className="btn xs"
+                        style={{ marginLeft: 6, cursor: "pointer" }}
+                      >
+                        {t("tourDocReplaceButton")}
+                        <input
+                          type="file"
+                          accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
+                          style={{ display: "none" }}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            e.target.value = "";
+                            if (!f) return;
+                            const r = store.replaceTourDocument(u.id, f, {
+                              actor: "admin",
+                            });
+                            if (r.ok)
+                              showToast?.(
+                                t("tourDocReplaceButton"),
+                                u.fileName,
+                              );
+                          }}
+                        />
+                      </label>
+                    )}
+                  </td>
+                </tr>
+              );
             })
           )}
         </tbody>
@@ -6765,10 +7446,16 @@ const TourBillingPane = ({
                 </select>
               </div>
               <div>
-                <label className="field-label">{t("adminInvoiceUploadLabel")}</label>
+                <label className="field-label">
+                  {t("adminInvoiceUploadLabel")}
+                </label>
                 <p
                   className="label mono"
-                  style={{ margin: "0 0 8px", fontSize: 12.5, wordBreak: "break-all" }}
+                  style={{
+                    margin: "0 0 8px",
+                    fontSize: 12.5,
+                    wordBreak: "break-all",
+                  }}
                 >
                   {editForm.fileName}
                 </p>
@@ -6897,14 +7584,27 @@ const TourBillingPane = ({
                 <label className="field-label" htmlFor="accept-inv-date">
                   {t("adminSupplierInvoiceDateLabel")}
                 </label>
-                <input
-                  id="accept-inv-date"
-                  className="input"
-                  type="text"
+                <DateField
                   value={acceptInvDate}
-                  onChange={(e) => setAcceptInvDate(e.target.value)}
+                  onChange={setAcceptInvDate}
+                  onBlur={(e) =>
+                    setAcceptInvDate(AuthStore.formatDateInput(e.target.value))
+                  }
                   placeholder={t("adminSupplierInvoiceDatePlaceholder")}
-                  style={{ marginTop: 6 }}
+                  error={
+                    acceptInvDate &&
+                    !AuthStore.parseStrictDate(acceptInvDate, {
+                      allowPast: true,
+                    }).valid
+                      ? dateErrorLabelStandalone(
+                          AuthStore.parseStrictDate(acceptInvDate, {
+                            allowPast: true,
+                          }).reason,
+                          t,
+                        )
+                      : ""
+                  }
+                  testId="accept-inv-date"
                 />
               </div>
             </div>
@@ -7103,10 +7803,7 @@ const FinancePane = ({
     return () => window.removeEventListener("keydown", onKey);
   }, [finEditId]);
 
-  const totalRevenue = jobs.reduce(
-    (s, j) => s + Number(j.revenue || 0),
-    0,
-  );
+  const totalRevenue = jobs.reduce((s, j) => s + Number(j.revenue || 0), 0);
   const unpaid = jobs.filter((j) => j.paymentStatus !== "Paid").length;
   return (
     <div>
@@ -7137,38 +7834,36 @@ const FinancePane = ({
         </thead>
         <tbody>
           {jobs.map((j) => (
-              <tr
-                key={j.id}
-                data-job-id={j.id}
-                className={highlightJobId === j.id ? "fin-row-highlight" : ""}
-              >
-                <td className="mono">{j.tour}</td>
-                <td>{j.customer}</td>
-                <td>€ {Number(j.revenue || 0).toFixed(2)}</td>
-                <td>€ {Number(j.driverOffer || 0).toFixed(2)}</td>
-                <td>€ {Number(j.expenses || 0).toFixed(2)}</td>
-                <td className="mono" style={{ fontSize: 12 }}>
-                  {j.invoiceNumber || t("adminFinanceNoInvNum")}
-                </td>
-                <td>
-                  <Pill
-                    status={
-                      j.paymentStatus === "Paid" ? "performed" : "assigned"
-                    }
-                  >
-                    {paymentLabel(j.paymentStatus)}
-                  </Pill>
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    className="btn xs"
-                    onClick={() => openFinEdit(j)}
-                  >
-                    {t("adminFinanceEditRow")}
-                  </button>
-                </td>
-              </tr>
+            <tr
+              key={j.id}
+              data-job-id={j.id}
+              className={highlightJobId === j.id ? "fin-row-highlight" : ""}
+            >
+              <td className="mono">{j.tour}</td>
+              <td>{j.customer}</td>
+              <td>€ {Number(j.revenue || 0).toFixed(2)}</td>
+              <td>€ {Number(j.driverOffer || 0).toFixed(2)}</td>
+              <td>€ {Number(j.expenses || 0).toFixed(2)}</td>
+              <td className="mono" style={{ fontSize: 12 }}>
+                {j.invoiceNumber || t("adminFinanceNoInvNum")}
+              </td>
+              <td>
+                <Pill
+                  status={j.paymentStatus === "Paid" ? "performed" : "assigned"}
+                >
+                  {paymentLabel(j.paymentStatus)}
+                </Pill>
+              </td>
+              <td>
+                <button
+                  type="button"
+                  className="btn xs"
+                  onClick={() => openFinEdit(j)}
+                >
+                  {t("adminFinanceEditRow")}
+                </button>
+              </td>
+            </tr>
           ))}
         </tbody>
       </table>
@@ -7534,27 +8229,35 @@ const MasterDataChangeListChips = ({ row, t }) => {
   );
 };
 
-const MasterDataCompareTable = ({ snapshot, proposed, changeType, t, onlyChanged }) => {
+const MasterDataCompareTable = ({
+  snapshot,
+  proposed,
+  changeType,
+  t,
+  onlyChanged,
+}) => {
   const fields =
     changeType === "daily_limit_override"
       ? [["dailyJobLimit", "adminUsersFieldProbationLimit"]]
       : MASTER_DATA_CHANGE_FIELDS;
-  const rows = fields.map(([key, labelKey]) => {
-    const before = snapshot?.[key] || "";
-    const after = proposed?.[key] ?? before;
-    const changed = String(before).trim() !== String(after).trim();
-    if (onlyChanged && !changed) return null;
-    return (
-      <div
-        key={key}
-        className={`mdr-compare-row${changed ? " is-changed" : ""}`}
-      >
-        <div className="mdr-compare-cell label">{t(labelKey)}</div>
-        <div className="mdr-compare-cell before">{before || "—"}</div>
-        <div className="mdr-compare-cell after">{after || "—"}</div>
-      </div>
-    );
-  }).filter(Boolean);
+  const rows = fields
+    .map(([key, labelKey]) => {
+      const before = snapshot?.[key] || "";
+      const after = proposed?.[key] ?? before;
+      const changed = String(before).trim() !== String(after).trim();
+      if (onlyChanged && !changed) return null;
+      return (
+        <div
+          key={key}
+          className={`mdr-compare-row${changed ? " is-changed" : ""}`}
+        >
+          <div className="mdr-compare-cell label">{t(labelKey)}</div>
+          <div className="mdr-compare-cell before">{before || "—"}</div>
+          <div className="mdr-compare-cell after">{after || "—"}</div>
+        </div>
+      );
+    })
+    .filter(Boolean);
   if (!rows.length) {
     return <div style={{ color: "var(--muted)", fontSize: 13 }}>—</div>;
   }
@@ -7647,7 +8350,13 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
       >
         <section className="card" style={{ padding: 0 }}>
           {rows.length === 0 ? (
-            <div style={{ padding: 28, textAlign: "center", color: "var(--muted)" }}>
+            <div
+              style={{
+                padding: 28,
+                textAlign: "center",
+                color: "var(--muted)",
+              }}
+            >
               {t("adminMdrEmpty")}
             </div>
           ) : (
@@ -7673,8 +8382,13 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                   setAdminNote("");
                 }}
               >
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{row.driverName}</div>
-                <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>
+                  {row.driverName}
+                </div>
+                <div
+                  className="mono"
+                  style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}
+                >
                   {row.driverCode || "—"} · {row.createdAt}
                 </div>
                 <div className="label" style={{ fontSize: 10.5, marginTop: 6 }}>
@@ -7702,19 +8416,31 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
         </section>
         {selected ? (
           <section className="card" style={{ padding: 22 }}>
-            <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>{selected.driverName}</h2>
-            <p className="mono" style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
-              {t("driverCode")}: {selected.driverCode || "—"} · {selected.createdAt}
+            <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>
+              {selected.driverName}
+            </h2>
+            <p
+              className="mono"
+              style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}
+            >
+              {t("driverCode")}: {selected.driverCode || "—"} ·{" "}
+              {selected.createdAt}
             </p>
             <div className="label" style={{ fontSize: 11, marginTop: 8 }}>
               {mdrChangeTypeLabel(selected, t)}
             </div>
             {selected.proposed ? (
               <div style={{ marginTop: 16 }}>
-                <div className="field-label">{t("adminMdrProposedChanges")}</div>
+                <div className="field-label">
+                  {t("adminMdrProposedChanges")}
+                </div>
                 <p
                   className="label"
-                  style={{ margin: "6px 0 0", fontSize: 11.5, lineHeight: 1.45 }}
+                  style={{
+                    margin: "6px 0 0",
+                    fontSize: 11.5,
+                    lineHeight: 1.45,
+                  }}
                 >
                   {selected.status === "open"
                     ? t("adminMdrProposedChangesHint")
@@ -7727,10 +8453,19 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                   t={t}
                   onlyChanged
                 />
-                {selected.changeType === "daily_limit_override" && selected.note ? (
+                {selected.changeType === "daily_limit_override" &&
+                selected.note ? (
                   <div style={{ marginTop: 14 }}>
-                    <div className="field-label">{t("adminUsersFieldNotes")}</div>
-                    <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.5 }}>
+                    <div className="field-label">
+                      {t("adminUsersFieldNotes")}
+                    </div>
+                    <p
+                      style={{
+                        margin: "6px 0 0",
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                      }}
+                    >
                       {selected.note}
                     </p>
                   </div>
@@ -7780,7 +8515,14 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                     {t("adminMdrLegacyApproveBlocked")}
                   </p>
                 )}
-                <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    marginTop: 14,
+                    flexWrap: "wrap",
+                  }}
+                >
                   {selected.proposed ? (
                     <button
                       type="button"
@@ -7800,7 +8542,9 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                 </div>
               </div>
             ) : (
-              <div style={{ marginTop: 16, fontSize: 13, color: "var(--muted)" }}>
+              <div
+                style={{ marginTop: 16, fontSize: 13, color: "var(--muted)" }}
+              >
                 <div>
                   {t("adminMdrResolvedAt")}: {selected.resolvedAt || "—"}
                 </div>
@@ -7816,7 +8560,11 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   );
 };
 
-const NotificationFeedPane = ({ showToast, onOpenJob, onReviewMasterDataRequest }) => {
+const NotificationFeedPane = ({
+  showToast,
+  onOpenJob,
+  onReviewMasterDataRequest,
+}) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const rows = store.getAdminEmailQueue();
@@ -7825,7 +8573,9 @@ const NotificationFeedPane = ({ showToast, onOpenJob, onReviewMasterDataRequest 
       <p className="pane-lead">{t("adminNotificationFeedSub")}</p>
       <section className="card" style={{ padding: 0 }}>
         {rows.length === 0 ? (
-          <div style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>
+          <div
+            style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}
+          >
             {t("adminNotificationEmpty")}
           </div>
         ) : (
@@ -7850,11 +8600,20 @@ const NotificationFeedPane = ({ showToast, onOpenJob, onReviewMasterDataRequest 
                     ? t(ADMIN_ALERT_EVENT_I18N[row.event])
                     : row.event}
                 </div>
-                <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
+                <div
+                  style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}
+                >
                   {row.tour ? `${t("adminColTour")} ${row.tour}` : "—"}
                   {row.meta ? ` · ${row.meta}` : ""}
                 </div>
-                <div className="mono" style={{ fontSize: 11, color: "var(--muted-2)", marginTop: 4 }}>
+                <div
+                  className="mono"
+                  style={{
+                    fontSize: 11,
+                    color: "var(--muted-2)",
+                    marginTop: 4,
+                  }}
+                >
                   {row.at}
                 </div>
               </div>
@@ -7919,6 +8678,16 @@ const isPolicyNumberValid = (current) => {
   return Number.isInteger(parsed) && parsed >= MIN_POLICY_NUMBER;
 };
 
+// EUR policy fields (driver-offer max / high-offer warning threshold) are
+// positive decimals, not whole numbers — a separate validator from the
+// integer-only policy fields above.
+const isPolicyEurValid = (current) => {
+  const trimmed = String(current).trim();
+  if (trimmed === "") return false;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) && parsed > 0;
+};
+
 // Gated on the field being dirty so a freshly opened screen never nags — the
 // stored values always satisfy the rule. One message covers cleared, zero and
 // fractional alike: it reads as a complete instruction in every case.
@@ -7968,7 +8737,12 @@ const OperationalPoliciesForm = ({ showToast }) => {
   const storedDefaultLimit = Number(
     policies.driverAcceptance?.probationJobCount ?? 3,
   );
-  const storedAllowOverride = policies.allowPolicyOverrideWithAuditNote !== false;
+  const storedDriverOfferMax = Number(policies.driverOfferMaxEur ?? 999.99);
+  const storedDriverOfferWarn = Number(
+    policies.driverOfferHighWarningEur ?? 200.0,
+  );
+  const storedAllowOverride =
+    policies.allowPolicyOverrideWithAuditNote !== false;
   const storedRequiresReasonCode =
     policies.cancellation?.adminCancelRequiresReasonCode !== false;
   const storedRequiresDriverMessage =
@@ -7982,6 +8756,12 @@ const OperationalPoliciesForm = ({ showToast }) => {
   );
   const [minDriverMsg, setMinDriverMsg] = useStateA(String(storedMinDriverMsg));
   const [defaultLimit, setDefaultLimit] = useStateA(String(storedDefaultLimit));
+  const [driverOfferMax, setDriverOfferMax] = useStateA(
+    String(storedDriverOfferMax),
+  );
+  const [driverOfferWarn, setDriverOfferWarn] = useStateA(
+    String(storedDriverOfferWarn),
+  );
   const [allowOverride, setAllowOverride] = useStateA(storedAllowOverride);
   const [requiresReasonCode, setRequiresReasonCode] = useStateA(
     storedRequiresReasonCode,
@@ -8001,6 +8781,8 @@ const OperationalPoliciesForm = ({ showToast }) => {
     setAllowOverride(storedAllowOverride);
     setRequiresReasonCode(storedRequiresReasonCode);
     setRequiresDriverMessage(storedRequiresDriverMessage);
+    setDriverOfferMax(String(storedDriverOfferMax));
+    setDriverOfferWarn(String(storedDriverOfferWarn));
   };
 
   useEffectA(seedFromStore, [
@@ -8011,6 +8793,8 @@ const OperationalPoliciesForm = ({ showToast }) => {
     storedAllowOverride,
     storedRequiresReasonCode,
     storedRequiresDriverMessage,
+    storedDriverOfferMax,
+    storedDriverOfferWarn,
   ]);
 
   // At least one field differs from the stored values. Drives both the Save
@@ -8020,6 +8804,8 @@ const OperationalPoliciesForm = ({ showToast }) => {
     isPolicyNumberDirty(scheduleHours, storedScheduleHours) ||
     isPolicyNumberDirty(minDriverMsg, storedMinDriverMsg) ||
     isPolicyNumberDirty(defaultLimit, storedDefaultLimit) ||
+    isPolicyNumberDirty(driverOfferMax, storedDriverOfferMax) ||
+    isPolicyNumberDirty(driverOfferWarn, storedDriverOfferWarn) ||
     allowOverride !== storedAllowOverride ||
     requiresReasonCode !== storedRequiresReasonCode ||
     requiresDriverMessage !== storedRequiresDriverMessage;
@@ -8033,7 +8819,9 @@ const OperationalPoliciesForm = ({ showToast }) => {
     isPolicyNumberValid(adminCancelHours) &&
     isPolicyNumberValid(scheduleHours) &&
     isPolicyNumberValid(minDriverMsg) &&
-    isPolicyNumberValid(defaultLimit);
+    isPolicyNumberValid(defaultLimit) &&
+    isPolicyEurValid(driverOfferMax) &&
+    isPolicyEurValid(driverOfferWarn);
 
   const save = () => {
     if (!canSave) return;
@@ -8046,6 +8834,8 @@ const OperationalPoliciesForm = ({ showToast }) => {
         adminCancelMinHoursBeforePickupStart: Number(adminCancelHours),
         scheduleChangeMinHoursBeforePickupStart: Number(scheduleHours),
         allowPolicyOverrideWithAuditNote: allowOverride,
+        driverOfferMaxEur: Number(driverOfferMax),
+        driverOfferHighWarningEur: Number(driverOfferWarn),
       },
       cancellation: {
         adminCancelDriverMessageMinChars: Number(minDriverMsg),
@@ -8118,6 +8908,46 @@ const OperationalPoliciesForm = ({ showToast }) => {
           </div>
         );
       })}
+      <div className="policy-field">
+        <label className="field-label" htmlFor="policy-driver-offer-max">
+          {t("adminPolicyDriverOfferMaxLabel")}
+        </label>
+        <input
+          id="policy-driver-offer-max"
+          className="input"
+          type="number"
+          min={0.01}
+          step={0.01}
+          value={driverOfferMax}
+          style={
+            isPolicyNumberDirty(driverOfferMax, storedDriverOfferMax) &&
+            !isPolicyEurValid(driverOfferMax)
+              ? userInputErrStyle
+              : undefined
+          }
+          onChange={(e) => setDriverOfferMax(e.target.value)}
+        />
+      </div>
+      <div className="policy-field">
+        <label className="field-label" htmlFor="policy-driver-offer-warn">
+          {t("adminPolicyDriverOfferWarnLabel")}
+        </label>
+        <input
+          id="policy-driver-offer-warn"
+          className="input"
+          type="number"
+          min={0.01}
+          step={0.01}
+          value={driverOfferWarn}
+          style={
+            isPolicyNumberDirty(driverOfferWarn, storedDriverOfferWarn) &&
+            !isPolicyEurValid(driverOfferWarn)
+              ? userInputErrStyle
+              : undefined
+          }
+          onChange={(e) => setDriverOfferWarn(e.target.value)}
+        />
+      </div>
       <PolicySwitchRow
         id="policy-allow-override"
         label={t("settings.system.policyAllowOverrideLabel")}
@@ -8276,7 +9106,9 @@ const InfopointHelpContactsForm = ({ showToast }) => {
           value={email}
           style={emailError ? userInputErrStyle : undefined}
           aria-invalid={emailError ? true : undefined}
-          aria-describedby={emailError ? "help-contacts-email-error" : undefined}
+          aria-describedby={
+            emailError ? "help-contacts-email-error" : undefined
+          }
           onChange={(e) => setEmail(e.target.value)}
         />
         <UserFormError id="help-contacts-email-error" message={emailError} />
@@ -8469,7 +9301,10 @@ const SettingsPane = ({ showToast }) => {
       );
     // The console's mismatch check is a schema-level refine: it only runs once
     // every field passes its own rule.
-    if (!Object.keys(errors).length && passwordForm.next !== passwordForm.confirm)
+    if (
+      !Object.keys(errors).length &&
+      passwordForm.next !== passwordForm.confirm
+    )
       errors.confirm = t("settings.account.changePassword.passwordMismatch");
     if (Object.keys(errors).length) {
       setPasswordErrors(errors);
@@ -8593,7 +9428,11 @@ const SettingsPane = ({ showToast }) => {
             <div className="settings-row-hint">
               {t("settings.account.changePassword.description")}
             </div>
-            <form className="settings-form" onSubmit={submitPassword} noValidate>
+            <form
+              className="settings-form"
+              onSubmit={submitPassword}
+              noValidate
+            >
               <div>
                 <label
                   className="field-label"
@@ -8845,7 +9684,10 @@ const SettingsPane = ({ showToast }) => {
           <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 14 }}>
             {t("adminFeatureFlagsBlurb")}
           </p>
-          <section className="card" style={{ padding: "0 18px", marginTop: 14 }}>
+          <section
+            className="card"
+            style={{ padding: "0 18px", marginTop: 14 }}
+          >
             {Object.keys(FLAG_I18N).map((key) => {
               const enabled = !!flags[key];
               const meta = FLAG_I18N[key];
@@ -8924,7 +9766,7 @@ Object.assign(window, {
   DocumentsPane,
   InfopointPane,
   TourBillingPane,
-  
+
   FinancePane,
   AuditPane,
   NotificationFeedPane,

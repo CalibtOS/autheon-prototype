@@ -142,38 +142,41 @@
     <script src="inputFormatters.js"></script>
     <script src="store.js"></script>
     <script type="text/babel" src="driver-ui.jsx"></script>
-    <script type="text/babel" src="driver.jsx?v=10"></script>
+    <script type="text/babel" src="driver.jsx?v=17"></script>
 
     <script type="text/babel" data-presets="env,react">
       const { useI18n, MarketplaceFilterButton, SortSelect, Ic } = window;
       const { getAppliedMarketplaceFilters } = window;
       const { Badge } = window.DriverUI || window;
 
-      // Committed-filter fixtures. Max reachable through the real UI is 6
-      // (startPlz, endPlz, from, to, vehicle, axle) — a double-digit count is
-      // therefore not reachable in the product, but the badge must still render
-      // it safely, so the primitive strip below covers 2- and 3-digit values.
+      // Committed-filter fixtures. Max reachable through the real UI grows with
+      // multi-select PLZ areas (each prefix counts 1) plus from/to/vehicle/
+      // transport — the badge must still render double-digit counts safely.
       const F = {
         none: {},
-        one: { startPlz: "80" },
-        two: { startPlz: "80", vehicle: "SUV" },
-        three: { startPlz: "80", endPlz: "10", vehicle: "SUV" },
+        one: { startPlz: ["80"] },
+        two: { startPlz: ["80"], vehicleType: "passenger_car" },
+        three: {
+          startPlz: ["80"],
+          endPlz: ["10"],
+          vehicleType: "passenger_car",
+        },
         max: {
-          startPlz: "80",
-          endPlz: "10",
+          startPlz: ["80"],
+          endPlz: ["10"],
           from: "2026-05-01",
           to: "2026-05-30",
-          vehicle: "SUV",
-          axle: "Own axle",
+          vehicleType: "passenger_car",
+          transportType: "own_axle",
         },
         // Values that must NOT be counted.
         nonRestrictive: {
-          startPlz: "",
+          startPlz: [],
           endPlz: null,
           from: undefined,
           to: "   ",
-          vehicle: "All",
-          axle: "All",
+          vehicleType: "All",
+          transportType: "All",
         },
       };
 

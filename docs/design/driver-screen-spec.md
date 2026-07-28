@@ -229,9 +229,9 @@ below** → **filter controls around the results area**.
 | **Double digits** | `tabular-nums` + `min-width` growth handles 2-digit values; the primitive caps display at `99+`. Not reachable through the product UI (max 6), but covered by the states gallery so the primitive cannot regress. |
 | **Persistence** | Follows Marketplace filter state exactly — it *is* that state. Filters live above the tab switch, so they survive navigating away and back; they reset on reload. No persistence was added for the badge, and none should be. |
 
-**Known defect (open):** `from: "This week"` is offered as a preset and **is counted**, but
-`jobMatchesDriverFilters` implements no `"This week"` branch, so it does not restrict results. See
-audit item 43 — resolving it requires a product decision on week boundaries.
+**Date presets:** `Today` = marketplace fixture day `05.05.` (demo clock). `This week` = **Mon–Sun**
+calendar week containing that fixture day (same rule as production FE against device-local today).
+Audit item 43 resolved 2026-07-28.
 
 - **KPI row:** currently **not implemented**. The `.kpi-row` / `.kpi-chip` CSS and the
   `kpiAvailableJobs` / `kpiBookedJobs` / `kpiOpenDocuments` i18n keys exist but are unreferenced —

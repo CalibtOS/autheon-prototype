@@ -14,6 +14,9 @@ import { getPrototypeFrame } from './support/helpers/selectors.ts';
  * Contract under test:
  *   getAppliedMarketplaceFilterCount(committedFilters) -> number
  * counting only filters that actually restrict the Marketplace result set.
+ *
+ * Keys match FilterSheet + jobMatchesDriverFilters: vehicleType / transportType
+ * (not the retired vehicle / axle aliases).
  */
 
 type FilterCase = { name: string; filters: unknown; expected: number };
@@ -60,7 +63,11 @@ test.describe('getAppliedMarketplaceFilterCount (pure selector)', () => {
       { name: 'nulls', filters: { startPlz: null, endPlz: null, from: null, to: null }, expected: 0 },
       {
         name: 'undefined values',
-        filters: { startPlz: undefined, vehicle: undefined, axle: undefined },
+        filters: {
+          startPlz: undefined,
+          vehicleType: undefined,
+          transportType: undefined,
+        },
         expected: 0,
       },
       { name: 'whitespace only', filters: { startPlz: '   ', endPlz: '\t' }, expected: 0 },
@@ -69,12 +76,16 @@ test.describe('getAppliedMarketplaceFilterCount (pure selector)', () => {
 
   test('ignores default single-select values that do not restrict results', async ({ page }) => {
     await expectCounts(page, [
-      { name: 'vehicle All', filters: { vehicle: 'All' }, expected: 0 },
-      { name: 'axle All', filters: { axle: 'All' }, expected: 0 },
-      { name: 'both All', filters: { vehicle: 'All', axle: 'All' }, expected: 0 },
+      { name: 'vehicleType All', filters: { vehicleType: 'All' }, expected: 0 },
+      { name: 'transportType All', filters: { transportType: 'All' }, expected: 0 },
+      {
+        name: 'both All',
+        filters: { vehicleType: 'All', transportType: 'All' },
+        expected: 0,
+      },
       {
         name: 'All alongside a real filter',
-        filters: { vehicle: 'All', axle: 'All', startPlz: '80' },
+        filters: { vehicleType: 'All', transportType: 'All', startPlz: '80' },
         expected: 1,
       },
     ]);
@@ -82,11 +93,45 @@ test.describe('getAppliedMarketplaceFilterCount (pure selector)', () => {
 
   test('counts active single-select values', async ({ page }) => {
     await expectCounts(page, [
-      { name: 'vehicle SUV', filters: { vehicle: 'SUV' }, expected: 1 },
-      { name: 'vehicle PKW', filters: { vehicle: 'PKW' }, expected: 1 },
-      { name: 'axle own', filters: { axle: 'Own axle' }, expected: 1 },
-      { name: 'axle third party', filters: { axle: 'Third-party axle' }, expected: 1 },
-      { name: 'vehicle + axle', filters: { vehicle: 'SUV', axle: 'Own axle' }, expected: 2 },
+      {
+        name: 'vehicleType passenger_car',
+        filters: { vehicleType: 'passenger_car' },
+        expected: 1,
+      },
+      {
+        name: 'vehicleType truck_up_to_7_5_t',
+        filters: { vehicleType: 'truck_up_to_7_5_t' },
+        expected: 1,
+      },
+      {
+        name: 'transportType own_axle',
+        filters: { transportType: 'own_axle' },
+        expected: 1,
+      },
+      {
+        name: 'transportType third_party_axle',
+        filters: { transportType: 'third_party_axle' },
+        expected: 1,
+      },
+      {
+        name: 'vehicleType + transportType',
+        filters: { vehicleType: 'passenger_car', transportType: 'own_axle' },
+        expected: 2,
+      },
+    ]);
+  });
+
+  test('ignores retired vehicle / axle aliases so they cannot inflate the count', async ({
+    page,
+  }) => {
+    await expectCounts(page, [
+      { name: 'legacy vehicle only', filters: { vehicle: 'SUV' }, expected: 0 },
+      { name: 'legacy axle only', filters: { axle: 'Own axle' }, expected: 0 },
+      {
+        name: 'legacy alongside real',
+        filters: { vehicle: 'SUV', axle: 'Own axle', startPlz: '80' },
+        expected: 1,
+      },
     ]);
   });
 
@@ -95,6 +140,16 @@ test.describe('getAppliedMarketplaceFilterCount (pure selector)', () => {
       { name: 'start only', filters: { startPlz: '80' }, expected: 1 },
       { name: 'end only', filters: { endPlz: '10' }, expected: 1 },
       { name: 'both', filters: { startPlz: '80', endPlz: '10' }, expected: 2 },
+      {
+        name: 'multi-select start areas',
+        filters: { startPlz: ['51', '52', '80'] },
+        expected: 3,
+      },
+      {
+        name: 'legacy string still counts as one area',
+        filters: { startPlz: '80' },
+        expected: 1,
+      },
     ]);
   });
 
@@ -117,7 +172,7 @@ test.describe('getAppliedMarketplaceFilterCount (pure selector)', () => {
       { name: 'sort alt key', filters: { sort: 'price_asc' }, expected: 0 },
       {
         name: 'sort alongside one filter',
-        filters: { sortBy: 'price_asc', vehicle: 'SUV' },
+        filters: { sortBy: 'price_asc', vehicleType: 'passenger_car' },
         expected: 1,
       },
     ]);
@@ -131,7 +186,7 @@ test.describe('getAppliedMarketplaceFilterCount (pure selector)', () => {
       { name: 'query only', filters: { query: 'Bremen' }, expected: 0 },
       {
         name: 'search alongside one filter',
-        filters: { search: 'Bremen', axle: 'Own axle' },
+        filters: { search: 'Bremen', transportType: 'own_axle' },
         expected: 1,
       },
     ]);
@@ -140,7 +195,11 @@ test.describe('getAppliedMarketplaceFilterCount (pure selector)', () => {
   test('ignores unknown keys so nothing can leak into the count', async ({ page }) => {
     await expectCounts(page, [
       { name: 'unknown only', filters: { bogus: 'yes', anything: 1 }, expected: 0 },
-      { name: 'unknown + real', filters: { bogus: 'yes', vehicle: 'SUV' }, expected: 1 },
+      {
+        name: 'unknown + real',
+        filters: { bogus: 'yes', vehicleType: 'passenger_car' },
+        expected: 1,
+      },
     ]);
   });
 
@@ -154,8 +213,8 @@ test.describe('getAppliedMarketplaceFilterCount (pure selector)', () => {
           endPlz: '10',
           from: '2026-05-01',
           to: '2026-05-30',
-          vehicle: 'SUV',
-          axle: 'Own axle',
+          vehicleType: 'passenger_car',
+          transportType: 'own_axle',
         },
         expected: 6,
       },
@@ -167,12 +226,12 @@ test.describe('getAppliedMarketplaceFilterCount (pure selector)', () => {
       {
         name: 'cleared shape (what FilterSheet reset produces)',
         filters: {
-          startPlz: '',
-          endPlz: '',
+          startPlz: [],
+          endPlz: [],
           from: '',
           to: '',
-          vehicle: 'All',
-          axle: 'All',
+          vehicleType: 'All',
+          transportType: 'All',
         },
         expected: 0,
       },
@@ -185,7 +244,11 @@ test.describe('getAppliedMarketplaceFilterCount (pure selector)', () => {
       const fn = (window as never as {
         getAppliedMarketplaceFilterCount: (f: unknown) => number;
       }).getAppliedMarketplaceFilterCount;
-      const input = { startPlz: '80', vehicle: 'SUV', axle: 'All' };
+      const input = {
+        startPlz: '80',
+        vehicleType: 'passenger_car',
+        transportType: 'All',
+      };
       const snapshot = JSON.stringify(input);
       const counts = [fn(input), fn(input), fn(input)];
       return { counts, mutated: JSON.stringify(input) !== snapshot };
@@ -205,9 +268,16 @@ test.describe('getAppliedMarketplaceFilterCount (pure selector)', () => {
       const samples: unknown[] = [
         {},
         { startPlz: '80' },
-        { startPlz: '80', vehicle: 'SUV' },
-        { startPlz: '80', endPlz: '10', from: '2026-05-01', to: '2026-05-30', vehicle: 'SUV', axle: 'Own axle' },
-        { vehicle: 'All', axle: 'All' },
+        { startPlz: '80', vehicleType: 'passenger_car' },
+        {
+          startPlz: '80',
+          endPlz: '10',
+          from: '2026-05-01',
+          to: '2026-05-30',
+          vehicleType: 'passenger_car',
+          transportType: 'own_axle',
+        },
+        { vehicleType: 'All', transportType: 'All' },
       ];
       return samples.map((s) => ({
         chips: w.getAppliedMarketplaceFilters(s).length,
@@ -216,5 +286,51 @@ test.describe('getAppliedMarketplaceFilterCount (pure selector)', () => {
     });
     for (const row of result) expect(row.chips).toBe(row.count);
     expect(result.map((r) => r.count)).toEqual([0, 1, 2, 6, 0]);
+  });
+});
+
+test.describe('jobMatchesDriverFilters date presets (audit item 43)', () => {
+  test.beforeEach(async ({ page }) => {
+    await gotoPrototype(page);
+  });
+
+  test('This week matches Mon–Sun containing fixture today 05.05.2026', async ({ page }) => {
+    // Fixture today = Tue 05.05.2026 → week Mon 04.05. – Sun 10.05.
+    const frame = await getPrototypeFrame(page);
+    const result = await frame.evaluate(() => {
+      const fn = (window as never as {
+        jobMatchesDriverFilters: (
+          job: { date: string; startPlz?: string; endPlz?: string },
+          filters: Record<string, string>,
+        ) => boolean;
+      }).jobMatchesDriverFilters;
+      if (typeof fn !== 'function') {
+        throw new Error('jobMatchesDriverFilters is not exported on window');
+      }
+      const base = { startPlz: '80', endPlz: '10' };
+      const filters = { from: 'This week' };
+      return {
+        monday: fn({ ...base, date: '04.05.' }, filters),
+        fixtureToday: fn({ ...base, date: '05.05.' }, filters),
+        friday: fn({ ...base, date: '08.05.' }, filters),
+        sunday: fn({ ...base, date: '10.05.' }, filters),
+        nextMonday: fn({ ...base, date: '11.05.' }, filters),
+        priorSunday: fn({ ...base, date: '03.05.' }, filters),
+        aprilJob: fn({ ...base, date: '28.04.' }, filters),
+        todayOnly: fn({ ...base, date: '05.05.' }, { from: 'Today' }),
+        todayMiss: fn({ ...base, date: '08.05.' }, { from: 'Today' }),
+      };
+    });
+    expect(result).toEqual({
+      monday: true,
+      fixtureToday: true,
+      friday: true,
+      sunday: true,
+      nextMonday: false,
+      priorSunday: false,
+      aprilJob: false,
+      todayOnly: true,
+      todayMiss: false,
+    });
   });
 });

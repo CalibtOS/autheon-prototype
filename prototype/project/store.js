@@ -65,6 +65,132 @@ window.AuthStore = (() => {
 
   const VIN_LENGTH = 17;
 
+  // Official international vehicle distinguishing signs (client change plan
+  // Phase 2) — NOT ISO-3166 alpha-2 codes. Germany is "D", not "DE".
+  const COUNTRY_SIGNS = [
+    { code: "A", name: "Austria" },
+    { code: "B", name: "Belgium" },
+    { code: "CH", name: "Switzerland" },
+    { code: "CZ", name: "Czech Republic" },
+    { code: "D", name: "Germany" },
+    { code: "DK", name: "Denmark" },
+    { code: "E", name: "Spain" },
+    { code: "F", name: "France" },
+    { code: "H", name: "Hungary" },
+    { code: "I", name: "Italy" },
+    { code: "L", name: "Luxembourg" },
+    { code: "N", name: "Norway" },
+    { code: "NL", name: "Netherlands" },
+    { code: "P", name: "Portugal" },
+    { code: "PL", name: "Poland" },
+    { code: "S", name: "Sweden" },
+    { code: "SK", name: "Slovakia" },
+  ];
+  const DEFAULT_COUNTRY_SIGN = "D";
+
+  /** Legacy seed/import data used ISO "DE" — normalize it to the sign "D". */
+  function normalizeCountrySign(raw) {
+    const s = String(raw || "")
+      .trim()
+      .toUpperCase();
+    if (s === "DE") return "D";
+    return COUNTRY_SIGNS.some((c) => c.code === s)
+      ? s
+      : s || DEFAULT_COUNTRY_SIGN;
+  }
+
+  // German postal-code prefix -> town suggestion (client change plan Phase 2).
+  // A prototype-scale curated table, not a full PLZ database — production
+  // needs a real postal-code/geocoding provider (see requirements-status doc).
+  const GERMAN_PLZ_PREFIXES = {
+    10: "Berlin",
+    11: "Berlin",
+    12: "Berlin",
+    13: "Berlin",
+    14: "Berlin",
+    20: "Hamburg",
+    21: "Hamburg",
+    22: "Hamburg",
+    28: "Bremen",
+    30: "Hannover",
+    40: "Dusseldorf",
+    42: "Wuppertal",
+    44: "Dortmund",
+    45: "Essen",
+    46: "Oberhausen",
+    47: "Duisburg",
+    48: "Munster",
+    50: "Koln",
+    51: "Koln",
+    52: "Aachen",
+    53: "Bonn",
+    54: "Trier",
+    55: "Mainz",
+    56: "Koblenz",
+    57: "Siegen",
+    60: "Frankfurt am Main",
+    61: "Bad Homburg",
+    63: "Offenbach",
+    64: "Darmstadt",
+    65: "Wiesbaden",
+    66: "Saarbrucken",
+    68: "Mannheim",
+    69: "Heidelberg",
+    70: "Stuttgart",
+    71: "Ludwigsburg",
+    72: "Tubingen",
+    73: "Goppingen",
+    74: "Heilbronn",
+    76: "Karlsruhe",
+    78: "Villingen-Schwenningen",
+    79: "Freiburg im Breisgau",
+    80: "Munchen",
+    81: "Munchen",
+    82: "Starnberg",
+    85: "Ingolstadt",
+    86: "Augsburg",
+    87: "Kempten",
+    89: "Ulm",
+    90: "Nurnberg",
+    91: "Furth",
+    93: "Regensburg",
+    95: "Bayreuth",
+    97: "Wurzburg",
+    99: "Erfurt",
+    "04": "Leipzig",
+    "01": "Dresden",
+    "02": "Bautzen",
+    "03": "Cottbus",
+    "06": "Halle (Saale)",
+    "07": "Gera",
+    "08": "Zwickau",
+    "09": "Chemnitz",
+  };
+
+  /** Best-effort town suggestion from a German postal code's leading digits. */
+  function suggestGermanTown(postalCode) {
+    const plz = String(postalCode || "").trim();
+    if (plz.length < 2) return "";
+    return (
+      GERMAN_PLZ_PREFIXES[plz.slice(0, 2)] ||
+      GERMAN_PLZ_PREFIXES[plz.slice(0, 1)] ||
+      ""
+    );
+  }
+
+  // Standard wording library for pickup/delivery notes (client change plan
+  // Phase 2). Selecting one appends plain text to the note field — the
+  // wording is never linked live to the customer or address record, so
+  // editing the library later never rewrites text already saved on an order.
+  const STANDARD_WORDINGS = [
+    "standardWordingKeyAtReception",
+    "standardWordingCallBeforeArrival",
+    "standardWordingLoadingRampAvailable",
+    "standardWordingContactSecurityGate",
+    "standardWordingKeysWithSiteManager",
+    "standardWordingNoParkingRestrictions",
+  ];
+
   /**
    * Vehicle type at the boundary. Only the three approved values exist; any
    * other input resolves to "" so it fails validation rather than being stored.
@@ -138,7 +264,9 @@ window.AuthStore = (() => {
    * cleared or rewritten when another control changes (no silent data loss).
    */
   function isReadyToDriveApplicable(transportType) {
-    return normalizeTransportType(transportType) === TRANSPORT_TYPE_THIRD_PARTY_AXLE;
+    return (
+      normalizeTransportType(transportType) === TRANSPORT_TYPE_THIRD_PARTY_AXLE
+    );
   }
 
   /**
@@ -186,7 +314,11 @@ window.AuthStore = (() => {
       "redLicencePlateNumber",
       "requiresRedLicencePlates",
     ]) {
-      if (form[banned] != null && form[banned] !== "" && form[banned] !== false) {
+      if (
+        form[banned] != null &&
+        form[banned] !== "" &&
+        form[banned] !== false
+      ) {
         errors.push({ field: banned, reason: "not_writable" });
       }
     }
@@ -301,9 +433,7 @@ window.AuthStore = (() => {
     const s = String(source || "")
       .trim()
       .toLowerCase();
-    return (
-      s === "admin_off_channel" || s === "admin" || s === "generated"
-    );
+    return s === "admin_off_channel" || s === "admin" || s === "generated";
   }
 
   function isDriverTourDocumentSource(source) {
@@ -345,7 +475,7 @@ window.AuthStore = (() => {
       houseNumber: over.houseNumber || "",
       postalCode: over.postalCode || "",
       city: over.city || "",
-      country: over.country || "DE",
+      country: over.country || "D",
       contactPerson: over.contactPerson || "",
       alternateContactPerson: over.alternateContactPerson || "",
       phone: over.phone || "",
@@ -381,7 +511,7 @@ window.AuthStore = (() => {
       // Additional vehicle characteristics — independent booleans
       electricVehicle: false,
       readyToDrive: false,
-  
+
       revenue: null,
       driverOffer: null,
       expenses: null,
@@ -447,7 +577,9 @@ window.AuthStore = (() => {
     job.vehicleType = normalizeVehicleType(job.vehicleType);
     job.manufacturer = String(job.manufacturer || "").trim();
     job.transportType = normalizeTransportType(job.transportType);
-    job.registrationStatus = normalizeRegistrationStatus(job.registrationStatus);
+    job.registrationStatus = normalizeRegistrationStatus(
+      job.registrationStatus,
+    );
     job.electricVehicle = !!job.electricVehicle;
     job.readyToDrive = !!job.readyToDrive;
     delete job.redPlates;
@@ -586,7 +718,7 @@ window.AuthStore = (() => {
         houseNumber: "142",
         postalCode: "80339",
         city: "Munchen",
-        country: "DE",
+        country: "D",
         contactPerson: "H. Schneider",
         phone: "+49 89 1234567",
         secondPhone: "+49 89 1234568",
@@ -600,7 +732,7 @@ window.AuthStore = (() => {
         houseNumber: "88",
         postalCode: "10115",
         city: "Berlin",
-        country: "DE",
+        country: "D",
         contactPerson: "F. Becker",
         phone: "+49 30 9876543",
         secondPhone: "+49 30 9876544",
@@ -614,7 +746,7 @@ window.AuthStore = (() => {
         houseNumber: "14",
         postalCode: "70565",
         city: "Stuttgart",
-        country: "DE",
+        country: "D",
         contactPerson: "S. Keller",
         phone: "+49 711 441122",
         secondPhone: "+49 711 441123",
@@ -628,7 +760,7 @@ window.AuthStore = (() => {
         houseNumber: "22",
         postalCode: "80339",
         city: "Munchen",
-        country: "DE",
+        country: "D",
         contactPerson: "R. Meier",
         phone: "+49 89 441100",
         secondPhone: "",
@@ -642,7 +774,7 @@ window.AuthStore = (() => {
         houseNumber: "1",
         postalCode: "28195",
         city: "Bremen",
-        country: "DE",
+        country: "D",
         contactPerson: "T. Brandt",
         phone: "+49 421 778899",
         secondPhone: "+49 421 778800",
@@ -656,7 +788,7 @@ window.AuthStore = (() => {
         houseNumber: "30",
         postalCode: "22767",
         city: "Hamburg",
-        country: "DE",
+        country: "D",
         contactPerson: "M. Linke",
         alternateContactPerson: "S. Kruger (night shift)",
         phone: "+49 40 556677",
@@ -671,7 +803,7 @@ window.AuthStore = (() => {
         houseNumber: "7",
         postalCode: "20095",
         city: "Hamburg",
-        country: "DE",
+        country: "D",
         contactPerson: "L. Hartmann",
         phone: "+49 40 8811220",
         secondPhone: "+49 40 8811221",
@@ -685,7 +817,7 @@ window.AuthStore = (() => {
         houseNumber: "30",
         postalCode: "30159",
         city: "Hannover",
-        country: "DE",
+        country: "D",
         contactPerson: "K. Ullrich",
         phone: "+49 511 440055",
         secondPhone: "",
@@ -699,7 +831,7 @@ window.AuthStore = (() => {
         houseNumber: "60",
         postalCode: "70173",
         city: "Stuttgart",
-        country: "DE",
+        country: "D",
         contactPerson: "S. Keller",
         phone: "+49 711 441122",
         secondPhone: "+49 711 441199",
@@ -713,7 +845,7 @@ window.AuthStore = (() => {
         houseNumber: "8",
         postalCode: "80331",
         city: "Munchen",
-        country: "DE",
+        country: "D",
         contactPerson: "P. Huber",
         phone: "+49 89 552211",
         secondPhone: "+49 89 552212",
@@ -727,7 +859,7 @@ window.AuthStore = (() => {
         houseNumber: "41",
         postalCode: "10623",
         city: "Berlin",
-        country: "DE",
+        country: "D",
         contactPerson: "A. Weiss",
         phone: "+49 30 334455",
         secondPhone: "",
@@ -741,7 +873,7 @@ window.AuthStore = (() => {
         houseNumber: "9",
         postalCode: "04109",
         city: "Leipzig",
-        country: "DE",
+        country: "D",
         contactPerson: "N. Scholz",
         phone: "+49 341 778899",
         secondPhone: "+49 341 778800",
@@ -755,7 +887,7 @@ window.AuthStore = (() => {
         houseNumber: "12",
         postalCode: "40213",
         city: "Dusseldorf",
-        country: "DE",
+        country: "D",
         contactPerson: "C. Richter",
         phone: "+49 211 667788",
         secondPhone: "",
@@ -769,7 +901,7 @@ window.AuthStore = (() => {
         houseNumber: "22",
         postalCode: "50667",
         city: "Koln",
-        country: "DE",
+        country: "D",
         contactPerson: "D. Kruger",
         phone: "+49 221 100200",
         secondPhone: "+49 221 100201",
@@ -783,7 +915,7 @@ window.AuthStore = (() => {
         houseNumber: "110",
         postalCode: "50667",
         city: "Koln",
-        country: "DE",
+        country: "D",
         contactPerson: "J. Tausch",
         phone: "+49 221 100200",
         secondPhone: "+49 221 100299",
@@ -797,7 +929,7 @@ window.AuthStore = (() => {
         houseNumber: "90",
         postalCode: "60311",
         city: "Frankfurt",
-        country: "DE",
+        country: "D",
         contactPerson: "E. Braun",
         phone: "+49 69 300400",
         secondPhone: "+49 69 300401",
@@ -811,7 +943,7 @@ window.AuthStore = (() => {
         houseNumber: "80",
         postalCode: "10115",
         city: "Berlin",
-        country: "DE",
+        country: "D",
         contactPerson: "J. Tausch",
         phone: "+49 30 552288",
         secondPhone: "+49 30 552289",
@@ -979,7 +1111,7 @@ window.AuthStore = (() => {
       houseNumber: hn,
       postalCode: plz,
       city,
-      country: "DE",
+      country: "D",
       contactPerson: contact,
       phone,
       secondPhone: extra.secondPhone || "",
@@ -1003,7 +1135,7 @@ window.AuthStore = (() => {
       houseNumber: addr.houseNumber,
       postalCode: addr.postalCode,
       city: addr.city,
-      country: addr.country || "DE",
+      country: addr.country || "D",
       contactPerson: addr.contactPerson || "",
       phone: addr.phone || "",
       secondPhone: addr.secondPhone || "",
@@ -2021,9 +2153,7 @@ window.AuthStore = (() => {
       } else {
         const prior = j.emptyRunReport?.statusBeforeReport;
         if (!prior || !["assigned", "accepted"].includes(prior)) {
-          issues.push(
-            `${j.id}: empty-run report missing valid prior status`,
-          );
+          issues.push(`${j.id}: empty-run report missing valid prior status`);
         }
       }
     }
@@ -2096,10 +2226,8 @@ window.AuthStore = (() => {
       "Transport Portal",
   };
   const driverSupportContact = {
-    phone:
-      window.AUTHEON_SUPPORT_DEFAULTS?.phone || "+49 30 1234 5678",
-    email:
-      window.AUTHEON_SUPPORT_DEFAULTS?.email || "support@autheon.example",
+    phone: window.AUTHEON_SUPPORT_DEFAULTS?.phone || "+49 30 1234 5678",
+    email: window.AUTHEON_SUPPORT_DEFAULTS?.email || "support@autheon.example",
   };
   const { appDisplayName: _legacyName, ...flagDefaults } = legacyFlagDefaults;
   const featureFlags = {
@@ -2132,6 +2260,11 @@ window.AuthStore = (() => {
     scheduleChangeMinHoursBeforePickupStart: 1,
     referenceTime: "pickup_window_start",
     allowPolicyOverrideWithAuditNote: true,
+    // Client change plan Phase 2: driver-offer bounds and the high-offer
+    // confirmation threshold, both admin-configurable (Settings).
+    driverOfferMinEur: 0.01,
+    driverOfferMaxEur: 999.99,
+    driverOfferHighWarningEur: 200.0,
   };
 
   const cancellationPolicies = {
@@ -2178,8 +2311,7 @@ window.AuthStore = (() => {
   function jobDriverRecord(job) {
     if (!job) return null;
     if (job.driverId) return drivers.find((d) => d.id === job.driverId) || null;
-    if (job.driver)
-      return drivers.find((d) => d.name === job.driver) || null;
+    if (job.driver) return drivers.find((d) => d.name === job.driver) || null;
     return null;
   }
 
@@ -2376,26 +2508,32 @@ window.AuthStore = (() => {
     return `${a}-${b}`;
   }
 
+  /**
+   * Returns a known distance for a pickup/delivery postal-code pair, or null
+   * when the pair isn't recognised. Never fabricates a placeholder number —
+   * callers must treat null as "not yet calculated", not fall back to a guess.
+   */
   function estimateDistanceKm(job) {
-    if (!job) return 0;
+    if (!job) return null;
     const key = distanceKey(job);
-    if (key && DISTANCE_TABLE[key]) return DISTANCE_TABLE[key];
-    const alt = `${job.pickup?.postalCode || ""}-${job.delivery?.postalCode || ""}`;
-    if (DISTANCE_TABLE[alt]) return DISTANCE_TABLE[alt];
-    const base = Math.abs(
-      (parseInt(job.pickup?.postalCode, 10) || 10000) -
-        (parseInt(job.delivery?.postalCode, 10) || 20000),
-    );
-    return Math.max(40, Math.min(720, Math.round(base / 8)));
+    return key && DISTANCE_TABLE[key] ? DISTANCE_TABLE[key] : null;
+  }
+
+  function hasValidAddressPair(job) {
+    return Boolean(job?.pickup?.postalCode && job?.delivery?.postalCode);
   }
 
   function jobLikeFromForm(form) {
     return {
       pickup: {
-        postalCode: String(form.startPlz || form.pickup?.postalCode || "").trim(),
+        postalCode: String(
+          form.startPlz || form.pickup?.postalCode || "",
+        ).trim(),
       },
       delivery: {
-        postalCode: String(form.endPlz || form.delivery?.postalCode || "").trim(),
+        postalCode: String(
+          form.endPlz || form.delivery?.postalCode || "",
+        ).trim(),
       },
     };
   }
@@ -2416,6 +2554,30 @@ window.AuthStore = (() => {
     return TRANSPORT_TYPES.includes(s) ? s : "All";
   }
 
+  /** Exactly 2-digit PLZ area prefix (marketplace / push prefs). */
+  function normalizePlzAreaPrefix(value) {
+    const digits = String(value || "")
+      .replace(/\D/g, "")
+      .slice(0, 2);
+    return digits.length === 2 ? digits : "";
+  }
+
+  function normalizePlzAreaList(value) {
+    if (Array.isArray(value)) {
+      const out = [];
+      for (const item of value) {
+        const prefix = normalizePlzAreaPrefix(item);
+        if (prefix && !out.includes(prefix)) out.push(prefix);
+      }
+      return out;
+    }
+    if (typeof value === "string" || typeof value === "number") {
+      const prefix = normalizePlzAreaPrefix(value);
+      return prefix ? [prefix] : [];
+    }
+    return [];
+  }
+
   function normalizeDriverPrefs(prefs = {}) {
     const p = prefs || {};
     const legacyPush = p.push === true || p.pushEnabled === true;
@@ -2428,24 +2590,23 @@ window.AuthStore = (() => {
       pushEnabled: p.pushEnabled != null ? !!p.pushEnabled : legacyPush,
       notifyNewPublished:
         p.notifyNewPublished != null ? !!p.notifyNewPublished : legacyPush,
-      // postalAreas replaces single notifyPostalPrefix — supports multi-area subscriptions
+      // postalAreas replaces single notifyPostalPrefix — multi 2-digit PLZ areas
       postalAreas: Array.isArray(p.postalAreas)
-        ? p.postalAreas.map(String).filter(Boolean)
-        : String(p.notifyPostalPrefix || p.startPlz || "").trim()
-          ? [String(p.notifyPostalPrefix || p.startPlz || "").trim()]
-          : [],
+        ? normalizePlzAreaList(p.postalAreas)
+        : normalizePlzAreaList(p.notifyPostalPrefix || p.startPlz || ""),
       push: legacyPush,
     };
   }
 
   function postalAreaMatches(job, areas) {
-    if (!areas || !areas.length) return true;
-    const plz = String(job.pickup?.postalCode || job.startPlz || "");
-    return areas.some((area) => {
-      const p = String(area || "").replace(/\D/g, "");
-      if (!p.length) return true;
-      return plz.startsWith(p.length >= 2 ? p.slice(0, 2) : p.slice(0, 1));
-    });
+    const list = normalizePlzAreaList(areas);
+    if (!list.length) return true;
+    const plz = String(job.pickup?.postalCode || job.startPlz || "").replace(
+      /\D/g,
+      "",
+    );
+    if (!plz) return false;
+    return list.some((prefix) => plz.startsWith(prefix));
   }
 
   function maybeNotifyPublishedJob(job) {
@@ -2589,7 +2750,7 @@ window.AuthStore = (() => {
           houseNumber: form.startHouseNo || "",
           postalCode: form.startPlz || "",
           city: form.startCity || "",
-          country: form.startCountry || "DE",
+          country: form.startCountry || "D",
         }
       : {
           locationId: form.deliveryLocationId || null,
@@ -2598,7 +2759,7 @@ window.AuthStore = (() => {
           houseNumber: form.endHouseNo || "",
           postalCode: form.endPlz || "",
           city: form.endCity || "",
-          country: form.endCountry || "DE",
+          country: form.endCountry || "D",
         };
     return mkLocation({
       locationId:
@@ -2621,7 +2782,7 @@ window.AuthStore = (() => {
         "",
       city: flat.city || form[cap("city")] || form[`${p}City`] || "",
       country:
-        flat.country || form[cap("country")] || form[`${p}Country`] || "DE",
+        flat.country || form[cap("country")] || form[`${p}Country`] || "D",
       contactPerson:
         form[cap("contactPerson")] ||
         form[`${p}Contact`] ||
@@ -2671,7 +2832,6 @@ window.AuthStore = (() => {
     });
   }
 
-
   /** Map a draft job to the admin new-order form shape (includes jobId for updates). */
   function jobToDraftForm(job) {
     if (!job) return null;
@@ -2685,13 +2845,13 @@ window.AuthStore = (() => {
       startPlz: pu.postalCode || job.startPlz || "",
       startStreet: pu.street || job.startStreet || "",
       startHouseNo: pu.houseNumber || "",
-      startCountry: pu.country || "DE",
+      startCountry: pu.country || "D",
       startCompany: pu.name || job.startCompany || "",
       endCity: del.city || job.endCity || "",
       endPlz: del.postalCode || job.endPlz || "",
       endStreet: del.street || job.endStreet || "",
       endHouseNo: del.houseNumber || "",
-      endCountry: del.country || "DE",
+      endCountry: del.country || "D",
       endCompany: del.name || job.endCompany || "",
       distance:
         job.distanceKm != null && job.distanceKm !== ""
@@ -2783,7 +2943,7 @@ window.AuthStore = (() => {
         postalCode: form.startPlz || pickup.postalCode,
         street: form.startStreet || pickup.street,
         houseNumber: form.startHouseNo || pickup.houseNumber,
-        country: form.startCountry || pickup.country || "DE",
+        country: form.startCountry || pickup.country || "D",
         name: form.startCompany || form.customer || pickup.name,
         contactPerson: form.cName1 || pickup.contactPerson,
         phone: form.cPhone1 || pickup.phone,
@@ -2801,7 +2961,7 @@ window.AuthStore = (() => {
         postalCode: form.endPlz || delivery.postalCode,
         street: form.endStreet || delivery.street,
         houseNumber: form.endHouseNo || delivery.houseNumber,
-        country: form.endCountry || delivery.country || "DE",
+        country: form.endCountry || delivery.country || "D",
         name: form.endCompany || delivery.name,
         contactPerson: form.cName2 || delivery.contactPerson,
         phone: form.cPhone2 || delivery.phone,
@@ -2866,59 +3026,271 @@ window.AuthStore = (() => {
     return v ? "Yes" : "No";
   }
   const ORDER_EDIT_FIELDS = [
-    { key: "customer", i18n: "orderFieldCustomer", dv: true, get: (j) => j.customerName || j.customer || "" },
-    { key: "category", i18n: "orderFieldCategory", dv: true, get: (j) => j.category || "" },
-    { key: "distanceKm", i18n: "orderFieldDistance", dv: true, get: (j) => (j.distanceKm != null ? j.distanceKm : "") },
+    {
+      key: "customer",
+      i18n: "orderFieldCustomer",
+      dv: true,
+      get: (j) => j.customerName || j.customer || "",
+    },
+    {
+      key: "category",
+      i18n: "orderFieldCategory",
+      dv: true,
+      get: (j) => j.category || "",
+    },
+    {
+      key: "distanceKm",
+      i18n: "orderFieldDistance",
+      dv: true,
+      get: (j) => (j.distanceKm != null ? j.distanceKm : ""),
+    },
     // Pickup leg
-    { key: "pickupCompany", i18n: "orderFieldPickupCompany", dv: true, get: (j) => j.pickup?.name || "" },
-    { key: "pickupAddress", i18n: "orderFieldPickupAddress", dv: true, get: (j) => [j.pickup?.street, j.pickup?.houseNumber].filter(Boolean).join(" ") },
-    { key: "pickupPostal", i18n: "orderFieldPickupPostal", dv: true, get: (j) => j.pickup?.postalCode || "" },
-    { key: "pickupCity", i18n: "orderFieldPickupCity", dv: true, get: (j) => j.pickup?.city || "" },
-    { key: "pickupCountry", i18n: "orderFieldPickupCountry", dv: true, get: (j) => j.pickup?.country || "" },
-    { key: "pickupContact", i18n: "orderFieldPickupContact", dv: true, get: (j) => j.pickup?.contactPerson || "" },
-    { key: "pickupPhone", i18n: "orderFieldPickupPhone", dv: true, get: (j) => j.pickup?.phone || "" },
-    { key: "pickupAltContact", i18n: "orderFieldPickupAltContact", dv: true, get: (j) => j.pickup?.alternateContactPerson || "" },
-    { key: "pickupSecondPhone", i18n: "orderFieldPickupSecondPhone", dv: true, get: (j) => j.pickup?.secondPhone || "" },
-    { key: "pickupEmail", i18n: "orderFieldPickupEmail", dv: true, get: (j) => j.pickup?.email || "" },
-    { key: "pickupNotes", i18n: "orderFieldPickupNotes", dv: true, get: (j) => j.pickup?.notes || "" },
-    { key: "pickupDate", i18n: "orderFieldPickupDate", dv: true, get: (j) => j.pickup?.date || "" },
-    { key: "pickupWindow", i18n: "orderFieldPickupWindow", dv: true, get: (j) => fmtEditWindow(j.pickup) },
+    {
+      key: "pickupCompany",
+      i18n: "orderFieldPickupCompany",
+      dv: true,
+      get: (j) => j.pickup?.name || "",
+    },
+    {
+      key: "pickupAddress",
+      i18n: "orderFieldPickupAddress",
+      dv: true,
+      get: (j) =>
+        [j.pickup?.street, j.pickup?.houseNumber].filter(Boolean).join(" "),
+    },
+    {
+      key: "pickupPostal",
+      i18n: "orderFieldPickupPostal",
+      dv: true,
+      get: (j) => j.pickup?.postalCode || "",
+    },
+    {
+      key: "pickupCity",
+      i18n: "orderFieldPickupCity",
+      dv: true,
+      get: (j) => j.pickup?.city || "",
+    },
+    {
+      key: "pickupCountry",
+      i18n: "orderFieldPickupCountry",
+      dv: true,
+      get: (j) => j.pickup?.country || "",
+    },
+    {
+      key: "pickupContact",
+      i18n: "orderFieldPickupContact",
+      dv: true,
+      get: (j) => j.pickup?.contactPerson || "",
+    },
+    {
+      key: "pickupPhone",
+      i18n: "orderFieldPickupPhone",
+      dv: true,
+      get: (j) => j.pickup?.phone || "",
+    },
+    {
+      key: "pickupAltContact",
+      i18n: "orderFieldPickupAltContact",
+      dv: true,
+      get: (j) => j.pickup?.alternateContactPerson || "",
+    },
+    {
+      key: "pickupSecondPhone",
+      i18n: "orderFieldPickupSecondPhone",
+      dv: true,
+      get: (j) => j.pickup?.secondPhone || "",
+    },
+    {
+      key: "pickupEmail",
+      i18n: "orderFieldPickupEmail",
+      dv: true,
+      get: (j) => j.pickup?.email || "",
+    },
+    {
+      key: "pickupNotes",
+      i18n: "orderFieldPickupNotes",
+      dv: true,
+      get: (j) => j.pickup?.notes || "",
+    },
+    {
+      key: "pickupDate",
+      i18n: "orderFieldPickupDate",
+      dv: true,
+      get: (j) => j.pickup?.date || "",
+    },
+    {
+      key: "pickupWindow",
+      i18n: "orderFieldPickupWindow",
+      dv: true,
+      get: (j) => fmtEditWindow(j.pickup),
+    },
     // Delivery leg
-    { key: "deliveryCompany", i18n: "orderFieldDeliveryCompany", dv: true, get: (j) => j.delivery?.name || "" },
-    { key: "deliveryAddress", i18n: "orderFieldDeliveryAddress", dv: true, get: (j) => [j.delivery?.street, j.delivery?.houseNumber].filter(Boolean).join(" ") },
-    { key: "deliveryPostal", i18n: "orderFieldDeliveryPostal", dv: true, get: (j) => j.delivery?.postalCode || "" },
-    { key: "deliveryCity", i18n: "orderFieldDeliveryCity", dv: true, get: (j) => j.delivery?.city || "" },
-    { key: "deliveryCountry", i18n: "orderFieldDeliveryCountry", dv: true, get: (j) => j.delivery?.country || "" },
-    { key: "deliveryContact", i18n: "orderFieldDeliveryContact", dv: true, get: (j) => j.delivery?.contactPerson || "" },
-    { key: "deliveryPhone", i18n: "orderFieldDeliveryPhone", dv: true, get: (j) => j.delivery?.phone || "" },
-    { key: "deliveryAltContact", i18n: "orderFieldDeliveryAltContact", dv: true, get: (j) => j.delivery?.alternateContactPerson || "" },
-    { key: "deliverySecondPhone", i18n: "orderFieldDeliverySecondPhone", dv: true, get: (j) => j.delivery?.secondPhone || "" },
-    { key: "deliveryEmail", i18n: "orderFieldDeliveryEmail", dv: true, get: (j) => j.delivery?.email || "" },
-    { key: "deliveryNotes", i18n: "orderFieldDeliveryNotes", dv: true, get: (j) => j.delivery?.notes || "" },
-    { key: "deliveryDate", i18n: "orderFieldDeliveryDate", dv: true, get: (j) => j.delivery?.date || "" },
-    { key: "deliveryWindow", i18n: "orderFieldDeliveryWindow", dv: true, get: (j) => fmtEditWindow(j.delivery) },
+    {
+      key: "deliveryCompany",
+      i18n: "orderFieldDeliveryCompany",
+      dv: true,
+      get: (j) => j.delivery?.name || "",
+    },
+    {
+      key: "deliveryAddress",
+      i18n: "orderFieldDeliveryAddress",
+      dv: true,
+      get: (j) =>
+        [j.delivery?.street, j.delivery?.houseNumber].filter(Boolean).join(" "),
+    },
+    {
+      key: "deliveryPostal",
+      i18n: "orderFieldDeliveryPostal",
+      dv: true,
+      get: (j) => j.delivery?.postalCode || "",
+    },
+    {
+      key: "deliveryCity",
+      i18n: "orderFieldDeliveryCity",
+      dv: true,
+      get: (j) => j.delivery?.city || "",
+    },
+    {
+      key: "deliveryCountry",
+      i18n: "orderFieldDeliveryCountry",
+      dv: true,
+      get: (j) => j.delivery?.country || "",
+    },
+    {
+      key: "deliveryContact",
+      i18n: "orderFieldDeliveryContact",
+      dv: true,
+      get: (j) => j.delivery?.contactPerson || "",
+    },
+    {
+      key: "deliveryPhone",
+      i18n: "orderFieldDeliveryPhone",
+      dv: true,
+      get: (j) => j.delivery?.phone || "",
+    },
+    {
+      key: "deliveryAltContact",
+      i18n: "orderFieldDeliveryAltContact",
+      dv: true,
+      get: (j) => j.delivery?.alternateContactPerson || "",
+    },
+    {
+      key: "deliverySecondPhone",
+      i18n: "orderFieldDeliverySecondPhone",
+      dv: true,
+      get: (j) => j.delivery?.secondPhone || "",
+    },
+    {
+      key: "deliveryEmail",
+      i18n: "orderFieldDeliveryEmail",
+      dv: true,
+      get: (j) => j.delivery?.email || "",
+    },
+    {
+      key: "deliveryNotes",
+      i18n: "orderFieldDeliveryNotes",
+      dv: true,
+      get: (j) => j.delivery?.notes || "",
+    },
+    {
+      key: "deliveryDate",
+      i18n: "orderFieldDeliveryDate",
+      dv: true,
+      get: (j) => j.delivery?.date || "",
+    },
+    {
+      key: "deliveryWindow",
+      i18n: "orderFieldDeliveryWindow",
+      dv: true,
+      get: (j) => fmtEditWindow(j.delivery),
+    },
     // Vehicle
-    { key: "vehicleType", i18n: "orderFieldVehicleType", dv: true, get: (j) => j.vehicleType || "" },
-    { key: "manufacturer", i18n: "orderFieldManufacturer", dv: true, get: (j) => j.manufacturer || "" },
-    { key: "vehicleModel", i18n: "orderFieldVehicleModel", dv: true, get: (j) => j.vehicleModel || "" },
-    { key: "plate", i18n: "orderFieldPlate", dv: true, get: (j) => j.plate || "" },
+    {
+      key: "vehicleType",
+      i18n: "orderFieldVehicleType",
+      dv: true,
+      get: (j) => j.vehicleType || "",
+    },
+    {
+      key: "manufacturer",
+      i18n: "orderFieldManufacturer",
+      dv: true,
+      get: (j) => j.manufacturer || "",
+    },
+    {
+      key: "vehicleModel",
+      i18n: "orderFieldVehicleModel",
+      dv: true,
+      get: (j) => j.vehicleModel || "",
+    },
+    {
+      key: "plate",
+      i18n: "orderFieldPlate",
+      dv: true,
+      get: (j) => j.plate || "",
+    },
     { key: "vin", i18n: "orderFieldVin", dv: true, get: (j) => j.vin || "" },
-    { key: "transportType", i18n: "orderFieldTransportType", dv: true, get: (j) => j.transportType || "" },
-    { key: "registrationStatus", i18n: "orderFieldRegistrationStatus", dv: true, get: (j) => j.registrationStatus || "" },
-    { key: "electricVehicle", i18n: "orderFieldElectricVehicle", dv: true, get: (j) => fmtEditBool(j.electricVehicle) },
-    { key: "readyToDrive", i18n: "orderFieldReadyToDrive", dv: true, get: (j) => fmtEditBool(j.readyToDrive) },
+    {
+      key: "transportType",
+      i18n: "orderFieldTransportType",
+      dv: true,
+      get: (j) => j.transportType || "",
+    },
+    {
+      key: "registrationStatus",
+      i18n: "orderFieldRegistrationStatus",
+      dv: true,
+      get: (j) => j.registrationStatus || "",
+    },
+    {
+      key: "electricVehicle",
+      i18n: "orderFieldElectricVehicle",
+      dv: true,
+      get: (j) => fmtEditBool(j.electricVehicle),
+    },
+    {
+      key: "readyToDrive",
+      i18n: "orderFieldReadyToDrive",
+      dv: true,
+      get: (j) => fmtEditBool(j.readyToDrive),
+    },
     // DERIVED and driver-visible: a change of registration status or transport
     // type that flips the red-plate requirement is an execution-relevant change
     // for the assigned partner, so it is audited and notified like any other
     // driver-visible field. It is never editable — only ever a consequence.
-    { key: "requiresRedLicencePlates", i18n: "orderFieldRequiresRedPlates", dv: true, get: (j) => fmtEditBool(jobRequiresRedLicencePlates(j)) },
+    {
+      key: "requiresRedLicencePlates",
+      i18n: "orderFieldRequiresRedPlates",
+      dv: true,
+      get: (j) => fmtEditBool(jobRequiresRedLicencePlates(j)),
+    },
     // Commercial
-    { key: "driverOffer", i18n: "orderFieldDriverOffer", dv: true, get: (j) => (j.driverOffer != null ? j.driverOffer : "") },
-    { key: "expenses", i18n: "orderFieldExpenses", dv: false, get: (j) => (j.expenses != null ? j.expenses : "") },
+    {
+      key: "driverOffer",
+      i18n: "orderFieldDriverOffer",
+      dv: true,
+      get: (j) => (j.driverOffer != null ? j.driverOffer : ""),
+    },
+    {
+      key: "expenses",
+      i18n: "orderFieldExpenses",
+      dv: false,
+      get: (j) => (j.expenses != null ? j.expenses : ""),
+    },
     // Notes — driver-visible order note is notifiable; the internal order note
     // (job.notes) is admin-only and NEVER included in the partner notification.
-    { key: "notesDriver", i18n: "orderFieldNotesDriver", dv: true, get: (j) => j.notesDriver || "" },
-    { key: "notes", i18n: "orderFieldNotesInternal", dv: false, get: (j) => j.notes || "" },
+    {
+      key: "notesDriver",
+      i18n: "orderFieldNotesDriver",
+      dv: true,
+      get: (j) => j.notesDriver || "",
+    },
+    {
+      key: "notes",
+      i18n: "orderFieldNotesInternal",
+      dv: false,
+      get: (j) => j.notes || "",
+    },
   ];
   function flattenOrderBusinessFields(job) {
     const out = {};
@@ -2956,7 +3328,12 @@ window.AuthStore = (() => {
       },
     ];
     for (const d of diffs) {
-      log("order_edited", DEMO_ADMIN, job.tour, `${d.label || d.field}: "${d.from}" → "${d.to}"`);
+      log(
+        "order_edited",
+        DEMO_ADMIN,
+        job.tour,
+        `${d.label || d.field}: "${d.from}" → "${d.to}"`,
+      );
     }
     const dr = jobDriverRecord(job);
     const visible = diffs.filter((d) => d.driverVisible !== false);
@@ -2977,9 +3354,13 @@ window.AuthStore = (() => {
 
   function jobWasEverCommitted(job) {
     return (job?.history || []).some((h) =>
-      ["published", "assigned", "accepted", "performed", "empty_run_reported"].includes(
-        h.st,
-      ),
+      [
+        "published",
+        "assigned",
+        "accepted",
+        "performed",
+        "empty_run_reported",
+      ].includes(h.st),
     );
   }
 
@@ -3043,6 +3424,184 @@ window.AuthStore = (() => {
     if (pa.y !== pb.y) return pa.y - pb.y;
     if (pa.mo !== pb.mo) return pa.mo - pb.mo;
     return pa.d - pb.d;
+  }
+
+  /**
+   * Strict DD.MM.YYYY parser used to gate order dates. Unlike parseDottedDate
+   * (display-only, tolerant of malformed input) this rejects anything that
+   * isn't exactly two digits, a dot, two digits, a dot, four digits, AND
+   * verifies the date actually exists on the calendar (round-trips through
+   * Date so "31.02.2026" / "29.02.2027" are caught). Past dates are rejected
+   * unless allowPast is set (invoice-date fields allow past dates).
+   */
+  function parseStrictDate(str, { allowPast = false } = {}) {
+    const s = String(str || "").trim();
+    if (!s) return { valid: false, date: null, reason: "required" };
+    const m = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (!m) return { valid: false, date: null, reason: "invalid_format" };
+    const d = parseInt(m[1], 10);
+    const mo = parseInt(m[2], 10);
+    const y = parseInt(m[3], 10);
+    const date = new Date(y, mo - 1, d);
+    if (
+      date.getFullYear() !== y ||
+      date.getMonth() !== mo - 1 ||
+      date.getDate() !== d
+    ) {
+      return { valid: false, date: null, reason: "invalid_calendar_date" };
+    }
+    if (!allowPast) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (date.getTime() < today.getTime()) {
+        return { valid: false, date, reason: "past_date" };
+      }
+    }
+    return { valid: true, date, reason: null };
+  }
+
+  /**
+   * Authoritative pre-publish/pre-assign gate. Runs the same vehicle rules as
+   * saveDraft/updateOrderFromForm PLUS address/date/time-window completeness,
+   * so an order can never reach the marketplace or a service partner with
+   * missing or invalid required data — regardless of which UI entry point
+   * (form button or row/detail direct-assign) triggered the call.
+   */
+  function validateOrderDraft(job) {
+    const errors = [];
+    if (!job)
+      return { valid: false, errors: [{ field: "job", reason: "not_found" }] };
+
+    const vehicleCheck = validateVehicleForm({
+      ...job,
+      model: job.vehicleModel,
+    });
+    errors.push(...vehicleCheck.errors);
+
+    if (!String(job.customerName || job.customer || "").trim()) {
+      errors.push({ field: "customer", reason: "required" });
+    }
+
+    const offer = Number(job.driverOffer);
+    if (
+      !Number.isFinite(offer) ||
+      offer < operationalPolicies.driverOfferMinEur
+    ) {
+      errors.push({ field: "driverOffer", reason: "too_low" });
+    } else if (offer > operationalPolicies.driverOfferMaxEur) {
+      errors.push({ field: "driverOffer", reason: "too_high" });
+    }
+
+    const pu = job.pickup || {};
+    const del = job.delivery || {};
+    if (!pu.postalCode || !pu.city || !pu.street) {
+      errors.push({ field: "pickupAddress", reason: "required" });
+    }
+    if (!del.postalCode || !del.city || !del.street) {
+      errors.push({ field: "deliveryAddress", reason: "required" });
+    }
+
+    const pickupDateCheck = parseStrictDate(pu.date);
+    if (!pickupDateCheck.valid) {
+      errors.push({ field: "pickupDate", reason: pickupDateCheck.reason });
+    }
+    const deliveryDateCheck = parseStrictDate(del.date);
+    if (!deliveryDateCheck.valid) {
+      errors.push({ field: "deliveryDate", reason: deliveryDateCheck.reason });
+    }
+    if (
+      pickupDateCheck.valid &&
+      deliveryDateCheck.valid &&
+      compareDottedDates(del.date, pu.date) < 0
+    ) {
+      errors.push({ field: "deliveryDate", reason: "before_pickup_date" });
+    }
+
+    const compareTimes =
+      window.InputFormatters?.compareTimeStrings || (() => 0);
+    if (
+      !pu.windowFlex &&
+      pu.windowFrom &&
+      pu.windowTo &&
+      compareTimes(pu.windowFrom, pu.windowTo) > 0
+    ) {
+      errors.push({ field: "pickupWindow", reason: "cross_midnight_window" });
+    }
+    if (
+      !del.windowFlex &&
+      del.windowFrom &&
+      del.windowTo &&
+      compareTimes(del.windowFrom, del.windowTo) > 0
+    ) {
+      errors.push({ field: "deliveryWindow", reason: "cross_midnight_window" });
+    }
+    // Same-day conflict: flexible windows have no fixed slot, so they never
+    // conflict with each other — only two fixed windows on the same date can.
+    if (
+      pu.date &&
+      del.date &&
+      pu.date === del.date &&
+      !pu.windowFlex &&
+      !del.windowFlex &&
+      pu.windowTo &&
+      del.windowFrom &&
+      compareTimes(del.windowFrom, pu.windowTo) < 0
+    ) {
+      errors.push({ field: "deliveryWindow", reason: "same_day_conflict" });
+    }
+
+    return { valid: errors.length === 0, errors };
+  }
+
+  /**
+   * Duplicate-vehicle guard: a full VIN match on another active order is
+   * blocking (same physical vehicle can't be two live tours); a plate-only
+   * match (VIN absent/differs) is a non-blocking heads-up, since plates get
+   * reassigned between vehicles. Cancelled orders and the order being edited
+   * itself are excluded.
+   */
+  function findDuplicateVehicle(vin, plate, jobsList, excludeJobId) {
+    const vinNorm = String(vin || "")
+      .trim()
+      .toUpperCase();
+    const plateNorm = String(plate || "")
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, "");
+    let vinMatch = null;
+    let plateMatch = null;
+    for (const j of jobsList || []) {
+      if (j.id === excludeJobId) continue;
+      if (j.status === "cancelled" || j.status === "draft") continue;
+      const jVin = String(j.vin || "")
+        .trim()
+        .toUpperCase();
+      const jPlate = String(j.plate || "")
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, "");
+      if (!vinMatch && vinNorm && jVin && jVin === vinNorm) {
+        vinMatch = j;
+      }
+      if (
+        !plateMatch &&
+        plateNorm &&
+        jPlate &&
+        jPlate === plateNorm &&
+        jVin !== vinNorm
+      ) {
+        plateMatch = j;
+      }
+    }
+    const toInfo = (j) =>
+      j && {
+        tour: j.tour,
+        status: j.status,
+        publishedAt:
+          (j.history || []).find((h) => h.st === "published")?.at || "",
+        responsibleAdmin: DEMO_ADMIN,
+      };
+    return { vinMatch: toInfo(vinMatch), plateMatch: toInfo(plateMatch) };
   }
 
   function formatLocTimeWindow(loc, flexLabel) {
@@ -3117,8 +3676,19 @@ window.AuthStore = (() => {
       window.InputFormatters?.normalizePlate ||
       ((s) => String(s || "").toUpperCase()),
     compareTimeStrings: window.InputFormatters?.compareTimeStrings || (() => 0),
+    ddmmyyyyToIso: window.InputFormatters?.ddmmyyyyToIso || (() => ""),
+    isoToDdmmyyyy: window.InputFormatters?.isoToDdmmyyyy || (() => ""),
+    todayDdmmyyyy: window.InputFormatters?.todayDdmmyyyy || (() => ""),
+    COUNTRY_SIGNS,
+    DEFAULT_COUNTRY_SIGN,
+    normalizeCountrySign,
+    suggestGermanTown,
+    STANDARD_WORDINGS,
     MANUFACTURER_SUGGESTIONS:
       window.InputFormatters?.MANUFACTURER_SUGGESTIONS || [],
+    MANUFACTURER_MODELS: window.InputFormatters?.MANUFACTURER_MODELS || {},
+    searchManufacturers:
+      window.InputFormatters?.searchManufacturers || ((q, list) => list || []),
     formatLocTimeWindow,
     formatLocationSchedule,
     formatJobScheduleShort,
@@ -3191,7 +3761,8 @@ window.AuthStore = (() => {
     // published, assigned, accepted and empty_run_reported (pending review).
     // Terminal states (cancelled_by_sp, cancelled_by_autheon,
     // empty_run_recognised, empty_run_not_recognised, performed) stay read-only.
-    canAdminEditOrder: (job) => !!job && !READ_ONLY_STATUSES.includes(job.status),
+    canAdminEditOrder: (job) =>
+      !!job && !READ_ONLY_STATUSES.includes(job.status),
     // Service partner may cancel / report empty run only on a booked order.
     canServicePartnerAct: (job) =>
       !!job && ["assigned", "accepted"].includes(job.status),
@@ -3289,6 +3860,19 @@ window.AuthStore = (() => {
         hoursRemaining: Math.max(0, hours),
         minHours: minH,
       };
+    },
+
+    // Exposed so admin.jsx can preview the same authoritative checks
+    // (validation summary, duplicate-vehicle dialog) before actually calling
+    // publishJob/assignJob — the store methods re-run these regardless.
+    parseStrictDate(str, opts) {
+      return parseStrictDate(str, opts);
+    },
+    validateOrderDraft(job) {
+      return validateOrderDraft(job);
+    },
+    findDuplicateVehicle(vin, plate, excludeJobId) {
+      return findDuplicateVehicle(vin, plate, jobs, excludeJobId);
     },
 
     checkScheduleChangePolicy(job, opts = {}) {
@@ -3405,9 +3989,7 @@ window.AuthStore = (() => {
         : api.getCurrentDriver();
       if (!d) return null;
       const limit =
-        d.probationJobLimit ??
-        driverAcceptanceDefaults.probationJobCount ??
-        3;
+        d.probationJobLimit ?? driverAcceptanceDefaults.probationJobCount ?? 3;
       const activeCount = driverProbationActiveCount(d.id);
       const performedCount = driverProbationPerformedCount(d.id);
       const takenCount = activeCount + performedCount;
@@ -3421,9 +4003,7 @@ window.AuthStore = (() => {
         onProbation,
         clearedAt: d.probationClearedAt || null,
         atLimit: onProbation && takenCount >= limit && performedCount < limit,
-        remainingSlots: onProbation
-          ? Math.max(0, limit - takenCount)
-          : null,
+        remainingSlots: onProbation ? Math.max(0, limit - takenCount) : null,
       };
     },
 
@@ -3447,7 +4027,8 @@ window.AuthStore = (() => {
     // Umbrella grouping for the Jobs board (design: scannable columns +
     // precise reason chip). Precise machine statuses roll up to a bucket.
     statusUmbrella: (s) => {
-      if (s === "cancelled_by_sp" || s === "cancelled_by_autheon") return "cancelled";
+      if (s === "cancelled_by_sp" || s === "cancelled_by_autheon")
+        return "cancelled";
       if (s === "empty_run_not_recognised") return "cancelled";
       if (s === "empty_run_recognised") return "performed";
       // empty_run_reported is its own umbrella (the review bucket) — it keeps a
@@ -3621,7 +4202,7 @@ window.AuthStore = (() => {
         houseNumber: String(data?.houseNumber || "").trim(),
         postalCode,
         city,
-        country: String(data?.country || "DE").trim() || "DE",
+        country: String(data?.country || "D").trim() || "D",
         contactPerson: String(data?.contactPerson || "").trim(),
         phone: String(data?.phone || "").trim(),
         secondPhone: String(data?.secondPhone || "").trim(),
@@ -3650,7 +4231,7 @@ window.AuthStore = (() => {
         addr.postalCode = String(data.postalCode).trim();
       if (data?.city != null) addr.city = String(data.city).trim();
       if (data?.country != null)
-        addr.country = String(data.country).trim() || "DE";
+        addr.country = String(data.country).trim() || "D";
       if (data?.contactPerson != null)
         addr.contactPerson = String(data.contactPerson).trim();
       if (data?.phone != null) addr.phone = String(data.phone).trim();
@@ -3783,8 +4364,7 @@ window.AuthStore = (() => {
       }
       const km = estimateDistanceKm(jobLike);
       const key = distanceKey(jobLike);
-      const source =
-        key && DISTANCE_TABLE[key] ? "table" : "heuristic";
+      const source = key && DISTANCE_TABLE[key] ? "table" : "heuristic";
       return { ok: true, km, source };
     },
 
@@ -3793,12 +4373,7 @@ window.AuthStore = (() => {
       if (!j) return { ok: false };
       j.distanceKm = estimateDistanceKm(j);
       syncDisplayFields(j);
-      log(
-        "distance_recalculated",
-        DEMO_ADMIN,
-        j.tour,
-        `${j.distanceKm} km`,
-      );
+      log("distance_recalculated", DEMO_ADMIN, j.tour, `${j.distanceKm} km`);
       emit();
       return { ok: true, km: j.distanceKm };
     },
@@ -4027,9 +4602,13 @@ window.AuthStore = (() => {
       if (!recognised && !notRecognised)
         return { ok: false, reason: "bad_decision" };
       const stamp = nowStamp();
-      j.status = recognised ? "empty_run_recognised" : "empty_run_not_recognised";
+      j.status = recognised
+        ? "empty_run_recognised"
+        : "empty_run_not_recognised";
       if (j.emptyRunReport) {
-        j.emptyRunReport.decision = recognised ? "recognised" : "not_recognised";
+        j.emptyRunReport.decision = recognised
+          ? "recognised"
+          : "not_recognised";
         j.emptyRunReport.decidedAt = stamp;
         j.emptyRunReport.decidedBy = DEMO_ADMIN;
       }
@@ -4039,7 +4618,9 @@ window.AuthStore = (() => {
           st: j.status,
           at: stamp,
           by: DEMO_ADMIN,
-          meta: recognised ? "Empty run recognised" : "Empty run not recognised",
+          meta: recognised
+            ? "Empty run recognised"
+            : "Empty run not recognised",
         },
       ];
       // Terminal: leaves the review bucket, no longer an active order.
@@ -4202,7 +4783,8 @@ window.AuthStore = (() => {
       const d = api.getCurrentDriver();
       if (!d) return { ok: false, reason: "no_driver" };
       const newEmail = String(newEmailRaw || "").trim();
-      if (!isValidEmail(newEmail)) return { ok: false, reason: "invalid_email" };
+      if (!isValidEmail(newEmail))
+        return { ok: false, reason: "invalid_email" };
       if (newEmail.toLowerCase() === String(d.email || "").toLowerCase())
         return { ok: false, reason: "same_email" };
       if (
@@ -4232,7 +4814,12 @@ window.AuthStore = (() => {
         `${d.email || "—"} → ${newEmail}`,
       );
       emit();
-      return { ok: true, newEmail, code, expiresInSec: api.EMAIL_CODE_TTL_MS / 1000 };
+      return {
+        ok: true,
+        newEmail,
+        code,
+        expiresInSec: api.EMAIL_CODE_TTL_MS / 1000,
+      };
     },
 
     resendDriverEmailCode() {
@@ -4391,9 +4978,7 @@ window.AuthStore = (() => {
         type: approved
           ? "master_data_change_approved"
           : "master_data_change_rejected",
-        title: approved
-          ? "Profile change approved"
-          : "Profile change declined",
+        title: approved ? "Profile change approved" : "Profile change declined",
         body: row.adminNote
           ? row.adminNote
           : approved
@@ -4405,9 +4990,37 @@ window.AuthStore = (() => {
       return { ok: true, request: row };
     },
 
-    publishJob(id) {
+    publishJob(id, opts = {}) {
       const j = api.getJob(id);
       if (!j || j.status !== "draft") return { ok: false };
+      const check = validateOrderDraft(j);
+      if (!check.valid) {
+        log(
+          "job_publish_blocked",
+          DEMO_ADMIN,
+          j.tour,
+          `Validation failed: ${check.errors.map((e) => e.field).join(", ")}`,
+        );
+        return { ok: false, reason: "validation_failed", errors: check.errors };
+      }
+      const dup = findDuplicateVehicle(j.vin, j.plate, jobs, j.id);
+      if (dup.vinMatch && !opts.confirmedDuplicate) {
+        log(
+          "duplicate_vehicle_warning_shown",
+          DEMO_ADMIN,
+          j.tour,
+          `VIN already on tour ${dup.vinMatch.tour}`,
+        );
+        return { ok: false, reason: "duplicate_vin", match: dup.vinMatch };
+      }
+      if (dup.vinMatch && opts.confirmedDuplicate) {
+        log(
+          "duplicate_vehicle_continue_confirmed",
+          DEMO_ADMIN,
+          j.tour,
+          `Continued despite VIN match on tour ${dup.vinMatch.tour}`,
+        );
+      }
       j.status = "published";
       j.isNew = false;
       j.history = [
@@ -4481,6 +5094,34 @@ window.AuthStore = (() => {
     assignJob(id, driverRef, opts = {}) {
       const j = api.getJob(id);
       if (!j || j.status !== "draft") return { ok: false, reason: "not_draft" };
+      const check = validateOrderDraft(j);
+      if (!check.valid) {
+        log(
+          "job_assign_blocked",
+          DEMO_ADMIN,
+          j.tour,
+          `Validation failed: ${check.errors.map((e) => e.field).join(", ")}`,
+        );
+        return { ok: false, reason: "validation_failed", errors: check.errors };
+      }
+      const dup = findDuplicateVehicle(j.vin, j.plate, jobs, j.id);
+      if (dup.vinMatch && !opts.confirmedDuplicate) {
+        log(
+          "duplicate_vehicle_warning_shown",
+          DEMO_ADMIN,
+          j.tour,
+          `VIN already on tour ${dup.vinMatch.tour}`,
+        );
+        return { ok: false, reason: "duplicate_vin", match: dup.vinMatch };
+      }
+      if (dup.vinMatch && opts.confirmedDuplicate) {
+        log(
+          "duplicate_vehicle_continue_confirmed",
+          DEMO_ADMIN,
+          j.tour,
+          `Continued despite VIN match on tour ${dup.vinMatch.tour}`,
+        );
+      }
       const dr = api.resolveAssignableDriver(driverRef);
       if (!dr.ok) return dr;
       const confirmationNote = String(opts.confirmationNote || "").trim();
@@ -4508,12 +5149,7 @@ window.AuthStore = (() => {
           : `Driver: ${dr.driver.name}`,
       );
       if (confirmationNote) {
-        log(
-          "manual_assign_confirmation",
-          DEMO_ADMIN,
-          j.tour,
-          confirmationNote,
-        );
+        log("manual_assign_confirmation", DEMO_ADMIN, j.tour, confirmationNote);
       }
       queuePushNotification(j, "assign");
       queueAdminEmailAlert(
@@ -4717,7 +5353,12 @@ window.AuthStore = (() => {
       clone.assignmentMode = null;
       clone.assignmentType = null;
       clone.history = [
-        { st: "draft", at: nowStamp(), by: DEMO_ADMIN, meta: "Duplicated order" },
+        {
+          st: "draft",
+          at: nowStamp(),
+          by: DEMO_ADMIN,
+          meta: "Duplicated order",
+        },
       ];
       // Never carry over lifecycle artefacts from the source order.
       clone.cancellationActor = null;
@@ -4802,7 +5443,7 @@ window.AuthStore = (() => {
           houseNumber: form.startHouseNo,
           postalCode: form.startPlz,
           city: form.startCity,
-          country: form.startCountry || "DE",
+          country: form.startCountry || "D",
           contactPerson: form.cName1,
           phone: form.cPhone1,
           secondPhone: form.pickupSecondPhone,
@@ -4819,7 +5460,7 @@ window.AuthStore = (() => {
           houseNumber: form.endHouseNo,
           postalCode: form.endPlz,
           city: form.endCity,
-          country: form.endCountry || "DE",
+          country: form.endCountry || "D",
           contactPerson: form.cName2,
           phone: form.cPhone2,
           secondPhone: form.deliverySecondPhone,
@@ -4914,6 +5555,23 @@ window.AuthStore = (() => {
     },
 
     saveDraft(form) {
+      // Block a wholly empty draft (nothing meaningful entered at all), but
+      // never block a partial one — the whole point of a draft is to allow
+      // incomplete entries to be saved and finished later.
+      const hasAnyContent =
+        String(form.customer || form.customerId || "").trim() ||
+        String(
+          form.startStreet || form.startCity || form.startPlz || "",
+        ).trim() ||
+        String(form.endStreet || form.endCity || form.endPlz || "").trim() ||
+        String(form.vehicleType || "").trim() ||
+        String(form.manufacturer || "").trim() ||
+        String(form.model || "").trim() ||
+        String(form.vin || "").trim() ||
+        String(form.plate || "").trim();
+      if (!hasAnyContent) {
+        return { error: "empty_draft" };
+      }
       const compareTimes =
         window.InputFormatters?.compareTimeStrings || (() => 0);
       if (
@@ -5083,7 +5741,8 @@ window.AuthStore = (() => {
       // are unchanged; only the ordering is — a rejected patch must leave the
       // stored record untouched, because callers surface the reason as a field
       // error and keep reading the record (sidebar footer, User settings form).
-      const name = patch.name !== undefined ? String(patch.name).trim() : a.name;
+      const name =
+        patch.name !== undefined ? String(patch.name).trim() : a.name;
       const email =
         patch.email !== undefined ? String(patch.email).trim() : a.email;
       if (!name || !email) return { ok: false, reason: "required" };
@@ -5132,8 +5791,8 @@ window.AuthStore = (() => {
         status: "Active",
         prefs: {
           postalAreas: [],
-          vehicle: "PKW",
-          axle: "All",
+          vehicleType: "All",
+          transportType: "All",
           pushEnabled: true,
           notifyNewPublished: true,
         },
@@ -5616,8 +6275,7 @@ window.AuthStore = (() => {
       const jobRaw = String(jobId || "").trim();
       const j = api.getJob(jobRaw);
       if (!j) return { ok: false, reason: "bad_job" };
-      if (j.status === "cancelled")
-        return { ok: false, reason: "bad_status" };
+      if (j.status === "cancelled") return { ok: false, reason: "bad_status" };
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };

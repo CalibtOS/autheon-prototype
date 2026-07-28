@@ -2,7 +2,7 @@
 const { useState, useEffect, useRef, useMemo } = React;
 
 const UI = window.DriverUI || {};
-const { Badge, EmptyState, SkeletonList, Sheet, ConfirmSheet, SortSelect } = UI;
+const { Badge, EmptyState, SkeletonList, Sheet, SheetGrabber, SheetPullRegion, ConfirmSheet, SortSelect } = UI;
 const F = () => window.AutheonFormatters || {};
 
 // Portal target for full-frame overlays. The tab bar is a later sibling of
@@ -124,15 +124,24 @@ const Lbl = ({ children, className = "", ...props }) => (
 // (client confirmation "Systemlogik Fahrzeugeingabe") so the Driver PWA and the
 // Admin Backend can never render a different label or a different derived
 // red-licence-plate decision.
+// "All" must never reach transportTypeLabel — normalizeTransportType falls
+// back unknown values to own_axle, which would duplicate the Own axle chip.
+const isMarketplaceFilterAll = (value) =>
+  value == null || String(value).trim() === "" || String(value).trim() === "All";
+
 const displayTransportType = (value, t) =>
-  value === "All" ? t("all") : AuthStore.transportTypeLabel(value, t);
+  isMarketplaceFilterAll(value)
+    ? t("all")
+    : AuthStore.transportTypeLabel(value, t);
 
 // Canonical transport-type value for filter comparisons.
 const canonTransportType = (v) =>
-  v === "All" ? "All" : AuthStore.normalizeTransportType(v);
+  isMarketplaceFilterAll(v) ? "All" : AuthStore.normalizeTransportType(v);
 
 const displayVehicle = (value, t) =>
-  value === "All" ? t("all") : AuthStore.vehicleTypeLabel(value, t);
+  isMarketplaceFilterAll(value)
+    ? t("all")
+    : AuthStore.vehicleTypeLabel(value, t);
 
 // Icon mapping for the three confirmed vehicle types.
 const vehicleTypeIcon = (vehicleType) => {
@@ -1405,11 +1414,26 @@ const Portal = ({
           <div className="header-chips-row">
             {activeChips.map((c) => (
               <button
-                key={c.key}
+                key={c.id || c.key}
                 type="button"
                 className="chip"
                 aria-label={t("removeFilterChip", { label: c.label })}
-                onClick={() => setFilters({ ...filters, [c.key]: "" })}
+                onClick={() => {
+                  if (c.key === "startPlz" || c.key === "endPlz") {
+                    const list = normalizePlzAreaList(filters[c.key]).filter(
+                      (p) => p !== c.value,
+                    );
+                    setFilters({ ...filters, [c.key]: list });
+                    return;
+                  }
+                  setFilters({
+                    ...filters,
+                    [c.key]:
+                      MARKETPLACE_FILTER_DEFAULTS[c.key] !== undefined
+                        ? MARKETPLACE_FILTER_DEFAULTS[c.key]
+                        : "",
+                  });
+                }}
               >
                 {c.label}{" "}
                 <span className="x" aria-hidden="true">
@@ -1452,10 +1476,13 @@ const Portal = ({
 // Shared marketplace filter predicate (plan §6.1) — single source of truth
 // for Portal's list AND the FilterSheet's live result count.
 const FILTER_DATE_PRESETS = ["Today", "This week"];
+/** Prototype demo "today" — seed timestamps and Today preset share this fixture day. */
+const MARKETPLACE_FIXTURE_TODAY = "05.05.";
+const MARKETPLACE_FIXTURE_YEAR = 2026;
 const parseJobDdMm = (raw) => {
   const m = String(raw || "").match(/(\d{2})\.(\d{2})/);
   if (!m) return null;
-  return new Date(2026, Number(m[2]) - 1, Number(m[1]));
+  return new Date(MARKETPLACE_FIXTURE_YEAR, Number(m[2]) - 1, Number(m[1]));
 };
 const parseFilterDateFlexible = (raw) => {
   const iso = String(raw || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -1466,18 +1493,92 @@ const isoToDisplayDate = (raw) => {
   const iso = String(raw || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return iso ? `${iso[3]}.${iso[2]}.` : String(raw || "");
 };
+/** Monday 00:00 local of the ISO-style week containing `date` (Mon–Sun). */
+const startOfWeekMonday = (date) => {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const weekday = d.getDay(); // 0=Sun … 6=Sat
+  const offset = weekday === 0 ? -6 : 1 - weekday;
+  d.setDate(d.getDate() + offset);
+  return d;
+};
+const endOfWeekSunday = (weekStartMonday) => {
+  const d = new Date(
+    weekStartMonday.getFullYear(),
+    weekStartMonday.getMonth(),
+    weekStartMonday.getDate() + 6,
+  );
+  return d;
+};
+/**
+ * Date presets restrict results (audit item 43):
+ * - Today → fixture day MARKETPLACE_FIXTURE_TODAY
+ * - This week → Mon–Sun calendar week containing that fixture day
+ * Production FE uses the same Mon–Sun rule against real device-local today.
+ */
+const matchesMarketplaceDatePreset = (jobDate, preset) => {
+  if (!jobDate) return false;
+  const fixtureToday = parseJobDdMm(MARKETPLACE_FIXTURE_TODAY);
+  if (!fixtureToday) return false;
+  if (preset === "Today") {
+    return (
+      jobDate.getFullYear() === fixtureToday.getFullYear() &&
+      jobDate.getMonth() === fixtureToday.getMonth() &&
+      jobDate.getDate() === fixtureToday.getDate()
+    );
+  }
+  if (preset === "This week") {
+    const weekStart = startOfWeekMonday(fixtureToday);
+    const weekEnd = endOfWeekSunday(weekStart);
+    return jobDate >= weekStart && jobDate <= weekEnd;
+  }
+  return false;
+};
+/** Exactly 2-digit PLZ area prefix, or "" if invalid. */
+const normalizePlzAreaPrefix = (value) => {
+  const digits = String(value || "")
+    .replace(/\D/g, "")
+    .slice(0, 2);
+  return digits.length === 2 ? digits : "";
+};
+
+/** Display form: `51` → `51xxx`. */
+const formatPlzAreaPill = (prefix) => {
+  const digits = normalizePlzAreaPrefix(prefix);
+  return digits ? digits.padEnd(5, "x") : "";
+};
+
+/**
+ * Deduped 2-digit area list. Accepts arrays or a legacy single string.
+ */
+const normalizePlzAreaList = (value) => {
+  if (Array.isArray(value)) {
+    const out = [];
+    for (const item of value) {
+      const prefix = normalizePlzAreaPrefix(item);
+      if (prefix && !out.includes(prefix)) out.push(prefix);
+    }
+    return out;
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const prefix = normalizePlzAreaPrefix(value);
+    return prefix ? [prefix] : [];
+  }
+  return [];
+};
+
+/** OR-match across selected 2-digit areas. Empty list → inactive. */
+const plzAreasMatch = (postalCode, areas) => {
+  const list = normalizePlzAreaList(areas);
+  if (!list.length) return true;
+  const code = String(postalCode || "");
+  if (!code) return false;
+  return list.some((prefix) => code.startsWith(prefix));
+};
+
 const jobMatchesDriverFilters = (j, filters) => {
   const jobDate = parseJobDdMm(j.date);
-  if (filters.startPlz && String(filters.startPlz).trim()) {
-    const d = String(filters.startPlz).replace(/\D/g, "");
-    if (d.length >= 2 && !String(j.startPlz).startsWith(d.slice(0, 2)))
-      return false;
-  }
-  if (filters.endPlz && String(filters.endPlz).trim()) {
-    const d = String(filters.endPlz).replace(/\D/g, "");
-    if (d.length >= 2 && !String(j.endPlz).startsWith(d.slice(0, 2)))
-      return false;
-  }
+  if (!plzAreasMatch(j.startPlz, filters.startPlz)) return false;
+  if (!plzAreasMatch(j.endPlz, filters.endPlz)) return false;
   if (
     filters.from &&
     String(filters.from).trim() &&
@@ -1490,7 +1591,9 @@ const jobMatchesDriverFilters = (j, filters) => {
     const toDate = parseFilterDateFlexible(filters.to);
     if (toDate && jobDate && jobDate > toDate) return false;
   }
-  if (filters.from === "Today" && j.date !== "05.05.") return false;
+  if (FILTER_DATE_PRESETS.includes(filters.from)) {
+    if (!matchesMarketplaceDatePreset(jobDate, filters.from)) return false;
+  }
   if (
     filters.vehicleType &&
     filters.vehicleType !== "All" &&
@@ -1522,19 +1625,37 @@ const jobMatchesDriverFilters = (j, filters) => {
 // the button's accessible name all read from this single derivation.
 //
 // A filter is "applied" only when it narrows the result set:
-//   startPlz / endPlz  text   — counted when non-empty after trimming
-//   from / to          date   — counted when set (each end of the range counts
-//                               separately, mirroring the two removable chips)
-//   vehicle / axle     single-select — counted when set AND not the "All"
-//                               default (the default is not restrictive)
-// Empty string, null, undefined and whitespace-only values never count.
-// Each filter key contributes at most 1, so the same filter cannot count twice.
+//   startPlz / endPlz        multi-select 2-digit areas — each prefix counts 1
+//   from / to                date   — counted when set (each end of the range
+//                                     counts separately, mirroring the two
+//                                     removable chips)
+//   vehicleType /            single-select — counted when set AND not the
+//   transportType                           "All" default (not restrictive)
+// Empty string, null, undefined, whitespace-only and empty arrays never count.
+// PLZ multi-select counts each selected prefix (one removable pill each).
 //
-// NOTE: there are currently no multi-select marketplace filters, so the
-// "count each value" vs "count the category once" question does not arise.
-const MARKETPLACE_FILTER_DEFAULTS = { vehicle: "All", axle: "All" };
+// Keys MUST match FilterSheet + jobMatchesDriverFilters (vehicleType /
+// transportType). Legacy `vehicle` / `axle` keys are ignored so they cannot
+// inflate the badge or resurrect a removed displayAxle helper.
+const MARKETPLACE_FILTER_DEFAULTS = {
+  startPlz: [],
+  endPlz: [],
+  vehicleType: "All",
+  transportType: "All",
+};
+const MARKETPLACE_FILTER_KEYS = [
+  "startPlz",
+  "endPlz",
+  "from",
+  "to",
+  "vehicleType",
+  "transportType",
+];
 
 const isAppliedMarketplaceFilter = (key, value) => {
+  if (key === "startPlz" || key === "endPlz") {
+    return normalizePlzAreaList(value).length > 0;
+  }
   if (value == null) return false;
   const v = typeof value === "string" ? value.trim() : value;
   if (v === "") return false;
@@ -1545,7 +1666,8 @@ const isAppliedMarketplaceFilter = (key, value) => {
 
 /**
  * Canonical list of applied marketplace filters, in display order.
- * Returns `[{ key, value }]`. Count = `.length`.
+ * Returns `[{ id, key, value, label? }]`. Count = `.length`.
+ * PLZ areas expand to one entry per selected 2-digit prefix (`51xxx`).
  * `t` is optional; when supplied each entry also carries a localized `label`
  * for the removable chip row.
  */
@@ -1555,9 +1677,9 @@ const getAppliedMarketplaceFilters = (filters, t) => {
     if (!t) return undefined;
     switch (key) {
       case "startPlz":
-        return t("pickupPlz", { plz: value });
+        return t("pickupPlz", { plz: formatPlzAreaPill(value) });
       case "endPlz":
-        return t("dropPlz", { plz: value });
+        return t("dropPlz", { plz: formatPlzAreaPill(value) });
       case "from":
         return value === "Today"
           ? t("today")
@@ -1568,19 +1690,33 @@ const getAppliedMarketplaceFilters = (filters, t) => {
               : t("fromDateChip", { date: isoToDisplayDate(value) });
       case "to":
         return t("untilDateChip", { date: isoToDisplayDate(value) });
-      case "vehicle":
+      case "vehicleType":
         return displayVehicle(value, t);
-      case "axle":
-        return displayAxle(value, t);
+      case "transportType":
+        return displayTransportType(value, t);
       default:
         return String(value);
     }
   };
   // Fixed key order — NOT Object.keys(f), so the chip order cannot depend on
   // insertion order and an unknown key cannot leak into the count.
-  return ["startPlz", "endPlz", "from", "to", "vehicle", "axle"]
-    .filter((key) => isAppliedMarketplaceFilter(key, f[key]))
-    .map((key) => ({ key, value: f[key], label: label(key, f[key]) }));
+  const out = [];
+  for (const key of MARKETPLACE_FILTER_KEYS) {
+    if (key === "startPlz" || key === "endPlz") {
+      for (const prefix of normalizePlzAreaList(f[key])) {
+        out.push({
+          id: `${key}:${prefix}`,
+          key,
+          value: prefix,
+          label: label(key, prefix),
+        });
+      }
+      continue;
+    }
+    if (!isAppliedMarketplaceFilter(key, f[key])) continue;
+    out.push({ id: key, key, value: f[key], label: label(key, f[key]) });
+  }
+  return out;
 };
 
 /** Number of marketplace filters currently restricting the result set. */
@@ -1629,17 +1765,26 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
   const [local, setLocal] = useState({
     vehicleType: "All",
     transportType: "All",
+    from: "",
+    to: "",
     ...filters,
+    startPlz: normalizePlzAreaList(filters?.startPlz),
+    endPlz: normalizePlzAreaList(filters?.endPlz),
   });
-  const reset = () =>
+  const [pickupDraft, setPickupDraft] = useState("");
+  const [deliveryDraft, setDeliveryDraft] = useState("");
+  const reset = () => {
     setLocal({
-      startPlz: "",
-      endPlz: "",
+      startPlz: [],
+      endPlz: [],
       from: "",
       to: "",
       vehicleType: "All",
       transportType: "All",
     });
+    setPickupDraft("");
+    setDeliveryDraft("");
+  };
   // Only the three approved vehicle types are filterable.
   const types = AuthStore.selectableVehicleTypes();
   const transportOptions = ["All", ...AuthStore.TRANSPORT_TYPES];
@@ -1651,11 +1796,90 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
       (j) => j.status === "published" && jobMatchesDriverFilters(j, local),
     ).length;
 
+  const addArea = (side, draft, clearDraft) => {
+    const prefix = normalizePlzAreaPrefix(draft);
+    if (!prefix) return;
+    setLocal((prev) => {
+      const list = normalizePlzAreaList(prev[side]);
+      if (list.includes(prefix)) return prev;
+      return { ...prev, [side]: [...list, prefix] };
+    });
+    clearDraft();
+  };
+
+  const removeArea = (side, prefix) => {
+    setLocal((prev) => ({
+      ...prev,
+      [side]: normalizePlzAreaList(prev[side]).filter((p) => p !== prefix),
+    }));
+  };
+
+  const renderPlzMulti = (side, label, draft, setDraft, inputId) => {
+    const areas = normalizePlzAreaList(local[side]);
+    const canAdd =
+      normalizePlzAreaPrefix(draft).length === 2 &&
+      !areas.includes(normalizePlzAreaPrefix(draft));
+    return (
+      <div className="filter-plz-block">
+        <label className="field-label" htmlFor={inputId}>
+          {label}
+        </label>
+        <div className="filter-plz-row">
+          <input
+            id={inputId}
+            className="input"
+            placeholder={t("plzAreaPlaceholder")}
+            inputMode="numeric"
+            maxLength={2}
+            aria-label={label}
+            value={draft}
+            onChange={(e) =>
+              setDraft(e.target.value.replace(/\D/g, "").slice(0, 2))
+            }
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (canAdd) addArea(side, draft, () => setDraft(""));
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="btn filter-plz-add"
+            disabled={!canAdd}
+            onClick={() => addArea(side, draft, () => setDraft(""))}
+          >
+            <Ic.Plus /> {t("addPlzArea")}
+          </button>
+        </div>
+        {areas.length > 0 ? (
+          <div className="filter-plz-pills">
+            {areas.map((prefix) => (
+              <span key={prefix} className="filter-plz-pill">
+                {formatPlzAreaPill(prefix)}
+                <button
+                  type="button"
+                  className="filter-plz-pill-x"
+                  onClick={() => removeArea(side, prefix)}
+                  aria-label={t("removePostalCode", {
+                    code: formatPlzAreaPill(prefix),
+                  })}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="grabber"></div>
-        <div className="sheet-head">
+        <SheetGrabber onClose={onClose} />
+        <SheetPullRegion onClose={onClose} className="sheet-head">
           <h2>{t("filters")}</h2>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <button
@@ -1675,33 +1899,23 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
               <Ic.X />
             </button>
           </div>
-        </div>
+        </SheetPullRegion>
         <div className="sheet-body">
           <div className="field-label">{t("postalArea")}</div>
-          <div className="grid-2-col-10">
-            <input
-              className="input"
-              placeholder={t("pickupExample")}
-              inputMode="numeric"
-              maxLength={5}
-              aria-label={t("pickupExample")}
-              value={local.startPlz || ""}
-              onChange={(e) =>
-                setLocal({ ...local, startPlz: e.target.value.replace(/\D/g, "") })
-              }
-            />
-            <input
-              className="input"
-              placeholder={t("deliveryExample")}
-              inputMode="numeric"
-              maxLength={5}
-              aria-label={t("deliveryExample")}
-              value={local.endPlz || ""}
-              onChange={(e) =>
-                setLocal({ ...local, endPlz: e.target.value.replace(/\D/g, "") })
-              }
-            />
-          </div>
+          {renderPlzMulti(
+            "startPlz",
+            t("pickupPlzTwoDigits"),
+            pickupDraft,
+            setPickupDraft,
+            "filter-pickup-plz",
+          )}
+          {renderPlzMulti(
+            "endPlz",
+            t("deliveryPlzTwoDigits"),
+            deliveryDraft,
+            setDeliveryDraft,
+            "filter-delivery-plz",
+          )}
 
           <div className="field-label mt-field">
             {t("dateWindow")}
@@ -1797,7 +2011,11 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
             type="button"
             className="btn primary"
             onClick={() => {
-              setFilters(local);
+              setFilters({
+                ...local,
+                startPlz: normalizePlzAreaList(local.startPlz),
+                endPlz: normalizePlzAreaList(local.endPlz),
+              });
               onClose();
             }}
           >
@@ -2429,7 +2647,7 @@ const UploadSourceSheet = ({ open, onClose, onTakePhoto, onChooseFile }) => {
         aria-modal="true"
         aria-labelledby="upload-source-title"
       >
-        <div className="grabber" aria-hidden="true"></div>
+        <SheetGrabber onClose={onClose} />
         <div className="upload-source-body">
           <h2 id="upload-source-title" className="upload-source-title">
             {t("uploadSourceTitle")}
@@ -4078,7 +4296,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="grabber"></div>
+        <SheetGrabber onClose={onClose} />
         <div className="sheet-head">
           <h2 className="sheet-head-warn">
             <span className="sheet-head-warn-icon">
@@ -5587,17 +5805,18 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
   const [editingProfile, setEditingProfile] = useState(false);
   const [postalText, setPostalText] = useState("");
   const [theme, setTheme] = useState(readStoredTheme);
-  const postalAreas = prefs.postalAreas || [];
+  const postalAreas = normalizePlzAreaList(prefs.postalAreas);
 
   useEffect(() => {
     applyAppTheme(theme);
   }, [theme]);
 
   const handleAddPostal = (val) => {
-    const trimmed = val.trim();
-    if (!trimmed) return;
-    if (!postalAreas.includes(trimmed)) {
-      setPref({ postalAreas: [...postalAreas, trimmed] });
+    const prefix = normalizePlzAreaPrefix(val);
+    if (!prefix) return;
+    const areas = normalizePlzAreaList(postalAreas);
+    if (!areas.includes(prefix)) {
+      setPref({ postalAreas: [...areas, prefix] });
     }
     setPostalText("");
   };
@@ -5615,7 +5834,9 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
 
   const removePostal = (indexToRemove) => {
     setPref({
-      postalAreas: postalAreas.filter((_, idx) => idx !== indexToRemove),
+      postalAreas: normalizePlzAreaList(postalAreas).filter(
+        (_, idx) => idx !== indexToRemove,
+      ),
     });
   };
   const [mdForm, setMdForm] = useState(() => emptyMasterDataChangeForm(d));
@@ -5891,7 +6112,7 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
             value={prefs.vehicleType || "All"}
             onChange={(e) => setPref({ vehicleType: e.target.value })}
           >
-            {["All", "PKW", "SUV", "Van", "Light truck <3.5t"].map((x) => (
+            {["All", ...AuthStore.selectableVehicleTypes()].map((x) => (
               <option key={x} value={x}>
                 {displayVehicle(x, t)}
               </option>
@@ -5921,13 +6142,15 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
         </label>
         <div className="postal-chip-container stack-4">
           {postalAreas.map((chip, idx) => (
-            <span key={idx} className="postal-chip">
-              {chip}
+            <span key={chip} className="postal-chip filter-plz-pill">
+              {formatPlzAreaPill(chip)}
               <button
                 type="button"
-                className="postal-chip-delete"
+                className="postal-chip-delete filter-plz-pill-x"
                 onClick={() => removePostal(idx)}
-                aria-label={t("removePostalCode", { code: chip })}
+                aria-label={t("removePostalCode", {
+                  code: formatPlzAreaPill(chip),
+                })}
               >
                 ×
               </button>
@@ -5939,12 +6162,14 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
             className="postal-chip-input"
             value={postalText}
             inputMode="numeric"
-            maxLength={5}
-            onChange={(e) => setPostalText(e.target.value.replace(/\D/g, ""))}
+            maxLength={2}
+            onChange={(e) =>
+              setPostalText(e.target.value.replace(/\D/g, "").slice(0, 2))
+            }
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
             placeholder={
-              postalAreas.length === 0 ? t("pushPostalPrefixHint") : ""
+              postalAreas.length === 0 ? t("plzAreaPlaceholder") : ""
             }
           />
         </div>

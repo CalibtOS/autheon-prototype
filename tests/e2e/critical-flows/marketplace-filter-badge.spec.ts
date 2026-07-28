@@ -53,7 +53,7 @@ test.describe('Driver Marketplace — applied-filter badge journey @e2e', () => 
     await filterButton(page).click();
     await expect(panel(page)).toBeVisible();
     await panel(page).locator('.input').first().fill('80');
-    await panel(page).locator('.chip-btn').filter({ hasText: 'SUV' }).first().click();
+    await panel(page).locator('.chip-btn').filter({ hasText: 'Passenger car' }).first().click();
     await applyPanel(page);
 
     // 5–6. Panel is closed and the badge reports the applied count.
@@ -86,7 +86,7 @@ test.describe('Driver Marketplace — applied-filter badge journey @e2e', () => 
 
     // 13–14. Sorting must not resurrect or alter the badge.
     await filterButton(page).click();
-    await panel(page).locator('.chip-btn').filter({ hasText: 'SUV' }).first().click();
+    await panel(page).locator('.chip-btn').filter({ hasText: 'Passenger car' }).first().click();
     await applyPanel(page);
     await expect(filterBadge(page)).toHaveText('1');
 
@@ -111,7 +111,7 @@ test.describe('Driver Marketplace — applied-filter badge journey @e2e', () => 
 
     await filterButton(page).click();
     await expect(panel(page)).toBeVisible();
-    await panel(page).locator('.chip-btn').filter({ hasText: 'SUV' }).first().click();
+    await panel(page).locator('.chip-btn').filter({ hasText: 'Passenger car' }).first().click();
     await applyPanel(page);
     await expect(filterBadge(page)).toHaveText('1');
 

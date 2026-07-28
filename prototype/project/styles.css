@@ -2016,12 +2016,36 @@ select.input {
   height: 4px;
   background: var(--line-2);
   border-radius: 2px;
-  margin: 10px auto 0;
+  margin: 0;
+  pointer-events: none;
+}
+.phone-shell .sheet .grabber-hit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding-top: 10px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.phone-shell .sheet .grabber-hit:active {
+  cursor: grabbing;
+}
+.phone-shell .sheet .grabber-hit--hidden {
+  min-height: 12px;
+  padding-top: 0;
 }
 .phone-shell .sheet-head {
   padding: 16px 20px 12px;
   border-bottom: 0;
   background: var(--paper);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.phone-shell .sheet-head:active {
+  cursor: grabbing;
 }
 .phone-shell .sheet-head h2 {
   font-size: 24px;
@@ -2392,8 +2416,26 @@ select.input {
   height: 4px;
   background: var(--line-3);
   border-radius: 2px;
-  margin: 12px auto 0;
+  margin: 0;
   opacity: 0.65;
+  pointer-events: none;
+}
+.sheet .grabber-hit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding-top: 10px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.sheet .grabber-hit:active {
+  cursor: grabbing;
+}
+.sheet .grabber-hit--hidden {
+  min-height: 12px;
+  padding-top: 0;
 }
 .sheet-head {
   padding: 14px 22px 14px;
@@ -5124,6 +5166,71 @@ select.input {
   padding: 4px 0;
   flex: 1;
   min-width: 60px;
+}
+
+/* Marketplace filter — multi-select PLZ area pills (00xxx) */
+.phone-shell .filter-plz-block {
+  margin-top: 10px;
+}
+.phone-shell .filter-plz-block > .field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.phone-shell .filter-plz-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.phone-shell .filter-plz-row .input {
+  flex: 1;
+  min-width: 0;
+}
+.phone-shell .filter-plz-add {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.phone-shell .filter-plz-add:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.phone-shell .filter-plz-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.phone-shell .filter-plz-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--text);
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 10px 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.phone-shell .filter-plz-pill-x {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  opacity: 0.85;
+}
+.phone-shell .filter-plz-pill-x:hover {
+  opacity: 1;
 }
 /* iOS Safari auto-zooms the viewport when a focused form control has a
    computed font-size below 16px, which jerks the whole phone-shell (a

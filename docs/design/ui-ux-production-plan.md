@@ -345,11 +345,10 @@ the filter control.
 
 **Follow-up — recorded, not absorbed**
 
-1. **Audit item 43 — `from: "This week"` counts but does not filter.** `jobMatchesDriverFilters` has
-   no `"This week"` branch (presets bypass the range comparison; only `"Today"` and `"Weekend"` are
-   implemented). A driver selecting it sees "Filters, 1 applied" over an unchanged list. Needs a
-   product decision on week boundaries — the prototype's "today" is a hardcoded `05.05.`, so any
-   implementation would be invented. Either implement the predicate or remove the preset.
+1. ~~**Audit item 43 — `from: "This week"` counts but does not filter.**~~ **Resolved 2026-07-28.**
+   Decision: Mon–Sun calendar week containing marketplace fixture today (`05.05.`). Prototype
+   `jobMatchesDriverFilters` implements `Today` + `This week`; production FE already matched that
+   rule against device-local today.
 
 ## 8. Prototype Remediation Worklist (phased, in-place)
 

@@ -99,7 +99,7 @@ test.describe('Driver PWA visual regression @visual-regression', () => {
     await applyMarketplaceFilters(page, async (panel) => {
       await panel.locator('.input').nth(0).fill('80');
       await panel.locator('.input').nth(1).fill('10');
-      await panel.locator('.chip-btn').filter({ hasText: 'SUV' }).first().click();
+      await panel.locator('.chip-btn').filter({ hasText: 'Passenger car' }).first().click();
     });
     await expect(
       prototypeFrame(page).locator('.header-filter-btn .header-btn-badge'),

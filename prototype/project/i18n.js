@@ -28,17 +28,16 @@ window.I18n = (() => {
       pwaInstallIosAction: "Add to Home Screen",
       pwaInstallIosTitle: "Install on iPhone",
       pwaInstallIosStep1: "Tap the Share button in Safari.",
-      pwaInstallIosStep2: "Choose \"Add to Home Screen\".",
+      pwaInstallIosStep2: 'Choose "Add to Home Screen".',
       pwaInstallIosStep3: "Confirm Add — AUTHEON opens like a native app.",
       pwaInstallSubPreparing:
         "Preparing install… the page may reload once so Chrome can offer Install.",
       pwaInstallSubManual:
         "Use Install app — if Chrome has no prompt yet, follow the short steps.",
       pwaInstallManualTitle: "Install AUTHEON Driver",
-      pwaInstallManualStep1:
-        "In Chrome or Edge, open the browser menu (⋮).",
+      pwaInstallManualStep1: "In Chrome or Edge, open the browser menu (⋮).",
       pwaInstallManualStep2:
-        "Choose \"Install app\" / \"Install Autheon\" / \"Cast, save, and share\" → Install page.",
+        'Choose "Install app" / "Install Autheon" / "Cast, save, and share" → Install page.',
       pwaInstallManualStep3:
         "Confirm Install. AUTHEON opens in its own window without the browser bar.",
       pwaInstallSubAuthBlocked:
@@ -170,6 +169,29 @@ window.I18n = (() => {
       endOfList: "End of list",
       today: "Today",
       yesterday: "Yesterday",
+      newOrderOpenCalendar: "Open calendar",
+      dateInvalidFormat: "Enter a date as DD.MM.YYYY",
+      dateInvalidCalendar: "This date does not exist",
+      dateInThePast: "Date cannot be in the past",
+      validationSummaryTitle: "Before you continue",
+      validationSummaryJump: "Go to section",
+      leavePageTitle: "Leave this order?",
+      leavePageSaveDraft: "Save as draft",
+      leavePageDiscard: "Discard entries",
+      leavePageContinueEditing: "Continue editing",
+      leavePageMessage: "You have unsaved changes on this order.",
+      duplicateVinTitle: "Vehicle already on another order",
+      duplicateVinBody:
+        "This VIN is already used on tour {tour} (status: {status}, responsible: {admin}).",
+      duplicatePlateWarning:
+        "This licence plate is already used on tour {tour}. VIN differs, so this is a non-blocking notice.",
+      duplicateOpenExisting: "Open existing order",
+      duplicateCorrectEntry: "Correct entry",
+      duplicateContinueAnyway: "Continue anyway",
+      manualEntryToggleLabel: "Enter manually instead",
+      emptyDraftBlocked: "Enter at least one field before saving a draft",
+      publishBlockedValidation: "This order can't be published yet",
+      assignBlockedValidation: "This order can't be assigned yet",
       thisWeek: "This week",
       from: "From",
       until: "Until",
@@ -504,8 +526,7 @@ window.I18n = (() => {
       profileNavAppearance: "Appearance and language",
       profileNavFeedback: "Feedback",
       profileNavReportError: "Report an error",
-      profilePasswordIntro:
-        "Choose a new password for your driver account.",
+      profilePasswordIntro: "Choose a new password for your driver account.",
       profilePasswordCurrent: "Current password",
       profilePasswordNew: "New password",
       profilePasswordConfirm: "Confirm new password",
@@ -587,12 +608,12 @@ window.I18n = (() => {
         "Initial booking allowance used — complete Performed tours to be released",
       masterDataChangeType_address: "Address change",
       masterDataChangeType_contact: "Contact change",
-      masterDataChangeType_daily_limit_override: "Daily job limit increase (legacy)",
+      masterDataChangeType_daily_limit_override:
+        "Daily job limit increase (legacy)",
       usersDesc: "Manage dispatcher accounts and driver profiles.",
       driversDesc:
         "Create and manage driver profiles, probation limits, and access invites.",
-      staffDesc:
-        "Create and manage dispatcher and admin staff accounts.",
+      staffDesc: "Create and manage dispatcher and admin staff accounts.",
       customersDesc:
         "Customers for billing and reporting. Edits do not change existing tour snapshots.",
       adminCustomersDesc:
@@ -691,8 +712,15 @@ window.I18n = (() => {
       adminWindowFlex: "flex",
       adminColTour: "Tour",
       adminColCustomer: "Customer",
-      adminColOrigin: "Origin",
-      adminColDestination: "Destination",
+      adminRowActionsLabel: "Row actions",
+      adminRowActionOpen: "Open order",
+      adminRowActionEdit: "Edit order",
+      adminRowActionDuplicate: "Duplicate order",
+      adminRowActionCancel: "Cancel order",
+      adminRowActionDeleteDraft: "Delete draft",
+      adminColPlateOrVin: "Plate / VIN",
+      adminColOrigin: "Pickup",
+      adminColDestination: "Delivery",
       adminColAppointment: "Appointment",
       adminColVehicle: "Vehicle",
       adminColDriver: "Driver",
@@ -1032,6 +1060,8 @@ window.I18n = (() => {
       adminPolicyMinDriverMsgLabel: "Min. characters — message to driver",
       adminPolicyDefaultProbationLimitLabel:
         "Default probation job count (new drivers)",
+      adminPolicyDriverOfferMaxLabel: "Maximum driver offer (EUR)",
+      adminPolicyDriverOfferWarnLabel: "High-offer warning threshold (EUR)",
       adminOperationalPoliciesSave: "Save policies",
       adminOperationalPoliciesSaved: "Operational policies updated.",
       adminScheduleSameDayWindowError:
@@ -1186,8 +1216,7 @@ window.I18n = (() => {
         },
         prototype: {
           title: "Prototype settings",
-          subtitle:
-            "Prototype-only — these have no Autheon counterpart.",
+          subtitle: "Prototype-only — these have no Autheon counterpart.",
         },
       },
       newOrderFooterHint:
@@ -1270,6 +1299,27 @@ window.I18n = (() => {
       newOrderDriverOfferPh: "0.00 €",
       newOrderNotesFree: "Free text",
       newOrderNotesDriverPh: "Notes for the driver…",
+      newOrderGeneralNoteLabel: "General notes for service partner",
+      newOrderInternalNoteLabel: "Internal note (admin only)",
+      addStandardWording: "+ Add standard wording",
+      standardWordingKeyAtReception: "Vehicle key at reception desk.",
+      standardWordingCallBeforeArrival:
+        "Please call 15 minutes before arrival.",
+      standardWordingLoadingRampAvailable: "Loading ramp available on site.",
+      standardWordingContactSecurityGate:
+        "Contact security at the gate on arrival.",
+      standardWordingKeysWithSiteManager: "Keys held by the site manager.",
+      standardWordingNoParkingRestrictions: "No parking restrictions on site.",
+      addressPlzSuggestion: "Suggested town",
+      countryFieldLabel: "Country",
+      driverOfferInvalid: "Enter a valid amount",
+      driverOfferTooLow: "Amount must be at least 0.01 EUR",
+      driverOfferTooHigh: "Amount cannot exceed {max} EUR",
+      driverOfferHighWarningTitle: "Offer above the usual range",
+      driverOfferHighWarningBody:
+        "This driver offer is above the configured threshold. Please confirm it is correct before continuing.",
+      driverOfferAcceptAmount: "Accept amount",
+      driverOfferCorrectEntry: "Correct entry",
       newOrderStandardWording: "+ Standard wording",
       newOrderStandardNotesText:
         "Standard: Inspect the vehicle before departure, document damage, and report delays to AUTHEON immediately.",
@@ -1299,6 +1349,10 @@ window.I18n = (() => {
       flexible: "Flexible",
       pickupPlz: "Pickup PLZ {plz}",
       dropPlz: "Drop PLZ {plz}",
+      pickupPlzTwoDigits: "Pickup Postal Code (first 2 digits)",
+      deliveryPlzTwoDigits: "Delivery Postal Code (first 2 digits)",
+      plzAreaPlaceholder: "00xxx",
+      addPlzArea: "Add",
       fromDateChip: "From {date}",
       untilDateChip: "Until {date}",
       removeFilterChip: "Remove filter: {label}",
@@ -1313,6 +1367,7 @@ window.I18n = (() => {
       financeGross: "Gross",
       route: "Route",
       distance: "Distance",
+      distanceNotYetCalculated: "Distance not yet calculated",
       schedule: "Schedule",
       type: "Type",
       details: "Details",
@@ -1390,8 +1445,7 @@ window.I18n = (() => {
         "That email is already in use by another account.",
       changeEmailErrCodeInvalid:
         "That code isn't correct. Check it and try again.",
-      changeEmailErrCodeExpired:
-        "That code has expired. Send a new one.",
+      changeEmailErrCodeExpired: "That code has expired. Send a new one.",
       changeEmailErrRestricted:
         "Your account can't change its email right now.",
       changeEmailErrGeneric: "Something went wrong. Please try again.",
@@ -1435,8 +1489,7 @@ window.I18n = (() => {
       emptyRunReasonKeyDocs: "Vehicle key or required documents missing",
       emptyRunReasonOther: "Other",
       emptyRunDescLabel: "Description (required)",
-      emptyRunDescPlaceholder:
-        "Describe the situation (min. 30 characters).",
+      emptyRunDescPlaceholder: "Describe the situation (min. 30 characters).",
       emptyRunEvidenceLabel: "Photo / evidence (optional)",
       emptyRunEvidenceHint: "Optional — you can submit without an upload.",
       emptyRunWarning:
@@ -1499,7 +1552,8 @@ window.I18n = (() => {
         "Save the changes to this booked order. The assigned service partner is notified of the changed values; no re-confirmation is required.",
       adminEvidenceNoPreview: "preview unavailable (metadata only)",
       adminOrderEditedToast: "Order {tour} updated",
-      adminOrderEditedToastSub: "Changes saved and the assigned partner notified.",
+      adminOrderEditedToastSub:
+        "Changes saved and the assigned partner notified.",
       adminOrderEditedToastSubNoPartner: "Changes saved.",
       orderFieldCustomer: "Customer",
       orderFieldCategory: "Category",
@@ -1551,7 +1605,7 @@ window.I18n = (() => {
       pushEnabledMaster: "Enable push notifications",
       pushNotifyNewPublished: "Newly published orders",
       pushNotifyPostalPrefix: "Orders in pickup postal code area",
-      pushPostalPrefixHint: "1–2 digit prefix, e.g. 4, 40, or 41",
+      pushPostalPrefixHint: "2-digit prefix, e.g. 40 or 41",
       removePostalCode: "Remove postal code {code}",
       pushSupportNotice:
         "Android supported in app flow. iOS requires home-screen installation, compatible iOS version, and permission.",
@@ -1613,8 +1667,7 @@ window.I18n = (() => {
       dispatcherHotline: "Dispatcher hotline",
       dispatcherHotlineSub: "Mon-Fri 07:00-22:00 CET (demo)",
       helpSupportTitle: "Help & support",
-      helpSupportIntro:
-        "Contact dispatch if you need help on the road.",
+      helpSupportIntro: "Contact dispatch if you need help on the road.",
       profileEmailSupport: "Email support",
       mailtoSubjectSupport: "AUTHEON driver support — {driverCode}",
       docGeneralWorkInstructions: "General work instructions",
@@ -1653,7 +1706,7 @@ window.I18n = (() => {
       pwaInstallIosAction: "Zum Home-Bildschirm",
       pwaInstallIosTitle: "Auf dem iPhone installieren",
       pwaInstallIosStep1: "Tippe in Safari auf Teilen.",
-      pwaInstallIosStep2: "Wähle \"Zum Home-Bildschirm\".",
+      pwaInstallIosStep2: 'Wähle "Zum Home-Bildschirm".',
       pwaInstallIosStep3:
         "Bestätige Hinzufügen — AUTHEON öffnet sich wie eine App.",
       pwaInstallSubPreparing:
@@ -1661,10 +1714,9 @@ window.I18n = (() => {
       pwaInstallSubManual:
         "Nutze App installieren — wenn Chrome noch keinen Dialog zeigt, folge den kurzen Schritten.",
       pwaInstallManualTitle: "AUTHEON Driver installieren",
-      pwaInstallManualStep1:
-        "Öffne in Chrome oder Edge das Browser-Menü (⋮).",
+      pwaInstallManualStep1: "Öffne in Chrome oder Edge das Browser-Menü (⋮).",
       pwaInstallManualStep2:
-        "Wähle \"App installieren\" / \"Autheon installieren\" / \"Übertragen, speichern und teilen\" → Seite installieren.",
+        'Wähle "App installieren" / "Autheon installieren" / "Übertragen, speichern und teilen" → Seite installieren.',
       pwaInstallManualStep3:
         "Bestätige Installieren. AUTHEON öffnet sich ohne Browserleiste.",
       pwaInstallSubAuthBlocked:
@@ -1793,6 +1845,33 @@ window.I18n = (() => {
       endOfList: "Ende der Liste",
       today: "Heute",
       yesterday: "Gestern",
+      newOrderOpenCalendar: "Kalender öffnen",
+      dateInvalidFormat: "Datum bitte als TT.MM.JJJJ eingeben",
+      dateInvalidCalendar: "Dieses Datum existiert nicht",
+      dateInThePast: "Datum darf nicht in der Vergangenheit liegen",
+      validationSummaryTitle: "Bevor Sie fortfahren",
+      validationSummaryJump: "Zum Abschnitt springen",
+      leavePageTitle: "Auftrag verlassen?",
+      leavePageSaveDraft: "Als Entwurf speichern",
+      leavePageDiscard: "Eingaben verwerfen",
+      leavePageContinueEditing: "Weiter bearbeiten",
+      leavePageMessage:
+        "Sie haben nicht gespeicherte Änderungen an diesem Auftrag.",
+      duplicateVinTitle: "Fahrzeug bereits auf anderem Auftrag",
+      duplicateVinBody:
+        "Diese FIN wird bereits bei Tour {tour} verwendet (Status: {status}, verantwortlich: {admin}).",
+      duplicatePlateWarning:
+        "Dieses Kennzeichen wird bereits bei Tour {tour} verwendet. Die FIN unterscheidet sich, daher nur ein Hinweis.",
+      duplicateOpenExisting: "Bestehenden Auftrag öffnen",
+      duplicateCorrectEntry: "Eingabe korrigieren",
+      duplicateContinueAnyway: "Trotzdem fortfahren",
+      manualEntryToggleLabel: "Stattdessen manuell eingeben",
+      emptyDraftBlocked:
+        "Mindestens ein Feld ausfüllen, bevor der Entwurf gespeichert wird",
+      publishBlockedValidation:
+        "Dieser Auftrag kann noch nicht veröffentlicht werden",
+      assignBlockedValidation:
+        "Dieser Auftrag kann noch nicht zugewiesen werden",
       thisWeek: "Diese Woche",
       from: "Von",
       until: "Bis",
@@ -2220,8 +2299,7 @@ window.I18n = (() => {
       usersDesc: "Verwalte Dispatcher-Konten und Fahrerprofile.",
       driversDesc:
         "Fahrerprofile, Probezeit-Limits und Zugangseinladungen anlegen und verwalten.",
-      staffDesc:
-        "Dispatcher- und Admin-Personal-Konten anlegen und verwalten.",
+      staffDesc: "Dispatcher- und Admin-Personal-Konten anlegen und verwalten.",
       customersDesc:
         "Kunden für Abrechnung und Reporting. Änderungen ändern keine bestehenden Tour-Snapshots.",
       adminCustomersDesc:
@@ -2320,8 +2398,15 @@ window.I18n = (() => {
       adminWindowFlex: "flex",
       adminColTour: "Tour",
       adminColCustomer: "Kunde",
-      adminColOrigin: "Start",
-      adminColDestination: "Ziel",
+      adminRowActionsLabel: "Zeilenaktionen",
+      adminRowActionOpen: "Auftrag öffnen",
+      adminRowActionEdit: "Auftrag bearbeiten",
+      adminRowActionDuplicate: "Auftrag duplizieren",
+      adminRowActionCancel: "Auftrag stornieren",
+      adminRowActionDeleteDraft: "Entwurf löschen",
+      adminColPlateOrVin: "Kennzeichen / FIN",
+      adminColOrigin: "Abholung",
+      adminColDestination: "Lieferung",
       adminColAppointment: "Termin",
       adminColVehicle: "Fahrzeug",
       adminColDriver: "Fahrer",
@@ -2665,6 +2750,8 @@ window.I18n = (() => {
       adminPolicyMinDriverMsgLabel: "Min. Zeichen — Nachricht an Fahrer",
       adminPolicyDefaultProbationLimitLabel:
         "Standard Probezeit-Auftraganzahl (neue Fahrer)",
+      adminPolicyDriverOfferMaxLabel: "Maximales Fahrerangebot (EUR)",
+      adminPolicyDriverOfferWarnLabel: "Schwellenwert Hochpreis-Warnung (EUR)",
       adminOperationalPoliciesSave: "Richtlinien speichern",
       adminOperationalPoliciesSaved: "Betriebsrichtlinien aktualisiert.",
       adminScheduleSameDayWindowError:
@@ -2765,8 +2852,7 @@ window.I18n = (() => {
           fieldRequired: "Dieses Feld ist erforderlich.",
           changeEmail: {
             title: "E-Mail ändern",
-            description:
-              "Aktualisieren Sie die E-Mail-Adresse für Ihr Konto.",
+            description: "Aktualisieren Sie die E-Mail-Adresse für Ihr Konto.",
             emailLabel: "E-Mail",
             invalidEmail: "Geben Sie eine gültige E-Mail-Adresse ein",
             unchanged: "Geben Sie eine andere E-Mail-Adresse ein",
@@ -2781,8 +2867,7 @@ window.I18n = (() => {
             confirmPasswordLabel: "Neues Passwort bestätigen",
             passwordMinLength:
               "Das Passwort muss mindestens 8 Zeichen lang sein",
-            confirmPasswordRequired:
-              "Bitte bestätigen Sie Ihr neues Passwort",
+            confirmPasswordRequired: "Bitte bestätigen Sie Ihr neues Passwort",
             passwordMismatch: "Die Passwörter stimmen nicht überein",
             submitButton: "Passwort ändern",
             successToast: "Passwort erfolgreich geändert.",
@@ -2815,8 +2900,7 @@ window.I18n = (() => {
         },
         prototype: {
           title: "Prototyp-Einstellungen",
-          subtitle:
-            "Nur im Prototyp — keine Autheon-Entsprechung.",
+          subtitle: "Nur im Prototyp — keine Autheon-Entsprechung.",
         },
       },
       newOrderFooterHint:
@@ -2896,6 +2980,27 @@ window.I18n = (() => {
       newOrderDriverOfferPh: "0,00 €",
       newOrderNotesFree: "Freitext",
       newOrderNotesDriverPh: "Hinweise für den Fahrer…",
+      newOrderGeneralNoteLabel: "Allgemeine Notiz für Dienstleister",
+      newOrderInternalNoteLabel: "Interne Notiz (nur Admin)",
+      addStandardWording: "+ Standardtext hinzufügen",
+      standardWordingKeyAtReception: "Fahrzeugschlüssel am Empfang.",
+      standardWordingCallBeforeArrival: "Bitte 15 Minuten vor Ankunft anrufen.",
+      standardWordingLoadingRampAvailable: "Verladerampe vor Ort verfügbar.",
+      standardWordingContactSecurityGate:
+        "Beim Eintreffen den Werkschutz am Tor kontaktieren.",
+      standardWordingKeysWithSiteManager:
+        "Schlüssel beim Platzverantwortlichen.",
+      standardWordingNoParkingRestrictions: "Keine Parkbeschränkungen vor Ort.",
+      addressPlzSuggestion: "Vorgeschlagener Ort",
+      countryFieldLabel: "Land",
+      driverOfferInvalid: "Bitte einen gültigen Betrag eingeben",
+      driverOfferTooLow: "Betrag muss mindestens 0,01 EUR sein",
+      driverOfferTooHigh: "Betrag darf {max} EUR nicht überschreiten",
+      driverOfferHighWarningTitle: "Angebot über dem üblichen Bereich",
+      driverOfferHighWarningBody:
+        "Dieses Fahrerangebot liegt über dem konfigurierten Schwellenwert. Bitte bestätigen Sie, dass der Betrag korrekt ist.",
+      driverOfferAcceptAmount: "Betrag bestätigen",
+      driverOfferCorrectEntry: "Eingabe korrigieren",
       newOrderStandardWording: "+ Standard-Formulierung",
       newOrderStandardNotesText:
         "Standard: Bitte Fahrzeug vor Fahrtantritt prüfen, Schäden dokumentieren und Verzögerungen sofort an AUTHEON melden.",
@@ -2923,6 +3028,10 @@ window.I18n = (() => {
       flexible: "Flexibel",
       pickupPlz: "Abhol-PLZ {plz}",
       dropPlz: "Ziel-PLZ {plz}",
+      pickupPlzTwoDigits: "Abhol-PLZ (erste 2 Ziffern)",
+      deliveryPlzTwoDigits: "Zustell-PLZ (erste 2 Ziffern)",
+      plzAreaPlaceholder: "00xxx",
+      addPlzArea: "Hinzufügen",
       fromDateChip: "Ab {date}",
       untilDateChip: "Bis {date}",
       removeFilterChip: "Filter entfernen: {label}",
@@ -2937,6 +3046,7 @@ window.I18n = (() => {
       financeGross: "Brutto",
       route: "Route",
       distance: "Distanz",
+      distanceNotYetCalculated: "Distanz noch nicht berechnet",
       schedule: "Zeitplan",
       type: "Typ",
       details: "Details",
@@ -3027,8 +3137,7 @@ window.I18n = (() => {
         "Ihre Anmelde-E-Mail wurde zu {email} geändert. Falls Sie das nicht waren, kontaktieren Sie bitte umgehend die Disposition.",
       // ---- Task 2: Storno-/Leerfahrt-Workflow (Quelltexte laut PDF) ----
       warnEntryCancelOption: "Auftrag stornieren",
-      warnEntryCancelSub:
-        "Beendet den Auftrag und informiert die Disposition.",
+      warnEntryCancelSub: "Beendet den Auftrag und informiert die Disposition.",
       warnEntryEmptyRunOption: "Leerfahrt melden",
       warnEntryEmptyRunSub:
         "Der Auftrag selbst kann nicht durchgeführt werden — Autheon prüft die Meldung.",
@@ -3180,7 +3289,7 @@ window.I18n = (() => {
       pushEnabledMaster: "Push-Benachrichtigungen aktivieren",
       pushNotifyNewPublished: "Neu veröffentlichte Aufträge",
       pushNotifyPostalPrefix: "Aufträge im Abhol-PLZ-Gebiet",
-      pushPostalPrefixHint: "1–2-stelliges Präfix, z. B. 4, 40 oder 41",
+      pushPostalPrefixHint: "2-stelliges Präfix, z. B. 40 oder 41",
       removePostalCode: "Postleitzahl {code} entfernen",
       pushSupportNotice:
         "Android wird im App-Ablauf unterstützt. iOS erfordert Installation auf dem Homescreen, eine kompatible iOS-Version und Berechtigung.",

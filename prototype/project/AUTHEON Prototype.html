@@ -6,8 +6,16 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)" />
+    <meta
+      name="theme-color"
+      content="#FFFFFF"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#1C1C1E"
+      media="(prefers-color-scheme: dark)"
+    />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
@@ -53,7 +61,7 @@
     <script src="inputFormatters.js"></script>
     <script src="store.js"></script>
     <script type="text/babel" src="driver-ui.jsx"></script>
-    <script type="text/babel" src="driver.jsx?v=16"></script>
+    <script type="text/babel" src="driver.jsx?v=17"></script>
     <script type="text/babel" src="admin.jsx"></script>
 
     <script type="text/babel" data-presets="env,react">
@@ -223,9 +231,7 @@
                   )}
                   {body}
                 </div>
-                {!activeJob && (
-                  <TabBar tab={tab} setTab={setTab} />
-                )}
+                {!activeJob && <TabBar tab={tab} setTab={setTab} />}
                 {showNotifications && (
                   <DriverNotificationsPane
                     onClose={() => setShowNotifications(false)}
@@ -264,14 +270,20 @@
                           }
                           setAcceptModal(null);
                           if (r.reason === "driver_restricted") {
-                            setBanner({ tone: "warn", text: t("blockedDriverBody") });
+                            setBanner({
+                              tone: "warn",
+                              text: t("blockedDriverBody"),
+                            });
                           } else if (r.reason === "probation_limit_reached") {
                             setProbationLimitModal({
                               limit: r.limit,
                               performedCount: r.performedCount,
                             });
                           } else {
-                            setBanner({ tone: "warn", text: t("toastAssignedElsewhere") });
+                            setBanner({
+                              tone: "warn",
+                              text: t("toastAssignedElsewhere"),
+                            });
                           }
                           setActiveJob({ id, mode: "locked" });
                           return;
@@ -305,7 +317,10 @@
                       setReportProblemJob(null);
                       if (!r.ok) return;
                       setPendingNotice(path);
-                      setActiveJob({ id: reportProblemJob.id, mode: "unlocked" });
+                      setActiveJob({
+                        id: reportProblemJob.id,
+                        mode: "unlocked",
+                      });
                     }}
                   />
                 )}
@@ -331,7 +346,10 @@
                   <SameDayOverlapSheet
                     onCancel={() => {
                       setOverlapConfirm(null);
-                      setActiveJob({ id: overlapConfirm.jobId, mode: "locked" });
+                      setActiveJob({
+                        id: overlapConfirm.jobId,
+                        mode: "locked",
+                      });
                     }}
                     onConfirm={() => {
                       const id = overlapConfirm.jobId;
@@ -346,9 +364,15 @@
                             performedCount: r.performedCount,
                           });
                         } else if (r.reason === "driver_restricted") {
-                          setBanner({ tone: "warn", text: t("blockedDriverBody") });
+                          setBanner({
+                            tone: "warn",
+                            text: t("blockedDriverBody"),
+                          });
                         } else {
-                          setBanner({ tone: "warn", text: t("toastAssignedElsewhere") });
+                          setBanner({
+                            tone: "warn",
+                            text: t("toastAssignedElsewhere"),
+                          });
                         }
                         setActiveJob({ id, mode: "locked" });
                         return;
@@ -385,6 +409,15 @@
         const [billingNav, setBillingNav] = useState(null);
         const [assignDialog, setAssignDialog] = useState(null);
         const [selectedMdrId, setSelectedMdrId] = useState(null);
+        // Blocking duplicate-VIN dialog shown by runPublish/runAssign below.
+        const [duplicateDialog, setDuplicateDialog] = useState(null);
+        // Orders overview pagination (client change plan Phase 4): owned here
+        // so the table (Overview) and the page-size/page-number controls
+        // (OverviewFooter) — two separately rendered components — stay in
+        // sync instead of each keeping disconnected local state.
+        const [overviewPage, setOverviewPage] = useState(1);
+        const [overviewRows, setOverviewRows] = useState(50);
+        const [overviewFilteredCount, setOverviewFilteredCount] = useState(0);
 
         const clearBillingNav = () => setBillingNav(null);
         const openMasterDataRequest = (requestId) => {
@@ -396,37 +429,46 @@
         const confirmAssignDriver = (driverId, confirmationNote) => {
           if (!assignDialog?.jobId) return;
           const job = store.getJob(assignDialog.jobId);
-          const r =
-            assignDialog.mode === "reassign"
-              ? store.reassignJob(assignDialog.jobId, driverId)
-              : store.assignJob(assignDialog.jobId, driverId, {
-                  confirmationNote,
-                });
-          if (!r.ok) {
-            showToast(
-              assignDialog.mode === "reassign"
-                ? t("reassignBlocked")
-                : t("assignBlocked"),
-              assignDriverErr(r, t),
-            );
-            return;
-          }
-          const name = r.driver?.name || job?.driver || "";
           const mode = assignDialog.mode;
           const afterAssign = assignDialog.afterAssign;
-          closeAssignDialog();
-          if (mode === "reassign") {
-            showToast(
-              t("jobReassigned", { driver: name }),
-              t("assignedTour", { tour: job?.tour || "" }),
-            );
-          } else {
+          const onAssignSuccess = (r) => {
+            const name = r.driver?.name || job?.driver || "";
+            closeAssignDialog();
             showToast(
               t("assignedDriver", { driver: name }),
               t("assignedTour", { tour: job?.tour || "" }),
             );
             if (afterAssign === "back") onBack();
+          };
+          if (mode === "reassign") {
+            const r = store.reassignJob(assignDialog.jobId, driverId);
+            if (!r.ok) {
+              showToast(t("reassignBlocked"), assignDriverErr(r, t));
+              return;
+            }
+            const name = r.driver?.name || job?.driver || "";
+            closeAssignDialog();
+            showToast(
+              t("jobReassigned", { driver: name }),
+              t("assignedTour", { tour: job?.tour || "" }),
+            );
+            return;
           }
+          runAssign(
+            assignDialog.jobId,
+            driverId,
+            { confirmationNote },
+            onAssignSuccess,
+          ).then((r) => {
+            if (
+              !r.ok &&
+              r.reason !== "duplicate_vin" &&
+              r.reason !== "validation_failed" &&
+              r.reason !== "high_offer_declined"
+            ) {
+              showToast(t("assignBlocked"), assignDriverErr(r, t));
+            }
+          });
         };
         const openFinancesForJob = (jobId) => {
           if (!store.getFeatureFlag("financeModule")) {
@@ -474,10 +516,130 @@
           window.__t = setTimeout(() => setToast(null), 5000);
         };
 
+        // Renders AuthStore.validateOrderDraft() failures for the toast.
+        // Reuses describeVehicleErrors for vehicle-domain fields and adds the
+        // non-vehicle fields the authoritative order-level validator checks.
+        const describeOrderErrors = (errors, t) => {
+          const nonVehicleFields = new Set([
+            "customer",
+            "pickupAddress",
+            "deliveryAddress",
+            "pickupDate",
+            "deliveryDate",
+            "pickupWindow",
+            "deliveryWindow",
+            "driverOffer",
+          ]);
+          const nonVehicleLabels = {
+            customer: t("newOrderSecCustomer"),
+            pickupAddress: t("newOrderSecRoute"),
+            deliveryAddress: t("newOrderSecRoute"),
+            pickupDate: t("newOrderPickupDate"),
+            deliveryDate: t("newOrderDeliveryDate"),
+            pickupWindow: t("newOrderPickupSchedule"),
+            deliveryWindow: t("newOrderDeliverySchedule"),
+            driverOffer: t("newOrderDriverOfferEur"),
+          };
+          const vehicleErrors = (errors || []).filter(
+            (e) => !nonVehicleFields.has(e.field),
+          );
+          const nonVehicleParts = (errors || [])
+            .filter((e) => nonVehicleFields.has(e.field))
+            .map((e) => nonVehicleLabels[e.field] || e.field);
+          const vehicleText = describeVehicleErrors(vehicleErrors, t);
+          return [...nonVehicleParts, vehicleText].filter(Boolean).join(" · ");
+        };
+
+        // Shared publish/assign runner (Phase 1 #6, #7, #11): both entry
+        // points (the New Order form buttons AND the row/detail direct-assign
+        // path) call the same store method, so validation and the
+        // duplicate-vehicle guard can never be bypassed from either route.
+        // High-offer confirmation (Phase 2 #8): above the configured
+        // threshold, publish/assign pause for an explicit Accept/Correct
+        // choice before the store call runs. Below threshold, resolves
+        // immediately so the common path has no extra step.
+        const confirmHighOfferIfNeeded = (jobId) => {
+          const job = store.getJob(jobId);
+          const policies = store.getOperationalPolicies();
+          const offer = Number(job?.driverOffer);
+          if (
+            !job ||
+            !Number.isFinite(offer) ||
+            offer <= policies.driverOfferHighWarningEur
+          ) {
+            return Promise.resolve(true);
+          }
+          return window.requestAdminConfirm(t("driverOfferHighWarningBody"), {
+            title: t("driverOfferHighWarningTitle"),
+            confirmLabel: t("driverOfferAcceptAmount"),
+            cancelLabel: t("driverOfferCorrectEntry"),
+            destructive: false,
+          });
+        };
+
+        const runPublish = (jobId, onSuccess) => {
+          confirmHighOfferIfNeeded(jobId).then((proceed) => {
+            if (!proceed) return;
+            const r = store.publishJob(jobId);
+            if (r.ok) {
+              onSuccess?.(r);
+              return;
+            }
+            if (r.reason === "duplicate_vin") {
+              setDuplicateDialog({
+                kind: "publish",
+                jobId,
+                match: r.match,
+                onSuccess,
+              });
+              return;
+            }
+            if (r.reason === "validation_failed") {
+              showToast(
+                t("publishBlockedValidation"),
+                describeOrderErrors(r.errors, t),
+              );
+              return;
+            }
+            showToast(t("publishBlocked"), t("publishBlockedSub"));
+          });
+        };
+
+        const runAssign = (jobId, driverRef, opts, onSuccess) =>
+          confirmHighOfferIfNeeded(jobId).then((proceed) => {
+            if (!proceed) return { ok: false, reason: "high_offer_declined" };
+            const r = store.assignJob(jobId, driverRef, opts);
+            if (r.ok) {
+              onSuccess?.(r);
+              return r;
+            }
+            if (r.reason === "duplicate_vin") {
+              setDuplicateDialog({
+                kind: "assign",
+                jobId,
+                driverRef,
+                opts,
+                match: r.match,
+                onSuccess,
+              });
+              return r;
+            }
+            if (r.reason === "validation_failed") {
+              showToast(
+                t("assignBlockedValidation"),
+                describeOrderErrors(r.errors, t),
+              );
+              return r;
+            }
+            return r;
+          });
+
         const saveNewOrderDraft = () => {
           const saved = store.saveDraft(newOrderForm || {});
           if (!saved || saved.error) {
-            if (saved?.error === "within_schedule_cutoff") {
+            if (saved?.error === "empty_draft") {
+              showToast(t("emptyDraftBlocked"), "");
+            } else if (saved?.error === "within_schedule_cutoff") {
               showToast(
                 t("adminScheduleCutoffBlocked", {
                   hours: saved.minHours || 1,
@@ -585,7 +747,32 @@
           setSection("new");
         };
 
-        const cancelNewOrder = () => {
+        // Phase 1 #9: any meaningful content entered on the order form counts
+        // as "started" — an untouched form can be left without prompting.
+        const newOrderFormDirty = () => {
+          const f = newOrderForm || {};
+          return Boolean(
+            f.customer ||
+            f.customerId ||
+            f.startStreet ||
+            f.startCity ||
+            f.startPlz ||
+            f.endStreet ||
+            f.endCity ||
+            f.endPlz ||
+            f.pickupDate ||
+            f.deliveryDate ||
+            f.vehicleType ||
+            f.manufacturer ||
+            f.model ||
+            f.vin ||
+            f.plate ||
+            f.driverOffer ||
+            f.notes,
+          );
+        };
+
+        const leaveNewOrder = () => {
           if (editingJobId) {
             const j = store.getJob(editingJobId);
             setEditingJobId(null);
@@ -597,6 +784,79 @@
           }
           onBack();
         };
+
+        // Shared duplicate/delete-draft handlers for the Overview row action
+        // menu (Phase 4) — same behavior as the existing detail-view footer
+        // actions, just reachable without opening the order first.
+        const handleDuplicateJob = (j) => {
+          const r = store.duplicateJob(j.id);
+          if (!r.ok || !r.job) {
+            showToast(t("adminToastUpdateFailed"), "");
+            return;
+          }
+          openEditDraft(r.job.id);
+          showToast(
+            t("adminDuplicatedToast"),
+            t("adminDuplicatedToastSub", { tour: r.job.tour }),
+          );
+        };
+        const handleDeleteDraftJob = (j) => {
+          window
+            .requestAdminConfirm(
+              t("adminDeleteDraftConfirm", { tour: j.tour }),
+              { destructive: true },
+            )
+            .then((ok) => {
+              if (!ok) return;
+              const r = store.deleteDraftJob(j.id);
+              if (!r.ok) {
+                showToast(t("deleteDraftBlocked"), t("deleteDraftBlockedSub"));
+              } else {
+                showToast(
+                  t("draftDeletedTour", { tour: r.tour || j.tour }),
+                  t("adminDeleteDraftSub"),
+                );
+              }
+            });
+        };
+
+        const cancelNewOrder = () => {
+          if (section !== "new" || !newOrderFormDirty()) {
+            leaveNewOrder();
+            return;
+          }
+          window
+            .requestLeavePageDecision(t("leavePageMessage"), {
+              title: t("leavePageTitle"),
+              saveLabel: t("leavePageSaveDraft"),
+              discardLabel: t("leavePageDiscard"),
+              continueLabel: t("leavePageContinueEditing"),
+            })
+            .then((choice) => {
+              if (choice === "continue") return;
+              if (choice === "save") {
+                const saved = saveNewOrderDraft();
+                if (!saved) return; // validation toast already shown
+              }
+              leaveNewOrder();
+            });
+        };
+
+        // Browser close/refresh guard. Native browser prompts can't be
+        // replaced with the custom 3-option dialog (platform limitation —
+        // the browser only offers its own generic "leave site?" prompt), and
+        // this app has no history/popstate wiring for its sections, so
+        // "browser Back" has no separate signal to intercept beyond this.
+        useEffect(() => {
+          const handler = (e) => {
+            if (section === "new" && newOrderFormDirty()) {
+              e.preventDefault();
+              e.returnValue = "";
+            }
+          };
+          window.addEventListener("beforeunload", handler);
+          return () => window.removeEventListener("beforeunload", handler);
+        }, [section, newOrderForm]);
 
         // Chrome owns the single page title. Breadcrumbs only for drill-down.
         const sectionTitle = {
@@ -694,7 +954,18 @@
         // body
         let body;
         if (section === "overview") {
-          body = <Overview onOpen={onOpenJob} freshId={freshId} />;
+          body = (
+            <Overview
+              onOpen={onOpenJob}
+              freshId={freshId}
+              page={overviewPage}
+              rows={overviewRows}
+              onFilteredCountChange={setOverviewFilteredCount}
+              onEdit={openEditDraft}
+              onDuplicate={handleDuplicateJob}
+              onDeleteDraft={handleDeleteDraftJob}
+            />
+          );
         } else if (section === "detail" && activeJob) {
           // re-read from store in case status changed
           const fresh = store.getJob(activeJob.id) || activeJob;
@@ -703,14 +974,12 @@
               job={fresh}
               onBack={onBack}
               onPublish={() => {
-                const r = store.publishJob(fresh.id);
-                if (!r.ok)
-                  showToast(t("publishBlocked"), t("publishBlockedSub"));
-                else
+                runPublish(fresh.id, () =>
                   showToast(
                     t("publishedTour", { tour: fresh.tour }),
                     t("publishedPortalVisible"),
-                  );
+                  ),
+                );
               }}
               onRequestAssign={() =>
                 setAssignDialog({ jobId: fresh.id, mode: "assign" })
@@ -828,8 +1097,15 @@
           const all = store.getJobs();
           footer = (
             <OverviewFooter
-              filteredCount={all.length}
+              filteredCount={overviewFilteredCount}
               totalCount={all.length}
+              page={overviewPage}
+              rows={overviewRows}
+              onPageChange={setOverviewPage}
+              onRowsChange={(r) => {
+                setOverviewRows(r);
+                setOverviewPage(1);
+              }}
             />
           );
         } else if (section === "detail" && activeJob) {
@@ -851,14 +1127,12 @@
                 );
               }}
               onPublish={() => {
-                const r = store.publishJob(fresh.id);
-                if (!r.ok)
-                  showToast(t("publishBlocked"), t("publishBlockedDraftOnly"));
-                else
+                runPublish(fresh.id, () =>
                   showToast(
                     t("publishedTour", { tour: fresh.tour }),
                     t("driversNowSeePreview"),
-                  );
+                  ),
+                );
               }}
               onRequestAssign={() =>
                 setAssignDialog({ jobId: fresh.id, mode: "assign" })
@@ -982,17 +1256,18 @@
                 if (!newOrderValid) return;
                 const saved = saveNewOrderDraft();
                 if (!saved) return;
-                const r = store.publishJob(saved.id);
                 setFreshId(saved.id);
                 setEditingJobId(null);
-                if (!r.ok)
-                  showToast(t("couldNotPublish"), t("publishBlockedDraftOnly"));
-                else
+                runPublish(saved.id, () => {
                   showToast(
                     t("publishedTour", { tour: saved.tour }),
                     t("driversNowSeePreview"),
                   );
-                onBack();
+                  onBack();
+                });
+                // On validation/duplicate failure the draft stays saved and
+                // the admin stays on this form (no onBack()) to fix and retry
+                // — previously this always navigated back even on failure.
               }}
               onAssign={() => {
                 if (!newOrderValid) return;
@@ -1014,9 +1289,7 @@
           <div className="admin">
             <AdminNav
               section={
-                section === "detail" || section === "new"
-                  ? "overview"
-                  : section
+                section === "detail" || section === "new" ? "overview" : section
               }
               setSection={(s) => {
                 setSection(s);
@@ -1038,6 +1311,58 @@
                   job={store.getJob(assignDialog.jobId)}
                   onClose={closeAssignDialog}
                   onConfirm={confirmAssignDriver}
+                />
+              )}
+              {duplicateDialog && (
+                <DriverUI.ConfirmSheet
+                  open
+                  title={t("duplicateVinTitle")}
+                  message={t("duplicateVinBody", {
+                    tour: duplicateDialog.match.tour,
+                    status: duplicateDialog.match.status,
+                    admin: duplicateDialog.match.responsibleAdmin,
+                  })}
+                  tertiaryLabel={t("duplicateOpenExisting")}
+                  cancelLabel={t("duplicateCorrectEntry")}
+                  confirmLabel={t("duplicateContinueAnyway")}
+                  destructive
+                  onTertiary={() => {
+                    const existing = store
+                      .getJobs()
+                      .find((j) => j.tour === duplicateDialog.match.tour);
+                    setDuplicateDialog(null);
+                    if (existing) {
+                      setActiveJob(existing);
+                      setSection("detail");
+                    }
+                  }}
+                  onCancel={() => setDuplicateDialog(null)}
+                  onConfirm={() => {
+                    const d = duplicateDialog;
+                    setDuplicateDialog(null);
+                    if (d.kind === "publish") {
+                      const r = store.publishJob(d.jobId, {
+                        confirmedDuplicate: true,
+                      });
+                      if (r.ok) d.onSuccess?.(r);
+                      else if (r.reason === "validation_failed")
+                        showToast(
+                          t("publishBlockedValidation"),
+                          describeOrderErrors(r.errors, t),
+                        );
+                    } else {
+                      const r = store.assignJob(d.jobId, d.driverRef, {
+                        ...d.opts,
+                        confirmedDuplicate: true,
+                      });
+                      if (r.ok) d.onSuccess?.(r);
+                      else if (r.reason === "validation_failed")
+                        showToast(
+                          t("assignBlockedValidation"),
+                          describeOrderErrors(r.errors, t),
+                        );
+                    }
+                  }}
                 />
               )}
               {toast && (
@@ -1065,7 +1390,10 @@
                   )}
                   <button
                     className="btn icon sm"
-                    style={{ borderColor: "transparent", color: "var(--on-accent)" }}
+                    style={{
+                      borderColor: "transparent",
+                      color: "var(--on-accent)",
+                    }}
                     onClick={() => setToast(null)}
                   >
                     <Ic.X />
@@ -1130,10 +1458,7 @@
             }
           };
           sync();
-          document.addEventListener(
-            "autheon-theme-editor:visibility",
-            onVis,
-          );
+          document.addEventListener("autheon-theme-editor:visibility", onVis);
           return () =>
             document.removeEventListener(
               "autheon-theme-editor:visibility",
