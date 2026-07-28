@@ -27,6 +27,11 @@ export async function gotoPrototype(page: Page, path = '/'): Promise<void> {
 
 export async function waitForPrototypeShell(page: Page): Promise<void> {
   await expect(page.locator(PROTOTYPE_FRAME_SELECTOR)).toBeVisible();
+  const frame = await getPrototypeFrame(page);
+  await frame.waitForFunction(() => {
+    const root = document.querySelector('#root .app');
+    return !!root && !!document.querySelector('main');
+  });
   await expect(prototypeApp(page)).toBeVisible();
   await expect(prototypeHeader(page)).toBeVisible();
   await expect(prototypeMain(page)).toBeVisible();

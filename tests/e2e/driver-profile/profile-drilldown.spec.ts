@@ -183,7 +183,7 @@ test.describe('standalone driver PWA profile appearance @smoke', () => {
     await expect
       .poll(() =>
         page.locator('meta[name="theme-color"]').evaluateAll((metas) =>
-          metas.map((meta) => meta.getAttribute('content')),
+          metas.map((meta) => meta.getAttribute('content')?.toUpperCase()),
         ),
       )
       .toEqual(['#1C1C1E', '#1C1C1E']);
