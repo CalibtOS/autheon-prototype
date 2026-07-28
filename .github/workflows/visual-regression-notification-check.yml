@@ -39,13 +39,13 @@ jobs:
     timeout-minutes: 10
 
     env:
-      SMTP_HOST: ${{ secrets.SMTP_HOST }}
-      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_HOST: smtppro.zoho.eu
+      SMTP_USER: youssef.elkondakly@calibtos.com
       SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-      SMTP_FROM: ${{ secrets.SMTP_FROM }}
-      REGRESSION_NOTIFICATION_EMAIL: ${{ secrets.REGRESSION_NOTIFICATION_EMAIL }}
-      SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
-      SMTP_SECURE: ${{ vars.SMTP_SECURE || 'false' }}
+      SMTP_FROM: youssef.elkondakly@calibtos.com
+      REGRESSION_NOTIFICATION_EMAIL: calibtos.services@gmail.com
+      SMTP_PORT: 465
+      SMTP_SECURE: true
       REGRESSION_ARTIFACT_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
     steps:
