@@ -85,6 +85,24 @@ test.describe('driver profile drill-down @smoke', () => {
     await expect(frame.getByRole('checkbox').first()).toBeChecked();
   });
 
+  test('Notification subpage writes canonical vehicle and transport preference keys', async ({
+    page,
+  }) => {
+    const frame = prototypeFrame(page);
+    await frame.getByRole('button', { name: /^Notification settings$/ }).click();
+
+    await frame.locator('select.input').selectOption('SUV');
+    await frame.getByRole('button', { name: /^Third-party axle$/ }).click();
+
+    const prefs = await page
+      .locator('iframe[title="AUTHEON Prototype"]')
+      .evaluate((el: HTMLIFrameElement) => el.contentWindow!.AuthStore.getCurrentDriver().prefs);
+    expect(prefs.vehicleType).toBe('SUV');
+    expect(prefs.transportType).toBe('third_party_axle');
+    expect('vehicle' in prefs).toBe(false);
+    expect('axle' in prefs).toBe(false);
+  });
+
   test('Appearance subpage language dropdown switches to German', async ({ page }) => {
     const frame = prototypeFrame(page);
     await frame.getByRole('button', { name: /^Appearance and language$/ }).click();

@@ -5576,8 +5576,8 @@ const ProfilePaneFull = () => {
         <div className="stack-4">
           <select
             className="input"
-            value={prefs.vehicle || "All"}
-            onChange={(e) => setPref({ vehicle: e.target.value })}
+            value={prefs.vehicleType || "All"}
+            onChange={(e) => setPref({ vehicleType: e.target.value })}
           >
             {["All", "PKW", "SUV", "Van", "Light truck <3.5t"].map((x) => (
               <option key={x} value={x}>
