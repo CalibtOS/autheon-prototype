@@ -24,6 +24,7 @@ import {
   notificationSetting,
   setInEnvironment,
   smtpPreflight,
+  smtpTransportOptions,
 } from './lib/smtp-preflight.mjs';
 import { APPROVED_PLATFORM, playwrightVersion, verifyBaselines } from './lib/visual-baseline.mjs';
 
@@ -114,15 +115,17 @@ if (!preflight.ok) {
   process.exit(1);
 }
 
-const transporter = nodemailer.createTransport({
-  host: preflight.config.host,
-  port: preflight.config.port,
-  secure: preflight.config.secure,
-  auth: { user: preflight.config.user, pass: process.env.SMTP_PASSWORD },
-  connectionTimeout: 20_000,
-  greetingTimeout: 20_000,
-  socketTimeout: 30_000,
-});
+let transporter;
+try {
+  transporter = nodemailer.createTransport(smtpTransportOptions(preflight));
+} catch (error) {
+  report.status = 'failed';
+  report.failureKind = 'transport-wiring';
+  report.message = error.message;
+  await writeReport(report);
+  console.error(`[notify-check] FAILED (transport-wiring): ${error.message}`);
+  process.exit(1);
+}
 
 try {
   await transporter.verify();

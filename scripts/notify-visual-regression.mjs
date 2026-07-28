@@ -12,6 +12,7 @@ import {
   classifySmtpError,
   notificationSetting,
   smtpPreflight,
+  smtpTransportOptions,
 } from './lib/smtp-preflight.mjs';
 
 const repoRoot = process.cwd();
@@ -508,19 +509,22 @@ async function notify({ classification, email, reportArtifacts }) {
     console.warn(`[visual-regression-notify] SMTP config warning: ${problem}`);
   }
 
-  const transporter = nodemailer.createTransport({
-    host: preflight.config.host,
-    port: preflight.config.port,
-    secure: preflight.config.secure,
-    auth: {
-      user: preflight.config.user,
-      // The only value never defaulted and never logged.
-      pass: process.env.SMTP_PASSWORD,
-    },
-    connectionTimeout: 20_000,
-    greetingTimeout: 20_000,
-    socketTimeout: 30_000,
-  });
+  let transporter;
+  try {
+    transporter = nodemailer.createTransport(smtpTransportOptions(preflight));
+  } catch (error) {
+    console.warn(`[visual-regression-notify] ${error.message}`);
+    await recordNotificationStatus({
+      status: 'failed',
+      attempted: false,
+      delivered: false,
+      failureKind: 'transport-wiring',
+      missingVariables: [],
+      message: error.message,
+      config: preflight.config,
+    });
+    return { ok: false };
+  }
 
   // Verify connection + credentials separately from sending, so a transport
   // problem is never reported as a message-construction problem.

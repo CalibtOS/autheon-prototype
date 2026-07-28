@@ -227,8 +227,46 @@ export function smtpPreflight({ dryRun = false } = {}) {
     missingVariables: [],
     problems: [],
     availability,
-    config: { port, secure, senderConfigured: Boolean(sender), recipientCount: recipients.length },
+    config: { host, user, sender, port, secure, recipients, recipientCount: recipients.length },
     message: `SMTP configuration is complete: ${user} via ${host}:${port} (secure ${secure}) -> ${recipients.join(', ')}.`,
+  };
+}
+
+/**
+ * Build nodemailer transport options from a preflight result.
+ *
+ * Both the notifier and the smoke check used to assemble this object themselves,
+ * and when the preflight's `config` shape changed, one of them silently started
+ * passing `host: undefined` — nodemailer then fell back to localhost and the
+ * failure surfaced as a misleading TLS error. One builder, with an assertion, so
+ * that cannot happen again.
+ */
+export function smtpTransportOptions(preflight) {
+  const { host, user, port, secure } = preflight?.config || {};
+  const pass = process.env.SMTP_PASSWORD;
+
+  const missing = [];
+  if (!host) missing.push('host');
+  if (!user) missing.push('user');
+  if (!Number.isInteger(port)) missing.push('port');
+  if (typeof secure !== 'boolean') missing.push('secure');
+  if (!pass) missing.push('password');
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Refusing to build an SMTP transport with missing ${missing.join(', ')}. ` +
+        'This is a wiring bug in the preflight result, not a configuration problem.',
+    );
+  }
+
+  return {
+    host,
+    port,
+    secure,
+    auth: { user, pass },
+    connectionTimeout: 20_000,
+    greetingTimeout: 20_000,
+    socketTimeout: 30_000,
   };
 }
 
@@ -263,16 +301,30 @@ export function classifySmtpError(error) {
     };
   }
 
+  // Only claim TLS when there is actual TLS evidence in the error. `ESOCKET` is
+  // nodemailer's catch-all for socket problems and fires for a bad host, a
+  // refused connection, and a genuine handshake failure alike — reporting all of
+  // them as "TLS negotiation failed" sends people to tweak SMTP_SECURE when the
+  // real problem is elsewhere.
   if (
-    code === 'ESOCKET' ||
     code === 'EPROTO' ||
-    /wrong version number|SSL routines|self.signed|certificate|TLS/i.test(text)
+    /wrong version number|SSL routines|self.signed|certificate|TLS|SSL/i.test(text)
   ) {
     return {
       failureKind: 'tls-failure',
       message:
         'TLS negotiation with the SMTP server failed. This is nearly always a SMTP_SECURE/SMTP_PORT mismatch: ' +
         'use SMTP_SECURE=false with port 587 (STARTTLS) or SMTP_SECURE=true with port 465 (implicit TLS).',
+    };
+  }
+
+  if (code === 'ESOCKET') {
+    return {
+      failureKind: 'socket-failure',
+      message:
+        `The SMTP socket failed (${code}) without TLS-specific detail. Check that SMTP_HOST resolved to a real ` +
+        'hostname and that SMTP_PORT is reachable. A host that resolved to an empty value makes nodemailer ' +
+        'fall back to localhost, which fails here.',
     };
   }
 
