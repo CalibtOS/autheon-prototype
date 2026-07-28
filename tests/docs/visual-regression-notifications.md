@@ -198,7 +198,9 @@ rather than guessing, because the fixes are different:
 | `secrets-unavailable-by-design` / `dependabot` | A Dependabot run. Those receive Dependabot secrets, not Actions secrets | Add the values under **Dependabot secrets** only if Dependabot runs need email. |
 | `auth-rejected` | The server refused the credentials | Rotate `SMTP_USER` / `SMTP_PASSWORD`. Providers enforcing 2FA usually require an app-specific password. |
 | `network-failure` | The server was unreachable | Check `SMTP_HOST` / `SMTP_PORT` and whether the runner's egress permits that port. |
-| `tls-failure` | TLS negotiation failed | Almost always a `SMTP_SECURE` / `SMTP_PORT` mismatch. See section 2. |
+| `tls-failure` | TLS negotiation failed, with TLS-specific detail in the error | Almost always a `SMTP_SECURE` / `SMTP_PORT` mismatch. See section 2. |
+| `socket-failure` | The socket failed with no TLS-specific detail | Check `SMTP_HOST` resolved to a real hostname and `SMTP_PORT` is reachable. An empty host makes nodemailer fall back to localhost. |
+| `transport-wiring` | The transport could not be built at all | A code bug, not configuration: the preflight result was missing a field. The message names which. |
 | `attachment-too-large` | The message was rejected, most likely for size | Unset `REGRESSION_ATTACH_ARCHIVE`. Large evidence is linked, not attached. |
 | `recipient-rejected` | A sender or recipient address was refused | Check `REGRESSION_NOTIFICATION_EMAIL` and `SMTP_FROM`, and whether the relay allows that envelope sender. |
 
