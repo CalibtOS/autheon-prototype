@@ -59,23 +59,28 @@ jobs:
       # ---------------------------------------------------------------------
       # Notification / SMTP configuration.
       #
-      # These are REPOSITORY SECRETS (Settings -> Secrets and variables ->
-      # Actions). See tests/docs/visual-regression-notifications.md for the
-      # exact names and how to set them.
+      # SMTP_PASSWORD is the ONLY value in GitHub Secrets. Everything else is
+      # routing configuration for a dedicated CI mailbox and is committed here as
+      # a real value.
       #
-      # On a pull request from a FORK, GitHub withholds secrets by design, so
-      # these resolve to empty. That is not a misconfiguration: the notification
-      # preflight detects the fork context and reports it as such instead of
-      # claiming the secrets are missing. See the "Fork and untrusted PRs"
-      # section of the notification doc.
+      # These duplicate the committed defaults in scripts/lib/smtp-preflight.mjs
+      # (NOTIFICATION_DEFAULTS). The environment wins, so THIS block is what CI
+      # actually uses — but change both together, or a local run and a CI run will
+      # mail different places. The pipeline logs the resolved transport on every
+      # run, so a mismatch is visible in the log.
+      #
+      # On a pull request from a FORK, GitHub withholds SMTP_PASSWORD by design.
+      # The notification preflight detects the fork context and reports it as
+      # such instead of claiming the secret is missing. See the "Fork and
+      # untrusted PRs" section of the notification doc.
       # ---------------------------------------------------------------------
       SMTP_HOST: smtppro.zoho.eu
       SMTP_USER: youssef.elkondakly@calibtos.com
       SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
       SMTP_FROM: youssef.elkondakly@calibtos.com
       REGRESSION_NOTIFICATION_EMAIL: calibtos.services@gmail.com
-      # Non-sensitive transport configuration lives in repository VARIABLES with
-      # a safe default, so a missing variable cannot silently disable TLS.
+      # 465 + implicit TLS. Do not set 465 with SMTP_SECURE=false, or 587 with
+      # SMTP_SECURE=true — the preflight rejects both combinations.
       SMTP_PORT: 465
       SMTP_SECURE: true
 
@@ -134,7 +139,11 @@ jobs:
           fi
 
           # Commit that last changed the approved baselines, for provenance.
+          # .git is excluded from the Docker build context, so this has to be
+          # resolved here and handed to the container, or the pipeline reports
+          # "Baseline revision: unknown".
           BASELINE_SHA="$(git log -1 --format=%H -- tests/regression/snapshots || true)"
+          echo "VISUAL_BASELINE_REVISION=${BASELINE_SHA:-${HEAD_SHA}}" >> "$GITHUB_ENV"
           echo "Baseline directory last changed in: ${BASELINE_SHA:-unknown}"
 
       - name: Set up Node.js

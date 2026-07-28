@@ -220,12 +220,14 @@ macOS it writes Darwin PNGs that CI will never use.
 ## Current state
 
 - **44** approved Linux baselines, all checksum-verified against the manifest.
-- **3** active registered scenarios have no approved baseline yet:
-  `admin-infopoint-edit-doc-modal.png`,
-  `admin-infopoint-delete-doc-modal.png`,
-  `driver-myjobs-special.png`.
-  Their specs exist and are not skipped; they were added without baselines. This
-  is correctly reported as blocking. Render them with the baseline workflow.
+- **9** active registered scenarios have no approved Linux baseline. Their specs
+  exist and run, so this is correctly reported as blocking. Seven of the nine have
+  a macOS baseline, which **cannot** be promoted — see the table in
+  [`visual-regression-coverage.md`](./visual-regression-coverage.md). Render them
+  with the **Visual Regression Baseline** workflow.
+- `driver-myjobs-special.png` is registered `deprecated`: the My jobs "Special
+  cases" tab became "Empty run" and the spec no longer declares it. It has no
+  baseline on any platform, so there is nothing to remove.
 - **1** orphan baseline: `admin-infopoint-rename-modal.png` (see above).
 - **1** excluded scenario: `driver-daily-limit-sheet.png`, whose UI was replaced
   by the probation progress card. Its spec is `test.skip` and its absence is

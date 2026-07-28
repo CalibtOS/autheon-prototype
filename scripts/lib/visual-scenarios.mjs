@@ -73,6 +73,15 @@ export async function discoverSpecSnapshots({ grep = '@visual-regression' } = {}
 
       // Options can span a few lines after the call; read a small window.
       const optionsWindow = lines.slice(index, index + 8).join('\n');
+      const fullPage = /fullPage:\s*true/.test(optionsWindow);
+
+      // `expect(page).toHaveScreenshot()` is a page capture;
+      // `expect(someLocator).toHaveScreenshot()` is a component capture. The
+      // subject can be a few lines above the call when the expect is wrapped,
+      // so look back as well as at the current line.
+      const subjectWindow = lines.slice(Math.max(0, index - 4), index + 1).join('\n');
+      const pageSubject = /expect\(\s*page\s*\)/.test(subjectWindow);
+      const mode = pageSubject ? (fullPage ? 'fullPage' : 'viewport') : 'locator';
 
       snapshots.push({
         snapshotId: callMatch[2],
@@ -82,7 +91,8 @@ export async function discoverSpecSnapshots({ grep = '@visual-regression' } = {}
         testTitle,
         skipped: testSkipped,
         tagged: describeTagged || testTagged,
-        fullPage: /fullPage:\s*true/.test(optionsWindow),
+        mode,
+        fullPage,
         masked: /\bmask:/.test(optionsWindow),
         clipped: /\bclip:/.test(optionsWindow),
       });

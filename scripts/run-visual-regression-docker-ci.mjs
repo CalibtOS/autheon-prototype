@@ -139,6 +139,7 @@ function dockerEnvironment(extra) {
     'REGRESSION_SUMMARY_ATTACHMENT_MAX_KB',
     'REGRESSION_ENVIRONMENT',
     'BASELINE_REASON',
+    'VISUAL_BASELINE_REVISION',
     'IS_FORK_PR',
     // GitHub provenance: the container has no .git (excluded from the build
     // context), so run identity has to be handed in explicitly.
@@ -172,20 +173,32 @@ function dockerEnvironment(extra) {
 
 function gitEnvironment() {
   const env = {};
-  try {
-    env.GIT_BRANCH = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-    env.GIT_COMMIT = execFileSync('git', ['rev-parse', 'HEAD'], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-  } catch {
-    // Not a git checkout — the report simply omits branch/commit.
-  }
+
+  // .git is excluded from the Docker build context, so every piece of git
+  // provenance has to be resolved on the host and handed in. Without the
+  // baseline revision the container reports "Baseline revision: unknown", which
+  // defeats the point of recording which baseline version a run compared against.
+  const resolve = (args) => {
+    try {
+      return execFileSync('git', args, {
+        cwd: repoRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim() || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const branch = resolve(['rev-parse', '--abbrev-ref', 'HEAD']);
+  const commit = resolve(['rev-parse', 'HEAD']);
+  const baselineSha =
+    resolve(['log', '-1', '--format=%H', '--', 'tests/regression/snapshots']) || commit;
+
+  if (branch) env.GIT_BRANCH = branch;
+  if (commit) env.GIT_COMMIT = commit;
+  if (baselineSha) env.VISUAL_BASELINE_REVISION = baselineSha;
+
   return env;
 }
 

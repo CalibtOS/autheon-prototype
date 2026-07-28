@@ -387,8 +387,16 @@ export function playwrightVersion() {
   }
 }
 
-/** Last commit that touched the approved baseline directory (best effort). */
+/**
+ * Last commit that touched the approved baseline directory.
+ *
+ * Inside the Docker container there is no .git (it is excluded from the build
+ * context), so the host launcher injects VISUAL_BASELINE_REVISION. That takes
+ * precedence; the git calls are the local-run fallback.
+ */
 export function gitBaselineRevision() {
+  if (process.env.VISUAL_BASELINE_REVISION) return process.env.VISUAL_BASELINE_REVISION;
+
   const relative = toWorkspacePath(baselineDir());
 
   const sha = git(['log', '-1', '--format=%H', '--', relative]);

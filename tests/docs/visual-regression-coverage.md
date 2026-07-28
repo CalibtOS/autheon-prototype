@@ -179,18 +179,54 @@ same model, so the standalone audit and the pipeline can never disagree.
 
 | | |
 | --- | --- |
-| Registered scenarios | 48 |
-| — active | 46 |
+| Registered scenarios | 55 |
+| — active | 52 |
 | — excluded | 1 |
-| — deprecated | 1 |
-| Application surfaces | 3 (shell, admin, driver) |
-| Distinct screens | 20 |
+| — deprecated | 2 |
+| Application surfaces | 4 (shell, admin, driver, component-gallery) |
+| Distinct screens | 22 |
 | Viewports catalogued | 6 (1 with baselines) |
 | Locales catalogued | 2 (1 with baselines) |
 | Themes catalogued | 2 (1 with baselines) |
-| Expected snapshots (`full`) | 46 |
+| Expected snapshots (`full`) | 52 |
 | Approved baselines | 44 |
+| Missing Linux baselines | **9** — see below |
 | Declared gap groups | 8 |
+| Capture modes in use | 51 `fullPage`, 2 `locator`, 0 `viewport` |
+
+### The 9 missing Linux baselines
+
+These have specs that run, so they are `active` and therefore **blocking**:
+
+| Snapshot | Spec | macOS baseline exists? |
+| --- | --- | --- |
+| `admin-infopoint-edit-doc-modal.png` | `admin.visual.spec.ts:271` | no |
+| `admin-infopoint-delete-doc-modal.png` | `admin.visual.spec.ts:282` | no |
+| `driver-marketplace-filter-1.png` | `driver.visual.spec.ts:91` | yes |
+| `driver-marketplace-filter-3.png` | `driver.visual.spec.ts:107` | yes |
+| `driver-myjobs-empty-run.png` | `driver.visual.spec.ts:157` | yes |
+| `driver-header-states.png` | `driver-header-states.visual.spec.ts:44` | yes |
+| `driver-header-focus-visible.png` | `driver-header-states.visual.spec.ts:65` | yes |
+| `marketplace-filter-states.png` | `marketplace-filter-states.visual.spec.ts:41` | yes |
+| `marketplace-filter-focus-visible.png` | `marketplace-filter-states.visual.spec.ts:61` | yes |
+
+A macOS baseline cannot be promoted — different font rasterization means a Darwin
+PNG compared against a Linux screenshot reports a false 1–3% diff on every
+text-bearing screen. Run the **Visual Regression Baseline** workflow.
+
+Marking these `planned` would not make CI green. Playwright fails a missing
+snapshot on its own ("writing actual"), so the run would report them as
+missing-baseline failures even if the preflight let it start. The gap has to be
+closed by rendering, not by relabelling.
+
+### Component-gallery surface
+
+`prototype/project/driver-header-states.html` and
+`prototype/project/driver-marketplace-filter-states.html` are gallery pages that
+mount a real shared component in every state. With no Storybook and no bundler in
+this repository, they *are* the story catalogue, and they are the only place
+component states are captured in isolation from page-level noise. They are also
+the cheapest way to extend interaction-state coverage.
 
 ---
 
@@ -201,14 +237,14 @@ They are the honest statement of what this framework does **not** yet prove.
 
 | Gap | Why it matters |
 | --- | --- |
-| `viewport-mode-sticky-chrome` | All 47 existing snapshots use `fullPage: true`. A full-page render stitches the document at full height, so it cannot prove the driver's fixed bottom tabbar, the admin's sticky job sidebars, or a sticky table header sit correctly at real viewport height. |
+| `viewport-mode-sticky-chrome` | 51 of 53 captures are page-level `fullPage`; the other 2 are locator captures. **Nothing** uses viewport mode. A full-page render stitches the document at full height, so it cannot prove the driver's fixed bottom tabbar, the admin's sticky job sidebars, or a sticky table header sit correctly at real viewport height. |
 | `segmented-scroll-sticky` | Sticky elements change appearance *while* scrolling. A single capture at scroll offset 0 cannot detect one that detaches mid-scroll. |
 | `locale-de-matrix` | German is the longest-translation locale and the wrapping risk case. No snapshot is captured in DE. |
 | `theme-dark-matrix` | Dark is a production theme with its own tabbar treatment. Every baseline is light-only. |
 | `pwa-standalone-route` | `/pwa/` is a second real surface (real-viewport driver PWA, deep-linkable via `?tab=portal\|mine\|info\|profile`) with zero visual coverage, plus an install mode bar and iOS install sheet the iframe shell never renders. |
 | `admin-large-desktop` | Admin is captured only at 1440px. A large-desktop width changes table column visibility and sidebar proportions. |
-| `interaction-states` | Focus-visible, hover, expanded selects and open autocompletes are unregistered. Two specs that once covered focus states were deleted, leaving orphan Darwin baselines behind. |
-| `empty-error-loading-states` | Only populated states exist. **Blocked**: the prototype seeds a fixed in-memory store on every load with no fixture override hook. Capturing empty/loading/error/offline states needs a test-only seeding hook first — a prototype change, out of scope for CI work. |
+| `interaction-states` | Focus-visible **is** covered, but only for two components via the gallery pages. Hover, expanded selects, open autocompletes, disabled controls, and focus states on in-app screens are unregistered. |
+| `empty-error-loading-states` | One empty state is covered (`driver-myjobs-empty-run`, a genuinely seeded empty tab). Loading, skeleton, error, permission-denied, offline, no-result-search, and admin empty lists are not. **Blocked**: the prototype seeds a fixed in-memory store with no fixture override hook, so the rest needs a test-only seeding hook first — a prototype change, out of scope for CI work. |
 
 ### Closing a gap
 
