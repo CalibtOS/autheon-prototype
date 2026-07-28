@@ -5588,16 +5588,16 @@ const ProfilePaneFull = () => {
         </div>
       </div>
       <div className="stack-16">
-        <label className="field-label">{t("axle")}</label>
+        <label className="field-label">{t("transportType")}</label>
         <div className="seg full">
-          {["All", "Own axle", "Third-party axle"].map((x) => (
+          {["All", ...AuthStore.TRANSPORT_TYPES].map((x) => (
             <button
               key={x}
               type="button"
-              className={(prefs.axle || "All") === x ? "on" : ""}
-              onClick={() => setPref({ axle: x })}
+              className={(prefs.transportType || "All") === x ? "on" : ""}
+              onClick={() => setPref({ transportType: x })}
             >
-              {displayAxle(x, t)}
+              {displayTransportType(x, t)}
             </button>
           ))}
         </div>
