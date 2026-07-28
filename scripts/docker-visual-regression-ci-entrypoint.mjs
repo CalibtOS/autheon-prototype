@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
@@ -36,10 +36,11 @@ if (mode === 'baseline') {
 // never created or modified here; a missing platform baseline is a blocking
 // failure reported by the visual CI wrapper.
 async function runVisualComparison() {
-  const visualExitCode = await run('npm', [
-    'run',
-    'test:regression:visual:ci',
-    '--',
+  // Call the wrapper directly rather than through an npm script, so the
+  // container flow does not depend on a public package.json entry point staying
+  // named the way it is today.
+  const visualExitCode = await run('node', [
+    'scripts/visual-regression-ci.mjs',
     ...splitArgs(process.env.VISUAL_REGRESSION_CI_ARGS),
   ]);
 
@@ -102,6 +103,15 @@ async function generateBaselineCandidates() {
         platform: process.platform,
         project: settings.project,
         grep: settings.grep,
+        profile: process.env.VISUAL_REGRESSION_PROFILE || 'full',
+        environment: {
+          node: process.version,
+          playwrightVersion: playwrightVersion(),
+          chromiumVersion: chromiumVersion(),
+          dockerBaseImage: process.env.VISUAL_REGRESSION_DOCKER_BASE_IMAGE || 'node:24-bookworm-slim',
+          timezone: process.env.TZ || null,
+        },
+        reason: process.env.BASELINE_REASON || null,
         playwrightExitCode,
         approved: false,
         candidateCount: candidates.length,
@@ -117,7 +127,7 @@ async function generateBaselineCandidates() {
     `[docker-visual-ci] Exported ${candidates.length} ${process.platform} baseline candidate(s) to the artifact directory under baseline-candidates/.`,
   );
   console.log(
-    '[docker-visual-ci] Candidates are NOT approved. Review them, then run "npm run test:regression:visual:baseline:approve" on the host and commit the changes.',
+    '[docker-visual-ci] Candidates are NOT approved. Review them, then run "npm run test:regression:baseline:approve" on the host and commit the changes.',
   );
 
   if (playwrightExitCode !== 0) {
@@ -127,6 +137,31 @@ async function generateBaselineCandidates() {
   }
 
   return playwrightExitCode;
+}
+
+/** Browser build the candidates were rendered with, for the manifest. */
+function chromiumVersion() {
+  try {
+    return execFileSync(path.join('node_modules', '.bin', 'playwright'), ['--version'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return null;
+  }
+}
+
+function playwrightVersion() {
+  try {
+    return JSON.parse(
+      fsSync.readFileSync(
+        path.join(repoRoot, 'node_modules', '@playwright', 'test', 'package.json'),
+        'utf8',
+      ),
+    ).version;
+  } catch {
+    return null;
+  }
 }
 
 async function* walk(root) {

@@ -16,10 +16,10 @@ const options = {
 };
 
 if (options.help) {
-  console.log(`Usage: npm run test:regression:visual:baseline:approve -- [--dry-run] [--from <candidate-dir>]
+  console.log(`Usage: npm run test:regression:baseline:approve -- [--dry-run] [--from <candidate-dir>]
 
 Promotes reviewed baseline CANDIDATES (produced by
-"npm run test:regression:visual:baseline:docker") into the approved baseline
+"npm run test:regression:baseline") into the approved baseline
 directory tests/regression/snapshots.
 
 This command is the explicit approval step. It never runs automatically, and
@@ -49,7 +49,7 @@ if (!fsSync.existsSync(candidateSnapshots)) {
     `[baseline-approve] No baseline candidates found at ${toWorkspacePath(candidateSnapshots)}.`,
   );
   console.error(
-    '[baseline-approve] Generate candidates first: npm run test:regression:visual:baseline:docker',
+    '[baseline-approve] Generate candidates first: npm run test:regression:baseline',
   );
   process.exit(1);
 }
@@ -114,10 +114,33 @@ for (const candidatePath of candidates.sort()) {
 console.log(
   `[baseline-approve] ${options.dryRun ? 'Dry run — ' : ''}${added} added, ${updated} updated, ${unchanged} unchanged of ${candidates.length} candidate(s).`,
 );
+
+// Regenerate the provenance record in the same command that moves the images.
+// If this were a separate manual step, the manifest and the baselines would
+// drift apart and the CI preflight would report checksum mismatches on a
+// perfectly legitimate approval.
 if (!options.dryRun && (added > 0 || updated > 0)) {
-  console.log(
-    '[baseline-approve] Review the git diff under tests/regression/snapshots and commit it to finalize the approval.',
+  const { buildManifest, writeManifest, toWorkspacePath } = await import(
+    './lib/visual-baseline.mjs'
   );
+
+  const environment = {
+    generatedOnPlatform: process.platform,
+    node: process.version,
+    ...(manifest?.environment || {}),
+    approvedFromCandidateSet: manifest?.createdAt || null,
+    approvalReason: manifest?.reason || process.env.BASELINE_REASON || null,
+  };
+
+  const written = await writeManifest(await buildManifest({ environment }));
+  console.log(
+    `[baseline-approve] Regenerated provenance record: ${toWorkspacePath(written)}`,
+  );
+  console.log(
+    '[baseline-approve] Review the git diff under tests/regression/snapshots and commit the images TOGETHER WITH the manifest to finalize the approval.',
+  );
+} else if (!options.dryRun) {
+  console.log('[baseline-approve] Nothing changed; the manifest is already current.');
 }
 
 function* walkSync(root) {

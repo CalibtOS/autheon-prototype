@@ -1,7 +1,14 @@
 .cursor
 .claude
 .playwright-cli
-.github
+# Local .github tooling stays untracked, but CI workflow definitions MUST be
+# committed — a blanket `.github` ignore is why visual-regression.yml never
+# reached this branch.
+.github/*
+!.github/workflows/
+.github/workflows/*
+!.github/workflows/*.yml
+!.github/workflows/*.yaml
 .env
 .env.*
 !.env.example
@@ -28,7 +35,23 @@ test-results/
 playwright-report/
 visual-regression-artifacts/
 npm-debug.log*
-snapshots/
+
+# =============================================================================
+# Approved visual baselines — MUST be committed
+# =============================================================================
+# A bare `snapshots/` rule used to ignore tests/regression/snapshots entirely.
+# That made the approved baselines invisible to git, so CI checked out zero
+# baselines and every run failed the missing-baseline preflight.
+#
+# Docker/Linux is the canonical rendering environment (see
+# tests/docs/visual-regression-baselines.md), so the approved set is the
+# *-chromium-linux.png files plus baseline-manifest.json. Locally rendered
+# darwin/win32 PNGs are scratch output and stay untracked.
+tests/regression/snapshots/**/*-darwin.png
+tests/regression/snapshots/**/*-win32.png
+# Only the canonical baseline-manifest.json is committed. Per-platform local
+# manifests are scratch provenance for framework validation.
+tests/regression/snapshots/baseline-manifest.*.json
 
 # Local portrait-lock QA runner + screenshots (ad-hoc; do not commit)
 portrait-qa-artifacts/

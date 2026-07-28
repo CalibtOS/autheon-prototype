@@ -1,0 +1,456 @@
+{
+  "manifestVersion": 1,
+  "platform": "linux",
+  "generatedAt": "2026-07-28T09:48:33.994Z",
+  "generator": "scripts/visual-baseline-manifest.mjs",
+  "approvalNote": "Approved baselines are rendered inside docker/visual-regression-ci.Dockerfile and promoted only by scripts/approve-visual-baselines.mjs after human review.",
+  "environment": {
+    "playwrightVersion": "1.55.1",
+    "dockerBaseImage": "node:24-bookworm-slim",
+    "generatedOnPlatform": "darwin",
+    "node": "v24.2.0"
+  },
+  "baselineCount": 44,
+  "baselines": [
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-account-access-dialog-chromium-linux.png",
+      "snapshotId": "admin-account-access-dialog.png",
+      "project": "chromium",
+      "sha256": "27606a13bb6d19b2a9a8f011efe2e9af9699b9d89cd51d3ee5a8c473e5b4bd9b",
+      "bytes": 121914,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-address-modal-chromium-linux.png",
+      "snapshotId": "admin-address-modal.png",
+      "project": "chromium",
+      "sha256": "81775d5d239a5b71b070708c04515dbd34b3d9ec05d50b63c3a84af79ccd43a3",
+      "bytes": 142528,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-addresses-chromium-linux.png",
+      "snapshotId": "admin-addresses.png",
+      "project": "chromium",
+      "sha256": "e852d71793b1e19366fdc87aff325e3b293822fc706208319090ccddba244d0b",
+      "bytes": 176560,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-assign-driver-dialog-chromium-linux.png",
+      "snapshotId": "admin-assign-driver-dialog.png",
+      "project": "chromium",
+      "sha256": "a77595eeb66462d78e17a922879d45c2aaf93e4d0f0c6d3804cc8653dc9c1206",
+      "bytes": 158809,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-audit-chromium-linux.png",
+      "snapshotId": "admin-audit.png",
+      "project": "chromium",
+      "sha256": "c0c2b94e1d7b7a0a59d389ccb9d12496b7cbc78bdce497b36058a44f90542ce5",
+      "bytes": 81417,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-customer-modal-chromium-linux.png",
+      "snapshotId": "admin-customer-modal.png",
+      "project": "chromium",
+      "sha256": "3bc51ed7081b861ade64234c3ed8a1c399b78f98306f8268a01d2bc379760a18",
+      "bytes": 96056,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-customers-chromium-linux.png",
+      "snapshotId": "admin-customers.png",
+      "project": "chromium",
+      "sha256": "5c682fb1366f4f297d75136c05fbbcb9313f7bd216987745c09888fdf79acb5f",
+      "bytes": 93131,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-drivers-chromium-linux.png",
+      "snapshotId": "admin-drivers.png",
+      "project": "chromium",
+      "sha256": "0cd36cf21578babee7bfb1fb3245f2cd9f465283e08f857963f9dab4c6de25e3",
+      "bytes": 89435,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-edit-order-chromium-linux.png",
+      "snapshotId": "admin-edit-order.png",
+      "project": "chromium",
+      "sha256": "d88e289368d2418eaf39f20bb92abdb24f4efac37fd5293fcda60ff9c0ea7192",
+      "bytes": 101521,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-features-chromium-linux.png",
+      "snapshotId": "admin-features.png",
+      "project": "chromium",
+      "sha256": "fe2cbb24a8f435545f365427c15cac915d59ad6c0e6af8b9a3839bd6ef587933",
+      "bytes": 92711,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-infopoint-chromium-linux.png",
+      "snapshotId": "admin-infopoint.png",
+      "project": "chromium",
+      "sha256": "c86bf2141702a1d0fbe27692fdcca1cd4b49695b31d7dfacf382ef5768fcad85",
+      "bytes": 146593,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-infopoint-doc-modal-chromium-linux.png",
+      "snapshotId": "admin-infopoint-doc-modal.png",
+      "project": "chromium",
+      "sha256": "02649c626d05260a90d0097c5d43b381f598b8012eabeb62dbfc1e70b7fc535c",
+      "bytes": 129975,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-infopoint-news-chromium-linux.png",
+      "snapshotId": "admin-infopoint-news.png",
+      "project": "chromium",
+      "sha256": "57993610bb694213e1487f33136afb98c7fd6ffa7eaebe90dc558ec0b0920435",
+      "bytes": 110306,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-infopoint-news-modal-chromium-linux.png",
+      "snapshotId": "admin-infopoint-news-modal.png",
+      "project": "chromium",
+      "sha256": "b6623e619048f1cbc5658af4f524da8fc0620dc928ad2ca842b3d635b62a1fdc",
+      "bytes": 131234,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-infopoint-rename-modal-chromium-linux.png",
+      "snapshotId": "admin-infopoint-rename-modal.png",
+      "project": "chromium",
+      "sha256": "5fd9b8b46cce3b8dc630f2e99359b84d7f585b60af7ab3c34de4435344fe405a",
+      "bytes": 138703,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-job-detail-assigned-chromium-linux.png",
+      "snapshotId": "admin-job-detail-assigned.png",
+      "project": "chromium",
+      "sha256": "b6616d77a2c73dd8f8a1a87a60d748564d29a2a098292b50af1502b095b94aa5",
+      "bytes": 132074,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-job-detail-chromium-linux.png",
+      "snapshotId": "admin-job-detail.png",
+      "project": "chromium",
+      "sha256": "efe32b169311a841a44ab808cbeb4696dd790287d84343c9b454669aa3c2a1b8",
+      "bytes": 136263,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-masterdata-list-chromium-linux.png",
+      "snapshotId": "admin-masterdata-list.png",
+      "project": "chromium",
+      "sha256": "a61635ea3a14c56ff011502ac4f97552ec6eaee12430d430f48b532cb7476db9",
+      "bytes": 61822,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-new-driver-modal-chromium-linux.png",
+      "snapshotId": "admin-new-driver-modal.png",
+      "project": "chromium",
+      "sha256": "8342dba43c697a3df8bfa4079f5ade39660464e7a82330892d1533a63c646213",
+      "bytes": 102398,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-new-order-chromium-linux.png",
+      "snapshotId": "admin-new-order.png",
+      "project": "chromium",
+      "sha256": "45f460bc6738f55841d8e750dd677254c1ce5dffde23e6ce1f58cabd33081d45",
+      "bytes": 122980,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-new-staff-modal-chromium-linux.png",
+      "snapshotId": "admin-new-staff-modal.png",
+      "project": "chromium",
+      "sha256": "b678f2ae01285c35da5ec4e957eb41bd895ec33cfa5284a869703a099be31335",
+      "bytes": 81312,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-notifications-chromium-linux.png",
+      "snapshotId": "admin-notifications.png",
+      "project": "chromium",
+      "sha256": "40e841bbd0ccffaaf8b517d7367ac517922a6c6de95200e508c5700aa32e9986",
+      "bytes": 66339,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-overview-chromium-linux.png",
+      "snapshotId": "admin-overview.png",
+      "project": "chromium",
+      "sha256": "7ff82d659a2dcb20f0c86c1a41c3c1af8f46f6fd7d0722c913e16ba6adcf7cc1",
+      "bytes": 157078,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-reassign-driver-dialog-chromium-linux.png",
+      "snapshotId": "admin-reassign-driver-dialog.png",
+      "project": "chromium",
+      "sha256": "0dccc5e430d8e35ccc1bc31f52c29628b34f035d0fd7457a9f828b6cfd8bf0d5",
+      "bytes": 142996,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-staff-chromium-linux.png",
+      "snapshotId": "admin-staff.png",
+      "project": "chromium",
+      "sha256": "c298acc02c02eec5de20aa199f0d7c825a19cecc4ee8e5843bfaa2faec97ce73",
+      "bytes": 71919,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-toast-chromium-linux.png",
+      "snapshotId": "admin-toast.png",
+      "project": "chromium",
+      "sha256": "f25691c2ab931f7774932098b8c31bb4b4e134ff4b544cf8280b7ddb7cd93683",
+      "bytes": 109438,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-tour-billing-accept-invoice-chromium-linux.png",
+      "snapshotId": "admin-tour-billing-accept-invoice.png",
+      "project": "chromium",
+      "sha256": "caaaf9ef91c33a8bd3eb50691995ec1adaaea801feb450ed661fc3d892becb8d",
+      "bytes": 172179,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-tour-billing-chromium-linux.png",
+      "snapshotId": "admin-tour-billing.png",
+      "project": "chromium",
+      "sha256": "30df202882b6b662a5de3e0aa56f14571c9290c9877aeebb5518701498980d21",
+      "bytes": 180505,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-tour-billing-register-dialog-chromium-linux.png",
+      "snapshotId": "admin-tour-billing-register-dialog.png",
+      "project": "chromium",
+      "sha256": "ee43f1bec7870d6686b79405a6f910de5564fe832cc113d62536fc3bd4344b04",
+      "bytes": 175226,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/admin.visual.spec.ts-snapshots/admin-tour-billing-view-invoice-chromium-linux.png",
+      "snapshotId": "admin-tour-billing-view-invoice.png",
+      "project": "chromium",
+      "sha256": "74ae1acdb8db5eff8e24b015cac4c56dcf77ba230887c3f790630076640a0d52",
+      "bytes": 178539,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/driver.visual.spec.ts-snapshots/driver-acceptance-modal-chromium-linux.png",
+      "snapshotId": "driver-acceptance-modal.png",
+      "project": "chromium",
+      "sha256": "32fd0bea682ac847baeaf13f6af9905eb4cf75aafe8548e30bbee4c77e86e622",
+      "bytes": 96210,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/driver.visual.spec.ts-snapshots/driver-category-modal-chromium-linux.png",
+      "snapshotId": "driver-category-modal.png",
+      "project": "chromium",
+      "sha256": "206334939d5718cc587d0d63555b70b80b2e5de1905681eaee0d314e6ffe8685",
+      "bytes": 79502,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/driver.visual.spec.ts-snapshots/driver-filter-sheet-chromium-linux.png",
+      "snapshotId": "driver-filter-sheet.png",
+      "project": "chromium",
+      "sha256": "936ed4b9494c57ba182bb9a4fd0ec366c42e73be7ff13430de2ae5e2ea22c9b9",
+      "bytes": 88302,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/driver.visual.spec.ts-snapshots/driver-infopoint-chromium-linux.png",
+      "snapshotId": "driver-infopoint.png",
+      "project": "chromium",
+      "sha256": "44b3fd7d04ead0c203261929824abc4e05529f50590ebb8d29bdf70849857100",
+      "bytes": 84191,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/driver.visual.spec.ts-snapshots/driver-job-locked-chromium-linux.png",
+      "snapshotId": "driver-job-locked.png",
+      "project": "chromium",
+      "sha256": "02d09149a7e14efef0e8bddd4c3bdf9175213cf239af0c71251dbe718cd36010",
+      "bytes": 82009,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/driver.visual.spec.ts-snapshots/driver-job-unlocked-chromium-linux.png",
+      "snapshotId": "driver-job-unlocked.png",
+      "project": "chromium",
+      "sha256": "1f961abc815773b94c9e413ccfb6ce13793d546778d572889c6c1f7690eea84f",
+      "bytes": 78062,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/driver.visual.spec.ts-snapshots/driver-marketplace-chromium-linux.png",
+      "snapshotId": "driver-marketplace.png",
+      "project": "chromium",
+      "sha256": "adcc20908c80704d501b3a9cf7a72b4a3199fd3eed2b69909d8765980bb9afe6",
+      "bytes": 87559,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/driver.visual.spec.ts-snapshots/driver-myjobs-active-chromium-linux.png",
+      "snapshotId": "driver-myjobs-active.png",
+      "project": "chromium",
+      "sha256": "b6ab32f289c283788e42b4d9aebec2fb3e853454f84588a2cc0a6bba69737e5f",
+      "bytes": 87774,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/driver.visual.spec.ts-snapshots/driver-myjobs-cancelled-chromium-linux.png",
+      "snapshotId": "driver-myjobs-cancelled.png",
+      "project": "chromium",
+      "sha256": "e20e143eebf2e0cb3952e7b9bb966498709b2453fd2bc514c45cbb33ae8769f2",
+      "bytes": 72283,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/driver.visual.spec.ts-snapshots/driver-myjobs-performed-chromium-linux.png",
+      "snapshotId": "driver-myjobs-performed.png",
+      "project": "chromium",
+      "sha256": "988030be569299f3fe72cdcd8541ab950dd176f3d1cdc723a3e833355d641c05",
+      "bytes": 72832,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/driver.visual.spec.ts-snapshots/driver-notifications-chromium-linux.png",
+      "snapshotId": "driver-notifications.png",
+      "project": "chromium",
+      "sha256": "4081f168fa782e0514f0df4272792683ddb015b394c34dae2d1e5edc074e74f2",
+      "bytes": 49041,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/driver.visual.spec.ts-snapshots/driver-profile-chromium-linux.png",
+      "snapshotId": "driver-profile.png",
+      "project": "chromium",
+      "sha256": "8abd7a7b7c5479913be72fdb9be1a1ca00e39d950bda2e7c49d1aa1168e0a66a",
+      "bytes": 85023,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/driver.visual.spec.ts-snapshots/driver-report-problem-sheet-chromium-linux.png",
+      "snapshotId": "driver-report-problem-sheet.png",
+      "project": "chromium",
+      "sha256": "1035fe3429e338f162d0316f0d028957060790b60e75bc0c2c5ce0fab60054aa",
+      "bytes": 90082,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    },
+    {
+      "file": "tests/regression/snapshots/prototype-shell.visual.spec.ts-snapshots/prototype-shell-default-chromium-linux.png",
+      "snapshotId": "prototype-shell-default.png",
+      "project": "chromium",
+      "sha256": "adcc20908c80704d501b3a9cf7a72b4a3199fd3eed2b69909d8765980bb9afe6",
+      "bytes": 87559,
+      "width": 1440,
+      "height": 1100,
+      "valid": true
+    }
+  ]
+}

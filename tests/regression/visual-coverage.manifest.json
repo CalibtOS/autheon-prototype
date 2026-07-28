@@ -1,0 +1,653 @@
+{
+  "$comment": [
+    "AUTHEON visual coverage registry — the machine-readable source of truth for",
+    "WHAT must be captured. The specs under tests/regression/*.visual.spec.ts own",
+    "HOW each state is reached; this file owns the inventory, the metadata, and the",
+    "expected-snapshot list that the coverage gate compares against.",
+    "",
+    "status semantics (see scripts/visual-coverage-audit.mjs):",
+    "  active   - must be captured by the suite AND must have an approved baseline.",
+    "             A missing capture or missing baseline is BLOCKING.",
+    "  planned  - registered coverage that is declared but not yet implemented or",
+    "             not yet baseline-approved. Reported as MISSING COVERAGE (visible,",
+    "             non-blocking) so a run can never claim complete coverage while a",
+    "             registered gap is open.",
+    "  excluded - deliberately out of scope. Requires exclusionReason.",
+    "  deprecated - retired scenario. Its baseline is reported as an orphan to remove.",
+    "",
+    "Entries inherit every field from `defaults` and override only what differs."
+  ],
+
+  "registryVersion": 1,
+  "grep": "@visual-regression",
+  "approvedPlatform": "linux",
+
+  "viewports": {
+    "desktop-1440": {
+      "project": "chromium",
+      "width": 1440,
+      "height": 1100,
+      "class": "laptop/desktop",
+      "notes": "Canonical presentation viewport for the prototype shell at /. Existing approved baselines were rendered here."
+    },
+    "desktop-1920": {
+      "project": "admin-desktop-1920",
+      "width": 1920,
+      "height": 1200,
+      "class": "large desktop",
+      "notes": "Admin console on a large monitor: wider tables, more visible columns."
+    },
+    "phone-320": {
+      "project": "pwa-phone-320",
+      "width": 320,
+      "height": 568,
+      "class": "narrow phone",
+      "notes": "Smallest supported Driver PWA width at /pwa/. Catches label truncation and tabbar crowding."
+    },
+    "phone-390": {
+      "project": "pwa-phone-390",
+      "width": 390,
+      "height": 844,
+      "class": "standard phone",
+      "notes": "Primary Driver PWA target at /pwa/."
+    },
+    "phone-430": {
+      "project": "pwa-phone-430",
+      "width": 430,
+      "height": 932,
+      "class": "large phone",
+      "notes": "Large Driver PWA phone at /pwa/."
+    },
+    "tablet-834": {
+      "project": "pwa-tablet-834",
+      "width": 834,
+      "height": 1112,
+      "class": "wider tablet",
+      "notes": "Driver PWA stretched to tablet width. Not a separate tablet product layout — the same phone layout at a wider viewport."
+    }
+  },
+
+  "locales": {
+    "en": { "label": "English", "primary": true },
+    "de": {
+      "label": "Deutsch",
+      "primary": false,
+      "notes": "German is the longest-translation locale in this product and is the wrapping risk case for tabbars, table headers, and dialog action rows."
+    }
+  },
+
+  "themes": {
+    "light": { "production": true },
+    "dark": { "production": true }
+  },
+
+  "screenshotModes": {
+    "fullPage": "Whole scrollable document. Proves complete content layout.",
+    "viewport": "Visible viewport only at the project height. The only mode that proves fixed/sticky chrome (driver tabbar, admin sticky sidebars) sits correctly at real viewport height.",
+    "locator": "Single component/dialog. Removes page-level noise for reusable components.",
+    "segmentedScroll": "Sequence of viewport captures at defined scroll offsets. Proves sticky behavior while scrolling."
+  },
+
+  "profiles": {
+    "smoke": {
+      "description": "Critical representative subset — one screen per surface plus the shell.",
+      "grep": "@visual-smoke",
+      "notes": "Scenarios opt in via the `profiles` field here AND the @visual-smoke tag on their spec title. Both must agree or the coverage audit reports the scenario as never captured."
+    },
+    "full": {
+      "description": "Every non-excluded registered scenario. The default.",
+      "grep": "@visual-regression"
+    },
+    "changed": {
+      "description": "Intended for change-scoped selection on a PR.",
+      "grep": "@visual-regression",
+      "notes": "NOT YET IMPLEMENTED. Deliberately falls back to the full set rather than guessing a subset: a wrong change-impact heuristic silently skips the screen a PR actually broke. The wrapper logs the fallback so a `changed` run is never mistaken for a narrowed run."
+    },
+    "baseline": {
+      "description": "Candidate generation over the same set as `full`.",
+      "grep": "@visual-regression"
+    },
+    "diagnostic": {
+      "description": "`full` with traces and video retained for every scenario, pass or fail.",
+      "grep": "@visual-regression"
+    }
+  },
+
+  "defaults": {
+    "surface": "admin",
+    "route": "/",
+    "screen": null,
+    "scenario": null,
+    "state": "populated",
+    "role": "internal-admin",
+    "fixture": "in-memory seed store (re-seeded on every page load)",
+    "locale": "en",
+    "theme": "light",
+    "viewport": "desktop-1440",
+    "orientation": "portrait",
+    "mode": "fullPage",
+    "interactions": [],
+    "mask": [],
+    "animations": "disabled",
+    "owner": "frontend",
+    "tags": [],
+    "status": "active",
+    "profiles": ["full"]
+  },
+
+  "scenarios": [
+    {
+      "snapshotId": "prototype-shell-default.png",
+      "surface": "shell",
+      "screen": "Presentation shell",
+      "scenario": "default Driver PWA / EN / light",
+      "role": "n/a",
+      "mask": ["live marketplace date label"],
+      "tags": ["shell", "header", "surface-switch"],
+      "profiles": ["smoke", "full"]
+    },
+
+    {
+      "snapshotId": "admin-overview.png",
+      "screen": "Job overview",
+      "scenario": "default populated table",
+      "tags": ["screen", "table", "navigation"],
+      "profiles": ["smoke", "full"]
+    },
+    {
+      "snapshotId": "admin-job-detail.png",
+      "screen": "Job detail",
+      "scenario": "draft lifecycle status",
+      "state": "lifecycle:draft",
+      "interactions": ["open job 0839-26 from the overview table"],
+      "tags": ["screen", "detail", "lifecycle"]
+    },
+    {
+      "snapshotId": "admin-job-detail-assigned.png",
+      "screen": "Job detail",
+      "scenario": "assigned lifecycle status",
+      "state": "lifecycle:assigned",
+      "interactions": ["open job 0848-26 from the overview table"],
+      "tags": ["screen", "detail", "lifecycle"]
+    },
+    {
+      "snapshotId": "admin-new-order.png",
+      "screen": "New job form",
+      "scenario": "empty form",
+      "state": "form:empty",
+      "interactions": ["click New job"],
+      "tags": ["screen", "form"]
+    },
+    {
+      "snapshotId": "admin-edit-order.png",
+      "screen": "Edit job form",
+      "scenario": "form prefilled from a draft",
+      "state": "form:prefilled",
+      "interactions": ["open job 0839-26", "click Edit draft"],
+      "tags": ["screen", "form"]
+    },
+    {
+      "snapshotId": "admin-notifications.png",
+      "screen": "Notification feed",
+      "scenario": "populated feed",
+      "interactions": ["open the Notification feed nav item"],
+      "tags": ["screen", "list", "notifications"]
+    },
+    {
+      "snapshotId": "admin-masterdata-list.png",
+      "screen": "Profile change requests",
+      "scenario": "populated request list",
+      "interactions": ["open the Profile change requests nav item"],
+      "tags": ["screen", "list", "approval"]
+    },
+    {
+      "snapshotId": "admin-drivers.png",
+      "screen": "Drivers",
+      "scenario": "populated list",
+      "interactions": ["open the Drivers nav item"],
+      "tags": ["screen", "table", "master-data"]
+    },
+    {
+      "snapshotId": "admin-staff.png",
+      "screen": "Staff",
+      "scenario": "populated list",
+      "interactions": ["open the Staff nav item"],
+      "tags": ["screen", "table", "master-data"]
+    },
+    {
+      "snapshotId": "admin-customers.png",
+      "screen": "Customers",
+      "scenario": "populated list",
+      "interactions": ["open the Customers nav item"],
+      "tags": ["screen", "table", "master-data"]
+    },
+    {
+      "snapshotId": "admin-addresses.png",
+      "screen": "Addresses",
+      "scenario": "populated list",
+      "interactions": ["open the Addresses nav item"],
+      "tags": ["screen", "table", "master-data"]
+    },
+    {
+      "snapshotId": "admin-infopoint.png",
+      "screen": "Infopoint",
+      "scenario": "documents tab",
+      "interactions": ["open the Infopoint nav item"],
+      "tags": ["screen", "tabs", "documents"]
+    },
+    {
+      "snapshotId": "admin-infopoint-news.png",
+      "screen": "Infopoint",
+      "scenario": "news tab",
+      "interactions": ["open Infopoint", "switch to the New messages tab"],
+      "tags": ["screen", "tabs", "news"]
+    },
+    {
+      "snapshotId": "admin-tour-billing.png",
+      "screen": "Tour documents",
+      "scenario": "populated billing list",
+      "interactions": ["open the Tour documents nav item"],
+      "tags": ["screen", "table", "billing"]
+    },
+    {
+      "snapshotId": "admin-audit.png",
+      "screen": "Audit log",
+      "scenario": "populated log",
+      "interactions": ["open the Audit log nav item"],
+      "tags": ["screen", "table", "audit"]
+    },
+    {
+      "snapshotId": "admin-features.png",
+      "screen": "Settings / features",
+      "scenario": "default settings state",
+      "interactions": ["open the Settings nav item"],
+      "tags": ["screen", "settings", "toggles"]
+    },
+
+    {
+      "snapshotId": "admin-assign-driver-dialog.png",
+      "screen": "Job detail",
+      "scenario": "assign driver dialog",
+      "state": "overlay:dialog",
+      "interactions": ["open job 0839-26", "click Assign driver"],
+      "tags": ["overlay", "dialog"]
+    },
+    {
+      "snapshotId": "admin-reassign-driver-dialog.png",
+      "screen": "Job detail",
+      "scenario": "reassign driver dialog",
+      "state": "overlay:dialog",
+      "interactions": ["open job 0848-26", "click Reassign driver"],
+      "tags": ["overlay", "dialog"]
+    },
+    {
+      "snapshotId": "admin-new-driver-modal.png",
+      "screen": "Drivers",
+      "scenario": "new driver modal, empty form",
+      "state": "overlay:modal,form:empty",
+      "interactions": ["open Drivers", "click New driver"],
+      "tags": ["overlay", "modal", "form"]
+    },
+    {
+      "snapshotId": "admin-new-staff-modal.png",
+      "screen": "Staff",
+      "scenario": "new staff modal, empty form",
+      "state": "overlay:modal,form:empty",
+      "interactions": ["open Staff", "click New staff"],
+      "tags": ["overlay", "modal", "form"]
+    },
+    {
+      "snapshotId": "admin-account-access-dialog.png",
+      "screen": "Drivers",
+      "scenario": "generated account credentials after create",
+      "state": "overlay:dialog,success",
+      "interactions": [
+        "open Drivers",
+        "click New driver",
+        "fill name/company/phone/email",
+        "save"
+      ],
+      "mask": [
+        "generated credential fields (.mono, code, input)",
+        "Last invite timestamp",
+        "generated login email"
+      ],
+      "tags": ["overlay", "dialog", "success", "credentials"]
+    },
+    {
+      "snapshotId": "admin-customer-modal.png",
+      "screen": "Customers",
+      "scenario": "add customer modal, empty form",
+      "state": "overlay:modal,form:empty",
+      "interactions": ["open Customers", "click Add customer"],
+      "tags": ["overlay", "modal", "form"]
+    },
+    {
+      "snapshotId": "admin-address-modal.png",
+      "screen": "Addresses",
+      "scenario": "add address modal, empty form",
+      "state": "overlay:modal,form:empty",
+      "interactions": ["open Addresses", "click Add address"],
+      "tags": ["overlay", "modal", "form"]
+    },
+    {
+      "snapshotId": "admin-infopoint-doc-modal.png",
+      "screen": "Infopoint",
+      "scenario": "add document modal",
+      "state": "overlay:modal,form:empty",
+      "interactions": ["open Infopoint", "click Add document"],
+      "tags": ["overlay", "modal", "upload"]
+    },
+    {
+      "snapshotId": "admin-infopoint-edit-doc-modal.png",
+      "screen": "Infopoint",
+      "scenario": "edit document modal",
+      "state": "overlay:modal,form:prefilled",
+      "interactions": ["open Infopoint", "click Edit on the first document"],
+      "tags": ["overlay", "modal", "form"]
+    },
+    {
+      "snapshotId": "admin-infopoint-delete-doc-modal.png",
+      "screen": "Infopoint",
+      "scenario": "delete document confirmation",
+      "state": "overlay:confirmation",
+      "interactions": ["open Infopoint", "click Delete on the first document"],
+      "tags": ["overlay", "confirmation", "destructive"]
+    },
+    {
+      "snapshotId": "admin-infopoint-news-modal.png",
+      "screen": "Infopoint",
+      "scenario": "edit news message modal",
+      "state": "overlay:modal,form:prefilled",
+      "interactions": [
+        "open Infopoint",
+        "switch to the New messages tab",
+        "click Edit on the first message"
+      ],
+      "tags": ["overlay", "modal", "form"]
+    },
+    {
+      "snapshotId": "admin-tour-billing-register-dialog.png",
+      "screen": "Tour documents",
+      "scenario": "register off-channel document dialog",
+      "state": "overlay:dialog,form:empty",
+      "interactions": ["open Tour documents", "click Register off-channel document"],
+      "tags": ["overlay", "dialog", "form"]
+    },
+    {
+      "snapshotId": "admin-tour-billing-view-invoice.png",
+      "screen": "Tour documents",
+      "scenario": "invoice document preview",
+      "state": "overlay:dialog,preview",
+      "interactions": ["open Tour documents", "click View on the first document"],
+      "tags": ["overlay", "dialog", "document-preview"]
+    },
+    {
+      "snapshotId": "admin-tour-billing-accept-invoice.png",
+      "screen": "Tour documents",
+      "scenario": "accept invoice confirmation",
+      "state": "overlay:confirmation",
+      "interactions": [
+        "open Tour documents",
+        "click Accept on the driver-invoice-0842.pdf row"
+      ],
+      "tags": ["overlay", "confirmation", "billing"]
+    },
+    {
+      "snapshotId": "admin-toast.png",
+      "screen": "Job detail",
+      "scenario": "toast after publishing to marketplace",
+      "state": "toast",
+      "interactions": ["open job 0839-26", "click Publish to marketplace"],
+      "mask": ["Status history card (live timestamp)"],
+      "tags": ["toast", "feedback"]
+    },
+
+    {
+      "snapshotId": "driver-marketplace.png",
+      "surface": "driver",
+      "screen": "Marketplace",
+      "scenario": "populated open tours",
+      "role": "driver",
+      "mask": ["open tours header date label (live date)"],
+      "tags": ["screen", "list", "marketplace"],
+      "profiles": ["smoke", "full"]
+    },
+    {
+      "snapshotId": "driver-job-locked.png",
+      "surface": "driver",
+      "screen": "Job detail",
+      "scenario": "marketplace preview, locked (pre-acceptance)",
+      "state": "permission:locked",
+      "role": "driver",
+      "interactions": ["open the first marketplace tour card"],
+      "tags": ["screen", "detail", "permission"]
+    },
+    {
+      "snapshotId": "driver-myjobs-active.png",
+      "surface": "driver",
+      "screen": "My jobs",
+      "scenario": "active tab",
+      "role": "driver",
+      "interactions": ["open the My jobs tab"],
+      "tags": ["screen", "tabs", "list"]
+    },
+    {
+      "snapshotId": "driver-myjobs-performed.png",
+      "surface": "driver",
+      "screen": "My jobs",
+      "scenario": "performed tab",
+      "role": "driver",
+      "interactions": ["open My jobs", "switch to the Performed tab"],
+      "tags": ["screen", "tabs", "list"]
+    },
+    {
+      "snapshotId": "driver-myjobs-cancelled.png",
+      "surface": "driver",
+      "screen": "My jobs",
+      "scenario": "cancelled tab",
+      "role": "driver",
+      "interactions": ["open My jobs", "switch to the Cancelled tab"],
+      "tags": ["screen", "tabs", "list"]
+    },
+    {
+      "snapshotId": "driver-myjobs-special.png",
+      "surface": "driver",
+      "screen": "My jobs",
+      "scenario": "special cases tab",
+      "role": "driver",
+      "interactions": ["open My jobs", "switch to the Special cases tab"],
+      "tags": ["screen", "tabs", "list"]
+    },
+    {
+      "snapshotId": "driver-job-unlocked.png",
+      "surface": "driver",
+      "screen": "Job execution detail",
+      "scenario": "unlocked execution view",
+      "state": "permission:unlocked",
+      "role": "driver",
+      "interactions": ["open My jobs", "open the first active tour"],
+      "tags": ["screen", "detail", "permission"]
+    },
+    {
+      "snapshotId": "driver-infopoint.png",
+      "surface": "driver",
+      "screen": "Infopoint",
+      "scenario": "populated documents and news",
+      "role": "driver",
+      "interactions": ["open the Infopoint tab"],
+      "tags": ["screen", "list", "documents"]
+    },
+    {
+      "snapshotId": "driver-profile.png",
+      "surface": "driver",
+      "screen": "Profile",
+      "scenario": "default profile with probation progress",
+      "role": "driver",
+      "interactions": ["open the Profile tab"],
+      "tags": ["screen", "profile"]
+    },
+    {
+      "snapshotId": "driver-notifications.png",
+      "surface": "driver",
+      "screen": "Notifications",
+      "scenario": "populated notification pane",
+      "role": "driver",
+      "interactions": ["open the Notifications control"],
+      "tags": ["screen", "list", "notifications"]
+    },
+    {
+      "snapshotId": "driver-filter-sheet.png",
+      "surface": "driver",
+      "screen": "Marketplace",
+      "scenario": "filter sheet open",
+      "state": "overlay:sheet",
+      "role": "driver",
+      "interactions": ["click Filters"],
+      "tags": ["overlay", "sheet", "filters"]
+    },
+    {
+      "snapshotId": "driver-acceptance-modal.png",
+      "surface": "driver",
+      "screen": "Job detail",
+      "scenario": "tour acceptance confirmation",
+      "state": "overlay:confirmation",
+      "role": "driver",
+      "interactions": ["open the first marketplace tour", "click Accept tour"],
+      "tags": ["overlay", "confirmation", "booking"]
+    },
+    {
+      "snapshotId": "driver-report-problem-sheet.png",
+      "surface": "driver",
+      "screen": "Job execution detail",
+      "scenario": "report problem sheet",
+      "state": "overlay:sheet,form:empty",
+      "role": "driver",
+      "interactions": ["open an active tour", "click Report problem"],
+      "tags": ["overlay", "sheet", "form"]
+    },
+    {
+      "snapshotId": "driver-category-modal.png",
+      "surface": "driver",
+      "screen": "Job execution detail",
+      "scenario": "upload document category modal",
+      "state": "overlay:modal",
+      "role": "driver",
+      "interactions": ["open an active tour", "click Upload document"],
+      "tags": ["overlay", "modal", "upload"]
+    },
+    {
+      "snapshotId": "driver-daily-limit-sheet.png",
+      "surface": "driver",
+      "screen": "Profile",
+      "scenario": "daily limit request sheet",
+      "state": "overlay:sheet",
+      "role": "driver",
+      "status": "excluded",
+      "exclusionReason": "The legacy daily-limit request UI was replaced by the probation progress card. The spec is test.skip and the baseline is intentionally absent until an approved replacement flow exists. Re-registering this scenario requires a product decision, not a baseline update.",
+      "tags": ["overlay", "sheet", "deprecated-flow"]
+    },
+
+    {
+      "snapshotId": "admin-infopoint-rename-modal.png",
+      "screen": "Infopoint",
+      "scenario": "rename document modal",
+      "status": "deprecated",
+      "exclusionReason": "Superseded by admin-infopoint-edit-doc-modal.png when the rename action became a full edit modal. Its approved Linux baseline is an orphan and should be removed in the next approved baseline update.",
+      "tags": ["overlay", "modal"]
+    }
+  ],
+
+  "$plannedComment": [
+    "Registered-but-not-yet-approved coverage. These entries are the honest record",
+    "of what this framework does NOT yet prove. They are reported as MISSING",
+    "COVERAGE by the coverage gate (non-blocking) until baselines are rendered by",
+    "the Visual Regression Baseline workflow and approved. They become `active`",
+    "in the same commit that adds their approved baseline."
+  ],
+
+  "planned": [
+    {
+      "id": "viewport-mode-sticky-chrome",
+      "reason": "Every one of the 47 existing scenarios uses fullPage: true. A full-page render stitches the document at its full height, so it cannot prove that the Driver PWA fixed bottom tabbar, the admin sticky job sidebars, or a sticky table header sit correctly at real viewport height.",
+      "mode": "viewport",
+      "expands": {
+        "surfaces": ["driver", "admin"],
+        "screens": [
+          "Marketplace",
+          "My jobs",
+          "Job execution detail",
+          "Job overview",
+          "Job detail",
+          "New job form"
+        ]
+      },
+      "owner": "frontend"
+    },
+    {
+      "id": "segmented-scroll-sticky",
+      "reason": "Sticky headers, sticky validation summaries, and the fixed bottom navigation change appearance while scrolling. A single capture at scroll offset 0 cannot detect a sticky element that detaches mid-scroll.",
+      "mode": "segmentedScroll",
+      "expands": {
+        "surfaces": ["driver", "admin"],
+        "screens": ["Job overview", "New job form", "My jobs"]
+      },
+      "owner": "frontend"
+    },
+    {
+      "id": "locale-de-matrix",
+      "reason": "German is the longest-translation locale and the wrapping risk case, but no snapshot is captured in DE. Localization-sensitive screens (tabbars, table headers, dialog action rows, settings toggles) need a DE matrix.",
+      "locale": "de",
+      "expands": { "profileFrom": "smoke-plus-overlays" },
+      "owner": "frontend"
+    },
+    {
+      "id": "theme-dark-matrix",
+      "reason": "Dark is a production theme with its own tabbar box-shadow treatment, but every baseline is light-only.",
+      "theme": "dark",
+      "expands": { "profileFrom": "smoke-plus-overlays" },
+      "owner": "frontend"
+    },
+    {
+      "id": "pwa-standalone-route",
+      "reason": "The /pwa/ route is a second real application surface (real-viewport Driver PWA, deep-linkable via ?tab=portal|mine|info|profile) with zero visual coverage. It has its own install mode bar and iOS install sheet that the iframe shell never renders.",
+      "surface": "driver-pwa-standalone",
+      "route": "/pwa/",
+      "expands": {
+        "routes": ["/pwa/?tab=portal", "/pwa/?tab=mine", "/pwa/?tab=info", "/pwa/?tab=profile"],
+        "viewports": ["phone-320", "phone-390", "phone-430", "tablet-834"]
+      },
+      "owner": "frontend"
+    },
+    {
+      "id": "admin-large-desktop",
+      "reason": "The admin console is only captured at 1440px. A large-desktop width changes table column visibility and sidebar proportions.",
+      "viewport": "desktop-1920",
+      "expands": { "surfaces": ["admin"] },
+      "owner": "frontend"
+    },
+    {
+      "id": "interaction-states",
+      "reason": "Focus-visible, hover, expanded selects, and open autocomplete results are not registered. Two spec files that once covered focus-visible states (driver-header-states, marketplace-filter-states) were deleted, leaving orphan darwin baselines behind.",
+      "expands": {
+        "states": [
+          "focus-visible",
+          "hover",
+          "select-expanded",
+          "autocomplete-open",
+          "control-disabled"
+        ]
+      },
+      "owner": "frontend"
+    },
+    {
+      "id": "empty-error-loading-states",
+      "reason": "Only populated states are registered. The in-memory seed store always returns data, so empty/loading/error/offline states need explicit fixture control before they can be captured deterministically.",
+      "expands": {
+        "states": ["empty", "loading", "skeleton", "error", "offline", "no-result-search"]
+      },
+      "blockedBy": "The prototype seeds a fixed in-memory store on every load with no fixture override hook. Capturing these states requires a test-only seeding hook first — a product/prototype change that is out of scope for this CI task.",
+      "owner": "frontend"
+    }
+  ]
+}

@@ -1,0 +1,263 @@
+name: Visual Regression
+
+# Runs the visual regression pipeline in the SAME Docker/Linux image the approved
+# baselines were rendered in, so comparisons are deterministic.
+#
+# The pipeline itself (preflight -> run visual suite -> classify -> coverage ->
+# report -> archive -> email) lives in scripts/, behind one entry point:
+# `npm run test:regression:ci`. This workflow only supplies the environment,
+# preserves the diagnostics, and maps the canonical result onto the CI status.
+#
+# Step order is deliberate (see tests/docs/visual-regression-ci.md):
+#   1. resolve base/head/merge SHAs      (needs full history)
+#   2. run the pipeline, capture raw exit code, never abort the job
+#   3. classify from summary.json into outputs + job summary + annotations
+#   4. upload artifacts (traces, report, images, manifests)
+#   5. apply the blocking gate LAST
+# Nothing before step 5 may exit non-zero, or the diagnostics that explain the
+# failure would never be uploaded.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      strict:
+        description: 'Fail the run on visual differences (blocking gate)'
+        type: boolean
+        default: false
+      profile:
+        description: 'Execution profile'
+        type: choice
+        default: full
+        options: [full, smoke, changed, diagnostic]
+      diagnostic:
+        description: 'Retain traces and video for every scenario (large artifacts)'
+        type: boolean
+        default: false
+  schedule:
+    # Nightly full-matrix run so a slow full profile never has to be traded
+    # away on PRs.
+    - cron: '0 2 * * *'
+
+concurrency:
+  group: visual-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  visual-regression:
+    name: visual-regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    env:
+      # ---------------------------------------------------------------------
+      # Notification / SMTP configuration.
+      #
+      # These are REPOSITORY SECRETS (Settings -> Secrets and variables ->
+      # Actions). See tests/docs/visual-regression-notifications.md for the
+      # exact names and how to set them.
+      #
+      # On a pull request from a FORK, GitHub withholds secrets by design, so
+      # these resolve to empty. That is not a misconfiguration: the notification
+      # preflight detects the fork context and reports it as such instead of
+      # claiming the secrets are missing. See the "Fork and untrusted PRs"
+      # section of the notification doc.
+      # ---------------------------------------------------------------------
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP_FROM: ${{ secrets.SMTP_FROM }}
+      REGRESSION_NOTIFICATION_EMAIL: ${{ secrets.REGRESSION_NOTIFICATION_EMAIL }}
+      # Non-sensitive transport configuration lives in repository VARIABLES with
+      # a safe default, so a missing variable cannot silently disable TLS.
+      SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
+      SMTP_SECURE: ${{ vars.SMTP_SECURE || 'false' }}
+
+      # Product decision: visual differences are a non-blocking warning. Only
+      # execution failures, missing baselines, missing captures, and framework
+      # failures fail CI. A manual run or the VISUAL_REGRESSION_STRICT repository
+      # variable can opt into a strict gate.
+      VISUAL_REGRESSION_STRICT: ${{ github.event.inputs.strict || vars.VISUAL_REGRESSION_STRICT || 'false' }}
+      VISUAL_REGRESSION_PROFILE: ${{ github.event.inputs.profile || 'full' }}
+      VISUAL_REGRESSION_DIAGNOSTIC: ${{ github.event.inputs.diagnostic || 'false' }}
+
+      # Artifact references for the notification email and the job summary. The
+      # artifact-specific URL is not knowable before upload, so the email links
+      # the run and names the artifact plus the download command.
+      REGRESSION_ARTIFACT_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      REGRESSION_ARTIFACT_NAME: visual-regression-artifacts
+
+      SUMMARY_DIR: visual-regression-artifacts/docker-ci/visual-regression-summary
+      IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+
+    steps:
+      # fetch-depth: 0 (not 1) on purpose. The pipeline records the merge base,
+      # the base SHA, and the commit that last touched the approved baseline
+      # directory. A depth-1 clone has none of that history, so every one of
+      # those fields would be reported as "unknown".
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # For a pull_request event the checked-out ref is the MERGE commit
+      # (refs/pull/N/merge): the PR code as it would look on main. The approved
+      # baselines therefore come from the trusted base branch, not from the PR
+      # author's snapshots — a PR cannot change application code and its own
+      # approved baselines in one untrusted run and hide the difference.
+      - name: Resolve revisions
+        id: revisions
+        run: |
+          set -euo pipefail
+
+          HEAD_SHA="$(git rev-parse HEAD)"
+          echo "GITHUB_HEAD_SHA=${HEAD_SHA}" >> "$GITHUB_ENV"
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="${{ github.base_ref }}"
+            git fetch --no-tags origin "${BASE_REF}"
+            BASE_SHA="$(git merge-base HEAD "origin/${BASE_REF}")"
+            {
+              echo "GITHUB_BASE_REF=${BASE_REF}"
+              echo "GITHUB_BASE_SHA=${BASE_SHA}"
+              echo "GITHUB_MERGE_SHA=${HEAD_SHA}"
+              echo "GITHUB_PR_NUMBER=${{ github.event.pull_request.number }}"
+            } >> "$GITHUB_ENV"
+          else
+            echo "GITHUB_BASE_SHA=${{ github.event.before || '' }}" >> "$GITHUB_ENV"
+          fi
+
+          # Commit that last changed the approved baselines, for provenance.
+          BASELINE_SHA="$(git log -1 --format=%H -- tests/regression/snapshots || true)"
+          echo "Baseline directory last changed in: ${BASELINE_SHA:-unknown}"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      # Only the small launcher (dotenv) runs on the host. Every test and browser
+      # dependency is installed inside the Docker image by the pipeline itself.
+      - name: Install launcher dependencies
+        run: npm ci
+
+      # Cheap fail-fast: catches a corrupt or unregistered baseline set and an
+      # invalid coverage registry before spending minutes on a Docker build.
+      # Non-blocking here on purpose — the in-container preflight is the real
+      # gate and produces the classified, reportable result.
+      - name: Baseline and coverage preflight (host, advisory)
+        continue-on-error: true
+        run: |
+          node scripts/visual-baseline-manifest.mjs --verify
+          node scripts/visual-coverage-audit.mjs --profile "${VISUAL_REGRESSION_PROFILE}"
+
+      - name: Run visual regression pipeline (Docker/Linux)
+        id: pipeline
+        run: |
+          # No `set -e`: the raw exit code is data, not a reason to abort. The
+          # classify step decides what it means.
+          set +e
+          npm run test:regression:ci
+          PIPELINE_EXIT=$?
+          set -e
+          echo "exit_code=${PIPELINE_EXIT}" >> "$GITHUB_OUTPUT"
+          echo "Pipeline exited with ${PIPELINE_EXIT}."
+
+      # Classify from the canonical summary.json. Writes the job summary, emits
+      # annotations, and reports the verdict as an OUTPUT. Never exits non-zero,
+      # so artifact upload below always runs.
+      - name: Classify result
+        id: classify
+        if: always()
+        env:
+          VISUAL_REGRESSION_SUMMARY: ${{ env.SUMMARY_DIR }}/summary.json
+          PIPELINE_EXIT_CODE: ${{ steps.pipeline.outputs.exit_code }}
+        run: node scripts/visual-regression-gate.mjs
+
+      # Mandatory artifacts. `if-no-files-found: error` because a failed run that
+      # uploads no summary cannot be interpreted by anyone.
+      - name: Upload visual regression summary and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-artifacts
+          path: |
+            visual-regression-artifacts/docker-ci/visual-regression-summary/
+            visual-regression-artifacts/docker-ci/*.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+      # Expanded diagnostics, uploaded separately so a reviewer can open the
+      # HTML report and traces without extracting the whole archive.
+      - name: Upload Playwright report and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-playwright-report
+          path: |
+            visual-regression-artifacts/docker-ci/visual-regression-artifact/playwright-report/**
+            visual-regression-artifacts/docker-ci/visual-regression-artifact/test-results/**
+          # warn, not error: on a preflight failure Playwright never ran, so
+          # there is legitimately no report. The mandatory artifact above still
+          # explains why.
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload baseline candidates (if any)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-baseline-candidates
+          path: visual-regression-artifacts/docker-ci/baseline-candidates/**
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # Report a notification problem without letting it change the regression
+      # verdict. A mail outage must not turn a non-blocking visual warning into a
+      # broken build, and it must not mask a real blocking failure either.
+      - name: Report notification status
+        if: always()
+        run: |
+          STATUS="${{ steps.classify.outputs.notification_status }}"
+          echo "Notification status: ${STATUS}"
+
+          if [ "${{ env.IS_FORK_PR }}" = "true" ]; then
+            echo "::notice title=Notification skipped (fork PR)::Repository secrets are withheld from pull requests opened from forks, by design. The regression result is unaffected. Email for fork PRs requires the fork-safe two-workflow architecture described in tests/docs/visual-regression-notifications.md."
+            exit 0
+          fi
+
+          case "${STATUS}" in
+            delivered|dry-run|skipped-passing) ;;
+            not-configured)
+              echo "::warning title=Visual regression email not configured::Required SMTP secrets are absent. See tests/docs/visual-regression-notifications.md. The regression verdict is unchanged." ;;
+            failed)
+              echo "::warning title=Visual regression email failed::SMTP delivery failed. See the pipeline log for the classified reason (auth / network / TLS / message). The regression verdict is unchanged." ;;
+            *)
+              echo "::notice title=Visual regression notification::Status ${STATUS}." ;;
+          esac
+
+      # THE GATE. Last step on purpose: diagnostics, artifacts, notification and
+      # the job summary have all already run.
+      #
+      # Blocking:     missing baselines, missing captures, execution failures,
+      #               corrupt baselines, invalid coverage registry, corrupt or
+      #               absent summary, infrastructure failures.
+      # Non-blocking: confirmed visual differences (unless strict mode is on).
+      - name: Apply visual regression gate
+        if: always()
+        run: |
+          if [ "${{ steps.classify.outputs.blocking }}" = "true" ]; then
+            echo "Blocking classification: ${{ steps.classify.outputs.classification }}"
+            echo "See the job summary and the visual-regression-artifacts artifact."
+            exit 1
+          fi
+
+          echo "Non-blocking result: ${{ steps.classify.outputs.classification }}"
+          exit 0
