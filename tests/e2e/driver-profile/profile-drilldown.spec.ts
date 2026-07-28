@@ -91,13 +91,13 @@ test.describe('driver profile drill-down @smoke', () => {
     const frame = prototypeFrame(page);
     await frame.getByRole('button', { name: /^Notification settings$/ }).click();
 
-    await frame.locator('select.input').selectOption('SUV');
+    await frame.locator('select.input').selectOption('passenger_car');
     await frame.getByRole('button', { name: /^Third-party axle$/ }).click();
 
     const prefs = await page
       .locator('iframe[title="AUTHEON Prototype"]')
       .evaluate((el: HTMLIFrameElement) => el.contentWindow!.AuthStore.getCurrentDriver().prefs);
-    expect(prefs.vehicleType).toBe('SUV');
+    expect(prefs.vehicleType).toBe('passenger_car');
     expect(prefs.transportType).toBe('third_party_axle');
     expect('vehicle' in prefs).toBe(false);
     expect('axle' in prefs).toBe(false);

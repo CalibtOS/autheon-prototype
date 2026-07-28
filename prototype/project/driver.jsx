@@ -5579,7 +5579,7 @@ const ProfilePaneFull = () => {
             value={prefs.vehicleType || "All"}
             onChange={(e) => setPref({ vehicleType: e.target.value })}
           >
-            {["All", "PKW", "SUV", "Van", "Light truck <3.5t"].map((x) => (
+            {["All", ...AuthStore.selectableVehicleTypes()].map((x) => (
               <option key={x} value={x}>
                 {displayVehicle(x, t)}
               </option>
