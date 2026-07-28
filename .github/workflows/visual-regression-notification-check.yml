@@ -39,6 +39,9 @@ jobs:
     timeout-minutes: 10
 
     env:
+      # SMTP_PASSWORD is the only value in GitHub Secrets. The rest are committed
+      # routing values; keep them in sync with NOTIFICATION_DEFAULTS in
+      # scripts/lib/smtp-preflight.mjs and with the Visual Regression workflow.
       SMTP_HOST: smtppro.zoho.eu
       SMTP_USER: youssef.elkondakly@calibtos.com
       SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}

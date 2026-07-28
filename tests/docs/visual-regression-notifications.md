@@ -23,120 +23,111 @@ either. The notification outcome is reported separately in
 
 ---
 
-## 2. Required GitHub configuration
+## 2. Configuration model
 
-### Secrets — `Settings → Secrets and variables → Actions → Secrets`
+**`SMTP_PASSWORD` is the only value in GitHub Secrets.** Everything else is
+routing configuration for a dedicated CI mailbox and is committed as a real value
+in the repository.
 
-| Secret name | Purpose | Example placeholder |
+| Setting | Value | Where it lives |
 | --- | --- | --- |
-| `SMTP_HOST` | SMTP server hostname | `smtp.example.com` |
-| `SMTP_USER` | SMTP account / login | `visual-regression@example.com` |
-| `SMTP_PASSWORD` | SMTP password or app password | *(never write this on a command line)* |
-| `SMTP_FROM` | Envelope sender. Falls back to `SMTP_USER` | `AUTHEON CI <ci@example.com>` |
-| `REGRESSION_NOTIFICATION_EMAIL` | Recipient(s), comma-separated | `qa@example.com,lead@example.com` |
+| `SMTP_HOST` | `smtppro.zoho.eu` | committed |
+| `SMTP_PORT` | `465` | committed |
+| `SMTP_SECURE` | `true` (implicit TLS) | committed |
+| `SMTP_USER` | `youssef.elkondakly@calibtos.com` | committed |
+| `SMTP_FROM` | `youssef.elkondakly@calibtos.com` | committed |
+| `REGRESSION_NOTIFICATION_EMAIL` | `calibtos.services@gmail.com` | committed |
+| `SMTP_PASSWORD` | — | **GitHub repository secret** |
 
-### Variables — `Settings → Secrets and variables → Actions → Variables`
+This is a deliberate decision by the repository owner: these are a mail host and
+two mailbox addresses, not credentials, and committing them means one place to
+read them, no silent defaults, and a run log that shows exactly which mailbox was
+used. The password is never committed, never defaulted, and never logged.
 
-Transport settings are **not secret**, and keeping them as variables means their
-values are visible in the run log, where a wrong port is obvious instead of
-invisible.
+### Where the committed values live, and precedence
 
-| Variable name | Purpose | Default if unset |
-| --- | --- | --- |
-| `SMTP_PORT` | SMTP port | `587` |
-| `SMTP_SECURE` | `true` = implicit TLS (port 465), `false` = STARTTLS (port 587) | `false` |
-| `VISUAL_REGRESSION_STRICT` | `true` makes visual differences blocking on every run | `false` |
+Highest first:
 
-> **Port and TLS must agree.** `587` + `SMTP_SECURE=false` (STARTTLS) or `465` +
-> `SMTP_SECURE=true` (implicit TLS). The preflight rejects the two wrong
-> combinations explicitly, because a mismatch otherwise surfaces much later as an
-> opaque connection timeout.
+1. **Environment variable** — `.env` locally, the `env:` block in
+   `.github/workflows/visual-regression.yml` and
+   `.github/workflows/visual-regression-notification-check.yml` in CI.
+2. **Committed defaults** — `NOTIFICATION_DEFAULTS` in
+   `scripts/lib/smtp-preflight.mjs`.
+
+Because of the fallback, a fresh clone runs the notification path with only
+`SMTP_PASSWORD` set. The workflow `env:` blocks and `NOTIFICATION_DEFAULTS`
+currently hold the same values — **change them together.** The pipeline logs the
+resolved transport on every run (`youssef.elkondakly@calibtos.com via
+smtppro.zoho.eu:465 (secure true) -> calibtos.services@gmail.com`), so a drift
+between the two is visible immediately.
+
+> **Port and TLS must agree.** `465` + `SMTP_SECURE=true` (implicit TLS, what is
+> configured here) or `587` + `SMTP_SECURE=false` (STARTTLS). The preflight
+> rejects the two wrong combinations explicitly, because a mismatch otherwise
+> surfaces much later as an opaque connection timeout.
+
+To change the mailbox: edit `NOTIFICATION_DEFAULTS`, both workflow `env:` blocks,
+and `.env.example`. To change the recipient only, the same three places.
 
 ---
 
-## 3. Method A — GitHub web interface
+## 3. Setting the one secret — GitHub web interface
 
 1. Open the repository on GitHub.
 2. Click **Settings** (repository settings, not your account settings).
 3. In the left sidebar, expand **Secrets and variables**.
 4. Click **Actions**.
-
-**To add each secret:**
-
 5. Stay on the **Secrets** tab.
 6. Click **New repository secret**.
-7. Enter the exact name from the table in section 2. Names are
-   case-sensitive; `Smtp_Host` is a different secret from `SMTP_HOST`.
-8. Paste the value into **Secret**.
+7. Name it exactly `SMTP_PASSWORD`. Names are case-sensitive.
+8. Paste the Zoho mailbox password (or app-specific password) into **Secret**.
 9. Click **Add secret**.
-10. Repeat for all five secrets.
-
-**To add each variable:**
-
-11. Switch to the **Variables** tab.
-12. Click **New repository variable**.
-13. Enter the name and value from the variables table.
-14. Click **Add variable**.
 
 ### Values cannot be read back
 
 Once saved, a secret's value is never displayed again — not to you, not to an
 administrator, not in a log. The UI shows only the name and the last-updated
-date. If you need to know a value, you must look it up in your password manager
-or your mail provider, not in GitHub.
+date. Look it up in your password manager or Zoho, not in GitHub.
 
-### Replacing or rotating a secret
+### Replacing or rotating it
 
 1. **Settings → Secrets and variables → Actions**.
-2. Find the secret in the list.
-3. Click the pencil / **Update** icon next to it.
-4. Enter the new value and save. The name and every workflow reference stay
-   unchanged; the next run picks up the new value automatically.
+2. Find `SMTP_PASSWORD`.
+3. Click the pencil / **Update** icon.
+4. Enter the new value and save. No workflow edit is needed; the next run picks
+   it up automatically.
 
-Rotate `SMTP_PASSWORD` whenever someone with access leaves, and immediately if a
-value was ever pasted somewhere shared. Rotation is a value change only — no
-workflow edit is needed.
+Rotate whenever someone with access leaves, and immediately if the value was ever
+pasted somewhere shared.
 
-### Verifying names without exposing values
+### Verifying without exposing the value
 
-Two safe ways:
-
-- The secrets list page shows every name. Compare it against section 2
-  character by character.
+- The secrets list page shows the name. Confirm it reads exactly `SMTP_PASSWORD`.
 - Run the **Visual Regression Notification Check** workflow (section 5). It
-  prints a `SET` / `MISSING` table by variable **name** and never prints a
-  value, not even partially masked.
+  prints the resolved host, account, sender, and recipient — which are committed
+  values anyway — and reports the password by presence only.
 
 ---
 
-## 4. Method B — GitHub CLI
+## 4. Setting the one secret — GitHub CLI
 
-Requires `gh auth login` with admin access to the repository.
+Requires `gh auth login` with admin access.
 
 ```bash
 REPO=CalibtOS/autheon-prototype
 ```
 
-### Set secrets — interactive, no value on the command line
+### Interactive, no value on the command line
 
 `gh secret set NAME` with no `--body` prompts for the value and reads it without
-echoing it. Prefer this always: a value passed as an argument lands in your shell
-history, in `ps` output, and possibly in a terminal scrollback that gets shared.
+echoing. Prefer this always: a value passed as an argument lands in shell history,
+in `ps` output, and in any shared scrollback.
 
 ```bash
-gh secret set SMTP_HOST                     --repo "$REPO"
-gh secret set SMTP_USER                     --repo "$REPO"
-gh secret set SMTP_PASSWORD                 --repo "$REPO"
-gh secret set SMTP_FROM                     --repo "$REPO"
-gh secret set REGRESSION_NOTIFICATION_EMAIL --repo "$REPO"
+gh secret set SMTP_PASSWORD --repo "$REPO"
 ```
 
-### Set a secret from a protected local file or stdin
-
-For scripted setup, read from a file with restrictive permissions, or from
-stdin. Note the leading space in the `printf` line: in `bash` and `zsh` with
-`HIST_IGNORE_SPACE` / `HISTCONTROL=ignorespace`, a leading space keeps the
-command out of history.
+### From a protected local file or stdin
 
 ```bash
 # From a file only you can read.
@@ -145,7 +136,8 @@ printf '%s' 'PLACEHOLDER_PASSWORD' > ./smtp-password.txt
 gh secret set SMTP_PASSWORD --repo "$REPO" < ./smtp-password.txt
 shred -u ./smtp-password.txt 2>/dev/null || rm -P ./smtp-password.txt
 
-# Or from stdin, prompted by your password manager.
+# Or straight from a password manager. The leading space keeps it out of history
+# when HISTCONTROL=ignorespace / HIST_IGNORE_SPACE is set.
  gh secret set SMTP_PASSWORD --repo "$REPO" < <(pass show autheon/smtp-password)
 ```
 
@@ -156,23 +148,14 @@ Never do this:
 gh secret set SMTP_PASSWORD --body 'realpassword' --repo "$REPO"
 ```
 
-### Set variables
+### Verify the name
 
 ```bash
-gh variable set SMTP_PORT                --body '587'   --repo "$REPO"
-gh variable set SMTP_SECURE              --body 'false' --repo "$REPO"
-gh variable set VISUAL_REGRESSION_STRICT --body 'false' --repo "$REPO"
+gh secret list --repo "$REPO"     # expect exactly: SMTP_PASSWORD
 ```
 
-### List names to verify (values are never returned)
-
-```bash
-gh secret list   --repo "$REPO"
-gh variable list --repo "$REPO"
-```
-
-Expected secret names: `REGRESSION_NOTIFICATION_EMAIL`, `SMTP_FROM`,
-`SMTP_HOST`, `SMTP_PASSWORD`, `SMTP_USER`.
+No repository *variables* are required — the non-secret settings are committed
+rather than stored as variables.
 
 ---
 
@@ -209,9 +192,9 @@ rather than guessing, because the fixes are different:
 
 | Reported cause | Meaning | Fix |
 | --- | --- | --- |
-| `config-missing` | The secrets do not exist, or a name does not match exactly | Add them per section 3 or 4. Check for case and typos. |
+| `config-missing` | `SMTP_PASSWORD` is not set | Add it per section 3 or 4. Check the name is exactly `SMTP_PASSWORD`. |
 | `config-invalid` | Present but malformed — bad port, bad `SMTP_SECURE`, bad address, or a port/TLS mismatch | Correct the value. The specific problem is named in the log. |
-| `secrets-unavailable-by-design` / `fork-pull-request` | A pull request from a fork. GitHub withholds repository secrets from fork PRs | Nothing to fix. See section 7. |
+| `secrets-unavailable-by-design` / `fork-pull-request` | A pull request from a fork. GitHub withholds `SMTP_PASSWORD` from fork PRs | Nothing to fix. See section 7. |
 | `secrets-unavailable-by-design` / `dependabot` | A Dependabot run. Those receive Dependabot secrets, not Actions secrets | Add the values under **Dependabot secrets** only if Dependabot runs need email. |
 | `auth-rejected` | The server refused the credentials | Rotate `SMTP_USER` / `SMTP_PASSWORD`. Providers enforcing 2FA usually require an app-specific password. |
 | `network-failure` | The server was unreachable | Check `SMTP_HOST` / `SMTP_PORT` and whether the runner's egress permits that port. |
@@ -227,8 +210,8 @@ Other causes worth ruling out if the table above does not explain it:
   secret's repository access list.
 - **Environment secrets without a declared environment.** A secret stored on a
   GitHub *environment* is only available to a job that declares
-  `environment: <name>`. The visual regression job declares no environment, so
-  it reads **repository** secrets only. Either move the secrets to repository
+  `environment: <name>`. The visual regression job declares no environment, so it
+  reads **repository** secrets only. Either move `SMTP_PASSWORD` to repository
   scope, or add `environment:` to the job.
 - **Reusable workflow without `secrets:`.** A called workflow receives nothing
   unless the caller passes `secrets: inherit` or names them explicitly. The
@@ -243,8 +226,17 @@ Other causes worth ruling out if the table above does not explain it:
 In run `30024613183` the workflow correctly referenced `secrets.SMTP_HOST` and
 friends, on a **same-repository** pull request, in a job that declares no
 environment. The expressions were well formed. The values were empty because
-**the repository secrets had never been created.** Section 3 or 4 is the whole
-fix. Nothing in the workflow syntax needed to change for email to start working.
+**the repository secrets had never been created.** Nothing in the workflow syntax
+needed to change for email to start working.
+
+The configuration was then simplified to the model in section 2 — committed
+routing values, `SMTP_PASSWORD` as the only secret — and run `30359685350`
+delivered successfully:
+
+```
+[visual-regression-notify] SMTP connection verified (port 465, secure true).
+[visual-regression-notify] Email sent to calibtos.services@gmail.com
+```
 
 ---
 
@@ -296,32 +288,40 @@ Non-negotiable rules for workflow 2:
 
 ---
 
-## 8. Never store credentials in
+## 8. What must never be committed
 
-- Workflow YAML
-- `package.json`
-- Committed `.env` files
-- Test fixtures
-- Documentation examples (this file contains placeholders only)
-- Git history — a value committed once stays in history after deletion and must
-  be treated as compromised and rotated
+The mail host and the two mailbox addresses are committed on purpose (section 2).
+The password is not, and neither is anything else that grants access:
 
-`.env` is listed in `.gitignore` and in `.dockerignore`, so a local `.env` is
-neither committed nor baked into the Docker image. See `.env.example` for the
-variable names with placeholder descriptions.
+- **`SMTP_PASSWORD`** — GitHub Secrets and a local gitignored `.env` only
+- API tokens, app passwords, OAuth client secrets
+- Storage state / session cookies (`tests/.auth/`)
+- TOTP secrets, inbox passwords, CAPTCHA provider keys
+
+`.env` is listed in `.gitignore` and `.dockerignore`, so a local `.env` is neither
+committed nor baked into the Docker image. `.env.example` carries the real
+non-secret values and leaves `SMTP_PASSWORD` blank.
+
+A password committed once stays in git history after deletion. If that ever
+happens, treat it as compromised and rotate it in Zoho — removing the commit is
+not sufficient.
 
 ---
 
 ## 9. Local runs
 
-For local development, put the values in `.env` (gitignored) and use dry-run so
-nothing is delivered while you iterate:
+For local development you only need the password. Everything else falls through
+to the committed defaults:
 
 ```bash
 cp .env.example .env
-# fill in .env, then:
+# set SMTP_PASSWORD in .env, then:
 REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:ci
 ```
+
+Use dry-run while iterating so nothing is delivered. Without `SMTP_PASSWORD` the
+notifier reports `config-missing` naming that one variable and leaves the
+regression verdict untouched.
 
 Dry-run writes the full email payload to
 `visual-regression-artifacts/docker-ci/visual-regression-summary/notification-email.json`

@@ -8,7 +8,11 @@ import nodemailer from 'nodemailer';
 import { chromium } from '@playwright/test';
 import { config as loadDotenv } from 'dotenv';
 
-import { classifySmtpError, smtpPreflight } from './lib/smtp-preflight.mjs';
+import {
+  classifySmtpError,
+  notificationSetting,
+  smtpPreflight,
+} from './lib/smtp-preflight.mjs';
 
 const repoRoot = process.cwd();
 
@@ -23,8 +27,10 @@ const artifactDir =
   process.env.VISUAL_REGRESSION_ARTIFACT_DIR || path.join(repoRoot, 'visual-regression-artifacts');
 const summaryDir = path.join(artifactDir, 'visual-regression-summary');
 const summaryPath = path.join(summaryDir, 'summary.json');
-const recipient =
-  process.env.REGRESSION_NOTIFICATION_EMAIL || 'youssef.elkondakly@calibtos.com';
+// Recipient and sender resolve through the committed defaults in
+// scripts/lib/smtp-preflight.mjs, so there is exactly one place to change them.
+const recipient = notificationSetting('REGRESSION_NOTIFICATION_EMAIL');
+const sender = notificationSetting('SMTP_FROM') || notificationSetting('SMTP_USER');
 const hostArtifactDir = process.env.REGRESSION_ARTIFACT_HOST_DIR || artifactDir;
 const ciExitCode = Number(process.env.REGRESSION_CI_EXIT_CODE || '0');
 const dryRun = isTruthy(process.env.REGRESSION_NOTIFICATION_DRY_RUN);
@@ -328,7 +334,7 @@ async function buildEmail(model, reportArtifacts) {
 
   return {
     to: recipient,
-    from: process.env.SMTP_FROM || process.env.SMTP_USER || 'visual-regression@localhost',
+    from: sender,
     subject: subjectFor(model),
     text,
     html,
@@ -503,11 +509,12 @@ async function notify({ classification, email, reportArtifacts }) {
   }
 
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
+    host: preflight.config.host,
     port: preflight.config.port,
     secure: preflight.config.secure,
     auth: {
-      user: process.env.SMTP_USER,
+      user: preflight.config.user,
+      // The only value never defaulted and never logged.
       pass: process.env.SMTP_PASSWORD,
     },
     connectionTimeout: 20_000,
@@ -1398,7 +1405,7 @@ Error: ${error.message || String(error)}
     },
     email: {
       to: recipient,
-      from: process.env.SMTP_FROM || process.env.SMTP_USER || 'visual-regression@localhost',
+      from: sender,
       subject: '[AUTHEON Visual Regression] ❌ CI failed — summary unavailable',
       text,
       html,

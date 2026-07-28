@@ -414,6 +414,28 @@
       "profiles": ["smoke", "full"]
     },
     {
+      "snapshotId": "driver-marketplace-filter-1.png",
+      "surface": "driver",
+      "screen": "Marketplace",
+      "scenario": "one applied filter, badge shows 1",
+      "state": "filter:applied,badge:1",
+      "role": "driver",
+      "interactions": ["open Filters", "apply a single filter", "close the sheet"],
+      "mask": ["open tours header date label (live date)"],
+      "tags": ["screen", "filters", "badge"]
+    },
+    {
+      "snapshotId": "driver-marketplace-filter-3.png",
+      "surface": "driver",
+      "screen": "Marketplace",
+      "scenario": "multiple applied filters, badge shows 3",
+      "state": "filter:applied,badge:3",
+      "role": "driver",
+      "interactions": ["open Filters", "apply three filters", "close the sheet"],
+      "mask": ["open tours header date label (live date)"],
+      "tags": ["screen", "filters", "badge"]
+    },
+    {
       "snapshotId": "driver-job-locked.png",
       "surface": "driver",
       "screen": "Job detail",
@@ -456,8 +478,19 @@
       "screen": "My jobs",
       "scenario": "special cases tab",
       "role": "driver",
-      "interactions": ["open My jobs", "switch to the Special cases tab"],
+      "status": "deprecated",
+      "exclusionReason": "The My jobs 'Special cases' tab was replaced by the 'Empty run' tab; driver.visual.spec.ts no longer declares this snapshot. Registered as deprecated rather than deleted so the retirement is recorded. It has no baseline on any platform, so there is nothing to remove.",
       "tags": ["screen", "tabs", "list"]
+    },
+    {
+      "snapshotId": "driver-myjobs-empty-run.png",
+      "surface": "driver",
+      "screen": "My jobs",
+      "scenario": "empty run tab",
+      "state": "empty",
+      "role": "driver",
+      "interactions": ["open My jobs", "switch to the Empty run tab"],
+      "tags": ["screen", "tabs", "list", "empty-state"]
     },
     {
       "snapshotId": "driver-job-unlocked.png",
@@ -549,6 +582,72 @@
     },
 
     {
+      "$comment": [
+        "Component-gallery surface. This repository has no Storybook and no",
+        "bundler, so the gallery HTML pages under prototype/project/ ARE the story",
+        "catalogue: each mounts a real shared component in every state. They give",
+        "the same protection a Storybook snapshot setup would, and they are the only",
+        "place component states are captured in isolation from page-level noise."
+      ],
+      "snapshotId": "driver-header-states.png",
+      "surface": "component-gallery",
+      "route": "/prototype/project/driver-header-states.html",
+      "screen": "DriverScreenHeader gallery",
+      "scenario": "all 13 header states in one page",
+      "state": "gallery",
+      "role": "n/a",
+      "fixture": "gallery page mounts the real shared header per story",
+      "tags": ["component-gallery", "header", "states", "badge", "i18n-long-strings"],
+      "owner": "frontend"
+    },
+    {
+      "snapshotId": "driver-header-focus-visible.png",
+      "surface": "component-gallery",
+      "route": "/prototype/project/driver-header-states.html",
+      "screen": "DriverScreenHeader gallery",
+      "scenario": "keyboard focus-visible ring on the notification bell",
+      "state": "focus-visible",
+      "role": "n/a",
+      "mode": "locator",
+      "fixture": "gallery page mounts the real shared header per story",
+      "interactions": [
+        "press Tab until the gallery bell is document.activeElement",
+        "assert it matches :focus-visible"
+      ],
+      "tags": ["component-gallery", "header", "focus-visible", "accessibility"],
+      "owner": "frontend"
+    },
+    {
+      "snapshotId": "marketplace-filter-states.png",
+      "surface": "component-gallery",
+      "route": "/prototype/project/driver-marketplace-filter-states.html",
+      "screen": "MarketplaceFilterButton gallery",
+      "scenario": "all 14 filter-badge states in one page",
+      "state": "gallery",
+      "role": "n/a",
+      "fixture": "gallery page mounts the real filter button driven by committed-filter objects, plus the Badge primitive alone",
+      "tags": ["component-gallery", "filters", "badge", "states"],
+      "owner": "frontend"
+    },
+    {
+      "snapshotId": "marketplace-filter-focus-visible.png",
+      "surface": "component-gallery",
+      "route": "/prototype/project/driver-marketplace-filter-states.html",
+      "screen": "MarketplaceFilterButton gallery",
+      "scenario": "keyboard focus-visible ring on the filter button",
+      "state": "focus-visible",
+      "role": "n/a",
+      "mode": "locator",
+      "fixture": "gallery page mounts the real filter button driven by committed-filter objects",
+      "interactions": [
+        "press Tab until the gallery filter button is document.activeElement",
+        "assert it matches :focus-visible"
+      ],
+      "tags": ["component-gallery", "filters", "focus-visible", "accessibility"],
+      "owner": "frontend"
+    },
+
+    {
       "snapshotId": "admin-infopoint-rename-modal.png",
       "screen": "Infopoint",
       "scenario": "rename document modal",
@@ -569,7 +668,7 @@
   "planned": [
     {
       "id": "viewport-mode-sticky-chrome",
-      "reason": "Every one of the 47 existing scenarios uses fullPage: true. A full-page render stitches the document at its full height, so it cannot prove that the Driver PWA fixed bottom tabbar, the admin sticky job sidebars, or a sticky table header sit correctly at real viewport height.",
+      "reason": "51 of the 53 registered captures are page-level fullPage: true; the other 2 are locator captures of a component gallery. NOTHING is captured in viewport mode. A full-page render stitches the document at its full height, so it cannot prove that the Driver PWA fixed bottom tabbar, the admin sticky job sidebars, or a sticky table header sit correctly at real viewport height.",
       "mode": "viewport",
       "expands": {
         "surfaces": ["driver", "admin"],
@@ -628,25 +727,34 @@
     },
     {
       "id": "interaction-states",
-      "reason": "Focus-visible, hover, expanded selects, and open autocomplete results are not registered. Two spec files that once covered focus-visible states (driver-header-states, marketplace-filter-states) were deleted, leaving orphan darwin baselines behind.",
+      "reason": "Focus-visible IS covered, but only for two components via the gallery pages (driver-header-focus-visible, marketplace-filter-focus-visible). Hover, expanded selects/dropdowns, open autocomplete results, disabled controls, and focus states on in-app screens rather than gallery pages are all unregistered.",
       "expands": {
         "states": [
-          "focus-visible",
           "hover",
           "select-expanded",
           "autocomplete-open",
-          "control-disabled"
+          "control-disabled",
+          "focus-visible on in-app screens"
         ]
       },
+      "note": "The gallery-page pattern is the cheapest way to extend this: no Storybook or bundler is needed, and a gallery page can mount a component in every interaction state at once.",
       "owner": "frontend"
     },
     {
       "id": "empty-error-loading-states",
-      "reason": "Only populated states are registered. The in-memory seed store always returns data, so empty/loading/error/offline states need explicit fixture control before they can be captured deterministically.",
+      "reason": "One empty state is covered (driver-myjobs-empty-run). Loading, skeleton, error, permission-denied, offline, and no-result-search states are not, and no empty state is covered on the admin surface.",
       "expands": {
-        "states": ["empty", "loading", "skeleton", "error", "offline", "no-result-search"]
+        "states": [
+          "loading",
+          "skeleton",
+          "error",
+          "permission-denied",
+          "offline",
+          "no-result-search",
+          "admin empty lists"
+        ]
       },
-      "blockedBy": "The prototype seeds a fixed in-memory store on every load with no fixture override hook. Capturing these states requires a test-only seeding hook first — a product/prototype change that is out of scope for this CI task.",
+      "blockedBy": "The prototype seeds a fixed in-memory store on every load with no fixture override hook. Capturing these states requires a test-only seeding hook first — a product/prototype change that is out of scope for this CI task. driver-myjobs-empty-run works only because an empty run is a real seeded tab, not an injected fixture.",
       "owner": "frontend"
     }
   ]

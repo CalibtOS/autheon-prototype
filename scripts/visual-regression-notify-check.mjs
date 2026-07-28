@@ -18,7 +18,13 @@ import path from 'node:path';
 import nodemailer from 'nodemailer';
 import { config as loadDotenv } from 'dotenv';
 
-import { classifySmtpError, smtpPreflight } from './lib/smtp-preflight.mjs';
+import {
+  NOTIFICATION_DEFAULTS,
+  classifySmtpError,
+  notificationSetting,
+  setInEnvironment,
+  smtpPreflight,
+} from './lib/smtp-preflight.mjs';
 import { APPROVED_PLATFORM, playwrightVersion, verifyBaselines } from './lib/visual-baseline.mjs';
 
 const repoRoot = process.cwd();
@@ -59,25 +65,23 @@ if (preflight.availability.explanation) {
   console.log(`[notify-check] ${preflight.availability.explanation}`);
 }
 
-// Presence table by NAME. No values, not even truncated ones.
-console.log('[notify-check] Configuration presence:');
-for (const name of [
-  'SMTP_HOST',
-  'SMTP_PORT',
-  'SMTP_SECURE',
-  'SMTP_USER',
-  'SMTP_PASSWORD',
-  'SMTP_FROM',
-  'REGRESSION_NOTIFICATION_EMAIL',
-]) {
-  const value = process.env[name];
-  const set = typeof value === 'string' && value.trim() !== '';
-  console.log(`[notify-check]   ${set ? 'SET    ' : 'MISSING'}  ${name}`);
+// Resolved configuration. Non-secret values are shown, because they are
+// committed defaults in this repository and seeing the actual mailbox is the
+// point of the check. SMTP_PASSWORD is reported by presence only.
+console.log('[notify-check] Resolved configuration:');
+for (const name of Object.keys(NOTIFICATION_DEFAULTS)) {
+  const source = setInEnvironment(name) ? 'env     ' : 'default ';
+  console.log(`[notify-check]   ${source} ${name.padEnd(30)} ${notificationSetting(name)}`);
 }
+console.log(
+  `[notify-check]   ${setInEnvironment('SMTP_PASSWORD') ? 'secret   SMTP_PASSWORD' : 'MISSING  SMTP_PASSWORD'}${
+    setInEnvironment('SMTP_PASSWORD') ? '                  (set; value not shown)' : '                  <- the only required secret'
+  }`,
+);
 
 console.log(
-  `[notify-check] Derived transport: port ${preflight.config.port}, secure ${preflight.config.secure}, ` +
-    `sender ${preflight.config.senderConfigured ? 'configured' : 'MISSING'}, ${preflight.config.recipientCount} recipient(s)`,
+  `[notify-check] Transport: ${preflight.config.user} via ${preflight.config.host}:${preflight.config.port} ` +
+    `(secure ${preflight.config.secure}) -> ${preflight.config.recipients.join(', ')}`,
 );
 
 for (const problem of preflight.problems) {
@@ -111,10 +115,10 @@ if (!preflight.ok) {
 }
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
+  host: preflight.config.host,
   port: preflight.config.port,
   secure: preflight.config.secure,
-  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD },
+  auth: { user: preflight.config.user, pass: process.env.SMTP_PASSWORD },
   connectionTimeout: 20_000,
   greetingTimeout: 20_000,
   socketTimeout: 30_000,
@@ -169,8 +173,8 @@ const rows = Object.entries(context)
   .join('\n');
 
 const email = {
-  to: process.env.REGRESSION_NOTIFICATION_EMAIL,
-  from: process.env.SMTP_FROM || process.env.SMTP_USER,
+  to: notificationSetting('REGRESSION_NOTIFICATION_EMAIL'),
+  from: notificationSetting('SMTP_FROM') || notificationSetting('SMTP_USER'),
   subject: '[AUTHEON Visual Regression] Notification check — configuration OK',
   text: `This is a TEST message from the AUTHEON visual regression notification check.
 

@@ -2,28 +2,69 @@
  * SMTP configuration preflight and failure classification.
  *
  * Two jobs:
- *   1. Answer "can we even attempt delivery?" without ever printing a value.
+ *   1. Answer "can we even attempt delivery?" without ever printing the password.
  *   2. Turn whatever nodemailer throws into a named cause, so "email didn't
  *      arrive" stops being one undifferentiated mystery.
  *
- * Nothing in this module logs or returns a secret value. Presence checks report
- * variable NAMES only; a lookup helper returns booleans, never contents.
+ * Configuration model (repository owner's decision)
+ * -------------------------------------------------
+ * `SMTP_PASSWORD` is the ONLY value kept in GitHub Secrets. The transport host,
+ * the sending account, the sender, the recipient, the port, and the TLS mode are
+ * committed defaults below. They are routing configuration for a dedicated CI
+ * mailbox, not credentials, and keeping them in one place in the repository means
+ * the scripts, the workflows, and the docs cannot drift apart — and a run log
+ * shows exactly which mailbox was used.
+ *
+ * An environment variable still wins over every default, so a local `.env`, a
+ * repository variable, or a one-off override all work unchanged.
+ *
+ * The password is never defaulted, never logged, and never returned by this
+ * module. Presence checks report variable NAMES only.
  */
 
-/** Secrets. Delivery is impossible without all of them. */
-export const REQUIRED_SECRETS = ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD'];
+/**
+ * Committed non-secret defaults.
+ *
+ * Change these here, not in the workflows: the workflows read the environment
+ * and the environment falls through to these.
+ */
+export const NOTIFICATION_DEFAULTS = {
+  SMTP_HOST: 'smtppro.zoho.eu',
+  SMTP_PORT: '465',
+  SMTP_SECURE: 'true',
+  SMTP_USER: 'youssef.elkondakly@calibtos.com',
+  SMTP_FROM: 'youssef.elkondakly@calibtos.com',
+  REGRESSION_NOTIFICATION_EMAIL: 'calibtos.services@gmail.com',
+};
 
-/** Recipient + sender. Sender falls back to SMTP_USER. */
-export const REQUIRED_ADDRESSING = ['REGRESSION_NOTIFICATION_EMAIL'];
+/** The only value that must come from a secret. */
+export const REQUIRED_SECRETS = ['SMTP_PASSWORD'];
 
-/** Non-sensitive transport configuration with safe defaults. */
-export const OPTIONAL_CONFIG = ['SMTP_PORT', 'SMTP_SECURE', 'SMTP_FROM'];
+/** Everything else resolves from the environment or the committed defaults. */
+export const DEFAULTED_CONFIG = Object.keys(NOTIFICATION_DEFAULTS);
 
 const EMAIL_SHAPE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
 
-function present(name) {
+/**
+ * Resolve a notification setting: environment first, committed default second.
+ *
+ * Never used for SMTP_PASSWORD — a defaulted password would be a real problem,
+ * so it is read directly from the environment everywhere.
+ */
+export function notificationSetting(name) {
+  const value = process.env[name];
+  if (typeof value === 'string' && value.trim() !== '') return value.trim();
+  return NOTIFICATION_DEFAULTS[name] ?? '';
+}
+
+/** True when a value is set in the environment (ignoring defaults). */
+export function setInEnvironment(name) {
   const value = process.env[name];
   return typeof value === 'string' && value.trim() !== '';
+}
+
+function present(name) {
+  return setInEnvironment(name) || Boolean(NOTIFICATION_DEFAULTS[name]);
 }
 
 /**
@@ -73,39 +114,47 @@ export function secretAvailabilityContext() {
  */
 export function smtpPreflight({ dryRun = false } = {}) {
   const availability = secretAvailabilityContext();
-  const missingSecrets = REQUIRED_SECRETS.filter((name) => !present(name));
-  const missingAddressing = REQUIRED_ADDRESSING.filter((name) => !present(name));
+  const missingSecrets = REQUIRED_SECRETS.filter((name) => !setInEnvironment(name));
   const problems = [];
 
-  const rawPort = (process.env.SMTP_PORT || '').trim();
-  const port = rawPort === '' ? 587 : Number(rawPort);
-  if (rawPort !== '' && (!Number.isInteger(port) || port <= 0 || port > 65535)) {
-    problems.push(`SMTP_PORT must be an integer between 1 and 65535 (received a ${rawPort.length}-character value).`);
+  const rawPort = notificationSetting('SMTP_PORT');
+  const port = Number(rawPort);
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+    problems.push(`SMTP_PORT must be an integer between 1 and 65535 (received "${rawPort}").`);
   }
 
-  const rawSecure = (process.env.SMTP_SECURE || '').trim().toLowerCase();
-  const secureAllowed = ['', 'true', 'false', '1', '0', 'yes', 'no', 'on', 'off'];
+  const rawSecure = notificationSetting('SMTP_SECURE').toLowerCase();
+  const secureAllowed = ['true', 'false', '1', '0', 'yes', 'no', 'on', 'off'];
   if (!secureAllowed.includes(rawSecure)) {
-    problems.push('SMTP_SECURE must be true or false.');
+    problems.push(`SMTP_SECURE must be true or false (received "${rawSecure}").`);
   }
   const secure = ['1', 'true', 'yes', 'on'].includes(rawSecure);
 
-  const sender = (process.env.SMTP_FROM || process.env.SMTP_USER || '').trim();
+  const host = notificationSetting('SMTP_HOST');
+  const user = notificationSetting('SMTP_USER');
+  const sender = notificationSetting('SMTP_FROM') || user;
+
+  if (!host) problems.push('SMTP_HOST resolved to an empty value.');
+  if (!user) problems.push('SMTP_USER resolved to an empty value.');
+
   if (sender && !EMAIL_SHAPE.test(extractAddress(sender))) {
     problems.push(
-      'SMTP_FROM does not look like an email address or "Name <address>" pair. Fix the secret value; it is not printed here.',
+      `SMTP_FROM "${sender}" is not an email address or a "Name <address>" pair.`,
     );
   }
 
-  const recipients = (process.env.REGRESSION_NOTIFICATION_EMAIL || '')
+  const recipients = notificationSetting('REGRESSION_NOTIFICATION_EMAIL')
     .split(/[,;]/)
     .map((value) => value.trim())
     .filter(Boolean);
+
+  if (recipients.length === 0) {
+    problems.push('REGRESSION_NOTIFICATION_EMAIL resolved to no recipients.');
+  }
+
   for (const recipient of recipients) {
     if (!EMAIL_SHAPE.test(extractAddress(recipient))) {
-      problems.push(
-        'REGRESSION_NOTIFICATION_EMAIL contains an entry that is not a valid email address. Fix the secret value; it is not printed here.',
-      );
+      problems.push(`REGRESSION_NOTIFICATION_EMAIL entry "${recipient}" is not a valid email address.`);
       break;
     }
   }
@@ -124,7 +173,7 @@ export function smtpPreflight({ dryRun = false } = {}) {
     );
   }
 
-  const missingVariables = [...missingSecrets, ...missingAddressing];
+  const missingVariables = [...missingSecrets];
 
   if (dryRun) {
     return {
@@ -134,7 +183,7 @@ export function smtpPreflight({ dryRun = false } = {}) {
       missingVariables,
       problems,
       availability,
-      config: { port, secure, senderConfigured: Boolean(sender), recipientCount: recipients.length },
+      config: { host, user, sender, port, secure, recipients, recipientCount: recipients.length },
       message:
         'REGRESSION_NOTIFICATION_DRY_RUN is set: the email payload is written to the artifact and no SMTP connection is attempted.',
     };
@@ -148,11 +197,12 @@ export function smtpPreflight({ dryRun = false } = {}) {
       missingVariables,
       problems,
       availability,
-      config: { port, secure, senderConfigured: Boolean(sender), recipientCount: recipients.length },
+      config: { host, user, sender, port, secure, recipients, recipientCount: recipients.length },
       message: availability.secretsExpected
-        ? `Email not sent. Missing required variable(s): ${missingVariables.join(', ')}. ` +
-          'Set them as repository secrets (see tests/docs/visual-regression-notifications.md), ' +
-          'or set REGRESSION_NOTIFICATION_DRY_RUN=true to validate the notification path without SMTP.'
+        ? `Email not sent. Missing required secret(s): ${missingVariables.join(', ')}. ` +
+          'SMTP_PASSWORD is the only value not committed as a default — set it as a repository secret ' +
+          '(see tests/docs/visual-regression-notifications.md), or set REGRESSION_NOTIFICATION_DRY_RUN=true ' +
+          'to validate the notification path without SMTP.'
         : `Email not sent: ${availability.explanation}`,
     };
   }
@@ -165,7 +215,7 @@ export function smtpPreflight({ dryRun = false } = {}) {
       missingVariables,
       problems,
       availability,
-      config: { port, secure, senderConfigured: Boolean(sender), recipientCount: recipients.length },
+      config: { host, user, sender, port, secure, recipients, recipientCount: recipients.length },
       message: `Email not sent. SMTP configuration is invalid: ${problems.join(' ')}`,
     };
   }
@@ -178,7 +228,7 @@ export function smtpPreflight({ dryRun = false } = {}) {
     problems: [],
     availability,
     config: { port, secure, senderConfigured: Boolean(sender), recipientCount: recipients.length },
-    message: `SMTP configuration is complete (port ${port}, secure ${secure}, ${recipients.length} recipient(s)).`,
+    message: `SMTP configuration is complete: ${user} via ${host}:${port} (secure ${secure}) -> ${recipients.join(', ')}.`,
   };
 }
 

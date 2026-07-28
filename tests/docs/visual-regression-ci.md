@@ -160,6 +160,11 @@ Use `test:regression:baseline` + `:approve`.
 
 ## Workflows
 
+Notification configuration: `SMTP_PASSWORD` is the only GitHub Secret; the mail
+host, account, sender, and recipient are committed values with a fallback in
+`scripts/lib/smtp-preflight.mjs`. See
+[notifications](./visual-regression-notifications.md) §2.
+
 | Workflow | Trigger | Purpose |
 | --- | --- | --- |
 | **Visual Regression** | `pull_request` (→ main), `push` (main), `workflow_dispatch`, nightly `schedule` | The pipeline and the gate |
