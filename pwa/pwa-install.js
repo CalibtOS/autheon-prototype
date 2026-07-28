@@ -105,7 +105,7 @@
         listeners.delete(fn);
       };
     },
-    async promptInstall: function () {
+    promptInstall: async function () {
       if (!state.deferredPrompt) {
         return { ok: false, reason: "unavailable" };
       }
