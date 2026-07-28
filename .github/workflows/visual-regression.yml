@@ -69,15 +69,15 @@ jobs:
       # claiming the secrets are missing. See the "Fork and untrusted PRs"
       # section of the notification doc.
       # ---------------------------------------------------------------------
-      SMTP_HOST: ${{ secrets.SMTP_HOST }}
-      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_HOST: smtppro.zoho.eu
+      SMTP_USER: youssef.elkondakly@calibtos.com
       SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-      SMTP_FROM: ${{ secrets.SMTP_FROM }}
-      REGRESSION_NOTIFICATION_EMAIL: ${{ secrets.REGRESSION_NOTIFICATION_EMAIL }}
+      SMTP_FROM: youssef.elkondakly@calibtos.com
+      REGRESSION_NOTIFICATION_EMAIL: calibtos.services@gmail.com
       # Non-sensitive transport configuration lives in repository VARIABLES with
       # a safe default, so a missing variable cannot silently disable TLS.
-      SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
-      SMTP_SECURE: ${{ vars.SMTP_SECURE || 'false' }}
+      SMTP_PORT: 465
+      SMTP_SECURE: true
 
       # Product decision: visual differences are a non-blocking warning. Only
       # execution failures, missing baselines, missing captures, and framework
