@@ -2225,6 +2225,9 @@ window.AuthStore = (() => {
   // frontend's access token (module-level memory, never persisted); see
   // .claude/rules/auth-internals.md in the backend/frontend repos.
   let session = { driver: null, admin: null };
+  // Forgot-password codes — pre-login, so keyed by "<kind>:<email>" rather
+  // than a driver/admin record (there is no authenticated actor yet).
+  let passwordResets = {};
   let auditLog = seedAudit();
   let driverState = seedDriverState();
   let tourDocuments = seedTourDocuments();
@@ -3820,6 +3823,106 @@ window.AuthStore = (() => {
       session.admin = null;
       if (admin) log("admin_signed_out", admin.name, admin.email, "");
       emit();
+    },
+
+    // ---- Forgot password (pre-login) — email -> 6-digit code -> reset ----
+    // Same shape as the driver's authenticated email-change flow above, but
+    // keyed by email since there's no session yet. Never persists a real
+    // password (this store never has anywhere to persist one); resetPassword
+    // only clears the pending record and logs the audit action.
+    PASSWORD_RESET_CODE_TTL_MS: 10 * 60 * 1000,
+    PASSWORD_RESET_RESEND_MS: 30 * 1000,
+
+    requestPasswordReset({ email, kind } = {}) {
+      const value = String(email || "").trim();
+      if (!isValidEmail(value)) return { ok: false, reason: "invalid_email" };
+      const account =
+        kind === "admin" ? findAdminByEmail(value) : findDriverByEmail(value);
+      // Always report success — never reveal whether an account exists for
+      // this email (mirrors the generic copy autheon-fe uses here).
+      if (!account) return { ok: true };
+      const key = `${kind}:${value.toLowerCase()}`;
+      const now = Date.now();
+      passwordResets[key] = {
+        email: value,
+        kind,
+        code: String(Math.floor(100000 + Math.random() * 900000)),
+        sentAt: now,
+        expiresAt: now + api.PASSWORD_RESET_CODE_TTL_MS,
+        attempts: 0,
+        resendCount: 0,
+        verified: false,
+        resetToken: "",
+      };
+      log(
+        kind === "admin"
+          ? "admin_password_reset_requested"
+          : "driver_password_reset_requested",
+        account.name,
+        account.email,
+        "",
+      );
+      return { ok: true };
+    },
+
+    resendPasswordResetCode({ email, kind } = {}) {
+      const key = `${kind}:${String(email || "").trim().toLowerCase()}`;
+      const pending = passwordResets[key];
+      if (!pending) return { ok: false, reason: "no_pending" };
+      const now = Date.now();
+      if (pending.sentAt + api.PASSWORD_RESET_RESEND_MS > now)
+        return { ok: false, reason: "resend_too_soon" };
+      pending.code = String(Math.floor(100000 + Math.random() * 900000));
+      pending.sentAt = now;
+      pending.expiresAt = now + api.PASSWORD_RESET_CODE_TTL_MS;
+      pending.attempts = 0;
+      pending.resendCount = (pending.resendCount || 0) + 1;
+      log(
+        pending.kind === "admin"
+          ? "admin_password_reset_requested"
+          : "driver_password_reset_requested",
+        pending.email,
+        pending.email,
+        "resend",
+      );
+      return { ok: true };
+    },
+
+    verifyPasswordResetCode({ email, kind, code } = {}) {
+      const key = `${kind}:${String(email || "").trim().toLowerCase()}`;
+      const pending = passwordResets[key];
+      if (!pending) return { ok: false, reason: "invalid_code" };
+      if (Date.now() > pending.expiresAt)
+        return { ok: false, reason: "expired" };
+      if (String(code || "").trim() !== pending.code) {
+        pending.attempts = (pending.attempts || 0) + 1;
+        return { ok: false, reason: "invalid_code" };
+      }
+      pending.verified = true;
+      pending.resetToken = `demo-reset-${Math.random().toString(36).slice(2)}`;
+      return { ok: true, resetToken: pending.resetToken };
+    },
+
+    resetPassword({ email, kind, resetToken, newPassword } = {}) {
+      const key = `${kind}:${String(email || "").trim().toLowerCase()}`;
+      const pending = passwordResets[key];
+      if (
+        !pending ||
+        !pending.verified ||
+        !resetToken ||
+        resetToken !== pending.resetToken
+      )
+        return { ok: false, reason: "invalid_session" };
+      if (String(newPassword || "").trim().length < 8)
+        return { ok: false, reason: "password_too_short" };
+      delete passwordResets[key];
+      log(
+        kind === "admin" ? "admin_password_reset" : "driver_password_reset",
+        pending.email,
+        pending.email,
+        "",
+      );
+      return { ok: true };
     },
 
     statusLabel: (s) => {

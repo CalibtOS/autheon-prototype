@@ -913,6 +913,50 @@ select.input {
   outline-offset: 2px;
   border-radius: var(--r-1);
 }
+.auth-forgot-link[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Forgot-password flow: per-step back button + segmented OTP entry */
+.auth-back-row {
+  display: flex;
+  margin-bottom: -8px;
+}
+.auth-otp-row {
+  position: relative;
+  display: flex;
+  gap: 8px;
+}
+.auth-otp-hidden-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  cursor: text;
+}
+.auth-otp-cell {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-2);
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text);
+}
+.auth-otp-cell.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+}
 
 /* Admin login — centered card on muted canvas (autheon-fe CenteredCardLayout) */
 .auth-shell-admin {

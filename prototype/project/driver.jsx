@@ -6883,6 +6883,91 @@ const SameDayOverlapSheet = ({ onCancel, onConfirm }) => {
 const DriverLoginScreen = ({ standalone = false }) => {
   const { t } = useI18n();
   const store = useAuthStore();
+  const [mode, setMode] = useState("login"); // login | forgot
+  const [notice, setNotice] = useState("");
+
+  const body =
+    mode === "forgot" ? (
+      <DriverUI.ForgotPasswordFlow
+        kind="driver"
+        onExit={() => setMode("login")}
+        onDone={() => {
+          setMode("login");
+          setNotice(t("authForgotPasswordSuccessNotice"));
+        }}
+        copy={{
+          invalidEmail: t("authErrorInvalidEmail"),
+          title: t("authDriverForgotTitle"),
+          subtitle: t("authDriverForgotSubtitle"),
+          emailLabel: t("authDriverForgotEmailLabel"),
+          emailPlaceholder: t("authDriverForgotEmailPlaceholder"),
+          submit: t("authDriverForgotSubmit"),
+          backToLogin: t("authDriverForgotBackToLogin"),
+          otpTitle: t("authDriverForgotOtpTitle"),
+          otpSubtitlePrefix: t("authDriverForgotOtpSubtitlePrefix"),
+          otpSubmit: t("authDriverForgotOtpSubmit"),
+          otpResendCooldownPrefix: t("authDriverForgotOtpResendCooldownPrefix"),
+          otpResendButton: t("authDriverForgotOtpResendButton"),
+          otpBack: t("authDriverForgotOtpBack"),
+          otpInvalidCode: t("authDriverForgotOtpInvalidCode", { length: 6 }),
+          otpIncorrectCode: t("authDriverForgotOtpIncorrectCode"),
+          resetTitle: t("authDriverResetTitle"),
+          resetSubtitle: t("authDriverResetSubtitle"),
+          resetPasswordLabel: t("authDriverResetPasswordLabel"),
+          resetPasswordPlaceholder: t("authDriverResetPasswordPlaceholder"),
+          resetConfirmLabel: t("authDriverResetConfirmLabel"),
+          resetConfirmPlaceholder: t("authDriverResetConfirmPlaceholder"),
+          resetSubmit: t("authDriverResetSubmit"),
+          resetBack: t("authDriverResetBack"),
+          resetMinLength: t("authDriverResetMinLength"),
+          resetConfirmRequired: t("authDriverResetConfirmRequired"),
+          resetMismatch: t("authDriverResetMismatch"),
+        }}
+      />
+    ) : (
+      <>
+        <div className="auth-logo-row">
+          <img
+            className="brand-mark"
+            src="favicon.svg"
+            alt=""
+            width="22"
+            height="22"
+            aria-hidden="true"
+          />
+          <span className="auth-logo-text">{store.getAppDisplayName()}</span>
+        </div>
+        <div className="auth-heading-block">
+          <h1 className="auth-heading">{t("authDriverLoginTitle")}</h1>
+          <p className="auth-subheading">{t("authDriverLoginSubtitle")}</p>
+        </div>
+        {notice && (
+          <InlineAlert
+            tone="success"
+            message={notice}
+            onDismiss={() => setNotice("")}
+          />
+        )}
+        <DriverUI.LoginForm
+          emailLabel={t("authDriverLoginEmailLabel")}
+          emailPlaceholder={t("authDriverLoginEmailPlaceholder")}
+          passwordLabel={t("authDriverLoginPasswordLabel")}
+          passwordPlaceholder={t("authDriverLoginPasswordPlaceholder")}
+          showPasswordLabel={t("authDriverLoginShowPassword")}
+          hidePasswordLabel={t("authDriverLoginHidePassword")}
+          submitLabel={t("authDriverLoginSubmit")}
+          forgotPasswordLabel={t("authDriverLoginForgotPassword")}
+          onForgotPassword={() => {
+            setNotice("");
+            setMode("forgot");
+          }}
+          onSubmit={(email, password) =>
+            store.loginDriver({ email, password })
+          }
+        />
+      </>
+    );
+
   return (
     <div className={`phone-shell${standalone ? " pwa-viewport" : ""}`}>
       {!standalone && <div className="pwa-tag">{t("pwaTag")}</div>}
@@ -6891,41 +6976,7 @@ const DriverLoginScreen = ({ standalone = false }) => {
         <div className="phone-screen">
           {!standalone && <PhoneStatusBar />}
           <div className="scroll auth-screen" style={{ padding: "28px 22px" }}>
-            <div className="auth-logo-row">
-              <img
-                className="brand-mark"
-                src="favicon.svg"
-                alt=""
-                width="22"
-                height="22"
-                aria-hidden="true"
-              />
-              <span className="auth-logo-text">
-                {store.getAppDisplayName()}
-              </span>
-            </div>
-            <div className="auth-heading-block">
-              <h1 className="auth-heading">{t("authDriverLoginTitle")}</h1>
-              <p className="auth-subheading">
-                {t("authDriverLoginSubtitle")}
-              </p>
-            </div>
-            <DriverUI.LoginForm
-              emailLabel={t("authDriverLoginEmailLabel")}
-              emailPlaceholder={t("authDriverLoginEmailPlaceholder")}
-              passwordLabel={t("authDriverLoginPasswordLabel")}
-              passwordPlaceholder={t("authDriverLoginPasswordPlaceholder")}
-              showPasswordLabel={t("authDriverLoginShowPassword")}
-              hidePasswordLabel={t("authDriverLoginHidePassword")}
-              submitLabel={t("authDriverLoginSubmit")}
-              forgotPasswordLabel={t("authDriverLoginForgotPassword")}
-              onForgotPassword={() =>
-                window.alert(t("authNotImplementedAlert"))
-              }
-              onSubmit={(email, password) =>
-                store.loginDriver({ email, password })
-              }
-            />
+            {body}
           </div>
         </div>
       </div>

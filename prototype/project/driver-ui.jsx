@@ -872,6 +872,286 @@ function LoginForm({
   );
 }
 
+// ---------------------------------------------------------------------------
+// AuthOtpInput — segmented 6-digit code entry. One visually-hidden real
+// input handles typing/paste/autofill; decorative cells on top render the
+// digits — same pattern as autheon-fe's OtpInput (native keyboard/autofill
+// behavior, custom look).
+// ---------------------------------------------------------------------------
+function AuthOtpInput({ value, onChange, length = 6, ariaLabel }) {
+  const { t } = useI18n();
+  const inputRef = useRef(null);
+  const cells = Array.from({ length }, (_, i) => value[i] || "");
+  return (
+    <div className="auth-otp-row" onClick={() => inputRef.current?.focus()}>
+      <input
+        ref={inputRef}
+        type="text"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        maxLength={length}
+        className="auth-otp-hidden-input"
+        aria-label={ariaLabel || t("authOtpFieldAriaLabel")}
+        value={value}
+        onChange={(e) =>
+          onChange(e.target.value.replace(/\D/g, "").slice(0, length))
+        }
+      />
+      {cells.map((digit, i) => (
+        <div
+          key={i}
+          className={`auth-otp-cell${value.length === i ? " active" : ""}`}
+          aria-hidden="true"
+        >
+          {digit}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ForgotPasswordFlow — email -> 6-digit OTP -> new password. Shared by the
+// driver + admin login screens (autheon-fe parity: ForgotPasswordPage /
+// ForgotPasswordOtpPage / ForgotPasswordResetPage, three routes there —
+// three local steps here, since this prototype has no router). `copy` holds
+// every string for all three steps; `kind` is "driver" | "admin", passed
+// straight through to the matching AuthStore methods.
+// ---------------------------------------------------------------------------
+function ForgotPasswordFlow({ kind, copy, onExit, onDone }) {
+  const [step, setStep] = useState("email"); // email | otp | reset
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [fieldError, setFieldError] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [resendAt, setResendAt] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!resendAt) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [resendAt]);
+
+  const resendWaitSec = resendAt
+    ? Math.max(0, Math.ceil((resendAt - now) / 1000))
+    : 0;
+
+  const backButton = (label, onClick) => (
+    <div className="auth-back-row">
+      <button
+        type="button"
+        className="btn icon"
+        aria-label={label}
+        onClick={onClick}
+      >
+        <Ic.Back />
+      </button>
+    </div>
+  );
+
+  if (step === "email") {
+    const handleSubmit = (event) => {
+      event.preventDefault();
+      const value = email.trim();
+      if (!AuthStore.isValidEmail(value)) {
+        setFieldError(copy.invalidEmail);
+        return;
+      }
+      setFieldError("");
+      AuthStore.requestPasswordReset({ email: value, kind });
+      setResendAt(Date.now() + AuthStore.PASSWORD_RESET_RESEND_MS);
+      setStep("otp");
+    };
+    return (
+      <form className="auth-form" onSubmit={handleSubmit} noValidate>
+        {backButton(copy.backToLogin, onExit)}
+        <div className="auth-heading-block">
+          <h1 className="auth-heading">{copy.title}</h1>
+          <p className="auth-subheading">{copy.subtitle}</p>
+        </div>
+        <div className="auth-field-group">
+          <label className="field-label" htmlFor="forgot-email">
+            {copy.emailLabel}
+          </label>
+          <input
+            id="forgot-email"
+            type="email"
+            autoComplete="email"
+            className="input"
+            placeholder={copy.emailPlaceholder}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          {fieldError && (
+            <p role="alert" className="auth-field-error">
+              {fieldError}
+            </p>
+          )}
+        </div>
+        <div className="auth-form-actions">
+          <button type="submit" className="btn primary block">
+            {copy.submit}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  if (step === "otp") {
+    const handleSubmit = (event) => {
+      event.preventDefault();
+      if (otp.trim().length !== 6) {
+        setOtpError(copy.otpInvalidCode);
+        return;
+      }
+      const result = AuthStore.verifyPasswordResetCode({
+        email,
+        kind,
+        code: otp.trim(),
+      });
+      if (!result.ok) {
+        setOtpError(
+          result.reason === "expired"
+            ? copy.otpIncorrectCode
+            : copy.otpIncorrectCode,
+        );
+        return;
+      }
+      setResetToken(result.resetToken);
+      setOtpError("");
+      setStep("reset");
+    };
+    const handleResend = () => {
+      if (resendWaitSec > 0) return;
+      AuthStore.resendPasswordResetCode({ email, kind });
+      setResendAt(Date.now() + AuthStore.PASSWORD_RESET_RESEND_MS);
+      setOtp("");
+      setOtpError("");
+    };
+    return (
+      <form className="auth-form" onSubmit={handleSubmit} noValidate>
+        {backButton(copy.otpBack, () => {
+          setStep("email");
+          setOtp("");
+          setOtpError("");
+        })}
+        <div className="auth-heading-block">
+          <h1 className="auth-heading">{copy.otpTitle}</h1>
+          <p className="auth-subheading">
+            {copy.otpSubtitlePrefix}
+            {email}
+          </p>
+        </div>
+        <div className="auth-field-group">
+          <AuthOtpInput value={otp} onChange={setOtp} />
+          {otpError && (
+            <p role="alert" className="auth-field-error">
+              {otpError}
+            </p>
+          )}
+        </div>
+        <div className="auth-form-actions">
+          <button type="submit" className="btn primary block">
+            {copy.otpSubmit}
+          </button>
+          <button
+            type="button"
+            className="auth-forgot-link"
+            disabled={resendWaitSec > 0}
+            onClick={handleResend}
+          >
+            {resendWaitSec > 0
+              ? `${copy.otpResendCooldownPrefix}${resendWaitSec}s`
+              : copy.otpResendButton}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  // step === "reset"
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (newPassword.trim().length < 8) {
+      setFieldError(copy.resetMinLength);
+      return;
+    }
+    if (!confirmPassword.trim()) {
+      setFieldError(copy.resetConfirmRequired);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setFieldError(copy.resetMismatch);
+      return;
+    }
+    const result = AuthStore.resetPassword({
+      email,
+      kind,
+      resetToken,
+      newPassword: newPassword.trim(),
+    });
+    if (!result.ok) {
+      setFieldError(copy.otpIncorrectCode);
+      return;
+    }
+    onDone();
+  };
+  return (
+    <form className="auth-form" onSubmit={handleSubmit} noValidate>
+      {backButton(copy.resetBack, () => {
+        setStep("otp");
+        setFieldError("");
+      })}
+      <div className="auth-heading-block">
+        <h1 className="auth-heading">{copy.resetTitle}</h1>
+        <p className="auth-subheading">{copy.resetSubtitle}</p>
+      </div>
+      <div className="auth-field-group">
+        <label className="field-label" htmlFor="forgot-new-password">
+          {copy.resetPasswordLabel}
+        </label>
+        <input
+          id="forgot-new-password"
+          type="password"
+          autoComplete="new-password"
+          className="input"
+          placeholder={copy.resetPasswordPlaceholder}
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+        />
+      </div>
+      <div className="auth-field-group">
+        <label className="field-label" htmlFor="forgot-confirm-password">
+          {copy.resetConfirmLabel}
+        </label>
+        <input
+          id="forgot-confirm-password"
+          type="password"
+          autoComplete="new-password"
+          className="input"
+          placeholder={copy.resetConfirmPlaceholder}
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+        />
+      </div>
+      {fieldError && (
+        <p role="alert" className="auth-field-error">
+          {fieldError}
+        </p>
+      )}
+      <div className="auth-form-actions">
+        <button type="submit" className="btn primary block">
+          {copy.resetSubmit}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 window.DriverUI = {
   StatusPill,
   Badge,
@@ -887,4 +1167,6 @@ window.DriverUI = {
   AdminConfirmBridge,
   RedPlatesRequiredNotice,
   LoginForm,
+  AuthOtpInput,
+  ForgotPasswordFlow,
 };

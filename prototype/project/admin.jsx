@@ -9813,9 +9813,49 @@ const SettingsPane = ({ showToast }) => {
 const AdminLoginScreen = () => {
   const { t } = useI18n();
   const store = useAuthStore();
-  return (
-    <div className="auth-shell-admin">
-      <div className="card auth-card-admin">
+  const [mode, setMode] = useStateA("login"); // login | forgot
+  const [notice, setNotice] = useStateA("");
+
+  const body =
+    mode === "forgot" ? (
+      <DriverUI.ForgotPasswordFlow
+        kind="admin"
+        onExit={() => setMode("login")}
+        onDone={() => {
+          setMode("login");
+          setNotice(t("authForgotPasswordSuccessNotice"));
+        }}
+        copy={{
+          invalidEmail: t("authErrorInvalidEmail"),
+          title: t("authAdminForgotTitle"),
+          subtitle: t("authAdminForgotSubtitle"),
+          emailLabel: t("authAdminForgotEmailLabel"),
+          emailPlaceholder: t("authAdminForgotEmailPlaceholder"),
+          submit: t("authAdminForgotSubmit"),
+          backToLogin: t("authAdminForgotBackToLogin"),
+          otpTitle: t("authAdminForgotOtpTitle"),
+          otpSubtitlePrefix: t("authAdminForgotOtpSubtitlePrefix"),
+          otpSubmit: t("authAdminForgotOtpSubmit"),
+          otpResendCooldownPrefix: t("authAdminForgotOtpResendCooldownPrefix"),
+          otpResendButton: t("authAdminForgotOtpResendButton"),
+          otpBack: t("authAdminForgotOtpBack"),
+          otpInvalidCode: t("authAdminForgotOtpInvalidCode", { length: 6 }),
+          otpIncorrectCode: t("authAdminForgotOtpIncorrectCode"),
+          resetTitle: t("authAdminResetTitle"),
+          resetSubtitle: t("authAdminResetSubtitle"),
+          resetPasswordLabel: t("authAdminResetPasswordLabel"),
+          resetPasswordPlaceholder: t("authAdminResetPasswordPlaceholder"),
+          resetConfirmLabel: t("authAdminResetConfirmLabel"),
+          resetConfirmPlaceholder: t("authAdminResetConfirmPlaceholder"),
+          resetSubmit: t("authAdminResetSubmit"),
+          resetBack: t("authAdminResetBack"),
+          resetMinLength: t("authAdminResetMinLength"),
+          resetConfirmRequired: t("authAdminResetConfirmRequired"),
+          resetMismatch: t("authAdminResetMismatch"),
+        }}
+      />
+    ) : (
+      <>
         <div className="auth-logo-row">
           <img
             className="brand-mark"
@@ -9831,6 +9871,13 @@ const AdminLoginScreen = () => {
           <h1 className="auth-heading">{t("authAdminLoginTitle")}</h1>
           <p className="auth-subheading">{t("authAdminLoginSubtitle")}</p>
         </div>
+        {notice && (
+          <InlineAlert
+            tone="success"
+            message={notice}
+            onDismiss={() => setNotice("")}
+          />
+        )}
         <DriverUI.LoginForm
           emailLabel={t("authAdminLoginEmailLabel")}
           emailPlaceholder={t("authAdminLoginEmailPlaceholder")}
@@ -9840,10 +9887,18 @@ const AdminLoginScreen = () => {
           hidePasswordLabel={t("authAdminLoginHidePassword")}
           submitLabel={t("authAdminLoginSubmit")}
           forgotPasswordLabel={t("authAdminLoginForgotPassword")}
-          onForgotPassword={() => window.alert(t("authNotImplementedAlert"))}
+          onForgotPassword={() => {
+            setNotice("");
+            setMode("forgot");
+          }}
           onSubmit={(email, password) => store.loginAdmin({ email, password })}
         />
-      </div>
+      </>
+    );
+
+  return (
+    <div className="auth-shell-admin">
+      <div className="card auth-card-admin">{body}</div>
     </div>
   );
 };
