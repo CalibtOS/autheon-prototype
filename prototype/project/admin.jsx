@@ -9893,6 +9893,8 @@ const AdminLoginScreen = () => {
             setMode("forgot");
           }}
           onSubmit={(email, password) => store.loginAdmin({ email, password })}
+          demoEmail="demo.admin@demo.local"
+          demoFillLabel={t("authDemoFillButton")}
         />
       </>
     );

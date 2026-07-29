@@ -743,6 +743,9 @@ function LoginForm({
   forgotPasswordLabel,
   onForgotPassword,
   onSubmit, // (email, password) => { ok, reason }
+  demoEmail, // demo-fill button only shown when provided
+  demoPassword = "password",
+  demoFillLabel,
 }) {
   const { t } = useI18n();
   const [email, setEmail] = useState("");
@@ -750,6 +753,13 @@ function LoginForm({
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [rootError, setRootError] = useState("");
+
+  const handleDemoFill = () => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setFieldErrors({});
+    setRootError("");
+  };
 
   const errorText = (reason) => {
     switch (reason) {
@@ -867,6 +877,15 @@ function LoginForm({
         >
           {forgotPasswordLabel}
         </button>
+        {demoEmail && (
+          <button
+            type="button"
+            className="auth-forgot-link"
+            onClick={handleDemoFill}
+          >
+            {demoFillLabel}
+          </button>
+        )}
       </div>
     </form>
   );
