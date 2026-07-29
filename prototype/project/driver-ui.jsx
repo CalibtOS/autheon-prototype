@@ -929,6 +929,7 @@ function ForgotPasswordFlow({ kind, copy, onExit, onDone }) {
   const [otpError, setOtpError] = useState("");
   const [resendAt, setResendAt] = useState(0);
   const [now, setNow] = useState(() => Date.now());
+  const [demoCode, setDemoCode] = useState("");
 
   useEffect(() => {
     if (!resendAt) return;
@@ -962,7 +963,8 @@ function ForgotPasswordFlow({ kind, copy, onExit, onDone }) {
         return;
       }
       setFieldError("");
-      AuthStore.requestPasswordReset({ email: value, kind });
+      const result = AuthStore.requestPasswordReset({ email: value, kind });
+      setDemoCode(result.code || "");
       setResendAt(Date.now() + AuthStore.PASSWORD_RESET_RESEND_MS);
       setStep("otp");
     };
@@ -1027,7 +1029,8 @@ function ForgotPasswordFlow({ kind, copy, onExit, onDone }) {
     };
     const handleResend = () => {
       if (resendWaitSec > 0) return;
-      AuthStore.resendPasswordResetCode({ email, kind });
+      const result = AuthStore.resendPasswordResetCode({ email, kind });
+      setDemoCode(result.code || "");
       setResendAt(Date.now() + AuthStore.PASSWORD_RESET_RESEND_MS);
       setOtp("");
       setOtpError("");
@@ -1046,6 +1049,7 @@ function ForgotPasswordFlow({ kind, copy, onExit, onDone }) {
             {email}
           </p>
         </div>
+        {demoCode && <InlineAlert tone="info" message={copy.demoHint(demoCode)} />}
         <div className="auth-field-group">
           <AuthOtpInput value={otp} onChange={setOtp} />
           {otpError && (
@@ -1152,6 +1156,127 @@ function ForgotPasswordFlow({ kind, copy, onExit, onDone }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// SetPasswordForm — accept-invite / first-password screen. Mirrors
+// autheon-fe's SetPasswordForm (RHF+Zod there is plain controlled state +
+// synchronous validation here): password + confirm, min-8 + upper/lower/
+// digit complexity, calls AuthStore.acceptInvite. `email`/`token` are the
+// page's parsed link params; this component owns only the fields/submit —
+// same Page-owns-link-validity / Form-owns-fields split as autheon-fe.
+// ---------------------------------------------------------------------------
+function SetPasswordForm({ email, token, kind, copy, onDone }) {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [fieldError, setFieldError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (password.length < 8) {
+      setFieldError(copy.minLength);
+      return;
+    }
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+      setFieldError(copy.complexity);
+      return;
+    }
+    if (!confirmPassword.trim()) {
+      setFieldError(copy.confirmRequired);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setFieldError(copy.mismatch);
+      return;
+    }
+    setFieldError("");
+    setSubmitting(true);
+    const result = AuthStore.acceptInvite({
+      email,
+      kind,
+      token,
+      newPassword: password,
+      confirmNewPassword: confirmPassword,
+    });
+    setSubmitting(false);
+    if (!result.ok) {
+      setFieldError(copy.invalidLinkMessage);
+      return;
+    }
+    onDone();
+  };
+
+  return (
+    <form className="auth-form" onSubmit={handleSubmit} noValidate>
+      <div className="auth-field-group">
+        <label className="field-label" htmlFor="set-password-new">
+          {copy.passwordLabel}
+        </label>
+        <div className="auth-password-wrap">
+          <input
+            id="set-password-new"
+            type={showPassword ? "text" : "password"}
+            autoComplete="new-password"
+            className="input"
+            placeholder={copy.passwordPlaceholder}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button
+            type="button"
+            className="auth-password-toggle"
+            aria-label={showPassword ? copy.hidePassword : copy.showPassword}
+            onClick={() => setShowPassword((v) => !v)}
+          >
+            {showPassword ? <Ic.EyeOff /> : <Ic.Eye />}
+          </button>
+        </div>
+      </div>
+      <div className="auth-field-group">
+        <label className="field-label" htmlFor="set-password-confirm">
+          {copy.confirmLabel}
+        </label>
+        <div className="auth-password-wrap">
+          <input
+            id="set-password-confirm"
+            type={showConfirmPassword ? "text" : "password"}
+            autoComplete="new-password"
+            className="input"
+            placeholder={copy.confirmPlaceholder}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+          <button
+            type="button"
+            className="auth-password-toggle"
+            aria-label={
+              showConfirmPassword ? copy.hidePassword : copy.showPassword
+            }
+            onClick={() => setShowConfirmPassword((v) => !v)}
+          >
+            {showConfirmPassword ? <Ic.EyeOff /> : <Ic.Eye />}
+          </button>
+        </div>
+      </div>
+      {fieldError && (
+        <p role="alert" className="auth-field-error">
+          {fieldError}
+        </p>
+      )}
+      <div className="auth-form-actions">
+        <button
+          type="submit"
+          className="btn primary block"
+          disabled={submitting}
+        >
+          {copy.submit}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 window.DriverUI = {
   StatusPill,
   Badge,
@@ -1168,5 +1293,6 @@ window.DriverUI = {
   RedPlatesRequiredNotice,
   LoginForm,
   AuthOtpInput,
+  SetPasswordForm,
   ForgotPasswordFlow,
 };

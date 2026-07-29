@@ -9852,6 +9852,7 @@ const AdminLoginScreen = () => {
           resetMinLength: t("authAdminResetMinLength"),
           resetConfirmRequired: t("authAdminResetConfirmRequired"),
           resetMismatch: t("authAdminResetMismatch"),
+          demoHint: (code) => t("authForgotPasswordDemoHint", { code }),
         }}
       />
     ) : (
@@ -9903,9 +9904,81 @@ const AdminLoginScreen = () => {
   );
 };
 
+// =========================================================================
+// SET PASSWORD / ACCEPT INVITE — admin console (autheon-fe parity:
+// apps/admin SetPasswordPage — differs from the driver version in copy
+// only: "Create your account" / "Create account" + a success toast). NOT
+// wired to any reachable screen — see the driver-side comment above.
+// =========================================================================
+const AdminSetPasswordScreen = ({ email = "", token = "" }) => {
+  const { t } = useI18n();
+  const isValidLink = Boolean(email && token);
+
+  const body = (
+    <>
+      <div className="auth-logo-row">
+        <img
+          className="brand-mark"
+          src="favicon.svg"
+          alt=""
+          width="22"
+          height="22"
+          aria-hidden="true"
+        />
+        <span className="auth-logo-text">{AuthStore.getAppDisplayName()}</span>
+      </div>
+      <div className="auth-heading-block">
+        <h1 className="auth-heading">
+          {isValidLink
+            ? t("authAdminSetPasswordTitle")
+            : t("authAdminSetPasswordInvalidLinkTitle")}
+        </h1>
+        <p className="auth-subheading">
+          {isValidLink
+            ? t("authAdminSetPasswordSubtitle")
+            : t("authAdminSetPasswordInvalidLinkMessage")}
+        </p>
+      </div>
+      {isValidLink ? (
+        <DriverUI.SetPasswordForm
+          email={email}
+          token={token}
+          kind="admin"
+          onDone={() => {}}
+          copy={{
+            passwordLabel: t("authAdminSetPasswordPasswordLabel"),
+            passwordPlaceholder: t("authAdminSetPasswordPasswordPlaceholder"),
+            confirmLabel: t("authAdminSetPasswordConfirmLabel"),
+            confirmPlaceholder: t("authAdminSetPasswordConfirmPlaceholder"),
+            showPassword: t("authAdminLoginShowPassword"),
+            hidePassword: t("authAdminLoginHidePassword"),
+            submit: t("authAdminSetPasswordSubmit"),
+            minLength: t("authAdminSetPasswordMinLength"),
+            complexity: t("authAdminSetPasswordComplexity"),
+            confirmRequired: t("authAdminSetPasswordConfirmRequired"),
+            mismatch: t("authAdminSetPasswordMismatch"),
+            invalidLinkMessage: t("authAdminSetPasswordInvalidLinkMessage"),
+          }}
+        />
+      ) : (
+        <p className="auth-subheading">
+          {t("authAdminSetPasswordInvalidLinkHint")}
+        </p>
+      )}
+    </>
+  );
+
+  return (
+    <div className="auth-shell-admin">
+      <div className="card auth-card-admin">{body}</div>
+    </div>
+  );
+};
+
 Object.assign(window, {
   AdminNav,
   AdminLoginScreen,
+  AdminSetPasswordScreen,
   Overview,
   OverviewFooter,
   AssignDriverDialog,

@@ -6922,6 +6922,7 @@ const DriverLoginScreen = ({ standalone = false }) => {
           resetMinLength: t("authDriverResetMinLength"),
           resetConfirmRequired: t("authDriverResetConfirmRequired"),
           resetMismatch: t("authDriverResetMismatch"),
+          demoHint: (code) => t("authForgotPasswordDemoHint", { code }),
         }}
       />
     ) : (
@@ -6984,11 +6985,93 @@ const DriverLoginScreen = ({ standalone = false }) => {
   );
 };
 
+// =========================================================================
+// SET PASSWORD / ACCEPT INVITE — driver PWA (autheon-fe parity: apps/web
+// SetPasswordPage). NOT wired to any reachable screen — no route/link/button
+// mounts this yet; it exists so the screen can be reviewed and later wired
+// once a real invite-token mechanism exists. Page owns email/token link
+// validity + heading swap; DriverUI.SetPasswordForm owns the fields.
+// =========================================================================
+const DriverSetPasswordScreen = ({ email = "", token = "", standalone = false }) => {
+  const { t } = useI18n();
+  const isValidLink = Boolean(email && token);
+
+  const body = (
+    <>
+      <div className="auth-logo-row">
+        <img
+          className="brand-mark"
+          src="favicon.svg"
+          alt=""
+          width="22"
+          height="22"
+          aria-hidden="true"
+        />
+        <span className="auth-logo-text">{AuthStore.getAppDisplayName()}</span>
+      </div>
+      <div className="auth-heading-block">
+        <h1 className="auth-heading">
+          {isValidLink
+            ? t("authDriverSetPasswordTitle")
+            : t("authDriverSetPasswordInvalidLinkTitle")}
+        </h1>
+        <p className="auth-subheading">
+          {isValidLink
+            ? t("authDriverSetPasswordSubtitle")
+            : t("authDriverSetPasswordInvalidLinkMessage")}
+        </p>
+      </div>
+      {isValidLink ? (
+        <DriverUI.SetPasswordForm
+          email={email}
+          token={token}
+          kind="driver"
+          onDone={() => {}}
+          copy={{
+            passwordLabel: t("authDriverSetPasswordPasswordLabel"),
+            passwordPlaceholder: t("authDriverSetPasswordPasswordPlaceholder"),
+            confirmLabel: t("authDriverSetPasswordConfirmLabel"),
+            confirmPlaceholder: t("authDriverSetPasswordConfirmPlaceholder"),
+            showPassword: t("authDriverLoginShowPassword"),
+            hidePassword: t("authDriverLoginHidePassword"),
+            submit: t("authDriverSetPasswordSubmit"),
+            minLength: t("authDriverSetPasswordMinLength"),
+            complexity: t("authDriverSetPasswordComplexity"),
+            confirmRequired: t("authDriverSetPasswordConfirmRequired"),
+            mismatch: t("authDriverSetPasswordMismatch"),
+            invalidLinkMessage: t("authDriverSetPasswordInvalidLinkMessage"),
+          }}
+        />
+      ) : (
+        <p className="auth-subheading">
+          {t("authDriverSetPasswordInvalidLinkHint")}
+        </p>
+      )}
+    </>
+  );
+
+  return (
+    <div className={`phone-shell${standalone ? " pwa-viewport" : ""}`}>
+      {!standalone && <div className="pwa-tag">{t("pwaTag")}</div>}
+      <div className="phone">
+        {!standalone && <div className="notch"></div>}
+        <div className="phone-screen">
+          {!standalone && <PhoneStatusBar />}
+          <div className="scroll auth-screen" style={{ padding: "28px 22px" }}>
+            {body}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // expose
 Object.assign(window, {
   Pill,
   Lbl,
   DriverLoginScreen,
+  DriverSetPasswordScreen,
   Ic,
   RouteStack,
   PhoneStatusBar,

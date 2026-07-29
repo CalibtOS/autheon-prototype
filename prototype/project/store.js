@@ -3843,10 +3843,11 @@ window.AuthStore = (() => {
       if (!account) return { ok: true };
       const key = `${kind}:${value.toLowerCase()}`;
       const now = Date.now();
+      const code = String(Math.floor(100000 + Math.random() * 900000));
       passwordResets[key] = {
         email: value,
         kind,
-        code: String(Math.floor(100000 + Math.random() * 900000)),
+        code,
         sentAt: now,
         expiresAt: now + api.PASSWORD_RESET_CODE_TTL_MS,
         attempts: 0,
@@ -3862,7 +3863,10 @@ window.AuthStore = (() => {
         account.email,
         "",
       );
-      return { ok: true };
+      // Demo-only: the real code delivery is email (see PRD/backend), which
+      // this static prototype has no way to send. Surfacing it here mirrors
+      // ChangeEmailSheet's `demoCode` convention so the flow is completable.
+      return { ok: true, code };
     },
 
     resendPasswordResetCode({ email, kind } = {}) {
@@ -3885,7 +3889,7 @@ window.AuthStore = (() => {
         pending.email,
         "resend",
       );
-      return { ok: true };
+      return { ok: true, code: pending.code };
     },
 
     verifyPasswordResetCode({ email, kind, code } = {}) {
@@ -3922,6 +3926,37 @@ window.AuthStore = (() => {
         pending.email,
         "",
       );
+      return { ok: true };
+    },
+
+    // ---- Accept invite / set first password (autheon-fe parity: apps/*
+    // SetPasswordPage + POST /users/accept-invite). Not wired to any
+    // reachable screen yet — the admin-side invite flow above does not
+    // generate a real invite token, so this only checks a token was
+    // supplied, not that it matches one issued by addDriver/addAdmin.
+    acceptInvite({ email, kind, token, newPassword, confirmNewPassword } = {}) {
+      const value = String(email || "").trim();
+      const account =
+        kind === "admin" ? findAdminByEmail(value) : findDriverByEmail(value);
+      if (!value || !String(token || "").trim() || !account)
+        return { ok: false, reason: "invalid_link" };
+      const password = String(newPassword || "");
+      if (password.length < 8)
+        return { ok: false, reason: "password_too_short" };
+      if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password))
+        return { ok: false, reason: "password_complexity" };
+      if (!String(confirmNewPassword || "").trim())
+        return { ok: false, reason: "confirm_required" };
+      if (password !== confirmNewPassword)
+        return { ok: false, reason: "password_mismatch" };
+      account.accessState = ACCESS_STATE.ACTIVE;
+      log(
+        kind === "admin" ? "admin_invite_accepted" : "driver_invite_accepted",
+        account.name,
+        account.email,
+        "",
+      );
+      emit();
       return { ok: true };
     },
 

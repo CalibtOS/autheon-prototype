@@ -1733,6 +1733,47 @@ window.I18n = (() => {
       authForgotPasswordSuccessNotice:
         "Password reset successful. Please sign in with your new password.",
       authOtpFieldAriaLabel: "One-time code",
+      authForgotPasswordDemoHint:
+        "Prototype: the 6-digit code sent to your email is {code}.",
+
+      // ---- Auth screens: Set password / accept invite (not reachable yet
+      // -- no navigation entry point wires to this; see driver.jsx
+      // DriverSetPasswordScreen / admin.jsx AdminSetPasswordScreen) ----
+      authDriverSetPasswordTitle: "Set your password",
+      authDriverSetPasswordSubtitle: "Create a password to access your account",
+      authDriverSetPasswordPasswordLabel: "Password",
+      authDriverSetPasswordPasswordPlaceholder: "password",
+      authDriverSetPasswordConfirmLabel: "Confirm password",
+      authDriverSetPasswordConfirmPlaceholder: "confirm password",
+      authDriverSetPasswordSubmit: "Set password",
+      authDriverSetPasswordMinLength: "Password must be at least 8 characters",
+      authDriverSetPasswordComplexity:
+        "Password must contain at least one uppercase letter, one lowercase letter, and one number",
+      authDriverSetPasswordConfirmRequired: "Please confirm your password",
+      authDriverSetPasswordMismatch: "Passwords do not match",
+      authDriverSetPasswordInvalidLinkTitle: "Invalid link",
+      authDriverSetPasswordInvalidLinkMessage:
+        "This password setup link is invalid or has expired.",
+      authDriverSetPasswordInvalidLinkHint:
+        "Ask your administrator to send a new invitation email.",
+      authAdminSetPasswordTitle: "Create your account",
+      authAdminSetPasswordSubtitle: "Set a password to activate your admin account",
+      authAdminSetPasswordPasswordLabel: "Password",
+      authAdminSetPasswordPasswordPlaceholder: "password",
+      authAdminSetPasswordConfirmLabel: "Confirm password",
+      authAdminSetPasswordConfirmPlaceholder: "confirm password",
+      authAdminSetPasswordSubmit: "Create account",
+      authAdminSetPasswordMinLength: "Password must be at least 8 characters",
+      authAdminSetPasswordComplexity:
+        "Password must contain at least one uppercase letter, one lowercase letter, and one number",
+      authAdminSetPasswordConfirmRequired: "Please confirm your password",
+      authAdminSetPasswordMismatch: "Passwords do not match",
+      authAdminSetPasswordSuccessToast: "Account created. Please sign in.",
+      authAdminSetPasswordInvalidLinkTitle: "Invalid link",
+      authAdminSetPasswordInvalidLinkMessage:
+        "This invite link is invalid or has expired.",
+      authAdminSetPasswordInvalidLinkHint:
+        "Ask an administrator to send a new invitation email.",
 
       all: "All",
       ownAxle: "Own axle",
@@ -3512,6 +3553,49 @@ window.I18n = (() => {
       authForgotPasswordSuccessNotice:
         "Passwort erfolgreich zurückgesetzt. Bitte melden Sie sich mit Ihrem neuen Passwort an.",
       authOtpFieldAriaLabel: "Einmaliger Code",
+      authForgotPasswordDemoHint:
+        "Prototyp: Der 6-stellige Code, der an Ihre E-Mail gesendet wurde, lautet {code}.",
+
+      // ---- Auth-Bildschirme: Passwort festlegen / Einladung annehmen ----
+      authDriverSetPasswordTitle: "Passwort festlegen",
+      authDriverSetPasswordSubtitle:
+        "Erstellen Sie ein Passwort für Ihren Zugang",
+      authDriverSetPasswordPasswordLabel: "Passwort",
+      authDriverSetPasswordPasswordPlaceholder: "passwort",
+      authDriverSetPasswordConfirmLabel: "Passwort bestätigen",
+      authDriverSetPasswordConfirmPlaceholder: "passwort bestätigen",
+      authDriverSetPasswordSubmit: "Passwort festlegen",
+      authDriverSetPasswordMinLength:
+        "Das Passwort muss mindestens 8 Zeichen lang sein",
+      authDriverSetPasswordComplexity:
+        "Das Passwort muss mindestens einen Großbuchstaben, einen Kleinbuchstaben und eine Zahl enthalten",
+      authDriverSetPasswordConfirmRequired: "Bitte bestätigen Sie Ihr Passwort",
+      authDriverSetPasswordMismatch: "Die Passwörter stimmen nicht überein",
+      authDriverSetPasswordInvalidLinkTitle: "Ungültiger Link",
+      authDriverSetPasswordInvalidLinkMessage:
+        "Dieser Link zum Passwort festlegen ist ungültig oder abgelaufen.",
+      authDriverSetPasswordInvalidLinkHint:
+        "Bitten Sie Ihren Administrator, eine neue Einladungs-E-Mail zu senden.",
+      authAdminSetPasswordTitle: "Konto erstellen",
+      authAdminSetPasswordSubtitle:
+        "Legen Sie ein Passwort fest, um Ihr Admin-Konto zu aktivieren",
+      authAdminSetPasswordPasswordLabel: "Passwort",
+      authAdminSetPasswordPasswordPlaceholder: "Passwort",
+      authAdminSetPasswordConfirmLabel: "Passwort bestätigen",
+      authAdminSetPasswordConfirmPlaceholder: "Passwort bestätigen",
+      authAdminSetPasswordSubmit: "Konto erstellen",
+      authAdminSetPasswordMinLength:
+        "Das Passwort muss mindestens 8 Zeichen lang sein",
+      authAdminSetPasswordComplexity:
+        "Das Passwort muss mindestens einen Großbuchstaben, einen Kleinbuchstaben und eine Zahl enthalten",
+      authAdminSetPasswordConfirmRequired: "Bitte bestätigen Sie Ihr Passwort",
+      authAdminSetPasswordMismatch: "Die Passwörter stimmen nicht überein",
+      authAdminSetPasswordSuccessToast: "Konto erstellt. Bitte melden Sie sich an.",
+      authAdminSetPasswordInvalidLinkTitle: "Ungültiger Link",
+      authAdminSetPasswordInvalidLinkMessage:
+        "Dieser Einladungslink ist ungültig oder abgelaufen.",
+      authAdminSetPasswordInvalidLinkHint:
+        "Bitten Sie einen Administrator, eine neue Einladungs-E-Mail zu senden.",
 
       all: "Alle",
       ownAxle: "Eigenachse",
