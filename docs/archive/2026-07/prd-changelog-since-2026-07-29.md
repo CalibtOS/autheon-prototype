@@ -1,10 +1,10 @@
-# PRD changelog: 2026-07-29 (v2.14 → v2.17)
+# PRD changelog: 2026-07-29 (v2.14 → v2.18)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
 **Canonical file:** `docs/requirements/prd.json`
 
-> **Scope of this file:** the **v2.15**, **v2.16** and **v2.17** entries. PRD **v2.11 – v2.14** (all dated 2026-07-29 — admin manufacturer/model catalogue, vehicle search, and the admin orders-overview client fixes) are recorded in the `version` history string inside `prd.json` and in [`../../requirements/admin-client-requirements-status.md`](../../requirements/admin-client-requirements-status.md), but were never given a separate changelog file. That gap is pre-existing and is **not** back-filled here.
+> **Scope of this file:** the **v2.15** – **v2.18** entries. PRD **v2.11 – v2.14** (all dated 2026-07-29 — admin manufacturer/model catalogue, vehicle search, and the admin orders-overview client fixes) are recorded in the `version` history string inside `prd.json` and in [`../../requirements/admin-client-requirements-status.md`](../../requirements/admin-client-requirements-status.md), but were never given a separate changelog file. That gap is pre-existing and is **not** back-filled here.
 
 ---
 
@@ -282,3 +282,67 @@ It is **progressive enhancement**: the visible back arrow is always present and 
 | `docs/product/autheon-context-pack.md` | Version trail → v2.17; Infopoint detail-page bullet |
 
 **Not touched:** `docs/database/schema.dbml`, `docs/database/logical-model.md`, migrations, admin console, notification eligibility.
+
+---
+
+## PRD v2.18 — Marketplace empty states split by filter state (2026-07-29)
+
+**Baseline:** PRD v2.17 (Infopoint message detail page)
+**Source:** work order "Implement Separate Marketplace Empty States for Unfiltered and Filtered Results", refining the existing **Task 7 — Driver Marketplace**.
+
+Scope note: empty-state selection only. No change to the filter predicate, the filter panel, the count badge, the chip row or the results count.
+
+### 1. Previous behaviour (v2.17, as implemented)
+
+The Marketplace rendered **one** empty state, unconditionally:
+
+> **No jobs match**
+> No tours match these filters.
+> *[Filters]*
+
+It appeared whenever `ordered.length === 0` — including when **no filter was active at all**. An empty marketplace therefore told the driver that orders existed and their filters were hiding them, and pointed them at a filter panel that had nothing to loosen. That is not a cosmetic wording issue: it misrepresents available work, and the driver's rational response (open Filters, find nothing set, close it) wastes their time and erodes trust in the count.
+
+This was already visible as a latent inconsistency: v2.9 had established that active filters and their count **stay displayed when the result set is empty** so that an empty Marketplace is *explained* — but the explanation offered was wrong when there was nothing to explain.
+
+### 2. New behaviour (v2.18)
+
+Four acceptance criteria were appended to the **existing** Task 7.
+
+| Condition | State |
+| --- | --- |
+| At least one matching order | results list, unchanged |
+| `count > 0`, nothing matches | **existing** filter-related state — copy, description and *Filters* action **verbatim unchanged** |
+| `count === 0`, no open orders | **new** general state: *"There are currently no open orders."* / *"Es gibt derzeit keine offenen Aufträge."* |
+
+**Selected from the canonical derivation, not a new flag.** The condition is `getAppliedMarketplaceFilterCount(committedFilters) > 0` — the same pure selector that already feeds the filter badge and the chip row (established in v2.9, with the invariant that the chip list and the count come from one derivation). There is no `hasFilters` state, no effect, and therefore no way for the empty state to disagree with the badge the driver is looking at. Because it is derived per render from the committed filter object, **apply / change / clear / reset switch states with no extra wiring** — which is what the behaviour requirement asks for.
+
+**The general state carries no filter action.** This is deliberate and is part of the requirement, not a simplification: the message must not imply filtering is responsible, and a *Filters* button implies precisely that. It also has no `description`, so the single sentence is the whole message.
+
+**Why "no orders" is safe to assert.** `all` is every `published` order and `filtered` applies only the filter predicate. With the count at zero the predicate excludes nothing, so an empty list genuinely means the marketplace is empty — the general message is a statement of fact, not an assumption.
+
+Both states get a stable class (`.marketplace-empty-filtered` / `.marketplace-empty-unfiltered`) so which one is showing is assertable without matching on copy.
+
+### 3. Explicitly out of scope / unchanged
+
+- **The filtered state's copy and behaviour.** Byte-identical, including the slightly redundant title/description pair (*"No jobs match"* / *"No tours match these filters."*) — the work order requires it unchanged, and rewording it would collide with the open terminology question below.
+- **No data-model change.** Derived from existing in-memory frontend filter state. `schema.dbml`, `logical-model.md`, migrations, entities, DTOs and API payloads untouched.
+- **Filter predicate, filter panel, count badge, chip row, results count, sort:** all untouched.
+
+### 4. Open questions — NOT decided in this pass
+
+1. **Final wording for the general message.** Implemented as *"There are currently no open orders."* — the wording the work order itself proposed ("such as"). Not client-approved copy.
+2. **"Orders" vs "tours" in driver-facing Marketplace copy.** The existing strings genuinely mix them: `noJobsMatch` = "No jobs match", `noToursMatch` = "No tours match these filters.", the DE side says "Touren", the tab reads "My jobs", and the new message says "orders". A consistency sweep would touch copy across the whole driver surface in both locales, so **nothing was renamed** — guessing the target term and rewriting dozens of strings is exactly the kind of product decision this pass must not make. Recorded for the client.
+
+---
+
+## Files touched (v2.18)
+
+| File | Change |
+| --- | --- |
+| `docs/requirements/prd.json` | Task 7 acceptance extended (4 criteria); `resolved_defaults.marketplace_empty_states_v1`; `version` → v2.18 |
+| `prototype/project/driver.jsx` | `hasActiveFilters` derived in `Portal` from the canonical count; empty state branches into the filtered and general variants |
+| `prototype/project/i18n.js` | `marketplaceEmptyNoOrders` (EN + DE) |
+| `docs/design/*` | driver-screen-spec (Marketplace empty states), DDB remediation (F11), ui-ux-production-plan §7.11 addendum, driver-i18n-index (regenerated) |
+| `docs/product/autheon-context-pack.md` | Version trail → v2.18; Marketplace empty-state bullet |
+
+**Not touched:** `docs/database/*`, migrations, the filter predicate, the filter panel, the count badge, the chip row, `brand-tokens.md` (no new component, no new token — the shared `EmptyState` primitive is reused as-is).

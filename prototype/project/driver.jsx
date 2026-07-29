@@ -1424,8 +1424,14 @@ const Portal = ({
   });
 
   // Single derivation from the COMMITTED filters — feeds the chip row, the
-  // filter button's badge and its accessible name. No separate count state.
+  // filter button's badge, its accessible name AND which empty state applies.
+  // No separate count state, so applying, changing, clearing or resetting a
+  // filter updates all four in the same render.
   const activeChips = getAppliedMarketplaceFilters(filters, t);
+  // `all` is every published order and `filtered` applies only the filter
+  // predicate, so with no filter active an empty list means there is genuinely
+  // nothing on the marketplace — never "your filters hid it".
+  const hasActiveFilters = getAppliedMarketplaceFilterCount(filters) > 0;
 
   return (
     <>
@@ -1510,14 +1516,26 @@ const Portal = ({
             {ordered.map((j, index) => (
               <JobCard key={j.id} job={j} onOpen={onOpenJob} enterIndex={index} />
             ))}
-            {ordered.length === 0 && (
-              <EmptyState
-                title={t("noJobsMatch")}
-                description={t("noToursMatch")}
-                actionLabel={t("filters")}
-                onAction={openFilter}
-              />
-            )}
+            {/* Two distinct empty states. With filters active the existing
+                filter-related state is kept verbatim, including its Filters
+                action. With NO filters active the message must not mention or
+                imply filtering — and it carries no Filters action, because
+                offering one would imply exactly that. */}
+            {ordered.length === 0 &&
+              (hasActiveFilters ? (
+                <EmptyState
+                  title={t("noJobsMatch")}
+                  description={t("noToursMatch")}
+                  actionLabel={t("filters")}
+                  onAction={openFilter}
+                  className="marketplace-empty-filtered"
+                />
+              ) : (
+                <EmptyState
+                  title={t("marketplaceEmptyNoOrders")}
+                  className="marketplace-empty-unfiltered"
+                />
+              ))}
             {ordered.length > 0 ? (
               <div className="list-end">— {t("endOfList")} —</div>
             ) : null}

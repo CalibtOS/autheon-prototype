@@ -429,6 +429,7 @@ reason, the same principle the upload errors follow above.
 | `markPerformedConfirmBody` | This confirms the vehicle was handed over at the destination. Slide to confirm — or cancel if this was tapped by mistake. | Damit wird bestätigt, dass das Fahrzeug am Ziel übergeben wurde. Zum Bestätigen schieben – oder abbrechen, falls versehentlich getippt. |
 | `markPerformedConfirmTitle` | Mark this tour as performed? | Tour als durchgeführt markieren? |
 | `marketplace` | Marketplace | Marktplatz |
+| `marketplaceEmptyNoOrders` | There are currently no open orders. | Es gibt derzeit keine offenen Aufträge. |
 | `marketplacePreview` | Marketplace preview | Marktplatz-Vorschau |
 | `masterDataChangeCancel` | Cancel | Abbrechen |
 | `masterDataChangeEditBtn` | Request changes | Änderung anfragen |

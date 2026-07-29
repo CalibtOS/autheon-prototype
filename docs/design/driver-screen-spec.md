@@ -290,6 +290,36 @@ Source of truth: Figma file `CgaMrN7nmXS8xub0RxyzsJ` — nodes `8:2268` (details
 
 ---
 
+## Marketplace empty states (2026-07-29)
+
+> **Two states, one derivation.** Which empty state shows is decided by
+> `getAppliedMarketplaceFilterCount(committedFilters) > 0` — the same canonical selector that drives
+> the filter count badge and the chip row. Never a separate flag, so the empty state and the badge the
+> driver is looking at cannot disagree.
+
+| Condition | State | Class |
+|---|---|---|
+| ≥1 matching order | results list | — |
+| Filters active, nothing matches | **existing** filter-related state: title `noJobsMatch`, description `noToursMatch`, *Filters* action opening the panel — **unchanged** | `.marketplace-empty-filtered` |
+| No filters active, no open orders | **general** state: `marketplaceEmptyNoOrders` only — no description, **no action** | `.marketplace-empty-unfiltered` |
+
+- Both use the shared `EmptyState` primitive; no new component and no new token.
+- The general state deliberately has **no *Filters* action**. The message must not imply filtering
+  caused the empty result, and a filter button implies exactly that.
+- "No open orders" is a safe assertion, not a guess: the list is every `published` order with only the
+  filter predicate applied, so at count 0 nothing is being excluded.
+- Selection is derived per render from the committed filter object, so **apply / change / clear / reset**
+  switch states with no extra wiring — and draft selections inside the open panel do not, matching the
+  badge's committed-state rule.
+- The stable classes exist so tests and reviewers can assert *which* state is showing without matching
+  on copy.
+
+**Terminology, unresolved.** The existing strings mix "jobs", "tours" and now "orders"
+(`noJobsMatch` / `noToursMatch` / `marketplaceEmptyNoOrders`; DE says "Touren"). Nothing was renamed —
+see the v2.18 changelog open question.
+
+---
+
 ## Infopoint messages — list + detail page (2026-07-29)
 
 > **A message is a page, not an accordion.** Longer announcements (updated **AGB**, standing client

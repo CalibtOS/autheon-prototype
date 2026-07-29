@@ -165,6 +165,9 @@ window.I18n = (() => {
       results: "results",
       reset: "Reset",
       noToursMatch: "No tours match these filters.",
+      // General marketplace empty state — used only when NO filter is
+      // active, so it must not mention or imply filtering.
+      marketplaceEmptyNoOrders: "There are currently no open orders.",
       resetFilters: "Reset filters",
       endOfList: "End of list",
       today: "Today",
@@ -2046,6 +2049,7 @@ window.I18n = (() => {
       results: "Ergebnisse",
       reset: "Zurücksetzen",
       noToursMatch: "Keine Touren entsprechen diesen Filtern.",
+      marketplaceEmptyNoOrders: "Es gibt derzeit keine offenen Aufträge.",
       resetFilters: "Filter zurücksetzen",
       endOfList: "Ende der Liste",
       today: "Heute",
