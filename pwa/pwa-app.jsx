@@ -1,4 +1,4 @@
-/* global React, AuthStore, useAuthStore, useI18n, TabBar, Portal, MyJobs, Infopoint, ProfilePaneFull, JobLocked, JobUnlocked, AcceptanceModal, ReportProblemSheet, PendingNotice, TourBookedSuccessSheet, MarkPerformedSheet, ProbationLimitSheet, SameDayOverlapSheet, FilterSheet, DriverNotificationsPane */
+/* global React, AuthStore, useAuthStore, useI18n, TabBar, Portal, MyJobs, Infopoint, ProfilePaneFull, JobLocked, JobUnlocked, AcceptanceModal, ReportProblemSheet, PendingNotice, TourBookedSuccessSheet, MarkPerformedSheet, ProbationLimitSheet, SameDayOverlapSheet, FilterSheet, DriverNotificationsPane, DriverLoginScreen */
 /**
  * PwaDriverApp — real-viewport driver PWA shell for /pwa.
  *
@@ -395,4 +395,21 @@ function PwaDriverApp() {
   );
 }
 
-Object.assign(window, { PwaDriverApp });
+/**
+ * PwaDriverRoot — login gate for the installable /pwa surface. Mirrors the
+ * client-preview App() gate: unauthenticated renders the same
+ * DriverLoginScreen (standalone — no phone-mock chrome), authenticated
+ * mounts the real PwaDriverApp. Kept as a separate component (not an early
+ * return inside PwaDriverApp) so the session toggle never changes which
+ * hooks a single component instance calls between renders.
+ */
+function PwaDriverRoot() {
+  const store = useAuthStore();
+  return store.isDriverAuthenticated() ? (
+    <PwaDriverApp />
+  ) : (
+    <DriverLoginScreen standalone />
+  );
+}
+
+Object.assign(window, { PwaDriverApp, PwaDriverRoot });

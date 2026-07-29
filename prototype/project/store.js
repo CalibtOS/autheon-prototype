@@ -1981,6 +1981,30 @@ window.AuthStore = (() => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
+  function findDriverByEmail(email) {
+    const needle = String(email || "")
+      .trim()
+      .toLowerCase();
+    if (!needle) return null;
+    return (
+      drivers.find(
+        (d) => String(d.email || "").trim().toLowerCase() === needle,
+      ) || null
+    );
+  }
+
+  function findAdminByEmail(email) {
+    const needle = String(email || "")
+      .trim()
+      .toLowerCase();
+    if (!needle) return null;
+    return (
+      admins.find(
+        (a) => String(a.email || "").trim().toLowerCase() === needle,
+      ) || null
+    );
+  }
+
   // Value validators for the Infopoint help contacts, ported unchanged from the
   // Autheon admin console's helpContactsValidation.ts — which is itself a mirror
   // of the backend's `infopoint.helpContacts` validators. Keeping the rules
@@ -2197,6 +2221,13 @@ window.AuthStore = (() => {
     prefs: normalizeDriverPrefs(d.prefs),
   }));
   let admins = seedAdmins();
+  // Login session — in memory only, resets on reload. Mirrors the real
+  // frontend's access token (module-level memory, never persisted); see
+  // .claude/rules/auth-internals.md in the backend/frontend repos.
+  let session = { driver: null, admin: null };
+  // Forgot-password codes — pre-login, so keyed by "<kind>:<email>" rather
+  // than a driver/admin record (there is no authenticated actor yet).
+  let passwordResets = {};
   let auditLog = seedAudit();
   let driverState = seedDriverState();
   let tourDocuments = seedTourDocuments();
@@ -3742,6 +3773,192 @@ window.AuthStore = (() => {
     exceedsTourDocumentSizeLimit,
     MAX_TOUR_DOCUMENT_BYTES,
     jobWasEverCommitted,
+
+    // ---- Auth session (client-preview + /pwa login gate) ----
+    // Demo credential check only: any seeded, Active driver/admin email +
+    // any non-empty password. Production auth is Keycloak — see the PRD
+    // auth/account-linking rules — this only gates which screen renders.
+    isDriverAuthenticated: () => !!session.driver,
+    isAdminAuthenticated: () => !!session.admin,
+    getAuthenticatedDriver: () => session.driver,
+    getAuthenticatedAdmin: () => session.admin,
+    loginDriver({ email, password } = {}) {
+      const value = String(email || "").trim();
+      if (!value) return { ok: false, reason: "email_required" };
+      if (!isValidEmail(value)) return { ok: false, reason: "invalid_email" };
+      if (!String(password || "").trim())
+        return { ok: false, reason: "password_required" };
+      const driver = findDriverByEmail(value);
+      if (!driver) return { ok: false, reason: "invalid_credentials" };
+      if (driver.status !== "Active")
+        return { ok: false, reason: "account_restricted" };
+      session.driver = driver;
+      log("driver_signed_in", driver.name, driver.email, "");
+      emit();
+      return { ok: true, driver };
+    },
+    logoutDriver() {
+      const driver = session.driver;
+      session.driver = null;
+      if (driver) log("driver_signed_out", driver.name, driver.email, "");
+      emit();
+    },
+    loginAdmin({ email, password } = {}) {
+      const value = String(email || "").trim();
+      if (!value) return { ok: false, reason: "email_required" };
+      if (!isValidEmail(value)) return { ok: false, reason: "invalid_email" };
+      if (!String(password || "").trim())
+        return { ok: false, reason: "password_required" };
+      const admin = findAdminByEmail(value);
+      if (!admin) return { ok: false, reason: "invalid_credentials" };
+      if (admin.status !== "Active")
+        return { ok: false, reason: "account_restricted" };
+      session.admin = admin;
+      log("admin_signed_in", admin.name, admin.email, "");
+      emit();
+      return { ok: true, admin };
+    },
+    logoutAdmin() {
+      const admin = session.admin;
+      session.admin = null;
+      if (admin) log("admin_signed_out", admin.name, admin.email, "");
+      emit();
+    },
+
+    // ---- Forgot password (pre-login) — email -> 6-digit code -> reset ----
+    // Same shape as the driver's authenticated email-change flow above, but
+    // keyed by email since there's no session yet. Never persists a real
+    // password (this store never has anywhere to persist one); resetPassword
+    // only clears the pending record and logs the audit action.
+    PASSWORD_RESET_CODE_TTL_MS: 10 * 60 * 1000,
+    PASSWORD_RESET_RESEND_MS: 30 * 1000,
+
+    requestPasswordReset({ email, kind } = {}) {
+      const value = String(email || "").trim();
+      if (!isValidEmail(value)) return { ok: false, reason: "invalid_email" };
+      const account =
+        kind === "admin" ? findAdminByEmail(value) : findDriverByEmail(value);
+      // Always report success — never reveal whether an account exists for
+      // this email (mirrors the generic copy autheon-fe uses here).
+      if (!account) return { ok: true };
+      const key = `${kind}:${value.toLowerCase()}`;
+      const now = Date.now();
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      passwordResets[key] = {
+        email: value,
+        kind,
+        code,
+        sentAt: now,
+        expiresAt: now + api.PASSWORD_RESET_CODE_TTL_MS,
+        attempts: 0,
+        resendCount: 0,
+        verified: false,
+        resetToken: "",
+      };
+      log(
+        kind === "admin"
+          ? "admin_password_reset_requested"
+          : "driver_password_reset_requested",
+        account.name,
+        account.email,
+        "",
+      );
+      // Demo-only: the real code delivery is email (see PRD/backend), which
+      // this static prototype has no way to send. Surfacing it here mirrors
+      // ChangeEmailSheet's `demoCode` convention so the flow is completable.
+      return { ok: true, code };
+    },
+
+    resendPasswordResetCode({ email, kind } = {}) {
+      const key = `${kind}:${String(email || "").trim().toLowerCase()}`;
+      const pending = passwordResets[key];
+      if (!pending) return { ok: false, reason: "no_pending" };
+      const now = Date.now();
+      if (pending.sentAt + api.PASSWORD_RESET_RESEND_MS > now)
+        return { ok: false, reason: "resend_too_soon" };
+      pending.code = String(Math.floor(100000 + Math.random() * 900000));
+      pending.sentAt = now;
+      pending.expiresAt = now + api.PASSWORD_RESET_CODE_TTL_MS;
+      pending.attempts = 0;
+      pending.resendCount = (pending.resendCount || 0) + 1;
+      log(
+        pending.kind === "admin"
+          ? "admin_password_reset_requested"
+          : "driver_password_reset_requested",
+        pending.email,
+        pending.email,
+        "resend",
+      );
+      return { ok: true, code: pending.code };
+    },
+
+    verifyPasswordResetCode({ email, kind, code } = {}) {
+      const key = `${kind}:${String(email || "").trim().toLowerCase()}`;
+      const pending = passwordResets[key];
+      if (!pending) return { ok: false, reason: "invalid_code" };
+      if (Date.now() > pending.expiresAt)
+        return { ok: false, reason: "expired" };
+      if (String(code || "").trim() !== pending.code) {
+        pending.attempts = (pending.attempts || 0) + 1;
+        return { ok: false, reason: "invalid_code" };
+      }
+      pending.verified = true;
+      pending.resetToken = `demo-reset-${Math.random().toString(36).slice(2)}`;
+      return { ok: true, resetToken: pending.resetToken };
+    },
+
+    resetPassword({ email, kind, resetToken, newPassword } = {}) {
+      const key = `${kind}:${String(email || "").trim().toLowerCase()}`;
+      const pending = passwordResets[key];
+      if (
+        !pending ||
+        !pending.verified ||
+        !resetToken ||
+        resetToken !== pending.resetToken
+      )
+        return { ok: false, reason: "invalid_session" };
+      if (String(newPassword || "").trim().length < 8)
+        return { ok: false, reason: "password_too_short" };
+      delete passwordResets[key];
+      log(
+        kind === "admin" ? "admin_password_reset" : "driver_password_reset",
+        pending.email,
+        pending.email,
+        "",
+      );
+      return { ok: true };
+    },
+
+    // ---- Accept invite / set first password (autheon-fe parity: apps/*
+    // SetPasswordPage + POST /users/accept-invite). Not wired to any
+    // reachable screen yet — the admin-side invite flow above does not
+    // generate a real invite token, so this only checks a token was
+    // supplied, not that it matches one issued by addDriver/addAdmin.
+    acceptInvite({ email, kind, token, newPassword, confirmNewPassword } = {}) {
+      const value = String(email || "").trim();
+      const account =
+        kind === "admin" ? findAdminByEmail(value) : findDriverByEmail(value);
+      if (!value || !String(token || "").trim() || !account)
+        return { ok: false, reason: "invalid_link" };
+      const password = String(newPassword || "");
+      if (password.length < 8)
+        return { ok: false, reason: "password_too_short" };
+      if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password))
+        return { ok: false, reason: "password_complexity" };
+      if (!String(confirmNewPassword || "").trim())
+        return { ok: false, reason: "confirm_required" };
+      if (password !== confirmNewPassword)
+        return { ok: false, reason: "password_mismatch" };
+      account.accessState = ACCESS_STATE.ACTIVE;
+      log(
+        kind === "admin" ? "admin_invite_accepted" : "driver_invite_accepted",
+        account.name,
+        account.email,
+        "",
+      );
+      emit();
+      return { ok: true };
+    },
 
     statusLabel: (s) => {
       const key = STATUSES[s]?.i18n;

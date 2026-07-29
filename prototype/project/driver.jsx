@@ -675,6 +675,22 @@ const Ic = {
       <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
     </svg>
   ),
+  EyeOff: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M4 4l16 16"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
   Pkg: () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
       <path d="M3 7l9-4 9 4-9 4-9-4z" stroke="currentColor" strokeWidth="1.5" />
@@ -6532,7 +6548,10 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
         title={t("signOut")}
         message={t("signOutAlert")}
         confirmLabel={t("signOut")}
-        onConfirm={() => setSignOutOpen(false)}
+        onConfirm={() => {
+          setSignOutOpen(false);
+          store.logoutDriver();
+        }}
         onCancel={() => setSignOutOpen(false)}
         destructive
       />
@@ -6857,10 +6876,202 @@ const SameDayOverlapSheet = ({ onCancel, onConfirm }) => {
   );
 };
 
+// =========================================================================
+// LOGIN — driver PWA (autheon-fe parity: apps/web LoginPage, mobile-pwa
+// layout — full-screen logo header + heading + LoginForm, no tab bar).
+// =========================================================================
+const DriverLoginScreen = ({ standalone = false }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const [mode, setMode] = useState("login"); // login | forgot
+  const [notice, setNotice] = useState("");
+
+  const body =
+    mode === "forgot" ? (
+      <DriverUI.ForgotPasswordFlow
+        kind="driver"
+        onExit={() => setMode("login")}
+        onDone={() => {
+          setMode("login");
+          setNotice(t("authForgotPasswordSuccessNotice"));
+        }}
+        copy={{
+          invalidEmail: t("authErrorInvalidEmail"),
+          title: t("authDriverForgotTitle"),
+          subtitle: t("authDriverForgotSubtitle"),
+          emailLabel: t("authDriverForgotEmailLabel"),
+          emailPlaceholder: t("authDriverForgotEmailPlaceholder"),
+          submit: t("authDriverForgotSubmit"),
+          backToLogin: t("authDriverForgotBackToLogin"),
+          otpTitle: t("authDriverForgotOtpTitle"),
+          otpSubtitlePrefix: t("authDriverForgotOtpSubtitlePrefix"),
+          otpSubmit: t("authDriverForgotOtpSubmit"),
+          otpResendCooldownPrefix: t("authDriverForgotOtpResendCooldownPrefix"),
+          otpResendButton: t("authDriverForgotOtpResendButton"),
+          otpBack: t("authDriverForgotOtpBack"),
+          otpInvalidCode: t("authDriverForgotOtpInvalidCode", { length: 6 }),
+          otpIncorrectCode: t("authDriverForgotOtpIncorrectCode"),
+          resetTitle: t("authDriverResetTitle"),
+          resetSubtitle: t("authDriverResetSubtitle"),
+          resetPasswordLabel: t("authDriverResetPasswordLabel"),
+          resetPasswordPlaceholder: t("authDriverResetPasswordPlaceholder"),
+          resetConfirmLabel: t("authDriverResetConfirmLabel"),
+          resetConfirmPlaceholder: t("authDriverResetConfirmPlaceholder"),
+          resetSubmit: t("authDriverResetSubmit"),
+          resetBack: t("authDriverResetBack"),
+          resetMinLength: t("authDriverResetMinLength"),
+          resetConfirmRequired: t("authDriverResetConfirmRequired"),
+          resetMismatch: t("authDriverResetMismatch"),
+          demoHint: (code) => t("authForgotPasswordDemoHint", { code }),
+        }}
+      />
+    ) : (
+      <>
+        <div className="auth-logo-row">
+          <img
+            className="brand-mark"
+            src="favicon.svg"
+            alt=""
+            width="22"
+            height="22"
+            aria-hidden="true"
+          />
+          <span className="auth-logo-text">{store.getAppDisplayName()}</span>
+        </div>
+        <div className="auth-heading-block">
+          <h1 className="auth-heading">{t("authDriverLoginTitle")}</h1>
+          <p className="auth-subheading">{t("authDriverLoginSubtitle")}</p>
+        </div>
+        {notice && (
+          <InlineAlert
+            tone="success"
+            message={notice}
+            onDismiss={() => setNotice("")}
+          />
+        )}
+        <DriverUI.LoginForm
+          emailLabel={t("authDriverLoginEmailLabel")}
+          emailPlaceholder={t("authDriverLoginEmailPlaceholder")}
+          passwordLabel={t("authDriverLoginPasswordLabel")}
+          passwordPlaceholder={t("authDriverLoginPasswordPlaceholder")}
+          showPasswordLabel={t("authDriverLoginShowPassword")}
+          hidePasswordLabel={t("authDriverLoginHidePassword")}
+          submitLabel={t("authDriverLoginSubmit")}
+          forgotPasswordLabel={t("authDriverLoginForgotPassword")}
+          onForgotPassword={() => {
+            setNotice("");
+            setMode("forgot");
+          }}
+          onSubmit={(email, password) =>
+            store.loginDriver({ email, password })
+          }
+        />
+      </>
+    );
+
+  return (
+    <div className={`phone-shell${standalone ? " pwa-viewport" : ""}`}>
+      {!standalone && <div className="pwa-tag">{t("pwaTag")}</div>}
+      <div className="phone">
+        {!standalone && <div className="notch"></div>}
+        <div className="phone-screen">
+          {!standalone && <PhoneStatusBar />}
+          <div className="scroll auth-screen" style={{ padding: "28px 22px" }}>
+            {body}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// =========================================================================
+// SET PASSWORD / ACCEPT INVITE — driver PWA (autheon-fe parity: apps/web
+// SetPasswordPage). NOT wired to any reachable screen — no route/link/button
+// mounts this yet; it exists so the screen can be reviewed and later wired
+// once a real invite-token mechanism exists. Page owns email/token link
+// validity + heading swap; DriverUI.SetPasswordForm owns the fields.
+// =========================================================================
+const DriverSetPasswordScreen = ({ email = "", token = "", standalone = false }) => {
+  const { t } = useI18n();
+  const isValidLink = Boolean(email && token);
+
+  const body = (
+    <>
+      <div className="auth-logo-row">
+        <img
+          className="brand-mark"
+          src="favicon.svg"
+          alt=""
+          width="22"
+          height="22"
+          aria-hidden="true"
+        />
+        <span className="auth-logo-text">{AuthStore.getAppDisplayName()}</span>
+      </div>
+      <div className="auth-heading-block">
+        <h1 className="auth-heading">
+          {isValidLink
+            ? t("authDriverSetPasswordTitle")
+            : t("authDriverSetPasswordInvalidLinkTitle")}
+        </h1>
+        <p className="auth-subheading">
+          {isValidLink
+            ? t("authDriverSetPasswordSubtitle")
+            : t("authDriverSetPasswordInvalidLinkMessage")}
+        </p>
+      </div>
+      {isValidLink ? (
+        <DriverUI.SetPasswordForm
+          email={email}
+          token={token}
+          kind="driver"
+          onDone={() => {}}
+          copy={{
+            passwordLabel: t("authDriverSetPasswordPasswordLabel"),
+            passwordPlaceholder: t("authDriverSetPasswordPasswordPlaceholder"),
+            confirmLabel: t("authDriverSetPasswordConfirmLabel"),
+            confirmPlaceholder: t("authDriverSetPasswordConfirmPlaceholder"),
+            showPassword: t("authDriverLoginShowPassword"),
+            hidePassword: t("authDriverLoginHidePassword"),
+            submit: t("authDriverSetPasswordSubmit"),
+            minLength: t("authDriverSetPasswordMinLength"),
+            complexity: t("authDriverSetPasswordComplexity"),
+            confirmRequired: t("authDriverSetPasswordConfirmRequired"),
+            mismatch: t("authDriverSetPasswordMismatch"),
+            invalidLinkMessage: t("authDriverSetPasswordInvalidLinkMessage"),
+          }}
+        />
+      ) : (
+        <p className="auth-subheading">
+          {t("authDriverSetPasswordInvalidLinkHint")}
+        </p>
+      )}
+    </>
+  );
+
+  return (
+    <div className={`phone-shell${standalone ? " pwa-viewport" : ""}`}>
+      {!standalone && <div className="pwa-tag">{t("pwaTag")}</div>}
+      <div className="phone">
+        {!standalone && <div className="notch"></div>}
+        <div className="phone-screen">
+          {!standalone && <PhoneStatusBar />}
+          <div className="scroll auth-screen" style={{ padding: "28px 22px" }}>
+            {body}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // expose
 Object.assign(window, {
   Pill,
   Lbl,
+  DriverLoginScreen,
+  DriverSetPasswordScreen,
   Ic,
   RouteStack,
   PhoneStatusBar,
