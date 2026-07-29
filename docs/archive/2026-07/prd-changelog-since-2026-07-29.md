@@ -1,14 +1,16 @@
-# PRD changelog: 2026-07-29 (v2.14 → v2.20)
+# PRD changelog: 2026-07-29 (v2.14 → v2.21)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
 **Canonical file:** `docs/requirements/prd.json`
 
-> **Scope of this file:** the **v2.15** – **v2.20** entries. PRD **v2.11 – v2.14** (all dated 2026-07-29 — admin manufacturer/model catalogue, vehicle search, and the admin orders-overview client fixes) are recorded in the `version` history string inside `prd.json` and in [`../../requirements/admin-client-requirements-status.md`](../../requirements/admin-client-requirements-status.md), but were never given a separate changelog file. That gap is pre-existing and is **not** back-filled here.
+> **Scope of this file:** the **v2.15** – **v2.21** entries. PRD **v2.11 – v2.14** (all dated 2026-07-29 — admin manufacturer/model catalogue, vehicle search, and the admin orders-overview client fixes) are recorded in the `version` history string inside `prd.json` and in [`../../requirements/admin-client-requirements-status.md`](../../requirements/admin-client-requirements-status.md), but were never given a separate changelog file. That gap is pre-existing and is **not** back-filled here.
 
 ---
 
 ## PRD v2.15 — Driver content-access audit trail (2026-07-29)
+
+> **PARTIALLY SUPERSEDED by PRD v2.21 (below): notification-open auditing was removed from scope.** Everything in this entry about **documents** and **Infopoint messages** still stands. The `notification_viewed` action key, the `driver_notification` entity type and the "Notification view" rule in §4 no longer exist. This entry is kept verbatim so the original decision and its reversal are both traceable.
 
 **Baseline:** PRD v2.14 (admin orders-overview Phase 4 client fixes)
 **Source:** work order "Create Audit Log Entries for Every Driver Document, Notification, and Infopoint Message View or Download", refining the existing **Task 22 — Audit Log & Status History**.
@@ -56,7 +58,7 @@ Keys stay **stable English** (`resolved_defaults.audit_log_language_v1`: "Englis
 | Infopoint general document | `document_viewed` | `document_downloaded` |
 | Tour document (driver upload or dispatch off-channel) | `tour_document_viewed` | `tour_document_downloaded` |
 | Transport-order PDF | `pdf_viewed` *(pre-existing)* | `pdf_downloaded` *(pre-existing)* |
-| Driver notification | `notification_viewed` | — |
+| Driver notification | ~~`notification_viewed`~~ **removed in v2.21** | — |
 | Infopoint message (news item) | `news_item_viewed` | — |
 
 `document_*` is reserved for Infopoint general documents because the admin console already writes `document_created` / `document_updated` / `document_replaced` / `document_deleted` for exactly that entity; `tour_document_*` matches the existing `tour_document_uploaded` / `tour_document_replaced` / `tour_document_checked`; `news_item_*` matches `news_item_created` / `news_item_updated` / `news_item_hidden` / `news_item_shown`.
@@ -69,7 +71,7 @@ Resolved from existing behaviour rather than invented:
 
 - **Document view** — the driver requests a preview of the file. Repeated previews are repeated views.
 - **Document download** — the driver requests the file for download. Audited as `downloaded`, never additionally as a view.
-- **Notification view** — the driver **opens the notifications panel**. That is one notification-list request, and the panel renders every row's full title and body, so each notification the request carries is audited as a view. Reopening the panel is a new view and appends new entries. **Read/unread state is deliberately untouched** — opening the panel does not mark anything read, and marking read is not itself a view.
+- ~~**Notification view**~~ — **removed from scope in v2.21.** As originally specified: the driver **opens the notifications panel**. That is one notification-list request, and the panel renders every row's full title and body, so each notification the request carries is audited as a view. Reopening the panel is a new view and appends new entries. **Read/unread state is deliberately untouched** — opening the panel does not mark anything read, and marking read is not itself a view.
 - **Infopoint message view** — the driver **opens** a message. Audited immediately, before read state is touched, so an already-read message re-opened is audited again. Collapsing an open message is not a view.
 
 ### 5. Explicitly out of scope
@@ -83,7 +85,7 @@ Resolved from existing behaviour rather than invented:
 
 1. **Share and print.** The document preview sheet offers share and print alongside download. Only view and download are audited. Whether share/print are separate auditable disclosure events is a product decision — the work order raised it as an open question and no repository source answers it.
 2. **Failed and unauthorized access attempts.** An unknown, hidden or unauthorized target currently fails safely and audits **nothing**. Whether denied attempts should be recorded (a security-monitoring requirement, distinct from content traceability) is undecided.
-3. **Notification view granularity.** A view is recorded per notification carried by a panel opening. If the product instead wants per-row tap granularity, that is a narrower rule and would need confirming — but it would leave notifications that are not tappable (for example `master_data_change_sent`, `email_changed`, which carry no job) permanently unaudited, which is why the list-request rule was chosen.
+3. ~~**Notification view granularity.**~~ **Moot since v2.21** — notification opens are not audited at all. As originally recorded: a view is recorded per notification carried by a panel opening. If the product instead wants per-row tap granularity, that is a narrower rule and would need confirming — but it would leave notifications that are not tappable (for example `master_data_change_sent`, `email_changed`, which carry no job) permanently unaudited, which is why the list-request rule was chosen.
 
 ---
 
@@ -513,3 +515,68 @@ Six acceptance criteria were appended to the **existing** Task 2. They deliberat
 | `docs/product/sitemap.md` | Auth entry rows for both surfaces |
 
 **Not touched:** any file under `prototype/project` — this commit documents existing behaviour and changes none of it, apart from the `pwa-app.jsx` cache-buster noted in the commit message.
+
+---
+
+## PRD v2.21 — Notification-open auditing removed from scope (2026-07-29)
+
+**Baseline:** PRD v2.20 (auth demo documentation catch-up)
+**Source:** the **same work order that specified v2.15**, revised by the team lead after v2.15 shipped.
+**Effect:** **partially supersedes v2.15.** Documents and Infopoint messages are unchanged; notification opens are no longer audited.
+
+### 1. What the work order changed
+
+| | Original (implemented as v2.15) | Revised |
+| --- | --- | --- |
+| Title | "Every Driver Document, **Notification**, and Infopoint Message View or Download" | "Every Driver Document, and Infopoint Message View or Download" |
+| Scope of logging | Document view · Document download · **Notification view** · Infopoint message view | Document view · Document download · Infopoint message view |
+| Required data | "The affected document, **notification**, or message" | "The affected document or message" |
+| Acceptance | included "Every notification view creates a new Audit Log entry" | criterion removed |
+
+### 2. Why this is the right call, not just a smaller one
+
+Recorded so the earlier entry does not read as a mistake, and so this is not silently re-added later:
+
+**A notification is a pointer, not the content.** Every notification points at something already audited — a document, an Infopoint message, or a tour. The audit trail's question is *"did the driver see this content?"*, and that is answered the moment they open it. Auditing the pointer as well recorded the same disclosure twice, at two different times, with the pointer entry arriving **first** — so a reader of the log saw "notification viewed" for a document the driver never actually opened.
+
+**It was the noisiest rule in the trail.** v2.15 audited one entry *per notification* *per panel opening*, because that was the only reading that covered notifications a driver cannot tap (`master_data_change_sent`, `email_changed` — no job to open). With the seeded set that is six entries every time the bell is tapped, and in production it grows with the driver's notification history. The signal-to-noise cost fell entirely on the surface the audit log exists to serve.
+
+**Read/unread already records it.** `user_notifications.read_at` and the unread badge are the notification-level record of what the driver has seen. That was never removed and is the honest place for that fact.
+
+### 3. Removed
+
+- The `notification_viewed` action key.
+- The `driver_notification` entity type.
+- The store method that appended those entries, and its single call site (the notifications panel's mount effect).
+
+### 4. Unchanged — deliberately verified, not assumed
+
+- **Document auditing:** `document_viewed` / `document_downloaded`, `tour_document_viewed` / `tour_document_downloaded`, `pdf_viewed` / `pdf_downloaded` — same keys, same recorded fields (acting driver + id, entity type + id, timestamp, `actionType`, document version, job/tour), same append-only no-merging rule.
+- **Infopoint message auditing:** `news_item_viewed` still fires on every opening of a message detail page, including an already-read one.
+- **Every notification behaviour:** delivery and eligibility, the category chips, the tour accordion, the contextual actions, deep links and push routing, unavailable-target handling, read/unread, and **Mark all read**. The panel now simply does not write an audit entry when it opens.
+
+### 5. Data model — nothing to change
+
+`audit_events` stops receiving one `action_key` value; no column, table, enum or index is affected, and this trail never wrote to `user_notifications`. `schema.dbml` and `logical-model.md` are corrected where they listed the removed key.
+
+### 6. Still open from the original work order
+
+Unchanged by this revision, and still not decided:
+
+1. Whether **share** and **print** should be audited alongside view and download.
+2. Whether **failed or unauthorized** access attempts should be recorded, or only successful interactions.
+
+---
+
+## Files touched (v2.21)
+
+| File | Change |
+| --- | --- |
+| `prototype/project/store.js` | `recordDriverNotificationViews` removed; the content-access header comment now records why notification opens are deliberately not audited |
+| `prototype/project/driver.jsx` | the notifications panel's audit mount effect removed |
+| `docs/requirements/prd.json` | Task 22 criteria corrected (notification wording dropped, with the reason stated); `resolved_defaults.driver_content_access_audit_v1` corrected; `version` → v2.21; the v2.15 history annotated inline |
+| `docs/database/schema.dbml`, `docs/database/logical-model.md` | the removed key dropped from the content-access notes |
+| `docs/archive/2026-07/prd-changelog-since-2026-07-29.md` | v2.15 annotated as partially superseded; this entry added |
+| `docs/product/autheon-context-pack.md` | version trail → v2.21; the audit bullet corrected |
+
+**Not touched:** notification delivery, presentation, deep links, read/unread, `Mark all read`, and all document and Infopoint-message auditing.

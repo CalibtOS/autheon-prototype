@@ -5542,15 +5542,6 @@ const DriverNotificationsPane = ({
     .filter((n) => !n.read).length;
   const titleId = "driver-notifications-pane-title";
 
-  // Opening the panel is one notification-list request, and the panel renders
-  // every row's full title and body — so each notification it carries is
-  // audited as a view within that request (PRD Task 22). Mount-only: the audit
-  // must not repeat on the re-renders the store emits, but reopening the panel
-  // is a new view and appends new entries. Read/unread state is untouched.
-  useEffect(() => {
-    store.recordDriverNotificationViews();
-  }, []);
-
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") close?.();

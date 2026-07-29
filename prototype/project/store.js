@@ -2787,15 +2787,19 @@ window.AuthStore = (() => {
   //   documents (Infopoint)   document_viewed        document_downloaded
   //   tour documents          tour_document_viewed   tour_document_downloaded
   //   transport-order PDF     pdf_viewed             pdf_downloaded
-  //   driver notifications    notification_viewed
   //   Infopoint messages      news_item_viewed
   //
   // Every entry ALSO carries `actionType: "viewed" | "downloaded"`, so the
   // distinction is queryable without parsing the action key.
   //
   // These are appended inside the EXISTING content request flows (the same
-  // store calls the Driver PWA already makes to obtain a preview, a download
-  // or the notification list) — no separate logging call is introduced.
+  // store calls the Driver PWA already makes to obtain a preview or a
+  // download) — no separate logging call is introduced.
+  //
+  // OPENING A NOTIFICATION IS DELIBERATELY NOT AUDITED. It was in the original
+  // work order and was removed from scope; a notification is a pointer to
+  // content, and the content it points at is audited when the driver actually
+  // opens it. Read/unread state remains the notification-level record.
   // =======================================================================
   const AUDIT_VIEWED = "viewed";
   const AUDIT_DOWNLOADED = "downloaded";
@@ -4844,37 +4848,6 @@ window.AuthStore = (() => {
     },
     getDriverNotificationUnreadCount: (driverId) =>
       api.getDriverNotifications(driverId).filter((n) => !n.read).length,
-    /**
-     * Audits the driver notification list as viewed. Called by the Driver PWA
-     * notifications panel for the notification set it just requested and
-     * rendered — the panel shows every row's full title and body, so being
-     * served the list IS the view. One entry per notification, appended, never
-     * merged: reopening the panel audits the views again (PRD Task 22).
-     *
-     * Read/unread state is deliberately untouched — opening the panel does not
-     * mark anything read, and that behaviour must not change.
-     */
-    recordDriverNotificationViews: (ids) => {
-      const set = new Set(Array.isArray(ids) ? ids : []);
-      const rows = api
-        .getDriverNotifications()
-        .filter((row) => !set.size || set.has(row.id));
-      for (const row of rows) {
-        logContentAccess({
-          opts: { actor: "driver" },
-          action: "notification_viewed",
-          actionType: AUDIT_VIEWED,
-          entity: row.title || row.id,
-          entityType: "driver_notification",
-          entityId: row.id,
-          jobId: row.jobId,
-          tour: row.tour,
-          subtype: row.type,
-        });
-      }
-      if (rows.length) emit();
-      return { ok: true, count: rows.length };
-    },
     markDriverNotificationsRead: (ids) => {
       const set = new Set(Array.isArray(ids) ? ids : []);
       let n = 0;
