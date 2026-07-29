@@ -6965,6 +6965,8 @@ const DriverLoginScreen = ({ standalone = false }) => {
           onSubmit={(email, password) =>
             store.loginDriver({ email, password })
           }
+          demoEmail="driver.one@demo.local"
+          demoFillLabel={t("authDemoFillButton")}
         />
       </>
     );

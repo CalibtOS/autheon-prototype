@@ -1701,6 +1701,33 @@ window.AuthStore = (() => {
           notifyNewPublished: false,
         },
       },
+      // Mirrors the backend's seeds/profiles/development.json fixture driver
+      // (driver.one@demo.local / Dana Driver) so the two projects can be
+      // demoed side by side with the same login credentials.
+      {
+        id: "DRV-0001",
+        name: "Dana Driver",
+        company: "Driver One Transport",
+        driverCode: "DRV-001",
+        joinedAt: "01.01.2026",
+        address: "Fahrerweg 5, 10557 Berlin",
+        email: "driver.one@demo.local",
+        emailVerified: true,
+        pendingEmailChange: null,
+        phone: "+49 30 5550199",
+        notes: "Default seeded driver",
+        status: "Active",
+        accessState: ACCESS_STATE.ACTIVE,
+        probationJobLimit: 3,
+        probationClearedAt: null,
+        prefs: {
+          postalAreas: ["10"],
+          vehicleType: "All",
+          transportType: "All",
+          pushEnabled: true,
+          notifyNewPublished: true,
+        },
+      },
     ];
   }
 
@@ -1717,6 +1744,16 @@ window.AuthStore = (() => {
         id: "ADM-002",
         name: "Lukas Reimann",
         email: "lukas.reimann@autheon.example",
+        status: "Active",
+        accessState: ACCESS_STATE.ACTIVE,
+      },
+      // Mirrors the backend's seeds/profiles/development.json fixture admin
+      // (demo.admin@demo.local / Demo Admin) — same reasoning as the
+      // driver.one fixture above.
+      {
+        id: "ADM-003",
+        name: "Demo Admin",
+        email: "demo.admin@demo.local",
         status: "Active",
         accessState: ACCESS_STATE.ACTIVE,
       },
