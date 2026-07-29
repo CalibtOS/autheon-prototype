@@ -1,5 +1,7 @@
 # AUTHEON database logical model
 
+> **Status override:** Updated 2026-07-29 - PRD v2.15: driver content-access audit trail. **No structural schema change** — `audit_events` already carries `action_key`, `actor_user_id`, `entity_type`, `entity_id`, `job_id`, `occurred_at` and a `metadata` jsonb, so no column, table, enum, index or migration is added. New `action_key` values recorded when a driver **reads** driver-accessible content: `document_viewed` / `document_downloaded` (`infopoint_documents`), `tour_document_viewed` / `tour_document_downloaded` (`job_documents`), `pdf_viewed` / `pdf_downloaded` (`generated_job_documents` — pre-existing keys, now attributed to the acting **driver** rather than the dispatcher when the access originates in the Driver PWA), `notification_viewed` (`user_notifications`), `news_item_viewed` (`infopoint_news`). See "Content-access audit" below.
+
 > **Status override:** Updated 2026-07-22 - PRD v2.5: full admin order-editing implementation + Storno consistency pass. **No new job columns** — editing all eligible business data on any non-terminal order (Storno §7) reuses existing `jobs` / `job_locations` / `job_financials` columns and is captured in `audit_events` under `action_key = 'order_edited'` with a `metadata` jsonb payload carrying the per-field `{field, previous, new}` diff list as one logical edit action (status is preserved, never mutated by an edit). **Added `empty_run_evidence`** (empty-run report attachments → `upload_assets`, mirroring `problem_report_evidence`) so §3.2 optional evidence has a first-class home. **Added the previously-missing FK relationships** for `sp_cancellations`, `empty_run_reports`, `internal_notes`, and `email_change_requests`. **Legacy removal (PRD v2.6, 2026-07-23 — "ignore the special case"):** the `special_case` job_status value and `problem_type.not_performable` have been **removed entirely** — the canonical driver problem workflow is `sp_cancellations` + `empty_run_reports`/`empty_run_evidence`, and the empty-run report model fully replaces the old not-performable → special-case path. New `user_notifications.notification_type` values: `order_updated_after_booking`, `empty_run_reported`, `empty_run_recognised`, `empty_run_not_recognised` (type stays a free varchar).
 
 > **Status override:** Updated 2026-07-10 - PRD v2.0: no structural schema change. `drivers.driver_code` is now documented as system-assigned, immutable, and never reused (F-03); per-leg time windows are same-day only with no cross-midnight window (F-04). Probation-only driver UI, Infopoint View/Download actions, and branding/domain/Report-Problem-timing are UI or open-question items with no data-model impact.
@@ -108,6 +110,26 @@ This prevents two drivers from accepting the same published tour.
 Status transitions belong in a transaction/service layer, not an unconstrained client update. Every transition writes `job_status_history`, `audit_events`, and, where required, `outbox_events`.
 
 `message_delivery_status` is used only for outbox/email/push/in-app delivery attempts. It is not a vehicle pickup/delivery or tour lifecycle status.
+
+### Content-access audit
+
+Driver **reads** of driver-accessible content are audited alongside writes (PRD v2.15, Task 22). This needs no new structure: `audit_events` is the append-only home, one row per interaction.
+
+| Column | Content-access meaning |
+| --- | --- |
+| `action_key` | `document_viewed` / `document_downloaded` (Infopoint general documents) · `tour_document_viewed` / `tour_document_downloaded` · `pdf_viewed` / `pdf_downloaded` (transport-order PDF) · `notification_viewed` · `news_item_viewed` |
+| `actor_user_id` | the driver who performed the read — **not** the dispatcher, even where the same service call also serves the admin console |
+| `entity_type` | `infopoint_document` · `tour_document` · `transport_order_pdf` · `driver_notification` · `infopoint_news` |
+| `entity_id` | the affected `infopoint_documents` / `job_documents` / `generated_job_documents` / `user_notifications` / `infopoint_news` row |
+| `job_id` | the tour, where the content belongs to one (tour documents, transport-order PDF, tour-linked notifications) |
+| `occurred_at` | timestamp of the read |
+| `metadata` | `actionType` (`viewed` \| `downloaded` — keeps the distinction queryable independently of the action key), the document version where the entity has one, and the document/notification subtype |
+
+**Append-only, never merged.** Each interaction inserts its own row; repeated views and repeated downloads produce distinct rows. There is no upsert, no counter and no "last viewed at" column — a read count is a query over `audit_events`, not stored state. The existing `(entity_type, entity_id, occurred_at)` index serves "who has read this document" and the `(job_id, occurred_at desc)` index serves the per-tour trail.
+
+**No version column is added.** `infopoint_documents.version_label` and the generated-PDF document-file version already supply "the document version where applicable". `job_documents` has no version concept (a replacement overwrites in place and is separately audited as `tour_document_replaced`), so tour-document access entries simply carry none.
+
+**Marking read is not a read.** `user_notifications.read_at` and `infopoint_news_reads` remain the read-state model and are unchanged; they answer "has this been acknowledged", while `audit_events` answers "who opened it, and when, how many times".
 
 ### Settlement audit
 

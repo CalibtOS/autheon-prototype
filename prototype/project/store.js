@@ -2673,14 +2673,120 @@ window.AuthStore = (() => {
     return (translate || t2)("redPlatesRequired");
   }
 
-  function log(action, actor, entity, meta) {
-    auditLog.unshift({
+  /**
+   * Appends one audit entry. `action` is always a stable ENGLISH key (never
+   * localized — the admin Audit log renders it verbatim and the CSV export
+   * carries it off-platform); `at`, `action`, `actor`, `entity` and `meta` are
+   * the five columns the admin table and `exportAuditLogCsv()` render.
+   *
+   * `extra` carries optional MACHINE-READABLE fields alongside the display
+   * columns (production `audit_events`: entity_type, entity_id, job_id,
+   * metadata jsonb). It can never overwrite a display column, and empty values
+   * are dropped so entries stay comparable.
+   */
+  function log(action, actor, entity, meta, extra) {
+    const row = {
       action,
       actor,
       entity,
       at: nowStamp(),
       meta: meta || "",
+    };
+    if (extra && typeof extra === "object") {
+      for (const key of Object.keys(extra)) {
+        if (key in row) continue;
+        const value = extra[key];
+        if (value === undefined || value === null || value === "") continue;
+        row[key] = value;
+      }
+    }
+    auditLog.unshift(row);
+  }
+
+  // =======================================================================
+  // DRIVER CONTENT-ACCESS AUDIT (PRD Task 22 — traceability of every piece
+  // of driver-accessible content).
+  //
+  // Action keys follow the convention already established in this audit log:
+  // `<entity>_<past-tense-verb>`, English, stable, never localized.
+  //
+  //   documents (Infopoint)   document_viewed        document_downloaded
+  //   tour documents          tour_document_viewed   tour_document_downloaded
+  //   transport-order PDF     pdf_viewed             pdf_downloaded
+  //   driver notifications    notification_viewed
+  //   Infopoint messages      news_item_viewed
+  //
+  // Every entry ALSO carries `actionType: "viewed" | "downloaded"`, so the
+  // distinction is queryable without parsing the action key.
+  //
+  // These are appended inside the EXISTING content request flows (the same
+  // store calls the Driver PWA already makes to obtain a preview, a download
+  // or the notification list) — no separate logging call is introduced.
+  // =======================================================================
+  const AUDIT_VIEWED = "viewed";
+  const AUDIT_DOWNLOADED = "downloaded";
+
+  /**
+   * Resolves the audit actor for a content access. Preview/download store
+   * methods are shared between the Admin Backend and the Driver PWA, so the
+   * caller declares which side it is with the same `opts.actor` convention
+   * `replaceTourDocument()` already uses. Driver accesses are attributed to
+   * the signed-in driver (name + immutable driver id), admin accesses stay on
+   * the dispatcher, matching the pre-existing `pdf_viewed` behaviour.
+   */
+  function contentAccessActor(opts) {
+    if ((opts && opts.actor) === "driver") {
+      const d = api.getCurrentDriver();
+      return {
+        name: d?.name || DEMO_DRIVER,
+        actorId: d?.id || "",
+      };
+    }
+    return { name: DEMO_ADMIN, actorId: api.getCurrentAdmin()?.id || "" };
+  }
+
+  /**
+   * Appends ONE audit entry per content access. Never merges, never updates an
+   * existing row: repeated views and repeated downloads each add a distinct
+   * entry (PRD Task 22 — the audit log is append-only).
+   */
+  function logContentAccess(details) {
+    const { name, actorId } = contentAccessActor(details.opts);
+    const metaParts = [
+      details.jobId || "",
+      details.tour ? `tour ${details.tour}` : "",
+      details.subtype || "",
+      details.documentVersion ? `version ${details.documentVersion}` : "",
+      details.note || "",
+    ].filter(Boolean);
+    log(details.action, name, details.entity || "", metaParts.join(" · "), {
+      actionType: details.actionType,
+      actorId,
+      entityType: details.entityType,
+      entityId: details.entityId,
+      jobId: details.jobId,
+      tour: details.tour,
+      documentVersion: details.documentVersion,
     });
+  }
+
+  /**
+   * The one place that shapes an Infopoint document into the preview contract
+   * the driver `DocumentPreviewSheet` consumes — shared by the view and the
+   * download path so the two can be audited independently without either
+   * producing a second entry for the other.
+   */
+  function buildInfopointDocumentPreview(doc) {
+    const title = doc.title || "document";
+    const fileName = `${String(title).replace(/[^a-zA-Z0-9._-]+/g, "_")}.pdf`;
+    return {
+      title,
+      fileName,
+      mimeType: "application/pdf",
+      previewable: true,
+      pdfUrl: SAMPLE_PDF_URL,
+      downloadName: fileName,
+    };
   }
 
   function bumpPdf(job) {
@@ -4324,6 +4430,37 @@ window.AuthStore = (() => {
     },
     getDriverNotificationUnreadCount: (driverId) =>
       api.getDriverNotifications(driverId).filter((n) => !n.read).length,
+    /**
+     * Audits the driver notification list as viewed. Called by the Driver PWA
+     * notifications panel for the notification set it just requested and
+     * rendered — the panel shows every row's full title and body, so being
+     * served the list IS the view. One entry per notification, appended, never
+     * merged: reopening the panel audits the views again (PRD Task 22).
+     *
+     * Read/unread state is deliberately untouched — opening the panel does not
+     * mark anything read, and that behaviour must not change.
+     */
+    recordDriverNotificationViews: (ids) => {
+      const set = new Set(Array.isArray(ids) ? ids : []);
+      const rows = api
+        .getDriverNotifications()
+        .filter((row) => !set.size || set.has(row.id));
+      for (const row of rows) {
+        logContentAccess({
+          opts: { actor: "driver" },
+          action: "notification_viewed",
+          actionType: AUDIT_VIEWED,
+          entity: row.title || row.id,
+          entityType: "driver_notification",
+          entityId: row.id,
+          jobId: row.jobId,
+          tour: row.tour,
+          subtype: row.type,
+        });
+      }
+      if (rows.length) emit();
+      return { ok: true, count: rows.length };
+    },
     markDriverNotificationsRead: (ids) => {
       const set = new Set(Array.isArray(ids) ? ids : []);
       let n = 0;
@@ -4660,6 +4797,28 @@ window.AuthStore = (() => {
       if (!n.readBy.includes(rid)) n.readBy.push(rid);
       emit();
       return { ok: true };
+    },
+
+    /**
+     * The driver opens an Infopoint message. Audits the view IMMEDIATELY —
+     * before the read state is touched — so every opening is recorded even
+     * when the message was already read, then marks it read exactly as the
+     * existing flow does. Returns `{ ok: false }` for an unknown or hidden
+     * message without auditing anything.
+     */
+    openInfopointNews(newsId, readerId) {
+      const n = newsItems.find((x) => x.id === newsId);
+      if (!n || n.visible === false) return { ok: false };
+      logContentAccess({
+        opts: { actor: "driver" },
+        action: "news_item_viewed",
+        actionType: AUDIT_VIEWED,
+        entity: n.title || n.id,
+        entityType: "infopoint_news",
+        entityId: n.id,
+        note: n.publishedAt ? `published ${n.publishedAt}` : "",
+      });
+      return api.markNewsRead(newsId, readerId);
     },
 
     addNewsItem(data = {}) {
@@ -6890,7 +7049,7 @@ window.AuthStore = (() => {
       return { ok: true, id: row.id };
     },
 
-    downloadTourDocumentPlaceholder(id) {
+    downloadTourDocumentPlaceholder(id, opts = {}) {
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false };
       const base =
@@ -6901,6 +7060,18 @@ window.AuthStore = (() => {
       a.href = SAMPLE_PDF_URL;
       a.download = `${base}.pdf`;
       a.click();
+      logContentAccess({
+        opts,
+        action: "tour_document_downloaded",
+        actionType: AUDIT_DOWNLOADED,
+        entity: doc.fileName,
+        entityType: "tour_document",
+        entityId: doc.id,
+        jobId: doc.jobId,
+        tour: api.getJob(doc.jobId)?.tour || "",
+        subtype: doc.documentType,
+      });
+      emit();
       return { ok: true };
     },
 
@@ -7043,11 +7214,28 @@ window.AuthStore = (() => {
       ].join("\n");
     },
 
-    getTransportOrderPreview(id) {
+    // The transport-order PDF, tour documents and Infopoint documents are all
+    // reached through these existing preview/download calls. Each one appends
+    // its own audit entry (view or download) before returning, so no extra
+    // request and no extra endpoint is needed to make the access traceable.
+    // `opts.actor === "driver"` attributes the entry to the signed-in driver;
+    // omitting it keeps the pre-existing dispatcher attribution.
+    getTransportOrderPreview(id, opts = {}) {
       const j = api.getJob(id);
       if (!j) return { ok: false };
       const fileName = `transport-order-${j.id}.pdf`;
-      log("pdf_viewed", DEMO_ADMIN, id, "In-PWA transport order preview");
+      logContentAccess({
+        opts,
+        action: "pdf_viewed",
+        actionType: AUDIT_VIEWED,
+        entity: fileName,
+        entityType: "transport_order_pdf",
+        entityId: j.id,
+        jobId: j.id,
+        tour: j.tour,
+        documentVersion: `v${j.pdfVersion || 1}`,
+        note: "In-PWA transport order preview",
+      });
       emit();
       return {
         ok: true,
@@ -7062,31 +7250,50 @@ window.AuthStore = (() => {
       };
     },
 
-    viewPdf(id) {
-      return api.getTransportOrderPreview(id);
+    viewPdf(id, opts = {}) {
+      return api.getTransportOrderPreview(id, opts);
     },
 
-    downloadPdf(id) {
+    downloadPdf(id, opts = {}) {
       const j = api.getJob(id);
       if (!j) return { ok: false };
+      const fileName = `transport-order-${j.id}.pdf`;
       const a = document.createElement("a");
       a.href = SAMPLE_PDF_URL;
-      a.download = `transport-order-${j.id}.pdf`;
+      a.download = fileName;
       a.click();
-      log(
-        "pdf_downloaded",
-        DEMO_ADMIN,
-        j.tour,
-        "Seeded sample transport-order PDF",
-      );
+      logContentAccess({
+        opts,
+        action: "pdf_downloaded",
+        actionType: AUDIT_DOWNLOADED,
+        entity: fileName,
+        entityType: "transport_order_pdf",
+        entityId: j.id,
+        jobId: j.id,
+        tour: j.tour,
+        documentVersion: `v${j.pdfVersion || 1}`,
+        note: "Seeded sample transport-order PDF",
+      });
       emit();
       return { ok: true };
     },
 
-    getTourDocumentPreview(id) {
+    getTourDocumentPreview(id, opts = {}) {
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false };
       const base = String(doc.fileName || "document").replace(/\.[^.]+$/, "");
+      logContentAccess({
+        opts,
+        action: "tour_document_viewed",
+        actionType: AUDIT_VIEWED,
+        entity: doc.fileName,
+        entityType: "tour_document",
+        entityId: doc.id,
+        jobId: doc.jobId,
+        tour: api.getJob(doc.jobId)?.tour || "",
+        subtype: doc.documentType,
+      });
+      emit();
       return {
         ok: true,
         preview: {
@@ -7100,31 +7307,46 @@ window.AuthStore = (() => {
       };
     },
 
-    getInfopointDocumentPreview(id) {
+    getInfopointDocumentPreview(id, opts = {}) {
       const doc = documents.find((x) => x.id === id);
       if (!doc || !doc.visible) return { ok: false };
-      const title = doc.title || "document";
-      const fileName = `${String(title).replace(/[^a-zA-Z0-9._-]+/g, "_")}.pdf`;
-      return {
-        ok: true,
-        preview: {
-          title,
-          fileName,
-          mimeType: "application/pdf",
-          previewable: true,
-          pdfUrl: SAMPLE_PDF_URL,
-          downloadName: fileName,
-        },
-      };
+      const preview = buildInfopointDocumentPreview(doc);
+      logContentAccess({
+        opts,
+        action: "document_viewed",
+        actionType: AUDIT_VIEWED,
+        entity: doc.title || preview.fileName,
+        entityType: "infopoint_document",
+        entityId: doc.id,
+        subtype: doc.category,
+        documentVersion: doc.version,
+      });
+      emit();
+      return { ok: true, preview };
     },
 
-    downloadInfopointDocument(id) {
-      const r = api.getInfopointDocumentPreview(id);
-      if (!r.ok) return { ok: false };
+    downloadInfopointDocument(id, opts = {}) {
+      // Resolves the file directly instead of calling the preview method, so a
+      // download is audited as exactly one `document_downloaded` entry and
+      // never also as a view.
+      const doc = documents.find((x) => x.id === id);
+      if (!doc || !doc.visible) return { ok: false };
+      const preview = buildInfopointDocumentPreview(doc);
       const a = document.createElement("a");
       a.href = SAMPLE_PDF_URL;
-      a.download = r.preview.downloadName;
+      a.download = preview.downloadName;
       a.click();
+      logContentAccess({
+        opts,
+        action: "document_downloaded",
+        actionType: AUDIT_DOWNLOADED,
+        entity: doc.title || preview.fileName,
+        entityType: "infopoint_document",
+        entityId: doc.id,
+        subtype: doc.category,
+        documentVersion: doc.version,
+      });
+      emit();
       return { ok: true };
     },
 

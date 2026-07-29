@@ -5,6 +5,13 @@ const UI = window.DriverUI || {};
 const { Badge, EmptyState, SkeletonList, Sheet, SheetGrabber, SheetPullRegion, ConfirmSheet, SortSelect } = UI;
 const F = () => window.AutheonFormatters || {};
 
+// Every content request made from the Driver PWA is attributed to the
+// signed-in driver in the audit log. The same store preview/download calls
+// also serve the Admin Backend, which keeps the dispatcher attribution by
+// omitting this — the `opts.actor` convention the store already uses for
+// tour-document replacement.
+const DRIVER_ACCESS = { actor: "driver" };
+
 // Portal target for full-frame overlays. The tab bar is a later sibling of
 // the tab body inside .phone-screen and ties it on z-index (both 40), so an
 // overlay rendered inline in a tab pane loses the paint order and the nav
@@ -3153,10 +3160,12 @@ const JobOfficialTourDocuments = ({ job, onPreview }) => {
             fileName={doc.fileName}
             metaLine={`${t("officialTourDocFromDispatch")} · ${displayTourDocType(doc.documentType, t)} · ${F().formatFileSize(doc.sizeBytes)}`}
             onView={() => {
-              const r = store.getTourDocumentPreview(doc.id);
+              const r = store.getTourDocumentPreview(doc.id, DRIVER_ACCESS);
               if (r.ok) onPreview?.(r.preview);
             }}
-            onDownload={() => store.downloadTourDocumentPlaceholder(doc.id)}
+            onDownload={() =>
+              store.downloadTourDocumentPlaceholder(doc.id, DRIVER_ACCESS)
+            }
             viewLabel={t("view")}
             downloadLabel={t("download")}
           />
@@ -3293,10 +3302,12 @@ const JobTourDocuments = ({ job, onPreview }) => {
                 canReplaceDoc(u) ? () => startReplace(u.id) : null
               }
               onView={() => {
-                const r = store.getTourDocumentPreview(u.id);
+                const r = store.getTourDocumentPreview(u.id, DRIVER_ACCESS);
                 if (r.ok) onPreview?.(r.preview);
               }}
-              onDownload={() => store.downloadTourDocumentPlaceholder(u.id)}
+              onDownload={() =>
+                store.downloadTourDocumentPlaceholder(u.id, DRIVER_ACCESS)
+              }
               replaceLabel={t("tourDocReplaceButton")}
               viewLabel={t("view")}
               downloadLabel={t("download")}
@@ -3756,7 +3767,10 @@ const JobUnlocked = ({
                 title={t("view")}
                 aria-label={t("view")}
                 onClick={() => {
-                  const r = store.getTransportOrderPreview(job.id);
+                  const r = store.getTransportOrderPreview(
+                    job.id,
+                    DRIVER_ACCESS,
+                  );
                   if (r.ok) setDocPreview(r.preview);
                 }}
               >
@@ -3767,7 +3781,7 @@ const JobUnlocked = ({
                 className="pdf-btn"
                 title={t("download")}
                 aria-label={t("download")}
-                onClick={() => store.downloadPdf(job.id)}
+                onClick={() => store.downloadPdf(job.id, DRIVER_ACCESS)}
               >
                 <Ic.Down />
               </button>
@@ -5198,6 +5212,15 @@ const DriverNotificationsPane = ({ onClose, onBack, onOpenJob, onOpenInfopoint }
     .filter((n) => !n.read).length;
   const titleId = "driver-notifications-pane-title";
 
+  // Opening the panel is one notification-list request, and the panel renders
+  // every row's full title and body — so each notification it carries is
+  // audited as a view within that request (PRD Task 22). Mount-only: the audit
+  // must not repeat on the re-renders the store emits, but reopening the panel
+  // is a new view and appends new entries. Read/unread state is untouched.
+  useEffect(() => {
+    store.recordDriverNotificationViews();
+  }, []);
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") close?.();
@@ -6596,7 +6619,10 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
   const unreadCount = news.filter((n) => !n.readBy.includes(readerId)).length;
 
   const openNews = (item) => {
-    store.markNewsRead(item.id, readerId);
+    // Opening a message is its detail view and is audited immediately, every
+    // time — including re-opening one that is already read. Collapsing an open
+    // message is not a view, and the message is already marked read by then.
+    if (openNewsId !== item.id) store.openInfopointNews(item.id, readerId);
     setOpenNewsId((cur) => (cur === item.id ? null : item.id));
   };
 
@@ -6714,7 +6740,10 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
                         border: "1px solid var(--line)",
                       }}
                       onClick={() => {
-                        const r = store.getInfopointDocumentPreview(d.id);
+                        const r = store.getInfopointDocumentPreview(
+                          d.id,
+                          DRIVER_ACCESS,
+                        );
                         if (r.ok) setDocPreview(r.preview);
                       }}
                       title={t("view")}
@@ -6729,7 +6758,9 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
                         background: "var(--paper-2)",
                         border: "1px solid var(--line)",
                       }}
-                      onClick={() => store.downloadInfopointDocument(d.id)}
+                      onClick={() =>
+                        store.downloadInfopointDocument(d.id, DRIVER_ACCESS)
+                      }
                       title={t("download")}
                       aria-label={`${t("download")}: ${d.title}`}
                     >
