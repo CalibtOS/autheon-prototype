@@ -5980,6 +5980,7 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
         .join("")
     : "JB";
   const statusActive = String(d?.status || "").toLowerCase() === "active";
+  const onProbation = !!store.getDriverProbationSummary()?.onProbation;
 
   // ---- Moved content (reused verbatim inside their drill-down subpages) ----
 
@@ -6399,7 +6400,9 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
             {/* Summary card — status, joined, log out */}
             <div
               className="section-card profile-summary-card list-enter"
-              style={{ ["--list-enter-i"]: 2 }}
+              style={{
+                ["--list-enter-i"]: onProbation ? 2 : 1,
+              }}
             >
               <div className="profile-summary-row">
                 <span
@@ -6451,7 +6454,10 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
               </button>
             </div>
 
-            <ProfileGroup label={t("profileGroupAccount")} enterIndex={3}>
+            <ProfileGroup
+              label={t("profileGroupAccount")}
+              enterIndex={onProbation ? 3 : 2}
+            >
               <ProfileNavRow
                 icon={Ic.TabUser}
                 label={t("profileNavBasicData")}
