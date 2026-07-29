@@ -399,9 +399,12 @@ reason, the same principle the upload errors follow above.
 | `infopoint` | Infopoint | Infopoint |
 | `infopointDocsTab` | General documents | Allgemeine Dokumente |
 | `infopointHelpTab` | Help | Hilfe |
+| `infopointMessage` | Message | Nachricht |
 | `infopointNewsAdminHint` | Messages are published by admins under Admin → Infopoint → New messages. | Nachrichten werden im Admin unter Infopoint → Neue Nachrichten veröffentlicht. |
 | `infopointNewsEmpty` | No news items yet. | Noch keine News. |
+| `infopointNewsRead` | Read | Gelesen |
 | `infopointNewsTab` | New messages | Neue Nachrichten |
+| `infopointNewsUnread` | New | Neu |
 | `infopointSubtitle` | Official documents and dispatcher announcements | Offizielle Dokumente und Ankündigungen der Disposition |
 | `instructionsPdf` | Operational instructions and PDF | Operative Hinweise und PDF |
 | `invoiceUploadInvalidType` | Only PDF or image files are accepted. | Nur PDF- oder Bilddateien sind erlaubt. |

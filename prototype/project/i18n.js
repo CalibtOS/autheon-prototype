@@ -298,6 +298,8 @@ window.I18n = (() => {
       infopointNewsTab: "New messages",
       infopointNewsEmpty: "No news items yet.",
       infopointNewsUnread: "New",
+      infopointNewsRead: "Read",
+      infopointMessage: "Message",
       infopointNewsAdminHint:
         "Messages are published by admins under Admin → Infopoint → New messages.",
       infopointDocViewDownload: "View / Download",
@@ -2175,6 +2177,8 @@ window.I18n = (() => {
       infopointNewsTab: "Neue Nachrichten",
       infopointNewsEmpty: "Noch keine News.",
       infopointNewsUnread: "Neu",
+      infopointNewsRead: "Gelesen",
+      infopointMessage: "Nachricht",
       infopointNewsAdminHint:
         "Nachrichten werden im Admin unter Infopoint → Neue Nachrichten veröffentlicht.",
       infopointDocViewDownload: "Ansehen / Herunterladen",

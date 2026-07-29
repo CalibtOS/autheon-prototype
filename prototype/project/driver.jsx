@@ -6255,10 +6255,14 @@ const ProfileGroup = ({ label, children, enterIndex }) => {
 };
 
 // In-page back header for a drill-down subpage (mirrors pwa-detail-header).
-// The heading takes focus on entry (tabIndex -1) so a state-based drill-down
-// announces the new view instead of leaving focus stranded on <body>.
-const ProfileSubpageHeader = ({ title, backLabel, onBack, titleRef }) => (
-  <div className="pwa-detail-header profile-subpage-header">
+// Shared drill-down header for any state-based driver subpage (Profile
+// sections, Infopoint message detail): back arrow upper-left, centred title,
+// mirrored spacer so the title stays optically centred. The heading takes focus
+// on entry (tabIndex -1) so the new view is announced instead of leaving focus
+// stranded on <body>. The 44px back control lives on `.driver-subpage-header`
+// (styles.css) because it is the primary escape from the subpage.
+const DriverSubpageHeader = ({ title, backLabel, onBack, titleRef }) => (
+  <div className="pwa-detail-header driver-subpage-header">
     <button
       type="button"
       className="detail-back-btn"
@@ -6772,7 +6776,7 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
     <>
       {activeSub ? (
         <>
-          <ProfileSubpageHeader
+          <DriverSubpageHeader
             title={activeSub.title}
             backLabel={t("profileBackLabel")}
             onBack={() => setSubpage(null)}
@@ -6956,12 +6960,133 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
   );
 };
 
+const EDGE_SWIPE_START_ZONE_PX = 32; // must begin at the screen edge, like iOS
+const EDGE_SWIPE_COMMIT_PX = 72; // travel required to actually go back
+const EDGE_SWIPE_AXIS_LOCK_PX = 10; // same lock threshold as SwipeViews
+
+/**
+ * Left-edge swipe-back, the iOS system gesture: a drag that STARTS within
+ * 32px of the left edge and travels right dismisses the subpage. The page
+ * follows the finger and snaps back if the drag is abandoned.
+ *
+ * Progressive enhancement only — the gesture never replaces the visible back
+ * arrow and does nothing without touch. The axis lock mirrors `SwipeViews` so
+ * vertical scrolling of a long message is never hijacked, and under
+ * `prefers-reduced-motion` the snap-back animation is dropped (styles.css)
+ * while the drag itself still tracks the finger.
+ *
+ * Returns `{ handlers, dx }`: spread `handlers` on the page root and apply
+ * `dx` as a translateX.
+ */
+const useEdgeSwipeBack = (onBack) => {
+  const gesture = useRef(null);
+  const [dx, setDx] = useState(0);
+
+  const reset = () => {
+    gesture.current = null;
+    setDx(0);
+  };
+
+  const onTouchStart = (e) => {
+    if (!onBack || e.touches.length !== 1) return reset();
+    const p = e.touches[0];
+    // Only the edge zone starts a back gesture; a swipe from mid-screen is a
+    // scroll (or the tab carousel's business), not navigation.
+    if (p.clientX > EDGE_SWIPE_START_ZONE_PX) return reset();
+    gesture.current = { x: p.clientX, y: p.clientY, axis: null };
+  };
+
+  const onTouchMove = (e) => {
+    const g = gesture.current;
+    if (!g) return;
+    const p = e.touches[0];
+    const moveX = p.clientX - g.x;
+    const moveY = p.clientY - g.y;
+    if (g.axis === null) {
+      if (Math.abs(moveX) < EDGE_SWIPE_AXIS_LOCK_PX && Math.abs(moveY) < EDGE_SWIPE_AXIS_LOCK_PX)
+        return;
+      g.axis = Math.abs(moveX) > Math.abs(moveY) ? "x" : "y";
+    }
+    if (g.axis !== "x") return reset(); // vertical → let the message scroll
+    // No preventDefault: React's touchmove listener is passive, so the browser
+    // would ignore it and log a warning. `touch-action: pan-y` on the page
+    // (styles.css) is what actually reserves the horizontal axis for us.
+    setDx(Math.max(0, moveX));
+  };
+
+  const onTouchEnd = () => {
+    const committed = gesture.current?.axis === "x" && dx >= EDGE_SWIPE_COMMIT_PX;
+    reset();
+    if (committed) onBack?.();
+  };
+
+  return {
+    dx,
+    handlers: {
+      onTouchStart,
+      onTouchMove,
+      onTouchEnd,
+      onTouchCancel: reset,
+    },
+  };
+};
+
+/**
+ * Infopoint message detail page.
+ *
+ * A dedicated page, not an expandable card: a long announcement (updated AGB,
+ * client instructions) has to be readable in full, and an accordion inside a
+ * scrolling list is the wrong container for it. Reuses the shared driver
+ * drill-down header, so the back arrow, its 44px target, the centred title and
+ * the focus-on-entry behaviour are identical to the Profile subpages.
+ */
+const InfopointMessageDetail = ({ item, onBack }) => {
+  const { t } = useI18n();
+  const titleRef = useRef(null);
+  const { handlers, dx } = useEdgeSwipeBack(onBack);
+
+  useEffect(() => {
+    titleRef.current?.focus?.();
+  }, [item?.id]);
+
+  if (!item) return null;
+
+  return (
+    <div
+      className="infopoint-message-page"
+      // While the finger is down the page must track it exactly, so the CSS
+      // snap-back transition is suppressed; releasing drops the inline style
+      // and the transition animates the page home.
+      style={dx ? { transform: `translateX(${dx}px)`, transition: "none" } : undefined}
+      {...handlers}
+    >
+      <DriverSubpageHeader
+        title={t("infopointMessage")}
+        backLabel={t("back")}
+        onBack={onBack}
+        titleRef={titleRef}
+      />
+      <div className="scroll pwa-detail-body">
+        <div className="detail-card infopoint-message-card">
+          <h2 className="infopoint-message-title">{item.title}</h2>
+          <div className="mono text-muted-sm infopoint-message-date">
+            {item.publishedAt}
+          </div>
+          {/* Full text, never truncated. `pre-line` preserves the paragraph
+              breaks admins type into the message body. */}
+          <p className="infopoint-message-body">{item.body}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Infopoint = ({
   onOpenNotifications,
   notificationsOpen = false,
-  // Deep link from a notification or a push tap: open the News tab on this
-  // exact message. A message that no longer exists lands on the News tab with
-  // nothing expanded rather than on a broken screen.
+  // Deep link from a notification or a push tap: open this exact message's
+  // detail page. A message that no longer exists lands on the News tab with no
+  // detail page open rather than on a broken screen.
   deepLinkNewsId = null,
   onDeepLinkConsumed,
 }) => {
@@ -6969,29 +7094,33 @@ const Infopoint = ({
   const store = useAuthStore();
   const [subTab, setSubTab] = useState(deepLinkNewsId ? "news" : "documents");
   const INFO_TABS = ["documents", "news", "help"];
-  const [openNewsId, setOpenNewsId] = useState(null);
+  // Which message's detail page is open. Null = the message list.
+  const [detailNewsId, setDetailNewsId] = useState(null);
   const [docPreview, setDocPreview] = useState(null);
   const readerId = store.getCurrentDriver()?.id || AuthStore.DEMO_DRIVER;
   const docs = store.getDocuments().filter((d) => d.visible);
   const news = store.getNews();
   const unreadCount = news.filter((n) => !n.readBy.includes(readerId)).length;
+  const detailItem = detailNewsId
+    ? news.find((n) => n.id === detailNewsId) || null
+    : null;
 
   useEffect(() => {
     if (!deepLinkNewsId) return;
     setSubTab("news");
     const r = store.openInfopointNews(deepLinkNewsId, readerId);
-    setOpenNewsId(r.ok ? deepLinkNewsId : null);
+    setDetailNewsId(r.ok ? deepLinkNewsId : null);
     // Consume it: the driver navigating back here later must not silently
     // re-open (and re-audit) the same message.
     onDeepLinkConsumed?.();
   }, [deepLinkNewsId]);
 
   const openNews = (item) => {
-    // Opening a message is its detail view and is audited immediately, every
-    // time — including re-opening one that is already read. Collapsing an open
-    // message is not a view, and the message is already marked read by then.
-    if (openNewsId !== item.id) store.openInfopointNews(item.id, readerId);
-    setOpenNewsId((cur) => (cur === item.id ? null : item.id));
+    // Opening a message navigates to its detail page. The view is audited and
+    // the message marked read immediately — every opening, including one that
+    // is already read.
+    store.openInfopointNews(item.id, readerId);
+    setDetailNewsId(item.id);
   };
 
   return (
@@ -7010,6 +7139,17 @@ const Infopoint = ({
           onClose={() => setDocPreview(null)}
         />
       ) : null}
+
+      {/* A message detail page replaces the whole Infopoint screen — header,
+          tabs and all — so a long announcement gets the full viewport. Back
+          returns to the complete message list with the tab still on News. */}
+      {detailItem ? (
+        <InfopointMessageDetail
+          item={detailItem}
+          onBack={() => setDetailNewsId(null)}
+        />
+      ) : (
+      <>
       <DriverScreenHeader
         title={t("infopoint")}
         subtitle={t("infopointSubtitle")}
@@ -7169,9 +7309,10 @@ const Infopoint = ({
               </div>
             ) : (
               <div className="infopoint-card">
+                {/* Title, date and read state only — the message body lives on
+                    its own page, so nothing here is truncated or expandable. */}
                 {news.map((n, index) => {
                   const unread = !n.readBy.includes(readerId);
-                  const expanded = openNewsId === n.id;
                   return (
                     <button
                       key={n.id}
@@ -7183,8 +7324,11 @@ const Infopoint = ({
                         index < 4 ? { ["--list-enter-i"]: index } : undefined
                       }
                       onClick={() => openNews(n)}
-                      aria-expanded={expanded}
-                      aria-label={n.title}
+                      aria-label={
+                        unread
+                          ? `${t("infopointNewsUnread")}: ${n.title}`
+                          : `${t("infopointNewsRead")}: ${n.title}`
+                      }
                     >
                       <div
                         className={`infopoint-news-icon ${unread ? "unread" : "read"}`}
@@ -7192,37 +7336,17 @@ const Infopoint = ({
                         <Ic.Calendar />
                         {unread ? (
                           <span
-                            style={{
-                              position: "absolute",
-                              top: -2,
-                              right: -2,
-                              width: 8,
-                              height: 8,
-                              borderRadius: "50%",
-                              background: "var(--primary)",
-                              border: "1.5px solid var(--paper)",
-                            }}
+                            className="infopoint-news-unread-dot"
+                            aria-hidden="true"
                           ></span>
                         ) : null}
                       </div>
                       <div className="flex-1-min-0">
                         <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            gap: 12,
-                            alignItems: "flex-start",
-                          }}
+                          className="infopoint-news-title"
+                          style={{ fontWeight: unread ? 600 : 500 }}
                         >
-                          <div
-                            style={{
-                              fontWeight: unread ? 600 : 500,
-                              fontSize: 14,
-                              color: "var(--text)",
-                            }}
-                          >
-                            {n.title}
-                          </div>
+                          {n.title}
                         </div>
                         <div
                           className="mono text-muted-sm"
@@ -7230,28 +7354,22 @@ const Infopoint = ({
                         >
                           {n.publishedAt}
                         </div>
-                        <p
-                          className="text-muted-sm"
-                          style={{ margin: "8px 0 0", lineHeight: 1.45, fontSize: 13 }}
-                        >
-                          {expanded
-                            ? n.body
-                            : `${(n.body || "").slice(0, 100)}${
-                                (n.body || "").length > 100 ? "…" : ""
-                              }`}
-                        </p>
                       </div>
-                      <div
-                        style={{
-                          alignSelf: "center",
-                          color: "var(--muted-2)",
-                          transform: expanded ? "rotate(180deg)" : "none",
-                          transition: "transform 0.15s ease",
-                          display: "flex",
-                        }}
+                      {/* Unread is marked in words as well as by the dot, so
+                          it never depends on colour alone. A read message
+                          carries no badge — the state is still explicit in the
+                          row's accessible name above. */}
+                      {unread ? (
+                        <span className="infopoint-news-state">
+                          {t("infopointNewsUnread")}
+                        </span>
+                      ) : null}
+                      <span
+                        className="infopoint-news-chev"
+                        aria-hidden="true"
                       >
-                        <Ic.Down />
-                      </div>
+                        <Ic.Chev />
+                      </span>
                     </button>
                   );
                 })}
@@ -7262,6 +7380,8 @@ const Infopoint = ({
           </div>
         ))}
       </SwipeViews>
+      </>
+      )}
     </div>
   );
 };
@@ -7539,4 +7659,7 @@ Object.assign(window, {
   ProfilePaneFull,
   Infopoint,
   InfoPaneFull,
+  InfopointMessageDetail,
+  DriverSubpageHeader,
+  useEdgeSwipeBack,
 });

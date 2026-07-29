@@ -259,7 +259,8 @@ Audit item 43 resolved 2026-07-28.
 | Notifications | `DriverNotificationsPane` | grouped by day, unread, empty, tour card collapsed / expanded, unavailable order, message + document deep-link cards | Expand preview \| View order \| To my orders \| View more orders \| open message \| open document |
 | Profile | `ProfilePaneFull` | view, edit MDR, pending | Request changes |
 | Change email | Account nav row → `ChangeEmailSheet` | enter, confirm code (+resend), success, pending resume | Cancel \| Send code → Confirm change |
-| Infopoint | `Infopoint` | docs + news + help tabs, empty (swipe between tabs) | Download / Help |
+| Infopoint | `Infopoint` | docs + news + help tabs, empty (swipe between tabs) | Download / Help / open message |
+| Infopoint message detail | `InfopointMessageDetail` | short message, long message (AGB-length), unread → read on entry | Back (arrow + left-edge swipe) |
 
 ---
 
@@ -286,6 +287,60 @@ Source of truth: Figma file `CgaMrN7nmXS8xub0RxyzsJ` — nodes `8:2268` (details
 - **Marketplace preview Route card** (locked detail): city + 8px dot (`--primary` start, `--ink` end), dashed `--line-dash` connectors both sides of a centered distance (14/600) over estimated duration (12, muted), PLZ beneath each city. Marketplace **cards** keep the original arrow route line.
 - Deliberate deviations from the Figma mocks: no `docx` in the accepted-types hint (store accepts PDF + images only), no simulated failed-upload/Retry row (prototype uploads resolve synchronously), review-status pills added to rows (PRD requires visible correction needs).
 - **DE length hardening (2026-07-15):** the notifications pane header is two rows (title + close, then subtitle + mark-all-read) because "Benachrichtigungen" / "Alle als gelesen markieren" cannot share one row on phone widths; the detail tab-pill row degrades to horizontal scroll (never clips) for long DE labels at ≤360px.
+
+---
+
+## Infopoint messages — list + detail page (2026-07-29)
+
+> **A message is a page, not an accordion.** Longer announcements (updated **AGB**, standing client
+> instructions) are not readable inside an expandable row in a scrolling list, so the expandable card is
+> gone.
+
+Components: `Infopoint` → `InfopointMessageDetail` (`driver.jsx`), on the shared `DriverSubpageHeader`.
+
+### Message list row (`.infopoint-news-row`)
+
+| Element | Class | Notes |
+|---------|-------|-------|
+| Calendar icon + unread dot | `.infopoint-news-icon` (+`.unread`/`.read`), `.infopoint-news-unread-dot` | Unchanged treatment; the dot moved from an inline style to a class. |
+| Title | `.infopoint-news-title` | 14px; 600 while unread, 500 once read. |
+| Date | `.mono.text-muted-sm` | Unchanged. |
+| Read state | `.infopoint-news-state` (+`.unread`) | *New* / *Read* as a small pill. **Colour is never the only signal** — the state is in words and in the row's accessible name (`"New: <title>"` / `"Read: <title>"`). |
+| Forward chevron | `.infopoint-news-chev` (`Ic.Chev`) | Indicates navigation. Replaces the rotating `Ic.Down` accordion chevron. |
+
+**Removed:** the 100-character body preview, the expanded body, the chevron rotation, and `aria-expanded`
+on the row — the row navigates, it does not disclose.
+
+### Detail page (`.infopoint-message-page`)
+
+- **Replaces the whole Infopoint screen** — the shared screen header and the tab band are not rendered —
+  so the message owns the full viewport. The bottom tab bar deliberately **stays**: this is a subpage
+  inside the Infopoint tab, not a modal takeover like job detail.
+- Header is the shared `DriverSubpageHeader`: back arrow upper-left (44×44 via `.driver-subpage-header`,
+  above the shared 40px `.detail-back-btn` because it is the primary escape from a subpage), centred
+  title (`infopointMessage` — "Message" / "Nachricht"), mirrored spacer, and the heading takes focus on
+  entry so the new view is announced.
+- Body card: `h2` title (`.infopoint-message-title`, wraps freely, `overflow-wrap: anywhere`), the date
+  (`.infopoint-message-date`), then the **complete** message (`.infopoint-message-body`) with
+  `white-space: pre-line` so admin-typed paragraph breaks survive. **Never clamped, never truncated.**
+- Opening marks the message read immediately; the list shows the new state on return. The open is also
+  audited as a message view (see PRD v2.15).
+- Back returns to the **complete** list with the News tab still selected.
+
+### Left-edge swipe-back (optional, implemented)
+
+`useEdgeSwipeBack` (`driver.jsx`), the iOS system gesture: a drag that **starts within 32px of the left
+edge** and travels right follows the finger and commits past **72px**; abandoning it snaps back.
+
+- **Progressive enhancement only.** The visible back arrow is always present and is the primary control;
+  the gesture does nothing without touch.
+- Axis-locked at 10px, the same threshold `SwipeViews` uses, so scrolling a long message is never
+  hijacked.
+- `touch-action: pan-y` on the page reserves the horizontal axis. Deliberately **not**
+  `preventDefault()` — React's `touchmove` listener is passive, so the browser ignores it and logs a
+  warning.
+- Transform-only; the snap-back transition is suppressed while the finger is down and dropped entirely
+  under `prefers-reduced-motion`.
 
 ---
 

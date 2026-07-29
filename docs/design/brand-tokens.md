@@ -239,6 +239,32 @@ Because the notice is always **text-labelled** it satisfies the never-color-only
 
 ---
 
+## Component token map — Infopoint message list + detail (2026-07-29)
+
+Replacing the expandable message card with a dedicated detail page introduced **no new tokens**. The page reuses the
+existing driver drill-down chrome, so it themes in light and dark without its own palette.
+
+| Element | CSS | Token(s) | Class |
+|---------|-----|----------|-------|
+| List row | `.infopoint-news-row` | Unchanged: transparent on the `.infopoint-card` surface, `--line` divider between rows | [CLIENT] |
+| Row icon disc — unread / read | `.infopoint-news-icon.unread` / `.read` | Unchanged: `--primary` at 8% with `--primary` glyph / `--paper-2` with `--muted-2` glyph | [CLIENT] |
+| Unread dot | `.infopoint-news-unread-dot` | `--primary`, 8px, 1.5px `--paper` ring — same treatment as the notification dot. Moved from an inline style to a class; no visual change | [CLIENT] |
+| Read-state pill — read | `.infopoint-news-state` | `--muted` on `--paper-2` inside `--line`, radius 999px | [CLIENT] |
+| Read-state pill — unread | `.infopoint-news-state.unread` | `--primary` text on `--primary` at 8%, border `--primary` at 24% | [CLIENT] |
+| Forward chevron | `.infopoint-news-chev` | `--muted-2` | [INTERNAL] |
+| Detail page surface | `.infopoint-message-page` | `--canvas` (client canvas, board §E) — the same ground as `.pwa-detail-body`, so the page reads as a detail screen | [CLIENT] |
+| Detail header | `.pwa-detail-header.driver-subpage-header` | Unchanged: `--paper` on a `--line` bottom border; back control `--canvas` disc with `--sh-1`, raised to 44×44 | [CLIENT] |
+| Message title | `.infopoint-message-title` | `--text`, 18px/600 | [CLIENT] |
+| Message date | `.infopoint-message-date` | `--muted` via `.text-muted-sm`, mono | [INTERNAL] |
+| Message body | `.infopoint-message-body` | `--text`, 14px, line-height 1.6, `white-space: pre-line` | [CLIENT] |
+| Card | `.detail-card.infopoint-message-card` | Existing `.detail-card`: `--paper`, radius 16px, `--line`, `--sh-1` | [CLIENT] |
+| Swipe-back motion | `.infopoint-message-page` | Transform-only, 0.18s ease; `touch-action: pan-y`; dropped under `prefers-reduced-motion` | — |
+
+**Read state does not depend on colour.** The pill carries the words *New* / *Read* (and the row's accessible name
+repeats them), so the `--primary` tint is reinforcement, not the signal.
+
+---
+
 ## Component token map — driver notification cards (2026-07-29)
 
 The notification card rework (category chip, inline tour preview, deep-link rows, unavailable state) introduced

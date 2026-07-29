@@ -265,6 +265,7 @@ Per §6.2 — full-height page replaces the popover. Layout: day group headers (
 
 **Current:** two text tabs with gray numeral badge; document rows OK but icon-only download buttons unlabeled; meta line mixes sans + mono mid-line (`Operations · Global · v1.3` sans, `04.05. 09:10` mono); active tab keeps red "2" badge while you're on it; news items lack read/unread logic tie-in with the tab badge; 27 inline styles, 8 font sizes.
 **Target:** segmented tabs with Badge counts (badge clears as items are read); document row = same row grammar as tour documents (§7.4) with labeled actions; news items: unread dot + semibold title, read = regular; meta = one caption line, dates via formatter; empty states per tab. **Tabs also switch by horizontal swipe** (paged `SwipeViews`, §4.4), not only by tapping the pills (2026-07, PR #17).
+**Superseded in part 2026-07-29 — see §7.13.** News messages are no longer expandable cards: the list row carries title + date + read state only, and the body moved to a dedicated detail page.
 
 ### 7.9 App chrome (`TabBar`, header, `PhoneStatusBar`)
 
@@ -432,6 +433,59 @@ design for both card states, the deep-link destination for profile approval/reje
 approval and document acceptance should gain push, and whether *View more orders* should be
 conditional on other orders existing. All six are client decisions; none were invented here. See the
 v2.16 changelog.
+
+### 7.13 Infopoint message detail page — implemented 2026-07-29
+
+**Problem.** News rows were accordions: title, date, body truncated to 100 characters, tap to
+expand the full text **inside the row**. The seeded strike announcement is already 221
+characters over three paragraphs, and the client's real cases — updated **AGB**, standing
+instructions — are far longer. Expanded inside a scrolling list the body pushed every
+following message far down, gave the reader no stable position, and lost their place on
+collapse. PRD **v2.17** / Task 18; remediation **F10**.
+
+**List row is now a navigation row, not a disclosure.** Title + date + read state, and
+nothing else. The 100-character preview, the expanded body, the rotating chevron and
+`aria-expanded` are gone; a forward chevron replaces them. Read state is carried by the
+existing unread dot **plus** a small `NEW` badge on unread rows **plus** the row's accessible
+name (`"New: <title>"` / `"Read: <title>"`) — so it never depends on colour, and a read row
+carries no badge, because three rows all labelled *Read* is noise rather than information.
+
+**Detail page** replaces the Infopoint screen header *and* its tab band, so the message owns
+the full viewport: back arrow upper-left, message title as the page heading, date, then the
+**complete** body with `white-space: pre-line` (admin-typed paragraph breaks survive) and
+`overflow-wrap: anywhere`. Never clamped, never truncated. Back returns to the **complete**
+list with the News tab still selected. The bottom tab bar deliberately **stays** — this is a
+subpage inside the Infopoint tab, not a modal takeover like job detail.
+
+**Generalized, not duplicated.** The drill-down header became `DriverSubpageHeader`
+(previously `ProfileSubpageHeader`; CSS scope `.profile-subpage-header` →
+`.driver-subpage-header`, rules and Profile visuals byte-identical). The Infopoint detail page
+therefore inherits the 44px back control — deliberately above the shared 40px
+`.detail-back-btn`, because it is the primary escape from a subpage — the centred title, and
+focus moving to the heading on entry. No second drill-down pattern exists.
+
+**Left-edge swipe-back** (`useEdgeSwipeBack`) is implemented as the optional nice-to-have: a
+drag starting within 32px of the left edge, committing past 72px, axis-locked at the same 10px
+threshold `SwipeViews` uses. It is **progressive enhancement** — the visible back arrow is
+always present and primary, and the gesture is inert without touch. `touch-action: pan-y`
+reserves the horizontal axis; **not** `preventDefault()`, which React's passive `touchmove`
+listener ignores while logging a console warning. Transform-only, suppressed while the finger
+is down, dropped under `prefers-reduced-motion`.
+
+**Production component alignment.** A route, not a Collapsible: in the production app the
+message detail is its own page under the Infopoint route, which gets browser/OS back for free
+and makes the URL shareable — at which point the custom edge gesture becomes redundant and
+should be dropped rather than ported. Keep the two invariants: the list must not fetch or
+render message bodies, and opening must mark read + audit the view in one server action.
+
+**Data model.** None. `infopoint_news` already stores subject, text and publication date;
+`infopoint_news_reads` already stores the read receipt. `schema.dbml` and `logical-model.md`
+are untouched.
+
+**Open — recorded, not absorbed.** Whether the left-edge gesture should be iOS-only or offered
+on every touch platform. It is currently offered wherever touch exists, since restricting it
+would mean user-agent sniffing for a purely additive gesture that always has a visible button
+beside it.
 
 ## 8. Prototype Remediation Worklist (phased, in-place)
 
@@ -611,6 +665,7 @@ Driven by the client confirmation **“Systemlogik Fahrzeugeingabe”**. Busines
 ## Changelog
 
 - **v3.5 — 2026-07-27 (document-upload source selection).** Stakeholder report on the tour-completion upload screen: the upload control opened the device camera directly, so an invoice already saved as a PDF on the phone could not be attached. Reflected from `driver.jsx`/`styles.css`/`store.js`/`i18n.js`: (1) **Upload-source action sheet** — after the document-type step the driver picks *Foto aufnehmen* (camera capture, images only, `capture="environment"`) or *Datei auswählen* (plain OS picker, `application/pdf` + supported images, no `capture`); the generic upload control never opens the camera (§7.4 status note, new `.upload-source-*` CSS, new `uploadSource*` / `docKind*` i18n). (2) **One shared `UploadSourcePicker`** for all three driver upload entry points and for *Replace file* — the per-screen hidden inputs were removed, not duplicated. (3) **25 MB enforced** on every store upload path, matching the limit the UI already advertised (`invoiceUploadTooLarge`). New workstream **W7** (items 24–31); closes audit v1.6 addendum U1–U4 / remediation F8. No token, DDB-contract, schema or status-model change.
+- **v3.6 — 2026-07-29.** Infopoint message detail page (new §7.13; §7.8 superseded in part). The expandable news card is replaced by a dedicated page: the list row keeps title + date + read state (unread dot + `NEW` badge + accessible name; no badge on read rows) and drops the 100-char preview, the expanded body and `aria-expanded`; the detail page replaces the Infopoint header and tab band and shows the complete body with preserved paragraph breaks, never clamped. Drill-down header **generalized** `ProfileSubpageHeader` → `DriverSubpageHeader` (CSS scope renamed; Profile visuals unchanged), so the 44px back control, centred title and focus-on-entry are shared. Optional left-edge swipe-back implemented as progressive enhancement (`touch-action: pan-y`, transform-only, reduced-motion safe) and never replaces the button. v2.16's message deep links now land on this page. Documented in brand-tokens ("Component token map — Infopoint message list + detail", no new tokens), remediation F10, driver-screen-spec ("Infopoint messages"), driver-i18n-index. **prd.json, PRD changelog and the context pack updated.** **No data-model change.** Open: iOS-only vs all-touch for the gesture.
 - **v3.5 — 2026-07-29.** Type-aware notification previews and contextual deep links (new §7.12; §7.6 superseded in part). Notification cards gain a category chip, a two-line-clamped snippet and two — and only two — interaction models: inline expandable tour previews with one contextual action, and direct deep links for Infopoint messages and documents. Protected tour fields are stripped from the preview payload rather than hidden; target availability and entitlement are resolved through one store authority shared with push taps; unavailable Marketplace orders state the reason, lose *View order* and offer *View more orders*. Push taps consume `?notify=<id>` on both driver shells (delivery still simulated). Coverage gaps closed: `document_accepted` notification implemented, newly published matching orders now in-app — **push eligibility untouched**. Documented in brand-tokens ("Component token map — driver notification cards", no new tokens), remediation F9, driver-screen-spec ("Notification cards"), driver-i18n-index. **prd.json, PRD changelog and the context pack updated** — this is a confirmed functional requirement. **Data model changed:** `user_notifications` `target_entity_type` + `target_entity_id` + two indexes. Open: six client decisions listed in §7.12.
 - **v3.4 — 2026-07-27.** Marketplace applied-filter count badge audited and hardened (new §7.11). The feature was already implemented and behaviourally correct (committed-state derived, hidden at zero, sort- and result-count independent, no duplicated state); this pass replaced the bespoke `.tabbar-badge` span with the shared `Badge` primitive on one shared `.header-btn-badge` anchor, extracted the canonical pure selectors `getAppliedMarketplaceFilterCount` / `getAppliedMarketplaceFilters` and the `MarketplaceFilterButton` component, and replaced the concatenated `aria-label` with pluralized `filtersApplied_one/_other` resolved by a new `tPlural` i18n helper. Added the feature's first coverage: 12 unit, 19 integration, 2 E2E, a 14-story states gallery and 4 new visual baselines. Documented in brand-tokens ("Count badges on header icon buttons"), audit v1.5 (items 39–43), remediation R32, driver-screen-spec ("Applied-filter count badge"), driver-i18n-index ("Marketplace filter keys" + pluralization). **prd.json, PRD changelog and the context pack updated** — this is a confirmed functional Marketplace requirement. **No data-model change.** Open: audit item 43 (`"This week"` preset counts but does not filter).
 - **v3.3 — 2026-07-26.** Primary-screen header consolidation (client decision, Figma review): new §7.10 **Shared primary-screen header** documenting `DriverScreenHeader`; the §7.9 rule limiting the welcome header + bell to Marketplace is **withdrawn**. Marketplace greeting/avatar block removed (not relocated); `welcomeBack` i18n key deleted; all four primary screen titles aligned by one shared padding declaration; notification action added to My Orders, Infopoint and Profile reusing the existing shell handler and store count; notification button reuses the `.header-btn` treatment so its border/radius/size/surface/shadow are identical to sort and filter (`12px` literal replaced with `--r-3`); Marketplace sort/filter + filter chips moved into the results area per the client's agreed Marketplace structure; `.header-btn` gains a `:focus-visible` ring and a scoped transition. New: header states gallery + two test specs. Documented in brand-tokens ("Header icon buttons"), audit v1.3 addendum (items 36–38), remediation R28–R31, driver-screen-spec ("Primary-screen header"), driver-i18n-index (header key contract). **No PRD or context-pack change** — none of these were normative product requirements. No data-model change.

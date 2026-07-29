@@ -1,10 +1,10 @@
-# PRD changelog: 2026-07-29 (v2.14 → v2.16)
+# PRD changelog: 2026-07-29 (v2.14 → v2.17)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
 **Canonical file:** `docs/requirements/prd.json`
 
-> **Scope of this file:** the **v2.15** and **v2.16** entries. PRD **v2.11 – v2.14** (all dated 2026-07-29 — admin manufacturer/model catalogue, vehicle search, and the admin orders-overview client fixes) are recorded in the `version` history string inside `prd.json` and in [`../../requirements/admin-client-requirements-status.md`](../../requirements/admin-client-requirements-status.md), but were never given a separate changelog file. That gap is pre-existing and is **not** back-filled here.
+> **Scope of this file:** the **v2.15**, **v2.16** and **v2.17** entries. PRD **v2.11 – v2.14** (all dated 2026-07-29 — admin manufacturer/model catalogue, vehicle search, and the admin orders-overview client fixes) are recorded in the `version` history string inside `prd.json` and in [`../../requirements/admin-client-requirements-status.md`](../../requirements/admin-client-requirements-status.md), but were never given a separate changelog file. That gap is pre-existing and is **not** back-filled here.
 
 ---
 
@@ -206,3 +206,79 @@ No migration file is introduced because this repository holds documentation and 
 | `docs/product/autheon-context-pack.md` | Version trail → v2.16; notification presentation bullet |
 
 **Not touched:** push eligibility/preferences, the matrix `driver_push` column, migrations, ORM entities, DTOs, API payloads.
+
+---
+
+## PRD v2.17 — Infopoint message detail page (2026-07-29)
+
+**Baseline:** PRD v2.16 (type-aware notification previews and contextual deep links)
+**Source:** work order "Replace Expandable Infopoint Messages with a Dedicated Message Detail Page", refining the existing **Task 18 — Information Center / Infopoint**.
+
+Scope note: presentation and navigation only. No new content type, no admin change, no data-model change.
+
+### 1. Previous behaviour (v2.16, as implemented)
+
+Infopoint News rows were **accordions**. A row showed the title, the date, and the body truncated to **100 characters** with an ellipsis; tapping it expanded the full body **inside the row**, in the middle of a scrolling list, behind a rotating chevron.
+
+That is the wrong container for what admins actually publish. The seeded strike announcement is already 221 characters across three paragraphs, and the client's real cases — updated **AGB** and standing instructions — are far longer. Inside an expanded list row the body pushed the following messages far down the list, had no stable reading position, and the driver lost their place on collapse.
+
+### 2. New behaviour (v2.17)
+
+Five acceptance criteria were appended to the **existing** Task 18. No new task.
+
+**Message list — reduced to what a list is for.**
+
+| Element | Before | After |
+| --- | --- | --- |
+| Title | ✅ | ✅ |
+| Date | ✅ | ✅ |
+| Read/unread | dot on the icon only | dot **plus** the state in words (*New* / *Read*, `infopointNewsUnread` / `infopointNewsRead`), and in the row's accessible name |
+| Preview text | first 100 chars + `…` | **removed** |
+| Expandable body | accordion + rotating chevron + `aria-expanded` | **removed**; forward chevron indicating navigation |
+
+**Message detail page.** A dedicated page that replaces the Infopoint screen header *and* its tab band — the message gets the full viewport rather than a card inside a list inside a tab. It shows:
+
+- a **back arrow in the upper-left corner** (44×44),
+- the message **title** (as the page's `h2`, wrapping freely),
+- the message **date**,
+- the **complete body**, `white-space: pre-line` so the paragraph breaks admins type are preserved, `overflow-wrap: anywhere`, and **never clamped or truncated**.
+
+Back returns to the **complete** message list with the News tab still selected.
+
+**Read state.** Opening a message marks it read immediately (unchanged store call), and the list reflects it on return. The open is still audited as a message view (v2.15) — including re-opening one that is already read.
+
+**Reuse instead of a new pattern.** The page uses the repository's existing driver drill-down header, generalized from `ProfileSubpageHeader` to **`DriverSubpageHeader`** (CSS scope `.profile-subpage-header` → `.driver-subpage-header`; identical rules, zero visual change to Profile). So the back arrow, its 44px target — deliberately above the shared 40px `.detail-back-btn`, because it is the primary escape from a subpage — the centred title and the focus-moves-to-heading-on-entry behaviour are the same on the Infopoint detail page as on every Profile subpage. No second drill-down pattern was introduced.
+
+**Deep links.** The message-detail deep links added in v2.16 — a notification card tap and an Infopoint push tap — now land on this page rather than on an expanded row. Nothing else about them changed.
+
+### 3. Nice-to-have — implemented
+
+**Left-edge swipe-back**, the iOS system gesture. A drag that **starts within 32px of the left edge** and travels right moves the page with the finger and commits past **72px**; abandoning it snaps back.
+
+It is **progressive enhancement**: the visible back arrow is always present and is the primary control; the gesture does nothing without touch. The axis lock is the same 10px threshold `SwipeViews` uses, so scrolling a long message is never hijacked. `touch-action: pan-y` on the page is what reserves the horizontal axis — deliberately **not** `preventDefault()`, which React's passive `touchmove` listener would ignore while logging a console warning. Transform-only, and the snap-back transition is dropped under `prefers-reduced-motion`.
+
+### 4. Explicitly out of scope / unchanged
+
+- **No data-model change.** `infopoint_news` already stores subject, text and publication date; `infopoint_news_reads` already stores the read receipt. Nothing about how a message is stored, published, hidden or read-tracked changed — only how it is presented and navigated. `schema.dbml` and `logical-model.md` are untouched.
+- **Admin side unchanged.** Creating, editing, hiding and deleting messages, and the in-app/push notification they trigger, are all as before.
+- **Unchanged in the driver app:** the unread badge on the Infopoint tab pill and its count, newest-first sort, the Documents and Help tabs, swiping between the three tabs, and the Infopoint empty state.
+- **Tab bar stays visible** on the detail page. The message is a subpage *within* the Infopoint tab, not a modal takeover like job detail, so removing the bottom nav would strand the driver.
+
+### 5. Open question — NOT decided in this pass
+
+**Should the left-edge gesture be iOS-only, or offered on every touch platform?** It is currently offered wherever touch exists. Restricting it to iOS would mean user-agent sniffing for a gesture that is purely additive and always has a visible button beside it, so the broader behaviour was chosen — but the client may prefer platform parity with the native iOS convention only. Recorded, not resolved.
+
+---
+
+## Files touched (v2.17)
+
+| File | Change |
+| --- | --- |
+| `docs/requirements/prd.json` | Task 18 acceptance extended (5 criteria); `resolved_defaults.infopoint_message_detail_page_v1`; `version` → v2.17 |
+| `prototype/project/driver.jsx` | `InfopointMessageDetail` page; `useEdgeSwipeBack`; `ProfileSubpageHeader` → `DriverSubpageHeader`; message list reduced to title + date + read state; `Infopoint` renders the detail page in place of the tabs |
+| `prototype/project/i18n.js` | `infopointMessage`, `infopointNewsRead` (EN + DE); `infopointNewsUnread` now actually used |
+| `prototype/project/styles.css` | `.infopoint-message-page` / `-card` / `-title` / `-date` / `-body`, list-row title/state/chevron/unread-dot rules; `.profile-subpage-header` → `.driver-subpage-header` |
+| `docs/design/*` | driver-screen-spec (message list + detail page), DDB remediation (F10), brand-tokens (component token map), ui-ux-production-plan §7.13 (§7.8 superseded in part), driver-i18n-index (regenerated) |
+| `docs/product/autheon-context-pack.md` | Version trail → v2.17; Infopoint detail-page bullet |
+
+**Not touched:** `docs/database/schema.dbml`, `docs/database/logical-model.md`, migrations, admin console, notification eligibility.
