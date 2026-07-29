@@ -9901,7 +9901,10 @@ const AdminLoginScreen = () => {
 
   return (
     <div className="auth-shell-admin">
-      <div className="card auth-card-admin">{body}</div>
+      <div className="card auth-card-admin">
+        <DriverUI.AuthTopChrome />
+        {body}
+      </div>
     </div>
   );
 };
@@ -9972,7 +9975,10 @@ const AdminSetPasswordScreen = ({ email = "", token = "" }) => {
 
   return (
     <div className="auth-shell-admin">
-      <div className="card auth-card-admin">{body}</div>
+      <div className="card auth-card-admin">
+        <DriverUI.AuthTopChrome />
+        {body}
+      </div>
     </div>
   );
 };

@@ -27,7 +27,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=34" />
+    <link rel="stylesheet" href="styles.css?v=36" />
     <!--
       Floating Theme Editor — a movable, persistent design-evaluation tool.
       Loaded synchronously in <head> so any locally stored colour overrides are
@@ -56,12 +56,12 @@
     ></script>
 
     <script src="feature-flags.js"></script>
-    <script src="i18n.js?v=34"></script>
+    <script src="i18n.js?v=36"></script>
     <script src="formatters.js"></script>
     <script src="inputFormatters.js"></script>
     <script src="store.js"></script>
     <script type="text/babel" src="driver-ui.jsx"></script>
-    <script type="text/babel" src="driver.jsx?v=23"></script>
+    <script type="text/babel" src="driver.jsx?v=25"></script>
     <script type="text/babel" src="admin.jsx"></script>
 
     <script type="text/babel" data-presets="env,react">
@@ -1465,6 +1465,22 @@
               onVis,
             );
         }, []);
+
+        // Debug-only deep link for the not-yet-wired Set Password / Accept
+        // Invite screen — no button or nav entry anywhere renders this;
+        // it's only reachable by visiting this URL directly, e.g.
+        //   ?screen=set-password&email=driver.one@demo.local&token=demo
+        //   ?screen=set-password&email=demo.admin@demo.local&token=demo&kind=admin
+        const debugParams = new URLSearchParams(window.location.search);
+        if (debugParams.get("screen") === "set-password") {
+          const debugEmail = debugParams.get("email") || "";
+          const debugToken = debugParams.get("token") || "";
+          return debugParams.get("kind") === "admin" ? (
+            <AdminSetPasswordScreen email={debugEmail} token={debugToken} />
+          ) : (
+            <DriverSetPasswordScreen email={debugEmail} token={debugToken} />
+          );
+        }
 
         return (
           <div className="app">
