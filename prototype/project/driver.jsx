@@ -675,6 +675,22 @@ const Ic = {
       <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
     </svg>
   ),
+  EyeOff: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M4 4l16 16"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
   Pkg: () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
       <path d="M3 7l9-4 9 4-9 4-9-4z" stroke="currentColor" strokeWidth="1.5" />
@@ -6532,7 +6548,10 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
         title={t("signOut")}
         message={t("signOutAlert")}
         confirmLabel={t("signOut")}
-        onConfirm={() => setSignOutOpen(false)}
+        onConfirm={() => {
+          setSignOutOpen(false);
+          store.logoutDriver();
+        }}
         onCancel={() => setSignOutOpen(false)}
         destructive
       />
@@ -6857,10 +6876,68 @@ const SameDayOverlapSheet = ({ onCancel, onConfirm }) => {
   );
 };
 
+// =========================================================================
+// LOGIN — driver PWA (autheon-fe parity: apps/web LoginPage, mobile-pwa
+// layout — full-screen logo header + heading + LoginForm, no tab bar).
+// =========================================================================
+const DriverLoginScreen = ({ standalone = false }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  return (
+    <div className={`phone-shell${standalone ? " pwa-viewport" : ""}`}>
+      {!standalone && <div className="pwa-tag">{t("pwaTag")}</div>}
+      <div className="phone">
+        {!standalone && <div className="notch"></div>}
+        <div className="phone-screen">
+          {!standalone && <PhoneStatusBar />}
+          <div className="scroll auth-screen" style={{ padding: "28px 22px" }}>
+            <div className="auth-logo-row">
+              <img
+                className="brand-mark"
+                src="favicon.svg"
+                alt=""
+                width="22"
+                height="22"
+                aria-hidden="true"
+              />
+              <span className="auth-logo-text">
+                {store.getAppDisplayName()}
+              </span>
+            </div>
+            <div className="auth-heading-block">
+              <h1 className="auth-heading">{t("authDriverLoginTitle")}</h1>
+              <p className="auth-subheading">
+                {t("authDriverLoginSubtitle")}
+              </p>
+            </div>
+            <DriverUI.LoginForm
+              emailLabel={t("authDriverLoginEmailLabel")}
+              emailPlaceholder={t("authDriverLoginEmailPlaceholder")}
+              passwordLabel={t("authDriverLoginPasswordLabel")}
+              passwordPlaceholder={t("authDriverLoginPasswordPlaceholder")}
+              showPasswordLabel={t("authDriverLoginShowPassword")}
+              hidePasswordLabel={t("authDriverLoginHidePassword")}
+              submitLabel={t("authDriverLoginSubmit")}
+              forgotPasswordLabel={t("authDriverLoginForgotPassword")}
+              onForgotPassword={() =>
+                window.alert(t("authNotImplementedAlert"))
+              }
+              onSubmit={(email, password) =>
+                store.loginDriver({ email, password })
+              }
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // expose
 Object.assign(window, {
   Pill,
   Lbl,
+  DriverLoginScreen,
   Ic,
   RouteStack,
   PhoneStatusBar,

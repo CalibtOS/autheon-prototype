@@ -725,6 +725,153 @@ function RedPlatesRequiredNotice({
   );
 }
 
+// ---------------------------------------------------------------------------
+// LoginForm — shared email/password form for the driver + admin login
+// screens (autheon-fe parity: RHF+Zod there is plain controlled state +
+// synchronous validation here). Only the fields/validation/submit live here;
+// each screen supplies its own copy and wraps this in its own layout chrome
+// (phone-frame vs. centered card) — see DriverLoginScreen / AdminLoginScreen.
+// ---------------------------------------------------------------------------
+function LoginForm({
+  emailLabel,
+  emailPlaceholder,
+  passwordLabel,
+  passwordPlaceholder,
+  showPasswordLabel,
+  hidePasswordLabel,
+  submitLabel,
+  forgotPasswordLabel,
+  onForgotPassword,
+  onSubmit, // (email, password) => { ok, reason }
+}) {
+  const { t } = useI18n();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [rootError, setRootError] = useState("");
+
+  const errorText = (reason) => {
+    switch (reason) {
+      case "email_required":
+        return t("authErrorEmailRequired");
+      case "invalid_email":
+        return t("authErrorInvalidEmail");
+      case "password_required":
+        return t("authErrorPasswordRequired");
+      case "account_restricted":
+        return t("authErrorAccountRestricted");
+      default:
+        return t("authErrorInvalidCredentials");
+    }
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const errors = {};
+    if (!email.trim()) errors.email = "email_required";
+    else if (!AuthStore.isValidEmail(email)) errors.email = "invalid_email";
+    if (!password.trim()) errors.password = "password_required";
+    setFieldErrors(errors);
+    setRootError("");
+    if (errors.email || errors.password) return;
+
+    const result = onSubmit(email.trim(), password);
+    if (!result || !result.ok) {
+      setRootError(errorText(result?.reason));
+    }
+  };
+
+  return (
+    <form className="auth-form" onSubmit={handleSubmit} noValidate>
+      <div className="auth-field-group">
+        <label className="field-label" htmlFor="auth-login-email">
+          {emailLabel}
+        </label>
+        <input
+          id="auth-login-email"
+          type="email"
+          autoComplete="email"
+          placeholder={emailPlaceholder}
+          className="input"
+          value={email}
+          aria-invalid={fieldErrors.email ? "true" : undefined}
+          aria-describedby={
+            fieldErrors.email ? "auth-login-email-error" : undefined
+          }
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        {fieldErrors.email && (
+          <p
+            id="auth-login-email-error"
+            role="alert"
+            className="auth-field-error"
+          >
+            {errorText(fieldErrors.email)}
+          </p>
+        )}
+      </div>
+
+      <div className="auth-field-group">
+        <label className="field-label" htmlFor="auth-login-password">
+          {passwordLabel}
+        </label>
+        <div className="auth-password-wrap">
+          <input
+            id="auth-login-password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            placeholder={passwordPlaceholder}
+            className="input"
+            value={password}
+            aria-invalid={fieldErrors.password ? "true" : undefined}
+            aria-describedby={
+              fieldErrors.password ? "auth-login-password-error" : undefined
+            }
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button
+            type="button"
+            className="auth-password-toggle"
+            aria-label={showPassword ? hidePasswordLabel : showPasswordLabel}
+            onClick={() => setShowPassword((v) => !v)}
+          >
+            {showPassword ? <Ic.EyeOff /> : <Ic.Eye />}
+          </button>
+        </div>
+        {fieldErrors.password && (
+          <p
+            id="auth-login-password-error"
+            role="alert"
+            className="auth-field-error"
+          >
+            {errorText(fieldErrors.password)}
+          </p>
+        )}
+      </div>
+
+      {rootError && (
+        <p role="alert" className="auth-field-error auth-root-error">
+          {rootError}
+        </p>
+      )}
+
+      <div className="auth-form-actions">
+        <button type="submit" className="btn primary block">
+          {submitLabel}
+        </button>
+        <button
+          type="button"
+          className="auth-forgot-link"
+          onClick={onForgotPassword}
+        >
+          {forgotPasswordLabel}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 window.DriverUI = {
   StatusPill,
   Badge,
@@ -739,4 +886,5 @@ window.DriverUI = {
   SortSelect,
   AdminConfirmBridge,
   RedPlatesRequiredNotice,
+  LoginForm,
 };

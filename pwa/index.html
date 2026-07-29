@@ -42,7 +42,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=29" />
+    <link rel="stylesheet" href="styles.css?v=30" />
     <link rel="stylesheet" href="../../pwa/pwa.css?v=8" />
     <script>
       // Apply theme before first paint: persisted prototype choice first,
@@ -110,7 +110,7 @@
         // Absolute paths: fetch() ignores <base href>, unlike classic script src.
         var PLAIN = [
           "/prototype/project/feature-flags.js",
-          "/prototype/project/i18n.js?v=29",
+          "/prototype/project/i18n.js?v=30",
           "/prototype/project/formatters.js",
           "/prototype/project/inputFormatters.js",
           "/prototype/project/store.js",
@@ -118,8 +118,8 @@
 
         var JSX = [
           "/prototype/project/driver-ui.jsx",
-          "/prototype/project/driver.jsx?v=16",
-          "/pwa/pwa-app.jsx?v=11",
+          "/prototype/project/driver.jsx?v=18",
+          "/pwa/pwa-app.jsx?v=12",
         ];
 
         // Keep draw + flip phases free of Babel compile jank (~0–1.8s of splash).
@@ -250,7 +250,7 @@
                 }, Promise.resolve())
                 .then(function () {
                   compileAndRun(
-                    "ReactDOM.createRoot(document.getElementById('root')).render(<PwaDriverApp />);",
+                    "ReactDOM.createRoot(document.getElementById('root')).render(<PwaDriverRoot />);",
                     "pwa-boot.jsx"
                   );
                 });

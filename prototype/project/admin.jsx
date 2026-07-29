@@ -193,7 +193,7 @@ const AdminNav = ({ section, setSection }) => {
         <button
           className="btn icon sm"
           title={t("adminLogoutTitle")}
-          onClick={() => window.alert(t("adminLogoutDemoAlert"))}
+          onClick={() => store.logoutAdmin()}
         >
           <Ic.Logout />
         </button>
@@ -9805,8 +9805,52 @@ const SettingsPane = ({ showToast }) => {
   );
 };
 
+// =========================================================================
+// LOGIN — admin console (autheon-fe parity: apps/admin LoginPage,
+// centered-card layout — muted canvas, centered card with logo/heading,
+// LoginForm inside).
+// =========================================================================
+const AdminLoginScreen = () => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  return (
+    <div className="auth-shell-admin">
+      <div className="card auth-card-admin">
+        <div className="auth-logo-row">
+          <img
+            className="brand-mark"
+            src="favicon.svg"
+            alt=""
+            width="22"
+            height="22"
+            aria-hidden="true"
+          />
+          <span className="auth-logo-text">{store.getAppDisplayName()}</span>
+        </div>
+        <div className="auth-heading-block">
+          <h1 className="auth-heading">{t("authAdminLoginTitle")}</h1>
+          <p className="auth-subheading">{t("authAdminLoginSubtitle")}</p>
+        </div>
+        <DriverUI.LoginForm
+          emailLabel={t("authAdminLoginEmailLabel")}
+          emailPlaceholder={t("authAdminLoginEmailPlaceholder")}
+          passwordLabel={t("authAdminLoginPasswordLabel")}
+          passwordPlaceholder={t("authAdminLoginPasswordPlaceholder")}
+          showPasswordLabel={t("authAdminLoginShowPassword")}
+          hidePasswordLabel={t("authAdminLoginHidePassword")}
+          submitLabel={t("authAdminLoginSubmit")}
+          forgotPasswordLabel={t("authAdminLoginForgotPassword")}
+          onForgotPassword={() => window.alert(t("authNotImplementedAlert"))}
+          onSubmit={(email, password) => store.loginAdmin({ email, password })}
+        />
+      </div>
+    </div>
+  );
+};
+
 Object.assign(window, {
   AdminNav,
+  AdminLoginScreen,
   Overview,
   OverviewFooter,
   AssignDriverDialog,

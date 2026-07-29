@@ -1981,6 +1981,30 @@ window.AuthStore = (() => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
+  function findDriverByEmail(email) {
+    const needle = String(email || "")
+      .trim()
+      .toLowerCase();
+    if (!needle) return null;
+    return (
+      drivers.find(
+        (d) => String(d.email || "").trim().toLowerCase() === needle,
+      ) || null
+    );
+  }
+
+  function findAdminByEmail(email) {
+    const needle = String(email || "")
+      .trim()
+      .toLowerCase();
+    if (!needle) return null;
+    return (
+      admins.find(
+        (a) => String(a.email || "").trim().toLowerCase() === needle,
+      ) || null
+    );
+  }
+
   // Value validators for the Infopoint help contacts, ported unchanged from the
   // Autheon admin console's helpContactsValidation.ts — which is itself a mirror
   // of the backend's `infopoint.helpContacts` validators. Keeping the rules
@@ -2197,6 +2221,10 @@ window.AuthStore = (() => {
     prefs: normalizeDriverPrefs(d.prefs),
   }));
   let admins = seedAdmins();
+  // Login session — in memory only, resets on reload. Mirrors the real
+  // frontend's access token (module-level memory, never persisted); see
+  // .claude/rules/auth-internals.md in the backend/frontend repos.
+  let session = { driver: null, admin: null };
   let auditLog = seedAudit();
   let driverState = seedDriverState();
   let tourDocuments = seedTourDocuments();
@@ -3742,6 +3770,57 @@ window.AuthStore = (() => {
     exceedsTourDocumentSizeLimit,
     MAX_TOUR_DOCUMENT_BYTES,
     jobWasEverCommitted,
+
+    // ---- Auth session (client-preview + /pwa login gate) ----
+    // Demo credential check only: any seeded, Active driver/admin email +
+    // any non-empty password. Production auth is Keycloak — see the PRD
+    // auth/account-linking rules — this only gates which screen renders.
+    isDriverAuthenticated: () => !!session.driver,
+    isAdminAuthenticated: () => !!session.admin,
+    getAuthenticatedDriver: () => session.driver,
+    getAuthenticatedAdmin: () => session.admin,
+    loginDriver({ email, password } = {}) {
+      const value = String(email || "").trim();
+      if (!value) return { ok: false, reason: "email_required" };
+      if (!isValidEmail(value)) return { ok: false, reason: "invalid_email" };
+      if (!String(password || "").trim())
+        return { ok: false, reason: "password_required" };
+      const driver = findDriverByEmail(value);
+      if (!driver) return { ok: false, reason: "invalid_credentials" };
+      if (driver.status !== "Active")
+        return { ok: false, reason: "account_restricted" };
+      session.driver = driver;
+      log("driver_signed_in", driver.name, driver.email, "");
+      emit();
+      return { ok: true, driver };
+    },
+    logoutDriver() {
+      const driver = session.driver;
+      session.driver = null;
+      if (driver) log("driver_signed_out", driver.name, driver.email, "");
+      emit();
+    },
+    loginAdmin({ email, password } = {}) {
+      const value = String(email || "").trim();
+      if (!value) return { ok: false, reason: "email_required" };
+      if (!isValidEmail(value)) return { ok: false, reason: "invalid_email" };
+      if (!String(password || "").trim())
+        return { ok: false, reason: "password_required" };
+      const admin = findAdminByEmail(value);
+      if (!admin) return { ok: false, reason: "invalid_credentials" };
+      if (admin.status !== "Active")
+        return { ok: false, reason: "account_restricted" };
+      session.admin = admin;
+      log("admin_signed_in", admin.name, admin.email, "");
+      emit();
+      return { ok: true, admin };
+    },
+    logoutAdmin() {
+      const admin = session.admin;
+      session.admin = null;
+      if (admin) log("admin_signed_out", admin.name, admin.email, "");
+      emit();
+    },
 
     statusLabel: (s) => {
       const key = STATUSES[s]?.i18n;
