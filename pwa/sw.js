@@ -29,7 +29,7 @@ const PRECACHE_URLS = [
   "/prototype/project/inputFormatters.js",
   "/prototype/project/store.js",
   "/prototype/project/driver-ui.jsx",
-  "/prototype/project/driver.jsx?v=21",
+  "/prototype/project/driver.jsx?v=22",
   "https://unpkg.com/react@18.3.1/umd/react.development.js",
   "https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js",
   "https://unpkg.com/@babel/standalone@7.29.0/babel.min.js",

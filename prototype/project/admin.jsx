@@ -9893,6 +9893,7 @@ const AdminLoginScreen = () => {
             setMode("forgot");
           }}
           onSubmit={(email, password) => store.loginAdmin({ email, password })}
+          defaultEmail="anna.bauer@autheon.example"
         />
       </>
     );
