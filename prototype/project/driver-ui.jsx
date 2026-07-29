@@ -1296,6 +1296,52 @@ function SetPasswordForm({ email, token, kind, copy, onDone }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// AuthTopChrome — language + theme controls shown on every auth screen
+// (autheon-fe parity: PwaMobileShell/CenteredCardLayout both render
+// AuthTopChrome — locale switcher + theme toggle — since unauthenticated
+// screens have no other UI to reach either from). Same underlying
+// AutheonTheme store the demo client-preview header itself uses, so both
+// controls stay in sync in both directions.
+// ---------------------------------------------------------------------------
+function AuthTopChrome() {
+  const { locale, setLocale, t } = useI18n();
+  const { theme, setTheme } = window.AutheonTheme
+    ? window.AutheonTheme.useTheme()
+    : {
+        theme: localStorage.getItem("autheon-theme") || "light",
+        setTheme: (next) => {
+          document.documentElement.setAttribute("data-theme", next);
+          localStorage.setItem("autheon-theme", next);
+        },
+      };
+  const isDark = theme === "dark";
+
+  return (
+    <div className="auth-top-chrome">
+      <select
+        className="auth-locale-select"
+        value={locale}
+        onChange={(e) => setLocale(e.target.value)}
+        aria-label={t("authLanguageSelectLabel")}
+      >
+        <option value="en">EN</option>
+        <option value="de">DE</option>
+      </select>
+      <button
+        type="button"
+        className="auth-theme-toggle"
+        aria-label={
+          isDark ? t("authSwitchToLightTheme") : t("authSwitchToDarkTheme")
+        }
+        onClick={() => setTheme(isDark ? "light" : "dark")}
+      >
+        {isDark ? <Ic.Sun /> : <Ic.Moon />}
+      </button>
+    </div>
+  );
+}
+
 window.DriverUI = {
   StatusPill,
   Badge,
@@ -1314,4 +1360,5 @@ window.DriverUI = {
   AuthOtpInput,
   SetPasswordForm,
   ForgotPasswordFlow,
+  AuthTopChrome,
 };

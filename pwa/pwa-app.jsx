@@ -405,6 +405,21 @@ function PwaDriverApp() {
  */
 function PwaDriverRoot() {
   const store = useAuthStore();
+
+  // Debug-only deep link for the not-yet-wired Set Password / Accept Invite
+  // screen — no button or nav entry anywhere renders this; only reachable
+  // by visiting e.g. /pwa/?screen=set-password&email=driver.one@demo.local&token=demo
+  const debugParams = new URLSearchParams(window.location.search);
+  if (debugParams.get("screen") === "set-password") {
+    return (
+      <DriverSetPasswordScreen
+        email={debugParams.get("email") || ""}
+        token={debugParams.get("token") || ""}
+        standalone
+      />
+    );
+  }
+
   return store.isDriverAuthenticated() ? (
     <PwaDriverApp />
   ) : (
