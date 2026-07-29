@@ -290,6 +290,49 @@ Source of truth: Figma file `CgaMrN7nmXS8xub0RxyzsJ` — nodes `8:2268` (details
 
 ---
 
+## Authentication screens + the gate (PR #32, documented 2026-07-29)
+
+> **The app opens on a login screen.** Every other screen in this document is reachable only after
+> sign-in — on the framed client preview, on `/pwa/`, and in the Admin Backend. Documented
+> retroactively: the screens shipped in PR #32 without their spec.
+
+Primitives (`driver-ui.jsx`, on `DriverUI`) — **one** implementation for both surfaces:
+
+| Primitive | Role |
+|---|---|
+| `LoginForm` | email + password, show/hide toggle, per-field and root error slots, forgot-password link |
+| `AuthOtpInput` | 6 cells over one hidden input, so paste and keyboard navigation work |
+| `ForgotPasswordFlow` | email → 6-digit code → new password, with a resend cooldown |
+| `SetPasswordForm` | initial password from an invite link, plus an invalid-link state |
+
+Screens: `DriverLoginScreen` · `DriverSetPasswordScreen` (`driver.jsx`), `AdminLoginScreen` ·
+`AdminSetPasswordScreen` (`admin.jsx`).
+
+### States to cover in QA
+
+| Screen | States |
+|---|---|
+| Sign in | empty · invalid email · missing password · wrong credentials (root error) · password shown/hidden · submitting |
+| Forgot password — email | empty · invalid email · submitted (always reports success — see below) |
+| Forgot password — code | empty · partial · incorrect code · expired code · resend on cooldown · resend available |
+| Set / reset password | empty · below minimum length · mismatch · complexity hint · invalid or missing invite link · success |
+
+### Two rules that are security behaviour, not copy
+
+- **No account enumeration.** A forgot-password request always reports success, even for an unknown
+  email. Do not "improve" this into a "no such account" message.
+- **Bounded codes.** 10-minute expiry (`PASSWORD_RESET_CODE_TTL_MS`), 30-second resend cooldown
+  (`PASSWORD_RESET_RESEND_MS`), and an incorrect or expired code is rejected distinguishably.
+
+### Two demo-only affordances — never ship these
+
+- **The 6-digit code is displayed** in an info alert, because a static prototype cannot send email.
+  Same convention as `ChangeEmailSheet`'s `demoCode`. Production delivery is a **Keycloak action
+  email**; the code must never reach the client.
+- **Any non-empty password authenticates.** There is nowhere here to store or verify a credential.
+
+---
+
 ## Dialog standard (2026-07-29) — reference: "Accept tour"
 
 > **One standard, both surfaces.** Shared primitive `DriverUI.Dialog` (`driver-ui.jsx`) + the

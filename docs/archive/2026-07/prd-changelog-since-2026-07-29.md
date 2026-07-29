@@ -1,10 +1,10 @@
-# PRD changelog: 2026-07-29 (v2.14 → v2.19)
+# PRD changelog: 2026-07-29 (v2.14 → v2.20)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
 **Canonical file:** `docs/requirements/prd.json`
 
-> **Scope of this file:** the **v2.15** – **v2.19** entries. PRD **v2.11 – v2.14** (all dated 2026-07-29 — admin manufacturer/model catalogue, vehicle search, and the admin orders-overview client fixes) are recorded in the `version` history string inside `prd.json` and in [`../../requirements/admin-client-requirements-status.md`](../../requirements/admin-client-requirements-status.md), but were never given a separate changelog file. That gap is pre-existing and is **not** back-filled here.
+> **Scope of this file:** the **v2.15** – **v2.20** entries. PRD **v2.11 – v2.14** (all dated 2026-07-29 — admin manufacturer/model catalogue, vehicle search, and the admin orders-overview client fixes) are recorded in the `version` history string inside `prd.json` and in [`../../requirements/admin-client-requirements-status.md`](../../requirements/admin-client-requirements-status.md), but were never given a separate changelog file. That gap is pre-existing and is **not** back-filled here.
 
 ---
 
@@ -436,3 +436,80 @@ A dialog-standard probe was run against representative dialogs — confirmation,
 | `docs/product/autheon-context-pack.md` | Version trail → v2.19; dialog-standard bullet |
 
 **Not touched:** `docs/database/*`, migrations, any store method, any validation rule, any i18n string, the slide-to-confirm controls, and the bottom-sheet components' structure.
+
+---
+
+## PRD v2.20 — Auth demo documentation catch-up (2026-07-29)
+
+**Baseline:** PRD v2.19 (system-wide dialog standard)
+**Source:** PR **#32** (`c7a087e`, `2116024`, `8e0182e`, merge `b60d8c8`) — authentication screens that landed in the prototype **without their documentation**.
+
+> **This entry changes no behaviour.** It records what already exists in `prototype/project`, so the documentation stops under-reporting the prototype. Written after those commits were merged to `main`, as a follow-up.
+
+### 1. Why this entry exists
+
+PR #32 added a complete auth surface — a login gate in front of **both** surfaces, eight screens, four shared UI primitives, fifteen store methods and ten audit actions, plus 107 i18n keys per locale. None of `prd.json`, the PRD changelog, the context pack, `driver-i18n-index.md`, `driver-screen-spec.md`, `brand-tokens.md`, the DDB remediation log, `ui-ux-production-plan.md` or the sitemap was updated.
+
+That matters more than usual here, because the change is not additive at the edges: **every previously documented screen now sits behind a sign-in gate**. A reader following `driver-screen-spec.md` or `sitemap.md` before this entry would not know the app opens on a login screen.
+
+### 2. What shipped
+
+**Shared primitives** (`driver-ui.jsx`, exported on `DriverUI`) — one implementation serving both surfaces, the repository's existing pattern:
+
+| Primitive | Role |
+| --- | --- |
+| `LoginForm` | email + password, show/hide password toggle, field + root error slots, forgot-password link |
+| `AuthOtpInput` | 6-cell one-time-code input over one hidden field (paste and keyboard friendly) |
+| `ForgotPasswordFlow` | email → code → new password, with resend cooldown |
+| `SetPasswordForm` | initial password from an invite link, with an invalid-link state |
+
+**Screens:** `DriverLoginScreen`, `DriverSetPasswordScreen` (`driver.jsx`), `AdminLoginScreen`, `AdminSetPasswordScreen` (`admin.jsx`), each with its forgot-password and code stages.
+
+**The gate.** The framed client preview, `/pwa/` and the Admin Backend all render a login screen until a session exists.
+
+**Store surface:** in-memory `session` and `passwordResets`; `isDriverAuthenticated` · `isAdminAuthenticated` · `getAuthenticatedDriver` · `getAuthenticatedAdmin` · `loginDriver` · `loginAdmin` · `logoutDriver` · `logoutAdmin` · `requestPasswordReset` · `resendPasswordResetCode` · `verifyPasswordResetCode` · `resetPassword` · `acceptInvite`; policy constants `PASSWORD_RESET_CODE_TTL_MS` (10 min) and `PASSWORD_RESET_RESEND_MS` (30 s).
+
+**Ten new audit actions:** `driver_signed_in` / `admin_signed_in`, `driver_signed_out` / `admin_signed_out`, `driver_password_reset_requested` / `admin_password_reset_requested`, `driver_password_reset` / `admin_password_reset`, `driver_invite_accepted` / `admin_invite_accepted`. They follow the log's existing `<entity>_<past-tense-verb>` convention.
+
+### 3. Two behaviours worth keeping, and two that are demo-only
+
+**Keep — no account enumeration.** `requestPasswordReset` returns `{ ok: true }` even when no account matches the email, so the flow never reveals whether an address is registered. Preserve this in production; a "no such user" message here is a user-enumeration vulnerability.
+
+**Keep — bounded codes.** Codes expire after 10 minutes, resend is rate-limited to 30 seconds, and an incorrect or expired code is rejected distinguishably rather than silently accepted.
+
+**Demo-only — the code is shown in the UI.** A static prototype cannot send email, so `requestPasswordReset` returns the code and the flow renders it in an info alert. This follows `ChangeEmailSheet`'s existing `demoCode` convention. **Production delivery is a Keycloak action email** (Task 2) — the code must never reach the client.
+
+**Demo-only — any non-empty password authenticates.** There is nowhere in a static prototype to store or verify a credential. Task 2 already states AUTHEON stores no passwords.
+
+### 4. Data model — no change, and none needed
+
+**Deliberately nothing.** Task 2 already establishes Keycloak as the identity provider and source of truth for roles, and that "AUTHEON stores a local app user profile linked to the Keycloak subject; it does not store passwords". Sessions and password-reset codes therefore live in Keycloak, not in `schema.dbml` — there is no session table and no password-reset table, and adding one would contradict the PRD.
+
+`schema.dbml` and `logical-model.md` are annotated with the **ten new audit action keys** only, matching how every previous version recorded its new actions. `users.email_verified` and `email_change_requests` already exist and are untouched.
+
+### 5. Requirements recorded
+
+Six acceptance criteria were appended to the **existing** Task 2. They deliberately cover only the **gate** and the prototype's simulation boundaries; the fourteen pre-existing criteria (Keycloak as IdP, invite/reset via action emails, role scoping, blocked/archived driver rules, safe unauthorized responses) are unchanged — the prototype now *demonstrates* them rather than restating them. Behavioural detail is in `resolved_defaults.auth_prototype_demo_v1`.
+
+### 6. Open questions — NOT decided here
+
+1. **The exact production login ceremony.** Task 2 already defers it to Keycloak realm configuration ("should keep first login simple while still forcing the user to set their own password"). Unchanged.
+2. **Should the driver reset flow use a 6-digit code at all,** or hand off entirely to a Keycloak action link? The prototype demonstrates a code because it cannot delegate to Keycloak — that is an implementation constraint, not a product decision, and it should not be read as one.
+
+---
+
+## Files touched (v2.20)
+
+| File | Change |
+| --- | --- |
+| `docs/requirements/prd.json` | Task 2 acceptance extended (6 criteria); `resolved_defaults.auth_prototype_demo_v1`; `version` → v2.20 |
+| `docs/database/schema.dbml`, `docs/database/logical-model.md` | The ten new audit action keys recorded; explicit note that no session/reset table exists by design |
+| `docs/design/driver-screen-spec.md` | Auth screens + the gate; primitives and states |
+| `docs/design/brand-tokens.md` | Component token map — auth screens |
+| `docs/design/design-direction-board-remediation.md` | F13 (feature row) |
+| `docs/design/ui-ux-production-plan.md` | §7.15 + changelog line |
+| `docs/design/driver-i18n-index.md` | Regenerated — picks up the auth keys; auth key contract added to the generator |
+| `docs/product/autheon-context-pack.md` | Version trail → v2.20; auth bullet |
+| `docs/product/sitemap.md` | Auth entry rows for both surfaces |
+
+**Not touched:** any file under `prototype/project` — this commit documents existing behaviour and changes none of it, apart from the `pwa-app.jsx` cache-buster noted in the commit message.

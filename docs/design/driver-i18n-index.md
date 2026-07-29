@@ -203,6 +203,38 @@ reason, the same principle the upload errors follow above.
 
 ---
 
+## Authentication keys (PR #32, documented 2026-07-29)
+
+The auth screens are the app's **entry point** — every other screen is behind them — so these keys
+are load-bearing. They are namespaced by surface and stage:
+
+| Prefix | Screen |
+|--------|--------|
+| `authDriverLogin*` / `authAdminLogin*` | sign in (labels, placeholders, submit, show/hide password, forgot link) |
+| `authDriverForgot*` / `authAdminForgot*` | forgot password — email stage, then `*Otp*` for the code stage |
+| `authDriverReset*` / `authAdminReset*` | choose a new password after a verified code |
+| `authDriverSetPassword*` / `authAdminSetPassword*` | initial password from an invite link, incl. the invalid-link state |
+
+**Both surfaces keep their own key set** even where the English happens to match. The driver PWA and
+the console are separately localizable products, and the copy is expected to diverge (tone, length
+for phone widths). The shared *component* is `LoginForm`; the copy is injected, not hardcoded.
+
+### Load-bearing, easy to delete by mistake
+
+| Key group | Why it must stay |
+|-----------|------------------|
+| `*LoginShowPassword` / `*LoginHidePassword` | accessible name of the password toggle — the icon is decorative, so removing these leaves an unlabelled button |
+| `*ForgotOtpIncorrectCode` vs `*ForgotOtpInvalidCode` | **two different failures**: a wrong code vs a malformed/expired one. Collapsing them removes the user's ability to tell "retype it" from "request a new one" |
+| `*ForgotOtpResendCooldownPrefix` | prefixes the live countdown; the seconds are appended at runtime |
+| `*ResetMismatch` / `*SetPasswordMismatch`, `*MinLength`, `*ConfirmRequired`, `*SetPasswordComplexity` | per-field validation messages — there is deliberately no generic "invalid password" string |
+| `*SetPasswordInvalidLinkTitle` / `*Message` / `*Hint` | the invalid/expired invite-link state, which is a screen of its own, not a toast |
+
+> The forgot-password flow also renders the 6-digit code in an info alert. That copy is a
+> **demo-only** affordance (a static prototype cannot send email); production delivery is a Keycloak
+> action email and the code must never reach the client.
+
+---
+
 ## All driver keys in use
 
 | Key | EN | DE |
@@ -446,6 +478,12 @@ reason, the same principle the upload errors follow above.
 | `myDocumentsTab` | My documents | Meine Dokumente |
 | `myJobs` | My jobs | Meine Aufträge |
 | `myJobsSubtitle` | Track and update your accepted tours | Verfolgen und aktualisieren Sie Ihre akzeptierten Touren |
+| `newsDocUploadFlowBody` | After marking a tour performed, upload your billing invoice and delivery proof from the tour detail screen. | Nachdem Sie eine Tour als durchgeführt markiert haben, laden Sie Ihre Abrechnungsrechnung und den Übergabenachweis in der Tourdetailansicht hoch. |
+| `newsDocUploadFlowTitle` | New document upload flow | Neuer Ablauf für Dokumenten-Uploads |
+| `newsReportProblemBody` | Use Report Problem to cancel an order or report an empty run. A reported empty run is submitted to dispatch for review (recognised or not recognised). | Nutzen Sie „Problem melden“, um einen Auftrag zu stornieren oder eine Leerfahrt zu melden. Eine gemeldete Leerfahrt wird der Disposition zur Prüfung vorgelegt (anerkannt oder nicht anerkannt). |
+| `newsReportProblemTitle` | Report Problem replaces returns | „Problem melden“ ersetzt Rückgaben |
+| `newsTransportStrikeBody` | Dear service partners,\n\nOn Monday, 01.01.2027, there may be isolated warning strikes in public transport. Please check in good time whether your area in Germany is affected.\n\nThank you for your attention and safe travels. | Liebe Servicepartner,\n\nam Montag, 01.01.2027, kann es im öffentlichen Nahverkehr zu einzelnen Warnstreiks kommen. Bitte prüfen Sie frühzeitig, ob Ihre Region in Deutschland betroffen ist.\n\nVielen Dank für Ihre Aufmerksamkeit und gute Fahrt. |
+| `newsTransportStrikeTitle` | ATTENTION: public transport strike 01.01.2027 | ACHTUNG: Streik im öffentlichen Nahverkehr am 01.01.2027 |
 | `noDriverAddons` | No driver-facing add-ons. | Keine fahrerseitigen Zusatzhinweise. |
 | `noJobsMatch` | No jobs match | Keine passenden Touren |
 | `noToursMatch` | No tours match these filters. | Keine Touren entsprechen diesen Filtern. |

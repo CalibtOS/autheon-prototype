@@ -239,6 +239,34 @@ Because the notice is always **text-labelled** it satisfies the never-color-only
 
 ---
 
+## Component token map — authentication screens (PR #32, documented 2026-07-29)
+
+The auth screens introduced **no new tokens** — every surface, border and state resolves to an existing
+semantic alias, which is why they theme in light and dark without their own palette. Documented
+retroactively.
+
+| Element | CSS | Token(s) |
+|---------|-----|----------|
+| Screen ground | `.auth-screen` | `--canvas` |
+| Admin shell / card | `.auth-shell-admin`, `.auth-card-admin` | `--paper` on `--line`, card radius + `--sh-*` |
+| Logo row | `.auth-logo-row` | brand mark, no token of its own |
+| Heading / subheading | `.auth-heading`, `.auth-subheading` | `--text` / `--muted` |
+| Field group + label | `.auth-field-group`, `.field-label` | existing form treatment |
+| Input | `.input` (shared) | `--paper` on `--line`, focus ring `--primary` |
+| Password show/hide | `.auth-password-toggle` | `--muted-2`, hover `--text`, `:focus-visible` `--primary` |
+| Field error | `.auth-field-error` | `--danger-ink` — the **defined** danger text token |
+| Form-level error | `.auth-root-error` | `--danger-ink` on `--st-cancelled-bg` |
+| Forgot-password link | `.auth-forgot-link` | `--primary`; disabled state reduces opacity rather than changing hue |
+| One-time-code cell | `.auth-otp-cell` (+`.active`) | `--paper` on `--line`; active border `--primary`, mono type |
+| Submit | `.btn primary` | shared button — no bespoke auth button |
+| Demo code notice | `InlineAlert` tone `info` | existing alert tones |
+
+**Colour is never the only signal:** errors are text, the active code cell is also indicated by caret
+position, and the password toggle carries an accessible name (`authAdminLoginShowPassword` /
+`...HidePassword` and the driver equivalents).
+
+---
+
 ## Component token map — dialog standard (2026-07-29)
 
 The system-wide dialog standard introduced **no new tokens**. Every value resolves to an existing

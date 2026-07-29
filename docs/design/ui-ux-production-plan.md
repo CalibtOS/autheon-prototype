@@ -569,6 +569,52 @@ the panel entry animation starts at `scale(0.96)`, so a bounding rect read mid-a
 **Open — recorded, not absorbed.** Whether the client approves these specific token values as
 the standard, and whether bottom sheets should be folded in. See the v2.19 changelog.
 
+### 7.15 Authentication screens + the gate — shipped in PR #32, documented 2026-07-29
+
+**Recorded retroactively.** PR #32 (`c7a087e`, `2116024`, `8e0182e`) added a login gate, eight
+screens, four shared primitives, fifteen store methods, ten audit actions and 107 i18n keys per
+locale — with no documentation. This section closes that gap; it changes no behaviour.
+
+**Why it matters beyond "a missing doc":** the change is not additive at the edges. **Every screen
+in §7.1–§7.14 now sits behind a sign-in gate** on all three surfaces (framed preview, `/pwa/`,
+console). A reader working from §7 alone would not have known the app opens on a login screen.
+
+**One implementation, both surfaces** — the repository's established pattern (as with
+`ConfirmSheet` and `Dialog`): `LoginForm`, `AuthOtpInput`, `ForgotPasswordFlow` and
+`SetPasswordForm` live in `driver-ui.jsx` and are consumed by `DriverLoginScreen` /
+`DriverSetPasswordScreen` and `AdminLoginScreen` / `AdminSetPasswordScreen`. Do not fork a
+second login form for the console.
+
+**Two behaviours to carry into production:**
+
+- **No account enumeration.** `requestPasswordReset` reports success even for an unknown email.
+  Turning this into "no account found" is a user-enumeration vulnerability, not a UX improvement.
+- **Bounded recovery codes.** 10-minute expiry, 30-second resend cooldown, and an incorrect or
+  expired code is rejected distinguishably rather than silently accepted.
+
+**Two affordances that must NOT ship:**
+
+- **The 6-digit code is rendered in the UI**, because a static prototype cannot send email (same
+  convention as `ChangeEmailSheet`'s `demoCode`). Production delivery is a **Keycloak action
+  email** — the code must never reach the client.
+- **Any non-empty password authenticates.** There is nowhere here to store or verify a credential.
+
+**Production component alignment.** The real app delegates to **Keycloak** (PRD Task 2), so the
+login form becomes a Keycloak-hosted page or an OIDC redirect, and forgot-password / set-password
+become Keycloak action links. What ports is the *shape*: one shared form component, per-field plus
+root error slots, an OTP input that is one hidden field behind six cells (paste-friendly), and a
+password toggle with an accessible name. **Session stays in memory only** — the prototype mirrors
+the frontend's access-token handling deliberately; do not move it to `localStorage`.
+
+**Data model.** None, and none is needed: Keycloak owns credentials and sessions, so there is no
+session table and no password-reset table. Only the ten new audit action keys are recorded. See
+[`../database/logical-model.md`](../database/logical-model.md).
+
+**Open — recorded, not absorbed.** The exact production login ceremony (Task 2 defers it to
+Keycloak realm configuration), and whether the driver recovery flow should use a 6-digit code at
+all or hand off entirely to a Keycloak action link. The prototype shows a code because it cannot
+delegate to Keycloak — an implementation constraint, not a product decision.
+
 ## 8. Prototype Remediation Worklist (phased, in-place)
 
 **W1 — Tokens (`styles.css` only)**
@@ -747,6 +793,7 @@ Driven by the client confirmation **“Systemlogik Fahrzeugeingabe”**. Busines
 ## Changelog
 
 - **v3.5 — 2026-07-27 (document-upload source selection).** Stakeholder report on the tour-completion upload screen: the upload control opened the device camera directly, so an invoice already saved as a PDF on the phone could not be attached. Reflected from `driver.jsx`/`styles.css`/`store.js`/`i18n.js`: (1) **Upload-source action sheet** — after the document-type step the driver picks *Foto aufnehmen* (camera capture, images only, `capture="environment"`) or *Datei auswählen* (plain OS picker, `application/pdf` + supported images, no `capture`); the generic upload control never opens the camera (§7.4 status note, new `.upload-source-*` CSS, new `uploadSource*` / `docKind*` i18n). (2) **One shared `UploadSourcePicker`** for all three driver upload entry points and for *Replace file* — the per-screen hidden inputs were removed, not duplicated. (3) **25 MB enforced** on every store upload path, matching the limit the UI already advertised (`invoiceUploadTooLarge`). New workstream **W7** (items 24–31); closes audit v1.6 addendum U1–U4 / remediation F8. No token, DDB-contract, schema or status-model change.
+- **v3.9 — 2026-07-29.** Authentication screens documented retroactively (new §7.15). PR #32 shipped a login **gate** in front of both surfaces plus eight screens, four shared primitives (`LoginForm`, `AuthOtpInput`, `ForgotPasswordFlow`, `SetPasswordForm`), fifteen store methods, ten audit actions and 107 i18n keys per locale — with no documentation. Every screen in §7.1–§7.14 now sits behind sign-in. Recorded: no-account-enumeration and bounded recovery codes as **production** behaviours; the displayed 6-digit code and "any non-empty password" as **demo-only** and not shippable. Documented in brand-tokens ("Component token map — authentication screens", no new tokens), remediation F13, driver-screen-spec ("Authentication screens + the gate"), driver-i18n-index (auth key contract), sitemap (auth entry rows). **prd.json, PRD changelog and the context pack updated** (v2.20). **No data-model change** — Keycloak owns credentials and sessions, so no session or reset table exists by design. Open: production login ceremony, and code-vs-Keycloak-link for driver recovery.
 - **v3.8 — 2026-07-29.** System-wide dialog standard (new §7.14). One shared `DriverUI.Dialog` primitive for **both** surfaces plus one `.dialog-*` contract replaces nine hand-rolled console backdrops and five hand-rolled driver modals: `--r-4` rounding, 24px padding, documented widths, centered title above a centered muted description, left-aligned scrollable content, and the canonical Cancel | Primary 1:1.6 action grid — which also fixes hand-rolled rows rendering **42px** controls below the 44px floor. Icons reduced to meaningful status only (two duplicated success SVGs deduplicated). **Slide-to-confirm untouched**; no logic, validation, permission, label or legal wording changed. Bottom sheets deliberately remain a separate spec. Documented in brand-tokens ("Component token map — dialog standard", no new tokens), remediation F12, driver-screen-spec ("Dialog standard" + a per-dialog audit table). **prd.json, PRD changelog and the context pack updated.** **No data-model change.** Open: client sign-off on the token values, and bottom sheets.
 - **v3.7 — 2026-07-29.** Marketplace empty states split by filter state (new §7.11.1). The filter-related empty state no longer renders when no filter is active; a general *There are currently no open orders.* state takes its place, with no description and deliberately no *Filters* action. Selection comes from the canonical `getAppliedMarketplaceFilterCount`, the same derivation as the badge and chip row, so the two can never disagree, and apply/change/clear/reset switch states with no extra wiring. The filtered state's copy, description and action are unchanged. Documented in remediation F11 and driver-screen-spec ("Marketplace empty states"); **brand-tokens untouched** — the shared `EmptyState` primitive is reused, no new token or component. **prd.json, PRD changelog and the context pack updated.** **No data-model change.** Open: approved wording for the general message, and "orders" vs "tours" terminology across the driver surface.
 - **v3.6 — 2026-07-29.** Infopoint message detail page (new §7.13; §7.8 superseded in part). The expandable news card is replaced by a dedicated page: the list row keeps title + date + read state (unread dot + `NEW` badge + accessible name; no badge on read rows) and drops the 100-char preview, the expanded body and `aria-expanded`; the detail page replaces the Infopoint header and tab band and shows the complete body with preserved paragraph breaks, never clamped. Drill-down header **generalized** `ProfileSubpageHeader` → `DriverSubpageHeader` (CSS scope renamed; Profile visuals unchanged), so the 44px back control, centred title and focus-on-entry are shared. Optional left-edge swipe-back implemented as progressive enhancement (`touch-action: pan-y`, transform-only, reduced-motion safe) and never replaces the button. v2.16's message deep links now land on this page. Documented in brand-tokens ("Component token map — Infopoint message list + detail", no new tokens), remediation F10, driver-screen-spec ("Infopoint messages"), driver-i18n-index. **prd.json, PRD changelog and the context pack updated.** **No data-model change.** Open: iOS-only vs all-touch for the gesture.

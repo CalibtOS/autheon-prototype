@@ -1887,6 +1887,20 @@ window.I18n = (() => {
       docCategoryLegal: "Legal",
       docCategorySafety: "Safety",
       docScopeGlobal: "Global",
+      // Seeded Infopoint messages. Demo content, localized at RENDER time by
+      // displayNewsTitle/displayNewsBody (driver.jsx) keyed on the seed id —
+      // the same convention the seeded documents above use, so switching
+      // language updates them instead of freezing the boot locale. Messages an
+      // admin creates in the console keep their own stored text.
+      newsTransportStrikeTitle: "ATTENTION: public transport strike 01.01.2027",
+      newsTransportStrikeBody:
+        "Dear service partners,\n\nOn Monday, 01.01.2027, there may be isolated warning strikes in public transport. Please check in good time whether your area in Germany is affected.\n\nThank you for your attention and safe travels.",
+      newsDocUploadFlowTitle: "New document upload flow",
+      newsDocUploadFlowBody:
+        "After marking a tour performed, upload your billing invoice and delivery proof from the tour detail screen.",
+      newsReportProblemTitle: "Report Problem replaces returns",
+      newsReportProblemBody:
+        "Use Report Problem to cancel an order or report an empty run. A reported empty run is submitted to dispatch for review (recognised or not recognised).",
       noteConfirmArrival: "Please confirm arrival 15 minutes early.",
       noteReportPickupDelay: "Report any pickup delay immediately to dispatch.",
     },
@@ -3797,6 +3811,16 @@ window.I18n = (() => {
       docCategoryLegal: "Rechtliches",
       docCategorySafety: "Sicherheit",
       docScopeGlobal: "Global",
+      newsTransportStrikeTitle:
+        "ACHTUNG: Streik im öffentlichen Nahverkehr am 01.01.2027",
+      newsTransportStrikeBody:
+        "Liebe Servicepartner,\n\nam Montag, 01.01.2027, kann es im öffentlichen Nahverkehr zu einzelnen Warnstreiks kommen. Bitte prüfen Sie frühzeitig, ob Ihre Region in Deutschland betroffen ist.\n\nVielen Dank für Ihre Aufmerksamkeit und gute Fahrt.",
+      newsDocUploadFlowTitle: "Neuer Ablauf für Dokumenten-Uploads",
+      newsDocUploadFlowBody:
+        "Nachdem Sie eine Tour als durchgeführt markiert haben, laden Sie Ihre Abrechnungsrechnung und den Übergabenachweis in der Tourdetailansicht hoch.",
+      newsReportProblemTitle: "„Problem melden“ ersetzt Rückgaben",
+      newsReportProblemBody:
+        "Nutzen Sie „Problem melden“, um einen Auftrag zu stornieren oder eine Leerfahrt zu melden. Eine gemeldete Leerfahrt wird der Disposition zur Prüfung vorgelegt (anerkannt oder nicht anerkannt).",
       noteConfirmArrival: "Bitte Ankunft 15 Minuten vorher bestätigen.",
       noteReportPickupDelay:
         "Verzögerungen bei der Abholung sofort an die Disposition melden.",

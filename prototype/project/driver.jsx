@@ -176,6 +176,44 @@ const displayDocTitle = (doc, t) =>
     "DOC-005": t("docImprint"),
   })[doc.id] || doc.title;
 
+// Seeded Infopoint messages, localized the same way the seeded documents above
+// are: mapped at RENDER time from the stable seed id, so switching language
+// updates them. A message an admin publishes in the console has no mapping and
+// falls back to its own stored text — which is what must happen, since that
+// text is real data, not demo copy.
+const displayNewsTitle = (item, t) =>
+  ({
+    "NEWS-001": t("newsTransportStrikeTitle"),
+    "NEWS-002": t("newsDocUploadFlowTitle"),
+    "NEWS-003": t("newsReportProblemTitle"),
+  })[item?.id] ||
+  item?.title ||
+  "";
+
+const displayNewsBody = (item, t) =>
+  ({
+    "NEWS-001": t("newsTransportStrikeBody"),
+    "NEWS-002": t("newsDocUploadFlowBody"),
+    "NEWS-003": t("newsReportProblemBody"),
+  })[item?.id] ||
+  item?.body ||
+  "";
+
+/**
+ * Title/body for a notification that points at an Infopoint message. The row
+ * stores a copy of the message text, so without this a seeded message would
+ * read localized in the Infopoint and English in the Notification Center.
+ */
+const displayNotificationTitle = (row, t) =>
+  row?.newsId ? displayNewsTitle({ id: row.newsId, title: row.title }, t) : row?.title || "";
+
+const displayNotificationBody = (row, t) => {
+  if (!row?.newsId) return row?.body || "";
+  const full = displayNewsBody({ id: row.newsId, body: row.body }, t);
+  // Notification bodies are a preview, truncated the same way addNewsItem does.
+  return full.length > 120 ? `${full.slice(0, 120)}` : full;
+};
+
 const displayDocCategory = (category, t) =>
   ({
     Operations: t("docCategoryOperations"),
@@ -5352,9 +5390,13 @@ const DriverNotificationsList = ({
                     <span className="notification-row-cat">
                       {t(store.notificationCategoryI18nKey(row.type))}
                     </span>
-                    <span className="notification-row-title">{row.title}</span>
+                    <span className="notification-row-title">
+                      {displayNotificationTitle(row, t)}
+                    </span>
                     {/* Collapsed preview text is clamped to two lines. */}
-                    <span className="notification-row-text">{row.body}</span>
+                    <span className="notification-row-text">
+                      {displayNotificationBody(row, t)}
+                    </span>
                     <span className="notification-row-meta mono">
                       {row.createdAt}
                       {row.tour ? ` · ${row.tour}` : ""}
@@ -6999,13 +7041,15 @@ const InfopointMessageDetail = ({ item, onBack }) => {
       />
       <div className="scroll pwa-detail-body">
         <div className="detail-card infopoint-message-card">
-          <h2 className="infopoint-message-title">{item.title}</h2>
+          <h2 className="infopoint-message-title">
+            {displayNewsTitle(item, t)}
+          </h2>
           <div className="mono text-muted-sm infopoint-message-date">
             {item.publishedAt}
           </div>
           {/* Full text, never truncated. `pre-line` preserves the paragraph
               breaks admins type into the message body. */}
-          <p className="infopoint-message-body">{item.body}</p>
+          <p className="infopoint-message-body">{displayNewsBody(item, t)}</p>
         </div>
       </div>
     </div>
@@ -7257,8 +7301,8 @@ const Infopoint = ({
                       onClick={() => openNews(n)}
                       aria-label={
                         unread
-                          ? `${t("infopointNewsUnread")}: ${n.title}`
-                          : `${t("infopointNewsRead")}: ${n.title}`
+                          ? `${t("infopointNewsUnread")}: ${displayNewsTitle(n, t)}`
+                          : `${t("infopointNewsRead")}: ${displayNewsTitle(n, t)}`
                       }
                     >
                       <div
@@ -7277,7 +7321,7 @@ const Infopoint = ({
                           className="infopoint-news-title"
                           style={{ fontWeight: unread ? 600 : 500 }}
                         >
-                          {n.title}
+                          {displayNewsTitle(n, t)}
                         </div>
                         <div
                           className="mono text-muted-sm"
