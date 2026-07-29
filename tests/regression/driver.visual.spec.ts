@@ -54,7 +54,7 @@ async function openMyJobsExecution(page: import('@playwright/test').Page) {
 }
 
 test.describe('Driver PWA visual regression @visual-regression', () => {
-  test('marketplace screen', async ({ page }) => {
+  test('marketplace screen @visual-smoke', async ({ page }) => {
     await prepareDriverVisual(page);
     await expect(page).toHaveScreenshot('driver-marketplace.png', {
       fullPage: true,
@@ -218,7 +218,10 @@ test.describe('Driver PWA visual regression @visual-regression', () => {
     await expect(page).toHaveScreenshot('driver-report-problem-sheet.png', { fullPage: true });
   });
 
-  test('daily limit request sheet popup', async ({ page }) => {
+  test.skip('daily limit request sheet popup', async ({ page }) => {
+    // Legacy daily-limit request UI was replaced by the probation progress
+    // card. Keep this baseline out of CI until an approved replacement flow is
+    // added instead of letting a dead selector fail as an execution error.
     await prepareDriverVisual(page);
     await openDriverTab(page, TAB.profile);
     await prototypeFrame(page)

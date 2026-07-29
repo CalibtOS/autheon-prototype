@@ -15,7 +15,26 @@
     "test:regression": "playwright test tests/regression --project=chromium",
     "test:regression:update": "playwright test tests/regression --update-snapshots --project=chromium",
     "test:regression:visual": "playwright test tests/regression --grep @visual-regression --project=chromium",
-    "test:regression:visual:update": "playwright test tests/regression --grep @visual-regression --update-snapshots --project=chromium",
+
+    "test:regression:ci": "node scripts/run-visual-regression-docker-ci.mjs",
+    "test:regression:full": "node scripts/run-visual-regression-docker-ci.mjs --profile full",
+    "test:regression:smoke": "node scripts/run-visual-regression-docker-ci.mjs --profile smoke",
+    "test:regression:diagnostic": "node scripts/run-visual-regression-docker-ci.mjs --profile diagnostic --diagnostic",
+
+    "test:regression:baseline": "node scripts/run-visual-regression-docker-ci.mjs --baseline",
+    "test:regression:baseline:approve": "node scripts/approve-visual-baselines.mjs",
+    "test:regression:baseline:manifest": "node scripts/visual-baseline-manifest.mjs --write",
+    "test:regression:baseline:verify": "node scripts/visual-baseline-manifest.mjs --verify",
+
+    "test:regression:coverage": "node scripts/visual-coverage-audit.mjs",
+    "test:regression:notify-check": "node scripts/visual-regression-notify-check.mjs --verify-only",
+
+    "test:regression:visual:ci": "node scripts/visual-regression-ci.mjs",
+    "test:regression:visual:ci:strict": "node scripts/visual-regression-ci.mjs --strict",
+    "test:regression:visual:docker-ci": "node scripts/run-visual-regression-docker-ci.mjs",
+    "test:regression:visual:baseline:docker": "node scripts/run-visual-regression-docker-ci.mjs --baseline",
+    "test:regression:visual:baseline:approve": "node scripts/approve-visual-baselines.mjs",
+    "test:regression:visual:notify": "node scripts/notify-visual-regression.mjs",
     "test:report": "playwright show-report",
     "test:install-browsers": "playwright install chromium",
     "test:list": "playwright test --list",
@@ -26,6 +45,7 @@
     "@types/node": "^25.9.3",
     "dotenv": "^16.4.7",
     "http-server": "^14.1.1",
+    "nodemailer": "^9.0.3",
     "typescript": "^6.0.3"
   }
 }
