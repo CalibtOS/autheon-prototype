@@ -1,10 +1,10 @@
-# PRD changelog: 2026-07-29 (v2.14 → v2.18)
+# PRD changelog: 2026-07-29 (v2.14 → v2.19)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
 **Canonical file:** `docs/requirements/prd.json`
 
-> **Scope of this file:** the **v2.15** – **v2.18** entries. PRD **v2.11 – v2.14** (all dated 2026-07-29 — admin manufacturer/model catalogue, vehicle search, and the admin orders-overview client fixes) are recorded in the `version` history string inside `prd.json` and in [`../../requirements/admin-client-requirements-status.md`](../../requirements/admin-client-requirements-status.md), but were never given a separate changelog file. That gap is pre-existing and is **not** back-filled here.
+> **Scope of this file:** the **v2.15** – **v2.19** entries. PRD **v2.11 – v2.14** (all dated 2026-07-29 — admin manufacturer/model catalogue, vehicle search, and the admin orders-overview client fixes) are recorded in the `version` history string inside `prd.json` and in [`../../requirements/admin-client-requirements-status.md`](../../requirements/admin-client-requirements-status.md), but were never given a separate changelog file. That gap is pre-existing and is **not** back-filled here.
 
 ---
 
@@ -346,3 +346,93 @@ Both states get a stable class (`.marketplace-empty-filtered` / `.marketplace-em
 | `docs/product/autheon-context-pack.md` | Version trail → v2.18; Marketplace empty-state bullet |
 
 **Not touched:** `docs/database/*`, migrations, the filter predicate, the filter panel, the count badge, the chip row, `brand-tokens.md` (no new component, no new token — the shared `EmptyState` primitive is reused as-is).
+
+---
+
+## PRD v2.19 — System-wide dialog standard (2026-07-29)
+
+**Baseline:** PRD v2.18 (Marketplace empty states split by filter state)
+**Source:** work order "Standardize All System Dialogs Using the 'Accept Tour' Dialog as the Reference", supporting **Task 9 — Job Acceptance** and extending **Task 26 — QA & Automated Validation** with system-wide dialog QA.
+
+Scope note: **visual only** — layout, hierarchy, alignment, spacing, corner treatment, icon usage and action presentation. No business logic, validation, status transition, permission, action availability, approved label, legal wording or workflow content changed.
+
+### 1. Audit — what was actually wrong
+
+Every dialog hand-rolled its own chrome. The console repeated the *same* fixed backdrop + `.card elev` panel **nine times**, each subtly different:
+
+| Dimension | Values found before |
+| --- | --- |
+| Backdrop | 9 copies of an inline `position: fixed` + scrim + flex-centre block, `zIndex` 100 / 101 / 102 / 103 / 104 / 105 |
+| Panel radius | `--r-3` (12px) via `.card` in the console vs `--r-4` (16px) via `.sheet.modal` in the driver app |
+| Panel width | 440 / 480 / 520 / 560 inline `maxWidth` |
+| Panel padding | 22 (console) · 20 / 22 / 24 / 26 (driver) |
+| Title | `fontSize` 17 / 18 inline (console) · 19 / 20 / 24 (driver) · one dialog used an eyebrow `Lbl` **as** its title |
+| Title alignment | left everywhere |
+| Description | 4 different inline size/colour/margin combinations |
+| Action row | flex `justify-content: flex-end` (console) · `.btn block` stacked · `1fr 1fr` grid · `.confirm-sheet-actions` flex-end · `.sheet-foot` 1:1.6 grid (driver) |
+| Control height | 42px in every hand-rolled row — **below the documented 44px floor** |
+| Icons | two **byte-identical** inline success-disc SVGs duplicated across two dialogs |
+
+So "dialog" was not a component; it was a shape each screen re-drew from memory.
+
+### 2. The standard
+
+One shared **`Dialog`** primitive in `driver-ui.jsx`, used by **both** surfaces (the console reaches it through `DriverUI.Dialog`, the same route `AdminConfirmBridge` already used to reuse `ConfirmSheet`), plus one `.dialog-*` CSS contract:
+
+| Aspect | Standard |
+| --- | --- |
+| Corner rounding | `var(--r-4)` — the reference dialog's rounding |
+| Panel padding | 24px |
+| Widths | 480 default · `--md` 560 · `--lg` 720 (replaces four ad-hoc inline maxWidths) |
+| Height | bounded (`min(90vh, 760px)`) with an internally scrolling `.dialog-content` |
+| Structure | eyebrow? → **centered** title → **centered** description → left-aligned content → actions |
+| Title | 18px desktop / 22px phone, one type step above the 13px muted description |
+| Actions | canonical Cancel \| Primary `minmax(0,1fr) / minmax(0,1.6fr)` grid, 12px gap, **44px** minimum height; a single action spans the row (wide, centered); 3+ actions use a wrapping row with the same sizing |
+| Icons | only meaningful status, on one shared 52px disc keyed to `--st-accepted` / `--st-assigned` / `--st-cancelled` |
+
+**The action grammar is not new** — it is `.sheet-foot`'s existing canonical 1:1.6 ratio and 44px floor, deliberately reused so the two cannot drift apart.
+
+**Alignment: one structural rule, not a list of exceptions.** Titles and descriptions centre. `.dialog-content` — summaries, forms, warnings, legal text — stays **left-aligned**, because running prose and key/value pairs are unreadable centred. Making that structural rather than a per-dialog opt-out means no dialog has to decide, and answers the "which dialogs are exceptions" question without an approval list.
+
+### 3. What changed, per dialog
+
+**Console (9 dialogs)** — all converted to the shared classes: assign/reassign driver, cancel order, account access, driver create/edit, admin create, master-data modal (customers · addresses · Infopoint documents ×3 · Infopoint news), register tour document, accept invoice, view invoice, finance edit. Assign-driver and cancel-order additionally moved to the `Dialog` **component**. The nine inline backdrops became `.dialog-backdrop`; the one dialog that must stack above another keeps that with a documented `--stacked` modifier instead of a bare `zIndex: 105`.
+
+**Driver PWA** — `PendingNotice`, `TourBookedSuccessSheet`, `ProbationLimitSheet` and `SameDayOverlapSheet` moved to the `Dialog` component (the first two dropped their duplicated inline success SVG for one shared `DialogSuccessIcon`). `RemoveDocModal` kept its meaningful destructive icon and adopted the shared classes. `AcceptanceModal` — **the reference** — now uses the standard's own classes, so the reference and the standard are the same code rather than two descriptions of each other.
+
+**Two documented deviations, both content-driven:**
+
+1. **Accept tour stacks its actions full width.** Its primary is a **slide-to-confirm** control, which cannot share a row with a button. The slide is untouched and must never be replaced by a button.
+2. **`.dialog-content` is left-aligned** — the structural rule above.
+
+### 4. Bottom sheets — deliberately a separate spec
+
+`FilterSheet`, `ReportProblemSheet`, `UploadSourceSheet` and `MarkPerformedSheet`'s upload stage are **bottom sheets**: bottom-anchored, drag-to-dismiss via a grabber, with a leading-edge draggable header. They keep all of that and share only the action grammar. Folding them into the centred standard would change **interaction**, not appearance — outside this task's stated visual scope — so it was not done. This is open question 3, recorded rather than answered unilaterally.
+
+### 5. Verification
+
+A dialog-standard probe was run against representative dialogs — confirmation, form, destructive, selection and the reference — on the driver phone surface (401×869) and the console at **desktop (1440)** and **tablet (834)**. Each was asserted for: 16px rounding, 24px padding, a present and centered `.dialog-title`, a title larger than its description, ≥44px control heights, a 12px action gap, the action row still **inside** the panel, and the panel **inside** the viewport. All passed with identical measurements across surfaces and viewports. The slide-to-confirm was asserted still present in the reference dialog. No console or page errors.
+
+*(One measurement trap worth recording: the panel entry animation starts at `scale(0.96)`, so reading a control's bounding rect mid-animation reports 42px for a 44px button. Measure computed style, or wait for the animation.)*
+
+### 6. Open questions — NOT decided in this pass
+
+1. **Are these the approved token values?** The standard is derived from the reference dialog and the tokens already in the repository (`--r-4`, 24px padding, the existing 1:1.6 action ratio, the 44px floor). The client has not signed off on those specific numbers as *the* dialog standard.
+2. **Which content-heavy dialogs are approved alignment exceptions?** Answered structurally — content is left-aligned, titles and descriptions centre — so no per-dialog exception list exists. If the client wants specific dialogs fully centred, that is a change to this rule.
+3. **Should bottom sheets follow the same standard?** Not folded in, for the interaction reason in §4.
+
+---
+
+## Files touched (v2.19)
+
+| File | Change |
+| --- | --- |
+| `docs/requirements/prd.json` | Task 26 acceptance extended (6 criteria); `resolved_defaults.dialog_standard_v1`; `version` → v2.19 |
+| `prototype/project/driver-ui.jsx` | New shared `Dialog` primitive, exported on `DriverUI` |
+| `prototype/project/admin.jsx` | `Dialog` wired in; 9 hand-rolled backdrops/panels/titles/descriptions/action rows converted to the shared classes; assign-driver and cancel-order moved to the component |
+| `prototype/project/driver.jsx` | `AcceptanceModal` (the reference) on the standard's classes; `PendingNotice`, `TourBookedSuccessSheet`, `ProbationLimitSheet`, `SameDayOverlapSheet` on the `Dialog` component; `RemoveDocModal` on the shared classes; `DialogSuccessIcon` deduplicated |
+| `prototype/project/styles.css` | The `.dialog-*` contract (backdrop, panel + widths, eyebrow, title, description, content, actions, status-icon discs, `.accept-tour-summary`) |
+| `docs/design/*` | driver-screen-spec (dialog standard + audit table), brand-tokens (component token map), DDB remediation (F12), ui-ux-production-plan §7.14 |
+| `docs/product/autheon-context-pack.md` | Version trail → v2.19; dialog-standard bullet |
+
+**Not touched:** `docs/database/*`, migrations, any store method, any validation rule, any i18n string, the slide-to-confirm controls, and the bottom-sheet components' structure.

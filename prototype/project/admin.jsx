@@ -1,4 +1,4 @@
-/* global React, AuthStore, useAuthStore, Pill, Lbl, Ic */
+/* global React, AuthStore, useAuthStore, Pill, Lbl, Ic, DriverUI */
 const {
   useState: useStateA,
   useEffect: useEffectA,
@@ -12,6 +12,12 @@ const {
 // review orders may be handed to a different service partner. The button is
 // hidden entirely for accepted orders rather than shown-then-blocked.
 const REASSIGNABLE_STATUSES = ["assigned", "empty_run_reported"];
+
+// The console uses the SAME dialog primitive as the Driver PWA (driver-ui.jsx),
+// so both surfaces inherit one dialog standard — outer rounding, spacing, the
+// title/description/content hierarchy, and the canonical Cancel | Primary
+// action grammar. Do not hand-roll a fixed backdrop + card for a new dialog.
+const Dialog = (props) => <DriverUI.Dialog {...props} />;
 
 const ADMIN_TOUR_DOC_TYPES = [
   "invoice",
@@ -1343,49 +1349,35 @@ const AssignDriverDialog = ({ open, mode, job, onClose, onConfirm }) => {
       : t("adminAssignDriverHint");
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="assign-driver-title"
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
-        zIndex: 103,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
-      onClick={onClose}
+    <Dialog
+      open
+      onClose={onClose}
+      titleId="assign-driver-title"
+      title={title}
+      description={hint}
+      actions={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            {t("adminInvoiceCancel")}
+          </button>
+          <button
+            type="button"
+            className="btn primary"
+            disabled={!driverId || drivers.length === 0}
+            onClick={() => onConfirm(driverId, confirmationNote.trim())}
+          >
+            {mode === "reassign"
+              ? t("adminReassignDriverConfirm")
+              : t("adminAssignDriverConfirm")}
+          </button>
+        </>
+      }
     >
-      <div
-        className="card elev"
-        style={{ maxWidth: 480, width: "100%", padding: 22 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2
-          id="assign-driver-title"
-          style={{ margin: "0 0 6px", fontSize: 18 }}
-        >
-          {title}
-        </h2>
-        <p
-          className="label"
-          style={{ margin: "0 0 14px", fontSize: 12.5, lineHeight: 1.55 }}
-        >
-          {hint}
-        </p>
-        <div
-          className="mono"
-          style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14 }}
-        >
+        <div className="mono dialog-meta">
           {t("tourNo")} {job.tour} · {job.customer}
         </div>
         {drivers.length === 0 ? (
-          <p style={{ fontSize: 13, color: "var(--st-cancelled)" }}>
-            {t("adminAssignNoActiveDrivers")}
-          </p>
+          <p className="dialog-error">{t("adminAssignNoActiveDrivers")}</p>
         ) : (
           <div>
             <label className="field-label" htmlFor="assign-driver-select">
@@ -1405,17 +1397,14 @@ const AssignDriverDialog = ({ open, mode, job, onClose, onConfirm }) => {
               ))}
             </select>
             {job.driver && mode === "reassign" ? (
-              <p
-                className="label"
-                style={{ marginTop: 10, fontSize: 11.5, lineHeight: 1.45 }}
-              >
+              <p className="label dialog-hint">
                 {t("adminAssignCurrentDriver", { name: job.driver })}
               </p>
             ) : null}
           </div>
         )}
         {mode !== "reassign" ? (
-          <div style={{ marginTop: 14 }}>
+          <div>
             <label className="field-label" htmlFor="assign-confirmation-note">
               {t("adminAssignConfirmationNoteLabel")}
             </label>
@@ -1427,39 +1416,12 @@ const AssignDriverDialog = ({ open, mode, job, onClose, onConfirm }) => {
               onChange={(e) => setConfirmationNote(e.target.value)}
               placeholder={t("adminAssignConfirmationNotePlaceholder")}
             />
-            <p
-              className="label"
-              style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.45 }}
-            >
+            <p className="label dialog-hint">
               {t("adminAssignConfirmationNoteHint")}
             </p>
           </div>
         ) : null}
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginTop: 18,
-            justifyContent: "flex-end",
-            flexWrap: "wrap",
-          }}
-        >
-          <button type="button" className="btn" onClick={onClose}>
-            {t("adminInvoiceCancel")}
-          </button>
-          <button
-            type="button"
-            className="btn primary"
-            disabled={!driverId || drivers.length === 0}
-            onClick={() => onConfirm(driverId, confirmationNote.trim())}
-          >
-            {mode === "reassign"
-              ? t("adminReassignDriverConfirm")
-              : t("adminAssignDriverConfirm")}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Dialog>
   );
 };
 
@@ -1503,34 +1465,44 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
   };
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal card" style={{ maxWidth: 480, padding: 22 }}>
-        <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 600 }}>
-          {t("adminCancelJobModalTitle")}
-        </h2>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13,
-            color: "var(--muted)",
-            lineHeight: 1.5,
-          }}
-        >
-          {dr
-            ? t("adminCancelJobModalHintDriver")
-            : t("adminCancelJobModalHintNoDriver")}
-        </p>
-        {needsOverride ? (
-          <div
-            className="banner banner-warn"
-            style={{ marginTop: 14, fontSize: 13 }}
+    <Dialog
+      open
+      onClose={onClose}
+      alertdialog
+      title={t("adminCancelJobModalTitle")}
+      description={
+        dr
+          ? t("adminCancelJobModalHintDriver")
+          : t("adminCancelJobModalHintNoDriver")
+      }
+      actions={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            {t("adminInvoiceCancel")}
+          </button>
+          <button
+            type="button"
+            className="btn danger"
+            disabled={
+              !reasonCode ||
+              (dr && driverMessage.length < minMsg) ||
+              (needsOverride && overrideNote.trim().length < 10)
+            }
+            onClick={submit}
           >
+            {t("adminCancelJobConfirmBtn")}
+          </button>
+        </>
+      }
+    >
+        {needsOverride ? (
+          <div className="banner banner-warn dialog-banner">
             {t("adminCancelCutoffBlocked", {
               hours: policy.minHours || 1,
             })}
           </div>
         ) : null}
-        <div style={{ marginTop: 16 }}>
+        <div>
           <label className="field-label" htmlFor="cancel-reason-code">
             {t("adminCancelReasonLabel")}
           </label>
@@ -1551,7 +1523,7 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
           </select>
         </div>
         {dr ? (
-          <div style={{ marginTop: 14 }}>
+          <div>
             <label className="field-label" htmlFor="cancel-driver-message">
               {t("adminCancelDriverMessageLabel")}
             </label>
@@ -1577,7 +1549,7 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
           </div>
         ) : null}
         {needsOverride ? (
-          <div style={{ marginTop: 14 }}>
+          <div>
             <label className="field-label" htmlFor="cancel-override-note">
               {t("adminCancelOverrideLabel")}
             </label>
@@ -1592,32 +1564,7 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
             />
           </div>
         ) : null}
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginTop: 20,
-            justifyContent: "flex-end",
-          }}
-        >
-          <button type="button" className="btn" onClick={onClose}>
-            {t("adminInvoiceCancel")}
-          </button>
-          <button
-            type="button"
-            className="btn danger"
-            disabled={
-              !reasonCode ||
-              (dr && driverMessage.length < minMsg) ||
-              (needsOverride && overrideNote.trim().length < 10)
-            }
-            onClick={submit}
-          >
-            {t("adminCancelJobConfirmBtn")}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Dialog>
   );
 };
 
@@ -4887,30 +4834,14 @@ const DriversPane = ({ showToast }) => {
         <div
           role="dialog"
           aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
-            zIndex: 104,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-          }}
+          className="dialog-backdrop"
           onClick={() => setDriverModal(null)}
         >
           <div
-            className="card elev"
-            style={{
-              maxWidth: 640,
-              width: "100%",
-              padding: 22,
-              maxHeight: "90vh",
-              overflow: "auto",
-            }}
+            className="dialog-panel dialog-panel--lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>
+            <h2 className="dialog-title">
               {driverModal === "new"
                 ? t("adminUsersNewDriverTitle")
                 : t("adminUsersEditDriverTitle")}
@@ -4968,14 +4899,7 @@ const DriversPane = ({ showToast }) => {
               }
               onReleaseProbation={releaseDriverProbation}
             />
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginTop: 18,
-                justifyContent: "flex-end",
-              }}
-            >
+            <div className="dialog-actions">
               <button
                 type="button"
                 className="btn"
@@ -5147,28 +5071,11 @@ const StaffPane = ({ showToast }) => {
         <div
           role="dialog"
           aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
-            zIndex: 104,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-          }}
+          className="dialog-backdrop"
           onClick={() => setAdminModal(null)}
         >
-          <div
-            className="card elev"
-            style={{
-              maxWidth: 440,
-              width: "100%",
-              padding: 22,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 style={{ margin: "0 0 16px", fontSize: 18 }}>
+          <div className="dialog-panel" onClick={(e) => e.stopPropagation()}>
+            <h2 className="dialog-title">
               {t("adminUsersNewAdminTitle")}
             </h2>
             <AdminUserFormFields
@@ -5177,14 +5084,7 @@ const StaffPane = ({ showToast }) => {
               errors={adminErrors}
               t={t}
             />
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginTop: 8,
-                justifyContent: "flex-end",
-              }}
-            >
+            <div className="dialog-actions">
               <button
                 type="button"
                 className="btn"
@@ -5579,31 +5479,15 @@ const MasterDataModal = ({ open, title, onClose, children, footer }) => {
     <div
       role="dialog"
       aria-modal="true"
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
-        zIndex: 104,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
+      className="dialog-backdrop"
       onClick={onClose}
     >
       <div
-        className="card elev"
-        style={{
-          maxWidth: 560,
-          width: "100%",
-          padding: 22,
-          maxHeight: "90vh",
-          overflow: "auto",
-        }}
+        className="dialog-panel dialog-panel--md"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ margin: "0 0 16px", fontSize: 18 }}>{title}</h2>
-        {children}
+        <h2 className="dialog-title">{title}</h2>
+        <div className="dialog-body">{children}</div>
         {footer}
       </div>
     </div>
@@ -5783,14 +5667,7 @@ const CustomersPane = ({ showToast }) => {
         }
         onClose={closeModal}
         footer={
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              marginTop: 18,
-              justifyContent: "flex-end",
-            }}
-          >
+          <div className="dialog-actions">
             <button type="button" className="btn" onClick={closeModal}>
               {t("adminInvoiceCancel")}
             </button>
@@ -6065,14 +5942,7 @@ const AddressesPane = ({ showToast }) => {
         }
         onClose={closeModal}
         footer={
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              marginTop: 18,
-              justifyContent: "flex-end",
-            }}
-          >
+          <div className="dialog-actions">
             <button type="button" className="btn" onClick={closeModal}>
               {t("adminInvoiceCancel")}
             </button>
@@ -6564,14 +6434,7 @@ const InfopointPane = ({ showToast }) => {
         title={t("adminInfopointAddDoc")}
         onClose={closeDocModal}
         footer={
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              marginTop: 18,
-              justifyContent: "flex-end",
-            }}
-          >
+          <div className="dialog-actions">
             <button type="button" className="btn" onClick={closeDocModal}>
               {t("adminInvoiceCancel")}
             </button>
@@ -6672,14 +6535,7 @@ const InfopointPane = ({ showToast }) => {
         title={t("adminInfopointEditDocTitle")}
         onClose={() => setEditDoc(null)}
         footer={
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              marginTop: 18,
-              justifyContent: "flex-end",
-            }}
-          >
+          <div className="dialog-actions">
             <button
               type="button"
               className="btn"
@@ -6749,14 +6605,7 @@ const InfopointPane = ({ showToast }) => {
         title={t("adminInfopointDeleteDocTitle")}
         onClose={() => setPendingDelete(null)}
         footer={
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              marginTop: 18,
-              justifyContent: "flex-end",
-            }}
-          >
+          <div className="dialog-actions">
             <button
               type="button"
               className="btn"
@@ -6786,14 +6635,7 @@ const InfopointPane = ({ showToast }) => {
         title={t("adminInfopointEditNewsTitle")}
         onClose={() => setEditNews(null)}
         footer={
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              marginTop: 18,
-              justifyContent: "flex-end",
-            }}
-          >
+          <div className="dialog-actions">
             <button
               type="button"
               className="btn"
@@ -7175,39 +7017,17 @@ const TourBillingPane = ({
           role="dialog"
           aria-modal="true"
           aria-labelledby="reg-invoice-title"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
-            zIndex: 102,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-          }}
+          className="dialog-backdrop"
           onClick={closeRegister}
         >
           <div
-            className="card elev"
-            style={{
-              maxWidth: 520,
-              width: "100%",
-              padding: 22,
-              maxHeight: "90vh",
-              overflow: "auto",
-            }}
+            className="dialog-panel dialog-panel--md"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2
-              id="reg-invoice-title"
-              style={{ margin: "0 0 8px", fontSize: 17 }}
-            >
+            <h2 id="reg-invoice-title" className="dialog-title">
               {t("adminTourDocRegisterTitle")}
             </h2>
-            <p
-              className="label"
-              style={{ margin: "0 0 16px", fontSize: 12.5, lineHeight: 1.55 }}
-            >
+            <p className="dialog-desc">
               {t("adminTourDocRegisterHint")}
             </p>
             <div style={{ display: "grid", gap: 12 }}>
@@ -7308,15 +7128,7 @@ const TourBillingPane = ({
                 />
               </div>
             </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginTop: 18,
-                justifyContent: "flex-end",
-                flexWrap: "wrap",
-              }}
-            >
+            <div className="dialog-actions dialog-actions--row">
               <button type="button" className="btn" onClick={closeRegister}>
                 {t("adminInvoiceCancel")}
               </button>
@@ -7556,24 +7368,11 @@ const TourBillingPane = ({
         <div
           role="dialog"
           aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
-            zIndex: 101,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-          }}
+          className="dialog-backdrop"
           onClick={closeEdit}
         >
-          <div
-            className="card elev"
-            style={{ maxWidth: 480, width: "100%", padding: 22 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 style={{ margin: "0 0 16px", fontSize: 18 }}>
+          <div className="dialog-panel" onClick={(e) => e.stopPropagation()}>
+            <h2 className="dialog-title">
               {t("adminInvoiceEdit")}
             </h2>
             <div style={{ display: "grid", gap: 12 }}>
@@ -7685,14 +7484,7 @@ const TourBillingPane = ({
                 />
               </div>
             </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginTop: 18,
-                justifyContent: "flex-end",
-              }}
-            >
+            <div className="dialog-actions">
               <button type="button" className="btn" onClick={closeEdit}>
                 {t("adminInvoiceCancel")}
               </button>
@@ -7720,30 +7512,14 @@ const TourBillingPane = ({
         <div
           role="dialog"
           aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
-            zIndex: 102,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-          }}
+          className="dialog-backdrop"
           onClick={closeAccept}
         >
-          <div
-            className="card elev"
-            style={{ maxWidth: 440, width: "100%", padding: 22 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>
+          <div className="dialog-panel" onClick={(e) => e.stopPropagation()}>
+            <h2 className="dialog-title">
               {t("adminAcceptInvoiceTitle")}
             </h2>
-            <p
-              className="label"
-              style={{ margin: "0 0 16px", fontSize: 13, lineHeight: 1.45 }}
-            >
+            <p className="dialog-desc">
               {accepting.fileName}
             </p>
             <div style={{ display: "grid", gap: 12 }}>
@@ -7790,14 +7566,7 @@ const TourBillingPane = ({
                 />
               </div>
             </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginTop: 18,
-                justifyContent: "flex-end",
-              }}
-            >
+            <div className="dialog-actions">
               <button type="button" className="btn" onClick={closeAccept}>
                 {t("adminInvoiceCancel")}
               </button>
@@ -7823,33 +7592,17 @@ const TourBillingPane = ({
         <div
           role="dialog"
           aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
-            zIndex: 100,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-          }}
+          className="dialog-backdrop"
           onClick={() => setViewId(null)}
         >
           <div
-            className="card elev"
-            style={{ maxWidth: 520, width: "100%", padding: 22 }}
+            className="dialog-panel dialog-panel--md"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ margin: "0 0 10px", fontSize: 18 }}>
+            <h2 className="dialog-title">
               {t("invoiceViewTitle")}
             </h2>
-            <p
-              style={{
-                fontSize: 13,
-                color: "var(--muted)",
-                margin: "0 0 14px",
-              }}
-            >
+            <p className="dialog-desc">
               {t("invoiceViewDisclaimer")}
             </p>
             <pre
@@ -8058,27 +7811,17 @@ const FinancePane = ({
         <div
           role="dialog"
           aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
-            zIndex: 100,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-          }}
+          className="dialog-backdrop"
           onClick={closeFinEdit}
         >
           <div
-            className="card elev"
-            style={{ maxWidth: 520, width: "100%", padding: 22 }}
+            className="dialog-panel dialog-panel--md"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ margin: "0 0 6px", fontSize: 18 }}>
+            <h2 className="dialog-title">
               {t("adminFinanceEditTitle")}
             </h2>
-            <p className="label" style={{ margin: "0 0 16px", fontSize: 12 }}>
+            <p className="dialog-desc">
               {(() => {
                 const j = jobs.find((x) => x.id === finEditId);
                 return j ? `${j.tour} · ${j.customer}` : finEditId;
@@ -8229,14 +7972,7 @@ const FinancePane = ({
             >
               {t("adminFinanceCompletedInvoiceNote")}
             </p>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginTop: 18,
-                justifyContent: "flex-end",
-              }}
-            >
+            <div className="dialog-actions">
               <button type="button" className="btn" onClick={closeFinEdit}>
                 {t("adminInvoiceCancel")}
               </button>
@@ -8606,7 +8342,7 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
         </section>
         {selected ? (
           <section className="card" style={{ padding: 22 }}>
-            <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>
+            <h2 className="dialog-title">
               {selected.driverName}
             </h2>
             <p

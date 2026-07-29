@@ -2350,32 +2350,31 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
   const { t } = useI18n();
 
   return (
-    <div className="sheet-backdrop center" onClick={onCancel}>
+    // THE REFERENCE DIALOG. Every other dialog on both surfaces follows this
+    // structure (styles.css "DIALOG STANDARD"): eyebrow → centered title →
+    // left-aligned scrollable content → action row. Two documented, content-
+    // driven deviations, both intentional:
+    //   1. The primary action is a SLIDE-TO-CONFIRM control, not a button, so
+    //      the actions stack full width instead of using the Cancel | Primary
+    //      grid. The slide must never be replaced by a button.
+    //   2. The content is left-aligned — a tour summary, legal wording and a
+    //      policy disclosure are unreadable centered. That is the standard's
+    //      structural rule, not an exception this dialog invents.
+    <div className="dialog-backdrop" onClick={onCancel}>
       <div
-        className="sheet modal"
+        className="dialog-panel"
         onClick={(e) => e.stopPropagation()}
-        style={{ padding: 24 }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="accept-tour-title"
       >
-        <Lbl>{t("bindingAcceptance")}</Lbl>
-        <h2
-          style={{
-            margin: "6px 0 18px",
-            fontSize: 24,
-            fontWeight: 600,
-            letterSpacing: "-0.015em",
-          }}
-        >
+        <span className="dialog-eyebrow">{t("bindingAcceptance")}</span>
+        <h2 id="accept-tour-title" className="dialog-title">
           {t("acceptThisTour")}
         </h2>
 
-        <div
-          style={{
-            border: "1px solid var(--line)",
-            borderRadius: "var(--r-2)",
-            padding: 14,
-            background: "var(--paper-2)",
-          }}
-        >
+        <div className="dialog-content">
+        <div className="accept-tour-summary">
           <div className="label" style={{ marginBottom: 8 }}>
             Tour #{job.id}
           </div>
@@ -2407,19 +2406,20 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
           <PolicyDisclosure />
         </div>
 
-        <SlideToConfirm
-          text={t("slideToConfirm")}
-          doneText={t("slideAccepted")}
-          onConfirm={onConfirm}
-        />
-        <button
-          type="button"
-          className="btn block"
-          style={{ marginTop: 12 }}
-          onClick={onCancel}
-        >
-          {t("cancel")}
-        </button>
+        </div>
+
+        {/* Deviation 1: a slide control cannot share a row with a button, so
+            this dialog's actions stack full width. */}
+        <div className="dialog-actions dialog-actions--stack">
+          <SlideToConfirm
+            text={t("slideToConfirm")}
+            doneText={t("slideAccepted")}
+            onConfirm={onConfirm}
+          />
+          <button type="button" className="btn block" onClick={onCancel}>
+            {t("cancel")}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -2848,17 +2848,20 @@ const TourDocCategoryModal = ({ open, onClose, onPick }) => {
   const { t } = useI18n();
   if (!open) return null;
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
+    <div className="dialog-backdrop" onClick={onClose}>
       <div
-        className="sheet modal"
+        className="dialog-panel"
         onClick={(e) => e.stopPropagation()}
-        style={{ padding: 20 }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="tour-doc-category-title"
       >
-        <Lbl id="tour-doc-category-title">{t("tourDocChooseCategory")}</Lbl>
-        <div className="category-picker">
+        {/* Was an eyebrow `Lbl` standing in for a title; a dialog's purpose
+            belongs in a real heading. */}
+        <h2 id="tour-doc-category-title" className="dialog-title">
+          {t("tourDocChooseCategory")}
+        </h2>
+        <div className="dialog-content category-picker">
           {/* Group 1: Core Documents */}
           <div>
             <div className="category-group-label">
@@ -3031,9 +3034,9 @@ const RemoveDocModal = ({ open, onCancel, onConfirm }) => {
   const { t } = useI18n();
   if (!open) return null;
   return (
-    <div className="sheet-backdrop center" onClick={onCancel}>
+    <div className="dialog-backdrop" onClick={onCancel}>
       <div
-        className="sheet modal remove-doc-modal"
+        className="dialog-panel remove-doc-modal"
         onClick={(e) => e.stopPropagation()}
         role="alertdialog"
         aria-modal="true"
@@ -3058,7 +3061,7 @@ const RemoveDocModal = ({ open, onCancel, onConfirm }) => {
             <path d="M6 6l12 12M18 6 6 18" />
           </svg>
         </button>
-        <div className="remove-doc-icon" aria-hidden="true">
+        <div className="dialog-icon dialog-icon--danger" aria-hidden="true">
           <svg
             width="22"
             height="22"
@@ -3075,11 +3078,11 @@ const RemoveDocModal = ({ open, onCancel, onConfirm }) => {
             <path d="M10 11v6M14 11v6" />
           </svg>
         </div>
-        <h3 id="remove-doc-title" className="remove-doc-title">
+        <h2 id="remove-doc-title" className="dialog-title">
           {t("removeDocTitle")}
-        </h3>
-        <p className="remove-doc-body">{t("removeDocBody")}</p>
-        <div className="remove-doc-actions">
+        </h2>
+        <p className="dialog-desc">{t("removeDocBody")}</p>
+        <div className="dialog-actions">
           <button type="button" className="btn" onClick={onCancel}>
             {t("cancel")}
           </button>
@@ -4680,66 +4683,44 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   );
 };
 
+// Meaningful status icon — a success disc. Extracted because two success
+// dialogs carried byte-identical copies of it; the `--st-accepted` tone is what
+// makes it information rather than decoration.
+const DialogSuccessIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M6 12l4 4 8-9"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 const PendingNotice = ({ onClose, kind }) => {
   const { t } = useI18n();
   const isCancel = kind === "cancel";
   return (
-    <div className="sheet-backdrop center" onClick={onClose}>
-      <div
-        className="sheet modal"
-        onClick={(e) => e.stopPropagation()}
-        style={{ padding: 26, textAlign: "center", maxWidth: 320 }}
-      >
-        <div
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: "50%",
-            background: "var(--st-accepted-bg)",
-            margin: "0 auto 16px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden
-          >
-            <path
-              d="M6 12l4 4 8-9"
-              stroke="var(--st-accepted)"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-        <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 600 }}>
-          {isCancel ? t("spCancelSuccessTitle") : t("emptyRunSuccessTitle")}
-        </h3>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13.5,
-            color: "var(--muted)",
-            lineHeight: 1.55,
-          }}
-        >
-          {isCancel ? t("spCancelSuccessBody") : t("emptyRunSuccessBody")}
-        </p>
+    <UI.Dialog
+      open
+      onClose={onClose}
+      icon={<DialogSuccessIcon />}
+      className="dialog-panel--narrow dialog-icon-success"
+      title={isCancel ? t("spCancelSuccessTitle") : t("emptyRunSuccessTitle")}
+      description={
+        isCancel ? t("spCancelSuccessBody") : t("emptyRunSuccessBody")
+      }
+      actions={
         <button
           type="button"
-          className="btn block primary mt-20"
+          className="btn primary"
           onClick={onClose}
         >
           {t("ok")}
         </button>
-      </div>
-    </div>
+      }
+    />
   );
 };
 
@@ -4749,62 +4730,20 @@ const PendingNotice = ({ onClose, kind }) => {
 const TourBookedSuccessSheet = ({ onClose }) => {
   const { t } = useI18n();
   return (
-    <div className="sheet-backdrop center" onClick={onClose}>
-      <div
-        className="sheet modal"
-        onClick={(e) => e.stopPropagation()}
-        style={{ padding: 26, textAlign: "center", maxWidth: 320 }}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="tour-booked-success-title"
-      >
-        <div
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: "50%",
-            background: "var(--st-accepted-bg)",
-            margin: "0 auto 16px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M6 12l4 4 8-9"
-              stroke="var(--st-accepted)"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-        <h3
-          id="tour-booked-success-title"
-          style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 600 }}
-        >
-          {t("tourBookedSuccessTitle")}
-        </h3>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13.5,
-            color: "var(--muted)",
-            lineHeight: 1.55,
-          }}
-        >
-          {t("tourBookedSuccessBody")}
-        </p>
-        <button
-          type="button"
-          className="btn block primary mt-20"
-          onClick={onClose}
-        >
+    <UI.Dialog
+      open
+      onClose={onClose}
+      titleId="tour-booked-success-title"
+      icon={<DialogSuccessIcon />}
+      className="dialog-panel--narrow dialog-icon-success"
+      title={t("tourBookedSuccessTitle")}
+      description={t("tourBookedSuccessBody")}
+      actions={
+        <button type="button" className="btn primary" onClick={onClose}>
           {t("ok")}
         </button>
-      </div>
-    </div>
+      }
+    />
   );
 };
 
@@ -4884,35 +4823,20 @@ const MarkPerformedSheet = ({ job, onClose }) => {
 
   if (stage === "confirm") {
     return (
-      <div className="sheet-backdrop center" onClick={onClose}>
+      <div className="dialog-backdrop" onClick={onClose}>
         <div
-          className="sheet modal"
+          className="dialog-panel"
           onClick={(e) => e.stopPropagation()}
-          style={{ padding: 24 }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="mark-performed-title"
         >
-          <Lbl>{t("markPerformed")}</Lbl>
-          <h2
-            id="mark-performed-title"
-            style={{
-              margin: "6px 0 14px",
-              fontSize: 24,
-              fontWeight: 600,
-              letterSpacing: "-0.015em",
-            }}
-          >
+          <span className="dialog-eyebrow">{t("markPerformed")}</span>
+          <h2 id="mark-performed-title" className="dialog-title">
             {t("markPerformedConfirmTitle")}
           </h2>
-          <div
-            style={{
-              border: "1px solid var(--line)",
-              borderRadius: "var(--r-2)",
-              padding: 14,
-              background: "var(--paper-2)",
-            }}
-          >
+          <div className="dialog-content">
+          <div className="accept-tour-summary">
             <div className="label" style={{ marginBottom: 8 }}>
               Tour #{job.id}
             </div>
@@ -4926,28 +4850,28 @@ const MarkPerformedSheet = ({ job, onClose }) => {
             message={error}
             onDismiss={() => setError(null)}
           />
-          <SlideToConfirm
-            text={t("slideToConfirm")}
-            doneText={t("slidePerformed")}
-            onConfirm={onSlideConfirm}
-          />
-          <button
-            type="button"
-            className="btn block"
-            style={{ marginTop: 12 }}
-            onClick={onClose}
-          >
-            {t("cancel")}
-          </button>
+          </div>
+          {/* Same documented deviation as the reference dialog: a
+              slide-to-confirm cannot share a row with a button. */}
+          <div className="dialog-actions dialog-actions--stack">
+            <SlideToConfirm
+              text={t("slideToConfirm")}
+              doneText={t("slidePerformed")}
+              onConfirm={onSlideConfirm}
+            />
+            <button type="button" className="btn block" onClick={onClose}>
+              {t("cancel")}
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="sheet-backdrop center">
+    <div className="dialog-backdrop">
       <div
-        className="sheet modal performed-success-modal"
+        className="dialog-panel performed-success-modal"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -5519,7 +5443,7 @@ const DriverNotificationsList = ({
                           {target.available ? (
                             <button
                               type="button"
-                              className="btn primary sm touch-target"
+                              className="btn primary"
                               onClick={() => {
                                 markRead(row);
                                 openOrder(target);
@@ -5535,7 +5459,7 @@ const DriverNotificationsList = ({
                           {!target.available && target.marketplace ? (
                             <button
                               type="button"
-                              className="btn sm touch-target"
+                              className="btn"
                               onClick={() => {
                                 markRead(row);
                                 onOpenMarketplace?.();
@@ -6050,31 +5974,20 @@ const DriverProbationCard = ({ enterIndex }) => {
 const ProbationLimitSheet = ({ limitInfo, onClose }) => {
   const { t } = useI18n();
   return (
-    <div className="sheet-backdrop center" onClick={onClose}>
-      <div
-        className="sheet modal confirm-sheet confirm-sheet-panel"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-      >
-        <Lbl>{t("driverProbationLimitTitle")}</Lbl>
-        <p style={{ marginTop: 8 }}>
-          {t("driverProbationLimitReached", {
-            limit: limitInfo?.limit ?? 3,
-            performed: limitInfo?.performedCount ?? 0,
-          })}
-        </p>
-        <div className="confirm-sheet-actions">
-          <button
-            type="button"
-            className="btn primary touch-target"
-            onClick={onClose}
-          >
-            {t("uiDismiss")}
-          </button>
-        </div>
-      </div>
-    </div>
+    <UI.Dialog
+      open
+      onClose={onClose}
+      title={t("driverProbationLimitTitle")}
+      description={t("driverProbationLimitReached", {
+        limit: limitInfo?.limit ?? 3,
+        performed: limitInfo?.performedCount ?? 0,
+      })}
+      actions={
+        <button type="button" className="btn primary" onClick={onClose}>
+          {t("uiDismiss")}
+        </button>
+      }
+    />
   );
 };
 
@@ -7409,31 +7322,24 @@ const InfoPaneFull = Infopoint;
 const SameDayOverlapSheet = ({ onCancel, onConfirm }) => {
   const { t } = useI18n();
   return (
-    <div className="sheet-backdrop center" onClick={onCancel}>
-      <div
-        className="sheet modal confirm-sheet confirm-sheet-panel"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="overlap-sheet-title"
-      >
-        <Lbl>{t("driverAcceptOverlapTitle")}</Lbl>
-        <h2 id="overlap-sheet-title">{t("bindingAcceptance")}</h2>
-        <p>{t("driverAcceptOverlapConfirm")}</p>
-        <div className="confirm-sheet-actions">
-          <button type="button" className="btn touch-target" onClick={onCancel}>
+    <UI.Dialog
+      open
+      onClose={onCancel}
+      titleId="overlap-sheet-title"
+      eyebrow={t("driverAcceptOverlapTitle")}
+      title={t("bindingAcceptance")}
+      description={t("driverAcceptOverlapConfirm")}
+      actions={
+        <>
+          <button type="button" className="btn" onClick={onCancel}>
             {t("cancel")}
           </button>
-          <button
-            type="button"
-            className="btn cta touch-target"
-            onClick={onConfirm}
-          >
+          <button type="button" className="btn cta" onClick={onConfirm}>
             {t("driverAcceptOverlapConfirmBtn")}
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 };
 

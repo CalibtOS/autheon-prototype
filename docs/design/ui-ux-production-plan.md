@@ -506,6 +506,69 @@ on every touch platform. It is currently offered wherever touch exists, since re
 would mean user-agent sniffing for a purely additive gesture that always has a visible button
 beside it.
 
+### 7.14 System-wide dialog standard — implemented 2026-07-29
+
+**Problem.** "Dialog" was not a component. The console repeated the *same* inline fixed backdrop
+plus `.card elev` panel **nine times** — `zIndex` 100–105, widths 440/480/520/560, padding 22,
+`h2` 17/18, flex-end action rows, controls rendering **42px** against a documented 44px floor —
+while the driver app mixed padding 20/22/24/26, `h2` 19/20/24, four different action layouts,
+and carried two byte-identical inline success-disc SVGs. Every title was left-aligned. PRD
+**v2.19**; supports Task 9, extends Task 26; remediation **F12**.
+
+**One primitive, both surfaces.** `DriverUI.Dialog` (`driver-ui.jsx`) is now the dialog for the
+Driver PWA *and* the console — the same route `AdminConfirmBridge` already used to reuse
+`ConfirmSheet`, so this is an existing pattern extended rather than a new one. Backing it is one
+`.dialog-*` CSS contract: `--r-4` rounding, 24px padding, three documented widths (480/560/720),
+a centered title one type step above a centered muted description, left-aligned internally
+scrolling content, and the **canonical Cancel | Primary 1:1.6 grid at 44px** — deliberately
+`.sheet-foot`'s existing grammar, so the two can never disagree.
+
+**A driver dialog is scoped to the device, not the browser window.**
+`.phone-shell .dialog-backdrop` is `position: absolute` inside `.phone-screen` (the containment
+`.sheet-backdrop.center` always had), and the panel drops its desktop max-width. This matters
+beyond the prototype's phone mock: it is the difference between "a dialog over the app" and "a
+dialog over the page". The console keeps `position: fixed`, where the viewport *is* the surface.
+In production the equivalent is mounting the driver dialog inside the app shell's portal root
+rather than `document.body`.
+
+**Bounded height is the anti-clipping mechanism.** `min(90vh, 760px)` on the panel plus
+`overflow-y: auto` on `.dialog-content` is what keeps the action row on screen for a long form,
+rather than letting content push it out of the viewport. Keep that pairing in production; a
+dialog that grows unbounded will clip its actions on the first long-content case.
+
+**Alignment is structural, not an exception list.** Titles and descriptions centre;
+`.dialog-content` stays left-aligned because prose, key/value summaries, legal wording and form
+fields are unreadable centred. That answers "which dialogs are exceptions" without an approval
+list to maintain — and means a new dialog cannot get it wrong by default.
+
+**Icons carry status or they do not exist.** Success / warning / destructive only, on one shared
+52px disc keyed to the `--st-*` families. Two duplicated inline SVGs collapsed into one
+component. No decorative icon remains, and no removed icon carried information the title and
+description did not.
+
+**Deliberate confirmation survives standardization.** The Accept-tour **slide-to-confirm** is
+untouched; that dialog stacks its actions full width precisely because a slide control cannot
+share a row with a button. Never substitute a button for it.
+
+**Production component alignment.** Maps to shadcn `AlertDialog` (destructive/confirmation) and
+`Dialog` (forms/summaries) with `DialogHeader`/`DialogFooter`. Port the contract, not the CSS:
+centered `DialogTitle` + `DialogDescription`, left-aligned body, one footer component owning the
+1:1.6 ratio and the 44px floor, and `role="alertdialog"` for destructive confirmations. Resist
+per-screen footer layouts — that is exactly how nine console dialogs drifted.
+
+**Bottom sheets stay a separate spec.** Bottom-anchored, drag-to-dismiss, leading-edge draggable
+header; they share only the action grammar. Folding them in would change interaction, not
+appearance, which is outside this task's visual scope (open question 3).
+
+**Verified** at 401×869 (driver phone), 834×1112 (tablet) and 1440×900 (desktop): identical
+rounding, padding, centered title, title-over-description hierarchy, 44px controls, 12px action
+gap, action row inside the panel, panel inside the viewport. *Measurement trap worth keeping:
+the panel entry animation starts at `scale(0.96)`, so a bounding rect read mid-animation reports
+42px for a 44px control — measure computed style or wait for the animation.*
+
+**Open — recorded, not absorbed.** Whether the client approves these specific token values as
+the standard, and whether bottom sheets should be folded in. See the v2.19 changelog.
+
 ## 8. Prototype Remediation Worklist (phased, in-place)
 
 **W1 — Tokens (`styles.css` only)**
@@ -684,6 +747,7 @@ Driven by the client confirmation **“Systemlogik Fahrzeugeingabe”**. Busines
 ## Changelog
 
 - **v3.5 — 2026-07-27 (document-upload source selection).** Stakeholder report on the tour-completion upload screen: the upload control opened the device camera directly, so an invoice already saved as a PDF on the phone could not be attached. Reflected from `driver.jsx`/`styles.css`/`store.js`/`i18n.js`: (1) **Upload-source action sheet** — after the document-type step the driver picks *Foto aufnehmen* (camera capture, images only, `capture="environment"`) or *Datei auswählen* (plain OS picker, `application/pdf` + supported images, no `capture`); the generic upload control never opens the camera (§7.4 status note, new `.upload-source-*` CSS, new `uploadSource*` / `docKind*` i18n). (2) **One shared `UploadSourcePicker`** for all three driver upload entry points and for *Replace file* — the per-screen hidden inputs were removed, not duplicated. (3) **25 MB enforced** on every store upload path, matching the limit the UI already advertised (`invoiceUploadTooLarge`). New workstream **W7** (items 24–31); closes audit v1.6 addendum U1–U4 / remediation F8. No token, DDB-contract, schema or status-model change.
+- **v3.8 — 2026-07-29.** System-wide dialog standard (new §7.14). One shared `DriverUI.Dialog` primitive for **both** surfaces plus one `.dialog-*` contract replaces nine hand-rolled console backdrops and five hand-rolled driver modals: `--r-4` rounding, 24px padding, documented widths, centered title above a centered muted description, left-aligned scrollable content, and the canonical Cancel | Primary 1:1.6 action grid — which also fixes hand-rolled rows rendering **42px** controls below the 44px floor. Icons reduced to meaningful status only (two duplicated success SVGs deduplicated). **Slide-to-confirm untouched**; no logic, validation, permission, label or legal wording changed. Bottom sheets deliberately remain a separate spec. Documented in brand-tokens ("Component token map — dialog standard", no new tokens), remediation F12, driver-screen-spec ("Dialog standard" + a per-dialog audit table). **prd.json, PRD changelog and the context pack updated.** **No data-model change.** Open: client sign-off on the token values, and bottom sheets.
 - **v3.7 — 2026-07-29.** Marketplace empty states split by filter state (new §7.11.1). The filter-related empty state no longer renders when no filter is active; a general *There are currently no open orders.* state takes its place, with no description and deliberately no *Filters* action. Selection comes from the canonical `getAppliedMarketplaceFilterCount`, the same derivation as the badge and chip row, so the two can never disagree, and apply/change/clear/reset switch states with no extra wiring. The filtered state's copy, description and action are unchanged. Documented in remediation F11 and driver-screen-spec ("Marketplace empty states"); **brand-tokens untouched** — the shared `EmptyState` primitive is reused, no new token or component. **prd.json, PRD changelog and the context pack updated.** **No data-model change.** Open: approved wording for the general message, and "orders" vs "tours" terminology across the driver surface.
 - **v3.6 — 2026-07-29.** Infopoint message detail page (new §7.13; §7.8 superseded in part). The expandable news card is replaced by a dedicated page: the list row keeps title + date + read state (unread dot + `NEW` badge + accessible name; no badge on read rows) and drops the 100-char preview, the expanded body and `aria-expanded`; the detail page replaces the Infopoint header and tab band and shows the complete body with preserved paragraph breaks, never clamped. Drill-down header **generalized** `ProfileSubpageHeader` → `DriverSubpageHeader` (CSS scope renamed; Profile visuals unchanged), so the 44px back control, centred title and focus-on-entry are shared. Optional left-edge swipe-back implemented as progressive enhancement (`touch-action: pan-y`, transform-only, reduced-motion safe) and never replaces the button. v2.16's message deep links now land on this page. Documented in brand-tokens ("Component token map — Infopoint message list + detail", no new tokens), remediation F10, driver-screen-spec ("Infopoint messages"), driver-i18n-index. **prd.json, PRD changelog and the context pack updated.** **No data-model change.** Open: iOS-only vs all-touch for the gesture.
 - **v3.5 — 2026-07-29.** Type-aware notification previews and contextual deep links (new §7.12; §7.6 superseded in part). Notification cards gain a category chip, a two-line-clamped snippet and two — and only two — interaction models: inline expandable tour previews with one contextual action, and direct deep links for Infopoint messages and documents. Protected tour fields are stripped from the preview payload rather than hidden; target availability and entitlement are resolved through one store authority shared with push taps; unavailable Marketplace orders state the reason, lose *View order* and offer *View more orders*. Push taps consume `?notify=<id>` on both driver shells (delivery still simulated). Coverage gaps closed: `document_accepted` notification implemented, newly published matching orders now in-app — **push eligibility untouched**. Documented in brand-tokens ("Component token map — driver notification cards", no new tokens), remediation F9, driver-screen-spec ("Notification cards"), driver-i18n-index. **prd.json, PRD changelog and the context pack updated** — this is a confirmed functional requirement. **Data model changed:** `user_notifications` `target_entity_type` + `target_entity_id` + two indexes. Open: six client decisions listed in §7.12.

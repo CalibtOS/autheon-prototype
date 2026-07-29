@@ -290,6 +290,91 @@ Source of truth: Figma file `CgaMrN7nmXS8xub0RxyzsJ` — nodes `8:2268` (details
 
 ---
 
+## Dialog standard (2026-07-29) — reference: "Accept tour"
+
+> **One standard, both surfaces.** Shared primitive `DriverUI.Dialog` (`driver-ui.jsx`) + the
+> `.dialog-*` CSS contract (`styles.css` "DIALOG STANDARD"). The console reaches the same primitive
+> through `DriverUI.Dialog`. **Do not hand-roll a fixed backdrop + card for a new dialog.**
+
+### The contract
+
+| Aspect | Standard | Class |
+|---|---|---|
+| Backdrop | 45% `--scrim-ink` + 2px blur, flex-centred. **Console:** `position: fixed`, 24px padding (16px ≤420px) so a panel never touches the viewport edge. **Driver:** `position: absolute` — see "Scoped to the device" below | `.dialog-backdrop` (+ `--stacked` for a dialog opened from another dialog) |
+| Panel | `--paper` on `--line`, **`var(--r-4)` rounding**, `--sh-3`, **24px padding**, bounded height `min(90vh, 760px)` | `.dialog-panel` |
+| Widths | **480** default · **560** (`--md`) · **720** (`--lg`) · **360** (`--narrow`, short success messages) | `.dialog-panel--md` / `--lg` / `--narrow` |
+| Eyebrow | optional uppercase context label, `--muted-2` | `.dialog-eyebrow` |
+| Title | **centered**, 18px desktop / **22px phone**, 600, `-0.015em` — one type step above the description | `.dialog-title` |
+| Description | **centered**, 13px, `--muted`, 1.55 | `.dialog-desc` |
+| Content | **left-aligned**, internally scrollable, 14px gap | `.dialog-content` |
+| Actions | canonical **Cancel \| Primary** `minmax(0,1fr) / minmax(0,1.6fr)` grid, 12px gap, **44px** min height; single action **spans the row**; 3+ actions wrap in a row with the same sizing; one column ≤420px | `.dialog-actions` (+ `--stack` / `--row`) |
+| Status icon | **only when meaningful** — 52px disc, `--st-accepted` / `--st-assigned` / `--st-cancelled` families | `.dialog-icon` + `.dialog-icon-success` / `-warning` / `-danger` on the panel |
+
+The action grammar is **`.sheet-foot`'s existing** 1:1.6 ratio and 44px floor, reused deliberately so
+the two never drift.
+
+### Scoped to the device, not the browser window
+
+A driver dialog belongs to the **phone**, so `.phone-shell .dialog-backdrop` is
+**`position: absolute`** (scoped to `.phone-screen`) with a 16px gutter, and
+`.phone-shell .dialog-panel` drops the desktop max-width to `100%` / `max-height: 90%`. This is the
+containment `.sheet-backdrop.center` always had, and it is load-bearing for the **framed client
+preview**: with `position: fixed` the dialog centres on the whole browser page and spills out of the
+phone mock, which is not how it appears on a device. The console keeps `position: fixed`, where the
+viewport *is* the surface.
+
+### Alignment — one structural rule, not an exception list
+
+Title and description **centre**. `.dialog-content` stays **left-aligned**, because summaries,
+key/value pairs, form fields, warnings and legal wording are unreadable centred. That is structural, so
+no dialog decides for itself and there is no approval list of exceptions to maintain.
+
+### Icons
+
+Present only for **success / warning / destructive** status. Two byte-identical inline success SVGs
+were deduplicated into one `DialogSuccessIcon`. No decorative icon exists, and removing one never
+removed information — the title and description always carry the meaning.
+
+### Bottom sheets are a separate spec
+
+`FilterSheet`, `ReportProblemSheet`, `UploadSourcePicker` and the tour-completion upload stage stay
+**bottom-anchored** with a drag-to-dismiss grabber and a leading-edge draggable header. They share only
+the action grammar. Converting them to centred dialogs would change **interaction**, not visuals.
+
+### Audit — every dialog, both surfaces
+
+| Dialog | Type | Before | Now |
+|---|---|---|---|
+| **Accept tour** (`AcceptanceModal`) — *the reference* | operational summary + binding confirm | inline `padding: 24`, inline 24px `h2`, inline summary-card style, left title | the standard's own classes; **slide-to-confirm untouched**; actions stack full width (deviation 1) |
+| Tour booked success | success | inline 26px padding, duplicated success SVG, 19px `h3` | `Dialog` + `DialogSuccessIcon`, `--narrow` |
+| Report-problem submitted (`PendingNotice`) | success | identical duplicate of the above | `Dialog` + `DialogSuccessIcon`, `--narrow` |
+| Probation limit reached | warning/info | `.confirm-sheet-panel` 22px, `Lbl` as title, flex-end single action | `Dialog`, single action spans the row |
+| Same-day overlap | confirmation | `.confirm-sheet-panel`, flex-end actions | `Dialog`, eyebrow + centered title, canonical action grid |
+| Remove document | destructive | own `.remove-doc-*` title/body/1fr-1fr actions | shared classes; **danger icon kept** (meaningful), canonical action grid |
+| Tour-document category picker | selection | inline `padding: 20`, eyebrow used **as** the title | shared classes, real `.dialog-title` |
+| Mark performed | confirm → success | slide stage + success stage | shared classes; **slide untouched** |
+| Sign out / leave page (`ConfirmSheet`) | confirmation / 3-way | `Sheet centered`, left title | title centred via `.sheet.modal .sheet-head` |
+| Document preview | content viewer | full-frame overlay, not a dialog | unchanged — deliberately not a dialog |
+| Filter · Report problem · Upload source | bottom sheets | — | unchanged (separate spec) |
+| **Console:** assign/reassign driver · cancel order | form / destructive | inline backdrop + `.card elev`, 480px, 22px, 18px left title, flex-end row | `Dialog` component |
+| **Console:** account access · driver create/edit · admin create · master data (customers · addresses · Infopoint docs ×3 · news) · register tour document · accept invoice · view invoice · finance edit | form / confirmation / destructive / summary | 9 inline backdrops, `zIndex` 100–105, widths 440/480/520/560, padding 22, `h2` 17/18, flex-end rows, **42px** controls | shared `.dialog-*` classes: 16px rounding, 24px padding, documented widths, centered titles, canonical actions, **44px** controls |
+
+### Audit finding beyond dialogs — `.btn.sm` corner radius
+
+`.btn.sm` sets `border-radius: var(--r-1)` (**4px**) while every other button uses `--r-2` (8px), which
+also contradicts the documented "moderate button rounding (`--r-2`/`--r-3`)" rule. It showed up as a
+visibly sharper corner on the notification card's *View order* primary — reported from the running
+prototype. **Fixed at the call site:** card-level and dialog-level primary actions use the full-size
+`.btn` (which also clears the 44px floor), and `.notification-card-actions` matches the dialog
+standard's 12px action gap. Tightening `--r-1` → `--r-2` on `.btn.sm` **globally** is a wider visual
+change across many surfaces — recorded here, deliberately not taken in this pass.
+
+**Verified** on the driver phone surface (401×869) and the console at desktop (1440) and tablet (834):
+identical rounding, padding, centered title, title-over-description hierarchy, 44px controls and 12px
+action gap; the action row inside the panel and the panel inside the viewport in every case.
+
+---
+
 ## Marketplace empty states (2026-07-29)
 
 > **Two states, one derivation.** Which empty state shows is decided by

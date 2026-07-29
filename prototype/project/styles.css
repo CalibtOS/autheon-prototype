@@ -587,6 +587,12 @@ hr.line {
   opacity: 0.45;
   cursor: not-allowed;
 }
+/* Small button. NOTE: `--r-1` (4px) is sharper than the `--r-2` every other
+   button uses, and sharper than the documented "moderate button rounding
+   (--r-2/--r-3)" rule — so `.btn.sm` must not be used for a card-level or
+   dialog-level primary action, where it reads as a different button family.
+   Reach for the full-size `.btn` there. (Tightening `--r-1` → `--r-2` globally
+   is a separate, wider visual change: recorded, not taken here.) */
 .btn.sm {
   padding: 7px 12px;
   font-size: 13px;
@@ -2740,6 +2746,267 @@ select.input {
   grid-column: 1 / -1;
 }
 
+/* =========================================================================
+   DIALOG STANDARD — reference: the driver "Accept tour" dialog
+   (`AcceptanceModal`, driver.jsx). One contract for every dialog on both
+   surfaces, so proportions, spacing, corner treatment, content hierarchy and
+   action placement stop drifting per dialog.
+
+   Structure, top to bottom:
+     .dialog-eyebrow?   small uppercase context label   (optional)
+     .dialog-title      the purpose, one type step up, CENTERED
+     .dialog-desc       consequence / decision / outcome, muted, CENTERED
+     .dialog-content    summaries, forms, warnings, legal — LEFT aligned and
+                        scrollable, so long content never clips the actions
+     .dialog-actions    consistent sizing, spacing and alignment
+
+   Title and description are centered BY DEFAULT. `.dialog-content` is
+   deliberately left-aligned: it carries running prose, key/value summaries,
+   legal text and form fields, which are unreadable centered. That is the one
+   content-driven alignment exception, and it is structural rather than a
+   per-dialog opt-out, so no dialog has to decide for itself.
+   ========================================================================= */
+.dialog-backdrop {
+  /* Console dialogs cover the whole viewport. */
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--scrim-ink) 45%, transparent);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Guarantees the panel can never touch the viewport edge, so actions stay
+     reachable on small screens. */
+  padding: 24px;
+  z-index: 102;
+  animation: fade 0.18s ease;
+}
+/* Inside the driver surface a dialog belongs to the DEVICE, not the browser
+   window: `position: absolute` scopes it to `.phone-screen` so the framed
+   client preview keeps the dialog inside the phone mock instead of centring it
+   on the whole page. Same containment `.sheet-backdrop` has always used — the
+   16px gutter and the full-width panel below reproduce `.sheet-backdrop.center`. */
+.phone-shell .dialog-backdrop {
+  position: absolute;
+  padding: 0 16px;
+  z-index: 50;
+}
+.dialog-panel {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  /* Same outer rounding as the reference dialog (`.sheet.modal`). */
+  border-radius: var(--r-4);
+  box-shadow: var(--sh-3);
+  width: 100%;
+  max-width: 480px;
+  /* Bounded height + an internally scrolling `.dialog-content` is what keeps
+     the action row on screen for long content instead of pushing it out. */
+  max-height: min(90vh, 760px);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 24px;
+  animation: modalIn 0.22s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+/* Two documented widths beyond the default: forms and operational summaries
+   need more room. Replaces the ad-hoc 480 / 520 / 560 inline maxWidths. */
+.dialog-panel--md {
+  max-width: 560px;
+}
+.dialog-panel--lg {
+  max-width: 720px;
+}
+/* On the phone the device width IS the constraint — a dialog fills it (minus the
+   backdrop gutter) rather than sitting at a desktop max-width inside it. */
+.phone-shell .dialog-panel {
+  max-width: 100%;
+  max-height: 90%;
+}
+.dialog-eyebrow {
+  display: block;
+  margin: 0 0 6px;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+/* Status disc. Present ONLY when the icon carries meaning — success, warning,
+   error, destructive. Same 52px disc treatment as the remove-document dialog,
+   so meaningful dialog icons look like one family. Tone comes from the
+   `--st-*` families via a modifier; there is no default colour, because a
+   dialog with no status has no icon. */
+.dialog-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  margin: 2px auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper-2);
+  color: var(--muted);
+}
+.dialog-icon--success {
+  background: var(--st-accepted-bg);
+  color: var(--st-accepted);
+}
+.dialog-icon--warning {
+  background: var(--st-assigned-bg);
+  color: var(--st-assigned);
+}
+.dialog-icon--danger {
+  background: var(--st-cancelled-bg);
+  color: var(--st-cancelled);
+}
+.dialog-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  color: var(--text);
+  text-align: center;
+}
+/* The phone surface steps the title up, exactly as `.phone-shell .sheet-head h2`
+   already does — one type step, rendered at the size each surface needs. */
+.phone-shell .dialog-title {
+  font-size: 22px;
+}
+.dialog-desc {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+  text-align: center;
+}
+.dialog-content {
+  margin-top: 18px;
+  text-align: left;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dialog-content:empty {
+  display: none;
+}
+/* Panels not composed through the `Dialog` primitive (converted in place) get
+   the same spacing rhythm below the header without a wrapper element. */
+.dialog-panel > .dialog-body {
+  margin-top: 18px;
+  overflow-y: auto;
+  min-height: 0;
+  display: grid;
+  gap: 12px;
+}
+.dialog-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+.dialog-hint {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.dialog-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--st-cancelled);
+}
+.dialog-banner {
+  font-size: 13px;
+}
+/* Success / short-message dialogs read better narrower than the 480px default. */
+.dialog-panel--narrow {
+  max-width: 360px;
+}
+/* The `Dialog` primitive renders one status disc; the tone modifier is applied
+   on the panel so a caller does not have to reach inside. */
+.dialog-icon-success > .dialog-icon {
+  background: var(--st-accepted-bg);
+  color: var(--st-accepted);
+}
+.dialog-icon-warning > .dialog-icon {
+  background: var(--st-assigned-bg);
+  color: var(--st-assigned);
+}
+.dialog-icon-danger > .dialog-icon {
+  background: var(--st-cancelled-bg);
+  color: var(--st-cancelled);
+}
+/* Reference-dialog tour summary — was an inline style object on the one dialog
+   every other dialog is measured against. */
+.accept-tour-summary {
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  padding: 14px;
+  background: var(--paper-2);
+}
+/* Action grammar is the canonical Cancel | Primary 1:1.6 grid already used by
+   `.sheet-foot`, so the two never disagree. A single action spans the row —
+   wide and centered. */
+.dialog-actions {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  gap: 12px;
+  flex-shrink: 0;
+}
+.dialog-actions > .btn {
+  min-width: 0;
+  min-height: 44px;
+  padding-inline: 12px;
+}
+.dialog-actions > .btn:only-child {
+  grid-column: 1 / -1;
+}
+/* Three actions (e.g. save / discard / keep editing) stack full width rather
+   than squeezing three columns below the touch-target floor. */
+.dialog-actions.dialog-actions--stack {
+  grid-template-columns: 1fr;
+}
+/* Three or more actions: a wrapping row instead of a squeezed grid, with the
+   same gap, the same 44px floor and the primary last. */
+.dialog-actions.dialog-actions--row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.dialog-actions.dialog-actions--row > .btn {
+  flex: 0 1 auto;
+}
+@media (max-width: 420px) {
+  .dialog-backdrop {
+    padding: 16px;
+  }
+  .dialog-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Dialogs composed from the shared `Sheet` primitive get the same centered
+   hierarchy. Bottom sheets keep their left-aligned, draggable header — the
+   grabber and the drag affordance belong on the leading edge. */
+.sheet.modal .sheet-head {
+  justify-content: center;
+  text-align: center;
+  border-bottom: 0;
+  background: var(--paper);
+  cursor: default;
+}
+.phone-shell .sheet.modal .sheet-head {
+  justify-content: center;
+  text-align: center;
+  cursor: default;
+}
+.sheet.modal .confirm-sheet-message,
+.sheet.modal .sheet-body > p:first-child:last-child {
+  text-align: center;
+}
+
 /* Driver subpage drill-down back control: the shared .detail-back-btn is 40px,
    below the documented ≥44×44 floor (design-system.md §Button,
    ui-ux-production-plan §"Touch: ≥44×44px … default on all interactive
@@ -4170,8 +4437,9 @@ select.input {
 }
 
 /* Mark performed — success modal with document upload (Figma 07/2026) */
+/* Padding comes from `.dialog-panel`; this stage centres its own body because
+   it is a success confirmation, not a content dialog. */
 .phone-shell .performed-success-modal {
-  padding: 24px 22px 22px;
   text-align: center;
 }
 .phone-shell .performed-success-scroll {
@@ -4416,9 +4684,9 @@ select.input {
 }
 
 /* Remove document confirmation (Figma 8:2545) */
+/* Padding and alignment now come from `.dialog-panel`; this keeps only what is
+   specific to the dialog — a positioning context for its close button. */
 .phone-shell .remove-doc-modal {
-  padding: 26px 22px 22px;
-  text-align: center;
   position: relative;
 }
 .phone-shell .remove-doc-close {
@@ -4433,34 +4701,6 @@ select.input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-.phone-shell .remove-doc-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: var(--st-cancelled-bg);
-  color: var(--st-cancelled);
-  margin: 6px auto 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.phone-shell .remove-doc-title {
-  margin: 0 0 8px;
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-.phone-shell .remove-doc-body {
-  margin: 0 0 18px;
-  font-size: 13.5px;
-  color: var(--muted);
-  line-height: 1.55;
-}
-.phone-shell .remove-doc-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
 }
 
 .confirm-sheet h2 {
@@ -6553,12 +6793,17 @@ select.input {
 .notification-card-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  /* Same 12px action gap the dialog standard uses. */
+  gap: 12px;
   margin-top: 12px;
 }
+/* Full-size `.btn`, deliberately NOT `.btn.sm`: the small variant drops the
+   radius to `--r-1` (4px), which read as a sharper corner than every other
+   button in the app, and it sits below the 44px touch floor. */
 .notification-card-actions .btn {
   flex: 1 1 auto;
   justify-content: center;
+  min-height: 44px;
 }
 .notification-preview {
   padding-top: var(--space-3);

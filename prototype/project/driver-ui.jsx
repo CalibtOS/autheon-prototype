@@ -262,6 +262,99 @@ function Sheet({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Dialog — the shared centered-dialog primitive for BOTH surfaces.
+//
+// Encodes the one dialog standard (styles.css "DIALOG STANDARD", reference =
+// the driver "Accept tour" dialog): outer rounding, panel padding, the
+// title/description/content/actions hierarchy, and the canonical
+// Cancel | Primary action grammar. Use this instead of hand-rolling a fixed
+// backdrop + card, so proportions and spacing cannot drift per dialog.
+//
+//   title       required — states the purpose without needing the description
+//   description optional — the consequence, the decision, the outcome
+//   eyebrow     optional — small context label above the title
+//   icon        optional — ONLY for meaningful status (success / warning /
+//               error / destructive). Never decoration.
+//   children    the dialog's own content: summaries, forms, warnings, legal.
+//               Left-aligned and internally scrollable by contract.
+//   actions     one or more buttons. One action spans the row; two use the
+//               canonical 1:1.6 Cancel | Primary grid.
+//   size        "sm" (default 480px) | "md" (560) | "lg" (720)
+//
+// Escape closes, the backdrop closes, and content clicks never bubble to it.
+// ---------------------------------------------------------------------------
+function Dialog({
+  open,
+  onClose,
+  title,
+  titleId,
+  description,
+  eyebrow,
+  icon,
+  children,
+  actions,
+  stackActions = false,
+  size = "sm",
+  className = "",
+  alertdialog = false,
+}) {
+  const generatedId = useId();
+  const tid = titleId || `dialog-title-${generatedId}`;
+  const did = `dialog-desc-${generatedId}`;
+
+  useEffect(() => {
+    if (!open || !onClose) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const sizeClass = size === "md" || size === "lg" ? ` dialog-panel--${size}` : "";
+
+  return (
+    <div className="dialog-backdrop" onClick={onClose} role="presentation">
+      <div
+        className={`dialog-panel${sizeClass} ${className}`.trim()}
+        onClick={(e) => e.stopPropagation()}
+        role={alertdialog ? "alertdialog" : "dialog"}
+        aria-modal="true"
+        aria-labelledby={title ? tid : undefined}
+        aria-describedby={description ? did : undefined}
+      >
+        {eyebrow ? <span className="dialog-eyebrow">{eyebrow}</span> : null}
+        {icon ? (
+          <div className="dialog-icon" aria-hidden="true">
+            {icon}
+          </div>
+        ) : null}
+        {title ? (
+          <h2 id={tid} className="dialog-title">
+            {title}
+          </h2>
+        ) : null}
+        {description ? (
+          <p id={did} className="dialog-desc">
+            {description}
+          </p>
+        ) : null}
+        {children ? <div className="dialog-content">{children}</div> : null}
+        {actions ? (
+          <div
+            className={`dialog-actions${stackActions ? " dialog-actions--stack" : ""}`}
+          >
+            {actions}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Drop-in grabber for ad-hoc bottom sheets that still use raw `.sheet` markup.
  * Finds the closest `.sheet` ancestor and binds pull-to-dismiss.
@@ -1345,6 +1438,7 @@ function AuthTopChrome() {
 window.DriverUI = {
   StatusPill,
   Badge,
+  Dialog,
   EmptyState,
   SkeletonJobCard,
   SkeletonList,

@@ -239,6 +239,32 @@ Because the notice is always **text-labelled** it satisfies the never-color-only
 
 ---
 
+## Component token map — dialog standard (2026-07-29)
+
+The system-wide dialog standard introduced **no new tokens**. Every value resolves to an existing
+semantic alias or an existing documented measure, which is why one contract themes correctly in light
+and dark on both surfaces.
+
+| Element | CSS | Token(s) | Class |
+|---------|-----|----------|-------|
+| Scrim | `.dialog-backdrop` | `--scrim-ink` at 45% + 2px blur — identical to `.sheet-backdrop` | [INTERNAL] |
+| Panel surface | `.dialog-panel` | `--paper` on 1px `--line`, `--sh-3` | [CLIENT] |
+| Panel rounding | `.dialog-panel` | **`--r-4`** — the reference dialog's rounding. Replaces `--r-3` from `.card`, which the console dialogs had inherited | [CLIENT] |
+| Panel padding | `.dialog-panel` | 24px (4pt scale) — replaces 20 / 22 / 26 | [CLIENT] |
+| Eyebrow | `.dialog-eyebrow` | `--text-caption`, 600, `--muted-2`, uppercase | [INTERNAL] |
+| Title | `.dialog-title` | `--text`, 18px / 22px on `.phone-shell`, 600, `-0.015em` | [CLIENT] |
+| Description | `.dialog-desc` | `--muted`, 13px, 1.55 | [CLIENT] |
+| Content | `.dialog-content` | inherits; 14px gap | [CLIENT] |
+| Reference summary card | `.accept-tour-summary` | `--paper-2` on `--line`, `--r-2` — was an inline style on the reference dialog itself | [CLIENT] |
+| Actions | `.dialog-actions` | the existing canonical `minmax(0,1fr)/minmax(0,1.6fr)` grid, 12px gap, 44px floor — shared with `.sheet-foot` | [CLIENT] |
+| Status icon disc | `.dialog-icon` | 52px disc; tone from `--st-accepted-bg`/`--st-accepted`, `--st-assigned-bg`/`--st-assigned`, `--st-cancelled-bg`/`--st-cancelled` — the same treatment the remove-document dialog already used | [CLIENT] |
+| Focus state | global `:where(button, [role="button"], a):focus-visible` | `--primary` 2px outline, 2px offset | [CLIENT] |
+
+**No off-token colour and no new radius.** The one previously off-standard value — hand-rolled action
+rows rendering **42px** controls, below the documented 44×44 floor — is corrected by the shared rule.
+
+---
+
 ## Component token map — Infopoint message list + detail (2026-07-29)
 
 Replacing the expandable message card with a dedicated detail page introduced **no new tokens**. The page reuses the
