@@ -256,7 +256,7 @@ Audit item 43 resolved 2026-07-28.
 | Mark performed flow | `MarkPerformedSheet` | confirm (slide), success empty, success + uploads | Slide to confirm → Done |
 | Remove document | `RemoveDocModal` | confirm; blocked once in review | Remove (outline danger) |
 | Report problem | `ReportProblemSheet` | 7 codes, min 10 chars, evidence | Submit |
-| Notifications | `DriverNotificationsPane` | grouped by day, unread, empty | Deep link |
+| Notifications | `DriverNotificationsPane` | grouped by day, unread, empty, tour card collapsed / expanded, unavailable order, message + document deep-link cards | Expand preview \| View order \| To my orders \| View more orders \| open message \| open document |
 | Profile | `ProfilePaneFull` | view, edit MDR, pending | Request changes |
 | Change email | Account nav row → `ChangeEmailSheet` | enter, confirm code (+resend), success, pending resume | Cancel \| Send code → Confirm change |
 | Infopoint | `Infopoint` | docs + news + help tabs, empty (swipe between tabs) | Download / Help |
@@ -286,6 +286,83 @@ Source of truth: Figma file `CgaMrN7nmXS8xub0RxyzsJ` — nodes `8:2268` (details
 - **Marketplace preview Route card** (locked detail): city + 8px dot (`--primary` start, `--ink` end), dashed `--line-dash` connectors both sides of a centered distance (14/600) over estimated duration (12, muted), PLZ beneath each city. Marketplace **cards** keep the original arrow route line.
 - Deliberate deviations from the Figma mocks: no `docx` in the accepted-types hint (store accepts PDF + images only), no simulated failed-upload/Retry row (prototype uploads resolve synchronously), review-status pills added to rows (PRD requires visible correction needs).
 - **DE length hardening (2026-07-15):** the notifications pane header is two rows (title + close, then subtitle + mark-all-read) because "Benachrichtigungen" / "Alle als gelesen markieren" cannot share one row on phone widths; the detail tab-pill row degrades to horizontal scroll (never clips) for long DE labels at ≤360px.
+
+---
+
+## Notification cards — categories, tour previews, deep links (2026-07-29)
+
+> **Two interaction models, and only two.** Tour events expand inline; Infopoint messages and documents
+> deep-link. A universal overlay or bottom sheet for every notification type is explicitly **not** the model.
+
+Components: `DriverNotificationsPane` → `DriverNotificationsList` → `NotificationTourPreview` (`driver.jsx`).
+Taxonomy and navigation come from the store (`notificationCategoryI18nKey`, `notificationKind`,
+`resolveDriverNotificationTarget`) — the view decides nothing about entitlement.
+
+### Card anatomy (every card, every type)
+
+`.notification-card` owns the border, surface and unread treatment; `.notification-row` inside it stays the only
+focusable element, so an expandable card is still one tab stop.
+
+| Element | Class | Notes |
+|---------|-------|-------|
+| Unread dot / spacer | `.notification-row-dot` / `.notification-row-dot-spacer` | Unchanged. The spacer keeps read and unread cards aligned. |
+| Category chip | `.notification-row-cat` | 10px/600 pill, `--muted` on `--paper-2` inside `--line`; flips to `--paper` on an unread card so it stays legible on the tinted surface. Text only — no colour coding per category, so nothing depends on hue. |
+| Event heading | `.notification-row-title` | 13px/600. |
+| Preview text | `.notification-row-text` | **Clamped to two lines** (`-webkit-line-clamp: 2`) so every card has a predictable height and the meta line is never pushed out of view. `white-space: pre-line` keeps the multi-line "order updated" body readable within the clamp. |
+| Date / tour meta | `.notification-row-meta.mono` | Unchanged: `createdAt · tour`. |
+| Right-hand control | `.notification-row-chevron` | `Ic.Down` rotated 180° when expanded (tour cards) or `Ic.Chev` pointing forward (deep-link cards). Vertically centred, `--muted-2`. |
+
+### Tour cards — inline expandable preview
+
+- The whole row is the toggle (`.notification-row-toggle`), carrying `aria-expanded` and `aria-controls` to the
+  panel; the panel uses the `hidden` attribute so collapsed content is out of the a11y tree entirely.
+- A screen-reader-only label states the action (`notifExpandPreview` / `notifCollapsePreview`) — the chevron is
+  decorative.
+- Expanding **never navigates.** The Notification Center stays open.
+- One card is expanded at a time; expanding also marks the notification read (same rule as any other interaction).
+- `.notification-card.expanded` takes a `--primary` border so the open card is identifiable without colour alone
+  (the chevron rotation and `aria-expanded` carry the same information).
+- Panel content (`.notification-preview`): tour number + status `Pill`, then a `dl` of Pickup / Delivery / Vehicle
+  (+ Licence plate when visible), each value with a muted sub-line (schedule, transport + registration status).
+  The red-plate notice is deliberately **not** repeated here — it stays on its five canonical surfaces
+  (`DOMAIN.md`), and the notification preview is a summary, not a sixth execution surface.
+- **Visibility.** The panel renders only the projection `store.driverNotificationJobPreview()` returns. For an
+  order the driver has not committed to, customer, company name, street, contact and plate are **absent from the
+  object**, not hidden by CSS — so no protected field can leak through a styling mistake. Those cards also show
+  `notifPreviewProtectedHint` ("… become visible after you accept").
+- **Actions** (`.notification-card-actions`): exactly one primary — *View order* for an order on the marketplace,
+  *To my orders* for a committed tour. Buttons are the design-system `btn primary sm` / `btn sm`; they stretch to
+  share the row and stack full-width at ≤359px.
+
+### Unavailable orders
+
+`.notification-unavailable` in `--danger-ink` states the reason (*booked by another service partner* / *withdrawn
+from the marketplace* / *cancelled* / *closed*). *View order* is **removed, not disabled** — matching the
+repository's convention of hiding rather than disabling unavailable actions (cf. the admin row-actions menu) — and
+*View more orders* is offered instead, opening the Marketplace.
+
+### Deep-link cards (Infopoint messages, documents)
+
+- No accordion, no panel. The row itself is the link; the chevron points forward.
+- An Infopoint card opens **that message** (News tab, expanded). A document card opens **that document's preview**
+  on its tour. The previous "Also in Infopoint → New messages" hint is gone — the card goes there instead of
+  describing where to look, and `driverNotifInfopointHint` was removed with it.
+- A card whose target is gone or no longer permitted is **not** a link: it renders static with
+  `.notification-unavailable` underneath.
+
+### Push taps
+
+`useNotificationDeepLink` (`driver.jsx`) reads `?notify=<notification id>` and both driver shells apply the result
+identically. A tour push opens the pane with that card already expanded; an Infopoint push opens the message; a
+document push opens the document. One handler covers cold start, home-screen launch and a tap on an already-open or
+backgrounded instance (`popstate` / `hashchange`). Push *delivery* is still simulated.
+
+### Responsive
+
+Phone-first inside the 392px frame. The preview `dl` is a 88px label column + value; at **≤359px** it stacks to one
+column and the action buttons go full width, so a long DE label ("Zustell-PLZ (erste 2 Ziffern)") never squeezes a
+value to two characters. Values use `overflow-wrap: anywhere`, so a long address or filename wraps instead of
+widening the pane.
 
 ---
 

@@ -239,6 +239,38 @@ Because the notice is always **text-labelled** it satisfies the never-color-only
 
 ---
 
+## Component token map — driver notification cards (2026-07-29)
+
+The notification card rework (category chip, inline tour preview, deep-link rows, unavailable state) introduced
+**no new tokens**. Every surface, border and text colour resolves to an existing semantic alias, which is why the
+cards theme correctly in light and dark without their own palette.
+
+| Element | CSS | Token(s) | Class |
+|---------|-----|----------|-------|
+| Card surface / border | `.notification-card` | `--paper` on 1px `--line`, radius `--r-2` | [CLIENT] |
+| Card surface — unread | `.notification-card.unread` | `--paper-2` (the existing unread tint, moved from the row to the card so the row and the expanded panel read as one surface) | [CLIENT] |
+| Card border — expanded | `.notification-card.expanded` | `--primary` | [CLIENT] |
+| Unread dot | `.notification-row-dot` | `--primary`, 8px | [CLIENT] |
+| Category chip | `.notification-row-cat` | `--muted` text on `--paper-2` inside `--line`; `--paper` fill on an unread card. Pill radius 999px — a chip, not a status pill, so it never borrows a `--st-*` colour | [CLIENT] |
+| Event heading | `.notification-row-title` | `--text`, 13px/600 | [CLIENT] |
+| Preview text (2-line clamp) | `.notification-row-text` | `--muted`, 12px | [CLIENT] |
+| Date / tour meta | `.notification-row-meta` | `--muted-2`, `--text-caption`, mono | [INTERNAL] |
+| Right-hand chevron | `.notification-row-chevron` | `--muted-2`; 180° rotation for the open accordion | [INTERNAL] |
+| Expanded panel divider | `.notification-card-panel` | 1px `--line` top border | [INTERNAL] |
+| Preview labels / values | `.notification-preview-row dt` / `dd` | `--muted` 11px/600 / `--text` 12px/500 | [CLIENT] |
+| Preview sub-line (schedule, transport type) | `.notification-preview-sub` | `--muted-2`, 11px | [INTERNAL] |
+| Order status inside the preview | `Pill` | Existing `--st-*` family via `AuthStore.statusCls()` — reused, never re-declared | [CLIENT] |
+| Pre-acceptance visibility hint | `.notification-preview-hint` | `--muted`, 11px | [CLIENT] |
+| Unavailable-order copy | `.notification-unavailable` | **`--danger-ink`** — the defined light/dark danger text token. Deliberately not `--st-rejected-fg`, which is **not defined** in the token set (same class of bug as audit item on `--st-ok`, `.pill.verified`) | [CLIENT] |
+| Card actions | `.notification-card-actions .btn` | Design-system `btn primary sm` / `btn sm`; no bespoke button treatment | [CLIENT] |
+| Focus state | global `:where(button, [role="button"], a):focus-visible` | `--primary` 2px outline, 2px offset | [CLIENT] |
+
+**Colour is never the only signal.** The category is a text chip (no per-category hue), the expanded state is
+carried by the chevron rotation and `aria-expanded` as well as the border, and an unavailable order is stated in
+words, not only in `--danger-ink`.
+
+---
+
 ## Component token map — driver document upload (2026-07-27)
 
 The upload-source action sheet (*Foto aufnehmen* / *Datei auswählen*) introduced **no new tokens**. Every surface,

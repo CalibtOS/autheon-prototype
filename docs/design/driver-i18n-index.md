@@ -137,6 +137,72 @@ it was reused rather than duplicated.
 
 ---
 
+## Notification keys (type-aware cards + deep links, 2026-07-29)
+
+Notification **category** labels are resolved from a DYNAMIC key —
+`t(store.notificationCategoryI18nKey(row.type))`, where the store maps `notification_type` to one of
+four category codes. A literal-scanning indexer cannot see them, so they are listed here to keep them
+from looking unused and being deleted:
+
+| Category code | Key | EN | DE |
+|---------------|-----|----|----|
+| `order` | `notifCategoryOrder` | Order | Auftrag |
+| `account` | `notifCategoryAccount` | Account | Konto |
+| `system` | `notifCategorySystem` | System | System |
+| `general_information` | `notifCategoryGeneralInfo` | General information | Allgemeine Information |
+
+The taxonomy is **derived from the type and never stored**, so adding a category means one entry in
+the store map plus one key here — never a migration.
+
+### Notification titles and bodies
+
+Notification copy is resolved **when the notification is created**, in `store.js` via the store's
+own `t2()` helper — not in the component. A literal-scanning indexer over `driver.jsx` does not see
+these either:
+
+| Event | Title key | Body key |
+|-------|-----------|----------|
+| Newly published matching order | `notifNewPublishedJobTitle` | `notifNewPublishedJobBody` (`{from}`, `{to}`) |
+| Booked order updated | `notifOrderUpdatedTitle` (`{tour}`) | `notifOrderUpdatedIntro` + per-field diff lines |
+| Cancelled by Autheon | `notifOrderCancelledByAutheonTitle` | `notifOrderCancelledByAutheonBody` (`{tour}`) |
+| Empty run recognised / not recognised | `notifEmptyRunRecognisedTitle` / `notifEmptyRunNotRecognisedTitle` | `notifEmptyRunRecognisedBody` / `notifEmptyRunNotRecognisedBody` (`{tour}`) |
+| Document accepted | `notifDocumentAcceptedTitle` | `notifDocumentAcceptedBody` (`{file}`) |
+| Document rejected | `notifDocumentRejectedTitle` | the admin's rejection reason, falling back to `notifDocumentRejectedBody` |
+| Profile change sent / approved / declined | `notifMasterDataSentTitle` / `notifMasterDataApprovedTitle` / `notifMasterDataRejectedTitle` | `notifMasterDataSentBody` / `notifMasterDataApprovedBody` / `notifMasterDataRejectedBody` |
+| Sign-in email changed | `emailChangedNotifyTitle` | `emailChangedNotifyBody` (`{email}`) |
+| New Infopoint message | the message's own subject | the message's own text (truncated) |
+
+> Copy is frozen at creation time, matching the pre-existing behaviour of every other notification in
+> the store. Production should store a message **key + params** and translate on read, so a driver who
+> switches language sees their history in the new one.
+
+### Unavailable targets
+
+A notification whose target is gone states why. One reason code → one key, resolved through a single
+map (`NOTIF_UNAVAILABLE_I18N`, `driver.jsx`) so no screen invents its own wording:
+
+| Reason | Key |
+|--------|-----|
+| `taken` (booked by another partner) | `notifUnavailableTaken` |
+| `withdrawn` (back to draft) | `notifUnavailableWithdrawn` |
+| `cancelled` | `notifUnavailableCancelled` |
+| `closed` (performed / empty-run terminal) | `notifUnavailableClosed` |
+| `unavailable` (fallback) | `notifUnavailableGeneric` |
+| `order_gone` / `message_gone` / `document_gone` | `notifOrderGone` / `notifMessageGone` / `notifDocumentGone` |
+| `not_permitted` | `notifNotPermitted` |
+| `notification_missing` | `notifTargetUnavailable` |
+
+There is deliberately **no** generic "something went wrong" string — the driver always gets the actual
+reason, the same principle the upload errors follow above.
+
+### Removed
+
+| Key | Status | Reason |
+|-----|--------|--------|
+| `driverNotifInfopointHint` | **Removed 2026-07-29** (EN + DE) | "Also in Infopoint → New messages" described where to find a message. The card now deep-links to that exact message, so the hint had no purpose and no other consumer. |
+
+---
+
 ## All driver keys in use
 
 | Key | EN | DE |
@@ -283,7 +349,6 @@ it was reused rather than duplicated.
 | `driverAcceptOverlapTitle` | Same-day tour overlap | Tour-Überschneidung am selben Tag |
 | `driverCancellationReasonLabel` | Reason | Grund |
 | `driverCode` | driver-id | Fahrer-ID |
-| `driverNotifInfopointHint` | Also in Infopoint → New messages | Auch unter Infopoint → Neue Nachrichten |
 | `driverNotifications` | Notifications | Benachrichtigungen |
 | `driverNotificationsAllRead` | All caught up | Alles gelesen |
 | `driverNotificationsEmpty` | No notifications yet. | Noch keine Benachrichtigungen. |
@@ -351,6 +416,7 @@ it was reused rather than duplicated.
 | `leavePageTitle` | Leave this order? | Auftrag verlassen? |
 | `legal` | Legal | Rechtliches |
 | `legalSub` | Terms · privacy · imprint | AGB · Datenschutz · Impressum |
+| `licensePlate` | License plate | Kennzeichen |
 | `licenseVin` | License plate and VIN | Kennzeichen und FIN |
 | `loadingJobs` | Loading jobs… | Touren werden geladen… |
 | `mailtoSubjectSupport` | AUTHEON driver support — {driverCode} | AUTHEON Fahrer-Support — {driverCode} |
@@ -382,6 +448,14 @@ it was reused rather than duplicated.
 | `noteConfirmArrival` | Please confirm arrival 15 minutes early. | Bitte Ankunft 15 Minuten vorher bestätigen. |
 | `noteReportPickupDelay` | Report any pickup delay immediately to dispatch. | Verzögerungen bei der Abholung sofort an die Disposition melden. |
 | `nothingHereYet` | Nothing here yet. | Hier ist noch nichts. |
+| `notifCollapsePreview` | Hide tour details | Tourdetails ausblenden |
+| `notifExpandPreview` | Show tour details | Tourdetails anzeigen |
+| `notifOpenDocument` | Open document | Dokument öffnen |
+| `notifOpenMessage` | Open message | Nachricht öffnen |
+| `notifPreviewProtectedHint` | Customer, full addresses and licence plate become visible after you accept. | Kunde, vollständige Adressen und Kennzeichen werden nach der Annahme sichtbar. |
+| `notifToMyOrders` | To my orders | Zu meinen Aufträgen |
+| `notifViewMoreOrders` | View more orders | Weitere Aufträge ansehen |
+| `notifViewOrder` | View order | Auftrag ansehen |
 | `notifications` | Notifications | Benachrichtigungen |
 | `notificationsSub` | Push filters mirror Portal preferences | Push-Filter spiegeln die Portal-Einstellungen |
 | `offer` | Offer | Angebot |

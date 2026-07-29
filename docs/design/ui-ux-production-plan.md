@@ -244,6 +244,8 @@ Every list/detail: skeleton (mirrors final layout, no spinners for content areas
 
 Per §6.2 — full-height page replaces the popover. Layout: day group headers (`caption`, "Today / Yesterday / 21.04."), rows = icon by category, title `body` (semibold if unread) + unread dot, snippet `caption` 1-line, timestamp caption right; tap deep-links (job/document/request); "Mark all read" text button in header; empty state "You're all caught up"; bell badge numeric per §5.
 
+**Superseded in part 2026-07-29 — see §7.12.** The card anatomy, the interaction model and the deep-link behaviour are now specified there: category is a **text chip**, not an icon; the snippet is clamped to **two** lines; tour events expand **inline** instead of only deep-linking; and message/document notifications deep-link to the exact entity. Day grouping, the unread dot, *Mark all read*, the empty state and the bell badge are unchanged.
+
 ### 7.7 Profile (`ProfilePaneFull`, L3357) — flagship fix, currently the worst screen
 
 **Current mess (measured + visual):** one 2085px scroll dumping 6 unrelated content types; 3 different section-title styles on one screen (`DAILY ACCEPTANCE LIMIT` bold mono vs `HELP & SUPPORT` small mono vs plain labels); required-field asterisks (`COMPANY *`) on **read-only** display data; email wraps mid-word ("jordan.blake@example.co m"); label column forces value column to wrap; toggles have labels _above_ instead of beside; a developer disclaimer ("Android supported in app flow. iOS requires home-screen installation…") rendered as a dashed UI box; raw native `<select>` for vehicle type while axle is a segmented control; 9 `window.confirm` calls; hotline + sign-out all inline on the same scroll.
@@ -349,6 +351,87 @@ the filter control.
    Decision: Mon–Sun calendar week containing marketplace fixture today (`05.05.`). Prototype
    `jobMatchesDriverFilters` implements `Today` + `This week`; production FE already matched that
    rule against device-local today.
+
+### 7.12 Type-aware notification previews and contextual deep links — implemented 2026-07-29
+
+**Problem.** Notification cards carried no category, so a profile decision and an order change looked
+identical while scanning. They carried no context, so the only way to learn what a tour notification
+was about was to leave the Notification Center. And navigation was coarse: an Infopoint notification
+reached the Infopoint **tab**, not the message; a document rejection reached nothing at all; a
+notification about a Marketplace order that had since been booked by someone else still offered to
+open it. There was no push-tap routing of any kind. PRD **v2.16** / Task 20; remediation **F9**.
+
+**Interaction model — two, and only two.**
+
+| Family | Model | Primary action |
+|---|---|---|
+| Tour (`new_published_job`, `order_updated`, `cancelled_by_autheon`, `empty_run_recognised`, `empty_run_not_recognised`) | inline expandable preview, control on the right; expanding never leaves the pane | *View order* (marketplace) / *To my orders* (committed tour) |
+| Infopoint message | deep-link to **that message** — no accordion | — (whole row) |
+| Document outcome (`document_accepted`, `document_rejected`) | deep-link to **that document's preview** — no accordion | — (whole row) |
+| Account (`master_data_change_*`, `email_changed`) | informational | — |
+
+A universal overlay or bottom sheet for every notification type was explicitly **rejected** and is not
+implemented.
+
+**Visibility is enforced by omission.** The preview renders only what
+`store.driverNotificationJobPreview()` returns, and for an order the driver has not committed to that
+projection has **no** `customerName`, no `plate`, no `vin`, and no `name`/`street`/`contactPerson` on
+either leg — the keys are absent from the object, not hidden with CSS. A styling regression therefore
+cannot leak a protected field. Enforce the same shape server-side in production: the API response for
+a pre-acceptance notification preview must not contain those fields (`driver_visibility_matrix`).
+
+**Entitlement and availability are resolved, never assumed.** One store authority,
+`resolveDriverNotificationTarget()`, answers *what does this notification open* and *may it still be
+opened* for both the list and a push tap, so the two can never diverge. A tour the driver has not
+committed to must still be `published`; a document requires a committed tour. An unavailable target
+states the reason, **loses** its action (removed, not disabled — the repo's convention) and offers
+*View more orders*. In production this is authorization: re-check it in the API, not only in the client.
+
+**Navigation resolves through ids** — order id, message id, document id. Never the title, body or tour
+number: those are display text, are localized, and can be edited or reused.
+
+**Push taps.** `useNotificationDeepLink()` consumes `?notify=<notification id>` and both driver shells
+apply the resolved intent identically. A tour push opens its card already expanded; an Infopoint push
+opens the message; a document push opens the document — never the generic overview. One handler covers
+cold start, home-screen launch, and a tap on an already-open or backgrounded instance
+(`popstate`/`hashchange`), because a real service-worker `notificationclick` either opens a window on
+that URL or focuses an existing client and navigates it. **Push delivery itself is still simulated** —
+what exists is the resolution + navigation seam and the URL contract a real integration plugs into.
+
+**Coverage closed against the existing matrix, without touching push.** `document_accepted` (already
+`driver_in_app: true`, never implemented) now creates its notification, and newly published matching
+Marketplace orders now appear in-app (`driver_in_app` false → true). The `driver_push` column, the
+postal-area matching rule and the direct-assign default are **byte-identical** — the in-app row is
+created for exactly the set that already receives the push, so no driver becomes newly eligible.
+
+**Production component alignment.** The card maps to a shadcn Collapsible inside a Card, with the
+category as a Badge (`variant="secondary"`) and the actions as Buttons (Appendix A). The store-side
+pieces are framework-agnostic and port unchanged: the type→category/kind table, the target resolver,
+and the stripped preview projection all become plain selectors over the notifications slice. Keep the
+derived rules: never persist the category or the interaction model, and never trust a client-side
+availability check as the only gate.
+
+**Data model.** `user_notifications` gains nullable `target_entity_type` + `target_entity_id` and two
+indexes — a stable non-tour deep-link target that `job_id` could not express. `deep_link` stays as the
+client route, derived from those ids rather than authoritative. Category and interaction model are
+deliberately **not** stored. See [`../database/logical-model.md`](../database/logical-model.md)
+"Notification targeting".
+
+**Responsive.** Phone-first. The preview `dl` is a 88px label column + value; at ≤359px it stacks to
+one column and the actions go full width, so long DE labels never squeeze a value. Values wrap with
+`overflow-wrap: anywhere`.
+
+**Accessibility.** The row is the toggle and the only tab stop, carrying `aria-expanded` +
+`aria-controls`; the collapsed panel uses the `hidden` attribute so it is out of the a11y tree; a
+screen-reader-only label states *Show/Hide tour details* because the chevron is decorative; colour is
+never the only signal (category is a text chip, the expanded state is also in the chevron rotation and
+`aria-expanded`, and an unavailable order is stated in words).
+
+**Open — recorded, not absorbed.** The final category taxonomy and event mapping, the approved visual
+design for both card states, the deep-link destination for profile approval/rejection, whether profile
+approval and document acceptance should gain push, and whether *View more orders* should be
+conditional on other orders existing. All six are client decisions; none were invented here. See the
+v2.16 changelog.
 
 ## 8. Prototype Remediation Worklist (phased, in-place)
 
@@ -528,6 +611,7 @@ Driven by the client confirmation **“Systemlogik Fahrzeugeingabe”**. Busines
 ## Changelog
 
 - **v3.5 — 2026-07-27 (document-upload source selection).** Stakeholder report on the tour-completion upload screen: the upload control opened the device camera directly, so an invoice already saved as a PDF on the phone could not be attached. Reflected from `driver.jsx`/`styles.css`/`store.js`/`i18n.js`: (1) **Upload-source action sheet** — after the document-type step the driver picks *Foto aufnehmen* (camera capture, images only, `capture="environment"`) or *Datei auswählen* (plain OS picker, `application/pdf` + supported images, no `capture`); the generic upload control never opens the camera (§7.4 status note, new `.upload-source-*` CSS, new `uploadSource*` / `docKind*` i18n). (2) **One shared `UploadSourcePicker`** for all three driver upload entry points and for *Replace file* — the per-screen hidden inputs were removed, not duplicated. (3) **25 MB enforced** on every store upload path, matching the limit the UI already advertised (`invoiceUploadTooLarge`). New workstream **W7** (items 24–31); closes audit v1.6 addendum U1–U4 / remediation F8. No token, DDB-contract, schema or status-model change.
+- **v3.5 — 2026-07-29.** Type-aware notification previews and contextual deep links (new §7.12; §7.6 superseded in part). Notification cards gain a category chip, a two-line-clamped snippet and two — and only two — interaction models: inline expandable tour previews with one contextual action, and direct deep links for Infopoint messages and documents. Protected tour fields are stripped from the preview payload rather than hidden; target availability and entitlement are resolved through one store authority shared with push taps; unavailable Marketplace orders state the reason, lose *View order* and offer *View more orders*. Push taps consume `?notify=<id>` on both driver shells (delivery still simulated). Coverage gaps closed: `document_accepted` notification implemented, newly published matching orders now in-app — **push eligibility untouched**. Documented in brand-tokens ("Component token map — driver notification cards", no new tokens), remediation F9, driver-screen-spec ("Notification cards"), driver-i18n-index. **prd.json, PRD changelog and the context pack updated** — this is a confirmed functional requirement. **Data model changed:** `user_notifications` `target_entity_type` + `target_entity_id` + two indexes. Open: six client decisions listed in §7.12.
 - **v3.4 — 2026-07-27.** Marketplace applied-filter count badge audited and hardened (new §7.11). The feature was already implemented and behaviourally correct (committed-state derived, hidden at zero, sort- and result-count independent, no duplicated state); this pass replaced the bespoke `.tabbar-badge` span with the shared `Badge` primitive on one shared `.header-btn-badge` anchor, extracted the canonical pure selectors `getAppliedMarketplaceFilterCount` / `getAppliedMarketplaceFilters` and the `MarketplaceFilterButton` component, and replaced the concatenated `aria-label` with pluralized `filtersApplied_one/_other` resolved by a new `tPlural` i18n helper. Added the feature's first coverage: 12 unit, 19 integration, 2 E2E, a 14-story states gallery and 4 new visual baselines. Documented in brand-tokens ("Count badges on header icon buttons"), audit v1.5 (items 39–43), remediation R32, driver-screen-spec ("Applied-filter count badge"), driver-i18n-index ("Marketplace filter keys" + pluralization). **prd.json, PRD changelog and the context pack updated** — this is a confirmed functional Marketplace requirement. **No data-model change.** Open: audit item 43 (`"This week"` preset counts but does not filter).
 - **v3.3 — 2026-07-26.** Primary-screen header consolidation (client decision, Figma review): new §7.10 **Shared primary-screen header** documenting `DriverScreenHeader`; the §7.9 rule limiting the welcome header + bell to Marketplace is **withdrawn**. Marketplace greeting/avatar block removed (not relocated); `welcomeBack` i18n key deleted; all four primary screen titles aligned by one shared padding declaration; notification action added to My Orders, Infopoint and Profile reusing the existing shell handler and store count; notification button reuses the `.header-btn` treatment so its border/radius/size/surface/shadow are identical to sort and filter (`12px` literal replaced with `--r-3`); Marketplace sort/filter + filter chips moved into the results area per the client's agreed Marketplace structure; `.header-btn` gains a `:focus-visible` ring and a scoped transition. New: header states gallery + two test specs. Documented in brand-tokens ("Header icon buttons"), audit v1.3 addendum (items 36–38), remediation R28–R31, driver-screen-spec ("Primary-screen header"), driver-i18n-index (header key contract). **No PRD or context-pack change** — none of these were normative product requirements. No data-model change.
 
