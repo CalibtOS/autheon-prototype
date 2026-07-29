@@ -743,9 +743,10 @@ function LoginForm({
   forgotPasswordLabel,
   onForgotPassword,
   onSubmit, // (email, password) => { ok, reason }
+  defaultEmail = "", // demo autofill only — real login has no prefilled email
 }) {
   const { t } = useI18n();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});

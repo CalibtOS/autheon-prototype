@@ -6965,6 +6965,7 @@ const DriverLoginScreen = ({ standalone = false }) => {
           onSubmit={(email, password) =>
             store.loginDriver({ email, password })
           }
+          defaultEmail="jordan.blake@example.com"
         />
       </>
     );
