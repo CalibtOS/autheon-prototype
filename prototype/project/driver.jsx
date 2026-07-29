@@ -1237,9 +1237,22 @@ const JobCardBody = ({ job }) => {
 // =========================================================================
 // PORTAL (job list)
 // =========================================================================
-const JobCard = ({ job, onOpen }) => {
+const JobCard = ({ job, onOpen, enterIndex }) => {
+  const enterStyle =
+    typeof enterIndex === "number" && enterIndex >= 0 && enterIndex < 4
+      ? { ["--list-enter-i"]: enterIndex }
+      : undefined;
+  const enterClass =
+    typeof enterIndex === "number" && enterIndex >= 0 && enterIndex < 4
+      ? " list-enter"
+      : "";
   return (
-    <button type="button" className="jobcard-btn" onClick={() => onOpen(job)}>
+    <button
+      type="button"
+      className={"jobcard-btn" + enterClass}
+      style={enterStyle}
+      onClick={() => onOpen(job)}
+    >
       {/* Client decision 2026-07-14: marketplace cards hide tour number and
           status (all marketplace cards are Published); both stay on My Jobs */}
       <JobCardBody job={job} />
@@ -1449,8 +1462,8 @@ const Portal = ({
           </div>
         ) : (
           <>
-            {ordered.map((j) => (
-              <JobCard key={j.id} job={j} onOpen={onOpenJob} />
+            {ordered.map((j, index) => (
+              <JobCard key={j.id} job={j} onOpen={onOpenJob} enterIndex={index} />
             ))}
             {ordered.length === 0 && (
               <EmptyState
@@ -3974,11 +3987,21 @@ const MyJobs = ({ onOpen, onOpenNotifications, notificationsOpen = false }) => {
                 description: t("emptyRunReviewTab"),
               };
 
-  const renderJobCard = (job) => (
+  const renderJobCard = (job, enterIndex) => {
+    const enterStyle =
+      typeof enterIndex === "number" && enterIndex >= 0 && enterIndex < 4
+        ? { ["--list-enter-i"]: enterIndex }
+        : undefined;
+    const enterClass =
+      typeof enterIndex === "number" && enterIndex >= 0 && enterIndex < 4
+        ? " list-enter"
+        : "";
+    return (
     <button
       key={job.id}
       type="button"
-      className="jobcard-btn"
+      className={"jobcard-btn" + enterClass}
+      style={enterStyle}
       onClick={() => onOpen(job)}
     >
       {job.status === "assigned" ? (
@@ -4031,6 +4054,7 @@ const MyJobs = ({ onOpen, onOpenNotifications, notificationsOpen = false }) => {
       ) : null}
     </button>
   );
+  };
 
   const renderJobsPane = (tabId) => {
     const jobs = buildList(tabId);
@@ -4045,7 +4069,7 @@ const MyJobs = ({ onOpen, onOpenNotifications, notificationsOpen = false }) => {
             onAction={empty.onAction}
           />
         )}
-        {jobs.map(renderJobCard)}
+        {jobs.map((job, index) => renderJobCard(job, index))}
         {jobs.length > 0 ? (
           <div className="list-end">— {t("endOfList")} —</div>
         ) : null}
@@ -4973,9 +4997,10 @@ const ProfilePane = () => {
         [t("equipment"), t("equipmentSub")],
         [t("notifications"), t("notificationsSub")],
         [t("legal"), t("legalSub")],
-      ].map(([label, sub]) => (
+      ].map(([label, sub], index) => (
         <div
           key={label}
+          className={index < 4 ? "list-enter" : undefined}
           style={{
             display: "flex",
             alignItems: "center",
@@ -4983,6 +5008,7 @@ const ProfilePane = () => {
             padding: "16px 0",
             borderBottom: "1px solid var(--line)",
             cursor: "pointer",
+            ...(index < 4 ? { ["--list-enter-i"]: index } : null),
           }}
         >
           <div>
@@ -5064,7 +5090,14 @@ const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
         <section key={day}>
           <h4 className="notification-day-header">{day}</h4>
           <ul className="notifications-day-rows">
-            {dayRows.map((row) => {
+            {dayRows.map((row, rowIndex) => {
+              const flatIndex = grouped
+                .slice(0, grouped.findIndex(([d]) => d === day))
+                .reduce((n, [, rows]) => n + rows.length, 0) + rowIndex;
+              const enterClass =
+                flatIndex < 4 ? " list-enter" : "";
+              const enterStyle =
+                flatIndex < 4 ? { ["--list-enter-i"]: flatIndex } : undefined;
               const actionable = isActionable(row);
               const content = (
                 <>
@@ -5090,7 +5123,7 @@ const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
               );
 
               return (
-                <li key={row.id}>
+                <li key={row.id} className={enterClass.trim() || undefined} style={enterStyle}>
                   {actionable ? (
                     <button
                       type="button"
@@ -5514,7 +5547,7 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
   );
 };
 
-const DriverProbationCard = () => {
+const DriverProbationCard = ({ enterIndex }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const summary = store.getDriverProbationSummary();
@@ -5525,9 +5558,17 @@ const DriverProbationCard = () => {
         Math.round((summary.performedCount / summary.limit) * 100),
       )
     : 0;
+  const enter =
+    typeof enterIndex === "number" && enterIndex >= 0 && enterIndex < 4;
 
   return (
-    <div className="section-card daily-limit-card probation-card">
+    <div
+      className={
+        "section-card daily-limit-card probation-card" +
+        (enter ? " list-enter" : "")
+      }
+      style={enter ? { ["--list-enter-i"]: enterIndex } : undefined}
+    >
       <div className="row-between">
         <h2 className="section-title">{t("driverProbationProfileTitle")}</h2>
         <span className={`pill ${summary.atLimit ? "warn" : "accepted"}`}>
@@ -5729,33 +5770,45 @@ window.AutheonTheme = { subscribe: subscribeTheme, useTheme };
 
 // Full-row navigation entry: left icon, label (+ optional supporting text),
 // trailing chevron. The whole row is a single accessible button.
-const ProfileNavRow = ({ icon: Icon, label, sub, onClick, rowId }) => (
-  <button
-    type="button"
-    className="profile-nav-row"
-    onClick={onClick}
-    data-profile-row={rowId}
-  >
-    <span className="profile-nav-row-icon" aria-hidden="true">
-      <Icon />
-    </span>
-    <span className="profile-nav-row-text">
-      <span className="profile-nav-row-label">{label}</span>
-      {sub ? <span className="profile-nav-row-sub">{sub}</span> : null}
-    </span>
-    <span className="profile-nav-row-chevron" aria-hidden="true">
-      <Ic.Chev />
-    </span>
-  </button>
-);
+const ProfileNavRow = ({ icon: Icon, label, sub, onClick, rowId, enterIndex }) => {
+  const enter =
+    typeof enterIndex === "number" && enterIndex >= 0 && enterIndex < 4;
+  return (
+    <button
+      type="button"
+      className={"profile-nav-row" + (enter ? " list-enter" : "")}
+      style={enter ? { ["--list-enter-i"]: enterIndex } : undefined}
+      onClick={onClick}
+      data-profile-row={rowId}
+    >
+      <span className="profile-nav-row-icon" aria-hidden="true">
+        <Icon />
+      </span>
+      <span className="profile-nav-row-text">
+        <span className="profile-nav-row-label">{label}</span>
+        {sub ? <span className="profile-nav-row-sub">{sub}</span> : null}
+      </span>
+      <span className="profile-nav-row-chevron" aria-hidden="true">
+        <Ic.Chev />
+      </span>
+    </button>
+  );
+};
 
 // Labelled group of navigation rows (KONTO / EINSTELLUNGEN / HILFE).
-const ProfileGroup = ({ label, children }) => (
-  <section className="profile-group">
-    <h2 className="profile-group-label">{label}</h2>
-    <div className="section-card profile-nav-card">{children}</div>
-  </section>
-);
+const ProfileGroup = ({ label, children, enterIndex }) => {
+  const enter =
+    typeof enterIndex === "number" && enterIndex >= 0 && enterIndex < 4;
+  return (
+    <section
+      className={"profile-group" + (enter ? " list-enter" : "")}
+      style={enter ? { ["--list-enter-i"]: enterIndex } : undefined}
+    >
+      <h2 className="profile-group-label">{label}</h2>
+      <div className="section-card profile-nav-card">{children}</div>
+    </section>
+  );
+};
 
 // Deferred subpage shell (Feedback / Report an error): a visually complete
 // prototype form whose submit is intentionally inert — no backend workflow yet.
@@ -6327,7 +6380,10 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
           />
           <div className="scroll scroll-body" ref={scrollBodyRef}>
             {/* Identity card — avatar, name, partner id */}
-            <div className="section-card profile-identity-card">
+            <div
+              className="section-card profile-identity-card list-enter"
+              style={{ ["--list-enter-i"]: 0 }}
+            >
               <span className="avatar">{initials}</span>
               <div className="flex-1-min-0">
                 <div className="profile-identity-name">{d?.name}</div>
@@ -6338,10 +6394,13 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
             </div>
 
             {/* Probation progress — second on the main list while on probation */}
-            <DriverProbationCard />
+            <DriverProbationCard enterIndex={1} />
 
             {/* Summary card — status, joined, log out */}
-            <div className="section-card profile-summary-card">
+            <div
+              className="section-card profile-summary-card list-enter"
+              style={{ ["--list-enter-i"]: 2 }}
+            >
               <div className="profile-summary-row">
                 <span
                   className={`profile-summary-icon${statusActive ? " is-status" : ""}`}
@@ -6392,7 +6451,7 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
               </button>
             </div>
 
-            <ProfileGroup label={t("profileGroupAccount")}>
+            <ProfileGroup label={t("profileGroupAccount")} enterIndex={3}>
               <ProfileNavRow
                 icon={Ic.TabUser}
                 label={t("profileNavBasicData")}
@@ -6556,10 +6615,15 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
             {paneId === "documents" ? (
           <>
             <div className="infopoint-card">
-              {docs.map((d) => (
+              {docs.map((d, index) => (
                 <div
                   key={d.id}
-                  className="infopoint-doc-row"
+                  className={
+                    "infopoint-doc-row" + (index < 4 ? " list-enter" : "")
+                  }
+                  style={
+                    index < 4 ? { ["--list-enter-i"]: index } : undefined
+                  }
                 >
                   <div className="infopoint-news-icon read" style={{ color: "var(--primary)" }}>
                     <Ic.Pdf />
@@ -6657,14 +6721,19 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
               </div>
             ) : (
               <div className="infopoint-card">
-                {news.map((n) => {
+                {news.map((n, index) => {
                   const unread = !n.readBy.includes(readerId);
                   const expanded = openNewsId === n.id;
                   return (
                     <button
                       key={n.id}
                       type="button"
-                      className="infopoint-news-row"
+                      className={
+                        "infopoint-news-row" + (index < 4 ? " list-enter" : "")
+                      }
+                      style={
+                        index < 4 ? { ["--list-enter-i"]: index } : undefined
+                      }
                       onClick={() => openNews(n)}
                       aria-expanded={expanded}
                       aria-label={n.title}

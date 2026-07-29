@@ -282,6 +282,32 @@
   }
 }
 
+/* List entrance — matches autheon-mobile.nxt-app.pages.dev portalCardEnter
+   (Demo Login → Portal): opacity 0→1, translateY(8px)→0, 320ms,
+   cubic-bezier(0.16, 1, 0.3, 1), delay index*40ms, first 4 items only. */
+@keyframes list-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.list-enter {
+  opacity: 0;
+  animation: list-enter 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--list-enter-i, 0) * 40ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .list-enter {
+    opacity: 1;
+    animation: none;
+    transform: none;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

@@ -575,10 +575,15 @@ const Overview = ({
             </tr>
           </thead>
           <tbody>
-            {paged.map((j) => (
+            {paged.map((j, index) => (
               <tr
                 key={j.id}
-                className={"row " + (j.id === freshId ? "fresh" : "")}
+                className={
+                  "row " +
+                  (j.id === freshId ? "fresh" : "") +
+                  (index < 4 ? " list-enter" : "")
+                }
+                style={index < 4 ? { ["--list-enter-i"]: index } : undefined}
                 onClick={() => onOpen(j)}
               >
                 <td>
@@ -3846,8 +3851,14 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                   {t("newOrderAdminDocsExisting")}
                 </div>
                 <ul className="doc-card-list">
-                  {existingAdminDocs.map((doc) => (
-                    <li key={doc.id} className="doc-card">
+                  {existingAdminDocs.map((doc, index) => (
+                    <li
+                      key={doc.id}
+                      className={"doc-card" + (index < 4 ? " list-enter" : "")}
+                      style={
+                        index < 4 ? { ["--list-enter-i"]: index } : undefined
+                      }
+                    >
                       <div className="doc-card-head">
                         <span
                           className="mono"
@@ -3886,8 +3897,14 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
             </div>
             {adminAttachFiles.length ? (
               <ul className="doc-card-list">
-                {adminAttachFiles.map((item) => (
-                  <li key={item.id} className="doc-card">
+                {adminAttachFiles.map((item, index) => (
+                  <li
+                    key={item.id}
+                    className={"doc-card" + (index < 4 ? " list-enter" : "")}
+                    style={
+                      index < 4 ? { ["--list-enter-i"]: index } : undefined
+                    }
+                  >
                     <div className="doc-card-head">
                       <span className="mono" style={{ wordBreak: "break-all" }}>
                         {item.fileName}
@@ -4638,8 +4655,12 @@ const DriversPane = ({ showToast }) => {
             </tr>
           </thead>
           <tbody>
-            {store.getDrivers().map((d) => (
-              <tr key={d.id}>
+            {store.getDrivers().map((d, index) => (
+              <tr
+                key={d.id}
+                className={index < 4 ? "list-enter" : undefined}
+                style={index < 4 ? { ["--list-enter-i"]: index } : undefined}
+              >
                 <td>
                   <strong>{d.name}</strong>
                   <div
@@ -4903,12 +4924,14 @@ const StaffPane = ({ showToast }) => {
             <Ic.Plus /> {t("adminUsersNewAdmin")}
           </button>
         </div>
-        {store.getAdmins().map((a) => (
+        {store.getAdmins().map((a, index) => (
           <div
             key={a.id}
+            className={index < 4 ? "list-enter" : undefined}
             style={{
               padding: "14px 0",
               borderBottom: "1px solid var(--line)",
+              ...(index < 4 ? { ["--list-enter-i"]: index } : null),
             }}
           >
             <div
@@ -5563,8 +5586,12 @@ const CustomersPane = ({ showToast }) => {
             </tr>
           </thead>
           <tbody>
-            {customers.map((op) => (
-              <tr key={op.id}>
+            {customers.map((op, index) => (
+              <tr
+                key={op.id}
+                className={index < 4 ? "list-enter" : undefined}
+                style={index < 4 ? { ["--list-enter-i"]: index } : undefined}
+              >
                 <td>
                   <strong>{op.name}</strong>
                   <div className="label" style={{ fontSize: 9.5 }}>
@@ -5823,8 +5850,12 @@ const AddressesPane = ({ showToast }) => {
             </tr>
           </thead>
           <tbody>
-            {list.map((a) => (
-              <tr key={a.id}>
+            {list.map((a, index) => (
+              <tr
+                key={a.id}
+                className={index < 4 ? "list-enter" : undefined}
+                style={index < 4 ? { ["--list-enter-i"]: index } : undefined}
+              >
                 <td>
                   <strong>{a.label}</strong>
                   <div className="label mono" style={{ fontSize: 9.5 }}>
@@ -6172,8 +6203,14 @@ const InfopointPane = ({ showToast }) => {
                 </tr>
               </thead>
               <tbody>
-                {docs.map((d) => (
-                  <tr key={d.id}>
+                {docs.map((d, index) => (
+                  <tr
+                    key={d.id}
+                    className={index < 4 ? "list-enter" : undefined}
+                    style={
+                      index < 4 ? { ["--list-enter-i"]: index } : undefined
+                    }
+                  >
                     <td>
                       <strong>{d.title}</strong>
                     </td>
@@ -6325,8 +6362,14 @@ const InfopointPane = ({ showToast }) => {
                 </tr>
               </thead>
               <tbody>
-                {news.map((n) => (
-                  <tr key={n.id}>
+                {news.map((n, index) => (
+                  <tr
+                    key={n.id}
+                    className={index < 4 ? "list-enter" : undefined}
+                    style={
+                      index < 4 ? { ["--list-enter-i"]: index } : undefined
+                    }
+                  >
                     <td>
                       <strong>{n.title}</strong>
                       <div
@@ -7196,12 +7239,18 @@ const TourBillingPane = ({
               </td>
             </tr>
           ) : (
-            visibleUploads.map((u) => {
+            visibleUploads.map((u, index) => {
               const actions = AuthStore.tourDocumentReviewActions(
                 u.reviewStatus,
               );
               return (
-                <tr key={u.id}>
+                <tr
+                  key={u.id}
+                  className={index < 4 ? "list-enter" : undefined}
+                  style={
+                    index < 4 ? { ["--list-enter-i"]: index } : undefined
+                  }
+                >
                   <td>
                     <input
                       type="checkbox"
@@ -7833,11 +7882,15 @@ const FinancePane = ({
           </tr>
         </thead>
         <tbody>
-          {jobs.map((j) => (
+          {jobs.map((j, index) => (
             <tr
               key={j.id}
               data-job-id={j.id}
-              className={highlightJobId === j.id ? "fin-row-highlight" : ""}
+              className={
+                (highlightJobId === j.id ? "fin-row-highlight" : "") +
+                (index < 4 ? " list-enter" : "")
+              }
+              style={index < 4 ? { ["--list-enter-i"]: index } : undefined}
             >
               <td className="mono">{j.tour}</td>
               <td>{j.customer}</td>
@@ -8132,7 +8185,11 @@ const AuditPane = ({ showToast }) => {
         </thead>
         <tbody>
           {store.getAuditLog().map((a, i) => (
-            <tr key={i}>
+            <tr
+              key={i}
+              className={i < 4 ? "list-enter" : undefined}
+              style={i < 4 ? { ["--list-enter-i"]: i } : undefined}
+            >
               <td className="mono">{a.at}</td>
               <td>
                 <strong>{a.action}</strong>
