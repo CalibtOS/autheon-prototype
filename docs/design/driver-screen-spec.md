@@ -404,6 +404,19 @@ Present only for **success / warning / destructive** status. Two byte-identical 
 were deduplicated into one `DialogSuccessIcon`. No decorative icon exists, and removing one never
 removed information — the title and description always carry the meaning.
 
+**Success is the one tone that is not a disc (2026-07-30).** `DialogSuccessIcon` is now a standalone
+56px checkmark with a gradient stroke over a soft radial bloom, and `.dialog-icon-success` drops the
+52px disc. Warning and destructive **keep** their discs: a small `!` or `×` reads as an alert only
+inside a container, so the disc is still load-bearing there. This is a success-only deviation from the
+disc treatment, not the disc standard being retired.
+
+The mark-performed success stage was the third success surface and still carried its own copy of the
+old SVG; it now renders the same `DialogSuccessIcon`, so there is again **one** success glyph rather
+than a shared primitive plus a divergent duplicate. Gradient stops come from tokens through CSS
+classes (`var()` is not resolved inside an SVG presentation attribute), and the gradient id is scoped
+per instance with `useId` so several marks can share one DOM without capturing each other's paint
+server. The glyph stays `aria-hidden` — the title and description still carry the meaning.
+
 ### Bottom sheets are a separate spec
 
 `FilterSheet`, `ReportProblemSheet`, `UploadSourcePicker` and the tour-completion upload stage stay
@@ -415,13 +428,13 @@ the action grammar. Converting them to centred dialogs would change **interactio
 | Dialog | Type | Before | Now |
 |---|---|---|---|
 | **Accept tour** (`AcceptanceModal`) — *the reference* | operational summary + binding confirm | inline `padding: 24`, inline 24px `h2`, inline summary-card style, left title | the standard's own classes; **slide-to-confirm untouched**; actions stack full width (deviation 1) |
-| Tour booked success | success | inline 26px padding, duplicated success SVG, 19px `h3` | `Dialog` + `DialogSuccessIcon`, `--narrow` |
-| Report-problem submitted (`PendingNotice`) | success | identical duplicate of the above | `Dialog` + `DialogSuccessIcon`, `--narrow` |
+| Tour booked success | success | inline 26px padding, duplicated success SVG, 19px `h3` | `Dialog` + `DialogSuccessIcon`, `--narrow`; **discless gradient mark** (2026-07-30) |
+| Report-problem submitted (`PendingNotice`) | success | identical duplicate of the above | `Dialog` + `DialogSuccessIcon`, `--narrow`; **discless gradient mark** (2026-07-30) |
 | Probation limit reached | warning/info | `.confirm-sheet-panel` 22px, `Lbl` as title, flex-end single action | `Dialog`, single action spans the row |
 | Same-day overlap | confirmation | `.confirm-sheet-panel`, flex-end actions | `Dialog`, eyebrow + centered title, canonical action grid |
 | Remove document | destructive | own `.remove-doc-*` title/body/1fr-1fr actions | shared classes; **danger icon kept** (meaningful), canonical action grid |
 | Tour-document category picker | selection | inline `padding: 20`, eyebrow used **as** the title | shared classes, real `.dialog-title` |
-| Mark performed | confirm → success | slide stage + success stage | shared classes; **slide untouched** |
+| Mark performed | confirm → success | slide stage + success stage | shared classes; **slide untouched**; success stage's duplicate SVG replaced by `DialogSuccessIcon` (2026-07-30) |
 | Sign out / leave page (`ConfirmSheet`) | confirmation / 3-way | `Sheet centered`, left title | title centred via `.sheet.modal .sheet-head` |
 | Document preview | content viewer | full-frame overlay, not a dialog | unchanged — deliberately not a dialog |
 | Filter · Report problem · Upload source | bottom sheets | — | unchanged (separate spec) |

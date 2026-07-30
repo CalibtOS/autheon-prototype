@@ -4,7 +4,7 @@
 
 **Canonical file:** `docs/requirements/prd.json`
 
-> **Scope of this file:** the single **v2.26** entry. Baseline is **v2.25** (notification-open auditing removed from scope, 2026-07-29 — see [`prd-changelog-since-2026-07-29.md`](prd-changelog-since-2026-07-29.md)).
+> **Scope of this file:** the **v2.26** entry, plus later addenda folded under the current **v2.31** umbrella rather than taking their own version numbers. Baseline is **v2.25** (notification-open auditing removed from scope, 2026-07-29 — see [`prd-changelog-since-2026-07-29.md`](prd-changelog-since-2026-07-29.md)).
 
 ---
 
@@ -250,3 +250,85 @@ Infopoint documents, invoices, finances, permissions, and the `pdf_viewed` /
 `pdf_downloaded` contract from v2.19/v2.25. The seeded sample PDF remains in
 place for tour documents and Infopoint documents, which are uploads rather than
 generated documents.
+
+---
+
+## v2.31 addendum — Driver success checkmark refined (2026-07-30)
+
+**Numbering note:** this change was authored as “PRD v2.26” before rebasing onto `main`, where v2.26–v2.31 were already taken by unrelated entries. It is recorded here as an addendum under **v2.31** — the PRD version is deliberately *not* bumped — and the transport-order-PDF v2.26 entry above is unchanged.
+
+**Baseline:** PRD v2.31
+**Source:** work order "Refine the success checkmark visual", plus its approved reference image (the German *"Tour erfolgreich durchgeführt."* success screen).
+**Type:** design refinement of an existing resolved default (`dialog_standard_v1`). Not a new feature, not a new task.
+**Data model / API:** **UNCHANGED.** No field, selector, store method, endpoint, schema, DTO or migration is involved. Presentation only.
+
+### 1. Previous behaviour (v2.25, as implemented)
+
+Driver success states rendered a checkmark **inside a 52px circular disc**. Three surfaces existed, and they had already partly diverged:
+
+| Surface | Component | Treatment before |
+| --- | --- | --- |
+| Tour booked success | `TourBookedSuccessSheet` | `Dialog` + shared `DialogSuccessIcon`, 26px glyph, `currentColor`, inside `.dialog-icon` — a 52px disc tinted `--st-accepted-bg` with an `--st-accepted` glyph |
+| Report-problem / empty-run / SP-cancel success | `PendingNotice` | identical to the above |
+| Mark-performed success stage | `MarkPerformedSheet` (`stage === "success"`) | **its own duplicate** of the same SVG (`strokeWidth` 2.4 instead of 2.2) inside `.performed-success-check` — a 52px disc **filled** solid `--st-accepted` with a white glyph **plus** an 8px `box-shadow` outer ring |
+
+So the "one shared success icon" the v2.x dialog standardization introduced was in fact a shared primitive **plus** a divergent copy with a different disc treatment.
+
+### 2. New behaviour
+
+The success checkmark is a **standalone gradient mark with no circle, disc, badge or background container.**
+
+- The glyph grows from **26px to 56px**, inside an **80px** box.
+- Its stroke is painted by a **linear gradient** running diagonally from the mark's elbow to its long arm's tip: `--success-mark-from` → `--success-mark-mid` → `--success-mark-to`.
+- A **soft radial bloom** sits behind the mark, `--success-glow` fading to `--success-glow-fade`.
+- All three surfaces now render the **one** `DialogSuccessIcon`. The mark-performed stage's duplicate SVG, its filled disc and its 8px ring are all removed, so there is again a single success glyph rather than a primitive plus a copy.
+
+**Confirmed system-wide, not local.** The work order pinned its comment to one screen (mark-performed). Whether to change only that screen or all success states was escalated during the affected-location gate and the client chose **all three**.
+
+### 3. What deliberately did NOT change
+
+- **The warning and destructive discs stay.** `dialog_standard_v1`'s 52px disc still applies to the `--st-assigned` (warning) and `--st-cancelled` (destructive) tones. Success is a content-driven deviation: a grown gradient checkmark carries the status on its own, whereas a small `!` or `×` reads as an alert only inside a container. The disc standard is **not** retired.
+- **`--st-accepted` is neither reused for the mark nor re-toned.** The reference mark is a lighter, warmer green (`#54B765`) than the `#059669` Accepted status semantic. Reusing the status token would have moved the mark away from the approved reference; re-toning `--st-accepted` to match would have repainted every Accepted pill, badge and label on **both** surfaces. A narrowly scoped token family was added instead, and `--st-accepted` keeps its status meaning untouched.
+- **Copy, workflow and behaviour.** All success titles/bodies and i18n keys, dialog workflow, status transitions, actions, dismissal, completion logic and the slide-to-confirm gesture are unchanged.
+- **Accessibility.** The glyph remains `aria-hidden` and decorative; the title and description still carry the meaning, so nothing was added to the accessibility tree.
+- **Admin Backend.** Untouched — it has no `.dialog-icon` or success-check usage at all.
+
+### 4. Two conflicts between the work order's prose and the reference image
+
+Both were escalated rather than silently resolved, and the **image won both**:
+
+| Conflict | Work-order prose | Reference image (measured) | Decision |
+| --- | --- | --- | --- |
+| Gradient endpoints | "smoothest practical **black-to-green** gradient" | **No black anywhere.** Darkest sampled stroke pixel is `#54B765`; the ramp runs green → lighter green, deepest at the elbow, lightest at the long arm's tip | Follow the image. "Black-to-green" is **not** implemented. A literal black end would also have inverted or been lost on the dark theme, where `--brand-text` is `#FFFFFF` |
+| Bloom behind the mark | "Do not add decorative circles, badges, discs, or **background containers**" | A soft green radial bloom **is** present, peaking around `#E0F8E8` | Keep the bloom, as an **edgeless** radial fade with no hard boundary, so it reads as light behind the mark rather than as the disc that was removed |
+
+### 5. New tokens
+
+Narrowly scoped to the success mark and its bloom. Sampled from the approved reference.
+
+| Token | Light | Dark | Purpose |
+| --- | --- | --- | --- |
+| `--success-mark-from` | `#54B765` | inherits light | Stroke at the mark's elbow — deepest green |
+| `--success-mark-mid` | `#6BC67B` | inherits light | Mid stop, keeps the ramp faithful to the reference |
+| `--success-mark-to` | `#8FDE9C` | inherits light | Stroke at the long arm's tip — lightest green |
+| `--success-glow` | `rgba(87,221,132,0.18)` | `rgba(87,221,132,0.22)` | Bloom centre. The **only** value re-tuned for dark: a tint that lifts on white needs more presence on `--paper` `#2C2C2E` |
+| `--success-glow-fade` | `rgba(87,221,132,0)` | same | Same hue at zero alpha, so the fade never interpolates through grey |
+
+The mark's greens carry over unchanged into dark theme — they are mid-greens that read on `#2C2C2E` as well as on white.
+
+### 6. Implementation notes worth keeping
+
+- **Gradient stops are applied through CSS classes**, not `stopColor` attributes: `var()` is **not** resolved inside an SVG presentation attribute, so tokens would silently fail there. Theming the mark therefore means changing tokens only, never the JSX.
+- **The gradient id is scoped per instance with `useId`.** Several marks can share one DOM (a dialog over the mark-performed stage), and a duplicate id would make every instance resolve to the first paint server. React 18's ids contain colons, which are legal in an id but not in a `url(#…)` reference, so they are stripped.
+- **The bloom is a `background`, not a pseudo-element.** `.performed-success-scroll` is an `overflow-y: auto` container; anything painted outside the box would be clipped at the scroll edge and could introduce a scrollbar. A background is bounded by the box and cannot.
+- **Vertical rhythm is preserved** by trimming each surface's icon margin as the box grows, so the mark gets larger without the gap to the title growing with it.
+
+### 7. Files changed
+
+| File | Change |
+| --- | --- |
+| `prototype/project/driver.jsx` | `DialogSuccessIcon` rewritten as the 56px gradient mark with a `useId`-scoped gradient; `useId` added to the React destructure; the mark-performed stage's duplicate SVG replaced by `DialogSuccessIcon` |
+| `prototype/project/styles.css` | New success-mark token family (light + dark); new "SUCCESS MARK" block; success tone removed from the disc modifiers; `.performed-success-check` reduced to its local centring |
+| `docs/design/driver-screen-spec.md` | Icons section records the success-only deviation; three dialog-audit rows updated |
+| `docs/design/brand-tokens.md` | Status-icon-disc row scoped to warning/destructive; new success-mark rows and token table |
+| `docs/requirements/prd.json` | `version` gains the `[v2.31-success-mark]` entry (no version bump); new `success_mark_v1` resolved default; `dialog_standard_v1`'s icon sentence annotated as superseded **for the success tone only** (entry not rewritten) |

@@ -1,5 +1,5 @@
 /* global React, ReactDOM, AuthStore, useAuthStore */
-const { useState, useEffect, useRef, useMemo } = React;
+const { useState, useEffect, useRef, useMemo, useId } = React;
 
 const UI = window.DriverUI || {};
 const {
@@ -5551,20 +5551,41 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   );
 };
 
-// Meaningful status icon — a success disc. Extracted because two success
-// dialogs carried byte-identical copies of it; the `--st-accepted` tone is what
-// makes it information rather than decoration.
-const DialogSuccessIcon = () => (
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path
-      d="M6 12l4 4 8-9"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
+// Meaningful status icon — the success mark. The one success glyph for the
+// whole Driver PWA: both success dialogs below and the mark-performed success
+// stage, which used to carry its own copy of this SVG.
+//
+// Standalone by design — no disc (styles.css "SUCCESS MARK"). The stroke is
+// painted by a gradient running from the vertex out to the long arm's tip, so
+// the mark itself carries the status the disc used to. Stop colours come from
+// tokens via CSS classes, because `var()` is not resolved inside an SVG
+// presentation attribute.
+//
+// `useId` scopes the gradient id: three marks can share one DOM (a dialog over
+// the performed stage), and a duplicate id would make them all resolve to the
+// first paint server. React 18 ids contain colons, which are legal in an id but
+// not in a `url(#…)` reference, so they are stripped.
+const DialogSuccessIcon = () => {
+  const gradientId = `success-mark-${useId().replace(/:/g, "")}`;
+  return (
+    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" className="success-mark-from" />
+          <stop offset="55%" className="success-mark-mid" />
+          <stop offset="100%" className="success-mark-to" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M6 12l4 4 8-9"
+        stroke={`url(#${gradientId})`}
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+};
 
 const PendingNotice = ({ onClose, kind }) => {
   const { t } = useI18n();
@@ -5817,15 +5838,7 @@ const MarkPerformedSheet = ({ job, onClose }) => {
       >
         <div className="performed-success-scroll">
           <div className="performed-success-check" aria-hidden="true">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M6 12l4 4 8-9"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <DialogSuccessIcon />
           </div>
           <h3 id="performed-success-title" className="performed-success-title">
             {t("performedSuccessTitle")}

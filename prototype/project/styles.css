@@ -61,6 +61,17 @@
   --st-cancelled-bg: #fef2f2;
   --st-warn-bg: #ffedd5;
 
+  /* Success mark — the standalone gradient checkmark, sampled from the approved
+     reference: deepest at the vertex, lightest at the long arm's tip, over a
+     soft radial bloom. Narrowly scoped to that one glyph on purpose — the
+     reference green is lighter than `--st-accepted`, which stays the status /
+     badge / label green and is NOT re-toned by these. */
+  --success-mark-from: #54b765;
+  --success-mark-mid: #6bc67b;
+  --success-mark-to: #8fde9c;
+  --success-glow: rgba(87, 221, 132, 0.18);
+  --success-glow-fade: rgba(87, 221, 132, 0);
+
   /* Diff / master-data compare */
   --diff-added: #065f46;
   --diff-added-bright: #6ee7b7;
@@ -213,6 +224,11 @@
   --st-empty-run-bg: #2c1f50;
   --st-cancelled-bg: #3e1520;
   --st-warn-bg: #4a2b12;
+  /* The mark's own greens carry over unchanged — they are mid-greens that read
+     on `--paper` #2c2c2e as well as on white. Only the bloom is re-tuned: a
+     tint that is a soft lift on white needs slightly more presence to register
+     against a dark panel at all. */
+  --success-glow: rgba(87, 221, 132, 0.22);
   --diff-added: #6ee7b7;
   --diff-added-bright: #6ee7b7;
   --diff-removed-bright: #fca5a5;
@@ -2924,11 +2940,8 @@ select.input {
   max-width: 360px;
 }
 /* The `Dialog` primitive renders one status disc; the tone modifier is applied
-   on the panel so a caller does not have to reach inside. */
-.dialog-icon-success > .dialog-icon {
-  background: var(--st-accepted-bg);
-  color: var(--st-accepted);
-}
+   on the panel so a caller does not have to reach inside. Success is the one
+   tone that is NOT a disc — see "SUCCESS MARK" below. */
 .dialog-icon-warning > .dialog-icon {
   background: var(--st-assigned-bg);
   color: var(--st-assigned);
@@ -2936,6 +2949,54 @@ select.input {
 .dialog-icon-danger > .dialog-icon {
   background: var(--st-cancelled-bg);
   color: var(--st-cancelled);
+}
+/* =========================================================================
+   SUCCESS MARK — a standalone gradient checkmark, no disc.
+   Success is the one status tone that drops the 52px disc. Once the glyph grew
+   and took a gradient it carried the status on its own, and the container was
+   just a ring around it. Warning and danger keep their discs deliberately: a
+   small `!` or `×` reads as an alert only inside one, so the disc is still
+   load-bearing there and this is a success-only deviation, not the disc
+   standard being retired.
+   The box is larger than the glyph because it hosts the bloom as its own
+   background. That is why the bloom is a background and not a pseudo-element:
+   `.performed-success-scroll` is an `overflow-y: auto` container, so anything
+   painted outside the box would be clipped at the scroll edge and could add a
+   scrollbar. A background is bounded by the box and cannot.
+   The bloom is a diffuse radial fade with no edge — it reads as light behind
+   the mark, not as the disc that was removed.
+   ========================================================================= */
+.dialog-icon-success > .dialog-icon,
+.phone-shell .performed-success-check {
+  width: 80px;
+  height: 80px;
+  border-radius: 0;
+  box-shadow: none;
+  background: radial-gradient(
+    circle at 50% 50%,
+    var(--success-glow) 0%,
+    var(--success-glow-fade) 75%
+  );
+}
+/* Trim the surrounding margin as the box grows, so the mark gets bigger without
+   the gap to the title growing with it. */
+.dialog-icon-success > .dialog-icon {
+  margin: 0 auto 6px;
+}
+.phone-shell .performed-success-check {
+  margin: 0 auto 8px;
+}
+/* Gradient stops are tokens applied through CSS, because `var()` is not
+   resolved inside an SVG presentation attribute. Theming the mark therefore
+   means changing the tokens only — never the JSX. */
+.success-mark-from {
+  stop-color: var(--success-mark-from);
+}
+.success-mark-mid {
+  stop-color: var(--success-mark-mid);
+}
+.success-mark-to {
+  stop-color: var(--success-mark-to);
 }
 /* Reference-dialog tour summary — was an inline style object on the one dialog
    every other dialog is measured against. */
@@ -4446,14 +4507,10 @@ select.input {
   overflow-y: auto;
   min-height: 0;
 }
+/* Box, bloom and margin come from the shared "SUCCESS MARK" block above, which
+   this stage now renders through the same `DialogSuccessIcon` as the success
+   dialogs. Only the centring is local. */
 .phone-shell .performed-success-check {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: var(--st-accepted);
-  color: var(--on-accent);
-  box-shadow: 0 0 0 8px var(--st-accepted-bg);
-  margin: 10px auto 18px;
   display: flex;
   align-items: center;
   justify-content: center;

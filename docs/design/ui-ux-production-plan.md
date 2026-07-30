@@ -552,10 +552,18 @@ dialog that grows unbounded will clip its actions on the first long-content case
 fields are unreadable centred. That answers "which dialogs are exceptions" without an approval
 list to maintain — and means a new dialog cannot get it wrong by default.
 
-**Icons carry status or they do not exist.** Success / warning / destructive only, on one shared
-52px disc keyed to the `--st-*` families. Two duplicated inline SVGs collapsed into one
-component. No decorative icon remains, and no removed icon carried information the title and
-description did not.
+**Icons carry status or they do not exist.** Success / warning / destructive only. Two duplicated
+inline SVGs collapsed into one component. No decorative icon remains, and no removed icon carried
+information the title and description did not.
+
+> **Narrowed 2026-07-30 (PRD v2.31, `[v2.31-success-mark]`).** The shared 52px disc keyed to the `--st-*` families now
+> covers **warning and destructive only**. Success became a **discless standalone gradient mark**
+> (56px glyph in an 80px box, over a soft edgeless bloom) painted by its own narrowly scoped
+> `--success-mark-*` / `--success-glow*` tokens rather than `--st-accepted`. A third success surface
+> — the mark-performed stage — still held a duplicate of the SVG and now shares the one component
+> too, so "collapsed into one" is finally true of all three. The deviation is success-only and
+> content-driven: a grown gradient checkmark carries the status alone, while a small `!` or `×`
+> reads as an alert only inside its container.
 
 **Deliberate confirmation survives standardization.** The Accept-tour **slide-to-confirm** is
 untouched; that dialog stacks its actions full width precisely because a slide control cannot
