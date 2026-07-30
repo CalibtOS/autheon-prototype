@@ -1915,17 +1915,91 @@ window.AuthStore = (() => {
     ];
   }
 
+  // One representative row per notification interaction model, so the
+  // Notification Center demonstrates all of them: a still-available Marketplace
+  // order, a Marketplace order that has since been withdrawn, a booked-tour
+  // update, an Infopoint message, a document outcome and an account event.
   function seedDriverNotifications() {
     return [
+      {
+        id: "DN-SEED-MARKET-001",
+        type: "new_published_job",
+        jobId: "A-2026-00847",
+        tour: "0847-26",
+        newsId: "",
+        documentId: "",
+        title: t2("notifNewPublishedJobTitle"),
+        body: t2("notifNewPublishedJobBody", {
+          from: "Munich",
+          to: "Berlin",
+        }),
+        read: false,
+        createdAt: "05.05. 08:12",
+      },
+      {
+        // Points at a tour that is back in draft — the Marketplace order is
+        // gone, so the card must say so instead of offering "View order".
+        id: "DN-SEED-MARKET-GONE",
+        type: "new_published_job",
+        jobId: "A-2026-00839",
+        tour: "0839-26",
+        newsId: "",
+        documentId: "",
+        title: t2("notifNewPublishedJobTitle"),
+        body: t2("notifNewPublishedJobBody", {
+          from: "Cologne",
+          to: "Hamburg",
+        }),
+        read: true,
+        createdAt: "04.05. 17:40",
+      },
+      {
+        id: "DN-SEED-ORDER-UPDATED",
+        type: "order_updated",
+        jobId: "A-2026-00845",
+        tour: "0845-26",
+        newsId: "",
+        documentId: "",
+        title: t2("notifOrderUpdatedTitle", { tour: "0845-26" }),
+        body: `${t2("notifOrderUpdatedIntro")}\n${t2("deliveryTime")}: 14:00–16:00 → 16:00–18:00`,
+        read: false,
+        createdAt: "04.05. 11:05",
+      },
+      {
+        id: "DN-SEED-NEWS-001",
+        type: "infopoint_news",
+        jobId: "",
+        tour: "",
+        newsId: "NEWS-001",
+        documentId: "",
+        title: "ATTENTION: public transport strike 01.01.2027",
+        body: "On Monday, 01.01.2027, there may be isolated warning strikes in public transport.",
+        read: false,
+        createdAt: "24.05. 09:00",
+      },
       {
         id: "DN-SEED-001",
         type: "document_rejected",
         jobId: "A-2026-00842",
         tour: "0842-26",
-        title: "Document rejected",
+        newsId: "",
+        documentId: "TD-SEED-005",
+        title: t2("notifDocumentRejectedTitle"),
         body: "Registration number missing on fuel receipt.",
         read: false,
         createdAt: "21.04. 14:10",
+      },
+      {
+        id: "DN-SEED-ACCOUNT-001",
+        type: "master_data_change_approved",
+        jobId: "",
+        tour: "",
+        newsId: "",
+        documentId: "",
+        title: t2("notifMasterDataApprovedTitle"),
+        body: t2("notifMasterDataApprovedBody"),
+        read: true,
+        createdAt: "20.04. 10:22",
       },
     ];
   }
@@ -2673,14 +2747,124 @@ window.AuthStore = (() => {
     return (translate || t2)("redPlatesRequired");
   }
 
-  function log(action, actor, entity, meta) {
-    auditLog.unshift({
+  /**
+   * Appends one audit entry. `action` is always a stable ENGLISH key (never
+   * localized — the admin Audit log renders it verbatim and the CSV export
+   * carries it off-platform); `at`, `action`, `actor`, `entity` and `meta` are
+   * the five columns the admin table and `exportAuditLogCsv()` render.
+   *
+   * `extra` carries optional MACHINE-READABLE fields alongside the display
+   * columns (production `audit_events`: entity_type, entity_id, job_id,
+   * metadata jsonb). It can never overwrite a display column, and empty values
+   * are dropped so entries stay comparable.
+   */
+  function log(action, actor, entity, meta, extra) {
+    const row = {
       action,
       actor,
       entity,
       at: nowStamp(),
       meta: meta || "",
+    };
+    if (extra && typeof extra === "object") {
+      for (const key of Object.keys(extra)) {
+        if (key in row) continue;
+        const value = extra[key];
+        if (value === undefined || value === null || value === "") continue;
+        row[key] = value;
+      }
+    }
+    auditLog.unshift(row);
+  }
+
+  // =======================================================================
+  // DRIVER CONTENT-ACCESS AUDIT (PRD Task 22 — traceability of every piece
+  // of driver-accessible content).
+  //
+  // Action keys follow the convention already established in this audit log:
+  // `<entity>_<past-tense-verb>`, English, stable, never localized.
+  //
+  //   documents (Infopoint)   document_viewed        document_downloaded
+  //   tour documents          tour_document_viewed   tour_document_downloaded
+  //   transport-order PDF     pdf_viewed             pdf_downloaded
+  //   Infopoint messages      news_item_viewed
+  //
+  // Every entry ALSO carries `actionType: "viewed" | "downloaded"`, so the
+  // distinction is queryable without parsing the action key.
+  //
+  // These are appended inside the EXISTING content request flows (the same
+  // store calls the Driver PWA already makes to obtain a preview or a
+  // download) — no separate logging call is introduced.
+  //
+  // OPENING A NOTIFICATION IS DELIBERATELY NOT AUDITED. It was in the original
+  // work order and was removed from scope; a notification is a pointer to
+  // content, and the content it points at is audited when the driver actually
+  // opens it. Read/unread state remains the notification-level record.
+  // =======================================================================
+  const AUDIT_VIEWED = "viewed";
+  const AUDIT_DOWNLOADED = "downloaded";
+
+  /**
+   * Resolves the audit actor for a content access. Preview/download store
+   * methods are shared between the Admin Backend and the Driver PWA, so the
+   * caller declares which side it is with the same `opts.actor` convention
+   * `replaceTourDocument()` already uses. Driver accesses are attributed to
+   * the signed-in driver (name + immutable driver id), admin accesses stay on
+   * the dispatcher, matching the pre-existing `pdf_viewed` behaviour.
+   */
+  function contentAccessActor(opts) {
+    if ((opts && opts.actor) === "driver") {
+      const d = api.getCurrentDriver();
+      return {
+        name: d?.name || DEMO_DRIVER,
+        actorId: d?.id || "",
+      };
+    }
+    return { name: DEMO_ADMIN, actorId: api.getCurrentAdmin()?.id || "" };
+  }
+
+  /**
+   * Appends ONE audit entry per content access. Never merges, never updates an
+   * existing row: repeated views and repeated downloads each add a distinct
+   * entry (PRD Task 22 — the audit log is append-only).
+   */
+  function logContentAccess(details) {
+    const { name, actorId } = contentAccessActor(details.opts);
+    const metaParts = [
+      details.jobId || "",
+      details.tour ? `tour ${details.tour}` : "",
+      details.subtype || "",
+      details.documentVersion ? `version ${details.documentVersion}` : "",
+      details.note || "",
+    ].filter(Boolean);
+    log(details.action, name, details.entity || "", metaParts.join(" · "), {
+      actionType: details.actionType,
+      actorId,
+      entityType: details.entityType,
+      entityId: details.entityId,
+      jobId: details.jobId,
+      tour: details.tour,
+      documentVersion: details.documentVersion,
     });
+  }
+
+  /**
+   * The one place that shapes an Infopoint document into the preview contract
+   * the driver `DocumentPreviewSheet` consumes — shared by the view and the
+   * download path so the two can be audited independently without either
+   * producing a second entry for the other.
+   */
+  function buildInfopointDocumentPreview(doc) {
+    const title = doc.title || "document";
+    const fileName = `${String(title).replace(/[^a-zA-Z0-9._-]+/g, "_")}.pdf`;
+    return {
+      title,
+      fileName,
+      mimeType: "application/pdf",
+      previewable: true,
+      pdfUrl: SAMPLE_PDF_URL,
+      downloadName: fileName,
+    };
   }
 
   function bumpPdf(job) {
@@ -2795,6 +2979,118 @@ window.AuthStore = (() => {
     return list.some((prefix) => plz.startsWith(prefix));
   }
 
+  // =======================================================================
+  // DRIVER NOTIFICATION TAXONOMY (PRD Task 20)
+  //
+  // Two orthogonal classifications, both derived from `notification.type` —
+  // never stored on the row, so a taxonomy change can never leave stale data:
+  //
+  //   CATEGORY  what the notification is about. Shown as a chip on every card.
+  //             Order · Account · System · General information.
+  //   KIND      the interaction model the card uses. This is the agreed model
+  //             (no universal bottom sheet for every type):
+  //               tour      inline expandable tour preview + contextual action
+  //               message   deep-links straight to the Infopoint message
+  //               document  deep-links straight to the document / its preview
+  //               plain     informational; no preview, no deep link
+  //
+  // User-facing labels NEVER live here — they come from i18n.js.
+  // =======================================================================
+  const NOTIF_CATEGORY_ORDER = "order";
+  const NOTIF_CATEGORY_ACCOUNT = "account";
+  const NOTIF_CATEGORY_SYSTEM = "system";
+  const NOTIF_CATEGORY_GENERAL_INFO = "general_information";
+
+  const NOTIF_KIND_TOUR = "tour";
+  const NOTIF_KIND_MESSAGE = "message";
+  const NOTIF_KIND_DOCUMENT = "document";
+  const NOTIF_KIND_PLAIN = "plain";
+
+  const NOTIF_CATEGORY_I18N = {
+    [NOTIF_CATEGORY_ORDER]: "notifCategoryOrder",
+    [NOTIF_CATEGORY_ACCOUNT]: "notifCategoryAccount",
+    [NOTIF_CATEGORY_SYSTEM]: "notifCategorySystem",
+    [NOTIF_CATEGORY_GENERAL_INFO]: "notifCategoryGeneralInfo",
+  };
+
+  // `marketplace: true` marks a notification about an order the driver has NOT
+  // committed to — its preview is the reduced pre-acceptance projection and its
+  // availability has to be re-checked before any action is offered.
+  const NOTIF_TYPES = {
+    new_published_job: {
+      category: NOTIF_CATEGORY_ORDER,
+      kind: NOTIF_KIND_TOUR,
+      marketplace: true,
+    },
+    order_updated: { category: NOTIF_CATEGORY_ORDER, kind: NOTIF_KIND_TOUR },
+    cancelled_by_autheon: {
+      category: NOTIF_CATEGORY_ORDER,
+      kind: NOTIF_KIND_TOUR,
+    },
+    empty_run_recognised: {
+      category: NOTIF_CATEGORY_ORDER,
+      kind: NOTIF_KIND_TOUR,
+    },
+    empty_run_not_recognised: {
+      category: NOTIF_CATEGORY_ORDER,
+      kind: NOTIF_KIND_TOUR,
+    },
+    // Document outcomes concern a tour but are DOCUMENT notifications: they
+    // deep-link to the file, they never render the tour accordion.
+    document_rejected: {
+      category: NOTIF_CATEGORY_ORDER,
+      kind: NOTIF_KIND_DOCUMENT,
+    },
+    document_accepted: {
+      category: NOTIF_CATEGORY_ORDER,
+      kind: NOTIF_KIND_DOCUMENT,
+    },
+    infopoint_news: {
+      category: NOTIF_CATEGORY_GENERAL_INFO,
+      kind: NOTIF_KIND_MESSAGE,
+    },
+    master_data_change_sent: {
+      category: NOTIF_CATEGORY_ACCOUNT,
+      kind: NOTIF_KIND_PLAIN,
+    },
+    master_data_change_approved: {
+      category: NOTIF_CATEGORY_ACCOUNT,
+      kind: NOTIF_KIND_PLAIN,
+    },
+    master_data_change_rejected: {
+      category: NOTIF_CATEGORY_ACCOUNT,
+      kind: NOTIF_KIND_PLAIN,
+    },
+    email_changed: {
+      category: NOTIF_CATEGORY_ACCOUNT,
+      kind: NOTIF_KIND_PLAIN,
+    },
+  };
+
+  const NOTIF_TYPE_FALLBACK = {
+    category: NOTIF_CATEGORY_SYSTEM,
+    kind: NOTIF_KIND_PLAIN,
+  };
+
+  function notificationTypeSpec(type) {
+    return NOTIF_TYPES[String(type || "")] || NOTIF_TYPE_FALLBACK;
+  }
+
+  /** Canonical category code for a notification type. */
+  function notificationCategory(type) {
+    return notificationTypeSpec(type).category;
+  }
+
+  /** i18n key for a notification category — the label itself lives in i18n.js. */
+  function notificationCategoryI18nKey(type) {
+    return NOTIF_CATEGORY_I18N[notificationCategory(type)];
+  }
+
+  /** Interaction model for a notification type: tour | message | document | plain. */
+  function notificationKind(type) {
+    return notificationTypeSpec(type).kind;
+  }
+
   function maybeNotifyPublishedJob(job) {
     if (!job || job.status !== "published") return;
     const notified = [];
@@ -2808,6 +3104,20 @@ window.AuthStore = (() => {
       )
         continue;
       notified.push(d.name);
+      // In-app notification for the same, unchanged eligibility set — the push
+      // gate (enabled + newly-published toggle + postal-area match) decides who
+      // is notified about a newly published order, and this does not widen it.
+      pushDriverNotification({
+        type: "new_published_job",
+        jobId: job.id,
+        tour: job.tour,
+        title: t2("notifNewPublishedJobTitle"),
+        body: t2("notifNewPublishedJobBody", {
+          from: job.startCity || job.startPlz || "—",
+          to: job.endCity || job.endPlz || "—",
+        }),
+        driverId: d.id,
+      });
       log(
         "push_notification_simulated",
         "System",
@@ -2837,6 +3147,11 @@ window.AuthStore = (() => {
       type: payload.type || "general",
       jobId: payload.jobId || "",
       tour: payload.tour || "",
+      // Stable entity references for deep linking. Navigation always resolves
+      // through these ids — never through the title, the body or the tour
+      // number, which are display text and may be localized or reused.
+      newsId: payload.newsId || "",
+      documentId: payload.documentId || "",
       title: payload.title || "Notification",
       body: payload.body || "",
       read: false,
@@ -2850,6 +3165,215 @@ window.AuthStore = (() => {
     driverNotifications.unshift(row);
     log("driver_notification_created", "System", row.title, row.type);
     return row;
+  }
+
+  /**
+   * The ONE rule that decides which order screen a driver gets: the reduced
+   * Marketplace preview for a still-published order the driver has not
+   * committed to, the full tour detail once accepted, assigned or performed.
+   * Both app shells and the notification deep links resolve through this, so
+   * a notification can never open a screen the driver is not entitled to.
+   */
+  function driverJobViewMode(job) {
+    const j = typeof job === "string" ? api.getJob(job) : job;
+    if (!j) return "";
+    const uncommitted =
+      j.status === "published" &&
+      !api.isAccepted(j.id) &&
+      !api.isPerformed(j.id);
+    return uncommitted ? "locked" : "unlocked";
+  }
+
+  /**
+   * Has the current driver committed to this tour — accepted it, performed it,
+   * or been directly assigned it? This, not the order's status, is what
+   * unlocks the protected fields. A published order the driver has not taken
+   * and an unrelated draft are both "not committed".
+   */
+  function driverIsCommittedToJob(job) {
+    const j = typeof job === "string" ? api.getJob(job) : job;
+    if (!j) return false;
+    if (api.isAccepted(j.id) || api.isPerformed(j.id)) return true;
+    const d = api.getCurrentDriver();
+    if (!d) return false;
+    return Boolean(
+      (j.driverId && j.driverId === d.id) || (j.driver && j.driver === d.name),
+    );
+  }
+
+  /**
+   * Driver-visible projection of a tour for a notification preview.
+   *
+   * `restricted` means the driver has not committed to this tour, i.e. the
+   * pre-acceptance Marketplace projection: region + schedule + vehicle class
+   * are decision-relevant and included; customer, full addresses, contacts,
+   * plate and VIN are NOT PRESENT IN THE RETURNED OBJECT AT ALL. Stripping at
+   * the data layer — rather than hiding in the view — is what guarantees a
+   * Marketplace notification cannot leak protected fields
+   * (prd.json driver_visibility_matrix).
+   */
+  function driverNotificationJobPreview(jobId) {
+    const j = api.getJob(jobId);
+    if (!j) return null;
+    const restricted = !driverIsCommittedToJob(j);
+    const leg = (loc) => {
+      if (!loc) return null;
+      const open = {
+        city: loc.city || "",
+        postalCode: loc.postalCode || "",
+        date: loc.date || "",
+        windowFrom: loc.windowFrom || "",
+        windowTo: loc.windowTo || "",
+      };
+      if (restricted) return open;
+      return {
+        ...open,
+        name: loc.name || "",
+        street: loc.street || "",
+        houseNumber: loc.houseNumber || "",
+        contactPerson: loc.contactPerson || "",
+      };
+    };
+    const preview = {
+      jobId: j.id,
+      tour: j.tour || "",
+      restricted,
+      status: j.status || "",
+      displayStatus: getJobDisplayStatus(j),
+      distanceKm: j.distanceKm ?? null,
+      startCity: j.startCity || "",
+      startPlz: j.startPlz || "",
+      endCity: j.endCity || "",
+      endPlz: j.endPlz || "",
+      pickup: leg(j.pickup),
+      delivery: leg(j.delivery),
+      vehicleType: j.vehicleType || "",
+      manufacturer: j.manufacturer || "",
+      vehicleModel: j.vehicleModel || "",
+      transportType: j.transportType || "",
+      registrationStatus: j.registrationStatus || "",
+    };
+    if (!restricted) {
+      preview.customerName = j.customerName || "";
+      preview.plate = j.plate || "";
+      preview.vin = j.vin || "";
+    }
+    return preview;
+  }
+
+  /**
+   * Resolves what a notification points at and whether that target can still
+   * be opened. Single navigation authority for the notification list AND for
+   * push deep links, so both behave identically and both fail safe.
+   *
+   * Never throws and never returns a partially-usable target: an unknown
+   * notification, a deleted tour, or a Marketplace order that has since been
+   * taken, withdrawn or cancelled all come back with `available: false` and a
+   * machine-readable `unavailableReason`.
+   */
+  function resolveDriverNotificationTarget(notification) {
+    const row =
+      typeof notification === "string"
+        ? driverNotifications.find((n) => n.id === notification)
+        : notification;
+    if (!row) {
+      return {
+        ok: false,
+        kind: NOTIF_KIND_PLAIN,
+        category: NOTIF_CATEGORY_SYSTEM,
+        available: false,
+        unavailableReason: "notification_missing",
+      };
+    }
+    const spec = notificationTypeSpec(row.type);
+    const base = {
+      ok: true,
+      notificationId: row.id,
+      type: row.type,
+      kind: spec.kind,
+      category: spec.category,
+      marketplace: Boolean(spec.marketplace),
+      available: true,
+      unavailableReason: "",
+    };
+
+    if (spec.kind === NOTIF_KIND_MESSAGE) {
+      const item = row.newsId
+        ? newsItems.find((n) => n.id === row.newsId)
+        : null;
+      if (!item || item.visible === false) {
+        return { ...base, available: false, unavailableReason: "message_gone" };
+      }
+      return { ...base, newsId: item.id };
+    }
+
+    if (spec.kind === NOTIF_KIND_DOCUMENT) {
+      const doc = row.documentId
+        ? tourDocuments.find((x) => x.id === row.documentId)
+        : null;
+      if (!doc) {
+        return { ...base, available: false, unavailableReason: "document_gone" };
+      }
+      const j = api.getJob(doc.jobId);
+      if (!j) {
+        return { ...base, available: false, unavailableReason: "order_gone" };
+      }
+      // A document only opens from the tour it belongs to, and only once the
+      // driver is committed to that tour — an order the driver has not taken
+      // exposes no documents.
+      if (!driverIsCommittedToJob(j)) {
+        return { ...base, available: false, unavailableReason: "not_permitted" };
+      }
+      return {
+        ...base,
+        documentId: doc.id,
+        documentScope: "tour",
+        jobId: j.id,
+        tour: j.tour || "",
+        mode: "unlocked",
+      };
+    }
+
+    if (spec.kind === NOTIF_KIND_TOUR) {
+      const j = row.jobId ? api.getJob(row.jobId) : null;
+      if (!j) {
+        return { ...base, available: false, unavailableReason: "order_gone" };
+      }
+      const committed = driverIsCommittedToJob(j);
+      const mode = committed ? "unlocked" : "locked";
+      // A tour the driver has not committed to is only reachable while it is
+      // still on the marketplace. Once it is booked by someone else, withdrawn
+      // to draft or cancelled it is gone for this driver — the stale
+      // "View order" action must not survive and must not permit an accept.
+      if (!committed && j.status !== "published") {
+        return {
+          ...base,
+          jobId: j.id,
+          tour: j.tour || "",
+          available: false,
+          unavailableReason: marketplaceUnavailableReason(j),
+        };
+      }
+      return {
+        ...base,
+        jobId: j.id,
+        tour: j.tour || "",
+        mode,
+        preview: driverNotificationJobPreview(j.id),
+      };
+    }
+
+    return base;
+  }
+
+  function marketplaceUnavailableReason(job) {
+    const st = String(job?.status || "");
+    if (st === "draft") return "withdrawn";
+    if (st === "assigned" || st === "accepted") return "taken";
+    if (st.startsWith("cancelled")) return "cancelled";
+    if (st.startsWith("empty_run")) return "closed";
+    if (st === "performed") return "closed";
+    return "unavailable";
   }
 
   function getJobDisplayStatus(job) {
@@ -4338,6 +4862,25 @@ window.AuthStore = (() => {
       return { ok: true, count: n };
     },
     pushDriverNotification,
+    // Notification taxonomy + navigation. Categories and the interaction model
+    // are DERIVED from `type`, never stored, and every deep link resolves
+    // through `resolveDriverNotificationTarget` so the list and a push tap can
+    // never disagree.
+    notificationCategory,
+    notificationCategoryI18nKey,
+    notificationKind,
+    resolveDriverNotificationTarget,
+    driverNotificationJobPreview,
+    driverJobViewMode,
+    driverIsCommittedToJob,
+    NOTIF_CATEGORY_ORDER,
+    NOTIF_CATEGORY_ACCOUNT,
+    NOTIF_CATEGORY_SYSTEM,
+    NOTIF_CATEGORY_GENERAL_INFO,
+    NOTIF_KIND_TOUR,
+    NOTIF_KIND_MESSAGE,
+    NOTIF_KIND_DOCUMENT,
+    NOTIF_KIND_PLAIN,
     getJobDisplayStatus,
 
     getCurrentDriver: () =>
@@ -4662,6 +5205,28 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
+    /**
+     * The driver opens an Infopoint message. Audits the view IMMEDIATELY —
+     * before the read state is touched — so every opening is recorded even
+     * when the message was already read, then marks it read exactly as the
+     * existing flow does. Returns `{ ok: false }` for an unknown or hidden
+     * message without auditing anything.
+     */
+    openInfopointNews(newsId, readerId) {
+      const n = newsItems.find((x) => x.id === newsId);
+      if (!n || n.visible === false) return { ok: false };
+      logContentAccess({
+        opts: { actor: "driver" },
+        action: "news_item_viewed",
+        actionType: AUDIT_VIEWED,
+        entity: n.title || n.id,
+        entityType: "infopoint_news",
+        entityId: n.id,
+        note: n.publishedAt ? `published ${n.publishedAt}` : "",
+      });
+      return api.markNewsRead(newsId, readerId);
+    },
+
     addNewsItem(data = {}) {
       const notifyInApp = data.notifyInApp !== false;
       const notifyPush = !!data.notifyPush;
@@ -4679,6 +5244,9 @@ window.AuthStore = (() => {
         for (const dr of drivers.filter((x) => x.status === "Active")) {
           pushDriverNotification({
             type: "infopoint_news",
+            // Stable reference so the notification deep-links to THIS message
+            // rather than to the Infopoint list.
+            newsId: item.id,
             title: item.title,
             body: (item.body || "").slice(0, 120),
             driverId: dr.id,
@@ -5144,8 +5712,8 @@ window.AuthStore = (() => {
       );
       pushDriverNotification({
         type: "master_data_change_sent",
-        title: "Change request sent",
-        body: "The operations team received your profile change request.",
+        title: t2("notifMasterDataSentTitle"),
+        body: t2("notifMasterDataSentBody"),
         driverId: d.id,
       });
       emit();
@@ -5372,12 +5940,14 @@ window.AuthStore = (() => {
         type: approved
           ? "master_data_change_approved"
           : "master_data_change_rejected",
-        title: approved ? "Profile change approved" : "Profile change declined",
-        body: row.adminNote
-          ? row.adminNote
-          : approved
-            ? "Your master-data change request was approved."
-            : "Your master-data change request was declined.",
+        title: approved
+          ? t2("notifMasterDataApprovedTitle")
+          : t2("notifMasterDataRejectedTitle"),
+        body:
+          row.adminNote ||
+          (approved
+            ? t2("notifMasterDataApprovedBody")
+            : t2("notifMasterDataRejectedBody")),
         driverId: row.driverId,
       });
       emit();
@@ -6575,6 +7145,19 @@ window.AuthStore = (() => {
         doc.fileName,
         isTourBillingInvoiceType(doc.documentType) ? invNum : doc.documentType,
       );
+      // notification_channels_matrix already specifies document_accepted as a
+      // driver in-app event (push: false). It had no implementation, so the
+      // Notification Center never surfaced a positive document outcome.
+      const acceptedJob = api.getJob(doc.jobId);
+      pushDriverNotification({
+        type: "document_accepted",
+        jobId: doc.jobId,
+        tour: acceptedJob?.tour || "",
+        documentId: doc.id,
+        title: t2("notifDocumentAcceptedTitle"),
+        body: t2("notifDocumentAcceptedBody", { file: doc.fileName || "" }),
+        driverId: doc.driverId,
+      });
       emit();
       return { ok: true };
     },
@@ -6670,8 +7253,9 @@ window.AuthStore = (() => {
         type: "document_rejected",
         jobId: doc.jobId,
         tour: jn?.tour || "",
-        title: "Document rejected",
-        body: doc.rejectionReason || "",
+        documentId: doc.id,
+        title: t2("notifDocumentRejectedTitle"),
+        body: doc.rejectionReason || t2("notifDocumentRejectedBody"),
         driverId: doc.driverId,
       });
       emit();
@@ -6890,7 +7474,7 @@ window.AuthStore = (() => {
       return { ok: true, id: row.id };
     },
 
-    downloadTourDocumentPlaceholder(id) {
+    downloadTourDocumentPlaceholder(id, opts = {}) {
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false };
       const base =
@@ -6901,6 +7485,18 @@ window.AuthStore = (() => {
       a.href = SAMPLE_PDF_URL;
       a.download = `${base}.pdf`;
       a.click();
+      logContentAccess({
+        opts,
+        action: "tour_document_downloaded",
+        actionType: AUDIT_DOWNLOADED,
+        entity: doc.fileName,
+        entityType: "tour_document",
+        entityId: doc.id,
+        jobId: doc.jobId,
+        tour: api.getJob(doc.jobId)?.tour || "",
+        subtype: doc.documentType,
+      });
+      emit();
       return { ok: true };
     },
 
@@ -7043,11 +7639,28 @@ window.AuthStore = (() => {
       ].join("\n");
     },
 
-    getTransportOrderPreview(id) {
+    // The transport-order PDF, tour documents and Infopoint documents are all
+    // reached through these existing preview/download calls. Each one appends
+    // its own audit entry (view or download) before returning, so no extra
+    // request and no extra endpoint is needed to make the access traceable.
+    // `opts.actor === "driver"` attributes the entry to the signed-in driver;
+    // omitting it keeps the pre-existing dispatcher attribution.
+    getTransportOrderPreview(id, opts = {}) {
       const j = api.getJob(id);
       if (!j) return { ok: false };
       const fileName = `transport-order-${j.id}.pdf`;
-      log("pdf_viewed", DEMO_ADMIN, id, "In-PWA transport order preview");
+      logContentAccess({
+        opts,
+        action: "pdf_viewed",
+        actionType: AUDIT_VIEWED,
+        entity: fileName,
+        entityType: "transport_order_pdf",
+        entityId: j.id,
+        jobId: j.id,
+        tour: j.tour,
+        documentVersion: `v${j.pdfVersion || 1}`,
+        note: "In-PWA transport order preview",
+      });
       emit();
       return {
         ok: true,
@@ -7062,31 +7675,50 @@ window.AuthStore = (() => {
       };
     },
 
-    viewPdf(id) {
-      return api.getTransportOrderPreview(id);
+    viewPdf(id, opts = {}) {
+      return api.getTransportOrderPreview(id, opts);
     },
 
-    downloadPdf(id) {
+    downloadPdf(id, opts = {}) {
       const j = api.getJob(id);
       if (!j) return { ok: false };
+      const fileName = `transport-order-${j.id}.pdf`;
       const a = document.createElement("a");
       a.href = SAMPLE_PDF_URL;
-      a.download = `transport-order-${j.id}.pdf`;
+      a.download = fileName;
       a.click();
-      log(
-        "pdf_downloaded",
-        DEMO_ADMIN,
-        j.tour,
-        "Seeded sample transport-order PDF",
-      );
+      logContentAccess({
+        opts,
+        action: "pdf_downloaded",
+        actionType: AUDIT_DOWNLOADED,
+        entity: fileName,
+        entityType: "transport_order_pdf",
+        entityId: j.id,
+        jobId: j.id,
+        tour: j.tour,
+        documentVersion: `v${j.pdfVersion || 1}`,
+        note: "Seeded sample transport-order PDF",
+      });
       emit();
       return { ok: true };
     },
 
-    getTourDocumentPreview(id) {
+    getTourDocumentPreview(id, opts = {}) {
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false };
       const base = String(doc.fileName || "document").replace(/\.[^.]+$/, "");
+      logContentAccess({
+        opts,
+        action: "tour_document_viewed",
+        actionType: AUDIT_VIEWED,
+        entity: doc.fileName,
+        entityType: "tour_document",
+        entityId: doc.id,
+        jobId: doc.jobId,
+        tour: api.getJob(doc.jobId)?.tour || "",
+        subtype: doc.documentType,
+      });
+      emit();
       return {
         ok: true,
         preview: {
@@ -7100,31 +7732,46 @@ window.AuthStore = (() => {
       };
     },
 
-    getInfopointDocumentPreview(id) {
+    getInfopointDocumentPreview(id, opts = {}) {
       const doc = documents.find((x) => x.id === id);
       if (!doc || !doc.visible) return { ok: false };
-      const title = doc.title || "document";
-      const fileName = `${String(title).replace(/[^a-zA-Z0-9._-]+/g, "_")}.pdf`;
-      return {
-        ok: true,
-        preview: {
-          title,
-          fileName,
-          mimeType: "application/pdf",
-          previewable: true,
-          pdfUrl: SAMPLE_PDF_URL,
-          downloadName: fileName,
-        },
-      };
+      const preview = buildInfopointDocumentPreview(doc);
+      logContentAccess({
+        opts,
+        action: "document_viewed",
+        actionType: AUDIT_VIEWED,
+        entity: doc.title || preview.fileName,
+        entityType: "infopoint_document",
+        entityId: doc.id,
+        subtype: doc.category,
+        documentVersion: doc.version,
+      });
+      emit();
+      return { ok: true, preview };
     },
 
-    downloadInfopointDocument(id) {
-      const r = api.getInfopointDocumentPreview(id);
-      if (!r.ok) return { ok: false };
+    downloadInfopointDocument(id, opts = {}) {
+      // Resolves the file directly instead of calling the preview method, so a
+      // download is audited as exactly one `document_downloaded` entry and
+      // never also as a view.
+      const doc = documents.find((x) => x.id === id);
+      if (!doc || !doc.visible) return { ok: false };
+      const preview = buildInfopointDocumentPreview(doc);
       const a = document.createElement("a");
       a.href = SAMPLE_PDF_URL;
-      a.download = r.preview.downloadName;
+      a.download = preview.downloadName;
       a.click();
+      logContentAccess({
+        opts,
+        action: "document_downloaded",
+        actionType: AUDIT_DOWNLOADED,
+        entity: doc.title || preview.fileName,
+        entityType: "infopoint_document",
+        entityId: doc.id,
+        subtype: doc.category,
+        documentVersion: doc.version,
+      });
+      emit();
       return { ok: true };
     },
 

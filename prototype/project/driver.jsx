@@ -5,6 +5,13 @@ const UI = window.DriverUI || {};
 const { Badge, EmptyState, SkeletonList, Sheet, SheetGrabber, SheetPullRegion, ConfirmSheet, SortSelect } = UI;
 const F = () => window.AutheonFormatters || {};
 
+// Every content request made from the Driver PWA is attributed to the
+// signed-in driver in the audit log. The same store preview/download calls
+// also serve the Admin Backend, which keeps the dispatcher attribution by
+// omitting this — the `opts.actor` convention the store already uses for
+// tour-document replacement.
+const DRIVER_ACCESS = { actor: "driver" };
+
 // Portal target for full-frame overlays. The tab bar is a later sibling of
 // the tab body inside .phone-screen and ties it on z-index (both 40), so an
 // overlay rendered inline in a tab pane loses the paint order and the nav
@@ -168,6 +175,44 @@ const displayDocTitle = (doc, t) =>
     "DOC-004": t("docPrivacyPolicy"),
     "DOC-005": t("docImprint"),
   })[doc.id] || doc.title;
+
+// Seeded Infopoint messages, localized the same way the seeded documents above
+// are: mapped at RENDER time from the stable seed id, so switching language
+// updates them. A message an admin publishes in the console has no mapping and
+// falls back to its own stored text — which is what must happen, since that
+// text is real data, not demo copy.
+const displayNewsTitle = (item, t) =>
+  ({
+    "NEWS-001": t("newsTransportStrikeTitle"),
+    "NEWS-002": t("newsDocUploadFlowTitle"),
+    "NEWS-003": t("newsReportProblemTitle"),
+  })[item?.id] ||
+  item?.title ||
+  "";
+
+const displayNewsBody = (item, t) =>
+  ({
+    "NEWS-001": t("newsTransportStrikeBody"),
+    "NEWS-002": t("newsDocUploadFlowBody"),
+    "NEWS-003": t("newsReportProblemBody"),
+  })[item?.id] ||
+  item?.body ||
+  "";
+
+/**
+ * Title/body for a notification that points at an Infopoint message. The row
+ * stores a copy of the message text, so without this a seeded message would
+ * read localized in the Infopoint and English in the Notification Center.
+ */
+const displayNotificationTitle = (row, t) =>
+  row?.newsId ? displayNewsTitle({ id: row.newsId, title: row.title }, t) : row?.title || "";
+
+const displayNotificationBody = (row, t) => {
+  if (!row?.newsId) return row?.body || "";
+  const full = displayNewsBody({ id: row.newsId, body: row.body }, t);
+  // Notification bodies are a preview, truncated the same way addNewsItem does.
+  return full.length > 120 ? `${full.slice(0, 120)}` : full;
+};
 
 const displayDocCategory = (category, t) =>
   ({
@@ -1417,8 +1462,14 @@ const Portal = ({
   });
 
   // Single derivation from the COMMITTED filters — feeds the chip row, the
-  // filter button's badge and its accessible name. No separate count state.
+  // filter button's badge, its accessible name AND which empty state applies.
+  // No separate count state, so applying, changing, clearing or resetting a
+  // filter updates all four in the same render.
   const activeChips = getAppliedMarketplaceFilters(filters, t);
+  // `all` is every published order and `filtered` applies only the filter
+  // predicate, so with no filter active an empty list means there is genuinely
+  // nothing on the marketplace — never "your filters hid it".
+  const hasActiveFilters = getAppliedMarketplaceFilterCount(filters) > 0;
 
   return (
     <>
@@ -1503,14 +1554,26 @@ const Portal = ({
             {ordered.map((j, index) => (
               <JobCard key={j.id} job={j} onOpen={onOpenJob} enterIndex={index} />
             ))}
-            {ordered.length === 0 && (
-              <EmptyState
-                title={t("noJobsMatch")}
-                description={t("noToursMatch")}
-                actionLabel={t("filters")}
-                onAction={openFilter}
-              />
-            )}
+            {/* Two distinct empty states. With filters active the existing
+                filter-related state is kept verbatim, including its Filters
+                action. With NO filters active the message must not mention or
+                imply filtering — and it carries no Filters action, because
+                offering one would imply exactly that. */}
+            {ordered.length === 0 &&
+              (hasActiveFilters ? (
+                <EmptyState
+                  title={t("noJobsMatch")}
+                  description={t("noToursMatch")}
+                  actionLabel={t("filters")}
+                  onAction={openFilter}
+                  className="marketplace-empty-filtered"
+                />
+              ) : (
+                <EmptyState
+                  title={t("marketplaceEmptyNoOrders")}
+                  className="marketplace-empty-unfiltered"
+                />
+              ))}
             {ordered.length > 0 ? (
               <div className="list-end">— {t("endOfList")} —</div>
             ) : null}
@@ -2325,32 +2388,31 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
   const { t } = useI18n();
 
   return (
-    <div className="sheet-backdrop center" onClick={onCancel}>
+    // THE REFERENCE DIALOG. Every other dialog on both surfaces follows this
+    // structure (styles.css "DIALOG STANDARD"): eyebrow → centered title →
+    // left-aligned scrollable content → action row. Two documented, content-
+    // driven deviations, both intentional:
+    //   1. The primary action is a SLIDE-TO-CONFIRM control, not a button, so
+    //      the actions stack full width instead of using the Cancel | Primary
+    //      grid. The slide must never be replaced by a button.
+    //   2. The content is left-aligned — a tour summary, legal wording and a
+    //      policy disclosure are unreadable centered. That is the standard's
+    //      structural rule, not an exception this dialog invents.
+    <div className="dialog-backdrop" onClick={onCancel}>
       <div
-        className="sheet modal"
+        className="dialog-panel"
         onClick={(e) => e.stopPropagation()}
-        style={{ padding: 24 }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="accept-tour-title"
       >
-        <Lbl>{t("bindingAcceptance")}</Lbl>
-        <h2
-          style={{
-            margin: "6px 0 18px",
-            fontSize: 24,
-            fontWeight: 600,
-            letterSpacing: "-0.015em",
-          }}
-        >
+        <span className="dialog-eyebrow">{t("bindingAcceptance")}</span>
+        <h2 id="accept-tour-title" className="dialog-title">
           {t("acceptThisTour")}
         </h2>
 
-        <div
-          style={{
-            border: "1px solid var(--line)",
-            borderRadius: "var(--r-2)",
-            padding: 14,
-            background: "var(--paper-2)",
-          }}
-        >
+        <div className="dialog-content">
+        <div className="accept-tour-summary">
           <div className="label" style={{ marginBottom: 8 }}>
             Tour #{job.id}
           </div>
@@ -2382,19 +2444,20 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
           <PolicyDisclosure />
         </div>
 
-        <SlideToConfirm
-          text={t("slideToConfirm")}
-          doneText={t("slideAccepted")}
-          onConfirm={onConfirm}
-        />
-        <button
-          type="button"
-          className="btn block"
-          style={{ marginTop: 12 }}
-          onClick={onCancel}
-        >
-          {t("cancel")}
-        </button>
+        </div>
+
+        {/* Deviation 1: a slide control cannot share a row with a button, so
+            this dialog's actions stack full width. */}
+        <div className="dialog-actions dialog-actions--stack">
+          <SlideToConfirm
+            text={t("slideToConfirm")}
+            doneText={t("slideAccepted")}
+            onConfirm={onConfirm}
+          />
+          <button type="button" className="btn block" onClick={onCancel}>
+            {t("cancel")}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -2823,17 +2886,20 @@ const TourDocCategoryModal = ({ open, onClose, onPick }) => {
   const { t } = useI18n();
   if (!open) return null;
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
+    <div className="dialog-backdrop" onClick={onClose}>
       <div
-        className="sheet modal"
+        className="dialog-panel"
         onClick={(e) => e.stopPropagation()}
-        style={{ padding: 20 }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="tour-doc-category-title"
       >
-        <Lbl id="tour-doc-category-title">{t("tourDocChooseCategory")}</Lbl>
-        <div className="category-picker">
+        {/* Was an eyebrow `Lbl` standing in for a title; a dialog's purpose
+            belongs in a real heading. */}
+        <h2 id="tour-doc-category-title" className="dialog-title">
+          {t("tourDocChooseCategory")}
+        </h2>
+        <div className="dialog-content category-picker">
           {/* Group 1: Core Documents */}
           <div>
             <div className="category-group-label">
@@ -3006,9 +3072,9 @@ const RemoveDocModal = ({ open, onCancel, onConfirm }) => {
   const { t } = useI18n();
   if (!open) return null;
   return (
-    <div className="sheet-backdrop center" onClick={onCancel}>
+    <div className="dialog-backdrop" onClick={onCancel}>
       <div
-        className="sheet modal remove-doc-modal"
+        className="dialog-panel remove-doc-modal"
         onClick={(e) => e.stopPropagation()}
         role="alertdialog"
         aria-modal="true"
@@ -3033,7 +3099,7 @@ const RemoveDocModal = ({ open, onCancel, onConfirm }) => {
             <path d="M6 6l12 12M18 6 6 18" />
           </svg>
         </button>
-        <div className="remove-doc-icon" aria-hidden="true">
+        <div className="dialog-icon dialog-icon--danger" aria-hidden="true">
           <svg
             width="22"
             height="22"
@@ -3050,11 +3116,11 @@ const RemoveDocModal = ({ open, onCancel, onConfirm }) => {
             <path d="M10 11v6M14 11v6" />
           </svg>
         </div>
-        <h3 id="remove-doc-title" className="remove-doc-title">
+        <h2 id="remove-doc-title" className="dialog-title">
           {t("removeDocTitle")}
-        </h3>
-        <p className="remove-doc-body">{t("removeDocBody")}</p>
-        <div className="remove-doc-actions">
+        </h2>
+        <p className="dialog-desc">{t("removeDocBody")}</p>
+        <div className="dialog-actions">
           <button type="button" className="btn" onClick={onCancel}>
             {t("cancel")}
           </button>
@@ -3153,10 +3219,12 @@ const JobOfficialTourDocuments = ({ job, onPreview }) => {
             fileName={doc.fileName}
             metaLine={`${t("officialTourDocFromDispatch")} · ${displayTourDocType(doc.documentType, t)} · ${F().formatFileSize(doc.sizeBytes)}`}
             onView={() => {
-              const r = store.getTourDocumentPreview(doc.id);
+              const r = store.getTourDocumentPreview(doc.id, DRIVER_ACCESS);
               if (r.ok) onPreview?.(r.preview);
             }}
-            onDownload={() => store.downloadTourDocumentPlaceholder(doc.id)}
+            onDownload={() =>
+              store.downloadTourDocumentPlaceholder(doc.id, DRIVER_ACCESS)
+            }
             viewLabel={t("view")}
             downloadLabel={t("download")}
           />
@@ -3293,10 +3361,12 @@ const JobTourDocuments = ({ job, onPreview }) => {
                 canReplaceDoc(u) ? () => startReplace(u.id) : null
               }
               onView={() => {
-                const r = store.getTourDocumentPreview(u.id);
+                const r = store.getTourDocumentPreview(u.id, DRIVER_ACCESS);
                 if (r.ok) onPreview?.(r.preview);
               }}
-              onDownload={() => store.downloadTourDocumentPlaceholder(u.id)}
+              onDownload={() =>
+                store.downloadTourDocumentPlaceholder(u.id, DRIVER_ACCESS)
+              }
               replaceLabel={t("tourDocReplaceButton")}
               viewLabel={t("view")}
               downloadLabel={t("download")}
@@ -3335,6 +3405,9 @@ const JobUnlocked = ({
   onComplete,
   onReportProblem,
   onPerform,
+  // Tour-document deep link: a document notification (or a document push) opens
+  // the tour and immediately shows that file's preview.
+  openDocumentId = null,
 }) => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -3363,6 +3436,14 @@ const JobUnlocked = ({
     job.endCity,
   );
   const [docPreview, setDocPreview] = useState(null);
+  // A deep-linked document resolves through the same audited preview call the
+  // document row uses. A file that has since been removed simply opens the tour
+  // with no preview — never an empty or broken sheet.
+  useEffect(() => {
+    if (!openDocumentId) return;
+    const r = store.getTourDocumentPreview(openDocumentId, DRIVER_ACCESS);
+    if (r.ok) setDocPreview(r.preview);
+  }, [openDocumentId]);
   // Performed tours split into two tabs (Figma 8:2268 / 8:2387): job
   // details and the driver's own tour documents.
   const [detailTab, setDetailTab] = useState("details");
@@ -3756,7 +3837,10 @@ const JobUnlocked = ({
                 title={t("view")}
                 aria-label={t("view")}
                 onClick={() => {
-                  const r = store.getTransportOrderPreview(job.id);
+                  const r = store.getTransportOrderPreview(
+                    job.id,
+                    DRIVER_ACCESS,
+                  );
                   if (r.ok) setDocPreview(r.preview);
                 }}
               >
@@ -3767,7 +3851,7 @@ const JobUnlocked = ({
                 className="pdf-btn"
                 title={t("download")}
                 aria-label={t("download")}
-                onClick={() => store.downloadPdf(job.id)}
+                onClick={() => store.downloadPdf(job.id, DRIVER_ACCESS)}
               >
                 <Ic.Down />
               </button>
@@ -4637,66 +4721,44 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   );
 };
 
+// Meaningful status icon — a success disc. Extracted because two success
+// dialogs carried byte-identical copies of it; the `--st-accepted` tone is what
+// makes it information rather than decoration.
+const DialogSuccessIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M6 12l4 4 8-9"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 const PendingNotice = ({ onClose, kind }) => {
   const { t } = useI18n();
   const isCancel = kind === "cancel";
   return (
-    <div className="sheet-backdrop center" onClick={onClose}>
-      <div
-        className="sheet modal"
-        onClick={(e) => e.stopPropagation()}
-        style={{ padding: 26, textAlign: "center", maxWidth: 320 }}
-      >
-        <div
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: "50%",
-            background: "var(--st-accepted-bg)",
-            margin: "0 auto 16px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden
-          >
-            <path
-              d="M6 12l4 4 8-9"
-              stroke="var(--st-accepted)"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-        <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 600 }}>
-          {isCancel ? t("spCancelSuccessTitle") : t("emptyRunSuccessTitle")}
-        </h3>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13.5,
-            color: "var(--muted)",
-            lineHeight: 1.55,
-          }}
-        >
-          {isCancel ? t("spCancelSuccessBody") : t("emptyRunSuccessBody")}
-        </p>
+    <UI.Dialog
+      open
+      onClose={onClose}
+      icon={<DialogSuccessIcon />}
+      className="dialog-panel--narrow dialog-icon-success"
+      title={isCancel ? t("spCancelSuccessTitle") : t("emptyRunSuccessTitle")}
+      description={
+        isCancel ? t("spCancelSuccessBody") : t("emptyRunSuccessBody")
+      }
+      actions={
         <button
           type="button"
-          className="btn block primary mt-20"
+          className="btn primary"
           onClick={onClose}
         >
           {t("ok")}
         </button>
-      </div>
-    </div>
+      }
+    />
   );
 };
 
@@ -4706,62 +4768,20 @@ const PendingNotice = ({ onClose, kind }) => {
 const TourBookedSuccessSheet = ({ onClose }) => {
   const { t } = useI18n();
   return (
-    <div className="sheet-backdrop center" onClick={onClose}>
-      <div
-        className="sheet modal"
-        onClick={(e) => e.stopPropagation()}
-        style={{ padding: 26, textAlign: "center", maxWidth: 320 }}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="tour-booked-success-title"
-      >
-        <div
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: "50%",
-            background: "var(--st-accepted-bg)",
-            margin: "0 auto 16px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M6 12l4 4 8-9"
-              stroke="var(--st-accepted)"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-        <h3
-          id="tour-booked-success-title"
-          style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 600 }}
-        >
-          {t("tourBookedSuccessTitle")}
-        </h3>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13.5,
-            color: "var(--muted)",
-            lineHeight: 1.55,
-          }}
-        >
-          {t("tourBookedSuccessBody")}
-        </p>
-        <button
-          type="button"
-          className="btn block primary mt-20"
-          onClick={onClose}
-        >
+    <UI.Dialog
+      open
+      onClose={onClose}
+      titleId="tour-booked-success-title"
+      icon={<DialogSuccessIcon />}
+      className="dialog-panel--narrow dialog-icon-success"
+      title={t("tourBookedSuccessTitle")}
+      description={t("tourBookedSuccessBody")}
+      actions={
+        <button type="button" className="btn primary" onClick={onClose}>
           {t("ok")}
         </button>
-      </div>
-    </div>
+      }
+    />
   );
 };
 
@@ -4841,35 +4861,20 @@ const MarkPerformedSheet = ({ job, onClose }) => {
 
   if (stage === "confirm") {
     return (
-      <div className="sheet-backdrop center" onClick={onClose}>
+      <div className="dialog-backdrop" onClick={onClose}>
         <div
-          className="sheet modal"
+          className="dialog-panel"
           onClick={(e) => e.stopPropagation()}
-          style={{ padding: 24 }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="mark-performed-title"
         >
-          <Lbl>{t("markPerformed")}</Lbl>
-          <h2
-            id="mark-performed-title"
-            style={{
-              margin: "6px 0 14px",
-              fontSize: 24,
-              fontWeight: 600,
-              letterSpacing: "-0.015em",
-            }}
-          >
+          <span className="dialog-eyebrow">{t("markPerformed")}</span>
+          <h2 id="mark-performed-title" className="dialog-title">
             {t("markPerformedConfirmTitle")}
           </h2>
-          <div
-            style={{
-              border: "1px solid var(--line)",
-              borderRadius: "var(--r-2)",
-              padding: 14,
-              background: "var(--paper-2)",
-            }}
-          >
+          <div className="dialog-content">
+          <div className="accept-tour-summary">
             <div className="label" style={{ marginBottom: 8 }}>
               Tour #{job.id}
             </div>
@@ -4883,28 +4888,28 @@ const MarkPerformedSheet = ({ job, onClose }) => {
             message={error}
             onDismiss={() => setError(null)}
           />
-          <SlideToConfirm
-            text={t("slideToConfirm")}
-            doneText={t("slidePerformed")}
-            onConfirm={onSlideConfirm}
-          />
-          <button
-            type="button"
-            className="btn block"
-            style={{ marginTop: 12 }}
-            onClick={onClose}
-          >
-            {t("cancel")}
-          </button>
+          </div>
+          {/* Same documented deviation as the reference dialog: a
+              slide-to-confirm cannot share a row with a button. */}
+          <div className="dialog-actions dialog-actions--stack">
+            <SlideToConfirm
+              text={t("slideToConfirm")}
+              doneText={t("slidePerformed")}
+              onConfirm={onSlideConfirm}
+            />
+            <button type="button" className="btn block" onClick={onClose}>
+              {t("cancel")}
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="sheet-backdrop center">
+    <div className="dialog-backdrop">
       <div
-        className="sheet modal performed-success-modal"
+        className="dialog-panel performed-success-modal"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -5077,10 +5082,225 @@ const ProfilePane = () => {
   );
 };
 
-const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
+/**
+ * Turns "the driver tapped a push notification" into shell navigation intent.
+ *
+ * Both driver shells (the framed preview and the installed PWA at /pwa) call
+ * this with the notification id carried by the push, so a tap behaves
+ * identically on either surface and in every launch state — cold start,
+ * background, or already open. It resolves through
+ * `store.resolveDriverNotificationTarget()`, the same authority the
+ * notification list uses, so a push can never reach a screen the list would
+ * refuse to open.
+ *
+ * A push never lands on the generic Notification Center for a reachable
+ * non-tour target: an Infopoint push opens that message, a document push opens
+ * that document. Tour pushes open the Notification Center with the matching
+ * card already expanded, which is the agreed model.
+ *
+ * Anything missing, withdrawn, expired or no longer permitted resolves to the
+ * Notification Center with that card expanded, where it states why — a safe
+ * fallback, never a blank or broken screen.
+ */
+const resolveNotificationNavigation = (notificationId) => {
+  const store = window.AuthStore;
+  if (!notificationId || !store) return null;
+  const target = store.resolveDriverNotificationTarget(notificationId);
+  if (!target.ok) return { kind: "notifications", expandId: null };
+  if (!target.available) {
+    return {
+      kind: "notifications",
+      expandId: notificationId,
+      unavailableReason: target.unavailableReason,
+    };
+  }
+  if (target.kind === store.NOTIF_KIND_MESSAGE) {
+    return { kind: "news", newsId: target.newsId };
+  }
+  if (target.kind === store.NOTIF_KIND_DOCUMENT) {
+    return {
+      kind: "document",
+      jobId: target.jobId,
+      documentId: target.documentId,
+      mode: target.mode,
+    };
+  }
+  // Tour and plain notifications both land in the Notification Center; only a
+  // tour card has a preview to expand.
+  return {
+    kind: "notifications",
+    expandId: target.kind === store.NOTIF_KIND_TOUR ? notificationId : null,
+  };
+};
+
+/**
+ * Notification deep links carried on the URL: `?notify=<notification id>`.
+ *
+ * This is the seam a real push integration plugs into — a service-worker
+ * `notificationclick` handler focuses or opens the app on that URL, which is
+ * why one handler covers all three launch states: a cold start and a
+ * home-screen launch both arrive as a URL, and a tap on an already-open or
+ * backgrounded instance re-navigates the existing client (hence the
+ * popstate/hashchange listeners). Push delivery itself stays simulated in the
+ * prototype.
+ *
+ * `onNavigate(notificationId, nav)` receives the id and the resolved intent
+ * from `resolveNotificationNavigation`. Shared by both driver shells so a tap
+ * behaves identically on either surface.
+ */
+const useNotificationDeepLink = (onNavigate) => {
+  useEffect(() => {
+    const readParam = () => {
+      try {
+        return new URLSearchParams(window.location.search).get("notify") || "";
+      } catch (_) {
+        return "";
+      }
+    };
+    const apply = () => {
+      const id = readParam();
+      if (!id) return;
+      const nav = resolveNotificationNavigation(id);
+      if (nav) onNavigate(id, nav);
+    };
+    apply();
+    window.addEventListener("popstate", apply);
+    window.addEventListener("hashchange", apply);
+    return () => {
+      window.removeEventListener("popstate", apply);
+      window.removeEventListener("hashchange", apply);
+    };
+  }, []);
+};
+
+// Copy for a target that can no longer be opened. One place, so an unavailable
+// order, a deleted message and a withdrawn document all read consistently and
+// none of them can silently fall back to a generic screen.
+const NOTIF_UNAVAILABLE_I18N = {
+  taken: "notifUnavailableTaken",
+  withdrawn: "notifUnavailableWithdrawn",
+  cancelled: "notifUnavailableCancelled",
+  closed: "notifUnavailableClosed",
+  unavailable: "notifUnavailableGeneric",
+  order_gone: "notifOrderGone",
+  message_gone: "notifMessageGone",
+  document_gone: "notifDocumentGone",
+  not_permitted: "notifNotPermitted",
+  notification_missing: "notifTargetUnavailable",
+};
+
+const notifUnavailableText = (reason, t) =>
+  t(NOTIF_UNAVAILABLE_I18N[reason] || "notifTargetUnavailable");
+
+/**
+ * Expanded tour preview inside a notification card.
+ *
+ * Renders ONLY what `store.driverNotificationJobPreview()` returned. That
+ * projection already omits customer, full address, contact and plate for an
+ * order the driver has not committed to, so this component cannot leak a
+ * protected field even by accident — there is nothing to read.
+ */
+const NotificationTourPreview = ({ preview }) => {
+  const { t } = useI18n();
+  if (!preview) return null;
+  const legLine = (leg) => {
+    if (!leg) return "—";
+    const place = [leg.postalCode, leg.city].filter(Boolean).join(" ") || "—";
+    // `name` / `street` are present only in the unrestricted projection.
+    const address = [leg.name, [leg.street, leg.houseNumber].filter(Boolean).join(" ")]
+      .filter(Boolean)
+      .join(" · ");
+    return address ? `${address}, ${place}` : place;
+  };
+  const schedule = (leg) =>
+    leg
+      ? AuthStore.formatLocationSchedule(
+          {
+            date: leg.date,
+            windowFrom: leg.windowFrom,
+            windowTo: leg.windowTo,
+          },
+          t("flexible"),
+        )
+      : "—";
+
+  return (
+    <div className="notification-preview">
+      <div className="notification-preview-head">
+        <span className="notification-preview-tour mono">{preview.tour}</span>
+        {preview.status ? <Pill status={preview.status} /> : null}
+      </div>
+      <dl className="notification-preview-list">
+        <div className="notification-preview-row">
+          <dt>{t("pickup")}</dt>
+          <dd>
+            {legLine(preview.pickup)}
+            <span className="notification-preview-sub">
+              {schedule(preview.pickup)}
+            </span>
+          </dd>
+        </div>
+        <div className="notification-preview-row">
+          <dt>{t("delivery")}</dt>
+          <dd>
+            {legLine(preview.delivery)}
+            <span className="notification-preview-sub">
+              {schedule(preview.delivery)}
+            </span>
+          </dd>
+        </div>
+        <div className="notification-preview-row">
+          <dt>{t("vehicle")}</dt>
+          <dd>
+            {[
+              displayVehicle(preview.vehicleType, t),
+              preview.manufacturer,
+              preview.vehicleModel,
+            ]
+              .filter(Boolean)
+              .join(" · ") || "—"}
+            <span className="notification-preview-sub">
+              {displayTransportType(preview.transportType, t)}
+              {preview.registrationStatus
+                ? ` · ${AuthStore.registrationStatusLabel(preview.registrationStatus, t)}`
+                : ""}
+            </span>
+          </dd>
+        </div>
+        {preview.plate ? (
+          <div className="notification-preview-row">
+            <dt>{t("licensePlate")}</dt>
+            <dd className="mono">{preview.plate}</dd>
+          </div>
+        ) : null}
+      </dl>
+      {preview.restricted ? (
+        <p className="notification-preview-hint">
+          {t("notifPreviewProtectedHint")}
+        </p>
+      ) : null}
+    </div>
+  );
+};
+
+const DriverNotificationsList = ({
+  onOpenJob,
+  onOpenInfopoint,
+  onOpenNews,
+  onOpenTourDocument,
+  onOpenMarketplace,
+  initialExpandedId = null,
+}) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const rows = store.getDriverNotifications();
+  // Which tour notification is expanded. A push deep link can pre-expand one
+  // (`initialExpandedId`); otherwise the driver drives it.
+  const [expandedId, setExpandedId] = useState(initialExpandedId);
+
+  useEffect(() => {
+    if (initialExpandedId) setExpandedId(initialExpandedId);
+  }, [initialExpandedId]);
 
   const grouped = useMemo(() => {
     const map = new Map();
@@ -5097,21 +5317,30 @@ const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
     if (!row.read) store.markDriverNotificationsRead([row.id]);
   };
 
-  const openRow = (row) => {
-    markRead(row);
-    if (row.type === "infopoint_news") {
-      onOpenInfopoint?.();
-      return;
-    }
-    if (!row.jobId || !onOpenJob) return;
-    const job = store.getJobs().find((j) => j.id === row.jobId);
-    if (job) onOpenJob(job);
+  /** Opens a tour notification's order on the screen the driver is entitled to. */
+  const openOrder = (target) => {
+    const job = store.getJob(target.jobId);
+    if (!job) return;
+    onOpenJob?.(job, target.mode);
   };
 
-  const isActionable = (row) =>
-    row.type === "infopoint_news"
-      ? Boolean(onOpenInfopoint)
-      : Boolean(row.jobId && onOpenJob);
+  const openDeepLink = (row, target) => {
+    markRead(row);
+    if (!target.available) return;
+    if (target.kind === store.NOTIF_KIND_MESSAGE) {
+      // Deep-link to the exact message; a shell that only knows how to reach
+      // the Infopoint tab still gets the driver to the right screen.
+      if (onOpenNews) onOpenNews(target.newsId);
+      else onOpenInfopoint?.();
+      return;
+    }
+    if (target.kind === store.NOTIF_KIND_DOCUMENT) {
+      onOpenTourDocument?.({
+        jobId: target.jobId,
+        documentId: target.documentId,
+      });
+    }
+  };
 
   if (!rows.length) {
     return (
@@ -5136,8 +5365,21 @@ const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
                 flatIndex < 4 ? " list-enter" : "";
               const enterStyle =
                 flatIndex < 4 ? { ["--list-enter-i"]: flatIndex } : undefined;
-              const actionable = isActionable(row);
-              const content = (
+              const target = store.resolveDriverNotificationTarget(row);
+              const isTour = target.kind === store.NOTIF_KIND_TOUR;
+              const expanded = isTour && expandedId === row.id;
+              const bodyId = `notification-preview-${row.id}`;
+              // Non-tour cards deep-link; a card with an unreachable target is
+              // never a link — it states why instead.
+              const deepLinkable =
+                !isTour &&
+                target.available &&
+                ((target.kind === store.NOTIF_KIND_MESSAGE &&
+                  Boolean(onOpenNews || onOpenInfopoint)) ||
+                  (target.kind === store.NOTIF_KIND_DOCUMENT &&
+                    Boolean(onOpenTourDocument)));
+
+              const head = (
                 <>
                   {!row.read ? (
                     <span className="notification-row-dot" aria-hidden="true" />
@@ -5145,13 +5387,16 @@ const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
                     <span className="notification-row-dot-spacer" aria-hidden="true" />
                   )}
                   <span className="notification-row-body">
-                    <span className="notification-row-title">{row.title}</span>
-                    <span className="notification-row-text">{row.body}</span>
-                    {row.type === "infopoint_news" ? (
-                      <span className="notification-row-hint">
-                        {t("driverNotifInfopointHint")}
-                      </span>
-                    ) : null}
+                    <span className="notification-row-cat">
+                      {t(store.notificationCategoryI18nKey(row.type))}
+                    </span>
+                    <span className="notification-row-title">
+                      {displayNotificationTitle(row, t)}
+                    </span>
+                    {/* Collapsed preview text is clamped to two lines. */}
+                    <span className="notification-row-text">
+                      {displayNotificationBody(row, t)}
+                    </span>
                     <span className="notification-row-meta mono">
                       {row.createdAt}
                       {row.tour ? ` · ${row.tour}` : ""}
@@ -5162,23 +5407,113 @@ const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
 
               return (
                 <li key={row.id} className={enterClass.trim() || undefined} style={enterStyle}>
-                  {actionable ? (
-                    <button
-                      type="button"
-                      className={`notification-row${row.read ? "" : " unread"}`}
-                      onClick={() => openRow(row)}
-                    >
-                      {content}
-                    </button>
-                  ) : (
-                    <div
-                      className={`notification-row notification-row-static${
-                        row.read ? "" : " unread"
-                      }`}
-                    >
-                      {content}
-                    </div>
-                  )}
+                  <div
+                    className={`notification-card${row.read ? "" : " unread"}${
+                      expanded ? " expanded" : ""
+                    }`}
+                  >
+                    {isTour ? (
+                      // Expand/collapse control on the right. Expanding stays
+                      // inside the Notification Center — it never navigates.
+                      <button
+                        type="button"
+                        className="notification-row notification-row-toggle"
+                        aria-expanded={expanded}
+                        aria-controls={bodyId}
+                        onClick={() => {
+                          markRead(row);
+                          setExpandedId((cur) =>
+                            cur === row.id ? null : row.id,
+                          );
+                        }}
+                      >
+                        {head}
+                        <span
+                          className={`notification-row-chevron${expanded ? " open" : ""}`}
+                          aria-hidden="true"
+                        >
+                          <Ic.Down />
+                        </span>
+                        <span className="sr-only">
+                          {expanded
+                            ? t("notifCollapsePreview")
+                            : t("notifExpandPreview")}
+                        </span>
+                      </button>
+                    ) : deepLinkable ? (
+                      <button
+                        type="button"
+                        className="notification-row"
+                        onClick={() => openDeepLink(row, target)}
+                      >
+                        {head}
+                        <span className="notification-row-chevron" aria-hidden="true">
+                          <Ic.Chev />
+                        </span>
+                        <span className="sr-only">
+                          {target.kind === store.NOTIF_KIND_MESSAGE
+                            ? t("notifOpenMessage")
+                            : t("notifOpenDocument")}
+                        </span>
+                      </button>
+                    ) : (
+                      <div className="notification-row notification-row-static">
+                        {head}
+                      </div>
+                    )}
+
+                    {!isTour && !target.available ? (
+                      <p className="notification-unavailable">
+                        {notifUnavailableText(target.unavailableReason, t)}
+                      </p>
+                    ) : null}
+
+                    {isTour ? (
+                      <div
+                        id={bodyId}
+                        className="notification-card-panel"
+                        hidden={!expanded}
+                      >
+                        {target.available ? (
+                          <NotificationTourPreview preview={target.preview} />
+                        ) : (
+                          <p className="notification-unavailable">
+                            {notifUnavailableText(target.unavailableReason, t)}
+                          </p>
+                        )}
+                        <div className="notification-card-actions">
+                          {target.available ? (
+                            <button
+                              type="button"
+                              className="btn primary"
+                              onClick={() => {
+                                markRead(row);
+                                openOrder(target);
+                              }}
+                            >
+                              {target.mode === "unlocked" && !target.marketplace
+                                ? t("notifToMyOrders")
+                                : t("notifViewOrder")}
+                            </button>
+                          ) : null}
+                          {/* An unavailable Marketplace order offers the
+                              marketplace instead of a dead "View order". */}
+                          {!target.available && target.marketplace ? (
+                            <button
+                              type="button"
+                              className="btn"
+                              onClick={() => {
+                                markRead(row);
+                                onOpenMarketplace?.();
+                              }}
+                            >
+                              {t("notifViewMoreOrders")}
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 </li>
               );
             })}
@@ -5189,7 +5524,16 @@ const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
   );
 };
 
-const DriverNotificationsPane = ({ onClose, onBack, onOpenJob, onOpenInfopoint }) => {
+const DriverNotificationsPane = ({
+  onClose,
+  onBack,
+  onOpenJob,
+  onOpenInfopoint,
+  onOpenNews,
+  onOpenTourDocument,
+  onOpenMarketplace,
+  initialExpandedId = null,
+}) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const close = onClose || onBack;
@@ -5260,6 +5604,10 @@ const DriverNotificationsPane = ({ onClose, onBack, onOpenJob, onOpenInfopoint }
           <DriverNotificationsList
             onOpenJob={onOpenJob}
             onOpenInfopoint={onOpenInfopoint}
+            onOpenNews={onOpenNews}
+            onOpenTourDocument={onOpenTourDocument}
+            onOpenMarketplace={onOpenMarketplace}
+            initialExpandedId={initialExpandedId}
           />
         </div>
       </div>
@@ -5659,31 +6007,20 @@ const DriverProbationCard = ({ enterIndex }) => {
 const ProbationLimitSheet = ({ limitInfo, onClose }) => {
   const { t } = useI18n();
   return (
-    <div className="sheet-backdrop center" onClick={onClose}>
-      <div
-        className="sheet modal confirm-sheet confirm-sheet-panel"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-      >
-        <Lbl>{t("driverProbationLimitTitle")}</Lbl>
-        <p style={{ marginTop: 8 }}>
-          {t("driverProbationLimitReached", {
-            limit: limitInfo?.limit ?? 3,
-            performed: limitInfo?.performedCount ?? 0,
-          })}
-        </p>
-        <div className="confirm-sheet-actions">
-          <button
-            type="button"
-            className="btn primary touch-target"
-            onClick={onClose}
-          >
-            {t("uiDismiss")}
-          </button>
-        </div>
-      </div>
-    </div>
+    <UI.Dialog
+      open
+      onClose={onClose}
+      title={t("driverProbationLimitTitle")}
+      description={t("driverProbationLimitReached", {
+        limit: limitInfo?.limit ?? 3,
+        performed: limitInfo?.performedCount ?? 0,
+      })}
+      actions={
+        <button type="button" className="btn primary" onClick={onClose}>
+          {t("uiDismiss")}
+        </button>
+      }
+    />
   );
 };
 
@@ -5882,10 +6219,14 @@ const ProfileGroup = ({ label, children, enterIndex }) => {
 };
 
 // In-page back header for a drill-down subpage (mirrors pwa-detail-header).
-// The heading takes focus on entry (tabIndex -1) so a state-based drill-down
-// announces the new view instead of leaving focus stranded on <body>.
-const ProfileSubpageHeader = ({ title, backLabel, onBack, titleRef }) => (
-  <div className="pwa-detail-header profile-subpage-header">
+// Shared drill-down header for any state-based driver subpage (Profile
+// sections, Infopoint message detail): back arrow upper-left, centred title,
+// mirrored spacer so the title stays optically centred. The heading takes focus
+// on entry (tabIndex -1) so the new view is announced instead of leaving focus
+// stranded on <body>. The 44px back control lives on `.driver-subpage-header`
+// (styles.css) because it is the primary escape from the subpage.
+const DriverSubpageHeader = ({ title, backLabel, onBack, titleRef }) => (
+  <div className="pwa-detail-header driver-subpage-header">
     <button
       type="button"
       className="detail-back-btn"
@@ -6399,7 +6740,7 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
     <>
       {activeSub ? (
         <>
-          <ProfileSubpageHeader
+          <DriverSubpageHeader
             title={activeSub.title}
             backLabel={t("profileBackLabel")}
             onBack={() => setSubpage(null)}
@@ -6583,21 +6924,169 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
   );
 };
 
-const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
+const EDGE_SWIPE_START_ZONE_PX = 32; // must begin at the screen edge, like iOS
+const EDGE_SWIPE_COMMIT_PX = 72; // travel required to actually go back
+const EDGE_SWIPE_AXIS_LOCK_PX = 10; // same lock threshold as SwipeViews
+
+/**
+ * Left-edge swipe-back, the iOS system gesture: a drag that STARTS within
+ * 32px of the left edge and travels right dismisses the subpage. The page
+ * follows the finger and snaps back if the drag is abandoned.
+ *
+ * Progressive enhancement only — the gesture never replaces the visible back
+ * arrow and does nothing without touch. The axis lock mirrors `SwipeViews` so
+ * vertical scrolling of a long message is never hijacked, and under
+ * `prefers-reduced-motion` the snap-back animation is dropped (styles.css)
+ * while the drag itself still tracks the finger.
+ *
+ * Returns `{ handlers, dx }`: spread `handlers` on the page root and apply
+ * `dx` as a translateX.
+ */
+const useEdgeSwipeBack = (onBack) => {
+  const gesture = useRef(null);
+  const [dx, setDx] = useState(0);
+
+  const reset = () => {
+    gesture.current = null;
+    setDx(0);
+  };
+
+  const onTouchStart = (e) => {
+    if (!onBack || e.touches.length !== 1) return reset();
+    const p = e.touches[0];
+    // Only the edge zone starts a back gesture; a swipe from mid-screen is a
+    // scroll (or the tab carousel's business), not navigation.
+    if (p.clientX > EDGE_SWIPE_START_ZONE_PX) return reset();
+    gesture.current = { x: p.clientX, y: p.clientY, axis: null };
+  };
+
+  const onTouchMove = (e) => {
+    const g = gesture.current;
+    if (!g) return;
+    const p = e.touches[0];
+    const moveX = p.clientX - g.x;
+    const moveY = p.clientY - g.y;
+    if (g.axis === null) {
+      if (Math.abs(moveX) < EDGE_SWIPE_AXIS_LOCK_PX && Math.abs(moveY) < EDGE_SWIPE_AXIS_LOCK_PX)
+        return;
+      g.axis = Math.abs(moveX) > Math.abs(moveY) ? "x" : "y";
+    }
+    if (g.axis !== "x") return reset(); // vertical → let the message scroll
+    // No preventDefault: React's touchmove listener is passive, so the browser
+    // would ignore it and log a warning. `touch-action: pan-y` on the page
+    // (styles.css) is what actually reserves the horizontal axis for us.
+    setDx(Math.max(0, moveX));
+  };
+
+  const onTouchEnd = () => {
+    const committed = gesture.current?.axis === "x" && dx >= EDGE_SWIPE_COMMIT_PX;
+    reset();
+    if (committed) onBack?.();
+  };
+
+  return {
+    dx,
+    handlers: {
+      onTouchStart,
+      onTouchMove,
+      onTouchEnd,
+      onTouchCancel: reset,
+    },
+  };
+};
+
+/**
+ * Infopoint message detail page.
+ *
+ * A dedicated page, not an expandable card: a long announcement (updated AGB,
+ * client instructions) has to be readable in full, and an accordion inside a
+ * scrolling list is the wrong container for it. Reuses the shared driver
+ * drill-down header, so the back arrow, its 44px target, the centred title and
+ * the focus-on-entry behaviour are identical to the Profile subpages.
+ */
+const InfopointMessageDetail = ({ item, onBack }) => {
+  const { t } = useI18n();
+  const titleRef = useRef(null);
+  const { handlers, dx } = useEdgeSwipeBack(onBack);
+
+  useEffect(() => {
+    titleRef.current?.focus?.();
+  }, [item?.id]);
+
+  if (!item) return null;
+
+  return (
+    <div
+      className="infopoint-message-page"
+      // While the finger is down the page must track it exactly, so the CSS
+      // snap-back transition is suppressed; releasing drops the inline style
+      // and the transition animates the page home.
+      style={dx ? { transform: `translateX(${dx}px)`, transition: "none" } : undefined}
+      {...handlers}
+    >
+      <DriverSubpageHeader
+        title={t("infopointMessage")}
+        backLabel={t("back")}
+        onBack={onBack}
+        titleRef={titleRef}
+      />
+      <div className="scroll pwa-detail-body">
+        <div className="detail-card infopoint-message-card">
+          <h2 className="infopoint-message-title">
+            {displayNewsTitle(item, t)}
+          </h2>
+          <div className="mono text-muted-sm infopoint-message-date">
+            {item.publishedAt}
+          </div>
+          {/* Full text, never truncated. `pre-line` preserves the paragraph
+              breaks admins type into the message body. */}
+          <p className="infopoint-message-body">{displayNewsBody(item, t)}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Infopoint = ({
+  onOpenNotifications,
+  notificationsOpen = false,
+  // Deep link from a notification or a push tap: open this exact message's
+  // detail page. A message that no longer exists lands on the News tab with no
+  // detail page open rather than on a broken screen.
+  deepLinkNewsId = null,
+  onDeepLinkConsumed,
+}) => {
   const { t } = useI18n();
   const store = useAuthStore();
-  const [subTab, setSubTab] = useState("documents");
+  const [subTab, setSubTab] = useState(deepLinkNewsId ? "news" : "documents");
   const INFO_TABS = ["documents", "news", "help"];
-  const [openNewsId, setOpenNewsId] = useState(null);
+  // Which message's detail page is open. Null = the message list.
+  const [detailNewsId, setDetailNewsId] = useState(null);
   const [docPreview, setDocPreview] = useState(null);
   const readerId = store.getCurrentDriver()?.id || AuthStore.DEMO_DRIVER;
   const docs = store.getDocuments().filter((d) => d.visible);
   const news = store.getNews();
   const unreadCount = news.filter((n) => !n.readBy.includes(readerId)).length;
+  const detailItem = detailNewsId
+    ? news.find((n) => n.id === detailNewsId) || null
+    : null;
+
+  useEffect(() => {
+    if (!deepLinkNewsId) return;
+    setSubTab("news");
+    const r = store.openInfopointNews(deepLinkNewsId, readerId);
+    setDetailNewsId(r.ok ? deepLinkNewsId : null);
+    // Consume it: the driver navigating back here later must not silently
+    // re-open (and re-audit) the same message.
+    onDeepLinkConsumed?.();
+  }, [deepLinkNewsId]);
 
   const openNews = (item) => {
-    store.markNewsRead(item.id, readerId);
-    setOpenNewsId((cur) => (cur === item.id ? null : item.id));
+    // Opening a message navigates to its detail page. The view is audited and
+    // the message marked read immediately — every opening, including one that
+    // is already read.
+    store.openInfopointNews(item.id, readerId);
+    setDetailNewsId(item.id);
   };
 
   return (
@@ -6616,6 +7105,17 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
           onClose={() => setDocPreview(null)}
         />
       ) : null}
+
+      {/* A message detail page replaces the whole Infopoint screen — header,
+          tabs and all — so a long announcement gets the full viewport. Back
+          returns to the complete message list with the tab still on News. */}
+      {detailItem ? (
+        <InfopointMessageDetail
+          item={detailItem}
+          onBack={() => setDetailNewsId(null)}
+        />
+      ) : (
+      <>
       <DriverScreenHeader
         title={t("infopoint")}
         subtitle={t("infopointSubtitle")}
@@ -6714,7 +7214,10 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
                         border: "1px solid var(--line)",
                       }}
                       onClick={() => {
-                        const r = store.getInfopointDocumentPreview(d.id);
+                        const r = store.getInfopointDocumentPreview(
+                          d.id,
+                          DRIVER_ACCESS,
+                        );
                         if (r.ok) setDocPreview(r.preview);
                       }}
                       title={t("view")}
@@ -6729,7 +7232,9 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
                         background: "var(--paper-2)",
                         border: "1px solid var(--line)",
                       }}
-                      onClick={() => store.downloadInfopointDocument(d.id)}
+                      onClick={() =>
+                        store.downloadInfopointDocument(d.id, DRIVER_ACCESS)
+                      }
                       title={t("download")}
                       aria-label={`${t("download")}: ${d.title}`}
                     >
@@ -6770,9 +7275,10 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
               </div>
             ) : (
               <div className="infopoint-card">
+                {/* Title, date and read state only — the message body lives on
+                    its own page, so nothing here is truncated or expandable. */}
                 {news.map((n, index) => {
                   const unread = !n.readBy.includes(readerId);
-                  const expanded = openNewsId === n.id;
                   return (
                     <button
                       key={n.id}
@@ -6784,8 +7290,11 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
                         index < 4 ? { ["--list-enter-i"]: index } : undefined
                       }
                       onClick={() => openNews(n)}
-                      aria-expanded={expanded}
-                      aria-label={n.title}
+                      aria-label={
+                        unread
+                          ? `${t("infopointNewsUnread")}: ${displayNewsTitle(n, t)}`
+                          : `${t("infopointNewsRead")}: ${displayNewsTitle(n, t)}`
+                      }
                     >
                       <div
                         className={`infopoint-news-icon ${unread ? "unread" : "read"}`}
@@ -6793,37 +7302,17 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
                         <Ic.Calendar />
                         {unread ? (
                           <span
-                            style={{
-                              position: "absolute",
-                              top: -2,
-                              right: -2,
-                              width: 8,
-                              height: 8,
-                              borderRadius: "50%",
-                              background: "var(--primary)",
-                              border: "1.5px solid var(--paper)",
-                            }}
+                            className="infopoint-news-unread-dot"
+                            aria-hidden="true"
                           ></span>
                         ) : null}
                       </div>
                       <div className="flex-1-min-0">
                         <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            gap: 12,
-                            alignItems: "flex-start",
-                          }}
+                          className="infopoint-news-title"
+                          style={{ fontWeight: unread ? 600 : 500 }}
                         >
-                          <div
-                            style={{
-                              fontWeight: unread ? 600 : 500,
-                              fontSize: 14,
-                              color: "var(--text)",
-                            }}
-                          >
-                            {n.title}
-                          </div>
+                          {displayNewsTitle(n, t)}
                         </div>
                         <div
                           className="mono text-muted-sm"
@@ -6831,28 +7320,22 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
                         >
                           {n.publishedAt}
                         </div>
-                        <p
-                          className="text-muted-sm"
-                          style={{ margin: "8px 0 0", lineHeight: 1.45, fontSize: 13 }}
-                        >
-                          {expanded
-                            ? n.body
-                            : `${(n.body || "").slice(0, 100)}${
-                                (n.body || "").length > 100 ? "…" : ""
-                              }`}
-                        </p>
                       </div>
-                      <div
-                        style={{
-                          alignSelf: "center",
-                          color: "var(--muted-2)",
-                          transform: expanded ? "rotate(180deg)" : "none",
-                          transition: "transform 0.15s ease",
-                          display: "flex",
-                        }}
+                      {/* Unread is marked in words as well as by the dot, so
+                          it never depends on colour alone. A read message
+                          carries no badge — the state is still explicit in the
+                          row's accessible name above. */}
+                      {unread ? (
+                        <span className="infopoint-news-state">
+                          {t("infopointNewsUnread")}
+                        </span>
+                      ) : null}
+                      <span
+                        className="infopoint-news-chev"
+                        aria-hidden="true"
                       >
-                        <Ic.Down />
-                      </div>
+                        <Ic.Chev />
+                      </span>
                     </button>
                   );
                 })}
@@ -6863,6 +7346,8 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
           </div>
         ))}
       </SwipeViews>
+      </>
+      )}
     </div>
   );
 };
@@ -6872,31 +7357,24 @@ const InfoPaneFull = Infopoint;
 const SameDayOverlapSheet = ({ onCancel, onConfirm }) => {
   const { t } = useI18n();
   return (
-    <div className="sheet-backdrop center" onClick={onCancel}>
-      <div
-        className="sheet modal confirm-sheet confirm-sheet-panel"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="overlap-sheet-title"
-      >
-        <Lbl>{t("driverAcceptOverlapTitle")}</Lbl>
-        <h2 id="overlap-sheet-title">{t("bindingAcceptance")}</h2>
-        <p>{t("driverAcceptOverlapConfirm")}</p>
-        <div className="confirm-sheet-actions">
-          <button type="button" className="btn touch-target" onClick={onCancel}>
+    <UI.Dialog
+      open
+      onClose={onCancel}
+      titleId="overlap-sheet-title"
+      eyebrow={t("driverAcceptOverlapTitle")}
+      title={t("bindingAcceptance")}
+      description={t("driverAcceptOverlapConfirm")}
+      actions={
+        <>
+          <button type="button" className="btn" onClick={onCancel}>
             {t("cancel")}
           </button>
-          <button
-            type="button"
-            className="btn cta touch-target"
-            onClick={onConfirm}
-          >
+          <button type="button" className="btn cta" onClick={onConfirm}>
             {t("driverAcceptOverlapConfirmBtn")}
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 };
 
@@ -7121,6 +7599,10 @@ Object.assign(window, {
   JobTourDocuments,
   DriverNotificationsList,
   DriverNotificationsPane,
+  NotificationTourPreview,
+  // One push-tap → navigation mapping, shared by both driver shells.
+  resolveNotificationNavigation,
+  useNotificationDeepLink,
   JobInvoiceUpload,
   MyJobs,
   ReportProblemSheet,
@@ -7136,4 +7618,7 @@ Object.assign(window, {
   ProfilePaneFull,
   Infopoint,
   InfoPaneFull,
+  InfopointMessageDetail,
+  DriverSubpageHeader,
+  useEdgeSwipeBack,
 });

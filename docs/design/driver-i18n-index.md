@@ -137,6 +137,104 @@ it was reused rather than duplicated.
 
 ---
 
+## Notification keys (type-aware cards + deep links, 2026-07-29)
+
+Notification **category** labels are resolved from a DYNAMIC key —
+`t(store.notificationCategoryI18nKey(row.type))`, where the store maps `notification_type` to one of
+four category codes. A literal-scanning indexer cannot see them, so they are listed here to keep them
+from looking unused and being deleted:
+
+| Category code | Key | EN | DE |
+|---------------|-----|----|----|
+| `order` | `notifCategoryOrder` | Order | Auftrag |
+| `account` | `notifCategoryAccount` | Account | Konto |
+| `system` | `notifCategorySystem` | System | System |
+| `general_information` | `notifCategoryGeneralInfo` | General information | Allgemeine Information |
+
+The taxonomy is **derived from the type and never stored**, so adding a category means one entry in
+the store map plus one key here — never a migration.
+
+### Notification titles and bodies
+
+Notification copy is resolved **when the notification is created**, in `store.js` via the store's
+own `t2()` helper — not in the component. A literal-scanning indexer over `driver.jsx` does not see
+these either:
+
+| Event | Title key | Body key |
+|-------|-----------|----------|
+| Newly published matching order | `notifNewPublishedJobTitle` | `notifNewPublishedJobBody` (`{from}`, `{to}`) |
+| Booked order updated | `notifOrderUpdatedTitle` (`{tour}`) | `notifOrderUpdatedIntro` + per-field diff lines |
+| Cancelled by Autheon | `notifOrderCancelledByAutheonTitle` | `notifOrderCancelledByAutheonBody` (`{tour}`) |
+| Empty run recognised / not recognised | `notifEmptyRunRecognisedTitle` / `notifEmptyRunNotRecognisedTitle` | `notifEmptyRunRecognisedBody` / `notifEmptyRunNotRecognisedBody` (`{tour}`) |
+| Document accepted | `notifDocumentAcceptedTitle` | `notifDocumentAcceptedBody` (`{file}`) |
+| Document rejected | `notifDocumentRejectedTitle` | the admin's rejection reason, falling back to `notifDocumentRejectedBody` |
+| Profile change sent / approved / declined | `notifMasterDataSentTitle` / `notifMasterDataApprovedTitle` / `notifMasterDataRejectedTitle` | `notifMasterDataSentBody` / `notifMasterDataApprovedBody` / `notifMasterDataRejectedBody` |
+| Sign-in email changed | `emailChangedNotifyTitle` | `emailChangedNotifyBody` (`{email}`) |
+| New Infopoint message | the message's own subject | the message's own text (truncated) |
+
+> Copy is frozen at creation time, matching the pre-existing behaviour of every other notification in
+> the store. Production should store a message **key + params** and translate on read, so a driver who
+> switches language sees their history in the new one.
+
+### Unavailable targets
+
+A notification whose target is gone states why. One reason code → one key, resolved through a single
+map (`NOTIF_UNAVAILABLE_I18N`, `driver.jsx`) so no screen invents its own wording:
+
+| Reason | Key |
+|--------|-----|
+| `taken` (booked by another partner) | `notifUnavailableTaken` |
+| `withdrawn` (back to draft) | `notifUnavailableWithdrawn` |
+| `cancelled` | `notifUnavailableCancelled` |
+| `closed` (performed / empty-run terminal) | `notifUnavailableClosed` |
+| `unavailable` (fallback) | `notifUnavailableGeneric` |
+| `order_gone` / `message_gone` / `document_gone` | `notifOrderGone` / `notifMessageGone` / `notifDocumentGone` |
+| `not_permitted` | `notifNotPermitted` |
+| `notification_missing` | `notifTargetUnavailable` |
+
+There is deliberately **no** generic "something went wrong" string — the driver always gets the actual
+reason, the same principle the upload errors follow above.
+
+### Removed
+
+| Key | Status | Reason |
+|-----|--------|--------|
+| `driverNotifInfopointHint` | **Removed 2026-07-29** (EN + DE) | "Also in Infopoint → New messages" described where to find a message. The card now deep-links to that exact message, so the hint had no purpose and no other consumer. |
+
+---
+
+## Authentication keys (PR #32, documented 2026-07-29)
+
+The auth screens are the app's **entry point** — every other screen is behind them — so these keys
+are load-bearing. They are namespaced by surface and stage:
+
+| Prefix | Screen |
+|--------|--------|
+| `authDriverLogin*` / `authAdminLogin*` | sign in (labels, placeholders, submit, show/hide password, forgot link) |
+| `authDriverForgot*` / `authAdminForgot*` | forgot password — email stage, then `*Otp*` for the code stage |
+| `authDriverReset*` / `authAdminReset*` | choose a new password after a verified code |
+| `authDriverSetPassword*` / `authAdminSetPassword*` | initial password from an invite link, incl. the invalid-link state |
+
+**Both surfaces keep their own key set** even where the English happens to match. The driver PWA and
+the console are separately localizable products, and the copy is expected to diverge (tone, length
+for phone widths). The shared *component* is `LoginForm`; the copy is injected, not hardcoded.
+
+### Load-bearing, easy to delete by mistake
+
+| Key group | Why it must stay |
+|-----------|------------------|
+| `*LoginShowPassword` / `*LoginHidePassword` | accessible name of the password toggle — the icon is decorative, so removing these leaves an unlabelled button |
+| `*ForgotOtpIncorrectCode` vs `*ForgotOtpInvalidCode` | **two different failures**: a wrong code vs a malformed/expired one. Collapsing them removes the user's ability to tell "retype it" from "request a new one" |
+| `*ForgotOtpResendCooldownPrefix` | prefixes the live countdown; the seconds are appended at runtime |
+| `*ResetMismatch` / `*SetPasswordMismatch`, `*MinLength`, `*ConfirmRequired`, `*SetPasswordComplexity` | per-field validation messages — there is deliberately no generic "invalid password" string |
+| `*SetPasswordInvalidLinkTitle` / `*Message` / `*Hint` | the invalid/expired invite-link state, which is a screen of its own, not a toast |
+
+> The forgot-password flow also renders the 6-digit code in an info alert. That copy is a
+> **demo-only** affordance (a static prototype cannot send email); production delivery is a Keycloak
+> action email and the code must never reach the client.
+
+---
+
 ## All driver keys in use
 
 | Key | EN | DE |
@@ -283,7 +381,6 @@ it was reused rather than duplicated.
 | `driverAcceptOverlapTitle` | Same-day tour overlap | Tour-Überschneidung am selben Tag |
 | `driverCancellationReasonLabel` | Reason | Grund |
 | `driverCode` | driver-id | Fahrer-ID |
-| `driverNotifInfopointHint` | Also in Infopoint → New messages | Auch unter Infopoint → Neue Nachrichten |
 | `driverNotifications` | Notifications | Benachrichtigungen |
 | `driverNotificationsAllRead` | All caught up | Alles gelesen |
 | `driverNotificationsEmpty` | No notifications yet. | Noch keine Benachrichtigungen. |
@@ -334,9 +431,12 @@ it was reused rather than duplicated.
 | `infopoint` | Infopoint | Infopoint |
 | `infopointDocsTab` | General documents | Allgemeine Dokumente |
 | `infopointHelpTab` | Help | Hilfe |
+| `infopointMessage` | Message | Nachricht |
 | `infopointNewsAdminHint` | Messages are published by admins under Admin → Infopoint → New messages. | Nachrichten werden im Admin unter Infopoint → Neue Nachrichten veröffentlicht. |
 | `infopointNewsEmpty` | No news items yet. | Noch keine News. |
+| `infopointNewsRead` | Read | Gelesen |
 | `infopointNewsTab` | New messages | Neue Nachrichten |
+| `infopointNewsUnread` | New | Neu |
 | `infopointSubtitle` | Official documents and dispatcher announcements | Offizielle Dokumente und Ankündigungen der Disposition |
 | `instructionsPdf` | Operational instructions and PDF | Operative Hinweise und PDF |
 | `invoiceUploadInvalidType` | Only PDF or image files are accepted. | Nur PDF- oder Bilddateien sind erlaubt. |
@@ -351,6 +451,7 @@ it was reused rather than duplicated.
 | `leavePageTitle` | Leave this order? | Auftrag verlassen? |
 | `legal` | Legal | Rechtliches |
 | `legalSub` | Terms · privacy · imprint | AGB · Datenschutz · Impressum |
+| `licensePlate` | License plate | Kennzeichen |
 | `licenseVin` | License plate and VIN | Kennzeichen und FIN |
 | `loadingJobs` | Loading jobs… | Touren werden geladen… |
 | `mailtoSubjectSupport` | AUTHEON driver support — {driverCode} | AUTHEON Fahrer-Support — {driverCode} |
@@ -360,6 +461,7 @@ it was reused rather than duplicated.
 | `markPerformedConfirmBody` | This confirms the vehicle was handed over at the destination. Slide to confirm — or cancel if this was tapped by mistake. | Damit wird bestätigt, dass das Fahrzeug am Ziel übergeben wurde. Zum Bestätigen schieben – oder abbrechen, falls versehentlich getippt. |
 | `markPerformedConfirmTitle` | Mark this tour as performed? | Tour als durchgeführt markieren? |
 | `marketplace` | Marketplace | Marktplatz |
+| `marketplaceEmptyNoOrders` | There are currently no open orders. | Es gibt derzeit keine offenen Aufträge. |
 | `marketplacePreview` | Marketplace preview | Marktplatz-Vorschau |
 | `masterDataChangeCancel` | Cancel | Abbrechen |
 | `masterDataChangeEditBtn` | Request changes | Änderung anfragen |
@@ -376,12 +478,26 @@ it was reused rather than duplicated.
 | `myDocumentsTab` | My documents | Meine Dokumente |
 | `myJobs` | My jobs | Meine Aufträge |
 | `myJobsSubtitle` | Track and update your accepted tours | Verfolgen und aktualisieren Sie Ihre akzeptierten Touren |
+| `newsDocUploadFlowBody` | After marking a tour performed, upload your billing invoice and delivery proof from the tour detail screen. | Nachdem Sie eine Tour als durchgeführt markiert haben, laden Sie Ihre Abrechnungsrechnung und den Übergabenachweis in der Tourdetailansicht hoch. |
+| `newsDocUploadFlowTitle` | New document upload flow | Neuer Ablauf für Dokumenten-Uploads |
+| `newsReportProblemBody` | Use Report Problem to cancel an order or report an empty run. A reported empty run is submitted to dispatch for review (recognised or not recognised). | Nutzen Sie „Problem melden“, um einen Auftrag zu stornieren oder eine Leerfahrt zu melden. Eine gemeldete Leerfahrt wird der Disposition zur Prüfung vorgelegt (anerkannt oder nicht anerkannt). |
+| `newsReportProblemTitle` | Report Problem replaces returns | „Problem melden“ ersetzt Rückgaben |
+| `newsTransportStrikeBody` | Dear service partners,\n\nOn Monday, 01.01.2027, there may be isolated warning strikes in public transport. Please check in good time whether your area in Germany is affected.\n\nThank you for your attention and safe travels. | Liebe Servicepartner,\n\nam Montag, 01.01.2027, kann es im öffentlichen Nahverkehr zu einzelnen Warnstreiks kommen. Bitte prüfen Sie frühzeitig, ob Ihre Region in Deutschland betroffen ist.\n\nVielen Dank für Ihre Aufmerksamkeit und gute Fahrt. |
+| `newsTransportStrikeTitle` | ATTENTION: public transport strike 01.01.2027 | ACHTUNG: Streik im öffentlichen Nahverkehr am 01.01.2027 |
 | `noDriverAddons` | No driver-facing add-ons. | Keine fahrerseitigen Zusatzhinweise. |
 | `noJobsMatch` | No jobs match | Keine passenden Touren |
 | `noToursMatch` | No tours match these filters. | Keine Touren entsprechen diesen Filtern. |
 | `noteConfirmArrival` | Please confirm arrival 15 minutes early. | Bitte Ankunft 15 Minuten vorher bestätigen. |
 | `noteReportPickupDelay` | Report any pickup delay immediately to dispatch. | Verzögerungen bei der Abholung sofort an die Disposition melden. |
 | `nothingHereYet` | Nothing here yet. | Hier ist noch nichts. |
+| `notifCollapsePreview` | Hide tour details | Tourdetails ausblenden |
+| `notifExpandPreview` | Show tour details | Tourdetails anzeigen |
+| `notifOpenDocument` | Open document | Dokument öffnen |
+| `notifOpenMessage` | Open message | Nachricht öffnen |
+| `notifPreviewProtectedHint` | Customer, full addresses and licence plate become visible after you accept. | Kunde, vollständige Adressen und Kennzeichen werden nach der Annahme sichtbar. |
+| `notifToMyOrders` | To my orders | Zu meinen Aufträgen |
+| `notifViewMoreOrders` | View more orders | Weitere Aufträge ansehen |
+| `notifViewOrder` | View order | Auftrag ansehen |
 | `notifications` | Notifications | Benachrichtigungen |
 | `notificationsSub` | Push filters mirror Portal preferences | Push-Filter spiegeln die Portal-Einstellungen |
 | `offer` | Offer | Angebot |

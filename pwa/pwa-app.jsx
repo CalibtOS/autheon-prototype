@@ -1,4 +1,4 @@
-/* global React, AuthStore, useAuthStore, useI18n, TabBar, Portal, MyJobs, Infopoint, ProfilePaneFull, JobLocked, JobUnlocked, AcceptanceModal, ReportProblemSheet, PendingNotice, TourBookedSuccessSheet, MarkPerformedSheet, ProbationLimitSheet, SameDayOverlapSheet, FilterSheet, DriverNotificationsPane, DriverLoginScreen */
+/* global React, AuthStore, useAuthStore, useI18n, TabBar, Portal, MyJobs, Infopoint, ProfilePaneFull, JobLocked, JobUnlocked, AcceptanceModal, ReportProblemSheet, PendingNotice, TourBookedSuccessSheet, MarkPerformedSheet, ProbationLimitSheet, SameDayOverlapSheet, FilterSheet, DriverNotificationsPane, DriverLoginScreen, useNotificationDeepLink */
 /**
  * PwaDriverApp — real-viewport driver PWA shell for /pwa.
  *
@@ -57,15 +57,48 @@ function PwaDriverApp() {
   const [banner, setBanner] = useState(null);
   const [bookedSuccess, setBookedSuccess] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [expandNotificationId, setExpandNotificationId] = useState(null);
+  const [deepLinkNewsId, setDeepLinkNewsId] = useState(null);
 
-  const handleOpenJob = (j, fromTab = tab) => {
-    const portalLocked =
-      j.status === "published" &&
-      !store.isAccepted(j.id) &&
-      !store.isPerformed(j.id);
-    const mode = portalLocked ? "locked" : "unlocked";
-    setActiveJob({ id: j.id, mode, fromTab });
+  const handleOpenJob = (j, mode = null, fromTab = tab) => {
+    // One shared entitlement rule (store.driverJobViewMode) decides Marketplace
+    // preview vs full tour detail, so a deep link cannot open a screen the
+    // marketplace itself would keep locked.
+    setActiveJob({
+      id: j.id,
+      mode: mode || store.driverJobViewMode(j),
+      fromTab,
+    });
   };
+
+  /** Applies a resolved push-notification deep link (see useNotificationDeepLink). */
+  const applyNotificationDeepLink = (notificationId, nav) => {
+    // A tapped push has been seen.
+    store.markDriverNotificationsRead([notificationId]);
+    if (nav.kind === "news") {
+      setShowNotifications(false);
+      setActiveJob(null);
+      setDeepLinkNewsId(nav.newsId);
+      setTab("info");
+      return;
+    }
+    if (nav.kind === "document") {
+      setShowNotifications(false);
+      setDeepLinkNewsId(null);
+      setActiveJob({
+        id: nav.jobId,
+        mode: nav.mode,
+        fromTab: "mine",
+        openDocumentId: nav.documentId,
+      });
+      return;
+    }
+    setActiveJob(null);
+    setExpandNotificationId(nav.expandId);
+    setShowNotifications(true);
+  };
+
+  useNotificationDeepLink(applyNotificationDeepLink);
   const back = () => {
     const returnTab = activeJob?.fromTab || tab;
     setActiveJob(null);
@@ -97,6 +130,7 @@ function PwaDriverApp() {
           onBackToMarketplace={backToMarketplace}
           onReportProblem={() => setReportProblemJob(job)}
           onPerform={() => setMarkPerformedJobId(job.id)}
+          openDocumentId={activeJob.openDocumentId || null}
         />
       );
     }
@@ -126,6 +160,8 @@ function PwaDriverApp() {
       <Infopoint
         onOpenNotifications={() => setShowNotifications(true)}
         notificationsOpen={showNotifications}
+        deepLinkNewsId={deepLinkNewsId}
+        onDeepLinkConsumed={() => setDeepLinkNewsId(null)}
       />
     );
   } else {
@@ -256,14 +292,37 @@ function PwaDriverApp() {
           )}
           {showNotifications && (
             <DriverNotificationsPane
-              onClose={() => setShowNotifications(false)}
-              onOpenJob={(job) => {
+              onClose={() => {
                 setShowNotifications(false);
-                handleOpenJob(job);
+                setExpandNotificationId(null);
+              }}
+              initialExpandedId={expandNotificationId}
+              onOpenJob={(job, mode) => {
+                setShowNotifications(false);
+                handleOpenJob(job, mode);
               }}
               onOpenInfopoint={() => {
                 setShowNotifications(false);
                 setTab("info");
+              }}
+              onOpenNews={(newsId) => {
+                setShowNotifications(false);
+                setDeepLinkNewsId(newsId);
+                setTab("info");
+              }}
+              onOpenTourDocument={({ jobId, documentId }) => {
+                setShowNotifications(false);
+                setActiveJob({
+                  id: jobId,
+                  mode: "unlocked",
+                  fromTab: tab,
+                  openDocumentId: documentId,
+                });
+              }}
+              onOpenMarketplace={() => {
+                setShowNotifications(false);
+                setActiveJob(null);
+                setTab("portal");
               }}
             />
           )}

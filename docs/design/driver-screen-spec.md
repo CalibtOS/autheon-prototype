@@ -256,10 +256,11 @@ Audit item 43 resolved 2026-07-28.
 | Mark performed flow | `MarkPerformedSheet` | confirm (slide), success empty, success + uploads | Slide to confirm → Done |
 | Remove document | `RemoveDocModal` | confirm; blocked once in review | Remove (outline danger) |
 | Report problem | `ReportProblemSheet` | 7 codes, min 10 chars, evidence | Submit |
-| Notifications | `DriverNotificationsPane` | grouped by day, unread, empty | Deep link |
+| Notifications | `DriverNotificationsPane` | grouped by day, unread, empty, tour card collapsed / expanded, unavailable order, message + document deep-link cards | Expand preview \| View order \| To my orders \| View more orders \| open message \| open document |
 | Profile | `ProfilePaneFull` | view, edit MDR, pending | Request changes |
 | Change email | Account nav row → `ChangeEmailSheet` | enter, confirm code (+resend), success, pending resume | Cancel \| Send code → Confirm change |
-| Infopoint | `Infopoint` | docs + news + help tabs, empty (swipe between tabs) | Download / Help |
+| Infopoint | `Infopoint` | docs + news + help tabs, empty (swipe between tabs) | Download / Help / open message |
+| Infopoint message detail | `InfopointMessageDetail` | short message, long message (AGB-length), unread → read on entry | Back (arrow + left-edge swipe) |
 
 ---
 
@@ -286,6 +287,295 @@ Source of truth: Figma file `CgaMrN7nmXS8xub0RxyzsJ` — nodes `8:2268` (details
 - **Marketplace preview Route card** (locked detail): city + 8px dot (`--primary` start, `--ink` end), dashed `--line-dash` connectors both sides of a centered distance (14/600) over estimated duration (12, muted), PLZ beneath each city. Marketplace **cards** keep the original arrow route line.
 - Deliberate deviations from the Figma mocks: no `docx` in the accepted-types hint (store accepts PDF + images only), no simulated failed-upload/Retry row (prototype uploads resolve synchronously), review-status pills added to rows (PRD requires visible correction needs).
 - **DE length hardening (2026-07-15):** the notifications pane header is two rows (title + close, then subtitle + mark-all-read) because "Benachrichtigungen" / "Alle als gelesen markieren" cannot share one row on phone widths; the detail tab-pill row degrades to horizontal scroll (never clips) for long DE labels at ≤360px.
+
+---
+
+## Authentication screens + the gate (PR #32, documented 2026-07-29)
+
+> **The app opens on a login screen.** Every other screen in this document is reachable only after
+> sign-in — on the framed client preview, on `/pwa/`, and in the Admin Backend. Documented
+> retroactively: the screens shipped in PR #32 without their spec.
+
+Primitives (`driver-ui.jsx`, on `DriverUI`) — **one** implementation for both surfaces:
+
+| Primitive | Role |
+|---|---|
+| `LoginForm` | email + password, show/hide toggle, per-field and root error slots, forgot-password link |
+| `AuthOtpInput` | 6 cells over one hidden input, so paste and keyboard navigation work |
+| `ForgotPasswordFlow` | email → 6-digit code → new password, with a resend cooldown |
+| `SetPasswordForm` | initial password from an invite link, plus an invalid-link state |
+
+Screens: `DriverLoginScreen` · `DriverSetPasswordScreen` (`driver.jsx`), `AdminLoginScreen` ·
+`AdminSetPasswordScreen` (`admin.jsx`).
+
+### States to cover in QA
+
+| Screen | States |
+|---|---|
+| Sign in | empty · invalid email · missing password · wrong credentials (root error) · password shown/hidden · submitting |
+| Forgot password — email | empty · invalid email · submitted (always reports success — see below) |
+| Forgot password — code | empty · partial · incorrect code · expired code · resend on cooldown · resend available |
+| Set / reset password | empty · below minimum length · mismatch · complexity hint · invalid or missing invite link · success |
+
+### Two rules that are security behaviour, not copy
+
+- **No account enumeration.** A forgot-password request always reports success, even for an unknown
+  email. Do not "improve" this into a "no such account" message.
+- **Bounded codes.** 10-minute expiry (`PASSWORD_RESET_CODE_TTL_MS`), 30-second resend cooldown
+  (`PASSWORD_RESET_RESEND_MS`), and an incorrect or expired code is rejected distinguishably.
+
+### Two demo-only affordances — never ship these
+
+- **The 6-digit code is displayed** in an info alert, because a static prototype cannot send email.
+  Same convention as `ChangeEmailSheet`'s `demoCode`. Production delivery is a **Keycloak action
+  email**; the code must never reach the client.
+- **Any non-empty password authenticates.** There is nowhere here to store or verify a credential.
+
+---
+
+## Dialog standard (2026-07-29) — reference: "Accept tour"
+
+> **One standard, both surfaces.** Shared primitive `DriverUI.Dialog` (`driver-ui.jsx`) + the
+> `.dialog-*` CSS contract (`styles.css` "DIALOG STANDARD"). The console reaches the same primitive
+> through `DriverUI.Dialog`. **Do not hand-roll a fixed backdrop + card for a new dialog.**
+
+### The contract
+
+| Aspect | Standard | Class |
+|---|---|---|
+| Backdrop | 45% `--scrim-ink` + 2px blur, flex-centred. **Console:** `position: fixed`, 24px padding (16px ≤420px) so a panel never touches the viewport edge. **Driver:** `position: absolute` — see "Scoped to the device" below | `.dialog-backdrop` (+ `--stacked` for a dialog opened from another dialog) |
+| Panel | `--paper` on `--line`, **`var(--r-4)` rounding**, `--sh-3`, **24px padding**, bounded height `min(90vh, 760px)` | `.dialog-panel` |
+| Widths | **480** default · **560** (`--md`) · **720** (`--lg`) · **360** (`--narrow`, short success messages) | `.dialog-panel--md` / `--lg` / `--narrow` |
+| Eyebrow | optional uppercase context label, `--muted-2` | `.dialog-eyebrow` |
+| Title | **centered**, 18px desktop / **22px phone**, 600, `-0.015em` — one type step above the description | `.dialog-title` |
+| Description | **centered**, 13px, `--muted`, 1.55 | `.dialog-desc` |
+| Content | **left-aligned**, internally scrollable, 14px gap | `.dialog-content` |
+| Actions | canonical **Cancel \| Primary** `minmax(0,1fr) / minmax(0,1.6fr)` grid, 12px gap, **44px** min height; single action **spans the row**; 3+ actions wrap in a row with the same sizing; one column ≤420px | `.dialog-actions` (+ `--stack` / `--row`) |
+| Status icon | **only when meaningful** — 52px disc, `--st-accepted` / `--st-assigned` / `--st-cancelled` families | `.dialog-icon` + `.dialog-icon-success` / `-warning` / `-danger` on the panel |
+
+The action grammar is **`.sheet-foot`'s existing** 1:1.6 ratio and 44px floor, reused deliberately so
+the two never drift.
+
+### Scoped to the device, not the browser window
+
+A driver dialog belongs to the **phone**, so `.phone-shell .dialog-backdrop` is
+**`position: absolute`** (scoped to `.phone-screen`) with a 16px gutter, and
+`.phone-shell .dialog-panel` drops the desktop max-width to `100%` / `max-height: 90%`. This is the
+containment `.sheet-backdrop.center` always had, and it is load-bearing for the **framed client
+preview**: with `position: fixed` the dialog centres on the whole browser page and spills out of the
+phone mock, which is not how it appears on a device. The console keeps `position: fixed`, where the
+viewport *is* the surface.
+
+### Alignment — one structural rule, not an exception list
+
+Title and description **centre**. `.dialog-content` stays **left-aligned**, because summaries,
+key/value pairs, form fields, warnings and legal wording are unreadable centred. That is structural, so
+no dialog decides for itself and there is no approval list of exceptions to maintain.
+
+### Icons
+
+Present only for **success / warning / destructive** status. Two byte-identical inline success SVGs
+were deduplicated into one `DialogSuccessIcon`. No decorative icon exists, and removing one never
+removed information — the title and description always carry the meaning.
+
+### Bottom sheets are a separate spec
+
+`FilterSheet`, `ReportProblemSheet`, `UploadSourcePicker` and the tour-completion upload stage stay
+**bottom-anchored** with a drag-to-dismiss grabber and a leading-edge draggable header. They share only
+the action grammar. Converting them to centred dialogs would change **interaction**, not visuals.
+
+### Audit — every dialog, both surfaces
+
+| Dialog | Type | Before | Now |
+|---|---|---|---|
+| **Accept tour** (`AcceptanceModal`) — *the reference* | operational summary + binding confirm | inline `padding: 24`, inline 24px `h2`, inline summary-card style, left title | the standard's own classes; **slide-to-confirm untouched**; actions stack full width (deviation 1) |
+| Tour booked success | success | inline 26px padding, duplicated success SVG, 19px `h3` | `Dialog` + `DialogSuccessIcon`, `--narrow` |
+| Report-problem submitted (`PendingNotice`) | success | identical duplicate of the above | `Dialog` + `DialogSuccessIcon`, `--narrow` |
+| Probation limit reached | warning/info | `.confirm-sheet-panel` 22px, `Lbl` as title, flex-end single action | `Dialog`, single action spans the row |
+| Same-day overlap | confirmation | `.confirm-sheet-panel`, flex-end actions | `Dialog`, eyebrow + centered title, canonical action grid |
+| Remove document | destructive | own `.remove-doc-*` title/body/1fr-1fr actions | shared classes; **danger icon kept** (meaningful), canonical action grid |
+| Tour-document category picker | selection | inline `padding: 20`, eyebrow used **as** the title | shared classes, real `.dialog-title` |
+| Mark performed | confirm → success | slide stage + success stage | shared classes; **slide untouched** |
+| Sign out / leave page (`ConfirmSheet`) | confirmation / 3-way | `Sheet centered`, left title | title centred via `.sheet.modal .sheet-head` |
+| Document preview | content viewer | full-frame overlay, not a dialog | unchanged — deliberately not a dialog |
+| Filter · Report problem · Upload source | bottom sheets | — | unchanged (separate spec) |
+| **Console:** assign/reassign driver · cancel order | form / destructive | inline backdrop + `.card elev`, 480px, 22px, 18px left title, flex-end row | `Dialog` component |
+| **Console:** account access · driver create/edit · admin create · master data (customers · addresses · Infopoint docs ×3 · news) · register tour document · accept invoice · view invoice · finance edit | form / confirmation / destructive / summary | 9 inline backdrops, `zIndex` 100–105, widths 440/480/520/560, padding 22, `h2` 17/18, flex-end rows, **42px** controls | shared `.dialog-*` classes: 16px rounding, 24px padding, documented widths, centered titles, canonical actions, **44px** controls |
+
+### Audit finding beyond dialogs — `.btn.sm` corner radius
+
+`.btn.sm` sets `border-radius: var(--r-1)` (**4px**) while every other button uses `--r-2` (8px), which
+also contradicts the documented "moderate button rounding (`--r-2`/`--r-3`)" rule. It showed up as a
+visibly sharper corner on the notification card's *View order* primary — reported from the running
+prototype. **Fixed at the call site:** card-level and dialog-level primary actions use the full-size
+`.btn` (which also clears the 44px floor), and `.notification-card-actions` matches the dialog
+standard's 12px action gap. Tightening `--r-1` → `--r-2` on `.btn.sm` **globally** is a wider visual
+change across many surfaces — recorded here, deliberately not taken in this pass.
+
+**Verified** on the driver phone surface (401×869) and the console at desktop (1440) and tablet (834):
+identical rounding, padding, centered title, title-over-description hierarchy, 44px controls and 12px
+action gap; the action row inside the panel and the panel inside the viewport in every case.
+
+---
+
+## Marketplace empty states (2026-07-29)
+
+> **Two states, one derivation.** Which empty state shows is decided by
+> `getAppliedMarketplaceFilterCount(committedFilters) > 0` — the same canonical selector that drives
+> the filter count badge and the chip row. Never a separate flag, so the empty state and the badge the
+> driver is looking at cannot disagree.
+
+| Condition | State | Class |
+|---|---|---|
+| ≥1 matching order | results list | — |
+| Filters active, nothing matches | **existing** filter-related state: title `noJobsMatch`, description `noToursMatch`, *Filters* action opening the panel — **unchanged** | `.marketplace-empty-filtered` |
+| No filters active, no open orders | **general** state: `marketplaceEmptyNoOrders` only — no description, **no action** | `.marketplace-empty-unfiltered` |
+
+- Both use the shared `EmptyState` primitive; no new component and no new token.
+- The general state deliberately has **no *Filters* action**. The message must not imply filtering
+  caused the empty result, and a filter button implies exactly that.
+- "No open orders" is a safe assertion, not a guess: the list is every `published` order with only the
+  filter predicate applied, so at count 0 nothing is being excluded.
+- Selection is derived per render from the committed filter object, so **apply / change / clear / reset**
+  switch states with no extra wiring — and draft selections inside the open panel do not, matching the
+  badge's committed-state rule.
+- The stable classes exist so tests and reviewers can assert *which* state is showing without matching
+  on copy.
+
+**Terminology, unresolved.** The existing strings mix "jobs", "tours" and now "orders"
+(`noJobsMatch` / `noToursMatch` / `marketplaceEmptyNoOrders`; DE says "Touren"). Nothing was renamed —
+see the v2.22 changelog open question.
+
+---
+
+## Infopoint messages — list + detail page (2026-07-29)
+
+> **A message is a page, not an accordion.** Longer announcements (updated **AGB**, standing client
+> instructions) are not readable inside an expandable row in a scrolling list, so the expandable card is
+> gone.
+
+Components: `Infopoint` → `InfopointMessageDetail` (`driver.jsx`), on the shared `DriverSubpageHeader`.
+
+### Message list row (`.infopoint-news-row`)
+
+| Element | Class | Notes |
+|---------|-------|-------|
+| Calendar icon + unread dot | `.infopoint-news-icon` (+`.unread`/`.read`), `.infopoint-news-unread-dot` | Unchanged treatment; the dot moved from an inline style to a class. |
+| Title | `.infopoint-news-title` | 14px; 600 while unread, 500 once read. |
+| Date | `.mono.text-muted-sm` | Unchanged. |
+| Read state | `.infopoint-news-state` (+`.unread`) | *New* / *Read* as a small pill. **Colour is never the only signal** — the state is in words and in the row's accessible name (`"New: <title>"` / `"Read: <title>"`). |
+| Forward chevron | `.infopoint-news-chev` (`Ic.Chev`) | Indicates navigation. Replaces the rotating `Ic.Down` accordion chevron. |
+
+**Removed:** the 100-character body preview, the expanded body, the chevron rotation, and `aria-expanded`
+on the row — the row navigates, it does not disclose.
+
+### Detail page (`.infopoint-message-page`)
+
+- **Replaces the whole Infopoint screen** — the shared screen header and the tab band are not rendered —
+  so the message owns the full viewport. The bottom tab bar deliberately **stays**: this is a subpage
+  inside the Infopoint tab, not a modal takeover like job detail.
+- Header is the shared `DriverSubpageHeader`: back arrow upper-left (44×44 via `.driver-subpage-header`,
+  above the shared 40px `.detail-back-btn` because it is the primary escape from a subpage), centred
+  title (`infopointMessage` — "Message" / "Nachricht"), mirrored spacer, and the heading takes focus on
+  entry so the new view is announced.
+- Body card: `h2` title (`.infopoint-message-title`, wraps freely, `overflow-wrap: anywhere`), the date
+  (`.infopoint-message-date`), then the **complete** message (`.infopoint-message-body`) with
+  `white-space: pre-line` so admin-typed paragraph breaks survive. **Never clamped, never truncated.**
+- Opening marks the message read immediately; the list shows the new state on return. The open is also
+  audited as a message view (see PRD v2.19).
+- Back returns to the **complete** list with the News tab still selected.
+
+### Left-edge swipe-back (optional, implemented)
+
+`useEdgeSwipeBack` (`driver.jsx`), the iOS system gesture: a drag that **starts within 32px of the left
+edge** and travels right follows the finger and commits past **72px**; abandoning it snaps back.
+
+- **Progressive enhancement only.** The visible back arrow is always present and is the primary control;
+  the gesture does nothing without touch.
+- Axis-locked at 10px, the same threshold `SwipeViews` uses, so scrolling a long message is never
+  hijacked.
+- `touch-action: pan-y` on the page reserves the horizontal axis. Deliberately **not**
+  `preventDefault()` — React's `touchmove` listener is passive, so the browser ignores it and logs a
+  warning.
+- Transform-only; the snap-back transition is suppressed while the finger is down and dropped entirely
+  under `prefers-reduced-motion`.
+
+---
+
+## Notification cards — categories, tour previews, deep links (2026-07-29)
+
+> **Two interaction models, and only two.** Tour events expand inline; Infopoint messages and documents
+> deep-link. A universal overlay or bottom sheet for every notification type is explicitly **not** the model.
+
+Components: `DriverNotificationsPane` → `DriverNotificationsList` → `NotificationTourPreview` (`driver.jsx`).
+Taxonomy and navigation come from the store (`notificationCategoryI18nKey`, `notificationKind`,
+`resolveDriverNotificationTarget`) — the view decides nothing about entitlement.
+
+### Card anatomy (every card, every type)
+
+`.notification-card` owns the border, surface and unread treatment; `.notification-row` inside it stays the only
+focusable element, so an expandable card is still one tab stop.
+
+| Element | Class | Notes |
+|---------|-------|-------|
+| Unread dot / spacer | `.notification-row-dot` / `.notification-row-dot-spacer` | Unchanged. The spacer keeps read and unread cards aligned. |
+| Category chip | `.notification-row-cat` | 10px/600 pill, `--muted` on `--paper-2` inside `--line`; flips to `--paper` on an unread card so it stays legible on the tinted surface. Text only — no colour coding per category, so nothing depends on hue. |
+| Event heading | `.notification-row-title` | 13px/600. |
+| Preview text | `.notification-row-text` | **Clamped to two lines** (`-webkit-line-clamp: 2`) so every card has a predictable height and the meta line is never pushed out of view. `white-space: pre-line` keeps the multi-line "order updated" body readable within the clamp. |
+| Date / tour meta | `.notification-row-meta.mono` | Unchanged: `createdAt · tour`. |
+| Right-hand control | `.notification-row-chevron` | `Ic.Down` rotated 180° when expanded (tour cards) or `Ic.Chev` pointing forward (deep-link cards). Vertically centred, `--muted-2`. |
+
+### Tour cards — inline expandable preview
+
+- The whole row is the toggle (`.notification-row-toggle`), carrying `aria-expanded` and `aria-controls` to the
+  panel; the panel uses the `hidden` attribute so collapsed content is out of the a11y tree entirely.
+- A screen-reader-only label states the action (`notifExpandPreview` / `notifCollapsePreview`) — the chevron is
+  decorative.
+- Expanding **never navigates.** The Notification Center stays open.
+- One card is expanded at a time; expanding also marks the notification read (same rule as any other interaction).
+- `.notification-card.expanded` takes a `--primary` border so the open card is identifiable without colour alone
+  (the chevron rotation and `aria-expanded` carry the same information).
+- Panel content (`.notification-preview`): tour number + status `Pill`, then a `dl` of Pickup / Delivery / Vehicle
+  (+ Licence plate when visible), each value with a muted sub-line (schedule, transport + registration status).
+  The red-plate notice is deliberately **not** repeated here — it stays on its five canonical surfaces
+  (`DOMAIN.md`), and the notification preview is a summary, not a sixth execution surface.
+- **Visibility.** The panel renders only the projection `store.driverNotificationJobPreview()` returns. For an
+  order the driver has not committed to, customer, company name, street, contact and plate are **absent from the
+  object**, not hidden by CSS — so no protected field can leak through a styling mistake. Those cards also show
+  `notifPreviewProtectedHint` ("… become visible after you accept").
+- **Actions** (`.notification-card-actions`): exactly one primary — *View order* for an order on the marketplace,
+  *To my orders* for a committed tour. Buttons are the design-system `btn primary sm` / `btn sm`; they stretch to
+  share the row and stack full-width at ≤359px.
+
+### Unavailable orders
+
+`.notification-unavailable` in `--danger-ink` states the reason (*booked by another service partner* / *withdrawn
+from the marketplace* / *cancelled* / *closed*). *View order* is **removed, not disabled** — matching the
+repository's convention of hiding rather than disabling unavailable actions (cf. the admin row-actions menu) — and
+*View more orders* is offered instead, opening the Marketplace.
+
+### Deep-link cards (Infopoint messages, documents)
+
+- No accordion, no panel. The row itself is the link; the chevron points forward.
+- An Infopoint card opens **that message** (News tab, expanded). A document card opens **that document's preview**
+  on its tour. The previous "Also in Infopoint → New messages" hint is gone — the card goes there instead of
+  describing where to look, and `driverNotifInfopointHint` was removed with it.
+- A card whose target is gone or no longer permitted is **not** a link: it renders static with
+  `.notification-unavailable` underneath.
+
+### Push taps
+
+`useNotificationDeepLink` (`driver.jsx`) reads `?notify=<notification id>` and both driver shells apply the result
+identically. A tour push opens the pane with that card already expanded; an Infopoint push opens the message; a
+document push opens the document. One handler covers cold start, home-screen launch and a tap on an already-open or
+backgrounded instance (`popstate` / `hashchange`). Push *delivery* is still simulated.
+
+### Responsive
+
+Phone-first inside the 392px frame. The preview `dl` is a 88px label column + value; at **≤359px** it stacks to one
+column and the action buttons go full width, so a long DE label ("Zustell-PLZ (erste 2 Ziffern)") never squeezes a
+value to two characters. Values use `overflow-wrap: anywhere`, so a long address or filename wraps instead of
+widening the pane.
 
 ---
 

@@ -239,6 +239,118 @@ Because the notice is always **text-labelled** it satisfies the never-color-only
 
 ---
 
+## Component token map — authentication screens (PR #32, documented 2026-07-29)
+
+The auth screens introduced **no new tokens** — every surface, border and state resolves to an existing
+semantic alias, which is why they theme in light and dark without their own palette. Documented
+retroactively.
+
+| Element | CSS | Token(s) |
+|---------|-----|----------|
+| Screen ground | `.auth-screen` | `--canvas` |
+| Admin shell / card | `.auth-shell-admin`, `.auth-card-admin` | `--paper` on `--line`, card radius + `--sh-*` |
+| Logo row | `.auth-logo-row` | brand mark, no token of its own |
+| Heading / subheading | `.auth-heading`, `.auth-subheading` | `--text` / `--muted` |
+| Field group + label | `.auth-field-group`, `.field-label` | existing form treatment |
+| Input | `.input` (shared) | `--paper` on `--line`, focus ring `--primary` |
+| Password show/hide | `.auth-password-toggle` | `--muted-2`, hover `--text`, `:focus-visible` `--primary` |
+| Field error | `.auth-field-error` | `--danger-ink` — the **defined** danger text token |
+| Form-level error | `.auth-root-error` | `--danger-ink` on `--st-cancelled-bg` |
+| Forgot-password link | `.auth-forgot-link` | `--primary`; disabled state reduces opacity rather than changing hue |
+| One-time-code cell | `.auth-otp-cell` (+`.active`) | `--paper` on `--line`; active border `--primary`, mono type |
+| Submit | `.btn primary` | shared button — no bespoke auth button |
+| Demo code notice | `InlineAlert` tone `info` | existing alert tones |
+
+**Colour is never the only signal:** errors are text, the active code cell is also indicated by caret
+position, and the password toggle carries an accessible name (`authAdminLoginShowPassword` /
+`...HidePassword` and the driver equivalents).
+
+---
+
+## Component token map — dialog standard (2026-07-29)
+
+The system-wide dialog standard introduced **no new tokens**. Every value resolves to an existing
+semantic alias or an existing documented measure, which is why one contract themes correctly in light
+and dark on both surfaces.
+
+| Element | CSS | Token(s) | Class |
+|---------|-----|----------|-------|
+| Scrim | `.dialog-backdrop` | `--scrim-ink` at 45% + 2px blur — identical to `.sheet-backdrop` | [INTERNAL] |
+| Panel surface | `.dialog-panel` | `--paper` on 1px `--line`, `--sh-3` | [CLIENT] |
+| Panel rounding | `.dialog-panel` | **`--r-4`** — the reference dialog's rounding. Replaces `--r-3` from `.card`, which the console dialogs had inherited | [CLIENT] |
+| Panel padding | `.dialog-panel` | 24px (4pt scale) — replaces 20 / 22 / 26 | [CLIENT] |
+| Eyebrow | `.dialog-eyebrow` | `--text-caption`, 600, `--muted-2`, uppercase | [INTERNAL] |
+| Title | `.dialog-title` | `--text`, 18px / 22px on `.phone-shell`, 600, `-0.015em` | [CLIENT] |
+| Description | `.dialog-desc` | `--muted`, 13px, 1.55 | [CLIENT] |
+| Content | `.dialog-content` | inherits; 14px gap | [CLIENT] |
+| Reference summary card | `.accept-tour-summary` | `--paper-2` on `--line`, `--r-2` — was an inline style on the reference dialog itself | [CLIENT] |
+| Actions | `.dialog-actions` | the existing canonical `minmax(0,1fr)/minmax(0,1.6fr)` grid, 12px gap, 44px floor — shared with `.sheet-foot` | [CLIENT] |
+| Status icon disc | `.dialog-icon` | 52px disc; tone from `--st-accepted-bg`/`--st-accepted`, `--st-assigned-bg`/`--st-assigned`, `--st-cancelled-bg`/`--st-cancelled` — the same treatment the remove-document dialog already used | [CLIENT] |
+| Focus state | global `:where(button, [role="button"], a):focus-visible` | `--primary` 2px outline, 2px offset | [CLIENT] |
+
+**No off-token colour and no new radius.** The one previously off-standard value — hand-rolled action
+rows rendering **42px** controls, below the documented 44×44 floor — is corrected by the shared rule.
+
+---
+
+## Component token map — Infopoint message list + detail (2026-07-29)
+
+Replacing the expandable message card with a dedicated detail page introduced **no new tokens**. The page reuses the
+existing driver drill-down chrome, so it themes in light and dark without its own palette.
+
+| Element | CSS | Token(s) | Class |
+|---------|-----|----------|-------|
+| List row | `.infopoint-news-row` | Unchanged: transparent on the `.infopoint-card` surface, `--line` divider between rows | [CLIENT] |
+| Row icon disc — unread / read | `.infopoint-news-icon.unread` / `.read` | Unchanged: `--primary` at 8% with `--primary` glyph / `--paper-2` with `--muted-2` glyph | [CLIENT] |
+| Unread dot | `.infopoint-news-unread-dot` | `--primary`, 8px, 1.5px `--paper` ring — same treatment as the notification dot. Moved from an inline style to a class; no visual change | [CLIENT] |
+| Read-state pill — read | `.infopoint-news-state` | `--muted` on `--paper-2` inside `--line`, radius 999px | [CLIENT] |
+| Read-state pill — unread | `.infopoint-news-state.unread` | `--primary` text on `--primary` at 8%, border `--primary` at 24% | [CLIENT] |
+| Forward chevron | `.infopoint-news-chev` | `--muted-2` | [INTERNAL] |
+| Detail page surface | `.infopoint-message-page` | `--canvas` (client canvas, board §E) — the same ground as `.pwa-detail-body`, so the page reads as a detail screen | [CLIENT] |
+| Detail header | `.pwa-detail-header.driver-subpage-header` | Unchanged: `--paper` on a `--line` bottom border; back control `--canvas` disc with `--sh-1`, raised to 44×44 | [CLIENT] |
+| Message title | `.infopoint-message-title` | `--text`, 18px/600 | [CLIENT] |
+| Message date | `.infopoint-message-date` | `--muted` via `.text-muted-sm`, mono | [INTERNAL] |
+| Message body | `.infopoint-message-body` | `--text`, 14px, line-height 1.6, `white-space: pre-line` | [CLIENT] |
+| Card | `.detail-card.infopoint-message-card` | Existing `.detail-card`: `--paper`, radius 16px, `--line`, `--sh-1` | [CLIENT] |
+| Swipe-back motion | `.infopoint-message-page` | Transform-only, 0.18s ease; `touch-action: pan-y`; dropped under `prefers-reduced-motion` | — |
+
+**Read state does not depend on colour.** The pill carries the words *New* / *Read* (and the row's accessible name
+repeats them), so the `--primary` tint is reinforcement, not the signal.
+
+---
+
+## Component token map — driver notification cards (2026-07-29)
+
+The notification card rework (category chip, inline tour preview, deep-link rows, unavailable state) introduced
+**no new tokens**. Every surface, border and text colour resolves to an existing semantic alias, which is why the
+cards theme correctly in light and dark without their own palette.
+
+| Element | CSS | Token(s) | Class |
+|---------|-----|----------|-------|
+| Card surface / border | `.notification-card` | `--paper` on 1px `--line`, radius `--r-2` | [CLIENT] |
+| Card surface — unread | `.notification-card.unread` | `--paper-2` (the existing unread tint, moved from the row to the card so the row and the expanded panel read as one surface) | [CLIENT] |
+| Card border — expanded | `.notification-card.expanded` | `--primary` | [CLIENT] |
+| Unread dot | `.notification-row-dot` | `--primary`, 8px | [CLIENT] |
+| Category chip | `.notification-row-cat` | `--muted` text on `--paper-2` inside `--line`; `--paper` fill on an unread card. Pill radius 999px — a chip, not a status pill, so it never borrows a `--st-*` colour | [CLIENT] |
+| Event heading | `.notification-row-title` | `--text`, 13px/600 | [CLIENT] |
+| Preview text (2-line clamp) | `.notification-row-text` | `--muted`, 12px | [CLIENT] |
+| Date / tour meta | `.notification-row-meta` | `--muted-2`, `--text-caption`, mono | [INTERNAL] |
+| Right-hand chevron | `.notification-row-chevron` | `--muted-2`; 180° rotation for the open accordion | [INTERNAL] |
+| Expanded panel divider | `.notification-card-panel` | 1px `--line` top border | [INTERNAL] |
+| Preview labels / values | `.notification-preview-row dt` / `dd` | `--muted` 11px/600 / `--text` 12px/500 | [CLIENT] |
+| Preview sub-line (schedule, transport type) | `.notification-preview-sub` | `--muted-2`, 11px | [INTERNAL] |
+| Order status inside the preview | `Pill` | Existing `--st-*` family via `AuthStore.statusCls()` — reused, never re-declared | [CLIENT] |
+| Pre-acceptance visibility hint | `.notification-preview-hint` | `--muted`, 11px | [CLIENT] |
+| Unavailable-order copy | `.notification-unavailable` | **`--danger-ink`** — the defined light/dark danger text token. Deliberately not `--st-rejected-fg`, which is **not defined** in the token set (same class of bug as audit item on `--st-ok`, `.pill.verified`) | [CLIENT] |
+| Card actions | `.notification-card-actions .btn` | Design-system `btn primary sm` / `btn sm`; no bespoke button treatment | [CLIENT] |
+| Focus state | global `:where(button, [role="button"], a):focus-visible` | `--primary` 2px outline, 2px offset | [CLIENT] |
+
+**Colour is never the only signal.** The category is a text chip (no per-category hue), the expanded state is
+carried by the chevron rotation and `aria-expanded` as well as the border, and an unavailable order is stated in
+words, not only in `--danger-ink`.
+
+---
+
 ## Component token map — driver document upload (2026-07-27)
 
 The upload-source action sheet (*Foto aufnehmen* / *Datei auswählen*) introduced **no new tokens**. Every surface,

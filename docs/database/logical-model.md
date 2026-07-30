@@ -1,5 +1,13 @@
 # AUTHEON database logical model
 
+> **Status override:** Updated 2026-07-29 - PRD v2.25: **scope reduction** on the v2.19 content-access audit — opening a driver **notification** is no longer audited. The `notification_viewed` `action_key` and the `driver_notification` `entity_type` are **removed**; a notification points at content that is already audited when the driver opens it, so the pointer entry duplicated the trail and arrived before the actual disclosure. `user_notifications.read_at` remains the notification-level record. Document and Infopoint-message auditing is unchanged. **No structural change.**
+
+> **Status override:** Updated 2026-07-29 - PRD v2.24: auth demo (PR #32) documented retroactively. **No structural change, and none is needed** — Task 2 already makes Keycloak the identity provider and states that AUTHEON "does not store passwords", so sessions and password-reset codes live in Keycloak: there is deliberately **no session table and no `password_resets` table**, and adding one would contradict the PRD. The prototype's in-memory session and reset codes are prototype-only scaffolding. New `audit_events.action_key` values: `driver_signed_in` / `admin_signed_in`, `driver_signed_out` / `admin_signed_out`, `driver_password_reset_requested` / `admin_password_reset_requested`, `driver_password_reset` / `admin_password_reset`, `driver_invite_accepted` / `admin_invite_accepted`.
+
+> **Status override:** Updated 2026-07-29 - PRD v2.20: type-aware driver notifications. **Added `user_notifications.target_entity_type` + `target_entity_id`** (both nullable) so a notification carries a stable reference to the non-tour entity it opens — an `infopoint_news` row for an Infopoint message, a `job_documents` row for a document outcome. `job_id` already covered tour notifications. `deep_link` becomes the client route *derived from* these ids rather than the navigation source of truth. Added the `(user_id, created_at)` and `(target_entity_type, target_entity_id)` indexes. **No enum change** — `notification_type` stays a free varchar and gains `new_published_job`. Notification **category** and the card's interaction model are derived from `notification_type` in the application layer and deliberately **not stored**. See "Notification targeting" below.
+
+> **Status override:** Updated 2026-07-29 - PRD v2.19: driver content-access audit trail. **No structural schema change** — `audit_events` already carries `action_key`, `actor_user_id`, `entity_type`, `entity_id`, `job_id`, `occurred_at` and a `metadata` jsonb, so no column, table, enum, index or migration is added. New `action_key` values recorded when a driver **reads** driver-accessible content: `document_viewed` / `document_downloaded` (`infopoint_documents`), `tour_document_viewed` / `tour_document_downloaded` (`job_documents`), `pdf_viewed` / `pdf_downloaded` (`generated_job_documents` — pre-existing keys, now attributed to the acting **driver** rather than the dispatcher when the access originates in the Driver PWA), `news_item_viewed` (`infopoint_news`). See "Content-access audit" below. **Scope reduced 2026-07-29 (v2.25): `notification_viewed` was removed** — see the status override above.
+
 > **Status override:** Updated 2026-07-22 - PRD v2.5: full admin order-editing implementation + Storno consistency pass. **No new job columns** — editing all eligible business data on any non-terminal order (Storno §7) reuses existing `jobs` / `job_locations` / `job_financials` columns and is captured in `audit_events` under `action_key = 'order_edited'` with a `metadata` jsonb payload carrying the per-field `{field, previous, new}` diff list as one logical edit action (status is preserved, never mutated by an edit). **Added `empty_run_evidence`** (empty-run report attachments → `upload_assets`, mirroring `problem_report_evidence`) so §3.2 optional evidence has a first-class home. **Added the previously-missing FK relationships** for `sp_cancellations`, `empty_run_reports`, `internal_notes`, and `email_change_requests`. **Legacy removal (PRD v2.6, 2026-07-23 — "ignore the special case"):** the `special_case` job_status value and `problem_type.not_performable` have been **removed entirely** — the canonical driver problem workflow is `sp_cancellations` + `empty_run_reports`/`empty_run_evidence`, and the empty-run report model fully replaces the old not-performable → special-case path. New `user_notifications.notification_type` values: `order_updated_after_booking`, `empty_run_reported`, `empty_run_recognised`, `empty_run_not_recognised` (type stays a free varchar).
 
 > **Status override:** Updated 2026-07-10 - PRD v2.0: no structural schema change. `drivers.driver_code` is now documented as system-assigned, immutable, and never reused (F-03); per-leg time windows are same-day only with no cross-midnight window (F-04). Probation-only driver UI, Infopoint View/Download actions, and branding/domain/Report-Problem-timing are UI or open-question items with no data-model impact.
@@ -108,6 +116,47 @@ This prevents two drivers from accepting the same published tour.
 Status transitions belong in a transaction/service layer, not an unconstrained client update. Every transition writes `job_status_history`, `audit_events`, and, where required, `outbox_events`.
 
 `message_delivery_status` is used only for outbox/email/push/in-app delivery attempts. It is not a vehicle pickup/delivery or tour lifecycle status.
+
+### Notification targeting
+
+A driver notification has to open **the exact thing it is about**, so `user_notifications` carries the target as ids, never as text:
+
+| Notification family | Target columns | Opens |
+| --- | --- | --- |
+| Tour (`new_published_job`, `order_updated`, `cancelled_by_autheon`, `empty_run_recognised`, `empty_run_not_recognised`) | `job_id` | the tour — full detail once the driver is committed to it, the reduced Marketplace preview otherwise |
+| Infopoint message (`new_infopoint_message`) | `target_entity_type = 'infopoint_news'`, `target_entity_id` | that message |
+| Document outcome (`document_accepted`, `document_rejected`) | `job_id` + `target_entity_type = 'job_document'`, `target_entity_id` | that document's preview on that tour |
+| Account (`master_data_change_*`, `email_changed`) | — | informational; no target |
+
+**Ids, not display text.** A title, a body and a tour number are display strings — localized, editable, and reusable. Resolving navigation from them would break on a rename and could point at the wrong record. `deep_link` is still stored for the client route, but it is **derived from** these ids and is not authoritative.
+
+**Category and interaction model are derived, not stored.** `order` / `account` / `system` / `general_information`, and whether a card renders an inline tour preview or deep-links, are both a pure function of `notification_type` in the application layer. Storing them would create rows that disagree with the current taxonomy the moment it changes, and would need a migration for a presentation decision.
+
+**Targets are re-checked at read time, never trusted.** Before a notification offers an action, the application resolves the target and confirms the driver may still open it: the tour must still exist, and an order the driver has **not** committed to must still be `published`. A tour that has since been booked by another partner, withdrawn to `draft`, or cancelled resolves as unavailable with a reason, the action is withdrawn, and no acceptance attempt is possible. A document only resolves for a tour the driver is committed to. This is authorization, so it belongs server-side as well as in the client.
+
+**Protected fields are stripped, not hidden.** The preview payload for an order the driver has not committed to must omit customer, full addresses, contact details, plate and VIN entirely (`driver_visibility_matrix`), rather than sending them and hiding them in the UI.
+
+### Content-access audit
+
+Driver **reads** of driver-accessible content are audited alongside writes (PRD v2.19, Task 22). This needs no new structure: `audit_events` is the append-only home, one row per interaction.
+
+| Column | Content-access meaning |
+| --- | --- |
+| `action_key` | `document_viewed` / `document_downloaded` (Infopoint general documents) · `tour_document_viewed` / `tour_document_downloaded` · `pdf_viewed` / `pdf_downloaded` (transport-order PDF) · `news_item_viewed` |
+| `actor_user_id` | the driver who performed the read — **not** the dispatcher, even where the same service call also serves the admin console |
+| `entity_type` | `infopoint_document` · `tour_document` · `transport_order_pdf` · `infopoint_news` |
+| `entity_id` | the affected `infopoint_documents` / `job_documents` / `generated_job_documents` / `user_notifications` / `infopoint_news` row |
+| `job_id` | the tour, where the content belongs to one (tour documents, transport-order PDF, tour-linked notifications) |
+| `occurred_at` | timestamp of the read |
+| `metadata` | `actionType` (`viewed` \| `downloaded` — keeps the distinction queryable independently of the action key), the document version where the entity has one, and the document/notification subtype |
+
+**Append-only, never merged.** Each interaction inserts its own row; repeated views and repeated downloads produce distinct rows. There is no upsert, no counter and no "last viewed at" column — a read count is a query over `audit_events`, not stored state. The existing `(entity_type, entity_id, occurred_at)` index serves "who has read this document" and the `(job_id, occurred_at desc)` index serves the per-tour trail.
+
+**No version column is added.** `infopoint_documents.version_label` and the generated-PDF document-file version already supply "the document version where applicable". `job_documents` has no version concept (a replacement overwrites in place and is separately audited as `tour_document_replaced`), so tour-document access entries simply carry none.
+
+**Marking read is not a read.** `user_notifications.read_at` and `infopoint_news_reads` remain the read-state model and are unchanged; they answer "has this been acknowledged", while `audit_events` answers "who opened it, and when, how many times".
+
+**Opening a notification is deliberately NOT audited** (scope reduced in v2.25). A notification is a *pointer* to content — a document, an Infopoint message, or a tour — and that content is audited the moment the driver opens it. Auditing the pointer as well recorded the same disclosure twice and, because the pointer entry lands first, made the log claim a document had been seen before it was opened. `user_notifications.read_at` stays the notification-level record.
 
 ### Settlement audit
 
