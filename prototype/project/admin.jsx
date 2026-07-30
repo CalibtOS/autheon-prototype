@@ -403,17 +403,15 @@ const Overview = ({
       return false;
     if (search) {
       const q = search.toLowerCase();
-      if (
-        !(
-          j.tour.toLowerCase().includes(q) ||
-          j.customer.toLowerCase().includes(q) ||
-          (j.driver || "").toLowerCase().includes(q) ||
-          j.startCity.toLowerCase().includes(q) ||
-          j.endCity.toLowerCase().includes(q) ||
-          (j.vin || "").toLowerCase().includes(q) ||
-          (j.plate || "").toLowerCase().includes(q)
-        )
-      )
+      if (!(
+        j.tour.toLowerCase().includes(q) ||
+        j.customer.toLowerCase().includes(q) ||
+        (j.driver || "").toLowerCase().includes(q) ||
+        j.startCity.toLowerCase().includes(q) ||
+        j.endCity.toLowerCase().includes(q) ||
+        (j.vin || "").toLowerCase().includes(q) ||
+        (j.plate || "").toLowerCase().includes(q)
+      ))
         return false;
     }
     return true;
@@ -4797,6 +4795,12 @@ const DriversPane = ({ showToast }) => {
     showToast?.(t("adminUsersToastDriverChanged"), driver.name);
   };
 
+  const applyAccountStatus = (record, kind, status) => {
+    const result = store.setAccountStatus(kind, record.id, status);
+    if (!result.ok) return;
+    showToast?.(t("adminUsersToastAccountStatusChanged"), record.name);
+  };
+
   const saveDriver = () => {
     const localErrors = validateDriverFormLocal(driverForm, t, {
       isNew: driverModal === "new",
@@ -4897,12 +4901,8 @@ const DriversPane = ({ showToast }) => {
                   </Pill>
                 </td>
                 <td>
-                  <Pill
-                    status={
-                      d.accessState === "Active" ? "accepted" : "published"
-                    }
-                  >
-                    {accessStateLabel(d.accessState, t)}
+                  <Pill status={accountStatusPillVariant(d.accountStatus)}>
+                    {accountStatusLabel(d.accountStatus, t)}
                   </Pill>
                 </td>
                 <td>
@@ -4939,18 +4939,45 @@ const DriversPane = ({ showToast }) => {
                       <option value="" disabled>
                         {t("adminUsersChangeStatus")}
                       </option>
-                      {["Active", "Blocked", "Inactive"].map((st) => (
+                      {[
+                        "Active",
+                        "Blocked",
+                        "Inactive",
+                        "Archived",
+                        "Soft Deleted",
+                      ].map((st) => (
                         <option key={st} value={st}>
-                          {t(`adminUsersStatus_${st}`)}
+                          {t(`adminUsersStatus_${st.replace(/\s+/g, "")}`)}
                         </option>
                       ))}
                     </select>
-                    <button
-                      className="btn xs"
-                      onClick={() => triggerResendAccess(d)}
-                    >
-                      {t("adminUsersResendInvite")}
-                    </button>
+                    {d.accountStatus === "Invite failed" ? (
+                      <button
+                        className="btn xs"
+                        onClick={() => triggerResendAccess(d)}
+                      >
+                        {t("adminUsersResendInvite")}
+                      </button>
+                    ) : null}
+                    {d.accountStatus === "Active" ? (
+                      <button
+                        className="btn xs"
+                        onClick={() =>
+                          applyAccountStatus(d, "driver", "Suspended")
+                        }
+                      >
+                        {t("adminUsersSuspendAccount")}
+                      </button>
+                    ) : (
+                      <button
+                        className="btn xs"
+                        onClick={() =>
+                          applyAccountStatus(d, "driver", "Active")
+                        }
+                      >
+                        {t("adminUsersReactivateAccount")}
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
