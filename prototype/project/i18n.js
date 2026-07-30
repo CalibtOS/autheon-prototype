@@ -526,6 +526,9 @@ window.I18n = (() => {
       profileNavAppearance: "Appearance and language",
       profileNavFeedback: "Feedback",
       profileNavReportError: "Report an error",
+      profileFeedbackMailSubject: "AUTHEON feedback — Partner ID {partnerId}",
+      profileReportErrorMailSubject:
+        "AUTHEON error report — Partner ID {partnerId}",
       profilePasswordIntro: "Choose a new password for your driver account.",
       profilePasswordCurrent: "Current password",
       profilePasswordNew: "New password",
@@ -533,18 +536,6 @@ window.I18n = (() => {
       profilePasswordSubmit: "Update password",
       profilePasswordDeferred:
         "This is a prototype preview — password changes are not yet processed.",
-      profileFeedbackIntro:
-        "Tell us what is working well or what we could improve.",
-      profileFeedbackPlaceholder: "Your feedback…",
-      profileFeedbackSubmit: "Send feedback",
-      profileFeedbackDeferred:
-        "This is a prototype preview — feedback is not yet submitted anywhere.",
-      profileReportErrorIntro:
-        "Describe the problem you ran into so we can look into it.",
-      profileReportErrorPlaceholder: "Describe the error…",
-      profileReportErrorSubmit: "Report error",
-      profileReportErrorDeferred:
-        "This is a prototype preview — error reports are not yet submitted anywhere.",
       infoTitle: "Info",
       knowledgeBase: "Knowledge base",
       usersDrivers: "Users & drivers",
@@ -1196,15 +1187,23 @@ window.I18n = (() => {
             "Cancellation requires a driver message",
           policyWholeNumberError: "Enter a whole number of 1 or more.",
           discardChanges: "Discard changes",
-          // Infopoint help contacts — the hotline and support email drivers see
-          // on the Infopoint Help tab. Also verbatim from the console's
-          // common.json settings.system.*. Both fields are required, so each has
-          // a "required" message beside its format message.
-          helpContactsTitle: "Infopoint — Help contacts",
+          // Driver help contacts: Infopoint, Profile feedback, and Profile
+          // error reporting. All fields are required and share validation copy.
+          helpContactsTitle: "Help contacts",
           helpContactsBlurb:
-            "Dispatcher hotline and support email shown to drivers on the Infopoint Help tab.",
+            "Manage the contact channels available to drivers in Infopoint and Profile.",
+          helpContactsInfopointTitle: "Infopoint",
+          helpContactsInfopointBlurb:
+            "Hotline and email shown on the Infopoint Help tab.",
+          helpContactsFeedbackTitle: "Feedback",
+          helpContactsFeedbackBlurb:
+            "Recipient used when a driver sends feedback from Profile.",
+          helpContactsReportErrorTitle: "Report an error",
+          helpContactsReportErrorBlurb:
+            "Recipient used when a driver reports an error from Profile.",
           helpContactsHotlineLabel: "Dispatcher hotline",
-          helpContactsEmailLabel: "Support email",
+          helpContactsEmailLabel: "Infopoint email",
+          helpContactsRecipientLabel: "Recipient email",
           helpContactsSave: "Save contacts",
           helpContactsSaved: "Help contacts updated.",
           helpContactsHotlineError: "Enter a valid phone number.",
@@ -2340,6 +2339,9 @@ window.I18n = (() => {
       profileNavAppearance: "Darstellung und Sprache",
       profileNavFeedback: "Feedback",
       profileNavReportError: "Fehler melden",
+      profileFeedbackMailSubject: "AUTHEON Feedback — Partner-ID {partnerId}",
+      profileReportErrorMailSubject:
+        "AUTHEON Fehlermeldung — Partner-ID {partnerId}",
       profilePasswordIntro:
         "Wählen Sie ein neues Passwort für Ihr Fahrerkonto.",
       profilePasswordCurrent: "Aktuelles Passwort",
@@ -2348,18 +2350,6 @@ window.I18n = (() => {
       profilePasswordSubmit: "Passwort aktualisieren",
       profilePasswordDeferred:
         "Dies ist eine Prototyp-Vorschau – Passwortänderungen werden noch nicht verarbeitet.",
-      profileFeedbackIntro:
-        "Sagen Sie uns, was gut funktioniert oder was wir verbessern können.",
-      profileFeedbackPlaceholder: "Ihr Feedback…",
-      profileFeedbackSubmit: "Feedback senden",
-      profileFeedbackDeferred:
-        "Dies ist eine Prototyp-Vorschau – Feedback wird noch nicht übermittelt.",
-      profileReportErrorIntro:
-        "Beschreiben Sie das aufgetretene Problem, damit wir es prüfen können.",
-      profileReportErrorPlaceholder: "Fehler beschreiben…",
-      profileReportErrorSubmit: "Fehler melden",
-      profileReportErrorDeferred:
-        "Dies ist eine Prototyp-Vorschau – Fehlermeldungen werden noch nicht übermittelt.",
       infoTitle: "Info",
       knowledgeBase: "Wissensdatenbank",
       usersDrivers: "Benutzer & Fahrer",
@@ -3011,13 +3001,22 @@ window.I18n = (() => {
             "Storno erfordert Nachricht an Fahrer",
           policyWholeNumberError: "Bitte eine ganze Zahl ab 1 eingeben.",
           discardChanges: "Änderungen verwerfen",
-          // Infopoint-Kontakte — ebenfalls wörtlich aus common.json
-          // settings.system.* der Konsole.
-          helpContactsTitle: "Infopoint — Kontakte",
+          // Hilfskontakte für Infopoint, Feedback und Fehlermeldungen.
+          helpContactsTitle: "Hilfskontakte",
           helpContactsBlurb:
-            "Disponent-Hotline und Support-E-Mail, die Fahrer im Infopoint-Hilfe-Tab sehen.",
+            "Verwalten Sie die Kontaktwege für Fahrer im Infopoint und Profil.",
+          helpContactsInfopointTitle: "Infopoint",
+          helpContactsInfopointBlurb:
+            "Hotline und E-Mail im Infopoint-Hilfe-Tab.",
+          helpContactsFeedbackTitle: "Feedback",
+          helpContactsFeedbackBlurb:
+            "Empfänger für Feedback, das Fahrer über das Profil senden.",
+          helpContactsReportErrorTitle: "Fehler melden",
+          helpContactsReportErrorBlurb:
+            "Empfänger für Fehlermeldungen, die Fahrer über das Profil senden.",
           helpContactsHotlineLabel: "Disponent-Hotline",
-          helpContactsEmailLabel: "Support-E-Mail",
+          helpContactsEmailLabel: "Infopoint-E-Mail",
+          helpContactsRecipientLabel: "Empfänger-E-Mail",
           helpContactsSave: "Kontakte speichern",
           helpContactsSaved: "Hilfskontakte aktualisiert.",
           helpContactsHotlineError: "Bitte gültige Telefonnummer eingeben.",

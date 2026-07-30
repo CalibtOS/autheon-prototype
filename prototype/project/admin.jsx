@@ -9061,14 +9061,10 @@ const contactStatus = (value, isValidFormat) => {
   return isValidFormat(trimmed) ? "valid" : "malformed";
 };
 
-// Infopoint — Help contacts. Both fields are required and cannot be cleared:
-// the production backend rejects an empty value and its shallow merge preserves
-// anything omitted, so a blank contact could never persist. A cleared field
-// therefore reports "required" and keeps Save disabled, rather than lighting up
-// Save for a change that would silently do nothing. The format rules come from
-// the store — the same validators its setter enforces — so anything this form
-// accepts is a value the real API would accept too.
-const InfopointHelpContactsForm = ({ showToast }) => {
+// One settings boundary for every driver-facing help channel. Infopoint keeps
+// its hotline + email, while Feedback and Report an error own one recipient
+// each. All values save or discard together.
+const HelpContactsForm = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const contacts = store.getDriverSupportContact();
@@ -9078,38 +9074,87 @@ const InfopointHelpContactsForm = ({ showToast }) => {
   // and not on `contacts` — an object dep would fire on every render and wipe
   // whatever the user is currently typing.
   const storedHotline = String(contacts.phone || "");
-  const storedEmail = String(contacts.email || "");
+  const storedInfopointEmail = String(contacts.email || "");
+  const storedFeedbackEmail = String(contacts.feedbackEmail || "");
+  const storedReportErrorEmail = String(contacts.reportErrorEmail || "");
 
   const [hotline, setHotline] = useStateA(storedHotline);
-  const [email, setEmail] = useStateA(storedEmail);
+  const [infopointEmail, setInfopointEmail] = useStateA(
+    storedInfopointEmail,
+  );
+  const [feedbackEmail, setFeedbackEmail] = useStateA(storedFeedbackEmail);
+  const [reportErrorEmail, setReportErrorEmail] = useStateA(
+    storedReportErrorEmail,
+  );
 
   // Replays the stored contacts into the form. The effect runs it on mount and
   // after a save (the store emits the newly stored values); Discard runs it
   // directly to drop unsaved edits.
   const seedFromStore = () => {
     setHotline(storedHotline);
-    setEmail(storedEmail);
+    setInfopointEmail(storedInfopointEmail);
+    setFeedbackEmail(storedFeedbackEmail);
+    setReportErrorEmail(storedReportErrorEmail);
   };
 
-  useEffectA(seedFromStore, [storedHotline, storedEmail]);
+  useEffectA(seedFromStore, [
+    storedHotline,
+    storedInfopointEmail,
+    storedFeedbackEmail,
+    storedReportErrorEmail,
+  ]);
 
   const hotlineStatus = contactStatus(hotline, store.isValidSupportPhone);
-  const emailStatus = contactStatus(email, store.isValidSupportEmail);
+  const infopointEmailStatus = contactStatus(
+    infopointEmail,
+    store.isValidSupportEmail,
+  );
+  const feedbackEmailStatus = contactStatus(
+    feedbackEmail,
+    store.isValidSupportEmail,
+  );
+  const reportErrorEmailStatus = contactStatus(
+    reportErrorEmail,
+    store.isValidSupportEmail,
+  );
   const hotlineDirty = isContactDirty(hotline, storedHotline);
-  const emailDirty = isContactDirty(email, storedEmail);
-  const dirty = hotlineDirty || emailDirty;
+  const infopointEmailDirty = isContactDirty(
+    infopointEmail,
+    storedInfopointEmail,
+  );
+  const feedbackEmailDirty = isContactDirty(
+    feedbackEmail,
+    storedFeedbackEmail,
+  );
+  const reportErrorEmailDirty = isContactDirty(
+    reportErrorEmail,
+    storedReportErrorEmail,
+  );
+  const dirty =
+    hotlineDirty ||
+    infopointEmailDirty ||
+    feedbackEmailDirty ||
+    reportErrorEmailDirty;
 
   // A save must leave the form matching what persists, so any blank or
   // malformed field disables Save outright — there is no partial save that
   // silently drops a field. These are the store setter's own rules, so an
   // enabled Save always promises a save that will succeed.
-  const canSave = dirty && hotlineStatus === "valid" && emailStatus === "valid";
+  const canSave =
+    dirty &&
+    hotlineStatus === "valid" &&
+    infopointEmailStatus === "valid" &&
+    feedbackEmailStatus === "valid" &&
+    reportErrorEmailStatus === "valid";
 
-  const save = () => {
+  const save = (event) => {
+    event.preventDefault();
     if (!canSave) return;
     store.setDriverSupportContact({
       phone: hotline.trim(),
-      email: email.trim(),
+      email: infopointEmail.trim(),
+      feedbackEmail: feedbackEmail.trim(),
+      reportErrorEmail: reportErrorEmail.trim(),
     });
     showToast?.(t("settings.system.helpContactsSaved"));
   };
@@ -9122,60 +9167,172 @@ const InfopointHelpContactsForm = ({ showToast }) => {
         ? t("settings.system.helpContactsHotlineRequired")
         : t("settings.system.helpContactsHotlineError")
       : "";
-  const emailError =
-    emailDirty && emailStatus !== "valid"
-      ? emailStatus === "empty"
+  const emailError = (dirtyState, status) =>
+    dirtyState && status !== "valid"
+      ? status === "empty"
         ? t("settings.system.helpContactsEmailRequired")
         : t("settings.system.helpContactsEmailError")
       : "";
+  const infopointEmailError = emailError(
+    infopointEmailDirty,
+    infopointEmailStatus,
+  );
+  const feedbackEmailError = emailError(
+    feedbackEmailDirty,
+    feedbackEmailStatus,
+  );
+  const reportErrorEmailError = emailError(
+    reportErrorEmailDirty,
+    reportErrorEmailStatus,
+  );
 
   return (
-    <div className="policy-grid">
-      <div className="policy-field policy-field-text">
-        <label className="field-label" htmlFor="help-contacts-hotline">
-          {t("settings.system.helpContactsHotlineLabel")}
-        </label>
-        <input
-          id="help-contacts-hotline"
-          className="input"
-          type="tel"
-          value={hotline}
-          style={hotlineError ? userInputErrStyle : undefined}
-          aria-invalid={hotlineError ? true : undefined}
-          aria-describedby={
-            hotlineError ? "help-contacts-hotline-error" : undefined
-          }
-          onChange={(e) => setHotline(e.target.value)}
-        />
-        <UserFormError
-          id="help-contacts-hotline-error"
-          message={hotlineError}
-        />
+    <form className="help-contacts-form" onSubmit={save} noValidate>
+      <div className="help-contacts-grid">
+        <section
+          className="help-contact-group"
+          aria-labelledby="help-contacts-infopoint-title"
+        >
+          <div className="help-contact-group-copy">
+            <h3 id="help-contacts-infopoint-title">
+              {t("settings.system.helpContactsInfopointTitle")}
+            </h3>
+            <p>{t("settings.system.helpContactsInfopointBlurb")}</p>
+          </div>
+          <div className="help-contact-fields">
+            <div className="help-contact-field">
+              <label className="field-label" htmlFor="help-contacts-hotline">
+                {t("settings.system.helpContactsHotlineLabel")}
+              </label>
+              <input
+                id="help-contacts-hotline"
+                className="input"
+                type="tel"
+                value={hotline}
+                style={hotlineError ? userInputErrStyle : undefined}
+                aria-invalid={hotlineError ? true : undefined}
+                aria-describedby={
+                  hotlineError ? "help-contacts-hotline-error" : undefined
+                }
+                onChange={(e) => setHotline(e.target.value)}
+              />
+              <UserFormError
+                id="help-contacts-hotline-error"
+                message={hotlineError}
+              />
+            </div>
+            <div className="help-contact-field">
+              <label
+                className="field-label"
+                htmlFor="help-contacts-infopoint-email"
+              >
+                {t("settings.system.helpContactsEmailLabel")}
+              </label>
+              <input
+                id="help-contacts-infopoint-email"
+                className="input"
+                type="email"
+                value={infopointEmail}
+                style={infopointEmailError ? userInputErrStyle : undefined}
+                aria-invalid={infopointEmailError ? true : undefined}
+                aria-describedby={
+                  infopointEmailError
+                    ? "help-contacts-infopoint-email-error"
+                    : undefined
+                }
+                onChange={(e) => setInfopointEmail(e.target.value)}
+              />
+              <UserFormError
+                id="help-contacts-infopoint-email-error"
+                message={infopointEmailError}
+              />
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="help-contact-group"
+          aria-labelledby="help-contacts-feedback-title"
+        >
+          <div className="help-contact-group-copy">
+            <h3 id="help-contacts-feedback-title">
+              {t("settings.system.helpContactsFeedbackTitle")}
+            </h3>
+            <p>{t("settings.system.helpContactsFeedbackBlurb")}</p>
+          </div>
+          <div className="help-contact-fields">
+            <div className="help-contact-field">
+              <label className="field-label" htmlFor="help-contacts-feedback">
+                {t("settings.system.helpContactsRecipientLabel")}
+              </label>
+              <input
+                id="help-contacts-feedback"
+                className="input"
+                type="email"
+                value={feedbackEmail}
+                style={feedbackEmailError ? userInputErrStyle : undefined}
+                aria-invalid={feedbackEmailError ? true : undefined}
+                aria-describedby={
+                  feedbackEmailError
+                    ? "help-contacts-feedback-error"
+                    : undefined
+                }
+                onChange={(e) => setFeedbackEmail(e.target.value)}
+              />
+              <UserFormError
+                id="help-contacts-feedback-error"
+                message={feedbackEmailError}
+              />
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="help-contact-group"
+          aria-labelledby="help-contacts-report-error-title"
+        >
+          <div className="help-contact-group-copy">
+            <h3 id="help-contacts-report-error-title">
+              {t("settings.system.helpContactsReportErrorTitle")}
+            </h3>
+            <p>{t("settings.system.helpContactsReportErrorBlurb")}</p>
+          </div>
+          <div className="help-contact-fields">
+            <div className="help-contact-field">
+              <label
+                className="field-label"
+                htmlFor="help-contacts-report-error"
+              >
+                {t("settings.system.helpContactsRecipientLabel")}
+              </label>
+              <input
+                id="help-contacts-report-error"
+                className="input"
+                type="email"
+                value={reportErrorEmail}
+                style={reportErrorEmailError ? userInputErrStyle : undefined}
+                aria-invalid={reportErrorEmailError ? true : undefined}
+                aria-describedby={
+                  reportErrorEmailError
+                    ? "help-contacts-report-error-error"
+                    : undefined
+                }
+                onChange={(e) => setReportErrorEmail(e.target.value)}
+              />
+              <UserFormError
+                id="help-contacts-report-error-error"
+                message={reportErrorEmailError}
+              />
+            </div>
+          </div>
+        </section>
       </div>
-      <div className="policy-field policy-field-text">
-        <label className="field-label" htmlFor="help-contacts-email">
-          {t("settings.system.helpContactsEmailLabel")}
-        </label>
-        <input
-          id="help-contacts-email"
-          className="input"
-          type="email"
-          value={email}
-          style={emailError ? userInputErrStyle : undefined}
-          aria-invalid={emailError ? true : undefined}
-          aria-describedby={
-            emailError ? "help-contacts-email-error" : undefined
-          }
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <UserFormError id="help-contacts-email-error" message={emailError} />
-      </div>
-      <div className="policy-actions policy-grid-full">
+
+      <div className="policy-actions help-contacts-actions">
         <button
-          type="button"
+          type="submit"
           className="btn primary touch-target"
           disabled={!canSave}
-          onClick={save}
         >
           {t("settings.system.helpContactsSave")}
         </button>
@@ -9188,7 +9345,7 @@ const InfopointHelpContactsForm = ({ showToast }) => {
           {t("settings.system.discardChanges")}
         </button>
       </div>
-    </div>
+    </form>
   );
 };
 
@@ -9677,7 +9834,7 @@ const SettingsPane = ({ showToast }) => {
             >
               {t("settings.system.helpContactsBlurb")}
             </p>
-            <InfopointHelpContactsForm showToast={showToast} />
+            <HelpContactsForm showToast={showToast} />
           </section>
         </section>
       )}

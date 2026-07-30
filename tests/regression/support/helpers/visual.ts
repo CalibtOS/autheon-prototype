@@ -5,7 +5,11 @@ import {
   switchToAdminBackend,
   switchToDriverPWA,
 } from './header-controls.ts';
-import { prototypeFrame, prototypeHeader } from './selectors.ts';
+import {
+  getPrototypeFrame,
+  prototypeFrame,
+  prototypeHeader,
+} from './selectors.ts';
 import {
   disablePrototypeAnimations,
   gotoPrototype,
@@ -24,6 +28,22 @@ import {
  */
 async function prepareVisualBaseline(page: Page): Promise<void> {
   await gotoPrototype(page);
+  const frame = await getPrototypeFrame(page);
+  await frame.evaluate(() => {
+    const store = (window as any).AuthStore;
+    if (!store.isDriverAuthenticated()) {
+      store.loginDriver({
+        email: 'driver.one@demo.local',
+        password: 'password',
+      });
+    }
+    if (!store.isAdminAuthenticated()) {
+      store.loginAdmin({
+        email: 'demo.admin@demo.local',
+        password: 'password',
+      });
+    }
+  });
   await switchLanguage(page, 'EN');
   await switchTheme(page, 'light');
 }
