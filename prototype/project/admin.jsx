@@ -4627,109 +4627,6 @@ const accountStatusPillVariant = (state) =>
       ? "cancelled"
       : "published";
 
-const AccountAccessDialog = ({ open, data, onClose, onResend, showToast }) => {
-  const { t } = useI18n();
-  if (!open || !data) return null;
-
-  const handleResend = () => {
-    const r = onResend?.();
-    if (r?.ok) {
-      showToast?.(t("adminUsersInviteResentToast"), data.name);
-    } else {
-      showToast?.(t("adminUsersSaveFailed"), t("adminInvoiceErrGeneric"));
-    }
-  };
-
-  const inviteOk = data.access?.inviteEmailSent !== false;
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
-        zIndex: 105,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
-      onClick={onClose}
-    >
-      <div
-        className="card elev"
-        style={{ maxWidth: 480, width: "100%", padding: 22 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>
-          {t("adminUsersAccessDialogTitle")}
-        </h2>
-        <p style={{ color: "var(--muted)", margin: "0 0 16px", fontSize: 13 }}>
-          {t("adminUsersAccessDialogHint")}
-        </p>
-        <div style={{ display: "grid", gap: 12 }}>
-          <div>
-            <div className="label">{t("adminUsersFieldName")}</div>
-            <strong>{data.name}</strong>
-          </div>
-          <div>
-            <div className="label">{t("adminUsersAccessEmailLabel")}</div>
-            <span className="mono">{data.email || "—"}</span>
-          </div>
-          <div>
-            <div className="label">{t("adminUsersColAccess")}</div>
-            <Pill status={inviteOk ? "accepted" : "cancelled"}>
-              {inviteOk
-                ? t("adminUsersAccessInviteSent")
-                : t("adminUsersAccessInviteFailed")}
-            </Pill>
-            {data.user?.lastInviteAt ? (
-              <div
-                className="label"
-                style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45 }}
-              >
-                {t("adminUsersAccessLastInvite", {
-                  at: data.user.lastInviteAt,
-                })}
-              </div>
-            ) : null}
-          </div>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 12.5,
-              color: "var(--muted)",
-              lineHeight: 1.55,
-            }}
-          >
-            {t("adminUsersAccessNoPasswordNote")}
-          </p>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            justifyContent: "flex-end",
-            marginTop: 18,
-            flexWrap: "wrap",
-          }}
-        >
-          {onResend ? (
-            <button type="button" className="btn" onClick={handleResend}>
-              {t("adminUsersResendInvite")}
-            </button>
-          ) : null}
-          <button type="button" className="btn primary" onClick={onClose}>
-            {t("close")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const DriversPane = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -5191,10 +5088,9 @@ const StaffPane = ({ showToast }) => {
                   {a.email}
                 </div>
               </div>
-              <Pill status="accepted">{a.status}</Pill>
-            </div>
-            <div className="label" style={{ fontSize: 11.5, marginTop: 6 }}>
-              {t("adminUsersColAccess")}: {accessStateLabel(a.accessState, t)}
+              <Pill status={accountStatusPillVariant(a.status)}>
+                {accountStatusLabel(a.status, t)}
+              </Pill>
             </div>
             <div
               style={{
@@ -5202,29 +5098,46 @@ const StaffPane = ({ showToast }) => {
                 gap: 8,
                 flexWrap: "wrap",
                 marginTop: 10,
+                alignItems: "center",
               }}
             >
-              <button
-                type="button"
-                className="btn xs"
-                onClick={() =>
-                  applyAdminStatus(
-                    a,
-                    a.status === "Active" ? "Inactive" : "Active",
-                  )
-                }
+              <label className="sr-only" htmlFor={`admin-status-${a.id}`}>
+                {t("adminUsersChangeStatus")}
+              </label>
+              <select
+                id={`admin-status-${a.id}`}
+                className="input"
+                style={{
+                  width: "auto",
+                  minWidth: 120,
+                  padding: "4px 8px",
+                  fontSize: 12,
+                }}
+                defaultValue=""
+                onChange={(e) => {
+                  const next = e.target.value;
+                  e.target.value = "";
+                  if (next) applyAdminStatus(a, next);
+                }}
               >
-                {a.status === "Active"
-                  ? t("adminUsersDeactivate")
-                  : t("adminUsersActivate")}
-              </button>
-              <button
-                type="button"
-                className="btn xs"
-                onClick={() => triggerResendAccess(a)}
-              >
-                {t("adminUsersResendInvite")}
-              </button>
+                <option value="" disabled>
+                  {t("adminUsersChangeStatus")}
+                </option>
+                {ACCOUNT_STATUS_OPTIONS.map((st) => (
+                  <option key={st} value={st}>
+                    {accountStatusLabel(st, t)}
+                  </option>
+                ))}
+              </select>
+              {a.status === "Invite failed" ? (
+                <button
+                  type="button"
+                  className="btn xs"
+                  onClick={() => triggerResendAccess(a)}
+                >
+                  {t("adminUsersResendInvite")}
+                </button>
+              ) : null}
             </div>
           </div>
         ))}
@@ -5291,28 +5204,6 @@ const StaffPane = ({ showToast }) => {
           </div>
         </div>
       ) : null}
-
-      <AccountAccessDialog
-        open={!!credentials}
-        data={credentials}
-        onClose={() => setCredentials(null)}
-        onResend={
-          credentials?.user
-            ? () => {
-                const r = store.resendAccess("admin", credentials.user.id);
-                if (r.ok) {
-                  setCredentials({
-                    ...credentials,
-                    access: r.access,
-                    user: r.user,
-                  });
-                }
-                return r;
-              }
-            : undefined
-        }
-        showToast={showToast}
-      />
     </div>
   );
 };
