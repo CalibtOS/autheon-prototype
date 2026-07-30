@@ -52,7 +52,7 @@ window.I18n = (() => {
       navJobs: "Jobs",
       navNewJob: "New job",
       navUsers: "Users",
-      navDrivers: "Drivers",
+      navDrivers: "Service Partners",
       navStaff: "Staff",
       navCustomers: "Customers",
       navAddresses: "Addresses",
@@ -921,6 +921,7 @@ window.I18n = (() => {
         "Invoice number and received status are managed in Tour documents (or override in Finance).",
       navFeatures: "Settings",
       adminLogoutTitle: "Log out",
+      adminOwnProfileTitle: "Open my profile",
       adminFinanceTrackingTitle: "Finance tracking",
       adminFinanceEditRow: "Edit",
       adminFinanceEditTitle: "Edit tour finances",
@@ -959,6 +960,30 @@ window.I18n = (() => {
       adminUsersFieldDriverCodeAuto:
         "Will be assigned automatically when you save.",
       adminUsersFieldAddress: "Address",
+      adminUsersFieldAddressLegacyHint:
+        "Kept for existing records — use the structured fields below for new entries.",
+      adminUsersFieldLegalForm: "Legal form",
+      adminUsersFieldStreet: "Street",
+      adminUsersFieldHouseNumber: "House no.",
+      adminUsersFieldPostalCode: "Postal code",
+      adminUsersFieldCity: "City / town",
+      adminUsersFieldSecondPhone: "Second phone",
+      adminUsersFieldTaxStatus: "Tax status",
+      adminUsersFieldTaxStatusPh: "Select tax status",
+      adminTaxStatus_subject_to_vat: "Subject to VAT",
+      adminTaxStatus_small_business_19ustg: "Small-business owner (§19 UStG)",
+      adminTaxStatus_other_review: "Other / still to be reviewed",
+      adminUsersFieldTaxNumber: "Tax number",
+      adminUsersFieldVatId: "VAT ID",
+      adminUsersFieldAccountHolder: "Account holder",
+      adminUsersFieldIban: "IBAN",
+      adminUsersErrIbanFormat: "Enter a valid IBAN",
+      adminUsersErrIbanLength: "IBAN length is invalid for this country",
+      adminUsersErrIbanChecksum: "IBAN check digits are invalid",
+      adminUsersServicePartnerId: "Service partner ID",
+      adminUsersSummaryCompletedOrders: "Completed orders",
+      adminUsersSummaryOpenDocReviews: "Open document reviews",
+      adminUsersSummaryOpenChangeRequests: "Open change requests",
       adminUsersFieldEmail: "Email",
       adminUsersFieldPhone: "Phone",
       adminUsersFieldNotes: "Internal notes",
@@ -1512,6 +1537,8 @@ window.I18n = (() => {
         "The empty run reported for order {tour} was not recognised by Autheon.",
       notifOrderUpdatedTitle: "Order {tour} updated",
       notifOrderUpdatedIntro: "The following details changed:",
+      notifJobAssignedTitle: "New order assigned: {tour}",
+      notifJobAssignedBody: "You have been assigned order {tour}.",
       adminEmptyRunReviewTitle: "Empty run — open review case",
       adminEmptyRunReviewHint:
         "Decide whether to recognise the reported empty run. There is no intermediate state.",
@@ -1529,6 +1556,11 @@ window.I18n = (() => {
       adminInternalNotesEmpty: "No internal notes yet.",
       adminDuplicateOrder: "Duplicate order",
       adminDuplicatedToast: "Order duplicated",
+      adminReplacesCancelledTour: "Replacement for cancelled tour {tour}.",
+      adminReplacedByTour:
+        "This order was cancelled and replaced by tour {tour}.",
+      reassignBlockedMarketplaceAccepted:
+        "Marketplace-accepted orders can't be reassigned — cancel and create a replacement order instead.",
       adminDuplicatedToastSub: "New draft {tour} opened for editing.",
       adminCancelOrderByAutheon: "Cancel order",
       adminCancelByAutheonConfirm:
@@ -1677,7 +1709,8 @@ window.I18n = (() => {
       authErrorInvalidEmail: "Enter a valid email address.",
       authErrorPasswordRequired: "Password is required.",
       authErrorInvalidCredentials: "Invalid email or password.",
-      authErrorAccountRestricted: "This account is blocked. Contact your admin.",
+      authErrorAccountRestricted:
+        "This account is blocked. Contact your admin.",
       authNotImplementedAlert: "Not wired up in this prototype yet.",
 
       // ---- Auth screens: Forgot password (email -> OTP -> reset) ----
@@ -1761,7 +1794,8 @@ window.I18n = (() => {
       authDriverSetPasswordInvalidLinkHint:
         "Ask your administrator to send a new invitation email.",
       authAdminSetPasswordTitle: "Create your account",
-      authAdminSetPasswordSubtitle: "Set a password to activate your admin account",
+      authAdminSetPasswordSubtitle:
+        "Set a password to activate your admin account",
       authAdminSetPasswordPasswordLabel: "Password",
       authAdminSetPasswordPasswordPlaceholder: "password",
       authAdminSetPasswordConfirmLabel: "Confirm password",
@@ -1860,7 +1894,7 @@ window.I18n = (() => {
       navJobs: "Aufträge",
       navNewJob: "Neuer Auftrag",
       navUsers: "Benutzer",
-      navDrivers: "Fahrer",
+      navDrivers: "Servicepartner",
       navStaff: "Personal",
       navCustomers: "Kunden",
       navAddresses: "Adressen",
@@ -2737,6 +2771,7 @@ window.I18n = (() => {
         "Rechnungsnummer und Eingangsstatus werden in Tour-Dokumente (oder per Override in Finanzen) verwaltet.",
       navFeatures: "Einstellungen",
       adminLogoutTitle: "Abmelden",
+      adminOwnProfileTitle: "Mein Profil öffnen",
       adminFinanceTrackingTitle: "Finanzen",
       adminFinanceEditRow: "Bearbeiten",
       adminFinanceEditTitle: "Tour-Finanzen bearbeiten",
@@ -2776,6 +2811,30 @@ window.I18n = (() => {
       adminUsersFieldDriverCodeAuto:
         "Wird beim Speichern automatisch vergeben.",
       adminUsersFieldAddress: "Adresse",
+      adminUsersFieldAddressLegacyHint:
+        "Für bestehende Datensätze beibehalten — für neue Einträge die strukturierten Felder unten verwenden.",
+      adminUsersFieldLegalForm: "Rechtsform",
+      adminUsersFieldStreet: "Straße",
+      adminUsersFieldHouseNumber: "Hausnr.",
+      adminUsersFieldPostalCode: "Postleitzahl",
+      adminUsersFieldCity: "Ort",
+      adminUsersFieldSecondPhone: "Zweite Telefonnummer",
+      adminUsersFieldTaxStatus: "Steuerstatus",
+      adminUsersFieldTaxStatusPh: "Steuerstatus wählen",
+      adminTaxStatus_subject_to_vat: "Umsatzsteuerpflichtig",
+      adminTaxStatus_small_business_19ustg: "Kleinunternehmer (§19 UStG)",
+      adminTaxStatus_other_review: "Sonstiges / noch zu prüfen",
+      adminUsersFieldTaxNumber: "Steuernummer",
+      adminUsersFieldVatId: "USt-IdNr.",
+      adminUsersFieldAccountHolder: "Kontoinhaber",
+      adminUsersFieldIban: "IBAN",
+      adminUsersErrIbanFormat: "Bitte eine gültige IBAN eingeben",
+      adminUsersErrIbanLength: "IBAN-Länge ist für dieses Land ungültig",
+      adminUsersErrIbanChecksum: "IBAN-Prüfziffern sind ungültig",
+      adminUsersServicePartnerId: "Servicepartner-ID",
+      adminUsersSummaryCompletedOrders: "Abgeschlossene Aufträge",
+      adminUsersSummaryOpenDocReviews: "Offene Dokumentenprüfungen",
+      adminUsersSummaryOpenChangeRequests: "Offene Änderungsanträge",
       adminUsersFieldEmail: "E-Mail",
       adminUsersFieldPhone: "Telefon",
       adminUsersFieldNotes: "Interne Notizen",
@@ -3326,6 +3385,8 @@ window.I18n = (() => {
         "Die gemeldete Leerfahrt für den Auftrag {tour} wurde durch Autheon nicht anerkannt.",
       notifOrderUpdatedTitle: "Auftrag {tour} wurde aktualisiert",
       notifOrderUpdatedIntro: "Folgende Daten wurden geändert:",
+      notifJobAssignedTitle: "Neuer Auftrag zugewiesen: {tour}",
+      notifJobAssignedBody: "Ihnen wurde der Auftrag {tour} zugewiesen.",
       adminEmptyRunReviewTitle: "Leerfahrt — offener Prüfvorgang",
       adminEmptyRunReviewHint:
         "Entscheiden Sie, ob die gemeldete Leerfahrt anerkannt wird. Eine Zwischenstufe gibt es nicht.",
@@ -3344,6 +3405,11 @@ window.I18n = (() => {
       adminDuplicateOrder: "Auftrag duplizieren",
       adminDuplicatedToast: "Auftrag dupliziert",
       adminDuplicatedToastSub: "Neuer Entwurf {tour} zur Bearbeitung geöffnet.",
+      adminReplacesCancelledTour: "Ersatz für stornierte Tour {tour}.",
+      adminReplacedByTour:
+        "Dieser Auftrag wurde storniert und durch Tour {tour} ersetzt.",
+      reassignBlockedMarketplaceAccepted:
+        "Marktplatz-akzeptierte Aufträge können nicht neu zugewiesen werden — stattdessen stornieren und einen Ersatzauftrag anlegen.",
       adminCancelOrderByAutheon: "Auftrag stornieren",
       adminCancelByAutheonConfirm:
         "Diesen Auftrag im Namen von Autheon stornieren? Er wird schreibgeschützt und kann nicht reaktiviert oder erneut veröffentlicht werden.",
@@ -3515,7 +3581,8 @@ window.I18n = (() => {
       authAdminForgotBackToLogin: "Zurück zur Anmeldung",
 
       authDriverForgotOtpTitle: "OTP eingeben",
-      authDriverForgotOtpSubtitlePrefix: "Ein 6-stelliger Code wurde gesendet an ",
+      authDriverForgotOtpSubtitlePrefix:
+        "Ein 6-stelliger Code wurde gesendet an ",
       authDriverForgotOtpSubmit: "Code bestätigen",
       authDriverForgotOtpResendCooldownPrefix: "Code erneut senden in ",
       authDriverForgotOtpResendButton: "Code erneut senden",
@@ -3525,7 +3592,8 @@ window.I18n = (() => {
       authDriverForgotOtpIncorrectCode:
         "Falscher Code. Bitte versuchen Sie es erneut.",
       authAdminForgotOtpTitle: "OTP eingeben",
-      authAdminForgotOtpSubtitlePrefix: "Ein 6-stelliger Code wurde gesendet an ",
+      authAdminForgotOtpSubtitlePrefix:
+        "Ein 6-stelliger Code wurde gesendet an ",
       authAdminForgotOtpSubmit: "Code bestätigen",
       authAdminForgotOtpResendCooldownPrefix: "Code erneut senden in ",
       authAdminForgotOtpResendButton: "Code erneut senden",
@@ -3543,7 +3611,8 @@ window.I18n = (() => {
       authDriverResetConfirmPlaceholder: "passwort bestätigen",
       authDriverResetSubmit: "Passwort zurücksetzen",
       authDriverResetBack: "Zurück",
-      authDriverResetMinLength: "Das Passwort muss mindestens 8 Zeichen lang sein",
+      authDriverResetMinLength:
+        "Das Passwort muss mindestens 8 Zeichen lang sein",
       authDriverResetConfirmRequired: "Bitte bestätigen Sie Ihr Passwort",
       authDriverResetMismatch: "Die Passwörter stimmen nicht überein",
       authAdminResetTitle: "Passwort zurücksetzen",
@@ -3554,7 +3623,8 @@ window.I18n = (() => {
       authAdminResetConfirmPlaceholder: "passwort bestätigen",
       authAdminResetSubmit: "Passwort zurücksetzen",
       authAdminResetBack: "Zurück",
-      authAdminResetMinLength: "Das Passwort muss mindestens 8 Zeichen lang sein",
+      authAdminResetMinLength:
+        "Das Passwort muss mindestens 8 Zeichen lang sein",
       authAdminResetConfirmRequired: "Bitte bestätigen Sie Ihr Passwort",
       authAdminResetMismatch: "Die Passwörter stimmen nicht überein",
 
@@ -3598,7 +3668,8 @@ window.I18n = (() => {
         "Das Passwort muss mindestens einen Großbuchstaben, einen Kleinbuchstaben und eine Zahl enthalten",
       authAdminSetPasswordConfirmRequired: "Bitte bestätigen Sie Ihr Passwort",
       authAdminSetPasswordMismatch: "Die Passwörter stimmen nicht überein",
-      authAdminSetPasswordSuccessToast: "Konto erstellt. Bitte melden Sie sich an.",
+      authAdminSetPasswordSuccessToast:
+        "Konto erstellt. Bitte melden Sie sich an.",
       authAdminSetPasswordInvalidLinkTitle: "Ungültiger Link",
       authAdminSetPasswordInvalidLinkMessage:
         "Dieser Einladungslink ist ungültig oder abgelaufen.",

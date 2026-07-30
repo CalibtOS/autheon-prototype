@@ -2025,7 +2025,10 @@ window.AuthStore = (() => {
     if (!needle) return null;
     return (
       drivers.find(
-        (d) => String(d.email || "").trim().toLowerCase() === needle,
+        (d) =>
+          String(d.email || "")
+            .trim()
+            .toLowerCase() === needle,
       ) || null
     );
   }
@@ -2037,7 +2040,10 @@ window.AuthStore = (() => {
     if (!needle) return null;
     return (
       admins.find(
-        (a) => String(a.email || "").trim().toLowerCase() === needle,
+        (a) =>
+          String(a.email || "")
+            .trim()
+            .toLowerCase() === needle,
       ) || null
     );
   }
@@ -2424,6 +2430,113 @@ window.AuthStore = (() => {
       `automatic · ${performed}/${limit} Performed · ${driver.driverCode || driver.id}`,
     );
     return true;
+  }
+
+  // Client change plan Phase 7: immutable sequential service-partner IDs,
+  // e.g. "SP-0001" — a dedicated 4-digit sequence, independent of the
+  // 3-digit generic nextMasterId used for other master-data records, and of
+  // legacy "DRV-####" ids already on seed data (those are left as-is).
+  function nextServicePartnerId() {
+    let max = 0;
+    for (const d of drivers) {
+      const m = String(d.id || "").match(/^SP-(\d+)$/);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
+    return `SP-${String(max + 1).padStart(4, "0")}`;
+  }
+
+  // Tax status (Phase 7): exactly one of three states — never inferred.
+  const TAX_STATUS_SUBJECT_TO_VAT = "subject_to_vat";
+  const TAX_STATUS_SMALL_BUSINESS = "small_business_19ustg";
+  const TAX_STATUS_OTHER_REVIEW = "other_review";
+  const TAX_STATUSES = [
+    TAX_STATUS_SUBJECT_TO_VAT,
+    TAX_STATUS_SMALL_BUSINESS,
+    TAX_STATUS_OTHER_REVIEW,
+  ];
+  function normalizeTaxStatus(raw) {
+    const s = String(raw || "").trim();
+    return TAX_STATUSES.includes(s) ? s : "";
+  }
+
+  // IBAN validation (Phase 7): structural length per country (ISO 13616,
+  // common European lengths) + the mod-97 checksum every valid IBAN must
+  // satisfy — not just a naive length/regex check. BIC and bank name stay
+  // unvalidated/optional per the client's own instruction.
+  const IBAN_COUNTRY_LENGTHS = {
+    DE: 22,
+    AT: 20,
+    CH: 21,
+    FR: 27,
+    NL: 18,
+    BE: 16,
+    IT: 27,
+    ES: 24,
+    PL: 28,
+    DK: 18,
+    LU: 20,
+    NO: 15,
+    PT: 25,
+    SE: 24,
+    CZ: 24,
+    SK: 24,
+  };
+  function ibanMod97Valid(iban) {
+    // Move the first 4 chars to the end, convert letters to numbers
+    // (A=10..Z=35), then check the resulting number mod 97 === 1.
+    const rearranged = iban.slice(4) + iban.slice(0, 4);
+    const numeric = rearranged.replace(/[A-Z]/g, (ch) =>
+      String(ch.charCodeAt(0) - 55),
+    );
+    let remainder = 0;
+    for (let i = 0; i < numeric.length; i += 7) {
+      remainder =
+        parseInt(String(remainder) + numeric.slice(i, i + 7), 10) % 97;
+    }
+    return remainder === 1;
+  }
+  function validateIban(raw) {
+    const iban = String(raw || "")
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, "");
+    if (!iban) return { valid: true, reason: null }; // optional field
+    if (!/^[A-Z]{2}\d{2}[A-Z0-9]+$/.test(iban)) {
+      return { valid: false, reason: "invalid_format" };
+    }
+    const country = iban.slice(0, 2);
+    const expectedLength = IBAN_COUNTRY_LENGTHS[country];
+    if (expectedLength && iban.length !== expectedLength) {
+      return { valid: false, reason: "invalid_length" };
+    }
+    if (!ibanMod97Valid(iban)) {
+      return { valid: false, reason: "invalid_checksum" };
+    }
+    return { valid: true, reason: null };
+  }
+
+  // Profile summary counts (Phase 7 #8): completed orders, open document
+  // reviews, and open profile-change requests for one service partner —
+  // shown on the profile so dispatch doesn't have to cross-reference three
+  // other screens.
+  function getServicePartnerProfileSummary(driverId) {
+    const completedOrders = jobs.filter(
+      (j) => jobDriverRecord(j)?.id === driverId && j.status === "performed",
+    ).length;
+    const driverJobIds = new Set(
+      jobs.filter((j) => jobDriverRecord(j)?.id === driverId).map((j) => j.id),
+    );
+    const openDocumentReviews = tourDocuments.filter(
+      (d) =>
+        driverJobIds.has(d.jobId) &&
+        ["uploaded", "correction_required"].includes(
+          normalizeTourDocumentReviewStatus(d.reviewStatus),
+        ),
+    ).length;
+    const openProfileChangeRequests = masterDataChangeRequests.filter(
+      (r) => r.driverId === driverId && r.status === "open",
+    ).length;
+    return { completedOrders, openDocumentReviews, openProfileChangeRequests };
   }
 
   function nextDriverCode() {
@@ -3752,6 +3865,10 @@ window.AuthStore = (() => {
     normalizeCountrySign,
     suggestGermanTown,
     STANDARD_WORDINGS,
+    TAX_STATUSES,
+    normalizeTaxStatus,
+    validateIban,
+    getServicePartnerProfileSummary,
     MANUFACTURER_SUGGESTIONS:
       window.InputFormatters?.MANUFACTURER_SUGGESTIONS || [],
     MANUFACTURER_MODELS: window.InputFormatters?.MANUFACTURER_MODELS || {},
@@ -3907,7 +4024,9 @@ window.AuthStore = (() => {
     },
 
     resendPasswordResetCode({ email, kind } = {}) {
-      const key = `${kind}:${String(email || "").trim().toLowerCase()}`;
+      const key = `${kind}:${String(email || "")
+        .trim()
+        .toLowerCase()}`;
       const pending = passwordResets[key];
       if (!pending) return { ok: false, reason: "no_pending" };
       const now = Date.now();
@@ -3930,7 +4049,9 @@ window.AuthStore = (() => {
     },
 
     verifyPasswordResetCode({ email, kind, code } = {}) {
-      const key = `${kind}:${String(email || "").trim().toLowerCase()}`;
+      const key = `${kind}:${String(email || "")
+        .trim()
+        .toLowerCase()}`;
       const pending = passwordResets[key];
       if (!pending) return { ok: false, reason: "invalid_code" };
       if (Date.now() > pending.expiresAt)
@@ -3945,7 +4066,9 @@ window.AuthStore = (() => {
     },
 
     resetPassword({ email, kind, resetToken, newPassword } = {}) {
-      const key = `${kind}:${String(email || "").trim().toLowerCase()}`;
+      const key = `${kind}:${String(email || "")
+        .trim()
+        .toLowerCase()}`;
       const pending = passwordResets[key];
       if (
         !pending ||
@@ -5406,6 +5529,14 @@ window.AuthStore = (() => {
         log("manual_assign_confirmation", DEMO_ADMIN, j.tour, confirmationNote);
       }
       queuePushNotification(j, "assign");
+      pushDriverNotification({
+        type: "job_assigned",
+        jobId: j.id,
+        tour: j.tour,
+        title: t2("notifJobAssignedTitle", { tour: j.tour }),
+        body: t2("notifJobAssignedBody", { tour: j.tour }),
+        driverId: dr.driver.id,
+      });
       queueAdminEmailAlert(
         "job_assigned",
         id,
@@ -5419,7 +5550,14 @@ window.AuthStore = (() => {
 
     reassignJob(id, driverRef) {
       const j = api.getJob(id);
-      const allowed = ["assigned", "accepted", "empty_run_reported"];
+      // Client change plan Phase 5 #1: a marketplace-accepted order (a driver
+      // chose it themselves from Published) can no longer be silently handed
+      // to a different partner. Direct-dispatch orders (assigned) and
+      // empty-run review are unaffected — only the marketplace-accept path.
+      if (j && j.status === "accepted") {
+        return { ok: false, reason: "marketplace_accepted_not_reassignable" };
+      }
+      const allowed = ["assigned", "empty_run_reported"];
       if (!j || !allowed.includes(j.status))
         return { ok: false, reason: "not_reassignable" };
       const dr = api.resolveAssignableDriver(driverRef);
@@ -5623,8 +5761,26 @@ window.AuthStore = (() => {
       clone.internalNotes = [];
       clone.pdfVersion = 0;
       clone.duplicatedFromTour = src.tour; // internal only, not surfaced
+      // Client change plan Phase 5: when a service partner needs to be
+      // swapped on an accepted order, the required flow is cancel → duplicate
+      // → assign/publish the replacement. Preserve that link both directions
+      // so the audit trail (and each order's detail view) can show it,
+      // instead of the two orders looking unrelated.
+      const isReplacementForCancelled = CANCELLED_STATUSES.includes(src.status);
+      if (isReplacementForCancelled) {
+        clone.replacesCancelledTour = src.tour;
+        src.replacedByTour = newTour;
+      }
       jobs.unshift(clone);
       log("order_duplicated", DEMO_ADMIN, newTour, `from ${src.tour}`);
+      if (isReplacementForCancelled) {
+        log(
+          "order_replacement_created",
+          DEMO_ADMIN,
+          src.tour,
+          `Replacement tour: ${newTour}`,
+        );
+      }
       emit();
       return { ok: true, job: clone };
     },
@@ -5952,9 +6108,39 @@ window.AuthStore = (() => {
     updateDriver(id, patch = {}) {
       const d = drivers.find((x) => x.id === id);
       if (!d) return { ok: false, reason: "not_found" };
-      const fields = ["name", "company", "address", "email", "phone", "notes"];
+      const fields = [
+        "name",
+        "company",
+        "legalForm",
+        "address",
+        "street",
+        "houseNumber",
+        "postalCode",
+        "city",
+        "email",
+        "phone",
+        "secondPhone",
+        "notes",
+        "taxNumber",
+        "vatId",
+        "accountHolder",
+      ];
       for (const k of fields) {
         if (patch[k] !== undefined) d[k] = String(patch[k] ?? "").trim();
+      }
+      if (patch.country !== undefined) {
+        d.country = normalizeCountrySign(patch.country) || DEFAULT_COUNTRY_SIGN;
+      }
+      if (patch.taxStatus !== undefined) {
+        d.taxStatus = normalizeTaxStatus(patch.taxStatus);
+      }
+      if (patch.iban !== undefined) {
+        const ibanCheck = validateIban(patch.iban);
+        if (!ibanCheck.valid) return { ok: false, reason: ibanCheck.reason };
+        d.iban = String(patch.iban || "")
+          .trim()
+          .toUpperCase()
+          .replace(/\s+/g, "");
       }
       if (patch.driverCode !== undefined) {
         const code = String(patch.driverCode ?? "").trim();
@@ -6019,8 +6205,10 @@ window.AuthStore = (() => {
       if (!isValidEmail(email)) return { ok: false, reason: "invalid_email" };
       if (drivers.some((d) => d.email === email))
         return { ok: false, reason: "duplicate_email" };
+      const ibanCheck = validateIban(data.iban);
+      if (!ibanCheck.valid) return { ok: false, reason: ibanCheck.reason };
       const driverCode = nextDriverCode();
-      const id = nextMasterId("DRV", drivers);
+      const id = nextServicePartnerId();
       const probationJobLimit = (() => {
         if (
           data.probationJobLimit !== undefined &&
@@ -6035,14 +6223,31 @@ window.AuthStore = (() => {
         id,
         name,
         company,
+        legalForm: String(data.legalForm || "").trim(),
         driverCode,
         address: String(data.address || "").trim(),
+        street: String(data.street || "").trim(),
+        houseNumber: String(data.houseNumber || "").trim(),
+        postalCode: String(data.postalCode || "").trim(),
+        city: String(data.city || "").trim(),
+        country: normalizeCountrySign(data.country) || DEFAULT_COUNTRY_SIGN,
         email,
         phone: String(data.phone || "").trim(),
+        secondPhone: String(data.secondPhone || "").trim(),
         notes: String(data.notes || "").trim(),
         probationJobLimit,
         probationClearedAt: null,
         status: "Active",
+        joinedAt: nowStamp(),
+        lastLoginAt: null,
+        taxStatus: normalizeTaxStatus(data.taxStatus),
+        taxNumber: String(data.taxNumber || "").trim(),
+        vatId: String(data.vatId || "").trim(),
+        accountHolder: String(data.accountHolder || "").trim(),
+        iban: String(data.iban || "")
+          .trim()
+          .toUpperCase()
+          .replace(/\s+/g, ""),
         prefs: {
           postalAreas: [],
           vehicleType: "All",

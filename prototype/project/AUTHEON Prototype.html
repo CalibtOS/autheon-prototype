@@ -65,7 +65,7 @@
     <script type="text/babel" src="admin.jsx?v=1"></script>
 
     <script type="text/babel" data-presets="env,react">
-      const { useState, useEffect } = React;
+      const { useState, useEffect, useRef } = React;
       const demoDriver = () => AuthStore.DEMO_DRIVER;
 
       function resolvePwaHref() {
@@ -418,6 +418,29 @@
         const [overviewPage, setOverviewPage] = useState(1);
         const [overviewRows, setOverviewRows] = useState(50);
         const [overviewFilteredCount, setOverviewFilteredCount] = useState(0);
+        // Client change plan Phase 6: search/status-filter/density/sort were
+        // previously local state inside Overview, so leaving the section
+        // (open a job, go to New Order, ...) and coming back via onBack
+        // unmounted the component and silently reset every filter. Lifted
+        // here alongside the pagination state from Phase 4 for the same
+        // reason — this component tree unmounts on navigation.
+        const [overviewSearch, setOverviewSearch] = useState("");
+        const [overviewStatusFilter, setOverviewStatusFilter] = useState(null);
+        const [overviewDensity, setOverviewDensity] = useState("comfort");
+        const [overviewSortDesc, setOverviewSortDesc] = useState(true);
+        // Scroll position of the internally-scrolling .admin-content region,
+        // saved on navigating away from Overview and restored on return.
+        const overviewScrollRef = useRef(0);
+        const prevSectionRef = useRef(section);
+        useEffect(() => {
+          const content = document.querySelector(".admin-content");
+          if (prevSectionRef.current === "overview" && section !== "overview") {
+            if (content) overviewScrollRef.current = content.scrollTop;
+          } else if (section === "overview" && content) {
+            content.scrollTop = overviewScrollRef.current;
+          }
+          prevSectionRef.current = section;
+        }, [section]);
 
         const clearBillingNav = () => setBillingNav(null);
         const openMasterDataRequest = (requestId) => {
@@ -733,6 +756,32 @@
           setEditingJobId(null);
         };
 
+        // Client change plan Phase 6: browser Back previously left the SPA
+        // entirely (no history entries were ever pushed) instead of
+        // returning to the previous internal step. Each section/job change
+        // now pushes a history entry; popstate restores section + job
+        // instead of re-deriving navigation from scratch.
+        const isPoppingRef = useRef(false);
+        useEffect(() => {
+          const onPopState = (e) => {
+            isPoppingRef.current = true;
+            const state = e.state || {};
+            setSection(state.section || "overview");
+            setActiveJob(
+              state.jobId ? store.getJob(state.jobId) || null : null,
+            );
+          };
+          window.addEventListener("popstate", onPopState);
+          return () => window.removeEventListener("popstate", onPopState);
+        }, []);
+        useEffect(() => {
+          if (isPoppingRef.current) {
+            isPoppingRef.current = false;
+            return;
+          }
+          history.pushState({ section, jobId: activeJob?.id || null }, "");
+        }, [section, activeJob?.id]);
+
         const openNewJob = () => {
           setEditingJobId(null);
           setNewOrderForm({});
@@ -964,6 +1013,14 @@
               onEdit={openEditDraft}
               onDuplicate={handleDuplicateJob}
               onDeleteDraft={handleDeleteDraftJob}
+              search={overviewSearch}
+              onSearchChange={setOverviewSearch}
+              statusFilter={overviewStatusFilter}
+              onStatusFilterChange={setOverviewStatusFilter}
+              density={overviewDensity}
+              onDensityChange={setOverviewDensity}
+              sortDesc={overviewSortDesc}
+              onSortDescChange={setOverviewSortDesc}
             />
           );
         } else if (section === "detail" && activeJob) {

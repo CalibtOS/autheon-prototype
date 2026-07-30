@@ -7,6 +7,12 @@ const {
   useId: useIdA,
 } = React;
 
+// Client change plan Phase 5 #1: "accepted" (marketplace self-accept) is
+// deliberately excluded — only direct-dispatch ("assigned") and empty-run
+// review orders may be handed to a different service partner. The button is
+// hidden entirely for accepted orders rather than shown-then-blocked.
+const REASSIGNABLE_STATUSES = ["assigned", "empty_run_reported"];
+
 const ADMIN_TOUR_DOC_TYPES = [
   "invoice",
   "fuel_receipt",
@@ -168,28 +174,51 @@ const AdminNav = ({ section, setSection }) => {
         ))}
       </div>
       <div className="nav-foot">
-        <span className="avatar">{initials}</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {displayName}
+        {/* Client change plan Phase 6: clicking the signed-in admin's own
+            name/avatar opens their own profile — the Staff screen is the
+            closest existing admin-account view (a dedicated single-profile
+            page isn't part of Phase 8's scope either). */}
+        <button
+          type="button"
+          className="btn ghost"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flex: 1,
+            minWidth: 0,
+            padding: 0,
+            border: "none",
+            background: "none",
+            textAlign: "left",
+            cursor: "pointer",
+          }}
+          title={t("adminOwnProfileTitle")}
+          onClick={() => setSection("staff")}
+        >
+          <span className="avatar">{initials}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {displayName}
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--muted)",
+              }}
+            >
+              {t("dispatcher")}
+            </div>
           </div>
-          <div
-            style={{
-              fontSize: 12,
-              color: "var(--muted)",
-            }}
-          >
-            {t("dispatcher")}
-          </div>
-        </div>
+        </button>
         <button
           className="btn icon sm"
           title={t("adminLogoutTitle")}
@@ -346,16 +375,23 @@ const Overview = ({
   onEdit,
   onDuplicate,
   onDeleteDraft,
+  // Client change plan Phase 6: filters/sort/density are now controlled by
+  // the host (AdminApp) instead of local state, so they survive this
+  // component unmounting when the admin navigates away and back — see
+  // AUTHEON Prototype.html for the lifted state and scroll-position restore.
+  search,
+  onSearchChange,
+  statusFilter,
+  onStatusFilterChange: setStatusFilter,
+  density,
+  onDensityChange: setDensity,
+  sortDesc,
+  onSortDescChange: setSortDesc,
 }) => {
   const { t } = useI18n();
   const store = useAuthStore();
-  const [statusFilter, setStatusFilter] = useStateA(null); // null = all active
-  const [search, setSearch] = useStateA("");
-  const [density, setDensity] = useStateA("comfort");
+  const setSearch = onSearchChange;
   const [filtersOpen, setFiltersOpen] = useStateA(false);
-  // Tour-number sort (client change plan Phase 4): the header indicator was
-  // previously decorative (no onClick). Toggling reverses natural tour order.
-  const [sortDesc, setSortDesc] = useStateA(true);
   const counts = store.countsByStatus();
 
   const all = store.getJobs();
@@ -1268,6 +1304,8 @@ const assignDriverErr = (r, t) => {
   const reason = r.reason;
   if (reason === "not_draft") return t("assignBlockedSub");
   if (reason === "not_reassignable") return t("reassignBlockedSub");
+  if (reason === "marketplace_accepted_not_reassignable")
+    return t("reassignBlockedMarketplaceAccepted");
   if (reason === "driver_required") return t("adminAssignDriverRequired");
   if (reason === "driver_not_found") return t("adminAssignDriverNotFound");
   if (reason === "driver_not_active") return t("adminAssignDriverInactive");
@@ -1654,6 +1692,18 @@ const AdminDetail = ({
             </span>
             <Pill status={job.status} />
           </div>
+          {job.replacesCancelledTour || job.replacedByTour ? (
+            <div
+              className="banner"
+              style={{ marginBottom: 10, fontSize: 12.5 }}
+            >
+              {job.replacesCancelledTour
+                ? t("adminReplacesCancelledTour", {
+                    tour: job.replacesCancelledTour,
+                  })
+                : t("adminReplacedByTour", { tour: job.replacedByTour })}
+            </div>
+          ) : null}
           <h1
             style={{
               margin: 0,
@@ -2249,9 +2299,7 @@ const AdminDetail = ({
                 {t("adminAssignDriver")}
               </button>
             ) : null}
-            {["assigned", "accepted", "empty_run_reported"].includes(
-              job.status,
-            ) && onRequestReassign ? (
+            {REASSIGNABLE_STATUSES.includes(job.status) && onRequestReassign ? (
               <button
                 type="button"
                 className="btn block"
@@ -2422,12 +2470,11 @@ const AdminDetailFooter = ({
             {t("adminRevertToDraft")}
           </button>
         )}
-        {["assigned", "accepted", "empty_run_reported"].includes(job.status) &&
-          onRequestReassign && (
-            <button type="button" className="btn" onClick={onRequestReassign}>
-              {t("adminReassignDriver")}
-            </button>
-          )}
+        {REASSIGNABLE_STATUSES.includes(job.status) && onRequestReassign && (
+          <button type="button" className="btn" onClick={onRequestReassign}>
+            {t("adminReassignDriver")}
+          </button>
+        )}
         {/* Edit order (§7) — full order form on any non-terminal booked order
             (published/assigned/accepted/empty_run_reported). Saving
             persists immediately, notifies the assigned partner with the actual
@@ -4149,12 +4196,24 @@ const Stub = ({ title, desc }) => {
 const emptyDriverEditForm = () => ({
   name: "",
   company: "",
+  legalForm: "",
   driverCode: "",
   address: "",
+  street: "",
+  houseNumber: "",
+  postalCode: "",
+  city: "",
+  country: AuthStore.DEFAULT_COUNTRY_SIGN,
   email: "",
   phone: "",
+  secondPhone: "",
   notes: "",
   probationJobLimit: "3",
+  taxStatus: "",
+  taxNumber: "",
+  vatId: "",
+  accountHolder: "",
+  iban: "",
 });
 
 const emptyAdminEditForm = () => ({
@@ -4193,6 +4252,17 @@ const validateDriverFormLocal = (form, t, opts = {}) => {
     const n = parseInt(limitRaw, 10);
     if (!Number.isFinite(n) || n < 1 || n > 99)
       errors.probationJobLimit = t("adminUsersErrProbationLimit");
+  }
+  if (String(form.iban || "").trim()) {
+    const check = AuthStore.validateIban(form.iban);
+    if (!check.valid) {
+      errors.iban =
+        check.reason === "invalid_checksum"
+          ? t("adminUsersErrIbanChecksum")
+          : check.reason === "invalid_length"
+            ? t("adminUsersErrIbanLength")
+            : t("adminUsersErrIbanFormat");
+    }
   }
   return errors;
 };
@@ -4247,6 +4317,15 @@ const DriverUserFormFields = ({
       <UserFormError message={errors.company} />
     </div>
     <div>
+      <label className="field-label">{t("adminUsersFieldLegalForm")}</label>
+      <input
+        className="input"
+        placeholder="GmbH, e.K., …"
+        value={form.legalForm || ""}
+        onChange={(e) => setF("legalForm", e.target.value)}
+      />
+    </div>
+    <div>
       <label className="field-label">{t("adminUsersFieldDriverCode")}</label>
       <input
         className="input mono"
@@ -4298,6 +4377,119 @@ const DriverUserFormFields = ({
         onChange={(e) => setF("address", e.target.value)}
         autoComplete="street-address"
       />
+      <p
+        className="label"
+        style={{ marginTop: 4, fontSize: 11, lineHeight: 1.4 }}
+      >
+        {t("adminUsersFieldAddressLegacyHint")}
+      </p>
+    </div>
+    <div>
+      <label className="field-label">{t("adminUsersFieldStreet")}</label>
+      <input
+        className="input"
+        value={form.street || ""}
+        onChange={(e) => setF("street", e.target.value)}
+      />
+    </div>
+    <div>
+      <label className="field-label">{t("adminUsersFieldHouseNumber")}</label>
+      <input
+        className="input"
+        value={form.houseNumber || ""}
+        onChange={(e) => setF("houseNumber", e.target.value)}
+      />
+    </div>
+    <div>
+      <label className="field-label">{t("adminUsersFieldPostalCode")}</label>
+      <input
+        className="input mono"
+        value={form.postalCode || ""}
+        onChange={(e) => setF("postalCode", e.target.value.replace(/\D/g, ""))}
+      />
+    </div>
+    <div>
+      <label className="field-label">{t("adminUsersFieldCity")}</label>
+      <input
+        className="input"
+        value={form.city || ""}
+        onChange={(e) => setF("city", e.target.value)}
+      />
+    </div>
+    <div>
+      <label className="field-label">{t("countryFieldLabel")}</label>
+      <select
+        className="input mono"
+        value={AuthStore.normalizeCountrySign(form.country)}
+        onChange={(e) => setF("country", e.target.value)}
+      >
+        {[...AuthStore.COUNTRY_SIGNS]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.code} — {c.name}
+            </option>
+          ))}
+      </select>
+    </div>
+    <div>
+      <label className="field-label">{t("adminUsersFieldSecondPhone")}</label>
+      <input
+        className="input"
+        type="tel"
+        value={form.secondPhone || ""}
+        onChange={(e) => setF("secondPhone", e.target.value)}
+      />
+    </div>
+    <div>
+      <label className="field-label">{t("adminUsersFieldTaxStatus")}</label>
+      <select
+        className="input"
+        value={form.taxStatus || ""}
+        onChange={(e) => setF("taxStatus", e.target.value)}
+      >
+        <option value="">{t("adminUsersFieldTaxStatusPh")}</option>
+        {AuthStore.TAX_STATUSES.map((code) => (
+          <option key={code} value={code}>
+            {t(`adminTaxStatus_${code}`)}
+          </option>
+        ))}
+      </select>
+    </div>
+    <div>
+      <label className="field-label">{t("adminUsersFieldTaxNumber")}</label>
+      <input
+        className="input mono"
+        value={form.taxNumber || ""}
+        onChange={(e) => setF("taxNumber", e.target.value)}
+      />
+    </div>
+    <div>
+      <label className="field-label">{t("adminUsersFieldVatId")}</label>
+      <input
+        className="input mono"
+        value={form.vatId || ""}
+        onChange={(e) => setF("vatId", e.target.value)}
+      />
+    </div>
+    <div>
+      <label className="field-label">{t("adminUsersFieldAccountHolder")}</label>
+      <input
+        className="input"
+        value={form.accountHolder || ""}
+        onChange={(e) => setF("accountHolder", e.target.value)}
+      />
+    </div>
+    <div style={{ gridColumn: "1 / -1" }}>
+      <label className="field-label">{t("adminUsersFieldIban")}</label>
+      <input
+        className="input mono"
+        style={errors.iban ? userInputErrStyle : undefined}
+        value={form.iban || ""}
+        onChange={(e) => setF("iban", e.target.value.toUpperCase())}
+        placeholder="DE89 3704 0044 0532 0130 00"
+      />
+      <UserFormError message={errors.iban} />
     </div>
     <div style={{ gridColumn: "1 / -1" }}>
       <label className="field-label">{t("adminUsersFieldNotes")}</label>
@@ -4551,13 +4743,25 @@ const DriversPane = ({ showToast }) => {
     setDriverForm({
       name: d.name || "",
       company: d.company || "",
+      legalForm: d.legalForm || "",
       driverCode: d.driverCode || "",
       address: d.address || "",
+      street: d.street || "",
+      houseNumber: d.houseNumber || "",
+      postalCode: d.postalCode || "",
+      city: d.city || "",
+      country: d.country || AuthStore.DEFAULT_COUNTRY_SIGN,
       email: d.email || "",
       phone: d.phone || "",
+      secondPhone: d.secondPhone || "",
       notes: d.notes || "",
       probationJobLimit:
         d.probationJobLimit != null ? String(d.probationJobLimit) : "3",
+      taxStatus: d.taxStatus || "",
+      taxNumber: d.taxNumber || "",
+      vatId: d.vatId || "",
+      accountHolder: d.accountHolder || "",
+      iban: d.iban || "",
     });
     setDriverErrors({});
     setDriverModal(d.id);
@@ -4766,7 +4970,7 @@ const DriversPane = ({ showToast }) => {
           <div
             className="card elev"
             style={{
-              maxWidth: 520,
+              maxWidth: 640,
               width: "100%",
               padding: 22,
               maxHeight: "90vh",
@@ -4774,11 +4978,51 @@ const DriversPane = ({ showToast }) => {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ margin: "0 0 16px", fontSize: 18 }}>
+            <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>
               {driverModal === "new"
                 ? t("adminUsersNewDriverTitle")
                 : t("adminUsersEditDriverTitle")}
             </h2>
+            {driverModal !== "new" ? (
+              <p
+                className="label"
+                style={{ margin: "0 0 16px", fontSize: 11.5 }}
+              >
+                {t("adminUsersServicePartnerId")} {driverModal}
+              </p>
+            ) : null}
+            {driverModal !== "new"
+              ? (() => {
+                  const summary =
+                    store.getServicePartnerProfileSummary(driverModal);
+                  return (
+                    <div
+                      className="card"
+                      style={{
+                        padding: 12,
+                        marginBottom: 16,
+                        display: "flex",
+                        gap: 18,
+                        flexWrap: "wrap",
+                        fontSize: 12.5,
+                      }}
+                    >
+                      <span>
+                        {t("adminUsersSummaryCompletedOrders")}:{" "}
+                        <strong>{summary.completedOrders}</strong>
+                      </span>
+                      <span>
+                        {t("adminUsersSummaryOpenDocReviews")}:{" "}
+                        <strong>{summary.openDocumentReviews}</strong>
+                      </span>
+                      <span>
+                        {t("adminUsersSummaryOpenChangeRequests")}:{" "}
+                        <strong>{summary.openProfileChangeRequests}</strong>
+                      </span>
+                    </div>
+                  );
+                })()
+              : null}
             <DriverUserFormFields
               form={driverForm}
               setF={setDF}
@@ -7247,9 +7491,7 @@ const TourBillingPane = ({
                 <tr
                   key={u.id}
                   className={index < 4 ? "list-enter" : undefined}
-                  style={
-                    index < 4 ? { ["--list-enter-i"]: index } : undefined
-                  }
+                  style={index < 4 ? { ["--list-enter-i"]: index } : undefined}
                 >
                   <td>
                     <input
