@@ -1644,7 +1644,7 @@ window.AuthStore = (() => {
         phone: "+49 170 4400228",
         notes: "",
         status: "Active",
-        accessState: ACCESS_STATE.ACTIVE,
+        accountStatus: "Active",
         probationJobLimit: 3,
         probationClearedAt: null,
         prefs: {
@@ -1666,7 +1666,7 @@ window.AuthStore = (() => {
         phone: "+49 172 3300301",
         notes: "",
         status: "Active",
-        accessState: ACCESS_STATE.ACTIVE,
+        accountStatus: "Invite failed",
         probationJobLimit: 3,
         probationClearedAt: "01.04.2026 10:00",
         prefs: {
@@ -1690,7 +1690,7 @@ window.AuthStore = (() => {
         phone: "+49 171 991177",
         notes: "",
         status: "Blocked",
-        accessState: ACCESS_STATE.ACTIVE,
+        accountStatus: "Pending verification",
         probationJobLimit: 3,
         probationClearedAt: null,
         prefs: {
@@ -1717,7 +1717,7 @@ window.AuthStore = (() => {
         phone: "+49 30 5550199",
         notes: "Default seeded driver",
         status: "Active",
-        accessState: ACCESS_STATE.ACTIVE,
+        accountStatus: "Active",
         probationJobLimit: 3,
         probationClearedAt: null,
         prefs: {
@@ -1738,14 +1738,12 @@ window.AuthStore = (() => {
         name: DEMO_ADMIN,
         email: "anna.bauer@autheon.example",
         status: "Active",
-        accessState: ACCESS_STATE.ACTIVE,
       },
       {
         id: "ADM-002",
         name: "Lukas Reimann",
         email: "lukas.reimann@autheon.example",
         status: "Active",
-        accessState: ACCESS_STATE.ACTIVE,
       },
       // Mirrors the backend's seeds/profiles/development.json fixture admin
       // (demo.admin@demo.local / Demo Admin) — same reasoning as the
@@ -1755,7 +1753,6 @@ window.AuthStore = (() => {
         name: "Demo Admin",
         email: "demo.admin@demo.local",
         status: "Active",
-        accessState: ACCESS_STATE.ACTIVE,
       },
     ];
   }
@@ -2096,14 +2093,16 @@ window.AuthStore = (() => {
     );
   }
 
-  const ACCESS_STATE = {
-    INVITE_PENDING: "Invite pending",
-    ACTIVE: "Active",
-    INVITE_FAILED: "Invite failed",
-  };
-
+  // Account/access status is now a single field per user: `status` for staff
+  // (admins), `accountStatus` for drivers (whose `status` field is the
+  // separate operational/marketplace axis) — collapsed from the old
+  // ACCESS_STATE concept, which used to live alongside those fields.
   function simulateAccountInvite(user, kind) {
-    user.accessState = ACCESS_STATE.INVITE_PENDING;
+    if (kind === "admin") {
+      user.status = "Pending verification";
+    } else {
+      user.accountStatus = "Pending verification";
+    }
     user.lastInviteAt = nowStamp();
     user.identityProvisioned = true;
     user.inviteEmailSent = true;
@@ -4115,7 +4114,11 @@ window.AuthStore = (() => {
         return { ok: false, reason: "confirm_required" };
       if (password !== confirmNewPassword)
         return { ok: false, reason: "password_mismatch" };
-      account.accessState = ACCESS_STATE.ACTIVE;
+      if (kind === "admin") {
+        account.status = "Active";
+      } else {
+        account.accountStatus = "Active";
+      }
       log(
         kind === "admin" ? "admin_invite_accepted" : "driver_invite_accepted",
         account.name,
@@ -6102,9 +6105,16 @@ window.AuthStore = (() => {
     },
 
     setDriverStatus(id, status) {
-      // Matches FE/BE DriverStatus: active | blocked | inactive
-      // (archived / soft_deleted were removed from the live contract)
-      const allowed = ["Active", "Blocked", "Inactive"];
+      // Operational/marketplace axis (Driver.status) — 5 values per
+      // prd.json's driver_statuses list. Separate from accountStatus
+      // (User.status axis), set via setAccountStatus instead.
+      const allowed = [
+        "Active",
+        "Blocked",
+        "Inactive",
+        "Archived",
+        "Soft Deleted",
+      ];
       const d = drivers.find((x) => x.id === id);
       if (!d || !allowed.includes(status)) return { ok: false };
       if (status !== "Active") {
@@ -6313,11 +6323,45 @@ window.AuthStore = (() => {
     },
 
     setAdminStatus(id, status) {
-      const allowed = ["Active", "Inactive"];
+      const allowed = [
+        "Pending verification",
+        "Active",
+        "Suspended",
+        "Inactive",
+        "Invite failed",
+      ];
       const a = admins.find((x) => x.id === id);
       if (!a || !allowed.includes(status)) return { ok: false };
       a.status = status;
       log("admin_status_changed", DEMO_ADMIN, a.name, status);
+      emit();
+      return { ok: true };
+    },
+
+    // Sets the account/access status (User.status axis) for a driver's linked
+    // account or a staff account. Separate from setDriverStatus, which is the
+    // operational/marketplace axis on the driver record itself.
+    setAccountStatus(kind, id, status) {
+      const allowed = [
+        "Pending verification",
+        "Active",
+        "Suspended",
+        "Inactive",
+        "Invite failed",
+      ];
+      if (!allowed.includes(status)) return { ok: false };
+      if (kind === "admin") {
+        const a = admins.find((x) => x.id === id);
+        if (!a) return { ok: false };
+        a.status = status;
+        log("admin_account_status_changed", DEMO_ADMIN, a.name, status);
+        emit();
+        return { ok: true };
+      }
+      const d = drivers.find((x) => x.id === id);
+      if (!d) return { ok: false };
+      d.accountStatus = status;
+      log("driver_account_status_changed", DEMO_ADMIN, d.name, status);
       emit();
       return { ok: true };
     },

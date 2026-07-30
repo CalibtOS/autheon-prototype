@@ -403,15 +403,17 @@ const Overview = ({
       return false;
     if (search) {
       const q = search.toLowerCase();
-      if (!(
-        j.tour.toLowerCase().includes(q) ||
-        j.customer.toLowerCase().includes(q) ||
-        (j.driver || "").toLowerCase().includes(q) ||
-        j.startCity.toLowerCase().includes(q) ||
-        j.endCity.toLowerCase().includes(q) ||
-        (j.vin || "").toLowerCase().includes(q) ||
-        (j.plate || "").toLowerCase().includes(q)
-      ))
+      if (
+        !(
+          j.tour.toLowerCase().includes(q) ||
+          j.customer.toLowerCase().includes(q) ||
+          (j.driver || "").toLowerCase().includes(q) ||
+          j.startCity.toLowerCase().includes(q) ||
+          j.endCity.toLowerCase().includes(q) ||
+          (j.vin || "").toLowerCase().includes(q) ||
+          (j.plate || "").toLowerCase().includes(q)
+        )
+      )
         return false;
     }
     return true;
@@ -4598,15 +4600,34 @@ const userSaveErr = (r, kind, t) => {
   return t("adminInvoiceErrGeneric");
 };
 
-const accessStateLabel = (state, t) => {
+// Account/access status (User.status axis) — 5 values, shared by the
+// StaffPane's single status control and DriversPane's separate "Account
+// access" column. Distinct from Driver.status (operational/marketplace axis).
+const accountStatusLabel = (state, t) => {
   const key = {
-    "Invite pending": "adminUsersAccessInvitePending",
-    Active: "adminUsersAccessActive",
-    "Invite failed": "adminUsersAccessInviteFailed",
-    Inactive: "adminUsersAccessInactive",
+    "Pending verification": "adminUsersAccountStatus_PendingVerification",
+    Active: "adminUsersAccountStatus_Active",
+    Suspended: "adminUsersAccountStatus_Suspended",
+    Inactive: "adminUsersAccountStatus_Inactive",
+    "Invite failed": "adminUsersAccountStatus_InviteFailed",
   }[state];
   return key ? t(key) : state || "—";
 };
+
+const ACCOUNT_STATUS_OPTIONS = [
+  "Pending verification",
+  "Active",
+  "Suspended",
+  "Inactive",
+  "Invite failed",
+];
+
+const accountStatusPillVariant = (state) =>
+  state === "Active"
+    ? "accepted"
+    : state === "Suspended" || state === "Invite failed"
+      ? "cancelled"
+      : "published";
 
 const AccountAccessDialog = ({ open, data, onClose, onResend, showToast }) => {
   const { t } = useI18n();
@@ -4716,21 +4737,10 @@ const DriversPane = ({ showToast }) => {
   const store = useAuthStore();
   const [driverModal, setDriverModal] = useStateA(null);
   const [driverForm, setDriverForm] = useStateA(emptyDriverEditForm());
-  const [credentials, setCredentials] = useStateA(null);
   const [driverErrors, setDriverErrors] = useStateA({});
   const setDF = (k, v) => {
     setDriverForm((p) => ({ ...p, [k]: v }));
     setDriverErrors((e) => ({ ...e, [k]: undefined }));
-  };
-
-  const showAccountAccess = (user, access) => {
-    setCredentials({
-      name: user.name,
-      email: user.email || "",
-      access,
-      user,
-      kind: "driver",
-    });
   };
 
   const openNewDriver = () => {
@@ -4808,7 +4818,6 @@ const DriversPane = ({ showToast }) => {
     setDriverModal(null);
     setDriverErrors({});
     if (driverModal === "new" && r.access) {
-      showAccountAccess(r.driver, r.access);
       showToast?.(t("adminUsersDriverCreated"), driverForm.name);
     } else {
       showToast?.(t("adminUsersSaved"), driverForm.name);
@@ -4834,7 +4843,6 @@ const DriversPane = ({ showToast }) => {
       showToast?.(t("adminUsersSaveFailed"), t("adminInvoiceErrGeneric"));
       return;
     }
-    showAccountAccess(r.user, r.access);
     showToast?.(t("adminUsersToastInviteDriver"), user.name);
   };
 
@@ -5063,28 +5071,6 @@ const DriversPane = ({ showToast }) => {
           </div>
         </div>
       ) : null}
-
-      <AccountAccessDialog
-        open={!!credentials}
-        data={credentials}
-        onClose={() => setCredentials(null)}
-        onResend={
-          credentials?.user
-            ? () => {
-                const r = store.resendAccess("driver", credentials.user.id);
-                if (r.ok) {
-                  setCredentials({
-                    ...credentials,
-                    access: r.access,
-                    user: r.user,
-                  });
-                }
-                return r;
-              }
-            : undefined
-        }
-        showToast={showToast}
-      />
     </div>
   );
 };
@@ -5094,21 +5080,10 @@ const StaffPane = ({ showToast }) => {
   const store = useAuthStore();
   const [adminModal, setAdminModal] = useStateA(null);
   const [adminForm, setAdminForm] = useStateA(emptyAdminEditForm());
-  const [credentials, setCredentials] = useStateA(null);
   const [adminErrors, setAdminErrors] = useStateA({});
   const setAF = (k, v) => {
     setAdminForm((p) => ({ ...p, [k]: v }));
     setAdminErrors((e) => ({ ...e, [k]: undefined }));
-  };
-
-  const showAccountAccess = (user, access) => {
-    setCredentials({
-      name: user.name,
-      email: user.email || "",
-      access,
-      user,
-      kind: "admin",
-    });
   };
 
   const openNewAdmin = () => {
@@ -5135,7 +5110,6 @@ const StaffPane = ({ showToast }) => {
     setAdminModal(null);
     setAdminErrors({});
     if (r.access) {
-      showAccountAccess(r.admin, r.access);
       showToast?.(t("adminUsersAdminCreated"), adminForm.name);
     } else {
       showToast?.(t("adminUsersSaved"), adminForm.name);
@@ -5148,12 +5122,11 @@ const StaffPane = ({ showToast }) => {
       showToast?.(t("adminUsersSaveFailed"), t("adminInvoiceErrGeneric"));
       return;
     }
-    showAccountAccess(r.user, r.access);
     showToast?.(t("adminUsersToastInviteAdmin"), user.name);
   };
 
   const applyAdminStatus = (admin, status) => {
-    const result = store.setAdminStatus(admin.id, status);
+    const result = store.setAccountStatus("admin", admin.id, status);
     if (!result.ok) return;
     showToast?.(t("adminUsersToastAdminChanged"), admin.name);
   };
@@ -9321,9 +9294,7 @@ const HelpContactsForm = ({ showToast }) => {
   const storedReportErrorEmail = String(contacts.reportErrorEmail || "");
 
   const [hotline, setHotline] = useStateA(storedHotline);
-  const [infopointEmail, setInfopointEmail] = useStateA(
-    storedInfopointEmail,
-  );
+  const [infopointEmail, setInfopointEmail] = useStateA(storedInfopointEmail);
   const [feedbackEmail, setFeedbackEmail] = useStateA(storedFeedbackEmail);
   const [reportErrorEmail, setReportErrorEmail] = useStateA(
     storedReportErrorEmail,
@@ -9364,10 +9335,7 @@ const HelpContactsForm = ({ showToast }) => {
     infopointEmail,
     storedInfopointEmail,
   );
-  const feedbackEmailDirty = isContactDirty(
-    feedbackEmail,
-    storedFeedbackEmail,
-  );
+  const feedbackEmailDirty = isContactDirty(feedbackEmail, storedFeedbackEmail);
   const reportErrorEmailDirty = isContactDirty(
     reportErrorEmail,
     storedReportErrorEmail,
