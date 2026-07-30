@@ -444,7 +444,7 @@ action gap; the action row inside the panel and the panel inside the viewport in
 
 **Terminology, unresolved.** The existing strings mix "jobs", "tours" and now "orders"
 (`noJobsMatch` / `noToursMatch` / `marketplaceEmptyNoOrders`; DE says "Touren"). Nothing was renamed —
-see the v2.18 changelog open question.
+see the v2.22 changelog open question.
 
 ---
 
@@ -482,7 +482,7 @@ on the row — the row navigates, it does not disclose.
   (`.infopoint-message-date`), then the **complete** message (`.infopoint-message-body`) with
   `white-space: pre-line` so admin-typed paragraph breaks survive. **Never clamped, never truncated.**
 - Opening marks the message read immediately; the list shows the new state on return. The open is also
-  audited as a message view (see PRD v2.15).
+  audited as a message view (see PRD v2.19).
 - Back returns to the **complete** list with the News tab still selected.
 
 ### Left-edge swipe-back (optional, implemented)

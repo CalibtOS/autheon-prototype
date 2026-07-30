@@ -1,6 +1,6 @@
 # AUTHEON sitemap (prototype + production targets)
 
-> **Status:** Auth entries added for PRD v2.20. The remaining rows are **stale at PRD v1.8** — they still say "Special case" (removed in v2.6), "daily limit" (replaced by probation in v1.9) and "Not performable" (replaced by the empty-run workflow in v2.4). That drift is pre-existing and is **not** corrected here; canonical requirements: [`../requirements/prd.json`](../requirements/prd.json).
+> **Status:** Auth entries added for PRD v2.24. The remaining rows are **stale at PRD v1.8** — they still say "Special case" (removed in v2.6), "daily limit" (replaced by probation in v1.9) and "Not performable" (replaced by the empty-run workflow in v2.4). That drift is pre-existing and is **not** corrected here; canonical requirements: [`../requirements/prd.json`](../requirements/prd.json).
 
 ## Driver PWA
 

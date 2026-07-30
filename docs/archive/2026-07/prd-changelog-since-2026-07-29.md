@@ -1,18 +1,22 @@
-# PRD changelog: 2026-07-29 (v2.14 → v2.21)
+# PRD changelog: 2026-07-29 / 2026-07-30 (v2.18 → v2.25)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
 **Canonical file:** `docs/requirements/prd.json`
 
-> **Scope of this file:** the **v2.15** – **v2.21** entries. PRD **v2.11 – v2.14** (all dated 2026-07-29 — admin manufacturer/model catalogue, vehicle search, and the admin orders-overview client fixes) are recorded in the `version` history string inside `prd.json` and in [`../../requirements/admin-client-requirements-status.md`](../../requirements/admin-client-requirements-status.md), but were never given a separate changelog file. That gap is pre-existing and is **not** back-filled here.
+> **Scope of this file:** the **v2.19 – v2.25** entries. Baseline is main's **v2.18**.
+>
+> **Merge resolution — these entries were renumbered.** They were originally written as **v2.15 – v2.21** on a feature branch. While that branch was in flight, `main` independently claimed v2.15 – v2.18 for four other streams: **v2.15** admin status/assignment-rules Phase 5, **v2.16** driver in-app notification on direct assignment, **v2.17** admin navigation/layout Phase 6, **v2.18** admin service-partner Phase 7. Two different specifications cannot share a version number, so on rebase this branch's entries shifted up by four to v2.19 – v2.25 — the same convention the v2.6 → v2.10 merge used when three streams collided (see [`prd-changelog-since-2026-07-27.md`](prd-changelog-since-2026-07-27.md) "Merge resolution"). **No requirement was dropped or reordered**; only the numbers moved. Mapping: v2.15→v2.19 · v2.16→v2.20 · v2.17→v2.21 · v2.18→v2.22 · v2.19→v2.23 · v2.20→v2.24 · v2.21→v2.25.
+>
+> PRD **v2.11 – v2.14** (2026-07-29 — admin manufacturer/model catalogue, vehicle search, orders-overview client fixes) are recorded in the `version` history string inside `prd.json` and in [`../../requirements/admin-client-requirements-status.md`](../../requirements/admin-client-requirements-status.md), but were never given a separate changelog file. That gap is pre-existing and is **not** back-filled here.
 
 ---
 
-## PRD v2.15 — Driver content-access audit trail (2026-07-29)
+## PRD v2.19 — Driver content-access audit trail (2026-07-29)
 
-> **PARTIALLY SUPERSEDED by PRD v2.21 (below): notification-open auditing was removed from scope.** Everything in this entry about **documents** and **Infopoint messages** still stands. The `notification_viewed` action key, the `driver_notification` entity type and the "Notification view" rule in §4 no longer exist. This entry is kept verbatim so the original decision and its reversal are both traceable.
+> **PARTIALLY SUPERSEDED by PRD v2.25 (below): notification-open auditing was removed from scope.** Everything in this entry about **documents** and **Infopoint messages** still stands. The `notification_viewed` action key, the `driver_notification` entity type and the "Notification view" rule in §4 no longer exist. This entry is kept verbatim so the original decision and its reversal are both traceable.
 
-**Baseline:** PRD v2.14 (admin orders-overview Phase 4 client fixes)
+**Baseline:** PRD v2.18 (admin service-partner Phase 7 client fixes) — see the renumbering note above
 **Source:** work order "Create Audit Log Entries for Every Driver Document, Notification, and Infopoint Message View or Download", refining the existing **Task 22 — Audit Log & Status History**.
 
 Scope note: the deliverable is an updated **clickable prototype** plus updated requirements docs. Backend behaviour remains **simulated** in the prototype and is captured here as a requirement for the dev team.
@@ -38,7 +42,7 @@ In the prototype specifically:
 
 So the audit log could show that dispatch produced a document but not that the assigned driver ever read it — and where a read *was* logged, it was attributed to the wrong person.
 
-### 2. New behaviour (v2.15)
+### 2. New behaviour (v2.19)
 
 Four acceptance criteria were appended to the **existing** Task 22. No new task and no duplicate audit requirement was created.
 
@@ -58,7 +62,7 @@ Keys stay **stable English** (`resolved_defaults.audit_log_language_v1`: "Englis
 | Infopoint general document | `document_viewed` | `document_downloaded` |
 | Tour document (driver upload or dispatch off-channel) | `tour_document_viewed` | `tour_document_downloaded` |
 | Transport-order PDF | `pdf_viewed` *(pre-existing)* | `pdf_downloaded` *(pre-existing)* |
-| Driver notification | ~~`notification_viewed`~~ **removed in v2.21** | — |
+| Driver notification | ~~`notification_viewed`~~ **removed in v2.25** | — |
 | Infopoint message (news item) | `news_item_viewed` | — |
 
 `document_*` is reserved for Infopoint general documents because the admin console already writes `document_created` / `document_updated` / `document_replaced` / `document_deleted` for exactly that entity; `tour_document_*` matches the existing `tour_document_uploaded` / `tour_document_replaced` / `tour_document_checked`; `news_item_*` matches `news_item_created` / `news_item_updated` / `news_item_hidden` / `news_item_shown`.
@@ -71,7 +75,7 @@ Resolved from existing behaviour rather than invented:
 
 - **Document view** — the driver requests a preview of the file. Repeated previews are repeated views.
 - **Document download** — the driver requests the file for download. Audited as `downloaded`, never additionally as a view.
-- ~~**Notification view**~~ — **removed from scope in v2.21.** As originally specified: the driver **opens the notifications panel**. That is one notification-list request, and the panel renders every row's full title and body, so each notification the request carries is audited as a view. Reopening the panel is a new view and appends new entries. **Read/unread state is deliberately untouched** — opening the panel does not mark anything read, and marking read is not itself a view.
+- ~~**Notification view**~~ — **removed from scope in v2.25.** As originally specified: the driver **opens the notifications panel**. That is one notification-list request, and the panel renders every row's full title and body, so each notification the request carries is audited as a view. Reopening the panel is a new view and appends new entries. **Read/unread state is deliberately untouched** — opening the panel does not mark anything read, and marking read is not itself a view.
 - **Infopoint message view** — the driver **opens** a message. Audited immediately, before read state is touched, so an already-read message re-opened is audited again. Collapsing an open message is not a view.
 
 ### 5. Explicitly out of scope
@@ -85,7 +89,7 @@ Resolved from existing behaviour rather than invented:
 
 1. **Share and print.** The document preview sheet offers share and print alongside download. Only view and download are audited. Whether share/print are separate auditable disclosure events is a product decision — the work order raised it as an open question and no repository source answers it.
 2. **Failed and unauthorized access attempts.** An unknown, hidden or unauthorized target currently fails safely and audits **nothing**. Whether denied attempts should be recorded (a security-monitoring requirement, distinct from content traceability) is undecided.
-3. ~~**Notification view granularity.**~~ **Moot since v2.21** — notification opens are not audited at all. As originally recorded: a view is recorded per notification carried by a panel opening. If the product instead wants per-row tap granularity, that is a narrower rule and would need confirming — but it would leave notifications that are not tappable (for example `master_data_change_sent`, `email_changed`, which carry no job) permanently unaudited, which is why the list-request rule was chosen.
+3. ~~**Notification view granularity.**~~ **Moot since v2.25** — notification opens are not audited at all. As originally recorded: a view is recorded per notification carried by a panel opening. If the product instead wants per-row tap granularity, that is a narrower rule and would need confirming — but it would leave notifications that are not tappable (for example `master_data_change_sent`, `email_changed`, which carry no job) permanently unaudited, which is why the list-request rule was chosen.
 
 ---
 
@@ -93,25 +97,25 @@ Resolved from existing behaviour rather than invented:
 
 | File | Change |
 | --- | --- |
-| `docs/requirements/prd.json` | Task 22 acceptance extended (4 criteria); `resolved_defaults.driver_content_access_audit_v1` added; `version` → v2.15 |
+| `docs/requirements/prd.json` | Task 22 acceptance extended (4 criteria); `resolved_defaults.driver_content_access_audit_v1` added; `version` → v2.19 |
 | `prototype/project/store.js` | `log()` accepts optional machine-readable fields; `logContentAccess()` + `contentAccessActor()`; audited `getTransportOrderPreview` / `downloadPdf` / `getTourDocumentPreview` / `downloadTourDocumentPlaceholder` / `getInfopointDocumentPreview` / `downloadInfopointDocument`; new `recordDriverNotificationViews()` and `openInfopointNews()` |
 | `prototype/project/driver.jsx` | Driver call sites declare `{ actor: "driver" }`; notifications panel audits the list it renders; Infopoint message open routes through `openInfopointNews` |
 | `docs/database/schema.dbml` | Header annotation: new action keys, reusing `audit_events` unchanged |
 | `docs/database/logical-model.md` | Same annotation + content-access read note |
-| `docs/product/autheon-context-pack.md` | Version trail → v2.15; content-access audit bullet |
+| `docs/product/autheon-context-pack.md` | Version trail → v2.19; content-access audit bullet |
 
 **Not touched:** migrations, backend entities, DTOs, API payloads, `docs/design/*` (no visual, layout, copy, interaction or responsive change — the admin Audit log renders new rows through its existing table and the Driver PWA is visually identical), `prototype/project/i18n.js` (action keys are English identifiers, never localized, and no user-facing string was added).
 
 ---
 
-## PRD v2.16 — Type-aware notification previews and contextual deep links (2026-07-29)
+## PRD v2.20 — Type-aware notification previews and contextual deep links (2026-07-29)
 
-**Baseline:** PRD v2.15 (driver content-access audit trail)
+**Baseline:** PRD v2.19 (driver content-access audit trail)
 **Source:** work order "Implement Type-Aware Notification Previews and Contextual Deep Links", extending the existing **Task 20 — Driver Push Notifications & Admin Critical Alerts**.
 
 Scope note: the deliverable is an updated **clickable prototype** plus updated requirements/data-model/design docs. Push *delivery* remains **simulated** — what is implemented is the resolution and navigation layer a real push integration plugs into.
 
-### 1. Previous behaviour (v2.15, as implemented)
+### 1. Previous behaviour (v2.19, as implemented)
 
 Every notification rendered as one flat row: unread dot, title, body, `createdAt · tour`. Nothing distinguished a tour update from an account event, and the interaction model was crude:
 
@@ -124,7 +128,7 @@ Every notification rendered as one flat row: unread dot, title, body, `createdAt
 - **Coverage gaps against the existing matrix.** `document_accepted` was specified as a driver in-app event and had **no implementation**; newly published matching Marketplace orders produced a simulated push and **no** in-app row, so the notification list never mentioned marketplace work.
 - **Hard-coded English.** `"Document rejected"`, `"Change request sent"`, `"Profile change approved"` and `"…declined"` were literals in `store.js` — no DE.
 
-### 2. New behaviour (v2.16)
+### 2. New behaviour (v2.20)
 
 Eleven acceptance criteria were appended to the **existing** Task 20. No new task, no duplicate notification requirement.
 
@@ -193,11 +197,11 @@ No migration file is introduced because this repository holds documentation and 
 
 ---
 
-## Files touched (v2.16)
+## Files touched (v2.20)
 
 | File | Change |
 | --- | --- |
-| `docs/requirements/prd.json` | Task 20 acceptance extended (11 criteria); `notification_channels_matrix` in-app flag for newly published matching orders; `resolved_defaults.driver_notification_presentation_v1`; `version` → v2.16 |
+| `docs/requirements/prd.json` | Task 20 acceptance extended (11 criteria); `notification_channels_matrix` in-app flag for newly published matching orders; `resolved_defaults.driver_notification_presentation_v1`; `version` → v2.20 |
 | `prototype/project/store.js` | Notification category/kind taxonomy; `resolveDriverNotificationTarget`; `driverNotificationJobPreview` (visibility-stripped projection); `driverIsCommittedToJob`; `driverJobViewMode`; `newsId`/`documentId` on notifications; in-app row for newly published matching orders; `document_accepted` notification; localized notification copy; representative notification seed |
 | `prototype/project/driver.jsx` | Notification card rework (category chip, tour accordion, deep links, unavailable state); `NotificationTourPreview`; `resolveNotificationNavigation`; `useNotificationDeepLink`; `Infopoint` message deep link; `JobUnlocked` document deep link |
 | `prototype/project/i18n.js` | 34 new keys, EN + DE; removed the redundant `driverNotifInfopointHint` |
@@ -205,26 +209,26 @@ No migration file is introduced because this repository holds documentation and 
 | `prototype/project/AUTHEON Prototype.html`, `pwa/pwa-app.jsx` | Deep-link handling and the new pane handlers on both driver shells |
 | `docs/database/schema.dbml`, `docs/database/logical-model.md` | `user_notifications` target columns + indexes; "Notification targeting" section |
 | `docs/design/*` | driver-screen-spec (notification card spec), DDB remediation (F9), brand-tokens (component token map), ui-ux-production-plan §7.12, driver-i18n-index (regenerated) |
-| `docs/product/autheon-context-pack.md` | Version trail → v2.16; notification presentation bullet |
+| `docs/product/autheon-context-pack.md` | Version trail → v2.20; notification presentation bullet |
 
 **Not touched:** push eligibility/preferences, the matrix `driver_push` column, migrations, ORM entities, DTOs, API payloads.
 
 ---
 
-## PRD v2.17 — Infopoint message detail page (2026-07-29)
+## PRD v2.21 — Infopoint message detail page (2026-07-29)
 
-**Baseline:** PRD v2.16 (type-aware notification previews and contextual deep links)
+**Baseline:** PRD v2.20 (type-aware notification previews and contextual deep links)
 **Source:** work order "Replace Expandable Infopoint Messages with a Dedicated Message Detail Page", refining the existing **Task 18 — Information Center / Infopoint**.
 
 Scope note: presentation and navigation only. No new content type, no admin change, no data-model change.
 
-### 1. Previous behaviour (v2.16, as implemented)
+### 1. Previous behaviour (v2.20, as implemented)
 
 Infopoint News rows were **accordions**. A row showed the title, the date, and the body truncated to **100 characters** with an ellipsis; tapping it expanded the full body **inside the row**, in the middle of a scrolling list, behind a rotating chevron.
 
 That is the wrong container for what admins actually publish. The seeded strike announcement is already 221 characters across three paragraphs, and the client's real cases — updated **AGB** and standing instructions — are far longer. Inside an expanded list row the body pushed the following messages far down the list, had no stable reading position, and the driver lost their place on collapse.
 
-### 2. New behaviour (v2.17)
+### 2. New behaviour (v2.21)
 
 Five acceptance criteria were appended to the **existing** Task 18. No new task.
 
@@ -247,11 +251,11 @@ Five acceptance criteria were appended to the **existing** Task 18. No new task.
 
 Back returns to the **complete** message list with the News tab still selected.
 
-**Read state.** Opening a message marks it read immediately (unchanged store call), and the list reflects it on return. The open is still audited as a message view (v2.15) — including re-opening one that is already read.
+**Read state.** Opening a message marks it read immediately (unchanged store call), and the list reflects it on return. The open is still audited as a message view (v2.19) — including re-opening one that is already read.
 
 **Reuse instead of a new pattern.** The page uses the repository's existing driver drill-down header, generalized from `ProfileSubpageHeader` to **`DriverSubpageHeader`** (CSS scope `.profile-subpage-header` → `.driver-subpage-header`; identical rules, zero visual change to Profile). So the back arrow, its 44px target — deliberately above the shared 40px `.detail-back-btn`, because it is the primary escape from a subpage — the centred title and the focus-moves-to-heading-on-entry behaviour are the same on the Infopoint detail page as on every Profile subpage. No second drill-down pattern was introduced.
 
-**Deep links.** The message-detail deep links added in v2.16 — a notification card tap and an Infopoint push tap — now land on this page rather than on an expanded row. Nothing else about them changed.
+**Deep links.** The message-detail deep links added in v2.20 — a notification card tap and an Infopoint push tap — now land on this page rather than on an expanded row. Nothing else about them changed.
 
 ### 3. Nice-to-have — implemented
 
@@ -272,29 +276,29 @@ It is **progressive enhancement**: the visible back arrow is always present and 
 
 ---
 
-## Files touched (v2.17)
+## Files touched (v2.21)
 
 | File | Change |
 | --- | --- |
-| `docs/requirements/prd.json` | Task 18 acceptance extended (5 criteria); `resolved_defaults.infopoint_message_detail_page_v1`; `version` → v2.17 |
+| `docs/requirements/prd.json` | Task 18 acceptance extended (5 criteria); `resolved_defaults.infopoint_message_detail_page_v1`; `version` → v2.21 |
 | `prototype/project/driver.jsx` | `InfopointMessageDetail` page; `useEdgeSwipeBack`; `ProfileSubpageHeader` → `DriverSubpageHeader`; message list reduced to title + date + read state; `Infopoint` renders the detail page in place of the tabs |
 | `prototype/project/i18n.js` | `infopointMessage`, `infopointNewsRead` (EN + DE); `infopointNewsUnread` now actually used |
 | `prototype/project/styles.css` | `.infopoint-message-page` / `-card` / `-title` / `-date` / `-body`, list-row title/state/chevron/unread-dot rules; `.profile-subpage-header` → `.driver-subpage-header` |
 | `docs/design/*` | driver-screen-spec (message list + detail page), DDB remediation (F10), brand-tokens (component token map), ui-ux-production-plan §7.13 (§7.8 superseded in part), driver-i18n-index (regenerated) |
-| `docs/product/autheon-context-pack.md` | Version trail → v2.17; Infopoint detail-page bullet |
+| `docs/product/autheon-context-pack.md` | Version trail → v2.21; Infopoint detail-page bullet |
 
 **Not touched:** `docs/database/schema.dbml`, `docs/database/logical-model.md`, migrations, admin console, notification eligibility.
 
 ---
 
-## PRD v2.18 — Marketplace empty states split by filter state (2026-07-29)
+## PRD v2.22 — Marketplace empty states split by filter state (2026-07-29)
 
-**Baseline:** PRD v2.17 (Infopoint message detail page)
+**Baseline:** PRD v2.21 (Infopoint message detail page)
 **Source:** work order "Implement Separate Marketplace Empty States for Unfiltered and Filtered Results", refining the existing **Task 7 — Driver Marketplace**.
 
 Scope note: empty-state selection only. No change to the filter predicate, the filter panel, the count badge, the chip row or the results count.
 
-### 1. Previous behaviour (v2.17, as implemented)
+### 1. Previous behaviour (v2.21, as implemented)
 
 The Marketplace rendered **one** empty state, unconditionally:
 
@@ -306,7 +310,7 @@ It appeared whenever `ordered.length === 0` — including when **no filter was a
 
 This was already visible as a latent inconsistency: v2.9 had established that active filters and their count **stay displayed when the result set is empty** so that an empty Marketplace is *explained* — but the explanation offered was wrong when there was nothing to explain.
 
-### 2. New behaviour (v2.18)
+### 2. New behaviour (v2.22)
 
 Four acceptance criteria were appended to the **existing** Task 7.
 
@@ -337,23 +341,23 @@ Both states get a stable class (`.marketplace-empty-filtered` / `.marketplace-em
 
 ---
 
-## Files touched (v2.18)
+## Files touched (v2.22)
 
 | File | Change |
 | --- | --- |
-| `docs/requirements/prd.json` | Task 7 acceptance extended (4 criteria); `resolved_defaults.marketplace_empty_states_v1`; `version` → v2.18 |
+| `docs/requirements/prd.json` | Task 7 acceptance extended (4 criteria); `resolved_defaults.marketplace_empty_states_v1`; `version` → v2.22 |
 | `prototype/project/driver.jsx` | `hasActiveFilters` derived in `Portal` from the canonical count; empty state branches into the filtered and general variants |
 | `prototype/project/i18n.js` | `marketplaceEmptyNoOrders` (EN + DE) |
 | `docs/design/*` | driver-screen-spec (Marketplace empty states), DDB remediation (F11), ui-ux-production-plan §7.11 addendum, driver-i18n-index (regenerated) |
-| `docs/product/autheon-context-pack.md` | Version trail → v2.18; Marketplace empty-state bullet |
+| `docs/product/autheon-context-pack.md` | Version trail → v2.22; Marketplace empty-state bullet |
 
 **Not touched:** `docs/database/*`, migrations, the filter predicate, the filter panel, the count badge, the chip row, `brand-tokens.md` (no new component, no new token — the shared `EmptyState` primitive is reused as-is).
 
 ---
 
-## PRD v2.19 — System-wide dialog standard (2026-07-29)
+## PRD v2.23 — System-wide dialog standard (2026-07-29)
 
-**Baseline:** PRD v2.18 (Marketplace empty states split by filter state)
+**Baseline:** PRD v2.22 (Marketplace empty states split by filter state)
 **Source:** work order "Standardize All System Dialogs Using the 'Accept Tour' Dialog as the Reference", supporting **Task 9 — Job Acceptance** and extending **Task 26 — QA & Automated Validation** with system-wide dialog QA.
 
 Scope note: **visual only** — layout, hierarchy, alignment, spacing, corner treatment, icon usage and action presentation. No business logic, validation, status transition, permission, action availability, approved label, legal wording or workflow content changed.
@@ -425,25 +429,25 @@ A dialog-standard probe was run against representative dialogs — confirmation,
 
 ---
 
-## Files touched (v2.19)
+## Files touched (v2.23)
 
 | File | Change |
 | --- | --- |
-| `docs/requirements/prd.json` | Task 26 acceptance extended (6 criteria); `resolved_defaults.dialog_standard_v1`; `version` → v2.19 |
+| `docs/requirements/prd.json` | Task 26 acceptance extended (6 criteria); `resolved_defaults.dialog_standard_v1`; `version` → v2.23 |
 | `prototype/project/driver-ui.jsx` | New shared `Dialog` primitive, exported on `DriverUI` |
 | `prototype/project/admin.jsx` | `Dialog` wired in; 9 hand-rolled backdrops/panels/titles/descriptions/action rows converted to the shared classes; assign-driver and cancel-order moved to the component |
 | `prototype/project/driver.jsx` | `AcceptanceModal` (the reference) on the standard's classes; `PendingNotice`, `TourBookedSuccessSheet`, `ProbationLimitSheet`, `SameDayOverlapSheet` on the `Dialog` component; `RemoveDocModal` on the shared classes; `DialogSuccessIcon` deduplicated |
 | `prototype/project/styles.css` | The `.dialog-*` contract (backdrop, panel + widths, eyebrow, title, description, content, actions, status-icon discs, `.accept-tour-summary`) |
 | `docs/design/*` | driver-screen-spec (dialog standard + audit table), brand-tokens (component token map), DDB remediation (F12), ui-ux-production-plan §7.14 |
-| `docs/product/autheon-context-pack.md` | Version trail → v2.19; dialog-standard bullet |
+| `docs/product/autheon-context-pack.md` | Version trail → v2.23; dialog-standard bullet |
 
 **Not touched:** `docs/database/*`, migrations, any store method, any validation rule, any i18n string, the slide-to-confirm controls, and the bottom-sheet components' structure.
 
 ---
 
-## PRD v2.20 — Auth demo documentation catch-up (2026-07-29)
+## PRD v2.24 — Auth demo documentation catch-up (2026-07-29)
 
-**Baseline:** PRD v2.19 (system-wide dialog standard)
+**Baseline:** PRD v2.23 (system-wide dialog standard)
 **Source:** PR **#32** (`c7a087e`, `2116024`, `8e0182e`, merge `b60d8c8`) — authentication screens that landed in the prototype **without their documentation**.
 
 > **This entry changes no behaviour.** It records what already exists in `prototype/project`, so the documentation stops under-reporting the prototype. Written after those commits were merged to `main`, as a follow-up.
@@ -500,33 +504,33 @@ Six acceptance criteria were appended to the **existing** Task 2. They deliberat
 
 ---
 
-## Files touched (v2.20)
+## Files touched (v2.24)
 
 | File | Change |
 | --- | --- |
-| `docs/requirements/prd.json` | Task 2 acceptance extended (6 criteria); `resolved_defaults.auth_prototype_demo_v1`; `version` → v2.20 |
+| `docs/requirements/prd.json` | Task 2 acceptance extended (6 criteria); `resolved_defaults.auth_prototype_demo_v1`; `version` → v2.24 |
 | `docs/database/schema.dbml`, `docs/database/logical-model.md` | The ten new audit action keys recorded; explicit note that no session/reset table exists by design |
 | `docs/design/driver-screen-spec.md` | Auth screens + the gate; primitives and states |
 | `docs/design/brand-tokens.md` | Component token map — auth screens |
 | `docs/design/design-direction-board-remediation.md` | F13 (feature row) |
 | `docs/design/ui-ux-production-plan.md` | §7.15 + changelog line |
 | `docs/design/driver-i18n-index.md` | Regenerated — picks up the auth keys; auth key contract added to the generator |
-| `docs/product/autheon-context-pack.md` | Version trail → v2.20; auth bullet |
+| `docs/product/autheon-context-pack.md` | Version trail → v2.24; auth bullet |
 | `docs/product/sitemap.md` | Auth entry rows for both surfaces |
 
 **Not touched:** any file under `prototype/project` — this commit documents existing behaviour and changes none of it, apart from the `pwa-app.jsx` cache-buster noted in the commit message.
 
 ---
 
-## PRD v2.21 — Notification-open auditing removed from scope (2026-07-29)
+## PRD v2.25 — Notification-open auditing removed from scope (2026-07-29)
 
-**Baseline:** PRD v2.20 (auth demo documentation catch-up)
-**Source:** the **same work order that specified v2.15**, revised by the team lead after v2.15 shipped.
-**Effect:** **partially supersedes v2.15.** Documents and Infopoint messages are unchanged; notification opens are no longer audited.
+**Baseline:** PRD v2.24 (auth demo documentation catch-up)
+**Source:** the **same work order that specified v2.19**, revised by the team lead after v2.19 shipped.
+**Effect:** **partially supersedes v2.19.** Documents and Infopoint messages are unchanged; notification opens are no longer audited.
 
 ### 1. What the work order changed
 
-| | Original (implemented as v2.15) | Revised |
+| | Original (implemented as v2.19) | Revised |
 | --- | --- | --- |
 | Title | "Every Driver Document, **Notification**, and Infopoint Message View or Download" | "Every Driver Document, and Infopoint Message View or Download" |
 | Scope of logging | Document view · Document download · **Notification view** · Infopoint message view | Document view · Document download · Infopoint message view |
@@ -539,7 +543,7 @@ Recorded so the earlier entry does not read as a mistake, and so this is not sil
 
 **A notification is a pointer, not the content.** Every notification points at something already audited — a document, an Infopoint message, or a tour. The audit trail's question is *"did the driver see this content?"*, and that is answered the moment they open it. Auditing the pointer as well recorded the same disclosure twice, at two different times, with the pointer entry arriving **first** — so a reader of the log saw "notification viewed" for a document the driver never actually opened.
 
-**It was the noisiest rule in the trail.** v2.15 audited one entry *per notification* *per panel opening*, because that was the only reading that covered notifications a driver cannot tap (`master_data_change_sent`, `email_changed` — no job to open). With the seeded set that is six entries every time the bell is tapped, and in production it grows with the driver's notification history. The signal-to-noise cost fell entirely on the surface the audit log exists to serve.
+**It was the noisiest rule in the trail.** v2.19 audited one entry *per notification* *per panel opening*, because that was the only reading that covered notifications a driver cannot tap (`master_data_change_sent`, `email_changed` — no job to open). With the seeded set that is six entries every time the bell is tapped, and in production it grows with the driver's notification history. The signal-to-noise cost fell entirely on the surface the audit log exists to serve.
 
 **Read/unread already records it.** `user_notifications.read_at` and the unread badge are the notification-level record of what the driver has seen. That was never removed and is the honest place for that fact.
 
@@ -568,15 +572,15 @@ Unchanged by this revision, and still not decided:
 
 ---
 
-## Files touched (v2.21)
+## Files touched (v2.25)
 
 | File | Change |
 | --- | --- |
 | `prototype/project/store.js` | `recordDriverNotificationViews` removed; the content-access header comment now records why notification opens are deliberately not audited |
 | `prototype/project/driver.jsx` | the notifications panel's audit mount effect removed |
-| `docs/requirements/prd.json` | Task 22 criteria corrected (notification wording dropped, with the reason stated); `resolved_defaults.driver_content_access_audit_v1` corrected; `version` → v2.21; the v2.15 history annotated inline |
+| `docs/requirements/prd.json` | Task 22 criteria corrected (notification wording dropped, with the reason stated); `resolved_defaults.driver_content_access_audit_v1` corrected; `version` → v2.25; the v2.19 history annotated inline |
 | `docs/database/schema.dbml`, `docs/database/logical-model.md` | the removed key dropped from the content-access notes |
-| `docs/archive/2026-07/prd-changelog-since-2026-07-29.md` | v2.15 annotated as partially superseded; this entry added |
-| `docs/product/autheon-context-pack.md` | version trail → v2.21; the audit bullet corrected |
+| `docs/archive/2026-07/prd-changelog-since-2026-07-29.md` | v2.19 annotated as partially superseded; this entry added |
+| `docs/product/autheon-context-pack.md` | version trail → v2.25; the audit bullet corrected |
 
 **Not touched:** notification delivery, presentation, deep links, read/unread, `Mark all read`, and all document and Infopoint-message auditing.
