@@ -2042,7 +2042,7 @@ window.AuthStore = (() => {
     );
   }
 
-  // Value validators for the Infopoint help contacts, ported unchanged from the
+  // Value validators for driver-facing help contacts, ported unchanged from the
   // Autheon admin console's helpContactsValidation.ts — which is itself a mirror
   // of the backend's `infopoint.helpContacts` validators. Keeping the rules
   // identical means a value this prototype accepts is a value the real API would
@@ -2296,6 +2296,12 @@ window.AuthStore = (() => {
   const driverSupportContact = {
     phone: window.AUTHEON_SUPPORT_DEFAULTS?.phone || "+49 30 1234 5678",
     email: window.AUTHEON_SUPPORT_DEFAULTS?.email || "support@autheon.example",
+    feedbackEmail:
+      window.AUTHEON_SUPPORT_DEFAULTS?.feedbackEmail ||
+      "feedback@autheon.example",
+    reportErrorEmail:
+      window.AUTHEON_SUPPORT_DEFAULTS?.reportErrorEmail ||
+      "errors@autheon.example",
   };
   const { appDisplayName: _legacyName, ...flagDefaults } = legacyFlagDefaults;
   const featureFlags = {
@@ -4035,28 +4041,36 @@ window.AuthStore = (() => {
 
     getDriverSupportContact: () => ({ ...driverSupportContact }),
 
-    // Both help contacts are required and cannot be cleared. That mirrors the
-    // production contract rather than being a preference: the backend rejects
-    // an empty value and its shallow merge preserves anything omitted, so a
-    // blank contact could never persist. Rejecting a blank or malformed value
-    // here keeps the store the single owner of the rule — the admin form reads
-    // the same validators for its inline messages instead of restating them.
+    // Every help-contact value is required and cannot be cleared. Keeping that
+    // rule here gives the Admin form one source of truth for all three channels.
     setDriverSupportContact(next = {}) {
       const phone = String(next.phone ?? "").trim();
       const email = String(next.email ?? "").trim();
+      const feedbackEmail = String(next.feedbackEmail ?? "").trim();
+      const reportErrorEmail = String(next.reportErrorEmail ?? "").trim();
       if (!phone) return { ok: false, reason: "phone_required" };
       if (!email) return { ok: false, reason: "email_required" };
+      if (!feedbackEmail)
+        return { ok: false, reason: "feedback_email_required" };
+      if (!reportErrorEmail)
+        return { ok: false, reason: "report_error_email_required" };
       if (!isValidSupportPhone(phone))
         return { ok: false, reason: "invalid_phone" };
       if (!isValidSupportEmail(email))
         return { ok: false, reason: "invalid_email" };
+      if (!isValidSupportEmail(feedbackEmail))
+        return { ok: false, reason: "invalid_feedback_email" };
+      if (!isValidSupportEmail(reportErrorEmail))
+        return { ok: false, reason: "invalid_report_error_email" };
       driverSupportContact.phone = phone;
       driverSupportContact.email = email;
+      driverSupportContact.feedbackEmail = feedbackEmail;
+      driverSupportContact.reportErrorEmail = reportErrorEmail;
       log(
         "help_contacts_changed",
         DEMO_ADMIN,
         "app_settings",
-        JSON.stringify({ phone, email }),
+        JSON.stringify({ phone, email, feedbackEmail, reportErrorEmail }),
       );
       emit();
       return { ok: true };

@@ -4510,11 +4510,6 @@ select.input {
 .policy-field .input {
   max-width: 140px;
 }
-/* Help-contact fields hold a phone number and an email address, not a two-digit
-   count, so they fill their column instead of the numeric fields' short box. */
-.policy-field-text .input {
-  max-width: none;
-}
 /* Pill switch rows for the three cancellation policies. The console renders a
    `role="switch"` button next to its label; the prototype's pill treatment is
    an input+slider, so the label wraps both and no aria-labelledby is needed. */
@@ -4577,6 +4572,74 @@ select.input {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+/* System settings — one unified Help contacts card with three channels. */
+.help-contacts-form {
+  margin-top: 16px;
+}
+.help-contacts-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  overflow: hidden;
+}
+.help-contact-group {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.72fr) minmax(0, 1.28fr);
+  align-items: start;
+  gap: 24px;
+  min-width: 0;
+  margin: 0;
+  padding: 20px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.help-contact-group:last-child {
+  border-bottom: 0;
+}
+.help-contact-group-copy {
+  min-width: 0;
+}
+.help-contact-group-copy h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text);
+}
+.help-contact-group-copy p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.help-contact-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+.help-contact-field {
+  min-width: 0;
+}
+.help-contact-field .field-label {
+  margin-bottom: 7px;
+}
+.help-contact-field .input {
+  width: 100%;
+  max-width: none;
+}
+.help-contacts-actions {
+  margin-top: 16px;
+}
+@media (max-width: 720px) {
+  .help-contact-group {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding: 18px 16px;
+  }
+  .help-contact-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .field-counter {
@@ -6046,6 +6109,30 @@ select.input {
   align-items: center;
   color: var(--muted-2);
   flex-shrink: 0;
+}
+.phone-shell .profile-mailto-row {
+  text-decoration: none;
+}
+.phone-shell .profile-mailto-row .profile-nav-row-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-2);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--primary);
+}
+.phone-shell .profile-mailto-row-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  flex-shrink: 0;
+}
+.phone-shell .profile-mailto-row:hover {
+  background: color-mix(in srgb, var(--primary) 4%, transparent);
 }
 .phone-shell .profile-version {
   text-align: center;

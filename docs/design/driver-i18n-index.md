@@ -149,12 +149,74 @@ it was reused rather than duplicated.
 | `accountSigninHint` | This is your sign-in email. You control it — no operations approval needed. | Das ist Ihre Anmelde-E-Mail. Sie verwalten sie selbst — keine Freigabe durch den Betrieb nötig. |
 | `accountStatus` | Account status | Kontostatus |
 | `active` | Active | Aktiv |
+| `addPlzArea` | Add | Hinzufügen |
 | `all` | All | Alle |
 | `appAppearanceHint` | Language and display preferences for this device. | Sprache und Anzeigeeinstellungen für dieses Gerät. |
 | `appLanguage` | Language | Sprache |
 | `appTheme` | Theme | Design |
 | `assignedDirectlyNotice` | Assigned directly by admin. | Direkt vom Administrator zugewiesen. |
 | `assignedShort` | Assigned | Zugewiesen |
+| `authDemoFillButton` | Fill demo credentials | Demo-Zugangsdaten einfügen |
+| `authDriverForgotBackToLogin` | Back to sign in | Zurück zur Anmeldung |
+| `authDriverForgotEmailLabel` | Email | E-Mail |
+| `authDriverForgotEmailPlaceholder` | user@example.com | user@example.com |
+| `authDriverForgotOtpBack` | Go back | Zurück |
+| `authDriverForgotOtpIncorrectCode` | Incorrect code. Please try again. | Falscher Code. Bitte versuchen Sie es erneut. |
+| `authDriverForgotOtpInvalidCode` | Enter a valid {length}-digit code | Bitte geben Sie einen gültigen {length}-stelligen Code ein |
+| `authDriverForgotOtpResendButton` | Resend code | Code erneut senden |
+| `authDriverForgotOtpResendCooldownPrefix` | Resend code in  | Code erneut senden in  |
+| `authDriverForgotOtpSubmit` | Verify code | Code bestätigen |
+| `authDriverForgotOtpSubtitlePrefix` | 6-digit code has been sent to  | Ein 6-stelliger Code wurde gesendet an  |
+| `authDriverForgotOtpTitle` | Enter OTP | OTP eingeben |
+| `authDriverForgotSubmit` | Send code | Code senden |
+| `authDriverForgotSubtitle` | We will send 6-digit code to your email | Wir senden Ihnen einen 6-stelligen Code per E-Mail |
+| `authDriverForgotTitle` | Enter your email | E-Mail eingeben |
+| `authDriverLoginEmailLabel` | Email | E-Mail |
+| `authDriverLoginEmailPlaceholder` | user@example.com | user@example.com |
+| `authDriverLoginForgotPassword` | Forget password? | Passwort vergessen? |
+| `authDriverLoginHidePassword` | Hide password | Passwort verblenden |
+| `authDriverLoginPasswordLabel` | Password | Passwort |
+| `authDriverLoginPasswordPlaceholder` | password | passwort |
+| `authDriverLoginShowPassword` | Show password | Passwort anzeigen |
+| `authDriverLoginSubmit` | Login | Anmelden |
+| `authDriverLoginSubtitle` | You get your credentials from the admin | Ihre Zugangsdaten erhalten Sie vom Administrator |
+| `authDriverLoginTitle` | Login | Anmelden |
+| `authDriverResetBack` | Go back | Zurück |
+| `authDriverResetConfirmLabel` | Confirm New Password | Neues Passwort bestätigen |
+| `authDriverResetConfirmPlaceholder` | confirm new password | passwort bestätigen |
+| `authDriverResetConfirmRequired` | Please confirm your password | Bitte bestätigen Sie Ihr Passwort |
+| `authDriverResetMinLength` | Password must be at least 8 characters | Das Passwort muss mindestens 8 Zeichen lang sein |
+| `authDriverResetMismatch` | Passwords do not match | Die Passwörter stimmen nicht überein |
+| `authDriverResetPasswordLabel` | New Password | Neues Passwort |
+| `authDriverResetPasswordPlaceholder` | new password | neues passwort |
+| `authDriverResetSubmit` | Reset password | Passwort zurücksetzen |
+| `authDriverResetSubtitle` | Enter your new password | Geben Sie Ihr neues Passwort ein |
+| `authDriverResetTitle` | Reset password | Passwort zurücksetzen |
+| `authDriverSetPasswordComplexity` | Password must contain at least one uppercase letter, one lowercase letter, and one number | Das Passwort muss mindestens einen Großbuchstaben, einen Kleinbuchstaben und eine Zahl enthalten |
+| `authDriverSetPasswordConfirmLabel` | Confirm password | Passwort bestätigen |
+| `authDriverSetPasswordConfirmPlaceholder` | confirm password | passwort bestätigen |
+| `authDriverSetPasswordConfirmRequired` | Please confirm your password | Bitte bestätigen Sie Ihr Passwort |
+| `authDriverSetPasswordInvalidLinkHint` | Ask your administrator to send a new invitation email. | Bitten Sie Ihren Administrator, eine neue Einladungs-E-Mail zu senden. |
+| `authDriverSetPasswordInvalidLinkMessage` | This password setup link is invalid or has expired. | Dieser Link zum Passwort festlegen ist ungültig oder abgelaufen. |
+| `authDriverSetPasswordInvalidLinkTitle` | Invalid link | Ungültiger Link |
+| `authDriverSetPasswordMinLength` | Password must be at least 8 characters | Das Passwort muss mindestens 8 Zeichen lang sein |
+| `authDriverSetPasswordMismatch` | Passwords do not match | Die Passwörter stimmen nicht überein |
+| `authDriverSetPasswordPasswordLabel` | Password | Passwort |
+| `authDriverSetPasswordPasswordPlaceholder` | password | passwort |
+| `authDriverSetPasswordSubmit` | Set password | Passwort festlegen |
+| `authDriverSetPasswordSubtitle` | Create a password to access your account | Erstellen Sie ein Passwort für Ihren Zugang |
+| `authDriverSetPasswordTitle` | Set your password | Passwort festlegen |
+| `authErrorAccountRestricted` | This account is blocked. Contact your admin. | Dieses Konto ist gesperrt. Wenden Sie sich an Ihren Administrator. |
+| `authErrorEmailRequired` | Email is required. | E-Mail ist erforderlich. |
+| `authErrorInvalidCredentials` | Invalid email or password. | Ungültige E-Mail-Adresse oder ungültiges Passwort. |
+| `authErrorInvalidEmail` | Enter a valid email address. | Bitte geben Sie eine gültige E-Mail-Adresse ein. |
+| `authErrorPasswordRequired` | Password is required. | Passwort ist erforderlich. |
+| `authForgotPasswordDemoHint` | Prototype: the 6-digit code sent to your email is {code}. | Prototyp: Der 6-stellige Code, der an Ihre E-Mail gesendet wurde, lautet {code}. |
+| `authForgotPasswordSuccessNotice` | Password reset successful. Please sign in with your new password. | Passwort erfolgreich zurückgesetzt. Bitte melden Sie sich mit Ihrem neuen Passwort an. |
+| `authLanguageSelectLabel` | Language | Sprache |
+| `authOtpFieldAriaLabel` | One-time code | Einmaliger Code |
+| `authSwitchToDarkTheme` | Switch to dark theme | Zu dunklem Design wechseln |
+| `authSwitchToLightTheme` | Switch to light theme | Zu hellem Design wechseln |
 | `back` | Back | Zurück |
 | `bindingAcceptance` | Binding acceptance | Verbindliche Annahme |
 | `blockedDriverBody` | Marketplace access and new tour acceptance are restricted for blocked drivers. Use My Jobs to correct documents on existing tours. Profile, Info, and historical jobs remain visible in this prototype. | Marktplatzzugriff und neue Tour-Annahmen sind für blockierte Fahrer eingeschränkt. Nutzen Sie Meine Aufträge, um Dokumente bestehender Touren zu korrigieren. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar. |
@@ -192,7 +254,7 @@ it was reused rather than duplicated.
 | `dateWindow` | Date window | Datumsfenster |
 | `delivery` | Delivery | Übergabe |
 | `deliveryContact` | Delivery Contact | Ansprechpartner Lieferung |
-| `deliveryExample` | Delivery e.g. 10115 | Lieferung z.B. 10115 |
+| `deliveryPlzTwoDigits` | Delivery Postal Code (first 2 digits) | Zustell-PLZ (erste 2 Ziffern) |
 | `deliveryTime` | Delivery Time | Lieferzeit |
 | `destination` | Destination | Ziel |
 | `dismiss` | Dismiss | Schließen |
@@ -283,6 +345,10 @@ it was reused rather than duplicated.
 | `invoiceUploadTooLarge` | File is too large. Max file size: 25 MB. | Datei ist zu groß. Max. Dateigröße: 25 MB. |
 | `invoiceUploadTourRequired` | Invoice upload must be linked to a valid tour. | Der Upload muss einer gültigen Tour zugeordnet sein. |
 | `jobDetailsTab` | Job details | Auftragsdetails |
+| `leavePageContinueEditing` | Continue editing | Weiter bearbeiten |
+| `leavePageDiscard` | Discard entries | Eingaben verwerfen |
+| `leavePageSaveDraft` | Save as draft | Als Entwurf speichern |
+| `leavePageTitle` | Leave this order? | Auftrag verlassen? |
 | `legal` | Legal | Rechtliches |
 | `legalSub` | Terms · privacy · imprint | AGB · Datenschutz · Impressum |
 | `licenseVin` | License plate and VIN | Kennzeichen und FIN |
@@ -335,9 +401,10 @@ it was reused rather than duplicated.
 | `performedUploadHintEmpty` | Max file size: 25 MB | Max. Dateigröße: 25 MB |
 | `pickup` | Pickup | Abholung |
 | `pickupContact` | Pickup Contact | Ansprechpartner Abholung |
-| `pickupExample` | Pickup e.g. 80339 | Abholung z.B. 80339 |
 | `pickupPlz` | Pickup PLZ {plz} | Abhol-PLZ {plz} |
+| `pickupPlzTwoDigits` | Pickup Postal Code (first 2 digits) | Abhol-PLZ (erste 2 Ziffern) |
 | `pickupTime` | Pickup Time | Abholzeit |
+| `plzAreaPlaceholder` | 00xxx | 00xxx |
 | `postalArea` | Postal code / area | PLZ / Gebiet |
 | `postalCodeAbbr` | PLZ | PLZ |
 | `previewUnavailable` | Preview is not available for this file type. | Für diesen Dateityp ist keine Vorschau verfügbar. |
@@ -348,10 +415,7 @@ it was reused rather than duplicated.
 | `profileBackLabel` | Profile | Profil |
 | `profileDateJoined` | Member since | Dabei seit |
 | `profileEmailSupport` | Email support | E-Mail-Support |
-| `profileFeedbackDeferred` | This is a prototype preview — feedback is not yet submitted anywhere. | Dies ist eine Prototyp-Vorschau – Feedback wird noch nicht übermittelt. |
-| `profileFeedbackIntro` | Tell us what is working well or what we could improve. | Sagen Sie uns, was gut funktioniert oder was wir verbessern können. |
-| `profileFeedbackPlaceholder` | Your feedback… | Ihr Feedback… |
-| `profileFeedbackSubmit` | Send feedback | Feedback senden |
+| `profileFeedbackMailSubject` | AUTHEON feedback — Partner ID {partnerId} | AUTHEON Feedback — Partner-ID {partnerId} |
 | `profileGroupAccount` | Account | Konto |
 | `profileGroupHelp` | Help | Hilfe |
 | `profileGroupSettings` | Settings | Einstellungen |
@@ -371,17 +435,14 @@ it was reused rather than duplicated.
 | `profilePasswordIntro` | Choose a new password for your driver account. | Wählen Sie ein neues Passwort für Ihr Fahrerkonto. |
 | `profilePasswordNew` | New password | Neues Passwort |
 | `profilePasswordSubmit` | Update password | Passwort aktualisieren |
-| `profileReportErrorDeferred` | This is a prototype preview — error reports are not yet submitted anywhere. | Dies ist eine Prototyp-Vorschau – Fehlermeldungen werden noch nicht übermittelt. |
-| `profileReportErrorIntro` | Describe the problem you ran into so we can look into it. | Beschreiben Sie das aufgetretene Problem, damit wir es prüfen können. |
-| `profileReportErrorPlaceholder` | Describe the error… | Fehler beschreiben… |
-| `profileReportErrorSubmit` | Report error | Fehler melden |
+| `profileReportErrorMailSubject` | AUTHEON error report — Partner ID {partnerId} | AUTHEON Fehlermeldung — Partner-ID {partnerId} |
 | `profileSubtitle` | Manage your account, limits and preferences | Verwalten Sie Ihr Konto, Limits und Einstellungen |
 | `profileTitle` | Profile | Profil |
 | `pushEnabledMaster` | Enable push notifications | Push-Benachrichtigungen aktivieren |
 | `pushNotifyNewPublished` | Newly published orders | Neu veröffentlichte Aufträge |
 | `pushNotifyPostalPrefix` | Orders in pickup postal code area | Aufträge im Abhol-PLZ-Gebiet |
-| `pushPostalPrefixHint` | 1–2 digit prefix, e.g. 4, 40, or 41 | 1–2-stelliges Präfix, z. B. 4, 40 oder 41 |
 | `pushSupportNotice` | Android supported in app flow. iOS requires home-screen installation, compatible iOS version, and permission. | Android wird im App-Ablauf unterstützt. iOS erfordert Installation auf dem Homescreen, eine kompatible iOS-Version und Berechtigung. |
+| `pwaTag` | Phone mock · framed client preview | Handy-Mock · gerahmte Kundenvorschau |
 | `redPlatesRequired` | Red licence plates required | Rote Kennzeichen erforderlich |
 | `redPlatesRequiredDetail` | Deregistered vehicle transferred on its own axle. The executing service partner brings their own red licence plates; the plate number is not recorded. | Abgemeldetes Fahrzeug wird auf eigener Achse \u00fcberf\u00fchrt. Der ausf\u00fchrende Servicepartner bringt eigene rote Kennzeichen mit; die Kennzeichennummer wird nicht erfasst. |
 | `refreshDemo` | Refresh | Aktualisieren |
@@ -406,7 +467,7 @@ it was reused rather than duplicated.
 | `shareNotSupported` | Sharing is not supported on this device. | Teilen wird auf diesem Gerät nicht unterstützt. |
 | `showResults` | Show {count} results | {count} Ergebnisse anzeigen |
 | `signOut` | Sign out | Abmelden |
-| `signOutAlert` | Demo sign out: authentication will be implemented in production. | Demo-Abmeldung: Authentifizierung wird in der Produktion implementiert. |
+| `signOutAlert` | Are you sure you want to sign out? | Möchten Sie sich wirklich abmelden? |
 | `slideAccepted` | Accepted | Angenommen |
 | `slidePerformed` | Marked as performed | Als durchgeführt markiert |
 | `slideToConfirm` | Slide to confirm → | Zum Bestätigen schieben → |

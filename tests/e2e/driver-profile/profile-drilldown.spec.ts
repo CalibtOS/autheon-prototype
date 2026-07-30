@@ -37,8 +37,6 @@ test.describe('driver profile drill-down @smoke', () => {
     { label: /^Change password$/, heading: /^Change password$/ },
     { label: /^Notification settings$/, heading: /^Notification settings$/ },
     { label: /^Appearance and language$/, heading: /^Appearance and language$/ },
-    { label: /^Feedback$/, heading: /^Feedback$/ },
-    { label: /^Report an error$/, heading: /^Report an error$/ },
   ];
 
   for (const { label, heading } of rows) {
@@ -51,6 +49,42 @@ test.describe('driver profile drill-down @smoke', () => {
       await expect(frame.getByRole('heading', { level: 1, name: /^Profile$/ })).toBeVisible();
     });
   }
+
+  test('Feedback and Report an error are separate encoded mailto actions', async ({
+    page,
+  }) => {
+    const frame = prototypeFrame(page);
+    const feedback = frame.locator('[data-profile-row="feedback"]');
+    const reportError = frame.locator('[data-profile-row="reportError"]');
+
+    await expect(feedback).toHaveAttribute(
+      'href',
+      `mailto:${encodeURIComponent('feedback@autheon.example')}?subject=${encodeURIComponent(
+        'AUTHEON feedback — Partner ID AU-41-0228',
+      )}`,
+    );
+    await expect(reportError).toHaveAttribute(
+      'href',
+      `mailto:${encodeURIComponent('errors@autheon.example')}?subject=${encodeURIComponent(
+        'AUTHEON error report — Partner ID AU-41-0228',
+      )}`,
+    );
+
+    for (const action of [feedback, reportError]) {
+      const href = (await action.getAttribute('href'))!;
+      const query = href.split('?')[1];
+      expect([...new URLSearchParams(query).keys()]).toEqual(['subject']);
+      expect(href).not.toContain('body=');
+      expect(href).not.toContain('cc=');
+      expect(href).not.toContain('bcc=');
+      expect(href).not.toContain('attachment=');
+    }
+
+    await expect(frame.getByRole('heading', { name: /^Feedback$/ })).toHaveCount(0);
+    await expect(
+      frame.getByRole('heading', { name: /^Report an error$/ }),
+    ).toHaveCount(0);
+  });
 
   test('Change email nav row opens a centered modal with Cancel|Send code', async ({
     page,
@@ -96,7 +130,10 @@ test.describe('driver profile drill-down @smoke', () => {
 
     const prefs = await page
       .locator('iframe[title="AUTHEON Prototype"]')
-      .evaluate((el: HTMLIFrameElement) => el.contentWindow!.AuthStore.getCurrentDriver().prefs);
+      .evaluate(
+        (el: HTMLIFrameElement) =>
+          (el.contentWindow as any).AuthStore.getCurrentDriver().prefs,
+      );
     expect(prefs.vehicleType).toBe('passenger_car');
     expect(prefs.transportType).toBe('third_party_axle');
     expect('vehicle' in prefs).toBe(false);
@@ -244,7 +281,7 @@ test.describe('standalone driver PWA profile appearance @smoke', () => {
     // Scroll the list down so a lost position would be obvious. The row is
     // brought into view first, so Playwright's click cannot auto-scroll the
     // container afterwards and invalidate the offset captured here.
-    const row = page.locator('[data-profile-row="reportError"]');
+    const row = page.locator('[data-profile-row="appearance"]');
     await row.scrollIntoViewIfNeeded();
     const before = await page
       .locator('.scroll-body')
@@ -274,7 +311,7 @@ test.describe('standalone driver PWA profile appearance @smoke', () => {
 
     // Returning re-focuses the originating row and keeps the list offset.
     await expect(
-      page.locator('[data-profile-row="reportError"]'),
+      page.locator('[data-profile-row="appearance"]'),
     ).toBeFocused();
     await expect
       .poll(() =>

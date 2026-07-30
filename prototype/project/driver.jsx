@@ -5833,6 +5833,39 @@ const ProfileNavRow = ({ icon: Icon, label, sub, onClick, rowId, enterIndex }) =
   );
 };
 
+// Feedback and error reports intentionally contain only the encoded recipient
+// and subject. The native mailto link opens the user's configured email client;
+// no body, CC, BCC, attachment, or other query parameter is generated.
+const buildProfileMailtoHref = (recipient, subject) =>
+  `mailto:${encodeURIComponent(String(recipient || "").trim())}?subject=${encodeURIComponent(
+    String(subject || "").trim(),
+  )}`;
+
+const openProfileMailto = (event, recipient, subject) => {
+  event.preventDefault();
+  window.location.href = buildProfileMailtoHref(recipient, subject);
+};
+
+const ProfileMailtoRow = ({ icon: Icon, label, recipient, subject, rowId }) => (
+  <a
+    className="profile-nav-row profile-mailto-row"
+    href={buildProfileMailtoHref(recipient, subject)}
+    onClick={(event) => openProfileMailto(event, recipient, subject)}
+    data-profile-row={rowId}
+  >
+    <span className="profile-nav-row-icon" aria-hidden="true">
+      <Icon />
+    </span>
+    <span className="profile-nav-row-text">
+      <span className="profile-nav-row-label">{label}</span>
+      <span className="profile-nav-row-sub">{recipient}</span>
+    </span>
+    <span className="profile-mailto-row-action" aria-hidden="true">
+      <Ic.Mail />
+    </span>
+  </a>
+);
+
 // Labelled group of navigation rows (KONTO / EINSTELLUNGEN / HILFE).
 const ProfileGroup = ({ label, children, enterIndex }) => {
   const enter =
@@ -5847,25 +5880,6 @@ const ProfileGroup = ({ label, children, enterIndex }) => {
     </section>
   );
 };
-
-// Deferred subpage shell (Feedback / Report an error): a visually complete
-// prototype form whose submit is intentionally inert — no backend workflow yet.
-const DeferredFormCard = ({ intro, placeholder, submitLabel, deferredNote }) => (
-  <div className="section-card">
-    <p className="section-hint" style={{ marginTop: 0 }}>
-      {intro}
-    </p>
-    <div className="stack-16">
-      <textarea className="input" rows={5} placeholder={placeholder} />
-    </div>
-    <button type="button" className="btn primary block stack-16" disabled>
-      {submitLabel}
-    </button>
-    <div className="stack-16">
-      <InlineAlert tone="info" message={deferredNote} />
-    </div>
-  </div>
-);
 
 // In-page back header for a drill-down subpage (mirrors pwa-detail-header).
 // The heading takes focus on entry (tabIndex -1) so a state-based drill-down
@@ -5891,6 +5905,12 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
   const { t, locale, setLocale } = useI18n();
   const store = useAuthStore();
   const d = store.getCurrentDriver();
+  const support = store.getDriverSupportContact();
+  const partnerId = d?.driverCode || "";
+  const feedbackSubject = t("profileFeedbackMailSubject", { partnerId });
+  const reportErrorSubject = t("profileReportErrorMailSubject", {
+    partnerId,
+  });
   const prefs = d?.prefs || {};
   const setPref = (patch) => store.updateDriverPrefs(patch);
   const [editingProfile, setEditingProfile] = useState(false);
@@ -6364,24 +6384,6 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
     </div>
   );
 
-  const feedbackCard = (
-    <DeferredFormCard
-      intro={t("profileFeedbackIntro")}
-      placeholder={t("profileFeedbackPlaceholder")}
-      submitLabel={t("profileFeedbackSubmit")}
-      deferredNote={t("profileFeedbackDeferred")}
-    />
-  );
-
-  const reportErrorCard = (
-    <DeferredFormCard
-      intro={t("profileReportErrorIntro")}
-      placeholder={t("profileReportErrorPlaceholder")}
-      submitLabel={t("profileReportErrorSubmit")}
-      deferredNote={t("profileReportErrorDeferred")}
-    />
-  );
-
   const SUBPAGES = {
     masterData: { title: t("profileNavBasicData"), body: masterDataCard },
     password: { title: t("profileNavChangePassword"), body: passwordCard },
@@ -6390,8 +6392,6 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
       body: notificationsCard,
     },
     appearance: { title: t("profileNavAppearance"), body: appearanceCard },
-    feedback: { title: t("profileNavFeedback"), body: feedbackCard },
-    reportError: { title: t("profileNavReportError"), body: reportErrorCard },
   };
   const activeSub = subpage ? SUBPAGES[subpage] : null;
 
@@ -6538,17 +6538,19 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
             </ProfileGroup>
 
             <ProfileGroup label={t("profileGroupHelp")}>
-              <ProfileNavRow
+              <ProfileMailtoRow
                 icon={Ic.Chat}
                 label={t("profileNavFeedback")}
                 rowId="feedback"
-                onClick={openSubpage("feedback")}
+                recipient={support.feedbackEmail}
+                subject={feedbackSubject}
               />
-              <ProfileNavRow
+              <ProfileMailtoRow
                 icon={Ic.Alert}
                 label={t("profileNavReportError")}
                 rowId="reportError"
-                onClick={openSubpage("reportError")}
+                recipient={support.reportErrorEmail}
+                subject={reportErrorSubject}
               />
             </ProfileGroup>
 
