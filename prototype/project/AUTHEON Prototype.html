@@ -72,6 +72,33 @@
         return "/pwa/";
       }
 
+      // Client requirement: no native browser alert()/confirm()/prompt()
+      // dialogs anywhere in the app. This one helper fires from outside the
+      // React tree (before either DriverApp or AdminApp is known to be
+      // mounted), so it can't rely on a component's own toast state or the
+      // AdminConfirmBridge (which only mounts while the Admin Backend view
+      // is active) — a small self-contained DOM notice instead.
+      function showRootNotice(message) {
+        const el = document.createElement("div");
+        el.textContent = message;
+        Object.assign(el.style, {
+          position: "fixed",
+          left: "50%",
+          bottom: "24px",
+          transform: "translateX(-50%)",
+          background: "#1a1a1a",
+          color: "#fff",
+          padding: "12px 18px",
+          borderRadius: "10px",
+          boxShadow: "0 6px 24px rgba(0,0,0,0.25)",
+          fontSize: "13.5px",
+          maxWidth: "min(90vw, 480px)",
+          zIndex: 9999,
+        });
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 5000);
+      }
+
       async function openPwaSurface(event, t) {
         if (event) event.preventDefault();
         const origin = window.location.origin;
@@ -92,7 +119,7 @@
             /* try next candidate */
           }
         }
-        window.alert(t("pwaServeFromRootHint"));
+        showRootNotice(t("pwaServeFromRootHint"));
       }
 
       // =====================================================================
@@ -471,6 +498,11 @@
         const [selectedMdrId, setSelectedMdrId] = useState(null);
         // Blocking duplicate-VIN dialog shown by runPublish/runAssign below.
         const [duplicateDialog, setDuplicateDialog] = useState(null);
+        // Custom in-app replacement for window.prompt() when reverting a
+        // published order to draft within the schedule-change cutoff window.
+        const [scheduleOverrideDialog, setScheduleOverrideDialog] =
+          useState(null);
+        const [scheduleOverrideNote, setScheduleOverrideNote] = useState("");
         // Orders overview pagination (client change plan Phase 4): owned here
         // so the table (Overview) and the page-size/page-number controls
         // (OverviewFooter) — two separately rendered components — stay in
@@ -508,6 +540,47 @@
           setSection("drivers");
         };
         const closeAssignDialog = () => setAssignDialog(null);
+
+        const runRevertToDraft = (jobId, overrideNote) => {
+          const job = store.getJob(jobId);
+          const r = store.revertJobToDraft(jobId, {
+            overrideNote: (overrideNote || "").trim(),
+          });
+          if (!r.ok) {
+            if (r.reason === "within_schedule_cutoff")
+              showToast(
+                t("adminScheduleCutoffBlocked", { hours: r.minHours || 1 }),
+                t("adminScheduleOverrideHint"),
+              );
+            else
+              showToast(
+                t("revertToDraftBlocked"),
+                t("revertToDraftBlockedSub"),
+              );
+          } else
+            showToast(
+              t("revertedToDraftTour", { tour: job?.tour }),
+              t("adminRevertToDraftSub"),
+            );
+        };
+        const closeScheduleOverrideDialog = () => {
+          setScheduleOverrideDialog(null);
+          setScheduleOverrideNote("");
+        };
+        const submitScheduleOverride = () => {
+          if (!scheduleOverrideDialog) return;
+          if (scheduleOverrideNote.trim().length < 10) {
+            showToast(
+              t("adminScheduleCutoffBlocked", {
+                hours: scheduleOverrideDialog.minHours,
+              }),
+              t("adminScheduleOverrideHint"),
+            );
+            return;
+          }
+          runRevertToDraft(scheduleOverrideDialog.jobId, scheduleOverrideNote);
+          closeScheduleOverrideDialog();
+        };
 
         const confirmAssignDriver = (driverId, confirmationNote) => {
           if (!assignDialog?.jobId) return;
@@ -1270,7 +1343,6 @@
               onEdit={() => openEditDraft(fresh.id)}
               onRevertToDraft={() => {
                 const fresh = store.getJob(activeJob.id);
-                let overrideNote = "";
                 const prePolicy = store.checkScheduleChangePolicy(fresh, {});
                 if (
                   !prePolicy.ok &&
@@ -1278,48 +1350,23 @@
                 ) {
                   const policies = store.getOperationalPolicies();
                   if (policies.allowPolicyOverrideWithAuditNote) {
-                    overrideNote =
-                      window.prompt(t("adminScheduleOverridePh"), "") || "";
-                    if (overrideNote.trim().length < 10) {
-                      showToast(
-                        t("adminScheduleCutoffBlocked", {
-                          hours: prePolicy.minHours || 1,
-                        }),
-                        t("adminScheduleOverrideHint"),
-                      );
-                      return;
-                    }
-                  } else {
-                    showToast(
-                      t("adminScheduleCutoffBlocked", {
-                        hours: prePolicy.minHours || 1,
-                      }),
-                      t("adminScheduleOverrideHint"),
-                    );
+                    setScheduleOverrideNote("");
+                    setScheduleOverrideDialog({
+                      jobId: fresh.id,
+                      tour: fresh.tour,
+                      minHours: prePolicy.minHours || 1,
+                    });
                     return;
                   }
-                }
-                const r = store.revertJobToDraft(fresh.id, {
-                  overrideNote: overrideNote.trim(),
-                });
-                if (!r.ok) {
-                  if (r.reason === "within_schedule_cutoff")
-                    showToast(
-                      t("adminScheduleCutoffBlocked", {
-                        hours: r.minHours || 1,
-                      }),
-                      t("adminScheduleOverrideHint"),
-                    );
-                  else
-                    showToast(
-                      t("revertToDraftBlocked"),
-                      t("revertToDraftBlockedSub"),
-                    );
-                } else
                   showToast(
-                    t("revertedToDraftTour", { tour: fresh.tour }),
-                    t("adminRevertToDraftSub"),
+                    t("adminScheduleCutoffBlocked", {
+                      hours: prePolicy.minHours || 1,
+                    }),
+                    t("adminScheduleOverrideHint"),
                   );
+                  return;
+                }
+                runRevertToDraft(fresh.id, "");
               }}
               onCancelled={(j) =>
                 showToast(
@@ -1529,6 +1576,32 @@
               )}
               {window.DriverUI?.AdminConfirmBridge ? (
                 <window.DriverUI.AdminConfirmBridge />
+              ) : null}
+              {scheduleOverrideDialog && window.DriverUI?.ConfirmSheet ? (
+                <window.DriverUI.ConfirmSheet
+                  open
+                  title={t("adminScheduleOverrideLabel")}
+                  message={t("adminScheduleCutoffBlocked", {
+                    hours: scheduleOverrideDialog.minHours,
+                  })}
+                  confirmLabel={t("adminRevertToDraft") || t("confirm")}
+                  confirmDisabled={scheduleOverrideNote.trim().length < 10}
+                  onConfirm={submitScheduleOverride}
+                  onCancel={closeScheduleOverrideDialog}
+                >
+                  <textarea
+                    className="input"
+                    rows={3}
+                    autoFocus
+                    placeholder={t("adminScheduleOverridePh")}
+                    value={scheduleOverrideNote}
+                    onChange={(e) => setScheduleOverrideNote(e.target.value)}
+                    style={{ marginTop: 10, width: "100%" }}
+                  />
+                  <div className="label" style={{ marginTop: 6 }}>
+                    {t("adminScheduleOverrideHint")}
+                  </div>
+                </window.DriverUI.ConfirmSheet>
               ) : null}
             </div>
           </div>

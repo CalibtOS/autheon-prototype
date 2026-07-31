@@ -215,7 +215,9 @@ function Sheet({
     if (!panel) return;
     const unsubs = [];
     if (grabberRef.current) {
-      unsubs.push(bindBottomSheetPullDismiss(panel, grabberRef.current, onClose));
+      unsubs.push(
+        bindBottomSheetPullDismiss(panel, grabberRef.current, onClose),
+      );
     }
     if (headRef.current) {
       unsubs.push(bindBottomSheetPullDismiss(panel, headRef.current, onClose));
@@ -247,7 +249,9 @@ function Sheet({
             aria-orientation="horizontal"
             aria-label="Drag down to close"
           >
-            {!hideHandle ? <div className="grabber" aria-hidden="true" /> : null}
+            {!hideHandle ? (
+              <div className="grabber" aria-hidden="true" />
+            ) : null}
           </div>
         ) : null}
         {title ? (
@@ -314,7 +318,8 @@ function Dialog({
 
   if (!open) return null;
 
-  const sizeClass = size === "md" || size === "lg" ? ` dialog-panel--${size}` : "";
+  const sizeClass =
+    size === "md" || size === "lg" ? ` dialog-panel--${size}` : "";
 
   return (
     <div className="dialog-backdrop" onClick={onClose} role="presentation">
@@ -414,6 +419,8 @@ function ConfirmSheet({
   onCancel,
   onTertiary,
   destructive = false,
+  confirmDisabled = false,
+  children,
 }) {
   const { t } = useI18n();
   return (
@@ -437,6 +444,7 @@ function ConfirmSheet({
             type="button"
             className={`btn ${destructive ? "danger" : "cta"}`}
             onClick={onConfirm}
+            disabled={confirmDisabled}
           >
             {confirmLabel || t("confirm")}
           </button>
@@ -444,6 +452,7 @@ function ConfirmSheet({
       }
     >
       <p>{message}</p>
+      {children}
     </Sheet>
   );
 }
@@ -1161,7 +1170,9 @@ function ForgotPasswordFlow({ kind, copy, onExit, onDone }) {
             {email}
           </p>
         </div>
-        {demoCode && <InlineAlert tone="info" message={copy.demoHint(demoCode)} />}
+        {demoCode && (
+          <InlineAlert tone="info" message={copy.demoHint(demoCode)} />
+        )}
         <div className="auth-field-group">
           <AuthOtpInput value={otp} onChange={setOtp} />
           {otpError && (

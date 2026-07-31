@@ -3,7 +3,22 @@
 > **Source plan:** [`tasks/admin-prototype-client-change-plan.md`](../../../tasks/admin-prototype-client-change-plan.md)
 > (client requirements distilled from "Evaluation & Optimization Requirements for the Admin Backend", 21 pages).
 
-**Last synced:** 2026-07-31
+**Last synced:** 2026-07-31 (QA+judge audit pass, nav consolidation, redundant-UI cleanup, and native-dialog sweep)
+
+**2026-07-31 addendum — native browser dialogs removed:** the client explicitly dislikes native
+`alert()`/`confirm()`/`prompt()` dialogs anywhere in the prototype. A full sweep of `prototype/project/`
+found 2 remaining native calls (everything else already routed through `window.requestAdminConfirm`/
+`ConfirmSheet` from earlier phases): `window.alert(...)` in the "Open driver PWA" toolbar link's
+serve-from-wrong-root hint (`AUTHEON Prototype.html`) — replaced with `showRootNotice()`, a small
+self-contained DOM toast that works outside the React tree (this link is reachable before either
+`DriverApp`/`AdminApp` is known to be mounted, so it can't depend on either app's own toast/confirm-bridge
+state); and `window.prompt(...)` capturing the audit override note when reverting a published/assigned
+order to draft within the schedule-change cutoff window — replaced with a real in-app dialog (new
+`scheduleOverrideDialog` state in `AdminApp`, rendered via `ConfirmSheet`, extended with new optional
+`confirmDisabled`/`children` props so it can host the override-note `<textarea>` and disable the confirm
+button until the note is at least 10 characters). Verified in-browser: the PWA-link notice renders as a
+custom toast (no native dialog), and reverting an eligible order (tour 0847-26) to draft via the new dialog
+correctly persisted `status: "draft"` — confirmed directly against the store.
 **Scope:** All 15 phases of the source plan have now been picked up — see memory `feedback-admin-change-plan-no-stop`
 for the standing "keep implementing without stopping for per-phase approval" instruction that drove this.
 A follow-up "close all remaining gaps" pass (2026-07-31) closed nearly every previously-open item that was
