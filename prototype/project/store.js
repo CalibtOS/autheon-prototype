@@ -2462,7 +2462,6 @@ window.AuthStore = (() => {
   };
   const { appDisplayName: _legacyName, ...flagDefaults } = legacyFlagDefaults;
   const featureFlags = {
-    financeModule: false,
     ...flagDefaults,
   };
 
@@ -8323,7 +8322,6 @@ window.AuthStore = (() => {
       const reloadFlags = window.AUTHEON_FLAG_DEFAULTS || {};
       const { appDisplayName: _n, ...reloadOnlyFlags } = reloadFlags;
       Object.assign(featureFlags, {
-        financeModule: false,
         ...reloadOnlyFlags,
       });
       log("demo_reloaded", "System", "Transport Portal", "PRD v1.8 seed");

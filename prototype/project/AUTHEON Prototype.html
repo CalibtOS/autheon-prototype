@@ -626,16 +626,12 @@
             }
           });
         };
-        const openFinancesForJob = (jobId) => {
-          if (!store.getFeatureFlag("financeModule")) {
-            showToast(t("adminFinanceModuleOff"), "");
-            return;
-          }
-          setBillingNav({ jobId, openFinEdit: true });
-          setSection("finance");
-        };
         const openTourBillingForJob = (jobId) => {
           setBillingNav({ jobId, invoiceFilter: true });
+          setSection("invoices");
+        };
+        const openConsolidatedInvoiceForJob = (jobId) => {
+          setBillingNav({ jobId, openInvoicesTab: true });
           setSection("invoices");
         };
 
@@ -1054,13 +1050,11 @@
         const sectionTitle = {
           overview: t("navJobs"),
           notifications: t("adminNotificationFeed"),
-          masterdata: t("navMasterDataRequests"),
           drivers: t("navDrivers"),
           staff: t("navStaff"),
           customercenter: t("navCustomerCenter") || "Customer Center",
           infopoint: t("navInfopoint"),
           invoices: t("navTourBilling"),
-          finance: t("navFinance"),
           audit: t("navAuditLog"),
           features: t("navFeatures"),
         };
@@ -1194,8 +1188,10 @@
                 )
               }
               onEdit={() => openEditDraft(fresh.id)}
-              onEditFinances={() => openFinancesForJob(fresh.id)}
               onOpenTourBilling={() => openTourBillingForJob(fresh.id)}
+              onOpenConsolidatedInvoice={() =>
+                openConsolidatedInvoiceForJob(fresh.id)
+              }
               showToast={showToast}
             />
           );
@@ -1239,6 +1235,9 @@
           body = (
             <TourBillingCenterPane
               showToast={showToast}
+              initialView={
+                billingNav?.openInvoicesTab ? "invoices" : "documents"
+              }
               filterJobId={billingNav?.invoiceFilter ? billingNav.jobId : null}
               onClearFilter={clearBillingNav}
               onOpenJob={(jobId) => {
@@ -1250,19 +1249,6 @@
                   clearBillingNav();
                 }
               }}
-            />
-          );
-        } else if (
-          section === "finance" &&
-          store.getFeatureFlag("financeModule")
-        ) {
-          body = (
-            <FinancePane
-              showToast={showToast}
-              initialJobId={billingNav?.openFinEdit ? billingNav.jobId : null}
-              initialOpenEdit={!!billingNav?.openFinEdit}
-              onNavConsumed={clearBillingNav}
-              onOpenTourBilling={openTourBillingForJob}
             />
           );
         } else if (section === "audit") {
@@ -1284,7 +1270,6 @@
           const stubTitles = {
             infopoint: [t("navInfopoint"), t("adminInfopointDesc")],
             invoices: [t("navTourBilling"), t("tourBillingDesc")],
-            finance: [t("navFinance"), t("financeDesc")],
             audit: [t("navAuditLog"), t("auditDesc")],
           };
           const stubPair = stubTitles[section] || ["—", ""];

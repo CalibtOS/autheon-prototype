@@ -3,7 +3,30 @@
 > **Source plan:** [`tasks/admin-prototype-client-change-plan.md`](../../../tasks/admin-prototype-client-change-plan.md)
 > (client requirements distilled from "Evaluation & Optimization Requirements for the Admin Backend", 21 pages).
 
-**Last synced:** 2026-07-31 (QA+judge audit pass, nav consolidation, redundant-UI cleanup, and native-dialog sweep)
+**Last synced:** 2026-07-31 (QA+judge audit pass, nav consolidation, redundant-UI cleanup, native-dialog sweep,
+Finance module retirement, and Consolidated Invoices connectivity work)
+
+**2026-07-31 addendum — Finance module retired, Consolidated Invoices connected:** the legacy
+feature-flagged "Finance module" (`FinancePane`, the `financeModule` flag, its nav item, its Settings
+toggle, and all related i18n keys) has been fully removed. It was pre-15-phase scaffolding for manually
+editing a job's raw revenue/driverOffer/expenses fields directly, predates the client's Phase 12 ask
+entirely, was hidden behind a flag that defaulted to off, and had no connection to the real Consolidated
+Invoices workflow that superseded it. `JobFinancePanel` (the tour detail's read-only financial snapshot)
+now always renders unconditionally, and its "Edit finances" button (which opened the retired screen) is
+gone. Separately, a real connectivity gap was found and fixed: a tour linked to a consolidated invoice
+showed nothing about it anywhere outside the Consolidated Invoices tab itself. `JobFinancePanel` now shows
+a "Consolidated invoices" field (invoice number + status) when the tour has one, with a button that
+deep-links straight into the Consolidated Invoices tab (new `TourBillingCenterPane` `initialView` prop) —
+previously that tab was only reachable by manually navigating to Tour Billing and clicking the tab.
+Verified end-to-end in-browser. The `consolidatedInvoices` entity's prototype shape was reviewed against
+every Phase 12 sub-requirement and needs no changes — but the **production** domain model
+(`docs/requirements/prd.json` → `domain_model_summary`) had no concept of a multi-tour invoice at all before
+this pass; a new `consolidated_invoice_fields` entry now documents the shape backend implementers need
+(a new `consolidated_invoices` table plus a one-to-many/join relationship to jobs — the first entity in the
+whole domain model where one record legitimately spans multiple jobs). Also noted for production: there is
+no "resubmit corrected invoice" action analogous to `replaceTourDocument` — a `correction_required` invoice
+can still be Accepted-anyway or Rejected-to-free-the-tours (both work), but a true edit-in-place resubmission
+flow doesn't exist and should be considered in the production design.
 
 **2026-07-31 addendum — native browser dialogs removed:** the client explicitly dislikes native
 `alert()`/`confirm()`/`prompt()` dialogs anywhere in the prototype. A full sweep of `prototype/project/`

@@ -3,6 +3,4 @@ window.AUTHEON_BRANDING_DEFAULTS = {
   appDisplayName: "Transport Portal",
 };
 
-window.AUTHEON_FLAG_DEFAULTS = {
-  financeModule: false,
-};
+window.AUTHEON_FLAG_DEFAULTS = {};

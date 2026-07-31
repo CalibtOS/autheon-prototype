@@ -5,7 +5,8 @@ window.I18n = (() => {
 
   const MESSAGES = {
     en: {
-      adminUsersAccessNoPasswordNote: "No initial password is generated or sent.",
+      adminUsersAccessNoPasswordNote:
+        "No initial password is generated or sent.",
       accept: "Accept",
       reject: "Reject",
       weekend: "Weekend",
@@ -65,7 +66,6 @@ window.I18n = (() => {
       navCustomers: "Customers",
       navAddresses: "Addresses",
       navDocuments: "Documents",
-      navFinance: "Finance",
       navAuditLog: "Audit log",
       navigate: "Navigate",
       adminConsole: "Admin console",
@@ -605,8 +605,6 @@ window.I18n = (() => {
       exportGeneratedSub:
         "CSV downloaded with operational and financial fields.",
       exportCsvBtn: "Export CSV",
-      adminFinanceModuleOff:
-        "Finance module is disabled. Enable it under Features to edit the ledger.",
       adminSnapshotInvoiceYes: "Yes",
       adminSnapshotInvoiceNo: "No",
       publishedTour: "Published · Tour {tour}",
@@ -649,7 +647,6 @@ window.I18n = (() => {
       adminCustomersDesc:
         "Customers for billing and reporting. Edits do not change existing tour snapshots.",
       documentsDesc: "Policies, templates, and downloadable PDFs.",
-      financeDesc: "Settlement and invoice tracking.",
       auditDesc: "Immutable timeline of critical actions.",
       navTourBilling: "Tour documents",
       tourBillingDesc:
@@ -966,6 +963,11 @@ window.I18n = (() => {
       adminUsersToastDriverOff: "Service partner deactivated",
       adminUsersToastDriverActiveJobs:
         "Cannot deactivate — service partner has {count} active tour(s). Reassign or complete them first.",
+      adminUsersDriverDeleted: "Service partner deleted",
+      adminDeleteDriverConfirmTitle: "Delete {name}?",
+      adminDeleteDriverConfirmBody:
+        "{name}'s account will be permanently removed. This cannot be undone.",
+      adminDeleteDriverConfirmAction: "Delete account",
       adminUsersToastInviteDriver: "Service partner invite email sent",
       adminUsersToastInviteAdmin: "Admin invite email sent",
       adminUsersToastAdminChanged: "Admin account status changed",
@@ -1010,7 +1012,6 @@ window.I18n = (() => {
         "Payment status starts as Invoice missing, moves to Invoice received when an invoice is accepted in Tour documents, and Paid is set manually here. Invoice file review is done in Tour documents.",
       adminFinanceSnapshotTitle: "Financial snapshot",
       adminViewOnlyBadge: "View only",
-      adminEditFinancesBtn: "Edit finances",
       adminInvoiceOverrideAuto: "Auto",
       adminInvoiceOverrideForceYes: "Force received",
       adminInvoiceOverrideForceNo: "Force missing",
@@ -1280,9 +1281,6 @@ window.I18n = (() => {
       adminFeatureDocumentsLabel: "Documents module",
       adminFeatureDocumentsDesc:
         "Tour-linked document upload and review flows in admin and driver apps.",
-      adminFeatureFinanceLabel: "Finance module",
-      adminFeatureFinanceDesc:
-        "Finance tracking page and per-job financial snapshot on the admin console.",
       adminFeatureNotifLabel: "Notification preferences",
       adminFeatureNotifDesc:
         "Lets drivers set push and email preferences from their profile tab.",
@@ -1721,7 +1719,8 @@ window.I18n = (() => {
         "This order is no longer available — Autheon withdrew it from the marketplace.",
       notifUnavailableCancelled:
         "This order is no longer available — it was cancelled.",
-      notifUnavailableClosed: "This order is closed and can no longer be booked.",
+      notifUnavailableClosed:
+        "This order is closed and can no longer be booked.",
       notifUnavailableGeneric: "This order is no longer available.",
       notifMessageGone: "This message is no longer available.",
       notifDocumentGone: "This document is no longer available.",
@@ -2111,7 +2110,6 @@ window.I18n = (() => {
       navCustomers: "Kunden",
       navAddresses: "Adressen",
       navDocuments: "Dokumente",
-      navFinance: "Finanzen",
       navAuditLog: "Audit-Log",
       navigate: "Navigation",
       adminConsole: "Admin Konsole",
@@ -2656,8 +2654,6 @@ window.I18n = (() => {
       exportGeneratedSub:
         "CSV mit operativen und finanziellen Feldern heruntergeladen.",
       exportCsvBtn: "CSV exportieren",
-      adminFinanceModuleOff:
-        "Finanzmodul ist deaktiviert. Unter Funktionen aktivieren, um das Ledger zu bearbeiten.",
       adminSnapshotInvoiceYes: "Ja",
       adminSnapshotInvoiceNo: "Nein",
       publishedTour: "Veröffentlicht · Tour {tour}",
@@ -2700,7 +2696,6 @@ window.I18n = (() => {
       adminCustomersDesc:
         "Kunden für Abrechnung und Reporting. Änderungen ändern keine bestehenden Tour-Snapshots.",
       documentsDesc: "Richtlinien, Vorlagen und herunterladbare PDFs.",
-      financeDesc: "Abrechnung und Zahlungsstatus.",
       auditDesc: "Unveränderliche Zeitleiste kritischer Aktionen.",
       navTourBilling: "Tour-Dokumente",
       tourBillingDesc:
@@ -3063,7 +3058,6 @@ window.I18n = (() => {
         "Zahlungsstatus startet mit Rechnung fehlt, wechselt zu Rechnung eingegangen nach Akzeptanz in Tour-Dokumente; Bezahlt nur manuell hier. Dateiprüfung in Tour-Dokumente.",
       adminFinanceSnapshotTitle: "Finanzübersicht",
       adminViewOnlyBadge: "Nur Ansicht",
-      adminEditFinancesBtn: "Finanzen bearbeiten",
       adminInvoiceOverrideAuto: "Automatisch",
       adminInvoiceOverrideForceYes: "Eingegangen erzwingen",
       adminInvoiceOverrideForceNo: "Fehlend erzwingen",
@@ -3337,9 +3331,6 @@ window.I18n = (() => {
       adminFeatureDocumentsLabel: "Dokumentenmodul",
       adminFeatureDocumentsDesc:
         "Tourbezogene Dokumenten-Uploads und Prüfung in Admin- und Fahrer-App.",
-      adminFeatureFinanceLabel: "Finanzmodul",
-      adminFeatureFinanceDesc:
-        "Finanzübersicht und Finanz-Snapshot pro Tour in der Admin-Konsole.",
       adminFeatureNotifLabel: "Benachrichtigungseinstellungen",
       adminFeatureNotifDesc:
         "Erlaubt Fahrern, Push- und E-Mail-Einstellungen im Profil zu setzen.",

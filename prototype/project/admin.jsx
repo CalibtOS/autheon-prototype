@@ -97,7 +97,6 @@ const AdminNav = ({ section, setSection }) => {
   const invCount = store.getTourDocuments().length;
   const alertCount = store.getAdminEmailQueue().length;
   const mdrOpenCount = store.getOpenMasterDataChangeRequestCount();
-  const financeOn = store.getFeatureFlag("financeModule");
   // Footer identity — the console's exact shape: the name, falling back to the
   // email only when the name is blank, with the role line beneath. An email
   // change therefore produces no visible footer change; the Audit log is the
@@ -135,9 +134,6 @@ const AdminNav = ({ section, setSection }) => {
       count: invCount,
       I: Ic.N.Doc,
     },
-    ...(financeOn
-      ? [{ id: "finance", label: t("navFinance"), count: null, I: Ic.N.Audit }]
-      : []),
     { id: "audit", label: t("navAuditLog"), count: null, I: Ic.N.Audit },
     { id: "features", label: t("navFeatures"), count: null, I: Ic.N.Settings },
   ];
@@ -1002,8 +998,8 @@ const OverviewFooter = ({
 
 const JobFinancePanel = ({
   job,
-  onEditFinances,
   onOpenTourBilling,
+  onOpenConsolidatedInvoice,
   showToast,
 }) => {
   const { t, locale } = useI18n();
@@ -1011,6 +1007,7 @@ const JobFinancePanel = ({
   const linkedInvoices = store
     .getTourDocumentsForJob(job.id)
     .filter((d) => d.reviewStatus !== "replaced");
+  const consolidatedInvoice = store.getActiveInvoiceForJob(job.id);
   const fmtIso = (iso) => {
     if (iso == null || iso === "") return "—";
     try {
@@ -1211,6 +1208,44 @@ const JobFinancePanel = ({
             >
               {snapshotDocTypes.join(" · ")}
             </div>
+          )}
+        </div>
+        <div>
+          <div className="label">{t("ciTabLabel")}</div>
+          {consolidatedInvoice ? (
+            <>
+              <div className="mono" style={{ marginTop: 8, fontWeight: 600 }}>
+                {consolidatedInvoice.supplierInvoiceNumber}
+              </div>
+              <Pill
+                status={
+                  consolidatedInvoice.status === "completed"
+                    ? "accepted"
+                    : consolidatedInvoice.status === "rejected"
+                      ? "cancelled"
+                      : "assigned"
+                }
+                style={{ marginTop: 6 }}
+              >
+                {t(
+                  CONSOLIDATED_INVOICE_STATUS_LABEL_KEY[
+                    consolidatedInvoice.status
+                  ] || consolidatedInvoice.status,
+                )}
+              </Pill>
+              {onOpenConsolidatedInvoice && (
+                <button
+                  type="button"
+                  className="btn xs"
+                  style={{ marginTop: 8, display: "block" }}
+                  onClick={onOpenConsolidatedInvoice}
+                >
+                  {t("adminOpenTourBillingBtn")}
+                </button>
+              )}
+            </>
+          ) : (
+            <div style={{ marginTop: 8, fontSize: 13 }}>—</div>
           )}
         </div>
       </div>
@@ -1499,15 +1534,6 @@ const JobFinancePanel = ({
           flexWrap: "wrap",
         }}
       >
-        {onEditFinances && (
-          <button
-            type="button"
-            className="btn primary"
-            onClick={onEditFinances}
-          >
-            {t("adminEditFinancesBtn")}
-          </button>
-        )}
         {onOpenTourBilling && (
           <button type="button" className="btn" onClick={onOpenTourBilling}>
             {t("adminOpenTourBillingBtn")}
@@ -2092,13 +2118,12 @@ const AdminDetail = ({
   onRequestReassign,
   onCancelled,
   onEdit,
-  onEditFinances,
   onOpenTourBilling,
+  onOpenConsolidatedInvoice,
   showToast,
 }) => {
   const { t } = useI18n();
   const store = useAuthStore();
-  const financeOn = store.getFeatureFlag("financeModule");
   const [cancelOpen, setCancelOpen] = useStateA(false);
   return (
     <>
@@ -2679,43 +2704,12 @@ const AdminDetail = ({
             </div>
           </section>
 
-          {financeOn ? (
-            <JobFinancePanel
-              job={job}
-              onEditFinances={onEditFinances}
-              onOpenTourBilling={onOpenTourBilling}
-              showToast={showToast}
-            />
-          ) : (
-            onOpenTourBilling && (
-              <section className="card" style={{ padding: 22 }}>
-                <div className="sec-head">
-                  <h3>
-                    <span className="num">06</span>
-                    {t("navTourBilling")}
-                  </h3>
-                </div>
-                <p
-                  style={{
-                    margin: "10px 0 0",
-                    fontSize: 13,
-                    color: "var(--muted)",
-                    lineHeight: 1.55,
-                  }}
-                >
-                  {t("tourBillingDesc")}
-                </p>
-                <button
-                  type="button"
-                  className="btn primary"
-                  style={{ marginTop: 14 }}
-                  onClick={onOpenTourBilling}
-                >
-                  {t("adminOpenTourBillingBtn")}
-                </button>
-              </section>
-            )
-          )}
+          <JobFinancePanel
+            job={job}
+            onOpenTourBilling={onOpenTourBilling}
+            onOpenConsolidatedInvoice={onOpenConsolidatedInvoice}
+            showToast={showToast}
+          />
           <EmptyRunReviewPanel job={job} showToast={showToast} />
           <InternalNotesPanel job={job} showToast={showToast} />
         </div>
@@ -10258,7 +10252,7 @@ const TourBillingPane = ({
     CustomerCenterPane. */
 const TourBillingCenterPane = (props) => {
   const { t } = useI18n();
-  const [view, setView] = useStateA("documents");
+  const [view, setView] = useStateA(props.initialView || "documents");
   return (
     <div id="tourbillingcenter">
       <div className="tabs">
@@ -10286,350 +10280,6 @@ const TourBillingCenterPane = (props) => {
           showToast={props.showToast}
           onOpenJob={props.onOpenJob}
         />
-      )}
-    </div>
-  );
-};
-
-const FinancePane = ({
-  showToast,
-  initialJobId,
-  initialOpenEdit,
-  onNavConsumed,
-  onOpenTourBilling,
-}) => {
-  const { t } = useI18n();
-  const store = useAuthStore();
-  const jobs = store.getJobs();
-  const [finEditId, setFinEditId] = useStateA(null);
-  const [finDraft, setFinDraft] = useStateA(null);
-  const [highlightJobId, setHighlightJobId] = useStateA(initialJobId || null);
-  const paymentLabel = (code) => {
-    const m = {
-      "Invoice Missing": "adminPaymentOptMissing",
-      "Invoice Received": "adminPaymentOptReceived",
-      Paid: "adminPaymentOptPaid",
-    };
-    const key = m[AuthStore.normalizePaymentStatus(code)];
-    return key ? t(key) : code || t("adminPaymentOptMissing");
-  };
-  const toN = (v) => {
-    if (v === "" || v == null) return null;
-    const n = Number(String(v).replace(",", "."));
-    return Number.isFinite(n) ? n : null;
-  };
-  const openFinEdit = (j) => {
-    setFinEditId(j.id);
-    setFinDraft({
-      revenue: j.revenue ?? "",
-      driverOffer: j.driverOffer ?? "",
-      expenses: j.expenses ?? "",
-      netAmount: j.netAmount ?? "",
-      grossAmount: j.grossAmount ?? "",
-      vatRate: j.vatRate ?? 19,
-      paymentStatus: j.paymentStatus || "Invoice Missing",
-    });
-  };
-  const closeFinEdit = () => {
-    setFinEditId(null);
-    setFinDraft(null);
-  };
-
-  useEffectA(() => {
-    if (!initialJobId || !initialOpenEdit) return;
-    const j = store.getJob(initialJobId);
-    if (j) {
-      openFinEdit(j);
-      setHighlightJobId(initialJobId);
-    }
-    onNavConsumed?.();
-  }, []);
-
-  useEffectA(() => {
-    if (!highlightJobId) return undefined;
-    const tmr = setTimeout(() => setHighlightJobId(null), 3200);
-    return () => clearTimeout(tmr);
-  }, [highlightJobId]);
-
-  useEffectA(() => {
-    if (!finEditId) return undefined;
-    const onKey = (e) => {
-      if (e.key === "Escape") closeFinEdit();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [finEditId]);
-
-  const totalRevenue = jobs.reduce((s, j) => s + Number(j.revenue || 0), 0);
-  const unpaid = jobs.filter((j) => j.paymentStatus !== "Paid").length;
-  return (
-    <div>
-      <div className="statgrid">
-        <div className="stat">
-          <div className="label">{t("adminFinanceColRev")}</div>
-          <div className="num">€ {totalRevenue.toFixed(0)}</div>
-          <Pill status="accepted">{t("adminFinanceTrackedPill")}</Pill>
-        </div>
-        <div className="stat">
-          <div className="label">{t("adminFinanceStatUnpaidRow")}</div>
-          <div className="num">{unpaid}</div>
-          <Pill status="assigned">{t("adminFinanceManualPill")}</Pill>
-        </div>
-      </div>
-      <table className="tbl">
-        <thead>
-          <tr>
-            <th>{t("adminColTour")}</th>
-            <th>{t("adminColCustomer")}</th>
-            <th>{t("adminFinanceColRev")}</th>
-            <th>{t("adminFinanceColDriverOffer")}</th>
-            <th>{t("financeExpenses")}</th>
-            <th>{t("adminFinanceColInv")}</th>
-            <th>{t("adminFinanceColPay")}</th>
-            <th style={{ width: 72 }}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {jobs.map((j, index) => (
-            <tr
-              key={j.id}
-              data-job-id={j.id}
-              className={
-                (highlightJobId === j.id ? "fin-row-highlight" : "") +
-                (index < 4 ? " list-enter" : "")
-              }
-              style={index < 4 ? { ["--list-enter-i"]: index } : undefined}
-            >
-              <td className="mono">{j.tour}</td>
-              <td>{j.customer}</td>
-              <td>€ {Number(j.revenue || 0).toFixed(2)}</td>
-              <td>€ {Number(j.driverOffer || 0).toFixed(2)}</td>
-              <td>€ {Number(j.expenses || 0).toFixed(2)}</td>
-              <td className="mono" style={{ fontSize: 12 }}>
-                {j.invoiceNumber || t("adminFinanceNoInvNum")}
-              </td>
-              <td>
-                <Pill
-                  status={j.paymentStatus === "Paid" ? "performed" : "assigned"}
-                >
-                  {paymentLabel(j.paymentStatus)}
-                </Pill>
-              </td>
-              <td>
-                <button
-                  type="button"
-                  className="btn xs"
-                  onClick={() => openFinEdit(j)}
-                >
-                  {t("adminFinanceEditRow")}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {finEditId && finDraft && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="dialog-backdrop"
-          onClick={closeFinEdit}
-        >
-          <div
-            className="dialog-panel dialog-panel--md"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="dialog-title">{t("adminFinanceEditTitle")}</h2>
-            <p className="dialog-desc">
-              {(() => {
-                const j = jobs.find((x) => x.id === finEditId);
-                return j ? `${j.tour} · ${j.customer}` : finEditId;
-              })()}
-            </p>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 12,
-              }}
-            >
-              <div>
-                <label className="field-label" htmlFor="fe-rev">
-                  {t("financeCustomerRevenue")} (€)
-                </label>
-                <input
-                  id="fe-rev"
-                  className="input tnum"
-                  value={finDraft.revenue}
-                  onChange={(e) =>
-                    setFinDraft((p) => ({ ...p, revenue: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="fe-dc">
-                  {t("driverOffer")} (€)
-                </label>
-                <input
-                  id="fe-dc"
-                  className="input tnum"
-                  value={finDraft.driverOffer}
-                  onChange={(e) =>
-                    setFinDraft((p) => ({
-                      ...p,
-                      driverOffer: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="fe-ex">
-                  {t("financeExpenses")} (€)
-                </label>
-                <input
-                  id="fe-ex"
-                  className="input tnum"
-                  value={finDraft.expenses}
-                  onChange={(e) =>
-                    setFinDraft((p) => ({ ...p, expenses: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="fe-vat">
-                  {t("financeVatRateShort")} (%)
-                </label>
-                <input
-                  id="fe-vat"
-                  className="input tnum"
-                  value={finDraft.vatRate}
-                  onChange={(e) =>
-                    setFinDraft((p) => ({ ...p, vatRate: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="fe-net">
-                  {t("financeNetVat", {
-                    vat:
-                      toN(finDraft.vatRate) ??
-                      (typeof finDraft.vatRate === "number"
-                        ? finDraft.vatRate
-                        : 19),
-                  })}{" "}
-                  (€)
-                </label>
-                <input
-                  id="fe-net"
-                  className="input tnum"
-                  value={finDraft.netAmount}
-                  onChange={(e) =>
-                    setFinDraft((p) => ({ ...p, netAmount: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="fe-gross">
-                  {t("financeGross")} (€)
-                </label>
-                <input
-                  id="fe-gross"
-                  className="input tnum"
-                  value={finDraft.grossAmount}
-                  onChange={(e) =>
-                    setFinDraft((p) => ({ ...p, grossAmount: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="fe-pay">
-                  {t("paymentStatus")}
-                </label>
-                <select
-                  id="fe-pay"
-                  className="input"
-                  value={finDraft.paymentStatus}
-                  onChange={(e) =>
-                    setFinDraft((p) => ({
-                      ...p,
-                      paymentStatus: e.target.value,
-                    }))
-                  }
-                >
-                  {[
-                    ["Invoice Missing", "adminPaymentOptMissing"],
-                    ["Invoice Received", "adminPaymentOptReceived"],
-                    ["Paid", "adminPaymentOptPaid"],
-                  ].map(([val, key]) => (
-                    <option key={val} value={val}>
-                      {t(key)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            {onOpenTourBilling && (
-              <button
-                type="button"
-                className="btn xs"
-                style={{ marginTop: 14 }}
-                onClick={() => {
-                  closeFinEdit();
-                  onOpenTourBilling(finEditId);
-                }}
-              >
-                {t("adminFinanceOpenTourBillingLink")}
-              </button>
-            )}
-            <p
-              className="label"
-              style={{
-                margin: "14px 0 0",
-                fontSize: 11.5,
-                lineHeight: 1.45,
-              }}
-            >
-              {t("adminFinanceCompletedInvoiceNote")}
-            </p>
-            <div className="dialog-actions">
-              <button type="button" className="btn" onClick={closeFinEdit}>
-                {t("adminInvoiceCancel")}
-              </button>
-              <button
-                type="button"
-                className="btn primary"
-                onClick={() => {
-                  const rev = toN(finDraft.revenue);
-                  const patch = {
-                    driverOffer: toN(finDraft.driverOffer),
-                    expenses: toN(finDraft.expenses),
-                    netAmount: toN(finDraft.netAmount),
-                    grossAmount: toN(finDraft.grossAmount),
-                    vatRate: toN(finDraft.vatRate) ?? 19,
-                    paymentStatus: finDraft.paymentStatus,
-                  };
-                  if (rev != null) {
-                    patch.revenue = rev;
-                  }
-                  const r = store.updateFinancial(finEditId, patch);
-                  if (r.ok) {
-                    const j = store.getJob(finEditId);
-                    showToast?.(
-                      t("adminFinanceSaved"),
-                      j ? `${j.tour} · ${j.customer}` : "",
-                    );
-                    closeFinEdit();
-                  } else if (r.reason === "use_tour_documents") {
-                    showToast?.(t("adminFinanceErrUseTourDocuments"));
-                  } else showToast?.(t("adminFinanceErrSave"));
-                }}
-              >
-                {t("adminInvoiceSave")}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
@@ -10802,12 +10452,9 @@ const AuditPane = ({ showToast }) => {
   );
 };
 
-const FLAG_I18N = {
-  financeModule: {
-    label: "adminFeatureFinanceLabel",
-    desc: "adminFeatureFinanceDesc",
-  },
-};
+// No admin-configurable feature flags currently exist; the Settings toggle
+// list below renders one row per key here.
+const FLAG_I18N = {};
 
 const CRITICAL_ALERT_EVENTS = new Set([
   "report_problem_cancel",
@@ -12802,7 +12449,6 @@ Object.assign(window, {
   TourBillingCenterPane,
   ConsolidatedInvoicesPane,
 
-  FinancePane,
   AuditPane,
   NotificationFeedPane,
   MasterDataRequestsPane,
