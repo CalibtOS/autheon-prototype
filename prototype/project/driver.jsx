@@ -8203,8 +8203,8 @@ const InfopointMessageDetail = ({ item, onBack }) => {
           <h2 className="infopoint-message-title">
             {displayNewsTitle(item, t)}
           </h2>
-          <div className="mono text-muted-sm infopoint-message-date">
-            {item.publishedAt}
+          <div className="mono infopoint-meta-datetime infopoint-message-date">
+            {F().formatDateTime(item.publishedAt)}
           </div>
           {/* Full text, never truncated. `pre-line` preserves the paragraph
               breaks admins type into the message body. */}
@@ -8372,11 +8372,11 @@ const Infopoint = ({
                           {displayDocScope(d.scope, t)} · {d.version}
                         </div>
                     <div
-                      className="mono text-muted-sm"
+                      className="mono infopoint-meta-datetime"
                       style={{ marginTop: 4 }}
                     >
                       {d.size ? `${d.size} · ` : ""}
-                      {d.updatedAt}
+                      {F().formatDateTime(d.updatedAt)}
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
@@ -8487,10 +8487,10 @@ const Infopoint = ({
                           {displayNewsTitle(n, t)}
                         </div>
                         <div
-                          className="mono text-muted-sm"
+                          className="mono infopoint-meta-datetime"
                           style={{ marginTop: 4 }}
                         >
-                          {n.publishedAt}
+                          {F().formatDateTime(n.publishedAt)}
                         </div>
                       </div>
                       {/* Unread is marked in words as well as by the dot, so

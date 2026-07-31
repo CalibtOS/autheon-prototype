@@ -1,4 +1,4 @@
-# PRD changelog: 2026-07-30 (v2.25 → v2.26)
+# PRD changelog: 2026-07-30 / 2026-07-31 (v2.25 → v2.27)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
@@ -332,3 +332,73 @@ The mark's greens carry over unchanged into dark theme — they are mid-greens t
 | `docs/design/driver-screen-spec.md` | Icons section records the success-only deviation; three dialog-audit rows updated |
 | `docs/design/brand-tokens.md` | Status-icon-disc row scoped to warning/destructive; new success-mark rows and token table |
 | `docs/requirements/prd.json` | `version` gains the `[v2.31-success-mark]` entry (no version bump); new `success_mark_v1` resolved default; `dialog_standard_v1`'s icon sentence annotated as superseded **for the success tone only** (entry not rewritten) |
+## v2.31 addendum — Full date and time in Infopoint messages and documents (2026-07-31)
+
+**Numbering note:** authored as “PRD v2.27” before rebasing onto `main`, where that number was already taken. Recorded here as an addendum under **v2.31**; the PRD version is not bumped.
+
+**Baseline:** PRD v2.31 + `[v2.31-success-mark]`
+**Source:** work order "Show full date and time in Infopoint messages and documents".
+**Type:** presentation refinement of Task 18 (Infopoint) — refines `infopoint_message_detail_page_v1`.
+**Data model / API:** **UNCHANGED.** No field, endpoint, schema, DTO or migration.
+
+### 1. Previous behaviour (v2.26)
+
+All three Infopoint date lines interpolated the **raw stored string** directly in JSX:
+
+| Surface | Rendered | Value |
+| --- | --- | --- |
+| Message list row | `{n.publishedAt}` | `24.05. 09:00` |
+| Message detail page | `{item.publishedAt}` | `24.05. 09:00` |
+| Document list row | `{d.updatedAt}` | `04.05. 09:10` |
+
+So the driver saw a day and month with **no year**, and the lines bypassed `formatters.js` entirely — against that module's own stated contract, *"one formatter module, no ad hoc date strings in JSX."* At 14px the stamp also sat level with the 14px row title above it.
+
+### 2. New behaviour (v2.27)
+
+All three render `DD.MM.YYYY + HH:MM` — e.g. **`30.07.2026 + 13:05`** — through one new shared formatter, `AutheonFormatters.formatDateTime`.
+
+**The `+` is a literal visible separator.** The work order writes it that way in both the required pattern (`DD.MM.YYYY + HH:MM`) and the worked example (`30.07.2026 + 13:05`), and the standing instruction is not to substitute a different product format when the task file is explicit. It is the formatter's default `separator` option, so changing it later is a one-line change at one site.
+
+**Scope is deliberately narrow.** Exactly the three surfaces above. `DocumentPreviewSheet` renders **no** date and is untouched, and no other date anywhere in the application was changed.
+
+### 3. Data-contract gap — reported, not worked around
+
+Both canonical fields **already carry a real time**, so no time value is fabricated. But the store's `nowStamp()` writes them **without a year**:
+
+```
+nowStamp() -> `${dd}.${mm}. ${hh}:${mi}`   // "31.07. 14:05" — no year
+```
+
+The year therefore comes from the formatter's **pre-existing** `ASSUMED_YEAR = 2026`, the same convention `parseDottedDate` has always applied to a yearless dotted date (it was previously an inline `2026` literal; it is now a named constant shared by both parsers so they cannot disagree). This is an artefact of the **prototype seed format**, not a product rule — production stores real timestamps and the assumption disappears. **No per-record year is invented.**
+
+### 4. Safety and correctness properties
+
+- **No `Date` is ever constructed.** The output is assembled from parsed calendar *parts*, so timezone or DST conversion cannot shift the displayed calendar day — `31.12. 23:59` cannot roll to `01.01.`
+- **Date-only values render as the date alone**, never inflated to a synthetic `00:00`.
+- **A genuine stored `00:00` survives** and is displayed.
+- **Missing, malformed or out-of-range values render an em dash** (`—`) and the raw value is **never** echoed to the screen. Verified against empty, `null`, `undefined`, non-date text, day `32`, month `13`, hour `25`, minute `70`, and a markup-shaped string.
+- **Zero-padding and 24h** are enforced by the formatter, so `1.1. 0:05` renders `01.01.2026 + 00:05`.
+
+### 5. Typography
+
+Metadata drops one step, 14px → **12.5px** (`.infopoint-meta-datetime`), because the longer stamp previously sat level with the 14px row title it belongs under. `.mono` stays on the element, so tabular figures keep the stamps column-aligned down the list.
+
+### 6. What deliberately did NOT change
+
+- **Newest-first ordering.** It is **insertion order** (`newsItems.unshift`, seed order) and is never parsed from these strings, so a display-only change cannot affect it.
+- Read/unread state, the unread tab badge, message navigation and the detail page.
+- Document preview, download, share and print.
+- All content-access audit behaviour, and document/message visibility rules.
+- **Every i18n key.** The pattern is numeric and identical in EN and DE, so no translation was added and `driver-i18n-index.md` is unaffected.
+- **Admin Backend**, which renders these fields through its own separate call sites.
+
+### 7. Files changed
+
+| File | Change |
+| --- | --- |
+| `prototype/project/formatters.js` | New `parseDottedDateTime` + `formatDateTime`; the `2026` year default extracted to a shared `ASSUMED_YEAR` constant (behaviour-preserving for `parseDottedDate`) |
+| `prototype/project/driver.jsx` | The three Infopoint date sites now call `F().formatDateTime(...)` and carry `.infopoint-meta-datetime` |
+| `prototype/project/styles.css` | New `.infopoint-meta-datetime` (12.5px muted) |
+| `docs/design/driver-screen-spec.md` | Message-list Date row and detail-page body-card bullet record the new format and class |
+| `docs/requirements/prd.json` | `version` gains the `[v2.31-infopoint-datetime]` entry (no version bump); new `infopoint_timestamp_format_v1` resolved default |
+| `docs/product/autheon-context-pack.md` | Version trail gains the `v2.31-infopoint-datetime` entry |

@@ -7191,6 +7191,18 @@ button.notifications-dropdown-backdrop {
 .infopoint-message-date {
   margin: 0;
 }
+/* Infopoint date metadata — message list, message detail, document list.
+   One step below `--text-body-sm` (14px), because the full `DD.MM.YYYY + HH:MM`
+   stamp is a longer string than the bare `DD.MM. HH:MM` it replaced and 14px
+   put it level with the 14px row title it sits under. Dropping it to 12.5px
+   restores the hierarchy and buys the width back without wrapping. `.mono` on
+   the element supplies the tabular figures, so the stamps stay column-aligned
+   down the list. */
+.infopoint-meta-datetime {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
 .infopoint-message-body {
   margin: 8px 0 0;
   font-size: 14px;

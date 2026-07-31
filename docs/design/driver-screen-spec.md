@@ -501,7 +501,7 @@ Components: `Infopoint` → `InfopointMessageDetail` (`driver.jsx`), on the shar
 |---------|-------|-------|
 | Calendar icon + unread dot | `.infopoint-news-icon` (+`.unread`/`.read`), `.infopoint-news-unread-dot` | Unchanged treatment; the dot moved from an inline style to a class. |
 | Title | `.infopoint-news-title` | 14px; 600 while unread, 500 once read. |
-| Date | `.mono.text-muted-sm` | Unchanged. |
+| Date | `.mono.infopoint-meta-datetime` | **Full stamp `DD.MM.YYYY + HH:MM` at 12.5px (2026-07-31, PRD v2.31, `[v2.31-infopoint-datetime]`).** Was the raw `publishedAt` string (`DD.MM. HH:MM`, no year) at 14px, which sat level with the 14px title. |
 | Read state | `.infopoint-news-state` (+`.unread`) | *New* / *Read* as a small pill. **Colour is never the only signal** — the state is in words and in the row's accessible name (`"New: <title>"` / `"Read: <title>"`). |
 | Forward chevron | `.infopoint-news-chev` (`Ic.Chev`) | Indicates navigation. Replaces the rotating `Ic.Down` accordion chevron. |
 
@@ -518,7 +518,8 @@ on the row — the row navigates, it does not disclose.
   title (`infopointMessage` — "Message" / "Nachricht"), mirrored spacer, and the heading takes focus on
   entry so the new view is announced.
 - Body card: `h2` title (`.infopoint-message-title`, wraps freely, `overflow-wrap: anywhere`), the date
-  (`.infopoint-message-date`), then the **complete** message (`.infopoint-message-body`) with
+  (`.infopoint-message-date` + `.infopoint-meta-datetime`, full `DD.MM.YYYY + HH:MM`), then the
+  **complete** message (`.infopoint-message-body`) with
   `white-space: pre-line` so admin-typed paragraph breaks survive. **Never clamped, never truncated.**
 - Opening marks the message read immediately; the list shows the new state on return. The open is also
   audited as a message view (see PRD v2.19).
