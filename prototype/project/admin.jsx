@@ -1878,54 +1878,54 @@ const AssignDriverDialog = ({ open, mode, job, onClose, onConfirm }) => {
         </>
       }
     >
-        <div className="mono dialog-meta">
-          {t("tourNo")} {job.tour} · {job.customer}
-        </div>
-        {drivers.length === 0 ? (
-          <p className="dialog-error">{t("adminAssignNoActiveDrivers")}</p>
-        ) : (
-          <div>
-            <label className="field-label" htmlFor="assign-driver-select">
-              {t("adminAssignDriverSelectLabel")}
-            </label>
-            <select
-              id="assign-driver-select"
-              className="input"
-              value={driverId}
-              onChange={(e) => setDriverId(e.target.value)}
-            >
-              {drivers.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name} · {d.driverCode}
-                  {d.company ? ` · ${d.company}` : ""}
-                </option>
-              ))}
-            </select>
-            {job.driver && mode === "reassign" ? (
-              <p className="label dialog-hint">
-                {t("adminAssignCurrentDriver", { name: job.driver })}
-              </p>
-            ) : null}
-          </div>
-        )}
-        {mode !== "reassign" ? (
-          <div>
-            <label className="field-label" htmlFor="assign-confirmation-note">
-              {t("adminAssignConfirmationNoteLabel")}
-            </label>
-            <textarea
-              id="assign-confirmation-note"
-              className="input"
-              rows={3}
-              value={confirmationNote}
-              onChange={(e) => setConfirmationNote(e.target.value)}
-              placeholder={t("adminAssignConfirmationNotePlaceholder")}
-            />
+      <div className="mono dialog-meta">
+        {t("tourNo")} {job.tour} · {job.customer}
+      </div>
+      {drivers.length === 0 ? (
+        <p className="dialog-error">{t("adminAssignNoActiveDrivers")}</p>
+      ) : (
+        <div>
+          <label className="field-label" htmlFor="assign-driver-select">
+            {t("adminAssignDriverSelectLabel")}
+          </label>
+          <select
+            id="assign-driver-select"
+            className="input"
+            value={driverId}
+            onChange={(e) => setDriverId(e.target.value)}
+          >
+            {drivers.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name} · {d.driverCode}
+                {d.company ? ` · ${d.company}` : ""}
+              </option>
+            ))}
+          </select>
+          {job.driver && mode === "reassign" ? (
             <p className="label dialog-hint">
-              {t("adminAssignConfirmationNoteHint")}
+              {t("adminAssignCurrentDriver", { name: job.driver })}
             </p>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+      )}
+      {mode !== "reassign" ? (
+        <div>
+          <label className="field-label" htmlFor="assign-confirmation-note">
+            {t("adminAssignConfirmationNoteLabel")}
+          </label>
+          <textarea
+            id="assign-confirmation-note"
+            className="input"
+            rows={3}
+            value={confirmationNote}
+            onChange={(e) => setConfirmationNote(e.target.value)}
+            placeholder={t("adminAssignConfirmationNotePlaceholder")}
+          />
+          <p className="label dialog-hint">
+            {t("adminAssignConfirmationNoteHint")}
+          </p>
+        </div>
+      ) : null}
     </Dialog>
   );
 };
@@ -2000,75 +2000,75 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
         </>
       }
     >
-        {needsOverride ? (
-          <div className="banner banner-warn dialog-banner">
-            {t("adminCancelCutoffBlocked", {
-              hours: policy.minHours || 1,
+      {needsOverride ? (
+        <div className="banner banner-warn dialog-banner">
+          {t("adminCancelCutoffBlocked", {
+            hours: policy.minHours || 1,
+          })}
+        </div>
+      ) : null}
+      <div>
+        <label className="field-label" htmlFor="cancel-reason-code">
+          {t("adminCancelReasonLabel")}
+        </label>
+        <select
+          id="cancel-reason-code"
+          className="input"
+          style={{ marginTop: 6, width: "100%" }}
+          value={reasonCode}
+          onChange={(e) => setReasonCode(e.target.value)}
+        >
+          <option value="">{t("adminCancelReasonPlaceholder")}</option>
+          {codes.map((c) => (
+            <option key={c} value={c}>
+              {t(`cancellationReason_${c}`) ||
+                store.getCancellationReasonLabel(c)}
+            </option>
+          ))}
+        </select>
+      </div>
+      {dr ? (
+        <div>
+          <label className="field-label" htmlFor="cancel-driver-message">
+            {t("adminCancelDriverMessageLabel")}
+          </label>
+          <textarea
+            id="cancel-driver-message"
+            className="input"
+            rows={4}
+            style={{ marginTop: 6, width: "100%", resize: "vertical" }}
+            value={driverMessage}
+            onChange={(e) => setDriverMessage(e.target.value)}
+            placeholder={t("adminCancelDriverMessagePh")}
+          />
+          <div
+            className={`field-counter ${
+              driverMessage.length >= minMsg ? "valid" : "invalid"
+            }`}
+          >
+            {t("adminCancelMessageCounter", {
+              count: driverMessage.length,
+              min: minMsg,
             })}
           </div>
-        ) : null}
-        <div>
-          <label className="field-label" htmlFor="cancel-reason-code">
-            {t("adminCancelReasonLabel")}
-          </label>
-          <select
-            id="cancel-reason-code"
-            className="input"
-            style={{ marginTop: 6, width: "100%" }}
-            value={reasonCode}
-            onChange={(e) => setReasonCode(e.target.value)}
-          >
-            <option value="">{t("adminCancelReasonPlaceholder")}</option>
-            {codes.map((c) => (
-              <option key={c} value={c}>
-                {t(`cancellationReason_${c}`) ||
-                  store.getCancellationReasonLabel(c)}
-              </option>
-            ))}
-          </select>
         </div>
-        {dr ? (
-          <div>
-            <label className="field-label" htmlFor="cancel-driver-message">
-              {t("adminCancelDriverMessageLabel")}
-            </label>
-            <textarea
-              id="cancel-driver-message"
-              className="input"
-              rows={4}
-              style={{ marginTop: 6, width: "100%", resize: "vertical" }}
-              value={driverMessage}
-              onChange={(e) => setDriverMessage(e.target.value)}
-              placeholder={t("adminCancelDriverMessagePh")}
-            />
-            <div
-              className={`field-counter ${
-                driverMessage.length >= minMsg ? "valid" : "invalid"
-              }`}
-            >
-              {t("adminCancelMessageCounter", {
-                count: driverMessage.length,
-                min: minMsg,
-              })}
-            </div>
-          </div>
-        ) : null}
-        {needsOverride ? (
-          <div>
-            <label className="field-label" htmlFor="cancel-override-note">
-              {t("adminCancelOverrideLabel")}
-            </label>
-            <textarea
-              id="cancel-override-note"
-              className="input"
-              rows={2}
-              style={{ marginTop: 6, width: "100%" }}
-              value={overrideNote}
-              onChange={(e) => setOverrideNote(e.target.value)}
-              placeholder={t("adminCancelOverridePh")}
-            />
-          </div>
-        ) : null}
+      ) : null}
+      {needsOverride ? (
+        <div>
+          <label className="field-label" htmlFor="cancel-override-note">
+            {t("adminCancelOverrideLabel")}
+          </label>
+          <textarea
+            id="cancel-override-note"
+            className="input"
+            rows={2}
+            style={{ marginTop: 6, width: "100%" }}
+            value={overrideNote}
+            onChange={(e) => setOverrideNote(e.target.value)}
+            placeholder={t("adminCancelOverridePh")}
+          />
+        </div>
+      ) : null}
     </Dialog>
   );
 };
@@ -6386,9 +6386,7 @@ const StaffPane = ({ showToast }) => {
           onClick={() => setAdminModal(null)}
         >
           <div className="dialog-panel" onClick={(e) => e.stopPropagation()}>
-            <h2 className="dialog-title">
-              {t("adminUsersNewAdminTitle")}
-            </h2>
+            <h2 className="dialog-title">{t("adminUsersNewAdminTitle")}</h2>
             <AdminUserFormFields
               form={adminForm}
               setF={setAF}
@@ -9413,9 +9411,7 @@ const TourBillingPane = ({
             <h2 id="reg-invoice-title" className="dialog-title">
               {t("adminTourDocRegisterTitle")}
             </h2>
-            <p className="dialog-desc">
-              {t("adminTourDocRegisterHint")}
-            </p>
+            <p className="dialog-desc">{t("adminTourDocRegisterHint")}</p>
             <div style={{ display: "grid", gap: 12 }}>
               <div>
                 <label className="field-label" htmlFor="reg-doctype">
@@ -9663,21 +9659,9 @@ const TourBillingPane = ({
                           (() => {
                             const j = jobs.find((x) => x.id === u.jobId);
                             return j ? (
-                              <div>
-                                <span style={{ fontSize: 13 }}>
-                                  {j.tour} · {j.customer}
-                                </span>
-                                {onOpenJob && (
-                                  <button
-                                    type="button"
-                                    className="btn xs"
-                                    style={{ marginTop: 6, display: "block" }}
-                                    onClick={() => onOpenJob(j.id)}
-                                  >
-                                    {t("adminOpenTourFromInvoice")}
-                                  </button>
-                                )}
-                              </div>
+                              <span style={{ fontSize: 13 }}>
+                                {j.tour} · {j.customer}
+                              </span>
                             ) : (
                               <span
                                 className="mono label"
@@ -9792,9 +9776,7 @@ const TourBillingPane = ({
           onClick={closeEdit}
         >
           <div className="dialog-panel" onClick={(e) => e.stopPropagation()}>
-            <h2 className="dialog-title">
-              {t("adminInvoiceEdit")}
-            </h2>
+            <h2 className="dialog-title">{t("adminInvoiceEdit")}</h2>
             <div style={{ display: "grid", gap: 12 }}>
               <div>
                 <label className="field-label" htmlFor="ed-job">
@@ -9936,12 +9918,8 @@ const TourBillingPane = ({
           onClick={closeAccept}
         >
           <div className="dialog-panel" onClick={(e) => e.stopPropagation()}>
-            <h2 className="dialog-title">
-              {t("adminAcceptInvoiceTitle")}
-            </h2>
-            <p className="dialog-desc">
-              {accepting.fileName}
-            </p>
+            <h2 className="dialog-title">{t("adminAcceptInvoiceTitle")}</h2>
+            <p className="dialog-desc">{accepting.fileName}</p>
             <div style={{ display: "grid", gap: 12 }}>
               <div>
                 <label className="field-label" htmlFor="accept-inv-num">
@@ -10159,12 +10137,8 @@ const TourBillingPane = ({
             className="dialog-panel dialog-panel--md"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="dialog-title">
-              {t("invoiceViewTitle")}
-            </h2>
-            <p className="dialog-desc">
-              {t("invoiceViewDisclaimer")}
-            </p>
+            <h2 className="dialog-title">{t("invoiceViewTitle")}</h2>
+            <p className="dialog-desc">{t("invoiceViewDisclaimer")}</p>
             <pre
               style={{
                 margin: 0,
@@ -10444,9 +10418,7 @@ const FinancePane = ({
             className="dialog-panel dialog-panel--md"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="dialog-title">
-              {t("adminFinanceEditTitle")}
-            </h2>
+            <h2 className="dialog-title">{t("adminFinanceEditTitle")}</h2>
             <p className="dialog-desc">
               {(() => {
                 const j = jobs.find((x) => x.id === finEditId);
@@ -11076,9 +11048,7 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
         </section>
         {selected ? (
           <section className="card" style={{ padding: 22 }}>
-            <h2 className="dialog-title">
-              {selected.driverName}
-            </h2>
+            <h2 className="dialog-title">{selected.driverName}</h2>
             <p
               className="mono"
               style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}

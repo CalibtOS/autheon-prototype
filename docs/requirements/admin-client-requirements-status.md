@@ -3,15 +3,22 @@
 > **Source plan:** [`tasks/admin-prototype-client-change-plan.md`](../../../tasks/admin-prototype-client-change-plan.md)
 > (client requirements distilled from "Evaluation & Optimization Requirements for the Admin Backend", 21 pages).
 
-**Last synced:** 2026-07-30
+**Last synced:** 2026-07-31
 **Scope:** All 15 phases of the source plan have now been picked up — see memory `feedback-admin-change-plan-no-stop`
 for the standing "keep implementing without stopping for per-phase approval" instruction that drove this.
-Most phases are DONE or MOSTLY DONE at the prototype level; several explicitly-scoped gaps remain and are
-called out per-phase below and in the source plan (`tasks/admin-prototype-client-change-plan.md`) — nothing
-was silently dropped. The largest remaining pieces overall: Phase 7's permanent 7-section service-partner
-profile page and service-partner onboarding documents, Phase 9's customer pickup/delivery address
-cross-reference, Phase 10's inline (not separate-page) tour document overview and real file preview, and
-Phase 14's amount-metadata capture on the two not-yet-wired driver upload entry points.
+A follow-up "close all remaining gaps" pass (2026-07-31) closed nearly every previously-open item that was
+feasible in a client-side-only prototype: Phase 1's flexible-mode field disabling and validation summary
+panel, Phase 4's structured filter panel and inline cancel dialog, Phase 6's origin-context preservation,
+Phase 7's 7-section service-partner profile page and onboarding-document backend, Phase 9's address
+cross-reference, Phase 10's inline per-tour document overview, Phase 11's missing-document recognition,
+and Phase 14's remaining two driver upload entry points. A user-reported rendering bug (row-action "⋮" menu
+clipped by table overflow) was also found and fixed in the same pass — see Phase 4 #6. The only requirements
+still not implemented are ones genuinely out of reach without infrastructure this prototype doesn't have:
+no geocoding/routing provider (Phase 2's live address autocomplete and route-based distance), no real
+file-storage backend (Phase 10's actual PDF/image byte preview — metadata-only remains honestly disclaimed),
+and no email intake pipeline (Phase 12's `invoice@autheon.de` submission step). Nothing was silently dropped;
+every remaining gap is called out per-phase below and in the source plan
+(`tasks/admin-prototype-client-change-plan.md`).
 
 ---
 
@@ -22,53 +29,62 @@ Phase 14's amount-metadata capture on the two not-yet-wired driver upload entry 
 provider exists in this offline prototype, so live address autocomplete and automatic route-based
 distance calculation are out of reach without one; noted, not silently dropped.
 **Phase 3: DONE (prototype)** — all 7 requirements implemented and verified in-browser.
-**Phase 4: MOSTLY DONE (prototype)** — table columns, VIN/plate search, row action menu, and a real
-pagination fix are done; the structured filter panel (month/year, date range, discrete
-customer/service-partner/location filters) was not built — free-text search covers much of the same
-ground for this demo dataset but isn't a substitute at production scale.
+**Phase 4: DONE (prototype)** — table columns, VIN/plate search, row action menu, and a real pagination
+fix were done first; the follow-up pass added the structured filter panel (date range keyed on planned
+pickup, customer/service-partner/pickup-city/delivery-city filters), moved "Cancel" from the row menu to
+open the reason-code dialog inline instead of navigating away, and added the full order-status descriptions
+to Settings. The row-action "⋮" menu was also found to render clipped/overlapping the row below (a table
+`overflow: hidden` ancestor clipping its `position: absolute` dropdown) and was rewritten to use a
+`ReactDOM.createPortal` — verified via screenshot and zero console errors.
 **Phase 5: DONE (prototype)** — all 4 requirements implemented and verified in-browser.
-**Phase 6: MOSTLY DONE (prototype)** — filter/sort/page state now survives internal navigation, real
+**Phase 6: DONE (prototype)** — filter/sort/page state now survives internal navigation, real
 browser-history integration was added (previously none existed at all), several sub-items were already
 satisfied by the existing shared chrome, and the full menu relabel (Service Partners / Customer Center /
-Tour Documents) is now confirmed live now that Phases 7/9/11 built the content behind those labels. Not
-done: preserving origin context when opening a tour from Tour Documents.
-**Phase 7: PARTIAL (prototype)** — the "Drivers" nav was renamed "Service Partners" and the master-data
-model was substantially extended (structured address, legal form, tax status, tax number, VAT ID,
-account holder, IBAN with real mod-97 validation, sequential `SP-0001` IDs, live profile-summary
-counts). The permanent 7-section tabbed profile page, service-partner onboarding documents, and folding
-profile-change-requests into the same view were **not** built — those are the largest remaining pieces
-and need their own pass.
+Tour Documents) is now confirmed live now that Phases 7/9/11 built the content behind those labels. Origin
+context when opening a tour from Tour Documents is now preserved via a `returnSection` state, so the "Jobs"
+breadcrumb returns to Tour Documents instead of always landing on Overview.
+**Phase 7: DONE (prototype)** — the "Drivers" nav was renamed "Service Partners", the master-data model
+was substantially extended (structured address, legal form, tax status, tax number, VAT ID, account
+holder, IBAN with real mod-97 validation, sequential `SP-0001` IDs, live profile-summary counts, and a
+first/last name split that auto-composes into the existing display/matching `name` field), and a new
+permanent 7-section tabbed `ServicePartnerProfileModal` was built (Overview / Master data / Documents /
+Orders / Change requests / Notes / Audit), including a genuinely new `driverDocuments` onboarding-document
+backend (separate from tour-scoped documents, with its own upload/accept/reject/version workflow) and the
+profile-change-requests queue now also reachable inline from the profile's own "Change requests" tab.
 **Phase 8: DONE (prototype)** — all 9 requirements implemented and verified in-browser, including the
 technical (not just UI) self-deactivation and last-active-admin guards.
-**Phase 9: MOSTLY DONE (prototype)** — Customers and Addresses are merged into one "Customer Center" nav
+**Phase 9: DONE (prototype)** — Customers and Addresses are merged into one "Customer Center" nav
 entry with switchable tabs; the customer model gained legal form, a structured address, `joinedAt`, and a
 recorded `changeHistory`; each customer is now openable to a real (if single-modal, not multi-page) detail
 view covering master data / contact / address / linked orders / billing notes / change history / relationship
-start. The two data-integrity requirements — never hard-delete an in-use customer, and allow address deletion
-without breaking existing orders' snapshots — were both verified directly against the store and the running
-browser. Not done: a customer's pickup/delivery addresses are not cross-referenced separately from its own
-master-data address (noted as a gap, since that link isn't tracked per-customer today).
-**Phase 10: MOSTLY DONE (prototype)** — the document review status model now has all 6 client-required
+start / pickup-delivery addresses used. The two data-integrity requirements — never hard-delete an in-use
+customer, and allow address deletion without breaking existing orders' snapshots — were both verified
+directly against the store and the running browser. The pickup/delivery address cross-reference gap was
+closed with a new "Pickup / delivery addresses used" section in the detail modal, derived from the
+customer's linked jobs' address pointers.
+**Phase 10: DONE (prototype)** — the document review status model now has all 6 client-required
 states (previously only 4 existed — "In review" and "Replaced" were both missing); opening a document for
 review the first time now auto-transitions it from Uploaded to In review; a real bug was found and fixed
 where "Request correction" was only offered after a document had already been rejected, instead of being
 available alongside Accept/Reject on any pending document as the client intended; replacing a document now
 creates a genuinely new versioned row (kept, marked "Replaced") instead of overwriting the old row's data in
-place; a "What do the document statuses mean?" explainer was added. Not done: a single unified per-tour
-document overview (the full reviewable table with filters/actions lives on a separate page, linked from the
-tour, not inline in the tour detail) and real PDF/image preview (this prototype never stores actual file
-bytes, only metadata — verified the in-app disclaimer already says so honestly; needs a real file-storage
-backend in production).
-**Phase 11: MOSTLY DONE (prototype)** — the global tour-document table now groups documents by tour first
+place; a "What do the document statuses mean?" explainer was added. The single unified per-tour document
+overview gap was closed: `JobFinancePanel` rows now expand in place with full metadata and working
+Accept/Request correction/Reject actions, no navigation away required. Not done: real PDF/image preview
+(this prototype never stores actual file bytes, only metadata — verified the in-app disclaimer already
+says so honestly; needs a real file-storage backend in production).
+**Phase 11: DONE (prototype)** — the global tour-document table now groups documents by tour first
 (with an overarching per-tour status pill), sorted so open/incomplete tours come before fully accepted ones;
 a "Hide completed reviews" filter was added and verified to actually hide a tour once all its documents are
 accepted; clicking anywhere on a document row now opens the same detail/preview modal the "View" button
 opens; and the previous `window.prompt()`-based rejection flow (a literal native browser dialog, which is
 exactly what the client asked to remove) was replaced with a real in-app dialog capturing reason, an optional
 internal note, and a "visible to service partner" toggle, with Cancel / Request correction / Reject actions
-— verified end-to-end that a submitted rejection persists correctly in the store. Not done: recognizing
-"missing" documents (an expected-but-never-submitted document type) — there is no concept of expected
-document types per tour in the current data model, only documents that actually exist.
+— verified end-to-end that a submitted rejection persists correctly in the store. "Missing" document
+recognition was closed with a pragmatic `EXPECTED_TOUR_DOC_TYPES = ["delivery_note", "invoice"]` definition
+(since the data model has no per-customer/transport-type expected-document concept) — each tour group now
+shows a "Missing: {type}" chip for any unsubmitted expected type; flag if the client wants a configurable
+per-customer list instead.
 **Phase 12: MOSTLY DONE (prototype)** — a genuinely new `consolidatedInvoices` entity was built (`store.js`)
 that can link any number of completed tours to one invoice — a structural gap that didn't exist before this
 phase, since the prior invoice concept was one document row per tour. A new "Consolidated invoices" tab
@@ -90,17 +106,15 @@ a tour document was previously not logged at all (`tour_document_downloaded`) �
 the store. Login events for both admin and service partner were already logged and confirmed working. Date,
 service-partner, and tour-number filters were added to the Audit Log screen (previously none existed) and all
 three verified in-browser.
-**Phase 14: MOSTLY DONE (prototype)** — the `tourDocuments` model gained structured amount metadata (receipt
+**Phase 14: DONE (prototype)** — the `tourDocuments` model gained structured amount metadata (receipt
 date, net amount, gross amount, tax rate, service period) plus a real net×(1+tax)=gross mathematical
 validator (`validateTourDocumentAmountMath`) that blocks uploads with inconsistent amounts — verified
 in-browser both ways (a deliberately mismatched submission was blocked; the corrected one succeeded and
-persisted all fields). The primary active-tour driver upload flow now collects this metadata before
-completing the upload; the admin-side document detail modal now displays it. Not done: two other duplicate
-driver-side upload entry points in `driver.jsx` (the performed-tour "My documents" tab and the
-tour-completion success-modal upload) were not wired to collect the new metadata — documented as a known gap
-rather than silently dropped, since fixing all three would have required touching three near-identical
-hand-duplicated upload flows. Consolidated-invoice-to-multiple-tours and the View/Accept/Request
-correction/Reject preview actions were already done in earlier phases and reconfirmed.
+persisted all fields). All 3 driver-side upload entry points in `driver.jsx` (the primary active-tour flow,
+the performed-tour "My documents" tab, and the tour-completion success-modal upload) now collect this
+metadata before completing the upload; the admin-side document detail modal displays it. Consolidated-
+invoice-to-multiple-tours and the View/Accept/Request correction/Reject preview actions were already done
+in earlier phases and reconfirmed.
 **Phase 15: DONE (prototype)** — two real gaps found and fixed. First: neither delete-draft confirmation call
 site passed a `title`/`confirmLabel`, and the `adminDeleteDraftConfirm` i18n string was missing its `{tour}`
 placeholder entirely, so the dialog showed a generic "Confirm" button with no tour number in one of the two
@@ -283,20 +297,20 @@ was judged out of proportion to this bullet's intent. Flag if the client specifi
 
 ## Phase 10 — Order Documents and Review Workflow
 
-| #   | Requirement                                                                               | Status              | Evidence                                                                                                                                                                                                                                                                 |
-| --- | ----------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | Central document overview on every tour                                                   | Partial             | `JobFinancePanel` (tour detail, `admin.jsx`) shows a snapshot list linking to the full table on a separate page (`TourBillingPane`, opened via "Review documents"). Not folded inline into the tour detail — left for a future pass                                      |
-| 2   | Combine generated, admin-uploaded, and service-partner-submitted documents                | Partial             | Admin-uploaded and driver-submitted documents already share one table; no "generated" document source exists in the data model (no PDF-generation pipeline in this prototype), so that category is simply empty, not broken                                              |
-| 3   | Document detail: name, type, source, uploaded/generated by, date/time, review status      | Done                | All present in the "View" modal (`TourBillingPane`, `admin.jsx`); `documentType` was missing from the metadata list and has been added                                                                                                                                   |
-| 4   | Filter by source, type, review status                                                     | Done                | Pre-existing `filterType`/`filterReview`/`filterSource` controls; review-status filter now also lists "In review" and "Replaced"                                                                                                                                         |
-| 5   | Open PDF/image files in preview                                                           | Not implemented     | This prototype never stores real file bytes (only `fileName`/`mimeType`/`sizeBytes`); the "View" modal already carries an honest disclaimer ("file contents are not stored"). Needs a real file-storage backend in production                                            |
-| 6   | 6 review statuses: Uploaded, In review, Accepted, Correction required, Rejected, Replaced | Done                | `DOC_REVIEW` (`store.js`) now lists all 6 — "In review" and "Replaced" were both missing before this pass                                                                                                                                                                |
-| 7   | Status `Uploaded` set after upload                                                        | Done (pre-existing) | Unchanged                                                                                                                                                                                                                                                                |
-| 8   | Status `In review` set when preview opened for review the first time                      | Done                | New `markTourDocumentInReview(id)` (`store.js`), called from the "View" button; verified in-browser — opening a pending document flips its status from Uploaded to Under review                                                                                          |
-| 9   | Actions: Accept, Request correction, Reject                                               | Done (bug fixed)    | All three existed, but "Request correction" was only offered _after_ a document was already Rejected — contradicting the client's "three parallel actions on a pending document." Fixed so all three are available together on any pending document; verified in-browser |
-| 10  | Simple download does not change review status                                             | Done (pre-existing) | Download is a toast-only stub (no real bytes to download, same limitation as #5) and never calls a status-mutating method                                                                                                                                                |
-| 11  | New version marked `Uploaded`, old version marked `Replaced`                              | Done                | `replaceTourDocument` (`store.js`) previously overwrote the same row in place, destroying the old version. Now inserts a new row (`supersedes: <old id>`) and marks the old row `replaced` (`replacedBy: <new id>`) — verified directly against the store                |
-| 12  | Status explainer "What do the document statuses mean?"                                    | Done                | New `<details className="status-explain">` block in `TourBillingPane`, reusing the existing order-status explainer pattern; verified in-browser                                                                                                                          |
+| #   | Requirement                                                                               | Status              | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --- | ----------------------------------------------------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Central document overview on every tour                                                   | Done                | `JobFinancePanel` (tour detail, `admin.jsx`) rows are now clickable and expand in place to show full metadata (status, source, uploaded date, rejection reason) plus real Accept / Request correction / Reject actions — no navigation to a separate page required. Accept on an invoice-type document reveals an inline invoice-number/date sub-form (mirrors `TourBillingPane`'s existing accept flow); the "Review documents" link to the full cross-tour table (`TourBillingPane`) is kept alongside as a secondary option. Verified in-browser end-to-end: accepted an invoice doc with a supplied invoice number, rejected a receipt with a reason — both persisted correctly against the store |
+| 2   | Combine generated, admin-uploaded, and service-partner-submitted documents                | Partial             | Admin-uploaded and driver-submitted documents already share one table; no "generated" document source exists in the data model (no PDF-generation pipeline in this prototype), so that category is simply empty, not broken                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 3   | Document detail: name, type, source, uploaded/generated by, date/time, review status      | Done                | All present in the "View" modal (`TourBillingPane`, `admin.jsx`); `documentType` was missing from the metadata list and has been added                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 4   | Filter by source, type, review status                                                     | Done                | Pre-existing `filterType`/`filterReview`/`filterSource` controls; review-status filter now also lists "In review" and "Replaced"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 5   | Open PDF/image files in preview                                                           | Not implemented     | This prototype never stores real file bytes (only `fileName`/`mimeType`/`sizeBytes`); the "View" modal already carries an honest disclaimer ("file contents are not stored"). Needs a real file-storage backend in production                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 6   | 6 review statuses: Uploaded, In review, Accepted, Correction required, Rejected, Replaced | Done                | `DOC_REVIEW` (`store.js`) now lists all 6 — "In review" and "Replaced" were both missing before this pass                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 7   | Status `Uploaded` set after upload                                                        | Done (pre-existing) | Unchanged                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 8   | Status `In review` set when preview opened for review the first time                      | Done                | New `markTourDocumentInReview(id)` (`store.js`), called from the "View" button; verified in-browser — opening a pending document flips its status from Uploaded to Under review                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 9   | Actions: Accept, Request correction, Reject                                               | Done (bug fixed)    | All three existed, but "Request correction" was only offered _after_ a document was already Rejected — contradicting the client's "three parallel actions on a pending document." Fixed so all three are available together on any pending document; verified in-browser                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 10  | Simple download does not change review status                                             | Done (pre-existing) | Download is a toast-only stub (no real bytes to download, same limitation as #5) and never calls a status-mutating method                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 11  | New version marked `Uploaded`, old version marked `Replaced`                              | Done                | `replaceTourDocument` (`store.js`) previously overwrote the same row in place, destroying the old version. Now inserts a new row (`supersedes: <old id>`) and marks the old row `replaced` (`replacedBy: <new id>`) — verified directly against the store                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 12  | Status explainer "What do the document statuses mean?"                                    | Done                | New `<details className="status-explain">` block in `TourBillingPane`, reusing the existing order-status explainer pattern; verified in-browser                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 ---
 
@@ -401,13 +415,19 @@ was judged out of proportion to this bullet's intent. Flag if the client specifi
 - `store.js` (Phase 13): `auditStamp()` is the ONLY timestamp helper that should feed `log()`'s `at`/`atIso` fields — it is deliberately distinct from `nowStamp()` (short, no year/seconds, used everywhere else: `joinedAt`, `changeHistory`, invoice `createdAt`). Do not swap one for the other. `parseAuditEntryDate` shows the pattern for making legacy string-only timestamps filterable: try a real ISO field first (`atIso`), fall back to parsing the old display string with an assumed year, and always return `null` (never throw) on anything unparseable.
 - `admin.jsx` (Phase 13): the `AuditPane` date/service-partner/tour-number filter bar (`billingFilterAll`/`billingFilterReset`/`billingFilterEmpty` i18n keys, already used by two other panes) is the fourth pane now sharing this exact filter-toolbar shape — treat it as the standard filter-bar layout for any future list view, not a one-off.
 - `store.js` (Phase 14): `tourDocumentRequiresAmountMetadata(type)` + `validateTourDocumentAmountMath({netAmount, grossAmount, taxRatePercent})` are the canonical net/gross/tax math-check pair — reuse for any future amount-bearing document type rather than re-deriving the formula. `addTourDocument` only validates math when amount fields are actually present in `opts` (`hasAmountFields` check) — it does not require them, so callers that don't yet collect them (see gap below) keep working unchanged.
-- `driver.jsx` (Phase 14 gap — read before touching upload flows): there are 3 independent, hand-duplicated tour-document upload implementations in this file (`JobTourDocuments`/`onPick` — now updated with the amount-metadata step; the performed-tour "My documents" tab's `docsOnFile`; and a third success-modal flow) that each separately call `store.addTourDocument`/`replaceTourDocument`. Only the first was wired to the new metadata form this pass. Before extending upload behavior again, either finish wiring the other two to the same `amountUpload`/`amountForm` pattern, or factor a single shared upload hook — do not add a 4th divergent copy.
+- `driver.jsx` (Phase 14 — read before touching upload flows): there are 3 independent, hand-duplicated tour-document upload implementations in this file (`JobTourDocuments`/`onPick`, the performed-tour "My documents" tab's `docsOnFile`, and the tour-completion success-modal's `onPickFile`) that each separately call `store.addTourDocument`/`replaceTourDocument`. All 3 are now wired to the same amount-metadata capture pattern (`docsAmountUpload`/`successAmountUpload` state + a matching modal, mirroring the original `JobTourDocuments` implementation) — verified end-to-end for the first two; the third shares identical, already-proven data-layer logic and was confirmed to load with zero console/syntax errors. Before adding a 4th upload entry point, factor a single shared upload hook instead of hand-duplicating a 4th copy of this pattern.
+- `admin.jsx` (Phase 10, closed this session): `JobFinancePanel`'s document table rows now expand in place (`expandedDocId` state) instead of linking to a separate page — the expand-row-below pattern (`<tr onClick>` + a following `<tr><td colSpan>` for the expanded content, with `e.stopPropagation()` on nested interactive elements) is reusable for any future "inline detail without a modal or separate page" requirement. Reuses `store.acceptTourDocument`/`rejectTourDocument`/`requireTourDocumentCorrection`/`AuthStore.tourDocumentReviewActions` directly rather than duplicating `TourBillingPane`'s dialog state — if the two ever need to converge, extract the accept/reject action logic into a shared hook rather than keeping two parallel copies.
+- `admin.jsx` (bugfix, Phase 4 #6): `RowActionsMenu`'s dropdown previously used `position: absolute` inside a table with `overflow: hidden` (and a `.table-wrap` with `overflow: auto`), which silently clipped/overlapped it against the next row — this is a general trap for any dropdown/menu nested inside a scrollable or overflow-clipped table. The fix — compute the trigger's `getBoundingClientRect()` in a `useLayoutEffect` and render via `ReactDOM.createPortal(..., document.body)` with `position: fixed` — mirrors `SortSelect` in `driver-ui.jsx`; use this pattern for any future menu/dropdown/tooltip anchored inside a table or scroll container.
 - `admin.jsx` / `AUTHEON Prototype.html` (Phase 15): `window.requestAdminConfirm(message, opts)` silently falls back to a generic "Confirm" button whenever `opts.confirmLabel` is omitted — this is easy to miss since the call still "works" (no error, dialog still opens), it just isn't clearly labeled. Always pass `title` and `confirmLabel` explicitly for any destructive confirm, and make sure the message's i18n string actually has a placeholder for whatever identifying info (tour number, name, id) you're interpolating — passing `{tour: j.tour}` into a template with no `{tour}` in it silently does nothing, as found and fixed here.
 - `admin.jsx` (Phase 15): the `showGeneralNote`/`showInternalNote` `+ {label}` reveal-a-field pattern (New Order form) is the established convention for any optional field — before adding a new optional field as an always-visible input, check whether a `showX` state already exists for it unused (as `showPickupExtraContact`/`showDeliveryExtraContact` did here for a full phase before being wired up) and use the same conditional-render + ghost-button shape.
 
-**All 15 phases of the source plan have now been implemented at the prototype level.** See the per-phase
+**All 15 phases of the source plan have now been implemented at the prototype level, and a follow-up
+"close all remaining gaps" pass (2026-07-31) closed nearly every previously-open item.** See the per-phase
 sections above for exact status and evidence, and `tasks/admin-prototype-client-change-plan.md` for the
-client-facing ✅/⚠️/❌ markers on every individual bullet. Remaining gaps are all explicitly scoped, not
-silently dropped — the largest ones (Phase 7's tabbed profile page, Phase 9's address cross-reference,
-Phase 10's inline document overview and real file preview, Phase 14's remaining upload entry points) would
-each be a substantial follow-up pass in their own right rather than a quick fix.
+client-facing ✅/⚠️/❌ markers on every individual bullet. The remaining gaps are all explicitly scoped, not
+silently dropped, and all require infrastructure this client-side prototype does not have: a real
+geocoding/routing provider (Phase 2's live address autocomplete and route-based distance calculation), a
+real file-storage backend (Phase 10's actual PDF/image byte preview), and an email intake pipeline (Phase
+12's `invoice@autheon.de` submission step). Everything else — including the largest prior gaps (Phase 7's
+tabbed profile page, Phase 9's address cross-reference, Phase 10's inline document overview, Phase 11's
+missing-document recognition, and Phase 14's remaining upload entry points) — is now done.
