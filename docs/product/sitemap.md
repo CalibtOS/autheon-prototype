@@ -1,11 +1,12 @@
 # AUTHEON sitemap (prototype + production targets)
 
-> **Status:** Current for PRD v1.8. Canonical requirements: [`../requirements/prd.json`](../requirements/prd.json).
+> **Status:** Auth entries added for PRD v2.24. The remaining rows are **stale at PRD v1.8** — they still say "Special case" (removed in v2.6), "daily limit" (replaced by probation in v1.9) and "Not performable" (replaced by the empty-run workflow in v2.4). That drift is pre-existing and is **not** corrected here; canonical requirements: [`../requirements/prd.json`](../requirements/prd.json).
 
 ## Driver PWA
 
 | Area | Entry | Notes |
 |------|-------|-------|
+| **Sign in** | **App entry** | Login gate (PR #32) — email + password; every row below is reachable only after sign-in. Forgot password → email → 6-digit code → new password. Set password from an invite link |
 | Marketplace | Bottom tab | Pull-to-refresh; accept with daily limit + same-day overlap prompt |
 | My Jobs | Bottom tab | Active, Performed, Cancelled, Special case |
 | Tour detail | From My Jobs / marketplace | Map handoff; mark performed; upload documents on **active or performed** tours |
@@ -18,6 +19,7 @@
 
 | Area | Entry | Notes |
 |------|-------|-------|
+| **Sign in** | **Console entry** | Login gate (PR #32) — same shared `LoginForm` / forgot-password / set-password primitives as the Driver PWA |
 | Jobs overview | Sidebar Jobs | Primary **New job** CTA; filters |
 | Job detail | Row click | Publish, assign, reassign, **Cancel** (reason modal), special case resolution |
 | New / edit job | Jobs overview CTA | Customer + pickup + delivery; optional admin document attach |

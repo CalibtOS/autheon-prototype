@@ -5,6 +5,13 @@ window.I18n = (() => {
 
   const MESSAGES = {
     en: {
+      adminUsersAccessNoPasswordNote: "No initial password is generated or sent.",
+      accept: "Accept",
+      reject: "Reject",
+      weekend: "Weekend",
+      adminMdrApproved: "Approved",
+      adminMdrRejected: "Rejected",
+      adminSPDocCategory_: "Category",
       appTitle: "Vehicle Transport Platform",
       driverPwa: "Driver PWA",
       adminBackend: "Admin Backend",
@@ -166,6 +173,9 @@ window.I18n = (() => {
       results: "results",
       reset: "Reset",
       noToursMatch: "No tours match these filters.",
+      // General marketplace empty state — used only when NO filter is
+      // active, so it must not mention or imply filtering.
+      marketplaceEmptyNoOrders: "There are currently no open orders.",
       resetFilters: "Reset filters",
       endOfList: "End of list",
       today: "Today",
@@ -299,11 +309,12 @@ window.I18n = (() => {
       infopointNewsTab: "New messages",
       infopointNewsEmpty: "No news items yet.",
       infopointNewsUnread: "New",
+      infopointNewsRead: "Read",
+      infopointMessage: "Message",
       infopointNewsAdminHint:
         "Messages are published by admins under Admin → Infopoint → New messages.",
       infopointDocViewDownload: "View / Download",
       infopointDocPreviewDemo: "PDF preview (demo)",
-      driverNotifInfopointHint: "Also in Infopoint → New messages",
       navInfopoint: "Infopoint",
       adminInfopointDesc:
         "Publish general documents and short messages for drivers. Drivers see them under Infopoint — not in tour notifications or the marketplace alert bell.",
@@ -1671,6 +1682,53 @@ window.I18n = (() => {
       notifOrderUpdatedIntro: "The following details changed:",
       notifJobAssignedTitle: "New order assigned: {tour}",
       notifJobAssignedBody: "You have been assigned order {tour}.",
+      // Notification categories — chip on every notification card.
+      notifCategoryOrder: "Order",
+      notifCategoryAccount: "Account",
+      notifCategorySystem: "System",
+      notifCategoryGeneralInfo: "General information",
+      // Event headings + preview text
+      notifNewPublishedJobTitle: "New matching order",
+      notifNewPublishedJobBody:
+        "{from} → {to} is now available on the marketplace.",
+      notifDocumentRejectedTitle: "Document rejected",
+      notifDocumentRejectedBody: "Please upload a corrected document.",
+      notifDocumentAcceptedTitle: "Document accepted",
+      notifDocumentAcceptedBody: "{file} was accepted.",
+      notifMasterDataSentTitle: "Change request sent",
+      notifMasterDataSentBody:
+        "The operations team received your profile change request.",
+      notifMasterDataApprovedTitle: "Profile change approved",
+      notifMasterDataApprovedBody:
+        "Your master-data change request was approved.",
+      notifMasterDataRejectedTitle: "Profile change declined",
+      notifMasterDataRejectedBody:
+        "Your master-data change request was declined.",
+      // Expand / collapse + contextual actions
+      notifExpandPreview: "Show tour details",
+      notifCollapsePreview: "Hide tour details",
+      notifViewOrder: "View order",
+      notifToMyOrders: "To my orders",
+      notifViewMoreOrders: "View more orders",
+      notifOpenMessage: "Open message",
+      notifOpenDocument: "Open document",
+      notifPreviewProtectedHint:
+        "Customer, full addresses and licence plate become visible after you accept.",
+      // Unavailable / safe-fallback states
+      notifUnavailableTaken:
+        "This order is no longer available — another service partner has booked it.",
+      notifUnavailableWithdrawn:
+        "This order is no longer available — Autheon withdrew it from the marketplace.",
+      notifUnavailableCancelled:
+        "This order is no longer available — it was cancelled.",
+      notifUnavailableClosed: "This order is closed and can no longer be booked.",
+      notifUnavailableGeneric: "This order is no longer available.",
+      notifMessageGone: "This message is no longer available.",
+      notifDocumentGone: "This document is no longer available.",
+      notifOrderGone: "This order is no longer available.",
+      notifNotPermitted: "You no longer have access to this content.",
+      notifTargetUnavailable:
+        "The content this notification points to is no longer available.",
       adminEmptyRunReviewTitle: "Empty run — open review case",
       adminEmptyRunReviewHint:
         "Decide whether to recognise the reported empty run. There is no intermediate state.",
@@ -1974,11 +2032,32 @@ window.I18n = (() => {
       docCategoryLegal: "Legal",
       docCategorySafety: "Safety",
       docScopeGlobal: "Global",
+      // Seeded Infopoint messages. Demo content, localized at RENDER time by
+      // displayNewsTitle/displayNewsBody (driver.jsx) keyed on the seed id —
+      // the same convention the seeded documents above use, so switching
+      // language updates them instead of freezing the boot locale. Messages an
+      // admin creates in the console keep their own stored text.
+      newsTransportStrikeTitle: "ATTENTION: public transport strike 01.01.2027",
+      newsTransportStrikeBody:
+        "Dear service partners,\n\nOn Monday, 01.01.2027, there may be isolated warning strikes in public transport. Please check in good time whether your area in Germany is affected.\n\nThank you for your attention and safe travels.",
+      newsDocUploadFlowTitle: "New document upload flow",
+      newsDocUploadFlowBody:
+        "After marking a tour performed, upload your billing invoice and delivery proof from the tour detail screen.",
+      newsReportProblemTitle: "Report Problem replaces returns",
+      newsReportProblemBody:
+        "Use Report Problem to cancel an order or report an empty run. A reported empty run is submitted to dispatch for review (recognised or not recognised).",
       noteConfirmArrival: "Please confirm arrival 15 minutes early.",
       noteReportPickupDelay: "Report any pickup delay immediately to dispatch.",
     },
     de: {
-      appTitle: "Fahrzeugtransport Plattform",
+      adminUsersAccessNoPasswordNote: "Kein initiales Passwort wird generiert.",
+      accept: "Akzeptieren",
+      reject: "Ablehnen",
+      weekend: "Wochenende",
+      adminMdrApproved: "Genehmigt",
+      adminMdrRejected: "Abgelehnt",
+      adminSPDocCategory_: "Kategorie",
+      appTitle: "Fahrzeug-Transportplattform",
       driverPwa: "Fahrer App",
       adminBackend: "Admin Backend",
       clientPreview: "Kundenvorschau",
@@ -2137,6 +2216,7 @@ window.I18n = (() => {
       results: "Ergebnisse",
       reset: "Zurücksetzen",
       noToursMatch: "Keine Touren entsprechen diesen Filtern.",
+      marketplaceEmptyNoOrders: "Es gibt derzeit keine offenen Aufträge.",
       resetFilters: "Filter zurücksetzen",
       endOfList: "Ende der Liste",
       today: "Heute",
@@ -2268,11 +2348,12 @@ window.I18n = (() => {
       infopointNewsTab: "Neue Nachrichten",
       infopointNewsEmpty: "Noch keine News.",
       infopointNewsUnread: "Neu",
+      infopointNewsRead: "Gelesen",
+      infopointMessage: "Nachricht",
       infopointNewsAdminHint:
         "Nachrichten werden im Admin unter Infopoint → Neue Nachrichten veröffentlicht.",
       infopointDocViewDownload: "Ansehen / Herunterladen",
       infopointDocPreviewDemo: "PDF-Vorschau (Demo)",
-      driverNotifInfopointHint: "Auch unter Infopoint → Neue Nachrichten",
       navInfopoint: "Infopoint",
       adminInfopointDesc:
         "Allgemeine Dokumente und kurze Nachrichten für Fahrer veröffentlichen. Fahrer sehen sie unter Infopoint — nicht in Tour-Benachrichtigungen oder der Marktplatz-Glocke.",
@@ -3654,6 +3735,55 @@ window.I18n = (() => {
       notifOrderUpdatedIntro: "Folgende Daten wurden geändert:",
       notifJobAssignedTitle: "Neuer Auftrag zugewiesen: {tour}",
       notifJobAssignedBody: "Ihnen wurde der Auftrag {tour} zugewiesen.",
+      // Benachrichtigungskategorien — Chip auf jeder Benachrichtigungskarte.
+      notifCategoryOrder: "Auftrag",
+      notifCategoryAccount: "Konto",
+      notifCategorySystem: "System",
+      notifCategoryGeneralInfo: "Allgemeine Information",
+      // Überschriften + Vorschautexte
+      notifNewPublishedJobTitle: "Neuer passender Auftrag",
+      notifNewPublishedJobBody:
+        "{from} → {to} ist jetzt im Marktplatz verfügbar.",
+      notifDocumentRejectedTitle: "Dokument abgelehnt",
+      notifDocumentRejectedBody:
+        "Bitte laden Sie ein korrigiertes Dokument hoch.",
+      notifDocumentAcceptedTitle: "Dokument akzeptiert",
+      notifDocumentAcceptedBody: "{file} wurde akzeptiert.",
+      notifMasterDataSentTitle: "Änderungsantrag gesendet",
+      notifMasterDataSentBody:
+        "Der Betrieb hat Ihren Antrag auf Profiländerung erhalten.",
+      notifMasterDataApprovedTitle: "Profiländerung genehmigt",
+      notifMasterDataApprovedBody:
+        "Ihr Antrag auf Änderung der Stammdaten wurde genehmigt.",
+      notifMasterDataRejectedTitle: "Profiländerung abgelehnt",
+      notifMasterDataRejectedBody:
+        "Ihr Antrag auf Änderung der Stammdaten wurde abgelehnt.",
+      // Aufklappen / Zuklappen + kontextbezogene Aktionen
+      notifExpandPreview: "Tourdetails anzeigen",
+      notifCollapsePreview: "Tourdetails ausblenden",
+      notifViewOrder: "Auftrag ansehen",
+      notifToMyOrders: "Zu meinen Aufträgen",
+      notifViewMoreOrders: "Weitere Aufträge ansehen",
+      notifOpenMessage: "Nachricht öffnen",
+      notifOpenDocument: "Dokument öffnen",
+      notifPreviewProtectedHint:
+        "Kunde, vollständige Adressen und Kennzeichen werden nach der Annahme sichtbar.",
+      // Nicht-verfügbar- / Fallback-Zustände
+      notifUnavailableTaken:
+        "Dieser Auftrag ist nicht mehr verfügbar — ein anderer Servicepartner hat ihn gebucht.",
+      notifUnavailableWithdrawn:
+        "Dieser Auftrag ist nicht mehr verfügbar — Autheon hat ihn vom Marktplatz zurückgezogen.",
+      notifUnavailableCancelled:
+        "Dieser Auftrag ist nicht mehr verfügbar — er wurde storniert.",
+      notifUnavailableClosed:
+        "Dieser Auftrag ist abgeschlossen und kann nicht mehr gebucht werden.",
+      notifUnavailableGeneric: "Dieser Auftrag ist nicht mehr verfügbar.",
+      notifMessageGone: "Diese Nachricht ist nicht mehr verfügbar.",
+      notifDocumentGone: "Dieses Dokument ist nicht mehr verfügbar.",
+      notifOrderGone: "Dieser Auftrag ist nicht mehr verfügbar.",
+      notifNotPermitted: "Sie haben keinen Zugriff mehr auf diesen Inhalt.",
+      notifTargetUnavailable:
+        "Der Inhalt dieser Benachrichtigung ist nicht mehr verfügbar.",
       adminEmptyRunReviewTitle: "Leerfahrt — offener Prüfvorgang",
       adminEmptyRunReviewHint:
         "Entscheiden Sie, ob die gemeldete Leerfahrt anerkannt wird. Eine Zwischenstufe gibt es nicht.",
@@ -3973,6 +4103,16 @@ window.I18n = (() => {
       docCategoryLegal: "Rechtliches",
       docCategorySafety: "Sicherheit",
       docScopeGlobal: "Global",
+      newsTransportStrikeTitle:
+        "ACHTUNG: Streik im öffentlichen Nahverkehr am 01.01.2027",
+      newsTransportStrikeBody:
+        "Liebe Servicepartner,\n\nam Montag, 01.01.2027, kann es im öffentlichen Nahverkehr zu einzelnen Warnstreiks kommen. Bitte prüfen Sie frühzeitig, ob Ihre Region in Deutschland betroffen ist.\n\nVielen Dank für Ihre Aufmerksamkeit und gute Fahrt.",
+      newsDocUploadFlowTitle: "Neuer Ablauf für Dokumenten-Uploads",
+      newsDocUploadFlowBody:
+        "Nachdem Sie eine Tour als durchgeführt markiert haben, laden Sie Ihre Abrechnungsrechnung und den Übergabenachweis in der Tourdetailansicht hoch.",
+      newsReportProblemTitle: "„Problem melden“ ersetzt Rückgaben",
+      newsReportProblemBody:
+        "Nutzen Sie „Problem melden“, um einen Auftrag zu stornieren oder eine Leerfahrt zu melden. Eine gemeldete Leerfahrt wird der Disposition zur Prüfung vorgelegt (anerkannt oder nicht anerkannt).",
       noteConfirmArrival: "Bitte Ankunft 15 Minuten vorher bestätigen.",
       noteReportPickupDelay:
         "Verzögerungen bei der Abholung sofort an die Disposition melden.",
