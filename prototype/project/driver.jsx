@@ -2677,6 +2677,10 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
 
   useEffect(() => {
     let cancelled = false;
+    // A generated transport order arrives as print-ready HTML, not as a file
+    // to fetch — it is rendered in the iframe branch below, so the pdf.js
+    // canvas path is skipped entirely.
+    if (preview?.previewHtml) return undefined;
     if (!preview?.pdfUrl) {
       setPdfState("fallback");
       return undefined;
@@ -2729,6 +2733,15 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
     preview.downloadName || preview.fileName || "document.pdf";
 
   const download = () => {
+    // The generated transport order has no stored file in a static prototype:
+    // Chromium turns the print-ready HTML into the PDF the driver saves.
+    if (preview.previewHtml) {
+      window.AutheonTransportOrderPdf?.printDocumentHtml(
+        preview.previewHtml,
+        preview.fileName,
+      );
+      return;
+    }
     const a = document.createElement("a");
     if (preview.pdfUrl) {
       a.href = preview.pdfUrl;
@@ -2744,6 +2757,12 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
 
   const share = async () => {
     setShareMsg("");
+    if (preview.previewHtml) {
+      // Nothing to hand to the Web Share API without PDF bytes; the print
+      // dialog is the only path to a file in the prototype.
+      setShareMsg(t("shareNotSupported"));
+      return;
+    }
     try {
       const blob = preview.pdfUrl
         ? await fetch(preview.pdfUrl).then((r) => r.blob())
@@ -2809,7 +2828,21 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
           </button>
         </div>
         <div className="docview-body">
-          {preview.pdfUrl && pdfState !== "fallback" ? (
+          {preview.previewHtml ? (
+            /* Generated A4 document. `srcDoc` keeps it same-origin so Print
+               can drive the frame, and the transform scales the 210 mm page to
+               the phone width without reflowing the approved layout. */
+            <div className="docview-pages scroll">
+              <div className="docview-a4-scaler">
+                <iframe
+                  ref={iframeRef}
+                  className="docview-a4"
+                  title={preview.title || t("documentPreviewTitle")}
+                  srcDoc={preview.previewHtml}
+                />
+              </div>
+            </div>
+          ) : preview.pdfUrl && pdfState !== "fallback" ? (
             <div className="docview-pages scroll">
               {pdfState === "loading" ? (
                 <div className="docview-loading" aria-busy="true">
@@ -3852,6 +3885,9 @@ const JobUnlocked = ({
     job.endPlz,
     job.endCity,
   );
+  // Active transport-order document (Task 17). Only the current version is
+  // exposed in the driver flow; the store enforces that and the authorization.
+  const activeTransportOrderDoc = store.getActiveTransportOrderDocument(job.id);
   const [docPreview, setDocPreview] = useState(null);
   // A deep-linked document resolves through the same audited preview call the
   // document row uses. A file that has since been removed simply opens the tour
@@ -4350,25 +4386,96 @@ const JobUnlocked = ({
                   </button>
                 </div>
               </div>
+              
+             </div>
+
+        {/* Operational Instructions Card */}
+        <div className="detail-card">
+          <div className="detail-section-title">
+            <Ic.TabInfo />
+            <span>{t("operationalInstructions")}</span>
+          </div>
+
+          <div className="detail-pdf-card">
+            <div className="pdf-icon-wrap">
+              <Ic.Pdf />
+            </div>
+
+            <div className="flex-1-min-0">
+              {/* Filename, displayed version and audit entry all come from the
+                  active document record, so they can never disagree. */}
+              <div className="pdf-name">
+                {activeTransportOrderDoc?.fileName ||
+                  `Fahrauftrag-${job.tour}.pdf`}
+              </div>
+
+              <div className="pdf-meta">
+                v{activeTransportOrderDoc?.version || job.pdfVersion || 1}
+              </div>
+            </div>
+
+            <div className="pdf-actions">
+              <button
+                type="button"
+                className="pdf-btn"
+                title={t("view")}
+                aria-label={t("view")}
+                onClick={() => {
+                  const result = store.getTransportOrderPreview(
+                    job.id,
+                    DRIVER_ACCESS,
+                  );
+
+                  if (result.ok) {
+                    setDocPreview(result.preview);
+                  }
+                }}
+              >
+                <Ic.Eye />
+              </button>
+
+              <button
+                type="button"
+                className="pdf-btn"
+                title={t("download")}
+                aria-label={t("download")}
+                onClick={() => {
+                  const result = store.downloadPdf(job.id, DRIVER_ACCESS);
+
+                  if (result.ok) {
+                    window.AutheonTransportOrderPdf?.printDocumentHtml(
+                      result.previewHtml,
+                      result.fileName,
+                    );
+                  }
+                }}
+              >
+                <Ic.Down />
+              </button>
+            </div>
+          </div>
+
+          <p
+            className="text-muted-sm"
+            style={{ lineHeight: 1.6, margin: 0, fontSize: 13 }}
+          >
+            {displayDriverNote(job.notesDriver, t) || t("noDriverAddons")}
+          </p>
+
+          {job.notes ? (
+            <>
+              <hr className="detail-card-divider" />
+              <div className="time-label">{t("dispatchNotes")}</div>
+
               <p
                 className="text-muted-sm"
                 style={{ lineHeight: 1.6, margin: 0, fontSize: 13 }}
               >
-                {displayDriverNote(job.notesDriver, t) || t("noDriverAddons")}
+                {job.notes}
               </p>
-              {job.notes ? (
-                <>
-                  <hr className="detail-card-divider" />
-                  <div className="time-label">{t("dispatchNotes")}</div>
-                  <p
-                    className="text-muted-sm"
-                    style={{ lineHeight: 1.6, margin: 0, fontSize: 13 }}
-                  >
-                    {job.notes}
-                  </p>
-                </>
-              ) : null}
-            </div>
+            </>
+          ) : null}
+        </div>
 
             {/* Official Documents Component */}
             <JobOfficialTourDocuments job={job} onPreview={setDocPreview} />

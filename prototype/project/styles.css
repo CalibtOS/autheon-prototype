@@ -5569,6 +5569,42 @@ select.input {
 .phone-shell .docview-loading {
   padding: 8px 4px;
 }
+/* Admin-side A4 preview of a generated transport order. The frame carries the
+   real 210 mm-wide document and scrolls inside the dialog's content area, so
+   the approved layout is inspected at true proportions. */
+.admin-a4-preview {
+  display: block;
+  width: 100%;
+  height: min(62vh, 720px);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  background: #fff;
+}
+
+/* Generated transport-order document (Task 17). The frame is a full 210×297 mm
+   A4 page; scaling it down with a transform preserves the approved layout
+   exactly, whereas letting it reflow to the phone width would not. The wrapper
+   reserves the SCALED height so the scroll container measures correctly. */
+.phone-shell .docview-a4-scaler {
+  --a4-scale: 0.42;
+  width: calc(210mm * var(--a4-scale));
+  height: calc(297mm * var(--a4-scale));
+  margin: 0 auto;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: var(--sh-1);
+  overflow: hidden;
+}
+.phone-shell .docview-a4 {
+  display: block;
+  width: 210mm;
+  height: 297mm;
+  border: 0;
+  background: #fff;
+  transform: scale(var(--a4-scale));
+  transform-origin: top left;
+}
 .phone-shell .docview-frame {
   display: block;
   width: 100%;

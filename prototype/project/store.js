@@ -584,7 +584,14 @@ window.AuthStore = (() => {
       isNew: false,
       history: [],
       createdAt: "",
+      // Transport-order PDF (Task 17). `pdfVersion` stays as the denormalized
+      // display value; `transportOrderDocuments` holds the immutable version
+      // records. `bookedAt` is the binding-booking instant the PDF formats in
+      // Europe/Berlin; `dataRevision` is the marker that makes generation
+      // idempotent and decides when a NEW version is required.
       pdfVersion: 0,
+      bookedAt: "",
+      dataRevision: 1,
       performedAt: "",
       documentReviewSummary: "Not Started",
       settlementState: "Not Started",
@@ -1699,6 +1706,11 @@ window.AuthStore = (() => {
         driverCode: "AU-41-0228",
         joinedAt: "14.03.2024",
         address: "Landsberger Str. 22, 80339 Munchen",
+        street: "Landsberger Str.",
+        houseNumber: "22",
+        postalCode: "80339",
+        city: "München",
+        country: "Deutschland",
         email: "jordan.blake@example.com",
         emailVerified: true,
         pendingEmailChange: null,
@@ -1723,6 +1735,11 @@ window.AuthStore = (() => {
         driverCode: "AU-41-0301",
         joinedAt: "02.09.2023",
         address: "Hanauer Landstr. 12, 60314 Frankfurt",
+        street: "Hanauer Landstr.",
+        houseNumber: "12",
+        postalCode: "60314",
+        city: "Frankfurt am Main",
+        country: "Deutschland",
         email: "k.neumann@example.com",
         phone: "+49 172 3300301",
         notes: "",
@@ -1747,6 +1764,11 @@ window.AuthStore = (() => {
         driverCode: "AU-41-0177",
         joinedAt: "20.11.2023",
         address: "Kantstr. 18, 10623 Berlin",
+        street: "Kantstr.",
+        houseNumber: "18",
+        postalCode: "10623",
+        city: "Berlin",
+        country: "Deutschland",
         email: "mira.vogt@example.com",
         phone: "+49 171 991177",
         notes: "",
@@ -1772,6 +1794,11 @@ window.AuthStore = (() => {
         driverCode: "DRV-001",
         joinedAt: "01.01.2026",
         address: "Fahrerweg 5, 10557 Berlin",
+        street: "Fahrerweg",
+        houseNumber: "5",
+        postalCode: "10557",
+        city: "Berlin",
+        country: "Deutschland",
         email: "driver.one@demo.local",
         emailVerified: true,
         pendingEmailChange: null,
@@ -1797,15 +1824,19 @@ window.AuthStore = (() => {
       {
         id: "ADM-001",
         name: DEMO_ADMIN,
+        initials: "A. Bauer",
         email: "anna.bauer@autheon.example",
         role: "ADMIN",
+        phone: "+49 2173 265 1112",
         status: "Active",
       },
       {
         id: "ADM-002",
         name: "Lukas Reimann",
+        initials: "L. Reimann",
         email: "lukas.reimann@autheon.example",
         role: "ADMIN",
+        phone: "+49 2173 265 1113",
         status: "Active",
       },
       // Mirrors the backend's seeds/profiles/development.json fixture admin
@@ -1814,8 +1845,10 @@ window.AuthStore = (() => {
       {
         id: "ADM-003",
         name: "Demo Admin",
+        initials: "D. Admin",
         email: "demo.admin@demo.local",
         role: "ADMIN",
+        phone: "+49 2173 265 1114",
         status: "Active",
       },
     ];
@@ -2433,6 +2466,9 @@ window.AuthStore = (() => {
   // itself (business registration, licence, ID), not to any one tour.
   let driverDocuments = [];
   let consolidatedInvoices = [];
+  // Immutable transport-order PDF version records (Task 17). Append-only; the
+  // only field ever changed after insert is `isActive`.
+  let transportOrderDocuments = [];
 
   for (const j of jobs) {
     j.paymentStatus = normalizePaymentStatus(j.paymentStatus);
@@ -2814,6 +2850,14 @@ window.AuthStore = (() => {
       Number(ss) || 0,
     );
     return Number.isNaN(d.getTime()) ? null : d;
+  /**
+   * Machine-readable instant. `nowStamp()` is the human display string the
+   * audit table renders; anything that has to be formatted for a time zone
+   * later — notably the transport-order PDF's Europe/Berlin booking date —
+   * needs a real instant, not a dotted display string.
+   */
+  function nowIso() {
+    return new Date().toISOString();
   }
 
   // Safe i18n lookup for mock notification/audit copy generated in the store.
@@ -2988,8 +3032,336 @@ window.AuthStore = (() => {
     };
   }
 
-  function bumpPdf(job) {
-    job.pdfVersion = (job.pdfVersion || 0) + 1;
+  // =======================================================================
+  // TRANSPORT-ORDER PDF DOCUMENTS (PRD Task 17)
+  //
+  // Every binding booking produces an IMMUTABLE document version. This block
+  // owns the behaviour the renderer deliberately does not: generation timing,
+  // version numbering, the active-version pointer, idempotency, the
+  // booking-time service-partner snapshot, the checksum, the audit entry and
+  // the partner notification. `transport-order-pdf.js` only maps and renders.
+  //
+  // A version record is never mutated after creation except for its
+  // `isActive` flag, which is what makes the previous version's snapshot,
+  // checksum and rendered source permanently reproducible from the audit log.
+  // =======================================================================
+
+  /**
+   * The applicable GTC/AGB document. The specification requires the document
+   * id AND version to be recorded with every generated PDF; the prototype has
+   * no versioned GTC entity yet, so this is the single declared reference.
+   * OPEN: the production GTC id/version source is part of the pending legal
+   * sign-off (blocker B5).
+   */
+  const GTC_DOCUMENT = { documentId: "AGB-SP", version: "2026-01" };
+
+  /**
+   * Statuses in which a booking is BINDING, i.e. the only states a document
+   * may be generated for. A draft or a still-published marketplace order has
+   * no accepted counterparty, so it never has a transport-order PDF.
+   */
+  const PDF_BINDING_STATUSES = ["assigned", "accepted", "performed"];
+
+  /**
+   * THE RELEVANT-CHANGE SET.
+   *
+   * Exactly the `ORDER_EDIT_FIELDS` keys that materially change what the PDF
+   * renders. A change to anything outside this set — internal admin notes,
+   * admin-only financials, the derived red-plate flag, the additional vehicle
+   * characteristics, the order category, and the PWA distance — must NOT
+   * create a new version and must NOT reach the partner notification.
+   *
+   * OPEN: the client has not enumerated this list; it is derived from the
+   * approved templates' field mapping and REQUIRES CONFIRMATION (blocker B2).
+   */
+  const PDF_RELEVANT_FIELDS = new Set([
+    "customer",
+    "pickupCompany", "pickupAddress", "pickupPostal", "pickupCity",
+    "pickupCountry", "pickupContact", "pickupPhone", "pickupAltContact",
+    "pickupEmail", "pickupNotes", "pickupDate", "pickupWindow",
+    "deliveryCompany", "deliveryAddress", "deliveryPostal", "deliveryCity",
+    "deliveryCountry", "deliveryContact", "deliveryPhone", "deliveryAltContact",
+    "deliveryEmail", "deliveryNotes", "deliveryDate", "deliveryWindow",
+    "vehicleType", "manufacturer", "vehicleModel", "plate", "vin",
+    "transportType", "registrationStatus",
+    "driverOffer",
+    "notesDriver",
+  ]);
+
+  /** Which of a set of changed field keys actually affect the PDF. */
+  function pdfRelevantChanges(diffs) {
+    return (diffs || []).filter((d) => PDF_RELEVANT_FIELDS.has(d.field));
+  }
+
+  function transportOrderRenderer() {
+    return typeof window !== "undefined"
+      ? window.AutheonTransportOrderPdf
+      : null;
+  }
+
+  /**
+   * Freezes the service partner's identity and postal address AT BOOKING TIME.
+   * Later profile edits must never change an already generated document, so
+   * the snapshot is copied by value into the version record.
+   */
+  function servicePartnerSnapshot(driver) {
+    if (!driver) return null;
+    return {
+      driverId: driver.id || "",
+      company: driver.company || "",
+      person: driver.name || "",
+      street: driver.street || "",
+      houseNumber: driver.houseNumber || "",
+      postalCode: driver.postalCode || "",
+      city: driver.city || "",
+      country: driver.country || "",
+    };
+  }
+
+  /**
+   * The deterministic revision marker. Two generations of the same job at the
+   * same revision must produce the same document, which is what makes
+   * generation idempotent under retries and concurrent events.
+   */
+  function jobDataRevision(job) {
+    return Number(job?.dataRevision || 1);
+  }
+
+  function activeTransportOrderDocument(jobId) {
+    return (
+      transportOrderDocuments.find((d) => d.jobId === jobId && d.isActive) ||
+      null
+    );
+  }
+
+  function transportOrderDocumentsFor(jobId) {
+    return transportOrderDocuments
+      .filter((d) => d.jobId === jobId)
+      .sort((a, b) => a.version - b.version);
+  }
+
+  /** Maps a job + its frozen snapshot into the renderer's input contract. */
+  function transportOrderRenderInput(job, snapshot, bookedAt, admin) {
+    return {
+      job,
+      servicePartner: snapshot,
+      admin: admin || null,
+      bookedAt,
+      gtc: GTC_DOCUMENT,
+    };
+  }
+
+  /**
+   * Renders an existing version record back into HTML. Used by the preview and
+   * download paths so what a driver sees is regenerated from the STORED
+   * immutable snapshot, not from today's live job data.
+   */
+  function renderStoredTransportOrder(doc) {
+    const renderer = transportOrderRenderer();
+    if (!renderer || !doc) return "";
+    return renderer.renderHtml(doc.payload);
+  }
+
+  /**
+   * Generates the next immutable transport-order PDF version for a job.
+   *
+   * Called ONLY from paths where a binding booking has already been persisted
+   * — never from a UI render, a download, or an uncommitted draft.
+   *
+   * @param {string} jobId
+   * @param {object} opts
+   * @param {string} opts.trigger      "marketplace_acceptance" | "direct_assignment"
+   *                                   | "relevant_change" | "admin_manual"
+   * @param {string} [opts.actor]      generating admin/driver display name
+   * @param {string[]} [opts.changedFields]  relevant field keys, when applicable
+   * @param {boolean} [opts.force]     bypass revision idempotency (manual regenerate)
+   * @returns {{ok: boolean, reason?: string, missing?: string[], document?: object}}
+   */
+  function generateTransportOrderPdf(jobId, opts = {}) {
+    const job = api.getJob(jobId);
+    if (!job) return { ok: false, reason: "not_found" };
+    if (!PDF_BINDING_STATUSES.includes(job.status)) {
+      return { ok: false, reason: "not_binding" };
+    }
+
+    const renderer = transportOrderRenderer();
+    if (!renderer) return { ok: false, reason: "renderer_unavailable" };
+
+    const revision = jobDataRevision(job);
+    const current = activeTransportOrderDocument(jobId);
+
+    // IDEMPOTENCY: a retry or a duplicate event for the same job revision
+    // returns the existing active document instead of minting a second
+    // version. `force` is only used by the explicit admin regenerate action.
+    if (current && current.dataRevision === revision && !opts.force) {
+      return { ok: true, document: current, reused: true };
+    }
+
+    // The snapshot is taken ONCE, at v1, and carried forward unchanged: a
+    // later profile edit must not alter any version, including new ones for
+    // the same booking.
+    const firstVersion = transportOrderDocumentsFor(jobId)[0];
+    const snapshot =
+      firstVersion?.servicePartnerSnapshot ||
+      servicePartnerSnapshot(jobDriverRecord(job));
+    if (!snapshot) return { ok: false, reason: "no_service_partner" };
+
+    const bookedAt = job.bookedAt || firstVersion?.bookedAt || nowIso();
+    const admin = api.getCurrentAdmin() || admins[0] || null;
+
+    const built = renderer.buildDocument(
+      transportOrderRenderInput(job, snapshot, bookedAt, admin),
+    );
+    if (!built.ok) {
+      // MANDATORY DATA MISSING: nothing is published and the previous active
+      // version — if any — stays active. The failure is audited so it is
+      // visible rather than silent.
+      log(
+        "pdf_generation_failed",
+        opts.actor || DEMO_ADMIN,
+        job.tour,
+        `Missing mandatory PDF data: ${built.missing.join(", ")}`,
+        {
+          entityType: "transport_order_pdf",
+          jobId: job.id,
+          tour: job.tour,
+          trigger: opts.trigger || "",
+          missingFields: built.missing.join(","),
+        },
+      );
+      return { ok: false, reason: "missing_mandatory", missing: built.missing };
+    }
+
+    const version = transportOrderDocumentsFor(jobId).length + 1;
+    const doc = {
+      id: `TOPDF-${job.id}-v${version}`,
+      jobId: job.id,
+      tour: job.tour,
+      version,
+      isActive: true,
+      template: built.payload.template,
+      title: `${built.payload.title.lead} ${built.payload.title.accent}`,
+      fileName: built.payload.fileName,
+      metaTitle: built.payload.metaTitle,
+      metaAuthor: built.payload.metaAuthor,
+      generatedAt: nowStamp(),
+      generatedAtIso: nowIso(),
+      bookedAt,
+      dataRevision: revision,
+      trigger: opts.trigger || "unspecified",
+      generatedBy: opts.actor || admin?.name || DEMO_ADMIN,
+      servicePartnerSnapshot: snapshot,
+      gtcDocumentId: GTC_DOCUMENT.documentId,
+      gtcVersion: GTC_DOCUMENT.version,
+      // In production this is the object-storage key; the prototype renders on
+      // demand from the frozen payload below, so the reference is nominal.
+      storageRef: `transport-orders/${job.id}/v${version}/${built.payload.fileName}`,
+      checksumSha256: built.checksum,
+      changedFields: (opts.changedFields || []).slice(),
+      status: "generated",
+      // The frozen render input. This is what makes a historical version
+      // reproducible byte-for-byte after the live order has moved on.
+      payload: built.payload,
+    };
+
+    // Exactly one active document per job. Deactivating the predecessor and
+    // inserting the successor happen together, with no intervening emit(), so
+    // no reader can observe two active versions or none.
+    for (const prev of transportOrderDocuments) {
+      if (prev.jobId === job.id) prev.isActive = false;
+    }
+    transportOrderDocuments.push(doc);
+    job.pdfVersion = version; // denormalized for the existing table/detail UI
+
+    log(
+      version === 1 ? "pdf_generated" : "pdf_regenerated",
+      doc.generatedBy,
+      job.tour,
+      `${doc.title} ${doc.fileName} · version v${version} · revision ${revision}` +
+        (doc.changedFields.length ? ` · changed: ${doc.changedFields.join(", ")}` : ""),
+      {
+        entityType: "transport_order_pdf",
+        entityId: doc.id,
+        jobId: job.id,
+        tour: job.tour,
+        documentVersion: `v${version}`,
+        activeVersion: `v${version}`,
+        dataRevision: revision,
+        checksumSha256: doc.checksumSha256,
+        trigger: doc.trigger,
+        gtcDocument: `${doc.gtcDocumentId}@${doc.gtcVersion}`,
+      },
+    );
+
+    // A NEW version of an existing document means the partner's binding
+    // paperwork changed — notify them. v1 is announced by the acceptance /
+    // assignment notification the booking paths already send, so notifying
+    // again here would duplicate it. Admin-only data is never included.
+    if (version > 1) {
+      const dr = jobDriverRecord(job);
+      if (dr) {
+        pushDriverNotification({
+          type: "order_updated",
+          jobId: job.id,
+          tour: job.tour,
+          documentId: doc.id,
+          title: t2("notifTransportOrderPdfUpdatedTitle", { tour: job.tour }),
+          body: t2("notifTransportOrderPdfUpdatedBody", { version: `v${version}` }),
+          driverId: dr.id,
+        });
+      }
+    }
+
+    return { ok: true, document: doc };
+  }
+
+  /**
+   * Marks the order data as materially changed, so the next generation cannot
+   * be short-circuited by the revision idempotency check.
+   */
+  function bumpJobDataRevision(job) {
+    job.dataRevision = jobDataRevision(job) + 1;
+  }
+
+  /**
+   * Recovers the binding-booking instant for a SEEDED order, whose history
+   * carries the prototype's dotted `DD.MM. HH:MM` display stamps rather than a
+   * real instant. Live bookings set `job.bookedAt` directly.
+   */
+  function seededBookingInstant(job) {
+    const row = (job.history || [])
+      .slice()
+      .reverse()
+      .find((h) => ["assigned", "accepted"].includes(h.st));
+    const m = String(row?.at || job.createdAt || "").match(
+      /^(\d{2})\.(\d{2})\.?\s*(\d{2}):(\d{2})$/,
+    );
+    if (!m) return "";
+    // The seed data is all 2026, and 12:00 UTC would shift the calendar day
+    // for no one in Europe/Berlin — but these stamps ARE Berlin wall-clock, so
+    // they are anchored as such via the UTC offset the renderer applies.
+    return new Date(
+      Date.UTC(2026, Number(m[2]) - 1, Number(m[1]), Number(m[3]) - 2, Number(m[4])),
+    ).toISOString();
+  }
+
+  /**
+   * Backfills v1 for the seeded orders that are already in a binding state, by
+   * running the REAL generation path rather than hand-writing records — so the
+   * demo data can never describe a document shape the code cannot produce.
+   */
+  function seedTransportOrderDocuments() {
+    for (const job of jobs) {
+      if (!PDF_BINDING_STATUSES.includes(job.status)) continue;
+      if (!job.bookedAt) job.bookedAt = seededBookingInstant(job);
+      const before = auditLog.length;
+      generateTransportOrderPdf(job.id, {
+        trigger: job.status === "accepted" ? "marketplace_acceptance" : "direct_assignment",
+        actor: "System (seed)",
+      });
+      // Seeding must not pollute the audit log the admin console shows.
+      auditLog.splice(0, auditLog.length - before);
+    }
   }
 
   function distanceKey(job) {
@@ -4196,6 +4568,21 @@ window.AuthStore = (() => {
         title: t2("notifOrderUpdatedTitle", { tour: job.tour }),
         body: `${t2("notifOrderUpdatedIntro")}\n${lines}`,
         driverId: dr.id,
+      });
+    }
+
+    // RELEVANT CHANGE -> NEW IMMUTABLE PDF VERSION (Task 17).
+    // Only fields in PDF_RELEVANT_FIELDS qualify, and only once the booking is
+    // binding: editing a draft or a still-published order changes no existing
+    // document because none exists yet. Internal notes and admin-only
+    // financials fall outside the set, so they never mint a version.
+    const pdfChanges = pdfRelevantChanges(diffs);
+    if (pdfChanges.length && PDF_BINDING_STATUSES.includes(job.status)) {
+      bumpJobDataRevision(job);
+      generateTransportOrderPdf(job.id, {
+        trigger: "relevant_change",
+        actor: DEMO_ADMIN,
+        changedFields: pdfChanges.map((d) => d.field),
       });
     }
   }
@@ -5637,13 +6024,19 @@ window.AuthStore = (() => {
       j.status = "accepted";
       j.driver = dr.name;
       j.driverId = dr.id;
-      bumpPdf(j);
+      j.bookedAt = nowIso();
       j.history = [
         ...(j.history || []),
         { st: "accepted", at: nowStamp(), by: dr.name },
       ];
       driverState.acceptedIds.add(id);
       log("job_accepted", dr.name, j.tour, "Binding slide confirmation");
+      // The booking is now saved and binding, so v1 of the transport-order PDF
+      // is generated from the committed record — never before this point.
+      generateTransportOrderPdf(id, {
+        trigger: "marketplace_acceptance",
+        actor: dr.name,
+      });
       queueAdminEmailAlert("job_accepted", id, `Driver ${dr.name}`);
       emit();
       return { ok: true };
@@ -6355,7 +6748,7 @@ window.AuthStore = (() => {
       j.status = "assigned";
       j.driver = dr.driver.name;
       j.driverId = dr.driver.id;
-      bumpPdf(j);
+      j.bookedAt = nowIso();
       j.history = [
         ...(j.history || []),
         {
@@ -6394,6 +6787,12 @@ window.AuthStore = (() => {
           ? `Driver: ${dr.driver.name} · ${confirmationNote}`
           : `Driver: ${dr.driver.name}`,
       );
+      // Direct assignment is saved and binding at this point, so v1 of the
+      // transport-order PDF is generated from the committed record.
+      generateTransportOrderPdf(id, {
+        trigger: "direct_assignment",
+        actor: DEMO_ADMIN,
+      });
       emit();
       return { ok: true, driver: dr.driver };
     },
@@ -6535,13 +6934,19 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
+    /**
+     * Admin manual regenerate (Task 17). Always mints a NEW immutable version
+     * even when nothing changed, because the admin explicitly asked for one;
+     * the previous version stays in the history untouched.
+     */
     regeneratePdf(id) {
-      const j = api.getJob(id);
-      if (!j || j.status === "draft") return { ok: false };
-      bumpPdf(j);
-      log("pdf_regenerated", DEMO_ADMIN, j.tour, `PDF version ${j.pdfVersion}`);
+      const res = generateTransportOrderPdf(id, {
+        trigger: "admin_manual",
+        actor: DEMO_ADMIN,
+        force: true,
+      });
       emit();
-      return { ok: true };
+      return res;
     },
 
     // ---- Internal admin notes (Storno-Workflow §6) ----------------------
@@ -6610,6 +7015,8 @@ window.AuthStore = (() => {
       clone.spCancellation = null;
       clone.internalNotes = [];
       clone.pdfVersion = 0;
+      clone.bookedAt = "";
+      clone.dataRevision = 1;
       clone.duplicatedFromTour = src.tour; // internal only, not surfaced
       // Client change plan Phase 5: when a service partner needs to be
       // swapped on an accepted order, the required flow is cancel → duplicate
@@ -8203,32 +8610,64 @@ window.AuthStore = (() => {
     // request and no extra endpoint is needed to make the access traceable.
     // `opts.actor === "driver"` attributes the entry to the signed-in driver;
     // omitting it keeps the pre-existing dispatcher attribution.
-    getTransportOrderPreview(id, opts = {}) {
+    /**
+     * Resolves the ACTIVE transport-order document a caller is allowed to see,
+     * or a refusal reason. This is the one authorization gate for preview and
+     * download alike — the UI never decides access.
+     *
+     * A driver may only reach the active document of an order they are
+     * committed to (assigned / accepted / performed). Only the active version
+     * is exposed here; earlier versions live in the audit history and are
+     * reachable through `getTransportOrderDocuments()`, which is admin-side.
+     * OPEN: whether the partner should also see historical versions is
+     * unresolved (blocker B4).
+     */
+    authorizeTransportOrderDocument(id, opts = {}) {
       const j = api.getJob(id);
-      if (!j) return { ok: false };
-      const fileName = `transport-order-${j.id}.pdf`;
+      if (!j) return { ok: false, reason: "not_found" };
+      if (opts.actor === "driver" && !driverIsCommittedToJob(j)) {
+        return { ok: false, reason: "forbidden" };
+      }
+      const doc = activeTransportOrderDocument(j.id);
+      if (!doc) return { ok: false, reason: "no_active_document" };
+      return { ok: true, job: j, document: doc };
+    },
+
+    getTransportOrderPreview(id, opts = {}) {
+      const auth = api.authorizeTransportOrderDocument(id, opts);
+      if (!auth.ok) return { ok: false, reason: auth.reason };
+      const { job: j, document: doc } = auth;
       logContentAccess({
         opts,
         action: "pdf_viewed",
         actionType: AUDIT_VIEWED,
-        entity: fileName,
+        entity: doc.fileName,
         entityType: "transport_order_pdf",
-        entityId: j.id,
+        entityId: doc.id,
         jobId: j.id,
         tour: j.tour,
-        documentVersion: `v${j.pdfVersion || 1}`,
+        documentVersion: `v${doc.version}`,
         note: "In-PWA transport order preview",
       });
       emit();
       return {
         ok: true,
         preview: {
-          title: fileName,
-          fileName,
+          title: doc.fileName,
+          fileName: doc.fileName,
           mimeType: "application/pdf",
           previewable: true,
-          pdfUrl: SAMPLE_PDF_URL,
-          downloadName: fileName,
+          // The document is rendered from the version record's FROZEN payload,
+          // so a historical or superseded booking never re-reads today's job
+          // data. `previewHtml` is the print-ready A4 source; the viewer shows
+          // it directly and Download/Print route it through the browser's PDF
+          // writer (see docs/requirements/transport-order-pdf-traceability.md,
+          // "Prototype deviations").
+          previewHtml: renderStoredTransportOrder(doc),
+          documentId: doc.id,
+          documentVersion: `v${doc.version}`,
+          checksumSha256: doc.checksumSha256,
+          downloadName: doc.fileName,
         },
       };
     },
@@ -8237,28 +8676,87 @@ window.AuthStore = (() => {
       return api.getTransportOrderPreview(id, opts);
     },
 
+    /**
+     * Audits the download of the active document and returns its print-ready
+     * source. The caller hands `previewHtml` to the browser's PDF writer; this
+     * method never generates a version — download is not a generation trigger.
+     */
     downloadPdf(id, opts = {}) {
-      const j = api.getJob(id);
-      if (!j) return { ok: false };
-      const fileName = `transport-order-${j.id}.pdf`;
-      const a = document.createElement("a");
-      a.href = SAMPLE_PDF_URL;
-      a.download = fileName;
-      a.click();
+      const auth = api.authorizeTransportOrderDocument(id, opts);
+      if (!auth.ok) return { ok: false, reason: auth.reason };
+      const { job: j, document: doc } = auth;
       logContentAccess({
         opts,
         action: "pdf_downloaded",
         actionType: AUDIT_DOWNLOADED,
-        entity: fileName,
+        entity: doc.fileName,
         entityType: "transport_order_pdf",
-        entityId: j.id,
+        entityId: doc.id,
         jobId: j.id,
         tour: j.tour,
-        documentVersion: `v${j.pdfVersion || 1}`,
-        note: "Seeded sample transport-order PDF",
+        documentVersion: `v${doc.version}`,
+        note: `Generated transport order · checksum ${doc.checksumSha256.slice(0, 16)}`,
       });
       emit();
-      return { ok: true };
+      return {
+        ok: true,
+        fileName: doc.fileName,
+        documentVersion: `v${doc.version}`,
+        previewHtml: renderStoredTransportOrder(doc),
+      };
+    },
+
+    /**
+     * Full immutable version history for one order, oldest first, with the
+     * active version flagged. Admin/audit surface; the rendered payload is
+     * omitted so callers cannot accidentally mutate a stored snapshot.
+     */
+    getTransportOrderDocuments(id) {
+      return transportOrderDocumentsFor(id).map((d) => ({
+        id: d.id,
+        jobId: d.jobId,
+        tour: d.tour,
+        version: d.version,
+        isActive: d.isActive,
+        template: d.template,
+        title: d.title,
+        fileName: d.fileName,
+        metaTitle: d.metaTitle,
+        metaAuthor: d.metaAuthor,
+        generatedAt: d.generatedAt,
+        generatedAtIso: d.generatedAtIso,
+        bookedAt: d.bookedAt,
+        dataRevision: d.dataRevision,
+        trigger: d.trigger,
+        generatedBy: d.generatedBy,
+        servicePartnerSnapshot: { ...d.servicePartnerSnapshot },
+        gtcDocumentId: d.gtcDocumentId,
+        gtcVersion: d.gtcVersion,
+        storageRef: d.storageRef,
+        checksumSha256: d.checksumSha256,
+        changedFields: d.changedFields.slice(),
+        status: d.status,
+      }));
+    },
+
+    getActiveTransportOrderDocument(id) {
+      return api.getTransportOrderDocuments(id).find((d) => d.isActive) || null;
+    },
+
+    /**
+     * Renders a SPECIFIC stored version. Admin/audit only — the driver flow
+     * goes through `getTransportOrderPreview()`, which serves the active
+     * version exclusively.
+     */
+    getTransportOrderDocumentHtml(documentId) {
+      const doc = transportOrderDocuments.find((d) => d.id === documentId);
+      if (!doc) return { ok: false, reason: "not_found" };
+      return { ok: true, html: renderStoredTransportOrder(doc), document: doc };
+    },
+
+    /** Test/diagnostic seam: the declared relevant-change field set. */
+    getPdfRelevantFields() {
+      return [...PDF_RELEVANT_FIELDS];
     },
 
     getTourDocumentPreview(id, opts = {}) {
@@ -8355,12 +8853,15 @@ window.AuthStore = (() => {
       driverNotifications = seedDriverNotifications();
       adminEmailQueue = seedAdminEmailQueue();
       masterDataChangeRequests = [];
+      transportOrderDocuments = [];
       for (const j of jobs) {
         j.paymentStatus = normalizePaymentStatus(j.paymentStatus);
         reconcileDocumentReviewSummary(j.id);
         reconcileJobInvoiceFromTourDocuments(j.id);
       }
       validateSeedData(jobs, customers, tourDocuments, driverState);
+      jobs.forEach(syncDisplayFields);
+      seedTransportOrderDocuments();
       nextTourSeq = 849;
       branding.appDisplayName =
         window.AUTHEON_BRANDING_DEFAULTS?.appDisplayName || "Transport Portal";
@@ -8390,6 +8891,7 @@ window.AuthStore = (() => {
   };
 
   jobs.forEach(syncDisplayFields);
+  seedTransportOrderDocuments();
 
   return api;
 })();

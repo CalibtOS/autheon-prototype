@@ -84,6 +84,59 @@ npm run test:e2e:headed
 npm run test:e2e:debug
 ```
 
+## Transport-order PDF generation and verification
+
+The transport-order PDF specs render **real PDFs** through Playwright's Chromium
+and then assert on the resulting bytes and pages. They need the Montserrat faces
+cached first — no font binary is committed to this repository, so the specs skip
+with an explicit message rather than silently validating substituted glyphs.
+
+```bash
+npm run pdf:fonts       # once — caches the OFL Montserrat faces in tools/pdf/.fonts (git-ignored)
+npm run pdf:verify      # generate + rasterise + run all three transport-order PDF spec files
+```
+
+The individual steps, useful when reviewing layout by eye:
+
+```bash
+npm run pdf:generate    # fixtures -> visual-regression-artifacts/transport-order-pdf/{pdf,html} + manifest.json
+npm run pdf:render      # those PDFs -> .../png/  (one image per page)
+npm run pdf:refs        # the approved client templates -> visual-regression-artifacts/reference-templates/
+```
+
+`pdf:refs` needs the client bundle's `references/*.pdf`, which are **not committed**
+to this repository — obtain them from the work order. Their already-rendered PNGs
+*are* committed under `visual-regression-artifacts/reference-templates/`, so a
+side-by-side review works without them; only re-rasterising does not.
+
+`pdf:refs` and `pdf:render` write PNGs so the generated document can be compared
+**side by side** against the approved templates. Do that comparison by eye when
+changing layout: a passing text assertion cannot see a clipped cell, an
+overlapped header or a substituted font. Both rasterisers use the same pinned
+pdf.js the Driver PWA uses, driven through Playwright's Chromium, because macOS
+dev machines have no poppler or mutool.
+
+Render any other PDF to images with the same tool:
+
+```bash
+node tools/pdf/render-pdf.mjs <out-dir> <file.pdf> [more.pdf ...] [--scale=2]
+```
+
+Point the generator at repository-owned licensed font files instead of the cache
+with `node tools/pdf/generate-transport-order-pdfs.mjs --font-dir=<dir>` (it
+expects `Montserrat-Regular.ttf` and `Montserrat-Bold.ttf`).
+
+The three spec files:
+
+| File | Covers |
+| --- | --- |
+| `transport-order-pdf.unit.spec.ts` | pure functions in the page realm: template mapping, German formatters, both DST boundaries, checkbox selection, optional/mandatory handling, SHA-256, HTML escaping, distance exclusion |
+| `transport-order-pdf.integration.spec.ts` | store behaviour: generation timing, immutable versioning, active pointer, idempotency, audit entries, partner notification, authorization, snapshot immutability |
+| `transport-order-pdf.visual.spec.ts` | real PDFs: A4 media box, `/Title` + `/Author`, embedded TrueType (never Type3), truthful `Seite X von Y` read back with pdf.js, wrapping/clipping audit, glyph coverage, plus `@visual-regression` snapshots |
+
+Requirements mapping and the open blockers:
+[`../../docs/requirements/transport-order-pdf-traceability.md`](../../docs/requirements/transport-order-pdf-traceability.md).
+
 ## Smoke vs E2E vs regression
 
 Smoke tests are fast PR safety checks. They prove the app shell loads and critical header controls still work.
@@ -110,6 +163,9 @@ Only run `npm run test:regression:update` after reviewing the visual or ARIA dif
 - Some clickable UI is not semantically exposed as buttons or links.
 - Locale and theme are persisted in localStorage only.
 - Visual regression masks the dynamic Driver marketplace open-tours/date line.
+- Generated PDF bytes are not bit-reproducible: Chromium stamps `/CreationDate`. Transport-order visual regression
+  therefore compares the rendered page, which IS deterministic (fixed fixtures, fixed booking instant, no timestamp is
+  drawn in the document), so no masking is needed.
 
 ## Recommended next flows to automate
 

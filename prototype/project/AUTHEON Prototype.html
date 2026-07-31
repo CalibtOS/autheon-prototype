@@ -59,7 +59,10 @@
     <script src="i18n.js?v=38"></script>
     <script src="formatters.js?v=1"></script>
     <script src="inputFormatters.js?v=1"></script>
-    <script src="store.js?v=3"></script>
+    <!-- Transport-order PDF renderer: must load BEFORE store.js, which
+         generates documents through it during seeding. -->
+    <script src="transport-order-pdf.js?v=1"></script>
+    <script src="store.js?v=4"></script>
     <script type="text/babel" src="driver-ui.jsx?v=2"></script>
     <script type="text/babel" src="driver.jsx?v=27"></script>
     <script type="text/babel" src="admin.jsx?v=2"></script>
