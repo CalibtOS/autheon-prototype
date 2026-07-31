@@ -2,7 +2,16 @@
 const { useState, useEffect, useRef, useMemo } = React;
 
 const UI = window.DriverUI || {};
-const { Badge, EmptyState, SkeletonList, Sheet, SheetGrabber, SheetPullRegion, ConfirmSheet, SortSelect } = UI;
+const {
+  Badge,
+  EmptyState,
+  SkeletonList,
+  Sheet,
+  SheetGrabber,
+  SheetPullRegion,
+  ConfirmSheet,
+  SortSelect,
+} = UI;
 const F = () => window.AutheonFormatters || {};
 
 // Portal target for full-frame overlays. The tab bar is a later sibling of
@@ -127,7 +136,9 @@ const Lbl = ({ children, className = "", ...props }) => (
 // "All" must never reach transportTypeLabel — normalizeTransportType falls
 // back unknown values to own_axle, which would duplicate the Own axle chip.
 const isMarketplaceFilterAll = (value) =>
-  value == null || String(value).trim() === "" || String(value).trim() === "All";
+  value == null ||
+  String(value).trim() === "" ||
+  String(value).trim() === "All";
 
 const displayTransportType = (value, t) =>
   isMarketplaceFilterAll(value)
@@ -319,10 +330,22 @@ const AutheonMark = ({ animated = false }) => (
     aria-hidden="true"
   >
     <g transform="translate(0 8)">
-      <path pathLength="1" d="M28.7452 0.0499943C29.3687 -0.0214756 30.9431 0.0174098 31.6381 0.0180174C33.6279 0.0329038 35.6176 0.0269789 37.6073 0.000244141C37.9458 1.15288 38.4111 2.45984 38.7891 3.62569L41.1318 10.8437C38.7802 10.9527 36.152 10.7687 33.7703 10.8188C32.0193 10.8557 30.1961 10.7226 28.4612 11.2014C22.0467 12.9713 19.8914 18.3673 16.7499 23.549C15.1759 26.1455 13.6026 28.6479 12.0805 31.2103L11.6666 31.9194C10.5996 31.9722 9.42407 31.9176 8.34659 31.9306C5.58855 31.964 2.75097 31.8662 0 31.9517C0.997865 30.5292 2.50586 27.8959 3.46749 26.3335L10.5896 14.7129C12.8592 10.9904 14.5347 7.73199 17.8721 4.82268C21.2443 1.883 24.3891 0.573297 28.7452 0.0499943Z" />
-      <path pathLength="1" d="M38.3618 17.8626C38.3839 18.3225 39.4974 21.737 39.7447 22.4479C40.7885 25.4482 41.7117 29.0015 42.8468 31.9303C41.7937 31.9141 40.7088 31.9275 39.653 31.9275C38.8473 29.1833 37.9224 26.436 37.0768 23.7013C36.7626 22.685 35.9017 21.6732 34.9229 21.2676C33.7384 20.7767 32.2683 20.8416 31.0836 21.3173C30.3712 21.6337 29.7327 22.0982 29.2099 22.6805C28.5719 23.4055 27.1835 25.8009 26.6472 26.7238C25.6773 28.3928 24.4654 30.2545 23.5761 31.9292C22.505 31.9238 20.7214 31.8709 19.7114 31.9733C20.4259 30.5267 21.7266 28.4617 22.6104 27.09C25.1161 23.2008 26.6843 18.2008 31.9865 17.9032C32.4559 17.8373 33.7521 17.8563 34.2521 17.8566L38.3618 17.8626Z" />
-      <path pathLength="1" d="M30.693 13.1161C32.8075 12.965 36.2745 13.0789 38.499 13.0869C38.6766 14.0339 39.1326 15.2447 39.3859 16.2471C37.5936 16.3169 35.7941 16.2525 34.0053 16.2721C32.7015 16.2864 31.2113 16.1606 29.9673 16.5009C26.065 17.5685 24.7269 20.5448 22.8602 23.6919L19.7354 28.9582C19.1403 29.937 18.5601 30.9247 17.9947 31.9212C17.0191 31.9231 14.7918 31.8713 13.897 32.0002C14.6112 30.9063 15.3757 29.5605 16.0567 28.4225L19.6507 22.4045C22.4928 17.5959 24.5497 13.7028 30.693 13.1161Z" />
-      <path pathLength="1" d="M39.459 17.9398C40.5644 17.9793 41.8666 17.9475 42.9877 17.9492C43.1074 18.7702 43.924 21.0614 44.235 22.0024L47.622 31.9301L43.9359 31.9237C42.5317 27.2651 40.8029 22.6291 39.459 17.9398Z" />
+      <path
+        pathLength="1"
+        d="M28.7452 0.0499943C29.3687 -0.0214756 30.9431 0.0174098 31.6381 0.0180174C33.6279 0.0329038 35.6176 0.0269789 37.6073 0.000244141C37.9458 1.15288 38.4111 2.45984 38.7891 3.62569L41.1318 10.8437C38.7802 10.9527 36.152 10.7687 33.7703 10.8188C32.0193 10.8557 30.1961 10.7226 28.4612 11.2014C22.0467 12.9713 19.8914 18.3673 16.7499 23.549C15.1759 26.1455 13.6026 28.6479 12.0805 31.2103L11.6666 31.9194C10.5996 31.9722 9.42407 31.9176 8.34659 31.9306C5.58855 31.964 2.75097 31.8662 0 31.9517C0.997865 30.5292 2.50586 27.8959 3.46749 26.3335L10.5896 14.7129C12.8592 10.9904 14.5347 7.73199 17.8721 4.82268C21.2443 1.883 24.3891 0.573297 28.7452 0.0499943Z"
+      />
+      <path
+        pathLength="1"
+        d="M38.3618 17.8626C38.3839 18.3225 39.4974 21.737 39.7447 22.4479C40.7885 25.4482 41.7117 29.0015 42.8468 31.9303C41.7937 31.9141 40.7088 31.9275 39.653 31.9275C38.8473 29.1833 37.9224 26.436 37.0768 23.7013C36.7626 22.685 35.9017 21.6732 34.9229 21.2676C33.7384 20.7767 32.2683 20.8416 31.0836 21.3173C30.3712 21.6337 29.7327 22.0982 29.2099 22.6805C28.5719 23.4055 27.1835 25.8009 26.6472 26.7238C25.6773 28.3928 24.4654 30.2545 23.5761 31.9292C22.505 31.9238 20.7214 31.8709 19.7114 31.9733C20.4259 30.5267 21.7266 28.4617 22.6104 27.09C25.1161 23.2008 26.6843 18.2008 31.9865 17.9032C32.4559 17.8373 33.7521 17.8563 34.2521 17.8566L38.3618 17.8626Z"
+      />
+      <path
+        pathLength="1"
+        d="M30.693 13.1161C32.8075 12.965 36.2745 13.0789 38.499 13.0869C38.6766 14.0339 39.1326 15.2447 39.3859 16.2471C37.5936 16.3169 35.7941 16.2525 34.0053 16.2721C32.7015 16.2864 31.2113 16.1606 29.9673 16.5009C26.065 17.5685 24.7269 20.5448 22.8602 23.6919L19.7354 28.9582C19.1403 29.937 18.5601 30.9247 17.9947 31.9212C17.0191 31.9231 14.7918 31.8713 13.897 32.0002C14.6112 30.9063 15.3757 29.5605 16.0567 28.4225L19.6507 22.4045C22.4928 17.5959 24.5497 13.7028 30.693 13.1161Z"
+      />
+      <path
+        pathLength="1"
+        d="M39.459 17.9398C40.5644 17.9793 41.8666 17.9475 42.9877 17.9492C43.1074 18.7702 43.924 21.0614 44.235 22.0024L47.622 31.9301L43.9359 31.9237C42.5317 27.2651 40.8029 22.6291 39.459 17.9398Z"
+      />
     </g>
   </svg>
 );
@@ -330,7 +353,12 @@ const AutheonMark = ({ animated = false }) => (
 // Slide-to-confirm handle icons: arrow while ready, lock while disabled,
 // check once confirmed. Sized/coloured via CSS (.slide-handle-icon).
 const SlideArrowIcon = () => (
-  <svg className="slide-handle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <svg
+    className="slide-handle-icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden="true"
+  >
     <path
       d="M9 5l7 7-7 7"
       stroke="currentColor"
@@ -341,7 +369,12 @@ const SlideArrowIcon = () => (
   </svg>
 );
 const SlideCheckIcon = () => (
-  <svg className="slide-handle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <svg
+    className="slide-handle-icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden="true"
+  >
     <path
       d="M5 12.5l4.5 4.5L19 7"
       stroke="currentColor"
@@ -352,8 +385,21 @@ const SlideCheckIcon = () => (
   </svg>
 );
 const SlideLockIcon = () => (
-  <svg className="slide-handle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <rect x="5" y="10.5" width="14" height="9" rx="2.2" stroke="currentColor" strokeWidth="2" />
+  <svg
+    className="slide-handle-icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden="true"
+  >
+    <rect
+      x="5"
+      y="10.5"
+      width="14"
+      height="9"
+      rx="2.2"
+      stroke="currentColor"
+      strokeWidth="2"
+    />
     <path
       d="M8 10.5V8a4 4 0 118 0v2.5"
       stroke="currentColor"
@@ -633,7 +679,13 @@ const Ic = {
   ),
   // Upload-source action sheet (camera vs. device file picker).
   Camera: () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <path
         d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2a1 1 0 0 0 .84-.46l.92-1.42A1 1 0 0 1 9.3 4.7h5.4a1 1 0 0 1 .84.42l.92 1.42a1 1 0 0 0 .84.46h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-9z"
         stroke="currentColor"
@@ -644,7 +696,13 @@ const Ic = {
     </svg>
   ),
   FolderFile: () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <path
         d="M13.5 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8.5L13.5 3z"
         stroke="currentColor"
@@ -741,7 +799,13 @@ const Ic = {
   ),
   /** Double-check — Material "done_all" (filled paths render cleanly at small sizes) */
   CheckAll: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
     </svg>
   ),
@@ -785,7 +849,13 @@ const Ic = {
     </svg>
   ),
   Lock: () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <rect
         x="4.5"
         y="10.5"
@@ -805,7 +875,13 @@ const Ic = {
     </svg>
   ),
   Globe: () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
       <path
         d="M3 12h18M12 3c2.5 2.4 3.8 5.6 3.8 9S14.5 18.6 12 21C9.5 18.6 8.2 15.4 8.2 12S9.5 5.4 12 3Z"
@@ -816,7 +892,13 @@ const Ic = {
     </svg>
   ),
   Chat: () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <path
         d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 4v-4H6a2 2 0 0 1-2-2V6Z"
         stroke="currentColor"
@@ -832,7 +914,13 @@ const Ic = {
     </svg>
   ),
   CheckCircle: () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
       <path
         d="m8.2 12.4 2.6 2.6 5-5.4"
@@ -1131,26 +1219,74 @@ const legWhen = (loc, t) => {
 // Small supporting icons for the important-vehicle-info tags (board §5)
 const FlagIc = {
   Bolt: () => (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2z" />
     </svg>
   ),
   CheckCircle: () => (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-      <path d="m8.2 12.4 2.6 2.6 5-5.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="m8.2 12.4 2.6 2.6 5-5.4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   Slash: () => (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M6 6l12 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="M6 6l12 12"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
     </svg>
   ),
   Plate: () => (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="2.5" y="8" width="19" height="8.5" rx="2" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M6.5 11v2.6M10 11v2.6M13.5 11v2.6M17 11v2.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <rect
+        x="2.5"
+        y="8"
+        width="19"
+        height="8.5"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M6.5 11v2.6M10 11v2.6M13.5 11v2.6M17 11v2.6"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
     </svg>
   ),
 };
@@ -1165,11 +1301,19 @@ const FlagIc = {
 const vehicleCharacteristicFlags = (job, t) => {
   const flags = [];
   if (job.electricVehicle)
-    flags.push({ key: "electric", Icon: FlagIc.Bolt, label: t("vehicleInfoElectric") });
+    flags.push({
+      key: "electric",
+      Icon: FlagIc.Bolt,
+      label: t("vehicleInfoElectric"),
+    });
   // "Ready to drive" is decision-relevant for third-party-axle transport and is
   // always shown to the service partner when set, on every surface.
   if (job.readyToDrive)
-    flags.push({ key: "readyToDrive", Icon: FlagIc.CheckCircle, label: t("vehicleReadyToDrive") });
+    flags.push({
+      key: "readyToDrive",
+      Icon: FlagIc.CheckCircle,
+      label: t("vehicleReadyToDrive"),
+    });
   return flags;
 };
 
@@ -1180,9 +1324,17 @@ const vehicleCharacteristicFlags = (job, t) => {
 const vehicleInfoFlags = (job, t) => {
   const flags = [];
   if (job.registrationStatus === AuthStore.REGISTRATION_REGISTERED)
-    flags.push({ key: "registered", Icon: FlagIc.CheckCircle, label: t("vehicleInfoRegistered") });
+    flags.push({
+      key: "registered",
+      Icon: FlagIc.CheckCircle,
+      label: t("vehicleInfoRegistered"),
+    });
   if (job.registrationStatus === AuthStore.REGISTRATION_DEREGISTERED)
-    flags.push({ key: "deregistered", Icon: FlagIc.Slash, label: t("vehicleInfoDeregistered") });
+    flags.push({
+      key: "deregistered",
+      Icon: FlagIc.Slash,
+      label: t("vehicleInfoDeregistered"),
+    });
   return [...flags, ...vehicleCharacteristicFlags(job, t)];
 };
 
@@ -1361,12 +1513,8 @@ const Portal = ({
   if (!store.isCurrentDriverMarketplaceActive()) {
     const d = store.getCurrentDriver();
     return (
-      <div
-        className="scroll profile-header-block"
-      >
-        <h1 className="profile-header-title">
-          {t("blockedDriverTitle")}
-        </h1>
+      <div className="scroll profile-header-block">
+        <h1 className="profile-header-title">{t("blockedDriverTitle")}</h1>
         <div
           className="card"
           style={{
@@ -1501,7 +1649,12 @@ const Portal = ({
         ) : (
           <>
             {ordered.map((j, index) => (
-              <JobCard key={j.id} job={j} onOpen={onOpenJob} enterIndex={index} />
+              <JobCard
+                key={j.id}
+                job={j}
+                onOpen={onOpenJob}
+                enterIndex={index}
+              />
             ))}
             {ordered.length === 0 && (
               <EmptyState
@@ -1968,9 +2121,7 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
             "filter-delivery-plz",
           )}
 
-          <div className="field-label mt-field">
-            {t("dateWindow")}
-          </div>
+          <div className="field-label mt-field">{t("dateWindow")}</div>
           <div className="grid-2-col-10">
             <input
               className="input"
@@ -2013,9 +2164,7 @@ const FilterSheet = ({ filters, setFilters, onClose }) => {
             ))}
           </div>
 
-          <div className="field-label mt-field">
-            {t("vehicleType")}
-          </div>
+          <div className="field-label mt-field">{t("vehicleType")}</div>
           <div className="flex-gap-8-wrap">
             {types.map((type) => (
               <button
@@ -2293,9 +2442,7 @@ const SlideToConfirm = ({ text, doneText, onConfirm }) => {
     <div
       ref={trackRef}
       className={
-        "slide-confirm " +
-        (done ? "done" : "") +
-        (dragging ? " dragging" : "")
+        "slide-confirm " + (done ? "done" : "") + (dragging ? " dragging" : "")
       }
     >
       <div className="track-text">{done ? doneText : text}</div>
@@ -2375,9 +2522,7 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
             the execution requirement while committing. */}
         <RedPlatesNotice job={job} variant="banner" />
 
-        <p className="para-intro">
-          {t("acceptanceLegal")}
-        </p>
+        <p className="para-intro">{t("acceptanceLegal")}</p>
         <div className="para-muted-xs">
           <PolicyDisclosure />
         </div>
@@ -2517,7 +2662,8 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
   const src = preview.pdfUrl
     ? `${preview.pdfUrl}#toolbar=0&navpanes=0&view=FitH`
     : preview.blobUrl;
-  const downloadName = preview.downloadName || preview.fileName || "document.pdf";
+  const downloadName =
+    preview.downloadName || preview.fileName || "document.pdf";
 
   const download = () => {
     const a = document.createElement("a");
@@ -2836,9 +2982,7 @@ const TourDocCategoryModal = ({ open, onClose, onPick }) => {
         <div className="category-picker">
           {/* Group 1: Core Documents */}
           <div>
-            <div className="category-group-label">
-              {t("tourDocGroupCore")}
-            </div>
+            <div className="category-group-label">{t("tourDocGroupCore")}</div>
             <div className="category-group">
               <button
                 type="button"
@@ -2886,16 +3030,12 @@ const TourDocCategoryModal = ({ open, onClose, onPick }) => {
                 {displayTourDocType("waiting_time_evidence", t)}
               </button>
             </div>
-            <p className="category-picker-desc">
-              {t("tourDocHelperWaiting")}
-            </p>
+            <p className="category-picker-desc">{t("tourDocHelperWaiting")}</p>
           </div>
 
           {/* Group 3: Other Documents */}
           <div>
-            <div className="category-group-label">
-              {t("tourDocGroupOther")}
-            </div>
+            <div className="category-group-label">{t("tourDocGroupOther")}</div>
             <div className="category-group">
               <button
                 type="button"
@@ -2943,9 +3083,15 @@ const FileTypeBadge = ({ fileName }) => (
 // text for screen readers — a PDF must never read as just an unnamed icon.
 const docKindLabel = (doc, t) => {
   const mime = String(doc?.mimeType || "").toLowerCase();
-  const ext = String(doc?.fileName || "").split(".").pop().toLowerCase();
+  const ext = String(doc?.fileName || "")
+    .split(".")
+    .pop()
+    .toLowerCase();
   if (mime === "application/pdf" || ext === "pdf") return t("docKindPdf");
-  if (/^image\//.test(mime) || ["jpg", "jpeg", "png", "webp", "gif"].includes(ext))
+  if (
+    /^image\//.test(mime) ||
+    ["jpg", "jpeg", "png", "webp", "gif"].includes(ext)
+  )
     return t("docKindImage");
   return t("docKindFile");
 };
@@ -3088,8 +3234,12 @@ const TourDocumentRow = ({
         {fileName}
       </div>
       <div className="tour-doc-row-meta-row">
-        {metaLine ? <span className="tour-doc-row-meta">{metaLine}</span> : null}
-        {statusNode ? <div className="tour-doc-row-status">{statusNode}</div> : null}
+        {metaLine ? (
+          <span className="tour-doc-row-meta">{metaLine}</span>
+        ) : null}
+        {statusNode ? (
+          <div className="tour-doc-row-status">{statusNode}</div>
+        ) : null}
       </div>
       {rejectionReason ? (
         <p className="tour-doc-row-rejection">{rejectionReason}</p>
@@ -3179,6 +3329,11 @@ const JobTourDocuments = ({ job, onPreview }) => {
   const [pendingType, setPendingType] = useState(null);
   const [replaceDocId, setReplaceDocId] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  // Client requirement (Phase 14): fuel/toll receipts and invoices request
+  // structured amount metadata before the upload completes.
+  const [amountUpload, setAmountUpload] = useState(null);
+  const [amountForm, setAmountForm] = useState(null);
+  const [amountErr, setAmountErr] = useState("");
 
   const showUploadError = (reason) => {
     setFeedback({
@@ -3200,6 +3355,37 @@ const JobTourDocuments = ({ job, onPreview }) => {
     setSourceOpen(true);
   };
 
+  const emptyAmountForm = (documentType) => ({
+    receiptDate: "",
+    supplierInvoiceNumber: "",
+    supplierInvoiceDate: "",
+    servicePeriodFrom: "",
+    servicePeriodTo: "",
+    netAmount: "",
+    grossAmount: "",
+    taxRatePercent: "19",
+    documentType,
+  });
+
+  const finishUpload = (f, documentType, extra = {}) => {
+    const r = store.addTourDocument(f, { jobId, documentType, ...extra });
+    if (!r.ok) {
+      if (r.reason === "amount_math_invalid") {
+        setAmountErr(
+          t("tourDocAmountMathError", {
+            expected:
+              r.expectedGross != null ? r.expectedGross.toFixed(2) : "?",
+          }),
+        );
+        return false;
+      }
+      showUploadError(r.reason);
+      return true;
+    }
+    setFeedback({ tone: "success", message: t("tourDocUploadSuccess") });
+    return true;
+  };
+
   const onPick = (f) => {
     if (!f) return;
     if (replaceDocId) {
@@ -3210,10 +3396,37 @@ const JobTourDocuments = ({ job, onPreview }) => {
       return;
     }
     if (!pendingType) return;
-    const r = store.addTourDocument(f, { jobId, documentType: pendingType });
+    if (store.tourDocumentRequiresAmountMetadata(pendingType)) {
+      setAmountUpload(f);
+      setAmountForm(emptyAmountForm(pendingType));
+      setAmountErr("");
+      setPendingType(null);
+      return;
+    }
+    finishUpload(f, pendingType);
     setPendingType(null);
-    if (!r.ok) showUploadError(r.reason);
-    else setFeedback({ tone: "success", message: t("tourDocUploadSuccess") });
+  };
+
+  const closeAmountUpload = () => {
+    setAmountUpload(null);
+    setAmountForm(null);
+    setAmountErr("");
+  };
+
+  const submitAmountUpload = () => {
+    if (!amountUpload || !amountForm) return;
+    const isInvoice = amountForm.documentType === "invoice";
+    const ok = finishUpload(amountUpload, amountForm.documentType, {
+      receiptDate: isInvoice ? "" : amountForm.receiptDate,
+      supplierInvoiceNumber: isInvoice ? amountForm.supplierInvoiceNumber : "",
+      supplierInvoiceDate: isInvoice ? amountForm.supplierInvoiceDate : "",
+      servicePeriodFrom: isInvoice ? amountForm.servicePeriodFrom : "",
+      servicePeriodTo: isInvoice ? amountForm.servicePeriodTo : "",
+      netAmount: amountForm.netAmount,
+      grossAmount: amountForm.grossAmount,
+      taxRatePercent: amountForm.taxRatePercent,
+    });
+    if (ok) closeAmountUpload();
   };
 
   const startReplace = (docId) => {
@@ -3270,6 +3483,209 @@ const JobTourDocuments = ({ job, onPreview }) => {
         onFile={onPick}
         returnFocusRef={uploadBtnRef}
       />
+      {amountUpload && amountForm ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="sheet-backdrop"
+          onClick={closeAmountUpload}
+        >
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>
+              {t("tourDocAmountFormTitle")}
+            </h2>
+            {amountForm.documentType === "invoice" ? (
+              <>
+                <div>
+                  <label className="field-label" htmlFor="td-inv-num">
+                    {t("adminSupplierInvoiceNumberLabel")}
+                  </label>
+                  <input
+                    id="td-inv-num"
+                    className="input"
+                    value={amountForm.supplierInvoiceNumber}
+                    onChange={(e) =>
+                      setAmountForm((f) => ({
+                        ...f,
+                        supplierInvoiceNumber: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="td-inv-date">
+                    {t("tourDocInvoiceDate")}
+                  </label>
+                  <input
+                    id="td-inv-date"
+                    className="input"
+                    placeholder="DD.MM.YYYY"
+                    value={amountForm.supplierInvoiceDate}
+                    onChange={(e) =>
+                      setAmountForm((f) => ({
+                        ...f,
+                        supplierInvoiceDate: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 10,
+                  }}
+                >
+                  <div>
+                    <label className="field-label" htmlFor="td-svc-from">
+                      {t("tourDocServicePeriodFrom")}
+                    </label>
+                    <input
+                      id="td-svc-from"
+                      className="input"
+                      placeholder="DD.MM.YYYY"
+                      value={amountForm.servicePeriodFrom}
+                      onChange={(e) =>
+                        setAmountForm((f) => ({
+                          ...f,
+                          servicePeriodFrom: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="td-svc-to">
+                      {t("tourDocServicePeriodTo")}
+                    </label>
+                    <input
+                      id="td-svc-to"
+                      className="input"
+                      placeholder="DD.MM.YYYY"
+                      value={amountForm.servicePeriodTo}
+                      onChange={(e) =>
+                        setAmountForm((f) => ({
+                          ...f,
+                          servicePeriodTo: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="field-label" htmlFor="td-receipt-date">
+                  {t("tourDocReceiptDate")}
+                </label>
+                <input
+                  id="td-receipt-date"
+                  className="input"
+                  placeholder="DD.MM.YYYY"
+                  value={amountForm.receiptDate}
+                  onChange={(e) =>
+                    setAmountForm((f) => ({
+                      ...f,
+                      receiptDate: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            )}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: 10,
+                marginTop: 10,
+              }}
+            >
+              <div>
+                <label className="field-label" htmlFor="td-net">
+                  {t("tourDocNetAmount")}
+                </label>
+                <input
+                  id="td-net"
+                  className="input mono"
+                  inputMode="decimal"
+                  value={amountForm.netAmount}
+                  onChange={(e) =>
+                    setAmountForm((f) => ({ ...f, netAmount: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="td-tax">
+                  {t("tourDocTaxRate")}
+                </label>
+                <input
+                  id="td-tax"
+                  className="input mono"
+                  inputMode="decimal"
+                  value={amountForm.taxRatePercent}
+                  onChange={(e) =>
+                    setAmountForm((f) => ({
+                      ...f,
+                      taxRatePercent: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="td-gross">
+                  {t("tourDocGrossAmount")}
+                </label>
+                <input
+                  id="td-gross"
+                  className="input mono"
+                  inputMode="decimal"
+                  value={amountForm.grossAmount}
+                  onChange={(e) =>
+                    setAmountForm((f) => ({
+                      ...f,
+                      grossAmount: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            {amountErr ? (
+              <p
+                style={{
+                  color: "var(--danger, #c0392b)",
+                  fontSize: 12.5,
+                  marginTop: 8,
+                }}
+              >
+                {amountErr}
+              </p>
+            ) : null}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginTop: 16,
+                justifyContent: "flex-end",
+              }}
+            >
+              <button type="button" className="btn" onClick={closeAmountUpload}>
+                {t("cancel")}
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                disabled={
+                  !amountForm.netAmount ||
+                  !amountForm.grossAmount ||
+                  !amountForm.taxRatePercent
+                }
+                onClick={submitAmountUpload}
+              >
+                {t("tourDocAmountFormSubmit")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {uploads.length > 0 ? (
         <div className="tour-doc-list">
           {uploads.map((u) => (
@@ -3278,7 +3694,10 @@ const JobTourDocuments = ({ job, onPreview }) => {
               fileName={u.fileName}
               metaLine={`${displayTourDocType(u.documentType, t)} · ${F().formatFileSize(u.sizeBytes)}`}
               statusNode={
-                <Pill status={tourDocReviewPillStatus(u.reviewStatus)} className="no-dot">
+                <Pill
+                  status={tourDocReviewPillStatus(u.reviewStatus)}
+                  className="no-dot"
+                >
                   {displayDocReviewStatus(u.reviewStatus, t)}
                 </Pill>
               }
@@ -3289,9 +3708,7 @@ const JobTourDocuments = ({ job, onPreview }) => {
                   ? t("tourDocRejectionReason", { reason: u.rejectionReason })
                   : null
               }
-              onReplace={
-                canReplaceDoc(u) ? () => startReplace(u.id) : null
-              }
+              onReplace={canReplaceDoc(u) ? () => startReplace(u.id) : null}
               onView={() => {
                 const r = store.getTourDocumentPreview(u.id);
                 if (r.ok) onPreview?.(r.preview);
@@ -3377,23 +3794,86 @@ const JobUnlocked = ({
   const [docsSourceOpen, setDocsSourceOpen] = useState(false);
   const docsUploadBtnRef = useRef(null);
 
+  // Client requirement (Phase 14): fuel/toll receipts and invoices request
+  // structured amount metadata before the upload completes — same pattern
+  // as JobTourDocuments' onPick.
+  const [docsAmountUpload, setDocsAmountUpload] = useState(null);
+  const [docsAmountForm, setDocsAmountForm] = useState(null);
+  const [docsAmountErr, setDocsAmountErr] = useState("");
+
   const docsPickType = (documentType) => {
     setDocsCategoryOpen(false);
     setDocsPendingType(documentType);
     setDocsSourceOpen(true);
   };
-  const docsOnFile = (f) => {
-    if (!f || !docsPendingType) return;
+  const docsFinishUpload = (f, documentType, extra = {}) => {
     const r = store.addTourDocument(f, {
       jobId: job.id,
-      documentType: docsPendingType,
+      documentType,
+      ...extra,
     });
+    if (!r.ok) {
+      if (r.reason === "amount_math_invalid") {
+        setDocsAmountErr(
+          t("tourDocAmountMathError", {
+            expected:
+              r.expectedGross != null ? r.expectedGross.toFixed(2) : "?",
+          }),
+        );
+        return false;
+      }
+      setDocsFeedback({
+        tone: "error",
+        message: tourDocUploadErrorMessage(r.reason, t),
+      });
+      return true;
+    }
+    setDocsFeedback({ tone: "success", message: t("tourDocUploadSuccess") });
+    return true;
+  };
+  const docsOnFile = (f) => {
+    if (!f || !docsPendingType) return;
+    if (store.tourDocumentRequiresAmountMetadata(docsPendingType)) {
+      setDocsAmountUpload(f);
+      setDocsAmountForm({
+        receiptDate: "",
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
+        servicePeriodFrom: "",
+        servicePeriodTo: "",
+        netAmount: "",
+        grossAmount: "",
+        taxRatePercent: "19",
+        documentType: docsPendingType,
+      });
+      setDocsAmountErr("");
+      setDocsPendingType(null);
+      return;
+    }
+    docsFinishUpload(f, docsPendingType);
     setDocsPendingType(null);
-    setDocsFeedback(
-      r.ok
-        ? { tone: "success", message: t("tourDocUploadSuccess") }
-        : { tone: "error", message: tourDocUploadErrorMessage(r.reason, t) },
-    );
+  };
+  const closeDocsAmountUpload = () => {
+    setDocsAmountUpload(null);
+    setDocsAmountForm(null);
+    setDocsAmountErr("");
+  };
+  const submitDocsAmountUpload = () => {
+    if (!docsAmountUpload || !docsAmountForm) return;
+    const isInvoice = docsAmountForm.documentType === "invoice";
+    const ok = docsFinishUpload(docsAmountUpload, docsAmountForm.documentType, {
+      receiptDate: isInvoice ? "" : docsAmountForm.receiptDate,
+      supplierInvoiceNumber: isInvoice
+        ? docsAmountForm.supplierInvoiceNumber
+        : "",
+      supplierInvoiceDate: isInvoice ? docsAmountForm.supplierInvoiceDate : "",
+      servicePeriodFrom: isInvoice ? docsAmountForm.servicePeriodFrom : "",
+      servicePeriodTo: isInvoice ? docsAmountForm.servicePeriodTo : "",
+      netAmount: docsAmountForm.netAmount,
+      grossAmount: docsAmountForm.grossAmount,
+      taxRatePercent: docsAmountForm.taxRatePercent,
+    });
+    if (ok) closeDocsAmountUpload();
   };
   const docsConfirmRemove = () => {
     const r = store.removeDriverTourDocument(removeDocId);
@@ -3430,9 +3910,13 @@ const JobUnlocked = ({
                 {AuthStore.statusLabel("performed")}
               </Pill>
             ) : isCancelled ? (
-              <Pill status={job.status}>{AuthStore.statusLabel(job.status)}</Pill>
+              <Pill status={job.status}>
+                {AuthStore.statusLabel(job.status)}
+              </Pill>
             ) : isEmptyRunTerminal ? (
-              <Pill status={job.status}>{AuthStore.statusLabel(job.status)}</Pill>
+              <Pill status={job.status}>
+                {AuthStore.statusLabel(job.status)}
+              </Pill>
             ) : isEmptyRunReported ? (
               <Pill status={job.status}>
                 {AuthStore.statusLabel(job.status)}
@@ -3498,318 +3982,335 @@ const JobUnlocked = ({
             )}
           </div>
         ) : (
-        <>
-        {inExecution && !isCancelled && !isPerformed ? (
-          <div
-            className="banner banner-success"
-            role="status"
-            style={{ margin: 0 }}
-          >
-            {t("tourInExecutionBanner")}
-          </div>
-        ) : null}
-
-        {isCancelled && (
-          <div className="cancellation-card" role="status">
-            <p className="cancellation-card-title">{t("cancelled")}</p>
-            <div>{t("driverTourCancelledNotice")}</div>
-            {job.cancellationReason ? (
-              <div className="cancellation-card-reason">
-                {t("driverCancellationReasonLabel")}:{" "}
-                {t(`cancellationReason_${job.cancellationReason}`) ||
-                  AuthStore.getCancellationReasonLabel?.(
-                    job.cancellationReason,
-                  ) ||
-                  job.cancellationReason}
+          <>
+            {inExecution && !isCancelled && !isPerformed ? (
+              <div
+                className="banner banner-success"
+                role="status"
+                style={{ margin: 0 }}
+              >
+                {t("tourInExecutionBanner")}
               </div>
             ) : null}
-            {job.cancellationReasonText ? (
-              <div className="cancellation-card-message">
-                {job.cancellationReasonText}
-              </div>
-            ) : null}
-          </div>
-        )}
 
-        {/* Customer Card */}
-        <div className="detail-card customer-card">
-          <div className="customer-row">
-            <span className="customer-title">{t("customerLabel")}</span>
-            <span className="customer-name">
-              {job.customerName || job.customer || "—"}
-            </span>
-          </div>
-        </div>
-
-        {/* Route Card with Vertical Timeline */}
-        <div className="detail-card">
-          <div className="detail-section-title">
-            <Ic.Map />
-            <span>{t("route")}</span>
-          </div>
-          <div className="unlocked-route-timeline">
-            <div className="timeline-item">
-              <div className="timeline-marker">
-                <span className="dot blue"></span>
-                <span className="line"></span>
+            {isCancelled && (
+              <div className="cancellation-card" role="status">
+                <p className="cancellation-card-title">{t("cancelled")}</p>
+                <div>{t("driverTourCancelledNotice")}</div>
+                {job.cancellationReason ? (
+                  <div className="cancellation-card-reason">
+                    {t("driverCancellationReasonLabel")}:{" "}
+                    {t(`cancellationReason_${job.cancellationReason}`) ||
+                      AuthStore.getCancellationReasonLabel?.(
+                        job.cancellationReason,
+                      ) ||
+                      job.cancellationReason}
+                  </div>
+                ) : null}
+                {job.cancellationReasonText ? (
+                  <div className="cancellation-card-message">
+                    {job.cancellationReasonText}
+                  </div>
+                ) : null}
               </div>
-              <div className="timeline-content">
-                <div className="city-info">
-                  <div className="city-name">{job.startCity}</div>
-                  <div className="city-address">
-                    {job.startStreet} · {job.startPlz} {job.startCity}
+            )}
+
+            {/* Customer Card */}
+            <div className="detail-card customer-card">
+              <div className="customer-row">
+                <span className="customer-title">{t("customerLabel")}</span>
+                <span className="customer-name">
+                  {job.customerName || job.customer || "—"}
+                </span>
+              </div>
+            </div>
+
+            {/* Route Card with Vertical Timeline */}
+            <div className="detail-card">
+              <div className="detail-section-title">
+                <Ic.Map />
+                <span>{t("route")}</span>
+              </div>
+              <div className="unlocked-route-timeline">
+                <div className="timeline-item">
+                  <div className="timeline-marker">
+                    <span className="dot blue"></span>
+                    <span className="line"></span>
+                  </div>
+                  <div className="timeline-content">
+                    <div className="city-info">
+                      <div className="city-name">{job.startCity}</div>
+                      <div className="city-address">
+                        {job.startStreet} · {job.startPlz} {job.startCity}
+                      </div>
+                    </div>
+                    <a
+                      href={pickupMaps}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="map-link"
+                    >
+                      <Ic.Map /> {t("viewOnMap")}
+                    </a>
                   </div>
                 </div>
-                <a
-                  href={pickupMaps}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="map-link"
-                >
-                  <Ic.Map /> {t("viewOnMap")}
-                </a>
-              </div>
-            </div>
-            <div className="timeline-item-middle">
-              <span className="info-badge">🚙 {job.distanceKm} km</span>
-              <span className="info-badge">
-                ⏱ {estimateDriveTime(job.distanceKm) || "—"}
-              </span>
-            </div>
-            <div className="timeline-item">
-              <div className="timeline-marker">
-                <span className="dot dark"></span>
-              </div>
-              <div className="timeline-content">
-                <div className="city-info">
-                  <div className="city-name">{job.endCity}</div>
-                  <div className="city-address">
-                    {job.endStreet} · {job.endPlz} {job.endCity}
+                <div className="timeline-item-middle">
+                  <span className="info-badge">🚙 {job.distanceKm} km</span>
+                  <span className="info-badge">
+                    ⏱ {estimateDriveTime(job.distanceKm) || "—"}
+                  </span>
+                </div>
+                <div className="timeline-item">
+                  <div className="timeline-marker">
+                    <span className="dot dark"></span>
+                  </div>
+                  <div className="timeline-content">
+                    <div className="city-info">
+                      <div className="city-name">{job.endCity}</div>
+                      <div className="city-address">
+                        {job.endStreet} · {job.endPlz} {job.endCity}
+                      </div>
+                    </div>
+                    <a
+                      href={deliveryMaps}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="map-link"
+                    >
+                      <Ic.Map /> {t("viewOnMap")}
+                    </a>
                   </div>
                 </div>
-                <a
-                  href={deliveryMaps}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="map-link"
-                >
-                  <Ic.Map /> {t("viewOnMap")}
-                </a>
+              </div>
+              <hr className="detail-card-divider" />
+              <div className="detail-route-times">
+                <div>
+                  <div className="time-label">{t("pickupTime")}</div>
+                  <div className="time-val">
+                    {AuthStore.formatLocationSchedule(
+                      job.pickup,
+                      t("flexible"),
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="time-label">{t("deliveryTime")}</div>
+                  <div className="time-val">
+                    {AuthStore.formatLocationSchedule(
+                      job.delivery,
+                      t("flexible"),
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-          <hr className="detail-card-divider" />
-          <div className="detail-route-times">
-            <div>
-              <div className="time-label">{t("pickupTime")}</div>
-              <div className="time-val">
-                {AuthStore.formatLocationSchedule(job.pickup, t("flexible"))}
-              </div>
-            </div>
-            <div>
-              <div className="time-label">{t("deliveryTime")}</div>
-              <div className="time-val">
-                {AuthStore.formatLocationSchedule(job.delivery, t("flexible"))}
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Vehicle Card */}
-        <div className="detail-card">
-          <div className="detail-section-title">
-            <Ic.Pkg />
-            <span>{t("vehicle")}</span>
-          </div>
-          {/* Complete order view after booking — full vehicle data. No
+            {/* Vehicle Card */}
+            <div className="detail-card">
+              <div className="detail-section-title">
+                <Ic.Pkg />
+                <span>{t("vehicle")}</span>
+              </div>
+              {/* Complete order view after booking — full vehicle data. No
               red-plate NUMBER row: the number is brought by the partner and is
               never recorded by AUTHEON. */}
-          <div className="detail-kv-list">
-            <div className="detail-kv-row">
-              <div className="label">{t("vehicleType")}</div>
-              <div className="value">{displayVehicle(job.vehicleType, t)}</div>
-            </div>
-            <div className="detail-kv-row">
-              <div className="label">{t("manufacturer")}</div>
-              <div className="value">{job.manufacturer || "—"}</div>
-            </div>
-            <div className="detail-kv-row">
-              <div className="label">{t("model")}</div>
-              <div className="value">{job.vehicleModel}</div>
-            </div>
-            {/* Official plate of the transported vehicle — shown whenever known,
+              <div className="detail-kv-list">
+                <div className="detail-kv-row">
+                  <div className="label">{t("vehicleType")}</div>
+                  <div className="value">
+                    {displayVehicle(job.vehicleType, t)}
+                  </div>
+                </div>
+                <div className="detail-kv-row">
+                  <div className="label">{t("manufacturer")}</div>
+                  <div className="value">{job.manufacturer || "—"}</div>
+                </div>
+                <div className="detail-kv-row">
+                  <div className="label">{t("model")}</div>
+                  <div className="value">{job.vehicleModel}</div>
+                </div>
+                {/* Official plate of the transported vehicle — shown whenever known,
                 including for a deregistered (de-stamped) vehicle. */}
-            {job.plate ? (
-              <div className="detail-kv-row">
-                <div className="label">{t("officialLicencePlate")}</div>
-                <div className="plate-badge">{job.plate}</div>
+                {job.plate ? (
+                  <div className="detail-kv-row">
+                    <div className="label">{t("officialLicencePlate")}</div>
+                    <div className="plate-badge">{job.plate}</div>
+                  </div>
+                ) : null}
+                <div className="detail-kv-row">
+                  <div className="label">{t("vin")}</div>
+                  <div className="value mono text-muted-sm">{job.vin}</div>
+                </div>
+                <div className="detail-kv-row">
+                  <div className="label">{t("transportType")}</div>
+                  <div className="value">
+                    {displayTransportType(job.transportType, t)}
+                  </div>
+                </div>
+                <div className="detail-kv-row">
+                  <div className="label">{t("registrationStatus")}</div>
+                  <div className="value">
+                    {AuthStore.registrationStatusLabel(
+                      job.registrationStatus,
+                      t,
+                    )}
+                  </div>
+                </div>
+                {vehicleCharacteristicFlags(job, t).length ? (
+                  <div className="detail-flag-block">
+                    <div className="label">{t("vehicleCharacteristics")}</div>
+                    <div className="jobcard-tags">
+                      <VehicleFlagTags job={job} characteristicsOnly />
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-            <div className="detail-kv-row">
-              <div className="label">{t("vin")}</div>
-              <div className="value mono text-muted-sm">
-                {job.vin}
-              </div>
+              {/* Derived notice — location 5 of 5: complete order view AFTER
+              booking. Stays visible because it is an execution requirement. */}
+              <RedPlatesNotice job={job} variant="banner" />
             </div>
-            <div className="detail-kv-row">
-              <div className="label">{t("transportType")}</div>
-              <div className="value">
-                {displayTransportType(job.transportType, t)}
+
+            {/* Contact Card */}
+            <div className="detail-card">
+              <div className="detail-section-title">
+                <Ic.TabUser />
+                <span>{t("contact")}</span>
               </div>
-            </div>
-            <div className="detail-kv-row">
-              <div className="label">{t("registrationStatus")}</div>
-              <div className="value">
-                {AuthStore.registrationStatusLabel(job.registrationStatus, t)}
-              </div>
-            </div>
-            {vehicleCharacteristicFlags(job, t).length ? (
-              <div className="detail-flag-block">
-                <div className="label">{t("vehicleCharacteristics")}</div>
-                <div className="jobcard-tags">
-                  <VehicleFlagTags job={job} characteristicsOnly />
+              <div className="detail-contacts-grid">
+                <div className="contact-column">
+                  <div className="contact-role">{t("pickupContact")}</div>
+                  <div className="contact-name">{pickup.name || "—"}</div>
+                  <div className="contact-actions">
+                    {pickup.phone ? (
+                      <a
+                        href={"tel:" + (pickup.phone || "").replace(/\s/g, "")}
+                        className="contact-action-btn"
+                        title="Call"
+                      >
+                        <Ic.Phone />
+                      </a>
+                    ) : null}
+                    {pickup.email ? (
+                      <a
+                        href={"mailto:" + pickup.email}
+                        className="contact-action-btn"
+                        title="Email"
+                      >
+                        <Ic.Mail />
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="contact-column">
+                  <div className="contact-role">{t("deliveryContact")}</div>
+                  <div className="contact-name">{drop.name || "—"}</div>
+                  <div className="contact-actions">
+                    {drop.phone ? (
+                      <a
+                        href={"tel:" + (drop.phone || "").replace(/\s/g, "")}
+                        className="contact-action-btn"
+                        title="Call"
+                      >
+                        <Ic.Phone />
+                      </a>
+                    ) : null}
+                    {drop.email ? (
+                      <a
+                        href={"mailto:" + drop.email}
+                        className="contact-action-btn"
+                        title="Email"
+                      >
+                        <Ic.Mail />
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
               </div>
-            ) : null}
-          </div>
-          {/* Derived notice — location 5 of 5: complete order view AFTER
-              booking. Stays visible because it is an execution requirement. */}
-          <RedPlatesNotice job={job} variant="banner" />
-        </div>
+            </div>
 
-        {/* Contact Card */}
-        <div className="detail-card">
-          <div className="detail-section-title">
-            <Ic.TabUser />
-            <span>{t("contact")}</span>
-          </div>
-          <div className="detail-contacts-grid">
-            <div className="contact-column">
-              <div className="contact-role">{t("pickupContact")}</div>
-              <div className="contact-name">{pickup.name || "—"}</div>
-              <div className="contact-actions">
-                {pickup.phone ? (
-                  <a
-                    href={"tel:" + (pickup.phone || "").replace(/\s/g, "")}
-                    className="contact-action-btn"
-                    title="Call"
-                  >
-                    <Ic.Phone />
-                  </a>
-                ) : null}
-                {pickup.email ? (
-                  <a
-                    href={"mailto:" + pickup.email}
-                    className="contact-action-btn"
-                    title="Email"
-                  >
-                    <Ic.Mail />
-                  </a>
-                ) : null}
+            {/* Operational Instructions Card */}
+            <div className="detail-card">
+              <div className="detail-section-title">
+                <Ic.TabInfo />
+                <span>{t("operationalInstructions")}</span>
               </div>
-            </div>
-            <div className="contact-column">
-              <div className="contact-role">{t("deliveryContact")}</div>
-              <div className="contact-name">{drop.name || "—"}</div>
-              <div className="contact-actions">
-                {drop.phone ? (
-                  <a
-                    href={"tel:" + (drop.phone || "").replace(/\s/g, "")}
-                    className="contact-action-btn"
-                    title="Call"
+              <div className="detail-pdf-card">
+                <div className="pdf-icon-wrap">
+                  <Ic.Pdf />
+                </div>
+                <div className="flex-1-min-0">
+                  <div className="pdf-name">transport-order-{job.id}.pdf</div>
+                  <div className="pdf-meta">v{job.pdfVersion || 1}</div>
+                </div>
+                <div className="pdf-actions">
+                  <button
+                    type="button"
+                    className="pdf-btn"
+                    title={t("view")}
+                    aria-label={t("view")}
+                    onClick={() => {
+                      const r = store.getTransportOrderPreview(job.id);
+                      if (r.ok) setDocPreview(r.preview);
+                    }}
                   >
-                    <Ic.Phone />
-                  </a>
-                ) : null}
-                {drop.email ? (
-                  <a
-                    href={"mailto:" + drop.email}
-                    className="contact-action-btn"
-                    title="Email"
+                    <Ic.Eye />
+                  </button>
+                  <button
+                    type="button"
+                    className="pdf-btn"
+                    title={t("download")}
+                    aria-label={t("download")}
+                    onClick={() => store.downloadPdf(job.id)}
                   >
-                    <Ic.Mail />
-                  </a>
-                ) : null}
+                    <Ic.Down />
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Operational Instructions Card */}
-        <div className="detail-card">
-          <div className="detail-section-title">
-            <Ic.TabInfo />
-            <span>{t("operationalInstructions")}</span>
-          </div>
-          <div className="detail-pdf-card">
-            <div className="pdf-icon-wrap">
-              <Ic.Pdf />
-            </div>
-            <div className="flex-1-min-0">
-              <div className="pdf-name">transport-order-{job.id}.pdf</div>
-              <div className="pdf-meta">v{job.pdfVersion || 1}</div>
-            </div>
-            <div className="pdf-actions">
-              <button
-                type="button"
-                className="pdf-btn"
-                title={t("view")}
-                aria-label={t("view")}
-                onClick={() => {
-                  const r = store.getTransportOrderPreview(job.id);
-                  if (r.ok) setDocPreview(r.preview);
-                }}
+              <p
+                className="text-muted-sm"
+                style={{ lineHeight: 1.6, margin: 0, fontSize: 13 }}
               >
-                <Ic.Eye />
-              </button>
-              <button
-                type="button"
-                className="pdf-btn"
-                title={t("download")}
-                aria-label={t("download")}
-                onClick={() => store.downloadPdf(job.id)}
-              >
-                <Ic.Down />
-              </button>
-            </div>
-          </div>
-          <p className="text-muted-sm" style={{ lineHeight: 1.6, margin: 0, fontSize: 13 }}>
-            {displayDriverNote(job.notesDriver, t) || t("noDriverAddons")}
-          </p>
-          {job.notes ? (
-            <>
-              <hr className="detail-card-divider" />
-              <div className="time-label">{t("dispatchNotes")}</div>
-              <p className="text-muted-sm" style={{ lineHeight: 1.6, margin: 0, fontSize: 13 }}>
-                {job.notes}
+                {displayDriverNote(job.notesDriver, t) || t("noDriverAddons")}
               </p>
-            </>
-          ) : null}
-        </div>
+              {job.notes ? (
+                <>
+                  <hr className="detail-card-divider" />
+                  <div className="time-label">{t("dispatchNotes")}</div>
+                  <p
+                    className="text-muted-sm"
+                    style={{ lineHeight: 1.6, margin: 0, fontSize: 13 }}
+                  >
+                    {job.notes}
+                  </p>
+                </>
+              ) : null}
+            </div>
 
-        {/* Official Documents Component */}
-        <JobOfficialTourDocuments job={job} onPreview={setDocPreview} />
+            {/* Official Documents Component */}
+            <JobOfficialTourDocuments job={job} onPreview={setDocPreview} />
 
-        {/* Tour Documents Component — performed tours show these in the
+            {/* Tour Documents Component — performed tours show these in the
             dedicated My documents tab instead */}
-        {!isPerformed && (
-          <JobTourDocuments job={job} onPreview={setDocPreview} />
-        )}
+            {!isPerformed && (
+              <JobTourDocuments job={job} onPreview={setDocPreview} />
+            )}
 
-        {/* Financial Offer summary */}
-        <div className="detail-card price-summary-card">
-          <div className="price-summary-row">
-            <div>
-              <div className="price-label">{t("driverOffer")}</div>
-              <div className="price-meta">
-                {job.distanceKm} km ·{" "}
-                {displayTransportType(job.transportType, t)}
+            {/* Financial Offer summary */}
+            <div className="detail-card price-summary-card">
+              <div className="price-summary-row">
+                <div>
+                  <div className="price-label">{t("driverOffer")}</div>
+                  <div className="price-meta">
+                    {job.distanceKm} km ·{" "}
+                    {displayTransportType(job.transportType, t)}
+                  </div>
+                </div>
+                <div className="price-val">
+                  € {fmtDriverOffer(job).toFixed(2)}
+                </div>
               </div>
             </div>
-            <div className="price-val">€ {fmtDriverOffer(job).toFixed(2)}</div>
-          </div>
-        </div>
-        </>
+          </>
         )}
       </div>
 
@@ -3890,6 +4391,222 @@ const JobUnlocked = ({
             onCancel={() => setRemoveDocId(null)}
             onConfirm={docsConfirmRemove}
           />
+          {docsAmountUpload && docsAmountForm ? (
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="sheet-backdrop"
+              onClick={closeDocsAmountUpload}
+            >
+              <div className="sheet" onClick={(e) => e.stopPropagation()}>
+                <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>
+                  {t("tourDocAmountFormTitle")}
+                </h2>
+                {docsAmountForm.documentType === "invoice" ? (
+                  <>
+                    <div>
+                      <label className="field-label" htmlFor="mydocs-inv-num">
+                        {t("adminSupplierInvoiceNumberLabel")}
+                      </label>
+                      <input
+                        id="mydocs-inv-num"
+                        className="input"
+                        value={docsAmountForm.supplierInvoiceNumber}
+                        onChange={(e) =>
+                          setDocsAmountForm((f) => ({
+                            ...f,
+                            supplierInvoiceNumber: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="field-label" htmlFor="mydocs-inv-date">
+                        {t("tourDocInvoiceDate")}
+                      </label>
+                      <input
+                        id="mydocs-inv-date"
+                        className="input"
+                        placeholder="DD.MM.YYYY"
+                        value={docsAmountForm.supplierInvoiceDate}
+                        onChange={(e) =>
+                          setDocsAmountForm((f) => ({
+                            ...f,
+                            supplierInvoiceDate: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 10,
+                      }}
+                    >
+                      <div>
+                        <label
+                          className="field-label"
+                          htmlFor="mydocs-svc-from"
+                        >
+                          {t("tourDocServicePeriodFrom")}
+                        </label>
+                        <input
+                          id="mydocs-svc-from"
+                          className="input"
+                          placeholder="DD.MM.YYYY"
+                          value={docsAmountForm.servicePeriodFrom}
+                          onChange={(e) =>
+                            setDocsAmountForm((f) => ({
+                              ...f,
+                              servicePeriodFrom: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="field-label" htmlFor="mydocs-svc-to">
+                          {t("tourDocServicePeriodTo")}
+                        </label>
+                        <input
+                          id="mydocs-svc-to"
+                          className="input"
+                          placeholder="DD.MM.YYYY"
+                          value={docsAmountForm.servicePeriodTo}
+                          onChange={(e) =>
+                            setDocsAmountForm((f) => ({
+                              ...f,
+                              servicePeriodTo: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <label
+                      className="field-label"
+                      htmlFor="mydocs-receipt-date"
+                    >
+                      {t("tourDocReceiptDate")}
+                    </label>
+                    <input
+                      id="mydocs-receipt-date"
+                      className="input"
+                      placeholder="DD.MM.YYYY"
+                      value={docsAmountForm.receiptDate}
+                      onChange={(e) =>
+                        setDocsAmountForm((f) => ({
+                          ...f,
+                          receiptDate: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                )}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                    gap: 10,
+                    marginTop: 10,
+                  }}
+                >
+                  <div>
+                    <label className="field-label" htmlFor="mydocs-net">
+                      {t("tourDocNetAmount")}
+                    </label>
+                    <input
+                      id="mydocs-net"
+                      className="input mono"
+                      inputMode="decimal"
+                      value={docsAmountForm.netAmount}
+                      onChange={(e) =>
+                        setDocsAmountForm((f) => ({
+                          ...f,
+                          netAmount: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="mydocs-tax">
+                      {t("tourDocTaxRate")}
+                    </label>
+                    <input
+                      id="mydocs-tax"
+                      className="input mono"
+                      inputMode="decimal"
+                      value={docsAmountForm.taxRatePercent}
+                      onChange={(e) =>
+                        setDocsAmountForm((f) => ({
+                          ...f,
+                          taxRatePercent: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="mydocs-gross">
+                      {t("tourDocGrossAmount")}
+                    </label>
+                    <input
+                      id="mydocs-gross"
+                      className="input mono"
+                      inputMode="decimal"
+                      value={docsAmountForm.grossAmount}
+                      onChange={(e) =>
+                        setDocsAmountForm((f) => ({
+                          ...f,
+                          grossAmount: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+                {docsAmountErr ? (
+                  <p
+                    style={{
+                      color: "var(--danger, #c0392b)",
+                      fontSize: 12.5,
+                      marginTop: 8,
+                    }}
+                  >
+                    {docsAmountErr}
+                  </p>
+                ) : null}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    marginTop: 16,
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={closeDocsAmountUpload}
+                  >
+                    {t("cancel")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    disabled={
+                      !docsAmountForm.netAmount ||
+                      !docsAmountForm.grossAmount ||
+                      !docsAmountForm.taxRatePercent
+                    }
+                    onClick={submitDocsAmountUpload}
+                  >
+                    {t("tourDocAmountFormSubmit")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </>
       )}
     </>
@@ -3929,8 +4646,7 @@ const MyJobs = ({ onOpen, onOpenNotifications, notificationsOpen = false }) => {
   // (as a terminal outcome) a not-recognised empty run belongs in history too.
   const cancelled = mine.filter(
     (j) =>
-      store.isCancelledStatus(j.status) ||
-      store.isEmptyRunTerminal(j.status),
+      store.isCancelledStatus(j.status) || store.isEmptyRunTerminal(j.status),
   );
   // Review bucket = empty-run reports pending Autheon review.
   const review = mine.filter((j) => j.status === "empty_run_reported");
@@ -4035,63 +4751,63 @@ const MyJobs = ({ onOpen, onOpenNotifications, notificationsOpen = false }) => {
         ? " list-enter"
         : "";
     return (
-    <button
-      key={job.id}
-      type="button"
-      className={"jobcard-btn" + enterClass}
-      style={enterStyle}
-      onClick={() => onOpen(job)}
-    >
-      {job.status === "assigned" ? (
-        <div className="jobcard-banner-assigned">
-          <Ic.TabInfo /> {t("assignedDirectlyNotice")}
+      <button
+        key={job.id}
+        type="button"
+        className={"jobcard-btn" + enterClass}
+        style={enterStyle}
+        onClick={() => onOpen(job)}
+      >
+        {job.status === "assigned" ? (
+          <div className="jobcard-banner-assigned">
+            <Ic.TabInfo /> {t("assignedDirectlyNotice")}
+          </div>
+        ) : null}
+        <div className="jobcard-header-row">
+          <span className="jobcard-tour-num">Tour #{job.tour}</span>
+          <div style={{ display: "flex", gap: 6 }}>
+            {(job.status === "empty_run_reported" ||
+              store.isEmptyRunTerminal(job.status)) && (
+              <span className={"pill " + AuthStore.statusCls(job.status)}>
+                {AuthStore.statusLabel(job.status)}
+              </span>
+            )}
+            {job.status === "accepted" && (
+              <span className="pill accepted">{t("active")}</span>
+            )}
+            {job.status === "performed" && (
+              <span className="pill performed">
+                {AuthStore.statusLabel("performed")}
+              </span>
+            )}
+            {store.isCancelledStatus(job.status) && (
+              <span className="pill cancelled">
+                {AuthStore.statusLabel(job.status)}
+              </span>
+            )}
+            {job.status === "assigned" && (
+              <span className="pill assigned">{t("assignedShort")}</span>
+            )}
+          </div>
         </div>
-      ) : null}
-      <div className="jobcard-header-row">
-        <span className="jobcard-tour-num">Tour #{job.tour}</span>
-        <div style={{ display: "flex", gap: 6 }}>
-          {(job.status === "empty_run_reported" ||
-            store.isEmptyRunTerminal(job.status)) && (
-            <span className={"pill " + AuthStore.statusCls(job.status)}>
-              {AuthStore.statusLabel(job.status)}
+        <JobCardBody job={job} />
+        {jobNeedsDocCorrection(job, store) ? (
+          <div className="stack-8">
+            <span
+              className="chip"
+              style={{
+                borderColor: "var(--st-cancelled)",
+                color: "var(--st-cancelled)",
+                fontSize: 11,
+                padding: "1px 6px",
+              }}
+            >
+              {t("correctionRequiredBadge")}
             </span>
-          )}
-          {job.status === "accepted" && (
-            <span className="pill accepted">{t("active")}</span>
-          )}
-          {job.status === "performed" && (
-            <span className="pill performed">
-              {AuthStore.statusLabel("performed")}
-            </span>
-          )}
-          {store.isCancelledStatus(job.status) && (
-            <span className="pill cancelled">
-              {AuthStore.statusLabel(job.status)}
-            </span>
-          )}
-          {job.status === "assigned" && (
-            <span className="pill assigned">{t("assignedShort")}</span>
-          )}
-        </div>
-      </div>
-      <JobCardBody job={job} />
-      {jobNeedsDocCorrection(job, store) ? (
-        <div className="stack-8">
-          <span
-            className="chip"
-            style={{
-              borderColor: "var(--st-cancelled)",
-              color: "var(--st-cancelled)",
-              fontSize: 11,
-              padding: "1px 6px",
-            }}
-          >
-            {t("correctionRequiredBadge")}
-          </span>
-        </div>
-      ) : null}
-    </button>
-  );
+          </div>
+        ) : null}
+      </button>
+    );
   };
 
   const renderJobsPane = (tabId) => {
@@ -4219,7 +4935,9 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   ];
   const isCancel = path === "cancel";
   const reasonList = isCancel ? cancelReasons : emptyRunReasons;
-  const reasonLabel = isCancel ? t("spCancelReasonLabel") : t("emptyRunReasonLabel");
+  const reasonLabel = isCancel
+    ? t("spCancelReasonLabel")
+    : t("emptyRunReasonLabel");
   const explLabel = isCancel
     ? t("spCancelExplanationLabel")
     : t("emptyRunDescLabel");
@@ -4227,7 +4945,9 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
     ? t("spCancelExplanationPlaceholder")
     : t("emptyRunDescPlaceholder");
   const slideLabel = isCancel ? t("spCancelSlide") : t("emptyRunSlide");
-  const slideDoneLabel = isCancel ? t("spCancelSlideDone") : t("emptyRunSlideDone");
+  const slideDoneLabel = isCancel
+    ? t("spCancelSlideDone")
+    : t("emptyRunSlideDone");
   const slideLockedLabel = isCancel
     ? t("spCancelSlideLocked")
     : t("emptyRunSlideLocked");
@@ -4379,11 +5099,7 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
           {!path ? (
             <div className="flex-col-gap-10">
               {[
-                [
-                  "cancel",
-                  t("warnEntryCancelOption"),
-                  t("warnEntryCancelSub"),
-                ],
+                ["cancel", t("warnEntryCancelOption"), t("warnEntryCancelSub")],
                 [
                   "not_performable",
                   t("warnEntryEmptyRunOption"),
@@ -4503,8 +5219,13 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
               </div>
               {!isCancel ? (
                 <div className="mt-16">
-                  <div className="field-label">{t("emptyRunEvidenceLabel")}</div>
-                  <p className="req-panel-desc" style={{ margin: "6px 0 10px" }}>
+                  <div className="field-label">
+                    {t("emptyRunEvidenceLabel")}
+                  </div>
+                  <p
+                    className="req-panel-desc"
+                    style={{ margin: "6px 0 10px" }}
+                  >
                     {t("emptyRunEvidenceHint")}
                   </p>
                   <input
@@ -4592,8 +5313,10 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                       marginTop: 16,
                       padding: "12px 14px",
                       borderRadius: 10,
-                      border: "1px solid color-mix(in srgb, var(--st-warn) 45%, transparent)",
-                      background: "color-mix(in srgb, var(--st-warn) 10%, transparent)",
+                      border:
+                        "1px solid color-mix(in srgb, var(--st-warn) 45%, transparent)",
+                      background:
+                        "color-mix(in srgb, var(--st-warn) 10%, transparent)",
                       fontSize: 12.5,
                       lineHeight: 1.55,
                     }}
@@ -4727,7 +5450,13 @@ const TourBookedSuccessSheet = ({ onClose }) => {
             justifyContent: "center",
           }}
         >
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <svg
+            width="26"
+            height="26"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden
+          >
             <path
               d="M6 12l4 4 8-9"
               stroke="var(--st-accepted)"
@@ -4825,18 +5554,88 @@ const MarkPerformedSheet = ({ job, onClose }) => {
     setSourceOpen(true);
   };
 
-  const onPickFile = (f) => {
-    if (!f || !pendingType) return;
+  // Client requirement (Phase 14): fuel/toll receipts and invoices request
+  // structured amount metadata before the upload completes — same pattern
+  // as JobTourDocuments' onPick.
+  const [successAmountUpload, setSuccessAmountUpload] = useState(null);
+  const [successAmountForm, setSuccessAmountForm] = useState(null);
+  const [successAmountErr, setSuccessAmountErr] = useState("");
+
+  const successFinishUpload = (f, documentType, extra = {}) => {
     const r = store.addTourDocument(f, {
       jobId: job.id,
-      documentType: pendingType,
+      documentType,
+      ...extra,
     });
+    if (!r.ok) {
+      if (r.reason === "amount_math_invalid") {
+        setSuccessAmountErr(
+          t("tourDocAmountMathError", {
+            expected:
+              r.expectedGross != null ? r.expectedGross.toFixed(2) : "?",
+          }),
+        );
+        return false;
+      }
+      setUploadFeedback({
+        tone: "error",
+        message: tourDocUploadErrorMessage(r.reason, t),
+      });
+      return true;
+    }
+    setUploadFeedback({ tone: "success", message: t("tourDocUploadSuccess") });
+    return true;
+  };
+
+  const onPickFile = (f) => {
+    if (!f || !pendingType) return;
+    if (store.tourDocumentRequiresAmountMetadata(pendingType)) {
+      setSuccessAmountUpload(f);
+      setSuccessAmountForm({
+        receiptDate: "",
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
+        servicePeriodFrom: "",
+        servicePeriodTo: "",
+        netAmount: "",
+        grossAmount: "",
+        taxRatePercent: "19",
+        documentType: pendingType,
+      });
+      setSuccessAmountErr("");
+      setPendingType(null);
+      return;
+    }
+    successFinishUpload(f, pendingType);
     setPendingType(null);
-    setUploadFeedback(
-      r.ok
-        ? { tone: "success", message: t("tourDocUploadSuccess") }
-        : { tone: "error", message: tourDocUploadErrorMessage(r.reason, t) },
+  };
+  const closeSuccessAmountUpload = () => {
+    setSuccessAmountUpload(null);
+    setSuccessAmountForm(null);
+    setSuccessAmountErr("");
+  };
+  const submitSuccessAmountUpload = () => {
+    if (!successAmountUpload || !successAmountForm) return;
+    const isInvoice = successAmountForm.documentType === "invoice";
+    const ok = successFinishUpload(
+      successAmountUpload,
+      successAmountForm.documentType,
+      {
+        receiptDate: isInvoice ? "" : successAmountForm.receiptDate,
+        supplierInvoiceNumber: isInvoice
+          ? successAmountForm.supplierInvoiceNumber
+          : "",
+        supplierInvoiceDate: isInvoice
+          ? successAmountForm.supplierInvoiceDate
+          : "",
+        servicePeriodFrom: isInvoice ? successAmountForm.servicePeriodFrom : "",
+        servicePeriodTo: isInvoice ? successAmountForm.servicePeriodTo : "",
+        netAmount: successAmountForm.netAmount,
+        grossAmount: successAmountForm.grossAmount,
+        taxRatePercent: successAmountForm.taxRatePercent,
+      },
     );
+    if (ok) closeSuccessAmountUpload();
   };
 
   if (stage === "confirm") {
@@ -4989,6 +5788,216 @@ const MarkPerformedSheet = ({ job, onClose }) => {
           onCancel={() => setRemoveId(null)}
           onConfirm={confirmRemove}
         />
+        {successAmountUpload && successAmountForm ? (
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="sheet-backdrop"
+            onClick={closeSuccessAmountUpload}
+          >
+            <div className="sheet" onClick={(e) => e.stopPropagation()}>
+              <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>
+                {t("tourDocAmountFormTitle")}
+              </h2>
+              {successAmountForm.documentType === "invoice" ? (
+                <>
+                  <div>
+                    <label className="field-label" htmlFor="success-inv-num">
+                      {t("adminSupplierInvoiceNumberLabel")}
+                    </label>
+                    <input
+                      id="success-inv-num"
+                      className="input"
+                      value={successAmountForm.supplierInvoiceNumber}
+                      onChange={(e) =>
+                        setSuccessAmountForm((f) => ({
+                          ...f,
+                          supplierInvoiceNumber: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="success-inv-date">
+                      {t("tourDocInvoiceDate")}
+                    </label>
+                    <input
+                      id="success-inv-date"
+                      className="input"
+                      placeholder="DD.MM.YYYY"
+                      value={successAmountForm.supplierInvoiceDate}
+                      onChange={(e) =>
+                        setSuccessAmountForm((f) => ({
+                          ...f,
+                          supplierInvoiceDate: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 10,
+                    }}
+                  >
+                    <div>
+                      <label className="field-label" htmlFor="success-svc-from">
+                        {t("tourDocServicePeriodFrom")}
+                      </label>
+                      <input
+                        id="success-svc-from"
+                        className="input"
+                        placeholder="DD.MM.YYYY"
+                        value={successAmountForm.servicePeriodFrom}
+                        onChange={(e) =>
+                          setSuccessAmountForm((f) => ({
+                            ...f,
+                            servicePeriodFrom: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="field-label" htmlFor="success-svc-to">
+                        {t("tourDocServicePeriodTo")}
+                      </label>
+                      <input
+                        id="success-svc-to"
+                        className="input"
+                        placeholder="DD.MM.YYYY"
+                        value={successAmountForm.servicePeriodTo}
+                        onChange={(e) =>
+                          setSuccessAmountForm((f) => ({
+                            ...f,
+                            servicePeriodTo: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="field-label" htmlFor="success-receipt-date">
+                    {t("tourDocReceiptDate")}
+                  </label>
+                  <input
+                    id="success-receipt-date"
+                    className="input"
+                    placeholder="DD.MM.YYYY"
+                    value={successAmountForm.receiptDate}
+                    onChange={(e) =>
+                      setSuccessAmountForm((f) => ({
+                        ...f,
+                        receiptDate: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              )}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gap: 10,
+                  marginTop: 10,
+                }}
+              >
+                <div>
+                  <label className="field-label" htmlFor="success-net">
+                    {t("tourDocNetAmount")}
+                  </label>
+                  <input
+                    id="success-net"
+                    className="input mono"
+                    inputMode="decimal"
+                    value={successAmountForm.netAmount}
+                    onChange={(e) =>
+                      setSuccessAmountForm((f) => ({
+                        ...f,
+                        netAmount: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="success-tax">
+                    {t("tourDocTaxRate")}
+                  </label>
+                  <input
+                    id="success-tax"
+                    className="input mono"
+                    inputMode="decimal"
+                    value={successAmountForm.taxRatePercent}
+                    onChange={(e) =>
+                      setSuccessAmountForm((f) => ({
+                        ...f,
+                        taxRatePercent: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="success-gross">
+                    {t("tourDocGrossAmount")}
+                  </label>
+                  <input
+                    id="success-gross"
+                    className="input mono"
+                    inputMode="decimal"
+                    value={successAmountForm.grossAmount}
+                    onChange={(e) =>
+                      setSuccessAmountForm((f) => ({
+                        ...f,
+                        grossAmount: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              {successAmountErr ? (
+                <p
+                  style={{
+                    color: "var(--danger, #c0392b)",
+                    fontSize: 12.5,
+                    marginTop: 8,
+                  }}
+                >
+                  {successAmountErr}
+                </p>
+              ) : null}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginTop: 16,
+                  justifyContent: "flex-end",
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={closeSuccessAmountUpload}
+                >
+                  {t("cancel")}
+                </button>
+                <button
+                  type="button"
+                  className="btn primary"
+                  disabled={
+                    !successAmountForm.netAmount ||
+                    !successAmountForm.grossAmount ||
+                    !successAmountForm.taxRatePercent
+                  }
+                  onClick={submitSuccessAmountUpload}
+                >
+                  {t("tourDocAmountFormSubmit")}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -5021,9 +6030,7 @@ const ProfilePane = () => {
           JB
         </span>
         <div>
-          <div className="text-strong-lg">
-            {AuthStore.DEMO_DRIVER}
-          </div>
+          <div className="text-strong-lg">{AuthStore.DEMO_DRIVER}</div>
           <div className="mono text-muted-sm">
             {t("driverCode")}: AU-41-0228 · {t("driverStatusActive")}
           </div>
@@ -5129,11 +6136,14 @@ const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
           <h4 className="notification-day-header">{day}</h4>
           <ul className="notifications-day-rows">
             {dayRows.map((row, rowIndex) => {
-              const flatIndex = grouped
-                .slice(0, grouped.findIndex(([d]) => d === day))
-                .reduce((n, [, rows]) => n + rows.length, 0) + rowIndex;
-              const enterClass =
-                flatIndex < 4 ? " list-enter" : "";
+              const flatIndex =
+                grouped
+                  .slice(
+                    0,
+                    grouped.findIndex(([d]) => d === day),
+                  )
+                  .reduce((n, [, rows]) => n + rows.length, 0) + rowIndex;
+              const enterClass = flatIndex < 4 ? " list-enter" : "";
               const enterStyle =
                 flatIndex < 4 ? { ["--list-enter-i"]: flatIndex } : undefined;
               const actionable = isActionable(row);
@@ -5142,7 +6152,10 @@ const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
                   {!row.read ? (
                     <span className="notification-row-dot" aria-hidden="true" />
                   ) : (
-                    <span className="notification-row-dot-spacer" aria-hidden="true" />
+                    <span
+                      className="notification-row-dot-spacer"
+                      aria-hidden="true"
+                    />
                   )}
                   <span className="notification-row-body">
                     <span className="notification-row-title">{row.title}</span>
@@ -5161,7 +6174,11 @@ const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
               );
 
               return (
-                <li key={row.id} className={enterClass.trim() || undefined} style={enterStyle}>
+                <li
+                  key={row.id}
+                  className={enterClass.trim() || undefined}
+                  style={enterStyle}
+                >
                   {actionable ? (
                     <button
                       type="button"
@@ -5189,7 +6206,12 @@ const DriverNotificationsList = ({ onOpenJob, onOpenInfopoint }) => {
   );
 };
 
-const DriverNotificationsPane = ({ onClose, onBack, onOpenJob, onOpenInfopoint }) => {
+const DriverNotificationsPane = ({
+  onClose,
+  onBack,
+  onOpenJob,
+  onOpenInfopoint,
+}) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const close = onClose || onBack;
@@ -5247,7 +6269,9 @@ const DriverNotificationsPane = ({ onClose, onBack, onOpenJob, onOpenInfopoint }
                 title={t("markAllRead")}
               >
                 <Ic.CheckAll />
-                <span className="notifications-mark-all-label">{t("markAllRead")}</span>
+                <span className="notifications-mark-all-label">
+                  {t("markAllRead")}
+                </span>
               </button>
             ) : (
               <span className="notifications-all-read-hint" aria-live="polite">
@@ -5394,7 +6418,10 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
   // Resend cooldown countdown.
   useEffect(() => {
     if (resendLeft <= 0) return undefined;
-    const id = setInterval(() => setResendLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
+    const id = setInterval(
+      () => setResendLeft((s) => (s > 0 ? s - 1 : 0)),
+      1000,
+    );
     return () => clearInterval(id);
   }, [resendLeft]);
 
@@ -5450,7 +6477,8 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
     setStep("done");
   };
 
-  const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  const mmss = (s) =>
+    `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   let title = t("changeEmailTitle");
   let body = null;
@@ -5458,12 +6486,16 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
 
   if (step === "enter") {
     body = (
-      <div className="stack-4" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div
+        className="stack-4"
+        style={{ display: "flex", flexDirection: "column", gap: 14 }}
+      >
         <p className="section-hint" style={{ margin: 0 }}>
           {t("accountSigninHint")}
         </p>
         <div className="change-email-current">
-          {t("changeEmailCurrentPrefix")} · <span className="mono">{currentEmail}</span>
+          {t("changeEmailCurrentPrefix")} ·{" "}
+          <span className="mono">{currentEmail}</span>
         </div>
         <div>
           <label className="field-label" htmlFor="change-email-new">
@@ -5511,14 +6543,24 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
         <div className="change-email-current">
           {t("changeEmailCodeSentTo", { email: newEmail })}
         </div>
-        <CodeInput value={code} onChange={(v) => { setCode(v); if (error) setError(""); }} />
+        <CodeInput
+          value={code}
+          onChange={(v) => {
+            setCode(v);
+            if (error) setError("");
+          }}
+        />
         <div className="change-email-aux-row">
           {resendLeft > 0 ? (
             <span className="section-hint change-email-resend-wait">
               {t("changeEmailResendIn", { time: mmss(resendLeft) })}
             </span>
           ) : (
-            <button type="button" className="change-email-text-link" onClick={resend}>
+            <button
+              type="button"
+              className="change-email-text-link"
+              onClick={resend}
+            >
               {t("changeEmailResend")}
             </button>
           )}
@@ -5534,7 +6576,10 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
           </button>
         </div>
         {demoCode ? (
-          <InlineAlert tone="info" message={t("changeEmailDemoHint", { code: demoCode })} />
+          <InlineAlert
+            tone="info"
+            message={t("changeEmailDemoHint", { code: demoCode })}
+          />
         ) : null}
         {error ? <InlineAlert tone="error" message={error} /> : null}
       </div>
@@ -5557,8 +6602,18 @@ const ChangeEmailSheet = ({ open, onClose, currentEmail }) => {
   } else {
     title = t("changeEmailSuccessTitle");
     body = (
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", textAlign: "center" }}>
-        <span className="change-email-success-check" aria-hidden="true">✓</span>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          alignItems: "center",
+          textAlign: "center",
+        }}
+      >
+        <span className="change-email-success-check" aria-hidden="true">
+          ✓
+        </span>
         <p style={{ margin: 0 }}>
           {t("changeEmailSuccessBody", { email: confirmedEmail })}
         </p>
@@ -5591,10 +6646,7 @@ const DriverProbationCard = ({ enterIndex }) => {
   const summary = store.getDriverProbationSummary();
   if (!summary || !summary.onProbation) return null;
   const pct = summary.limit
-    ? Math.min(
-        100,
-        Math.round((summary.performedCount / summary.limit) * 100),
-      )
+    ? Math.min(100, Math.round((summary.performedCount / summary.limit) * 100))
     : 0;
   const enter =
     typeof enterIndex === "number" && enterIndex >= 0 && enterIndex < 4;
@@ -5644,7 +6696,10 @@ const DriverProbationCard = ({ enterIndex }) => {
             aria-hidden="true"
           />
         </div>
-        <div className="limit-meter-meta stack-8 text-caption" aria-hidden="true">
+        <div
+          className="limit-meter-meta stack-8 text-caption"
+          aria-hidden="true"
+        >
           {summary.atLimit
             ? t("driverProbationProfileAtLimit")
             : t("driverProbationProfileRemaining", {
@@ -5808,7 +6863,14 @@ window.AutheonTheme = { subscribe: subscribeTheme, useTheme };
 
 // Full-row navigation entry: left icon, label (+ optional supporting text),
 // trailing chevron. The whole row is a single accessible button.
-const ProfileNavRow = ({ icon: Icon, label, sub, onClick, rowId, enterIndex }) => {
+const ProfileNavRow = ({
+  icon: Icon,
+  label,
+  sub,
+  onClick,
+  rowId,
+  enterIndex,
+}) => {
   const enter =
     typeof enterIndex === "number" && enterIndex >= 0 && enterIndex < 4;
   return (
@@ -5901,7 +6963,10 @@ const ProfileSubpageHeader = ({ title, backLabel, onBack, titleRef }) => (
   </div>
 );
 
-const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => {
+const ProfilePaneFull = ({
+  onOpenNotifications,
+  notificationsOpen = false,
+}) => {
   const { t, locale, setLocale } = useI18n();
   const store = useAuthStore();
   const d = store.getCurrentDriver();
@@ -6199,9 +7264,7 @@ const ProfilePaneFull = ({ onOpenNotifications, notificationsOpen = false }) => 
           </span>
         </label>
         <label className="switch-row">
-          <span className="switch-row-text">
-            {t("pushNotifyNewPublished")}
-          </span>
+          <span className="switch-row-text">{t("pushNotifyNewPublished")}</span>
           <span className="switch-toggle-wrap">
             <input
               type="checkbox"
@@ -6662,203 +7725,222 @@ const Infopoint = ({ onOpenNotifications, notificationsOpen = false }) => {
             style={{ padding: "16px 20px 24px" }}
           >
             {paneId === "documents" ? (
-          <>
-            <div className="infopoint-card">
-              {docs.map((d, index) => (
-                <div
-                  key={d.id}
-                  className={
-                    "infopoint-doc-row" + (index < 4 ? " list-enter" : "")
-                  }
-                  style={
-                    index < 4 ? { ["--list-enter-i"]: index } : undefined
-                  }
-                >
-                  <div className="infopoint-news-icon read" style={{ color: "var(--primary)" }}>
-                    <Ic.Pdf />
-                  </div>
-                  <div className="flex-1-min-0">
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>
-                      {displayDocTitle(d, t)}
-                    </div>
-                    {d.description ? (
-                      <div className="text-muted-sm" style={{ marginTop: 4, lineHeight: 1.4 }}>
-                        {d.description}
-                      </div>
-                    ) : null}
+              <>
+                <div className="infopoint-card">
+                  {docs.map((d, index) => (
                     <div
-                      style={{
-                        fontSize: 11,
-                        color: "var(--muted-2)",
-                        marginTop: 6,
-                        fontWeight: 500,
-                      }}
-                    >
-                      {displayDocCategory(d.category, t)} ·{" "}
-                      {displayDocScope(d.scope, t)} · {d.version}
-                    </div>
-                    <div
-                      className="mono text-muted-sm"
-                      style={{ marginTop: 4 }}
-                    >
-                      {d.size ? `${d.size} · ` : ""}
-                      {d.updatedAt}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button
-                      type="button"
-                      className="btn icon sm touch-target"
-                      style={{
-                        background: "var(--paper-2)",
-                        border: "1px solid var(--line)",
-                      }}
-                      onClick={() => {
-                        const r = store.getInfopointDocumentPreview(d.id);
-                        if (r.ok) setDocPreview(r.preview);
-                      }}
-                      title={t("view")}
-                      aria-label={`${t("view")}: ${d.title}`}
-                    >
-                      <Ic.Eye />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn icon sm touch-target"
-                      style={{
-                        background: "var(--paper-2)",
-                        border: "1px solid var(--line)",
-                      }}
-                      onClick={() => store.downloadInfopointDocument(d.id)}
-                      title={t("download")}
-                      aria-label={`${t("download")}: ${d.title}`}
-                    >
-                      <Ic.Down />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div
-              className="dash-area"
-              style={{
-                marginTop: 16,
-                fontFamily: "var(--font-sans)",
-                fontSize: 12,
-                letterSpacing: 0,
-                textTransform: "none",
-                borderRadius: 12,
-                padding: 12,
-              }}
-            >
-              {t("emergencyDispatchNotice")}
-            </div>
-          </>
-        ) : paneId === "help" ? (
-          <HelpSupportContent />
-        ) : (
-          <>
-            {news.length === 0 ? (
-              <div
-                className="dash-area"
-                style={{ padding: 28, textAlign: "center", borderRadius: 16 }}
-              >
-                <div style={{ fontWeight: 600 }}>{t("infopointNewsEmpty")}</div>
-                <div className="infopoint-empty-hint">
-                  {t("infopointNewsAdminHint")}
-                </div>
-              </div>
-            ) : (
-              <div className="infopoint-card">
-                {news.map((n, index) => {
-                  const unread = !n.readBy.includes(readerId);
-                  const expanded = openNewsId === n.id;
-                  return (
-                    <button
-                      key={n.id}
-                      type="button"
+                      key={d.id}
                       className={
-                        "infopoint-news-row" + (index < 4 ? " list-enter" : "")
+                        "infopoint-doc-row" + (index < 4 ? " list-enter" : "")
                       }
                       style={
                         index < 4 ? { ["--list-enter-i"]: index } : undefined
                       }
-                      onClick={() => openNews(n)}
-                      aria-expanded={expanded}
-                      aria-label={n.title}
                     >
                       <div
-                        className={`infopoint-news-icon ${unread ? "unread" : "read"}`}
+                        className="infopoint-news-icon read"
+                        style={{ color: "var(--primary)" }}
                       >
-                        <Ic.Calendar />
-                        {unread ? (
-                          <span
-                            style={{
-                              position: "absolute",
-                              top: -2,
-                              right: -2,
-                              width: 8,
-                              height: 8,
-                              borderRadius: "50%",
-                              background: "var(--primary)",
-                              border: "1.5px solid var(--paper)",
-                            }}
-                          ></span>
-                        ) : null}
+                        <Ic.Pdf />
                       </div>
                       <div className="flex-1-min-0">
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>
+                          {displayDocTitle(d, t)}
+                        </div>
+                        {d.description ? (
+                          <div
+                            className="text-muted-sm"
+                            style={{ marginTop: 4, lineHeight: 1.4 }}
+                          >
+                            {d.description}
+                          </div>
+                        ) : null}
                         <div
                           style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            gap: 12,
-                            alignItems: "flex-start",
+                            fontSize: 11,
+                            color: "var(--muted-2)",
+                            marginTop: 6,
+                            fontWeight: 500,
                           }}
                         >
-                          <div
-                            style={{
-                              fontWeight: unread ? 600 : 500,
-                              fontSize: 14,
-                              color: "var(--text)",
-                            }}
-                          >
-                            {n.title}
-                          </div>
+                          {displayDocCategory(d.category, t)} ·{" "}
+                          {displayDocScope(d.scope, t)} · {d.version}
                         </div>
                         <div
                           className="mono text-muted-sm"
                           style={{ marginTop: 4 }}
                         >
-                          {n.publishedAt}
+                          {d.size ? `${d.size} · ` : ""}
+                          {d.updatedAt}
                         </div>
-                        <p
-                          className="text-muted-sm"
-                          style={{ margin: "8px 0 0", lineHeight: 1.45, fontSize: 13 }}
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          type="button"
+                          className="btn icon sm touch-target"
+                          style={{
+                            background: "var(--paper-2)",
+                            border: "1px solid var(--line)",
+                          }}
+                          onClick={() => {
+                            const r = store.getInfopointDocumentPreview(d.id);
+                            if (r.ok) setDocPreview(r.preview);
+                          }}
+                          title={t("view")}
+                          aria-label={`${t("view")}: ${d.title}`}
                         >
-                          {expanded
-                            ? n.body
-                            : `${(n.body || "").slice(0, 100)}${
-                                (n.body || "").length > 100 ? "…" : ""
-                              }`}
-                        </p>
+                          <Ic.Eye />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn icon sm touch-target"
+                          style={{
+                            background: "var(--paper-2)",
+                            border: "1px solid var(--line)",
+                          }}
+                          onClick={() => store.downloadInfopointDocument(d.id)}
+                          title={t("download")}
+                          aria-label={`${t("download")}: ${d.title}`}
+                        >
+                          <Ic.Down />
+                        </button>
                       </div>
-                      <div
-                        style={{
-                          alignSelf: "center",
-                          color: "var(--muted-2)",
-                          transform: expanded ? "rotate(180deg)" : "none",
-                          transition: "transform 0.15s ease",
-                          display: "flex",
-                        }}
-                      >
-                        <Ic.Down />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </>
+                    </div>
+                  ))}
+                </div>
+                <div
+                  className="dash-area"
+                  style={{
+                    marginTop: 16,
+                    fontFamily: "var(--font-sans)",
+                    fontSize: 12,
+                    letterSpacing: 0,
+                    textTransform: "none",
+                    borderRadius: 12,
+                    padding: 12,
+                  }}
+                >
+                  {t("emergencyDispatchNotice")}
+                </div>
+              </>
+            ) : paneId === "help" ? (
+              <HelpSupportContent />
+            ) : (
+              <>
+                {news.length === 0 ? (
+                  <div
+                    className="dash-area"
+                    style={{
+                      padding: 28,
+                      textAlign: "center",
+                      borderRadius: 16,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600 }}>
+                      {t("infopointNewsEmpty")}
+                    </div>
+                    <div className="infopoint-empty-hint">
+                      {t("infopointNewsAdminHint")}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="infopoint-card">
+                    {news.map((n, index) => {
+                      const unread = !n.readBy.includes(readerId);
+                      const expanded = openNewsId === n.id;
+                      return (
+                        <button
+                          key={n.id}
+                          type="button"
+                          className={
+                            "infopoint-news-row" +
+                            (index < 4 ? " list-enter" : "")
+                          }
+                          style={
+                            index < 4
+                              ? { ["--list-enter-i"]: index }
+                              : undefined
+                          }
+                          onClick={() => openNews(n)}
+                          aria-expanded={expanded}
+                          aria-label={n.title}
+                        >
+                          <div
+                            className={`infopoint-news-icon ${unread ? "unread" : "read"}`}
+                          >
+                            <Ic.Calendar />
+                            {unread ? (
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  top: -2,
+                                  right: -2,
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: "50%",
+                                  background: "var(--primary)",
+                                  border: "1.5px solid var(--paper)",
+                                }}
+                              ></span>
+                            ) : null}
+                          </div>
+                          <div className="flex-1-min-0">
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: 12,
+                                alignItems: "flex-start",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontWeight: unread ? 600 : 500,
+                                  fontSize: 14,
+                                  color: "var(--text)",
+                                }}
+                              >
+                                {n.title}
+                              </div>
+                            </div>
+                            <div
+                              className="mono text-muted-sm"
+                              style={{ marginTop: 4 }}
+                            >
+                              {n.publishedAt}
+                            </div>
+                            <p
+                              className="text-muted-sm"
+                              style={{
+                                margin: "8px 0 0",
+                                lineHeight: 1.45,
+                                fontSize: 13,
+                              }}
+                            >
+                              {expanded
+                                ? n.body
+                                : `${(n.body || "").slice(0, 100)}${
+                                    (n.body || "").length > 100 ? "…" : ""
+                                  }`}
+                            </p>
+                          </div>
+                          <div
+                            style={{
+                              alignSelf: "center",
+                              color: "var(--muted-2)",
+                              transform: expanded ? "rotate(180deg)" : "none",
+                              transition: "transform 0.15s ease",
+                              display: "flex",
+                            }}
+                          >
+                            <Ic.Down />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </div>
         ))}
@@ -6986,9 +8068,7 @@ const DriverLoginScreen = ({ standalone = false }) => {
             setNotice("");
             setMode("forgot");
           }}
-          onSubmit={(email, password) =>
-            store.loginDriver({ email, password })
-          }
+          onSubmit={(email, password) => store.loginDriver({ email, password })}
           demoEmail="driver.one@demo.local"
           demoFillLabel={t("authDemoFillButton")}
         />
@@ -7019,7 +8099,11 @@ const DriverLoginScreen = ({ standalone = false }) => {
 // once a real invite-token mechanism exists. Page owns email/token link
 // validity + heading swap; DriverUI.SetPasswordForm owns the fields.
 // =========================================================================
-const DriverSetPasswordScreen = ({ email = "", token = "", standalone = false }) => {
+const DriverSetPasswordScreen = ({
+  email = "",
+  token = "",
+  standalone = false,
+}) => {
   const { t } = useI18n();
   const isValidLink = Boolean(email && token);
 

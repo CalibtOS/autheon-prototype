@@ -383,9 +383,32 @@ window.AuthStore = (() => {
 
   const DOC_REVIEW = [
     "uploaded",
+    "in_review",
     "accepted",
     "rejected",
     "correction_required",
+    "replaced",
+  ];
+
+  // Client-recommended statuses for consolidated invoices (Phase 12) — a
+  // deliberately separate enum from DOC_REVIEW / PAYMENT_STATUSES, since a
+  // consolidated invoice is its own entity spanning multiple tours.
+  const CONSOLIDATED_INVOICE_STATUSES = [
+    "in_review",
+    "correction_required",
+    "rejected",
+    "completed",
+  ];
+  function normalizeConsolidatedInvoiceStatus(st) {
+    const s = String(st || "").trim();
+    return CONSOLIDATED_INVOICE_STATUSES.includes(s) ? s : "in_review";
+  }
+  // A tour already linked to a non-rejected consolidated invoice cannot be
+  // added to a second one — rejected invoices free their tours back up.
+  const CONSOLIDATED_INVOICE_ACTIVE_STATUSES = [
+    "in_review",
+    "correction_required",
+    "completed",
   ];
 
   const ACTIVE_JOB_STATUSES = ["assigned", "accepted", "empty_run_reported"];
@@ -405,6 +428,45 @@ window.AuthStore = (() => {
   /** Canonical billing invoice document type for tour uploads. */
   const TOUR_DOC_TYPE_INVOICE = "invoice";
 
+  // Client requirement (Phase 14): fuel/toll receipts and invoices request
+  // structured amount metadata at upload time instead of a bare file.
+  const TOUR_RECEIPT_DOC_TYPES = ["fuel_receipt", "toll_receipt"];
+  function tourDocumentRequiresAmountMetadata(type) {
+    const t = normalizeTourDocumentType(type);
+    return t === TOUR_DOC_TYPE_INVOICE || TOUR_RECEIPT_DOC_TYPES.includes(t);
+  }
+
+  // Phase 7: service-partner onboarding document categories.
+  const DRIVER_DOC_CATEGORIES = [
+    "business_registration",
+    "licence_front",
+    "licence_back",
+    "id_front",
+    "id_back",
+    "other",
+  ];
+  function normalizeDriverDocCategory(cat) {
+    const c = String(cat || "").trim();
+    return DRIVER_DOC_CATEGORIES.includes(c) ? c : "other";
+  }
+  // net * (1 + taxRate/100) must equal gross, within rounding tolerance.
+  function validateTourDocumentAmountMath({
+    netAmount,
+    grossAmount,
+    taxRatePercent,
+  }) {
+    const net = Number(netAmount);
+    const gross = Number(grossAmount);
+    const rate = Number(taxRatePercent);
+    if (![net, gross, rate].every(Number.isFinite))
+      return { valid: false, expectedGross: null };
+    const expectedGross = Math.round(net * (1 + rate / 100) * 100) / 100;
+    return {
+      valid: Math.abs(expectedGross - gross) <= 0.02,
+      expectedGross,
+    };
+  }
+
   function normalizeTourDocumentType(type) {
     const t = String(type || "").trim();
     return t || TOUR_DOC_TYPE_INVOICE;
@@ -417,15 +479,14 @@ window.AuthStore = (() => {
   /** Which admin review actions apply for a per-file reviewStatus (V1 — same for all document types). */
   function tourDocumentReviewActions(reviewStatus) {
     const st = normalizeTourDocumentReviewStatus(reviewStatus);
-    const pending = st === "uploaded";
+    const pending = st === "uploaded" || st === "in_review";
     return {
       canView: true,
       canDownload: true,
       canAccept: pending,
       canReject: pending,
-      canRequireCorrection: st === "rejected",
-      canReplace:
-        st === "uploaded" || st === "rejected" || st === "correction_required",
+      canRequireCorrection: pending,
+      canReplace: pending || st === "rejected" || st === "correction_required",
     };
   }
 
@@ -1737,12 +1798,14 @@ window.AuthStore = (() => {
         id: "ADM-001",
         name: DEMO_ADMIN,
         email: "anna.bauer@autheon.example",
+        role: "ADMIN",
         status: "Active",
       },
       {
         id: "ADM-002",
         name: "Lukas Reimann",
         email: "lukas.reimann@autheon.example",
+        role: "ADMIN",
         status: "Active",
       },
       // Mirrors the backend's seeds/profiles/development.json fixture admin
@@ -1752,6 +1815,7 @@ window.AuthStore = (() => {
         id: "ADM-003",
         name: "Demo Admin",
         email: "demo.admin@demo.local",
+        role: "ADMIN",
         status: "Active",
       },
     ];
@@ -1763,6 +1827,15 @@ window.AuthStore = (() => {
     if (doc.supplierInvoiceDate === undefined) doc.supplierInvoiceDate = "";
     if (doc.checkedAt === undefined) doc.checkedAt = "";
     if (doc.checkedBy === undefined) doc.checkedBy = "";
+    if (doc.internalNote === undefined) doc.internalNote = "";
+    if (doc.rejectionVisibleToPartner === undefined)
+      doc.rejectionVisibleToPartner = true;
+    if (doc.receiptDate === undefined) doc.receiptDate = "";
+    if (doc.servicePeriodFrom === undefined) doc.servicePeriodFrom = "";
+    if (doc.servicePeriodTo === undefined) doc.servicePeriodTo = "";
+    if (doc.netAmount === undefined) doc.netAmount = null;
+    if (doc.grossAmount === undefined) doc.grossAmount = null;
+    if (doc.taxRatePercent === undefined) doc.taxRatePercent = null;
   }
 
   function seedTourDocuments() {
@@ -2281,6 +2354,11 @@ window.AuthStore = (() => {
   let driverNotifications = seedDriverNotifications();
   let adminEmailQueue = seedAdminEmailQueue();
   let masterDataChangeRequests = [];
+  // Phase 7: service-partner onboarding documents — a separate system from
+  // tourDocuments (which is tour-scoped), since these belong to the partner
+  // itself (business registration, licence, ID), not to any one tour.
+  let driverDocuments = [];
+  let consolidatedInvoices = [];
 
   for (const j of jobs) {
     j.paymentStatus = normalizePaymentStatus(j.paymentStatus);
@@ -2534,7 +2612,7 @@ window.AuthStore = (() => {
     const openDocumentReviews = tourDocuments.filter(
       (d) =>
         driverJobIds.has(d.jobId) &&
-        ["uploaded", "correction_required"].includes(
+        ["uploaded", "in_review", "correction_required"].includes(
           normalizeTourDocumentReviewStatus(d.reviewStatus),
         ),
     ).length;
@@ -2623,6 +2701,48 @@ window.AuthStore = (() => {
     return `${dd}.${mm}. ${hh}:${mi}`;
   }
 
+  // Client requirement (Phase 13): audit entries display date as DD.MM.YYYY
+  // and time with seconds as HH:MM:SS — a stricter format than nowStamp(),
+  // used only for the audit log.
+  function auditStamp() {
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mi = String(d.getMinutes()).padStart(2, "0");
+    const ss = String(d.getSeconds()).padStart(2, "0");
+    return {
+      display: `${dd}.${mm}.${yyyy} ${hh}:${mi}:${ss}`,
+      iso: d.toISOString(),
+    };
+  }
+
+  // Seed audit rows predate this format and only carry "DD.MM. HH:MM" (no
+  // year, no seconds, real recording precision was never captured for the
+  // mock dataset) — assume the seed dataset's year (2026) so date filtering
+  // still works against them, without fabricating a false display format.
+  function parseAuditEntryDate(entry) {
+    if (entry.atIso) {
+      const d = new Date(entry.atIso);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    const m = String(entry.at || "").match(
+      /^(\d{2})\.(\d{2})\.(\d{4})?\s*(\d{2}):(\d{2})(?::(\d{2}))?/,
+    );
+    if (!m) return null;
+    const [, dd, mm, yyyy, hh, mi, ss] = m;
+    const d = new Date(
+      Number(yyyy) || 2026,
+      Number(mm) - 1,
+      Number(dd),
+      Number(hh),
+      Number(mi),
+      Number(ss) || 0,
+    );
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
   // Safe i18n lookup for mock notification/audit copy generated in the store.
   function t2(key, params) {
     return window.I18n?.t ? window.I18n.t(key, params) : key;
@@ -2674,11 +2794,13 @@ window.AuthStore = (() => {
   }
 
   function log(action, actor, entity, meta) {
+    const stamp = auditStamp();
     auditLog.unshift({
       action,
       actor,
       entity,
-      at: nowStamp(),
+      at: stamp.display,
+      atIso: stamp.iso,
       meta: meta || "",
     });
   }
@@ -2882,7 +3004,12 @@ window.AuthStore = (() => {
   function reconcileDocumentReviewSummary(jobId) {
     const j = jobs.find((x) => x.id === jobId);
     if (!j) return;
-    const docs = tourDocuments.filter((d) => d.jobId === jobId);
+    // "replaced" rows are superseded history, not live documents — exclude
+    // them so an accepted replacement isn't dragged back to "Rejected" by
+    // the version it replaced.
+    const docs = tourDocuments.filter(
+      (d) => d.jobId === jobId && d.reviewStatus !== "replaced",
+    );
     if (!docs.length) {
       j.documentReviewSummary = "Not Started";
       return;
@@ -2893,7 +3020,11 @@ window.AuthStore = (() => {
       j.documentReviewSummary = "Rejected";
     else if (docs.every((d) => d.reviewStatus === "accepted"))
       j.documentReviewSummary = "Accepted";
-    else if (docs.some((d) => d.reviewStatus === "uploaded")) {
+    else if (
+      docs.some(
+        (d) => d.reviewStatus === "uploaded" || d.reviewStatus === "in_review",
+      )
+    ) {
       j.documentReviewSummary =
         j.status === "performed" ? "Under Review" : "Uploaded";
     } else j.documentReviewSummary = "Pending";
@@ -3874,6 +4005,83 @@ window.AuthStore = (() => {
     normalizeTaxStatus,
     validateIban,
     getServicePartnerProfileSummary,
+
+    DRIVER_DOC_CATEGORIES,
+    getDriverDocuments: (driverId) =>
+      driverDocuments.filter((d) => d.driverId === driverId),
+    addDriverOnboardingDocument(driverId, file, opts = {}) {
+      if (!driverId || !drivers.some((d) => d.id === driverId))
+        return { ok: false, reason: "bad_driver" };
+      if (!file) return { ok: false, reason: "no_file" };
+      if (!isAllowedTourDocumentFile(file))
+        return { ok: false, reason: "invalid_type" };
+      if (exceedsTourDocumentSizeLimit(file))
+        return { ok: false, reason: "file_too_large" };
+      const category = normalizeDriverDocCategory(opts.category);
+      const prior = driverDocuments.find(
+        (d) =>
+          d.driverId === driverId &&
+          d.category === category &&
+          d.reviewStatus !== "replaced",
+      );
+      const row = {
+        id: `DD-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        driverId,
+        category,
+        fileName: file.name,
+        mimeType:
+          (file.type || guessMimeFromName(file.name) || "").trim() ||
+          "application/octet-stream",
+        sizeBytes: typeof file.size === "number" ? file.size : 0,
+        uploadedAt: nowStamp(),
+        validUntil: String(opts.validUntil || "").trim(),
+        version: prior ? (prior.version || 1) + 1 : 1,
+        reviewStatus: "uploaded",
+        rejectionReason: "",
+      };
+      if (prior) {
+        prior.reviewStatus = "replaced";
+        row.supersedes = prior.id;
+        prior.replacedBy = row.id;
+      }
+      driverDocuments.unshift(row);
+      const d = drivers.find((x) => x.id === driverId);
+      log(
+        "driver_document_uploaded",
+        DEMO_ADMIN,
+        d?.name || driverId,
+        category,
+      );
+      emit();
+      return { ok: true, id: row.id };
+    },
+    acceptDriverDocument(id) {
+      const doc = driverDocuments.find((x) => x.id === id);
+      if (!doc) return { ok: false, reason: "not_found" };
+      if (doc.reviewStatus !== "uploaded")
+        return { ok: false, reason: "not_pending" };
+      doc.reviewStatus = "accepted";
+      doc.rejectionReason = "";
+      log("driver_document_accepted", DEMO_ADMIN, doc.driverId, doc.category);
+      emit();
+      return { ok: true };
+    },
+    rejectDriverDocument(id, reason) {
+      const doc = driverDocuments.find((x) => x.id === id);
+      if (!doc) return { ok: false, reason: "not_found" };
+      if (doc.reviewStatus !== "uploaded")
+        return { ok: false, reason: "not_pending" };
+      doc.reviewStatus = "rejected";
+      doc.rejectionReason = String(reason || "").trim();
+      log(
+        "driver_document_rejected",
+        DEMO_ADMIN,
+        doc.driverId,
+        `${doc.category}: ${doc.rejectionReason}`,
+      );
+      emit();
+      return { ok: true };
+    },
     MANUFACTURER_SUGGESTIONS:
       window.InputFormatters?.MANUFACTURER_SUGGESTIONS || [],
     MANUFACTURER_MODELS: window.InputFormatters?.MANUFACTURER_MODELS || {},
@@ -4312,6 +4520,7 @@ window.AuthStore = (() => {
     getNews: () => newsItems.filter((n) => n.visible !== false),
     getNewsAdmin: () => newsItems.slice(),
     getAuditLog: () => auditLog,
+    parseAuditEntryDate,
     getAdminEmailQueue: () => adminEmailQueue.slice(),
     getDriverNotifications: (driverId) => {
       const id =
@@ -4535,13 +4744,21 @@ window.AuthStore = (() => {
       const op = {
         id: nextMasterId("OP", customers),
         name,
+        legalForm: String(data?.legalForm || "").trim(),
         type: String(data?.type || "").trim(),
         contact: String(data?.contact || "").trim(),
         phone: String(data?.phone || "").trim(),
         email: String(data?.email || "").trim(),
+        street: String(data?.street || "").trim(),
+        houseNumber: String(data?.houseNumber || "").trim(),
+        postalCode: String(data?.postalCode || "").trim(),
+        city: String(data?.city || "").trim(),
+        country: String(data?.country || "D").trim() || "D",
         billingNotes: String(data?.billingNotes || "").trim(),
         instructions: String(data?.instructions || "").trim(),
         active: data?.active !== false,
+        joinedAt: nowStamp(),
+        changeHistory: [],
       };
       customers.unshift(op);
       log("customer_created", DEMO_ADMIN, op.name, op.id);
@@ -4554,16 +4771,41 @@ window.AuthStore = (() => {
       if (!op) return { ok: false, reason: "not_found" };
       const name = data?.name != null ? String(data.name).trim() : op.name;
       if (!name) return { ok: false, reason: "name_required" };
-      if (data?.name != null) op.name = name;
-      if (data?.type != null) op.type = String(data.type).trim();
-      if (data?.contact != null) op.contact = String(data.contact).trim();
-      if (data?.phone != null) op.phone = String(data.phone).trim();
-      if (data?.email != null) op.email = String(data.email).trim();
+      const changedFields = [];
+      const applyField = (key, value) => {
+        const next = String(value).trim();
+        if (op[key] !== next) changedFields.push(key);
+        op[key] = next;
+      };
+      if (data?.name != null) applyField("name", data.name);
+      if (data?.legalForm != null) applyField("legalForm", data.legalForm);
+      if (data?.type != null) applyField("type", data.type);
+      if (data?.contact != null) applyField("contact", data.contact);
+      if (data?.phone != null) applyField("phone", data.phone);
+      if (data?.email != null) applyField("email", data.email);
+      if (data?.street != null) applyField("street", data.street);
+      if (data?.houseNumber != null)
+        applyField("houseNumber", data.houseNumber);
+      if (data?.postalCode != null) applyField("postalCode", data.postalCode);
+      if (data?.city != null) applyField("city", data.city);
+      if (data?.country != null)
+        op.country = String(data.country).trim() || "D";
       if (data?.billingNotes != null)
-        op.billingNotes = String(data.billingNotes).trim();
+        applyField("billingNotes", data.billingNotes);
       if (data?.instructions != null)
-        op.instructions = String(data.instructions).trim();
-      if (data?.active != null) op.active = !!data.active;
+        applyField("instructions", data.instructions);
+      if (data?.active != null && data.active !== op.active) {
+        op.active = !!data.active;
+        changedFields.push("active");
+      }
+      if (changedFields.length) {
+        if (!Array.isArray(op.changeHistory)) op.changeHistory = [];
+        op.changeHistory.unshift({
+          at: nowStamp(),
+          by: DEMO_ADMIN,
+          fields: changedFields,
+        });
+      }
       log("customer_updated", DEMO_ADMIN, op.name, op.id);
       emit();
       return { ok: true, customer: op };
@@ -4644,13 +4886,14 @@ window.AuthStore = (() => {
     deleteAddress(id) {
       const addr = addresses.find((x) => x.id === id);
       if (!addr) return { ok: false, reason: "not_found" };
-      const used = api.countJobsUsingAddress(id);
-      if (used > 0) return { ok: false, reason: "in_use", count: used };
+      const usedCount = api.countJobsUsingAddress(id);
       const idx = addresses.findIndex((x) => x.id === id);
       addresses.splice(idx, 1);
-      log("address_deleted", DEMO_ADMIN, addr.label, addr.id);
+      log("address_deleted", DEMO_ADMIN, addr.label, addr.id, {
+        priorOrderUses: usedCount,
+      });
       emit();
-      return { ok: true };
+      return { ok: true, priorOrderUses: usedCount };
     },
 
     markNewsRead(newsId, readerId) {
@@ -4774,8 +5017,18 @@ window.AuthStore = (() => {
 
     acceptJob(id, opts = {}) {
       const j = api.getJob(id);
-      if (!j || j.status !== "published")
+      if (!j || j.status !== "published") {
+        if (j && ["accepted", "assigned"].includes(j.status)) {
+          const dr = api.getCurrentDriver();
+          log(
+            "job_accept_failed_already_booked",
+            dr?.name || DEMO_DRIVER,
+            j.tour,
+            `Already ${j.status} to ${j.driver || "another service partner"}`,
+          );
+        }
         return { ok: false, reason: "not_available" };
+      }
       if (!api.isCurrentDriverActive())
         return { ok: false, reason: "driver_restricted" };
       const dr = api.getCurrentDriver();
@@ -6105,16 +6358,10 @@ window.AuthStore = (() => {
     },
 
     setDriverStatus(id, status) {
-      // Operational/marketplace axis (Driver.status) — 5 values per
-      // prd.json's driver_statuses list. Separate from accountStatus
-      // (User.status axis), set via setAccountStatus instead.
-      const allowed = [
-        "Active",
-        "Blocked",
-        "Inactive",
-        "Archived",
-        "Soft Deleted",
-      ];
+      // Operational/marketplace axis (Driver.status) — matches the real
+      // DriverStatus enum (ACTIVE/BLOCKED/INACTIVE). Separate from
+      // accountStatus (User.status axis), set via setAccountStatus instead.
+      const allowed = ["Active", "Blocked", "Inactive"];
       const d = drivers.find((x) => x.id === id);
       if (!d || !allowed.includes(status)) return { ok: false };
       if (status !== "Active") {
@@ -6134,6 +6381,8 @@ window.AuthStore = (() => {
       if (!d) return { ok: false, reason: "not_found" };
       const fields = [
         "name",
+        "firstName",
+        "lastName",
         "company",
         "legalForm",
         "address",
@@ -6246,6 +6495,8 @@ window.AuthStore = (() => {
       const driver = {
         id,
         name,
+        firstName: String(data.firstName || "").trim(),
+        lastName: String(data.lastName || "").trim(),
         company,
         legalForm: String(data.legalForm || "").trim(),
         driverCode,
@@ -6303,6 +6554,10 @@ window.AuthStore = (() => {
         id: nextMasterId("ADM", admins),
         name,
         email,
+        // Client change plan Phase 8: single first-version role. Stored
+        // explicitly (not just implied) so the data model already has the
+        // field a future multi-role version would branch on.
+        role: "ADMIN",
         status: "Active",
       };
       const access = simulateAccountInvite(admin, "admin");
@@ -6310,6 +6565,28 @@ window.AuthStore = (() => {
       log("admin_created", DEMO_ADMIN, admin.name, admin.id);
       emit();
       return { ok: true, admin, access };
+    },
+
+    // Same conflict-of-interest rule as setAccountStatus: an admin can never
+    // delete their own account (would lock them out with no way back in).
+    deleteAdmin(id) {
+      const a = admins.find((x) => x.id === id);
+      if (!a) return { ok: false, reason: "not_found" };
+      if (a.name === DEMO_ADMIN) {
+        return { ok: false, reason: "cannot_change_own_status" };
+      }
+      // Same last-active-admin guard as setAccountStatus: deleting the org's
+      // only remaining active admin would lock everyone out.
+      if (a.status === "Active") {
+        const activeCount = admins.filter((x) => x.status === "Active").length;
+        if (activeCount <= 1) {
+          return { ok: false, reason: "last_active_admin" };
+        }
+      }
+      admins = admins.filter((x) => x.id !== id);
+      log("admin_deleted", DEMO_ADMIN, a.name, a.id);
+      emit();
+      return { ok: true };
     },
 
     resendAccess(kind, id) {
@@ -6353,6 +6630,22 @@ window.AuthStore = (() => {
       if (kind === "admin") {
         const a = admins.find((x) => x.id === id);
         if (!a) return { ok: false };
+        // Client change plan Phase 8: an admin can never change their own
+        // account status (self-deactivation guard) — technical, not just UI,
+        // since a client-only check is trivially bypassed.
+        if (a.name === DEMO_ADMIN && status !== "Active") {
+          return { ok: false, reason: "cannot_change_own_status" };
+        }
+        // Phase 8: the last remaining Active admin can't be deactivated —
+        // otherwise no one could sign in to fix it.
+        if (a.status === "Active" && status !== "Active") {
+          const activeCount = admins.filter(
+            (x) => x.status === "Active",
+          ).length;
+          if (activeCount <= 1) {
+            return { ok: false, reason: "last_active_admin" };
+          }
+        }
         a.status = status;
         log("admin_account_status_changed", DEMO_ADMIN, a.name, status);
         emit();
@@ -6487,6 +6780,19 @@ window.AuthStore = (() => {
         return { ok: false, reason: "file_too_large" };
       const gate = api.canDriverUploadTourDocument(opts.jobId);
       if (!gate.ok) return gate;
+      const hasAmountFields =
+        opts.netAmount != null ||
+        opts.grossAmount != null ||
+        opts.taxRatePercent != null;
+      if (hasAmountFields) {
+        const check = validateTourDocumentAmountMath(opts);
+        if (!check.valid)
+          return {
+            ok: false,
+            reason: "amount_math_invalid",
+            expectedGross: check.expectedGross,
+          };
+      }
       const jobId = gate.jobId;
       const d = api.getCurrentDriver();
       const mime = (file.type || guessMimeFromName(file.name) || "").trim();
@@ -6507,7 +6813,18 @@ window.AuthStore = (() => {
         notes: opts.notes || "",
         supplierInvoiceNumber: "",
         supplierInvoiceDate: "",
+        receiptDate: String(opts.receiptDate || "").trim(),
+        servicePeriodFrom: String(opts.servicePeriodFrom || "").trim(),
+        servicePeriodTo: String(opts.servicePeriodTo || "").trim(),
+        netAmount: opts.netAmount != null ? Number(opts.netAmount) : null,
+        grossAmount: opts.grossAmount != null ? Number(opts.grossAmount) : null,
+        taxRatePercent:
+          opts.taxRatePercent != null ? Number(opts.taxRatePercent) : null,
       };
+      if (opts.supplierInvoiceNumber != null)
+        row.supplierInvoiceNumber = String(opts.supplierInvoiceNumber).trim();
+      if (opts.supplierInvoiceDate != null)
+        row.supplierInvoiceDate = String(opts.supplierInvoiceDate).trim();
       ensureTourDocumentShape(row);
       const priorCount = tourDocuments.filter((x) => x.jobId === jobId).length;
       tourDocuments.unshift(row);
@@ -6549,13 +6866,24 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
+    markTourDocumentInReview(id) {
+      const doc = tourDocuments.find((x) => x.id === id);
+      if (!doc) return { ok: false, reason: "not_found" };
+      if (normalizeTourDocumentReviewStatus(doc.reviewStatus) !== "uploaded")
+        return { ok: true };
+      doc.reviewStatus = "in_review";
+      emit();
+      return { ok: true };
+    },
+
     acceptTourDocument(id, opts = {}) {
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false, reason: "not_found" };
       if (normalizeTourDocumentReviewStatus(doc.reviewStatus) === "accepted")
         return { ok: true };
       const st = normalizeTourDocumentReviewStatus(doc.reviewStatus);
-      if (st !== "uploaded") return { ok: false, reason: "not_pending" };
+      if (st !== "uploaded" && st !== "in_review")
+        return { ok: false, reason: "not_pending" };
       const invNum = String(opts.supplierInvoiceNumber ?? "").trim();
       const invDate = String(opts.supplierInvoiceDate ?? "").trim();
       if (isTourBillingInvoiceType(doc.documentType) && !invNum)
@@ -6642,15 +6970,23 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
-    rejectTourDocument(id, reason) {
+    rejectTourDocument(id, reasonOrOpts) {
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false };
       if (doc.reviewStatus === "accepted")
         return { ok: false, reason: "already_accepted" };
       const st = normalizeTourDocumentReviewStatus(doc.reviewStatus);
-      if (st !== "uploaded") return { ok: false, reason: "not_pending" };
+      if (st !== "uploaded" && st !== "in_review")
+        return { ok: false, reason: "not_pending" };
+      const opts =
+        typeof reasonOrOpts === "string"
+          ? { reason: reasonOrOpts }
+          : reasonOrOpts || {};
+      const visibleToPartner = opts.visibleToPartner !== false;
       doc.reviewStatus = "rejected";
-      doc.rejectionReason = reason || "";
+      doc.rejectionReason = opts.reason || "";
+      doc.internalNote = opts.internalNote || "";
+      doc.rejectionVisibleToPartner = visibleToPartner;
       doc.processed = false;
       reconcileDocumentReviewSummary(doc.jobId);
       reconcileJobInvoiceFromTourDocuments(doc.jobId);
@@ -6671,19 +7007,24 @@ window.AuthStore = (() => {
         jobId: doc.jobId,
         tour: jn?.tour || "",
         title: "Document rejected",
-        body: doc.rejectionReason || "",
+        body: visibleToPartner ? doc.rejectionReason || "" : "",
         driverId: doc.driverId,
       });
       emit();
       return { ok: true };
     },
 
-    requireTourDocumentCorrection(id) {
+    requireTourDocumentCorrection(id, opts = {}) {
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false };
       const st = normalizeTourDocumentReviewStatus(doc.reviewStatus);
-      if (st !== "rejected") return { ok: false, reason: "not_rejected" };
+      if (st !== "uploaded" && st !== "in_review")
+        return { ok: false, reason: "not_pending" };
+      const visibleToPartner = opts.visibleToPartner !== false;
       doc.reviewStatus = "correction_required";
+      doc.rejectionReason = opts.reason || "";
+      doc.internalNote = opts.internalNote || "";
+      doc.rejectionVisibleToPartner = visibleToPartner;
       doc.processed = false;
       reconcileDocumentReviewSummary(doc.jobId);
       reconcileJobInvoiceFromTourDocuments(doc.jobId);
@@ -6698,6 +7039,15 @@ window.AuthStore = (() => {
         doc.jobId,
         doc.rejectionReason,
       );
+      const jn = api.getJob(doc.jobId);
+      pushDriverNotification({
+        type: "document_correction_required",
+        jobId: doc.jobId,
+        tour: jn?.tour || "",
+        title: "Document correction required",
+        body: visibleToPartner ? doc.rejectionReason || "" : "",
+        driverId: doc.driverId,
+      });
       emit();
       return { ok: true };
     },
@@ -6728,33 +7078,51 @@ window.AuthStore = (() => {
           return { ok: false, reason: "official_doc_not_replaceable" };
       }
       const st = normalizeTourDocumentReviewStatus(doc.reviewStatus);
-      const replaceable = ["rejected", "correction_required", "uploaded"];
+      const replaceable = [
+        "rejected",
+        "correction_required",
+        "uploaded",
+        "in_review",
+      ];
       if (!replaceable.includes(st))
         return { ok: false, reason: "not_replaceable" };
-      doc.fileName = file.name;
-      doc.mimeType =
-        (file.type || guessMimeFromName(file.name) || "").trim() ||
-        "application/octet-stream";
-      doc.sizeBytes = typeof file.size === "number" ? file.size : 0;
-      doc.uploadedAt = new Date().toISOString();
-      doc.reviewStatus = "uploaded";
-      doc.rejectionReason = "";
-      doc.processed = false;
-      doc.supplierInvoiceNumber = "";
-      doc.supplierInvoiceDate = "";
-      if (opts.documentType)
-        doc.documentType = normalizeTourDocumentType(opts.documentType);
-      reconcileDocumentReviewSummary(jobId);
-      reconcileJobInvoiceFromTourDocuments(jobId);
       const who =
         actor === "driver"
           ? api.getCurrentDriver()?.name || DEMO_DRIVER
           : DEMO_ADMIN;
+      // Client requirement: a new version is a distinct row marked "Uploaded";
+      // the prior version is kept (never overwritten/deleted) and marked
+      // "Replaced" so document history stays reviewable.
+      const nextRow = {
+        ...doc,
+        id: `TD-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        fileName: file.name,
+        mimeType:
+          (file.type || guessMimeFromName(file.name) || "").trim() ||
+          "application/octet-stream",
+        sizeBytes: typeof file.size === "number" ? file.size : 0,
+        uploadedAt: new Date().toISOString(),
+        reviewStatus: "uploaded",
+        rejectionReason: "",
+        processed: false,
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
+        documentType: opts.documentType
+          ? normalizeTourDocumentType(opts.documentType)
+          : doc.documentType,
+        supersedes: doc.id,
+      };
+      doc.reviewStatus = "replaced";
+      doc.replacedBy = nextRow.id;
+      ensureTourDocumentShape(nextRow);
+      tourDocuments.unshift(nextRow);
+      reconcileDocumentReviewSummary(jobId);
+      reconcileJobInvoiceFromTourDocuments(jobId);
       log(
         "tour_document_replaced",
         who,
-        doc.fileName,
-        `${jobId} · ${doc.documentType}`,
+        nextRow.fileName,
+        `${jobId} · ${nextRow.documentType}`,
       );
       queueAdminEmailAlert(
         "tour_document_uploaded",
@@ -6762,7 +7130,7 @@ window.AuthStore = (() => {
         "replacement upload",
       );
       emit();
-      return { ok: true, id: doc.id };
+      return { ok: true, id: nextRow.id };
     },
 
     getTourDocuments: () => tourDocuments.slice(),
@@ -6787,6 +7155,152 @@ window.AuthStore = (() => {
     isOfficialTourDocumentSource,
     isDriverTourDocumentSource,
     canDriverReplaceTourDocument,
+
+    TOUR_RECEIPT_DOC_TYPES,
+    tourDocumentRequiresAmountMetadata,
+    validateTourDocumentAmountMath,
+
+    CONSOLIDATED_INVOICE_STATUSES,
+    normalizeConsolidatedInvoiceStatus,
+
+    getConsolidatedInvoices: () => consolidatedInvoices.slice(),
+    getConsolidatedInvoice: (id) =>
+      consolidatedInvoices.find((x) => x.id === id) || null,
+
+    countActiveInvoicesForJob(jobId) {
+      return consolidatedInvoices.filter(
+        (inv) =>
+          inv.jobIds.includes(jobId) &&
+          CONSOLIDATED_INVOICE_ACTIVE_STATUSES.includes(inv.status),
+      ).length;
+    },
+
+    getActiveInvoiceForJob(jobId) {
+      return (
+        consolidatedInvoices.find(
+          (inv) =>
+            inv.jobIds.includes(jobId) &&
+            CONSOLIDATED_INVOICE_ACTIVE_STATUSES.includes(inv.status),
+        ) || null
+      );
+    },
+
+    createConsolidatedInvoice(data) {
+      const jobIds = Array.isArray(data?.jobIds)
+        ? [...new Set(data.jobIds)]
+        : [];
+      if (!jobIds.length) return { ok: false, reason: "no_tours_selected" };
+      const file = data?.file || null;
+      if (!file) return { ok: false, reason: "no_file" };
+      if (!isAllowedTourDocumentFile(file))
+        return { ok: false, reason: "invalid_type" };
+      if (exceedsTourDocumentSizeLimit(file))
+        return { ok: false, reason: "file_too_large" };
+      const invNum = String(data?.supplierInvoiceNumber || "").trim();
+      if (!invNum) return { ok: false, reason: "no_invoice_id" };
+      const foundJobs = [];
+      for (const jobId of jobIds) {
+        const j = api.getJob(jobId);
+        if (!j || j.status !== "performed")
+          return { ok: false, reason: "tour_not_completed", jobId };
+        if (api.countActiveInvoicesForJob(jobId) > 0)
+          return { ok: false, reason: "tour_already_invoiced", jobId };
+        foundJobs.push(j);
+      }
+      const amount = Number(data?.amount);
+      if (!Number.isFinite(amount) || amount <= 0)
+        return { ok: false, reason: "invalid_amount" };
+      const driverOfferSum = foundJobs.reduce(
+        (sum, j) => sum + (Number(j.driverOffer) || 0),
+        0,
+      );
+      const row = {
+        id: `CI-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        jobIds,
+        fileName: file.name,
+        mimeType:
+          (file.type || guessMimeFromName(file.name) || "").trim() ||
+          "application/octet-stream",
+        sizeBytes: typeof file.size === "number" ? file.size : 0,
+        supplierInvoiceNumber: invNum,
+        amount,
+        driverOfferSum,
+        amountMismatch: Math.abs(amount - driverOfferSum) > 0.01,
+        status: "in_review",
+        rejectionReason: "",
+        internalNote: "",
+        createdAt: nowStamp(),
+        createdBy: DEMO_ADMIN,
+      };
+      consolidatedInvoices.unshift(row);
+      log(
+        "consolidated_invoice_created",
+        DEMO_ADMIN,
+        row.supplierInvoiceNumber,
+        `${jobIds.length} tour(s)`,
+      );
+      emit();
+      return { ok: true, invoice: row };
+    },
+
+    acceptConsolidatedInvoice(id) {
+      const inv = consolidatedInvoices.find((x) => x.id === id);
+      if (!inv) return { ok: false, reason: "not_found" };
+      const st = normalizeConsolidatedInvoiceStatus(inv.status);
+      if (st !== "in_review" && st !== "correction_required")
+        return { ok: false, reason: "not_pending" };
+      inv.status = "completed";
+      inv.rejectionReason = "";
+      for (const jobId of inv.jobIds) {
+        const j = api.getJob(jobId);
+        if (j) j.paymentStatus = "Paid";
+      }
+      log(
+        "consolidated_invoice_accepted",
+        DEMO_ADMIN,
+        inv.supplierInvoiceNumber,
+        `${inv.jobIds.length} tour(s)`,
+      );
+      emit();
+      return { ok: true };
+    },
+
+    rejectConsolidatedInvoice(id, opts = {}) {
+      const inv = consolidatedInvoices.find((x) => x.id === id);
+      if (!inv) return { ok: false, reason: "not_found" };
+      const st = normalizeConsolidatedInvoiceStatus(inv.status);
+      if (st !== "in_review" && st !== "correction_required")
+        return { ok: false, reason: "not_pending" };
+      inv.status = "rejected";
+      inv.rejectionReason = opts.reason || "";
+      inv.internalNote = opts.internalNote || "";
+      log(
+        "consolidated_invoice_rejected",
+        DEMO_ADMIN,
+        inv.supplierInvoiceNumber,
+        inv.rejectionReason,
+      );
+      emit();
+      return { ok: true };
+    },
+
+    requireConsolidatedInvoiceCorrection(id, opts = {}) {
+      const inv = consolidatedInvoices.find((x) => x.id === id);
+      if (!inv) return { ok: false, reason: "not_found" };
+      const st = normalizeConsolidatedInvoiceStatus(inv.status);
+      if (st !== "in_review") return { ok: false, reason: "not_pending" };
+      inv.status = "correction_required";
+      inv.rejectionReason = opts.reason || "";
+      inv.internalNote = opts.internalNote || "";
+      log(
+        "consolidated_invoice_correction_required",
+        DEMO_ADMIN,
+        inv.supplierInvoiceNumber,
+        inv.rejectionReason,
+      );
+      emit();
+      return { ok: true };
+    },
 
     attachAdminJobDocument(jobId, file, opts = {}) {
       const jobRaw = String(jobId || "").trim();
@@ -6901,6 +7415,15 @@ window.AuthStore = (() => {
       a.href = SAMPLE_PDF_URL;
       a.download = `${base}.pdf`;
       a.click();
+      const d = api.getCurrentDriver();
+      const j = api.getJob(doc.jobId);
+      log(
+        "tour_document_downloaded",
+        d?.name || doc.driverName || DEMO_DRIVER,
+        j?.tour || doc.jobId || "",
+        doc.fileName,
+      );
+      emit();
       return { ok: true };
     },
 
