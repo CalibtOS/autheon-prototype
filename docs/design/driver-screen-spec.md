@@ -487,6 +487,48 @@ see the v2.22 changelog open question.
 
 ---
 
+## Route stop identity — pickup / drop-off location name (2026-07-31)
+
+> **A stop reads city → who → where.** After acceptance the driver needs to know *which company or
+> person* is at each end of the route, not just the street.
+
+Component: `JobUnlocked` (`driver.jsx`) — the single full-detail / committed order view, mounted by both
+shells (`pwa/pwa-app.jsx`, framed prototype) only when `activeJob.mode === "unlocked"`.
+
+| Element | Class | Notes |
+|---------|-------|-------|
+| City | `.city-name` | 15px / 600. Unchanged. |
+| **Location name** | `.city-location-name` | **New.** 13px / 500, `--text`. The company or person responsible for this stop, between the city and the street. Wraps and breaks on overflow. |
+| Street + postal code + city | `.city-address` | 12px muted. Unchanged; now also breaks on overflow. |
+| Map action | `.map-link` | Unchanged; already `flex-shrink: 0`. |
+
+**Source.** `job.startCompany` / `job.endCompany` — the denormalized display fields `syncDisplayFields`
+mirrors from the order's own `pickup.name` / `delivery.name` **snapshot**. These are the same flat fields
+the street/postal/city lines beside them already read, so the whole stop block comes from one tier.
+Snapshot semantics are preserved: no live master-data lookup, so an order keeps the name it recorded
+even after the address book changes.
+
+**Never the customer.** There is no fallback to `customerName` / `customer`. The customer is the order's
+counterparty and is often a different entity from the site at the kerb — the seed data shows customer
+*Muller Automobile GmbH* against pickup stop *Muller Munich yard*. Substituting it would state something
+the order does not record.
+
+**Absent means gone.** `null`, `undefined`, empty and whitespace-only all drop the entire line — no
+label, no placeholder, no dash, no reserved space. The line is unlabelled data, exactly like the street
+line above it, so **no i18n key was added**.
+
+**Visibility is unchanged.** See `driver_visibility_matrix` rows `pickup_location_name` /
+`delivery_location_name` — the same tier the full address already had. The pre-acceptance marketplace
+preview (`JobLocked`) uses a **different** route renderer (`.detail-route-city`: city + `PLZ` only, no
+street), so the name cannot leak there; the notification tour preview already omits `name`/`street` for a
+non-committed order at the store-projection level.
+
+**Long names.** `.city-info` gained `flex: 1` + `min-width: 0` and the name breaks on overflow, so a long
+company string wraps inside the stop column instead of stretching the flex row and pushing the map button
+off the card.
+
+---
+
 ## Infopoint messages — list + detail page (2026-07-29)
 
 > **A message is a page, not an accordion.** Longer announcements (updated **AGB**, standing client

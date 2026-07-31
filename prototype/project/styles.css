@@ -2024,19 +2024,37 @@ select.input {
   justify-content: space-between;
   gap: 12px;
 }
+/* `min-width: 0` + `flex: 1` let a long company name wrap inside the column
+   instead of stretching the flex row and pushing the map button off the card. */
 .phone-shell .unlocked-route-timeline .city-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 .phone-shell .unlocked-route-timeline .city-name {
   font-size: 15px;
   font-weight: 600;
   color: var(--text);
 }
+/* Route-stop location name — the company or person responsible for this stop.
+   Sits BETWEEN the city and the street address, so the stop reads
+   city → who → where. Pitched between the two: darker than the muted address
+   because it is content rather than supporting detail, but lighter than the
+   15px/600 city so it does not compete for the row's heading. A name can be a
+   long company string, so it wraps and breaks rather than overflowing. */
+.phone-shell .unlocked-route-timeline .city-location-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
 .phone-shell .unlocked-route-timeline .city-address {
   font-size: 12px;
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 .phone-shell .unlocked-route-timeline .map-link {
   font-size: 12px;

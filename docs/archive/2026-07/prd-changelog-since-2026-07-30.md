@@ -1,4 +1,4 @@
-# PRD changelog: 2026-07-30 / 2026-07-31 (v2.25 → v2.27)
+# PRD changelog: 2026-07-30 / 2026-07-31 (v2.25 → v2.28)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
@@ -402,3 +402,96 @@ Metadata drops one step, 14px → **12.5px** (`.infopoint-meta-datetime`), becau
 | `docs/design/driver-screen-spec.md` | Message-list Date row and detail-page body-card bullet record the new format and class |
 | `docs/requirements/prd.json` | `version` gains the `[v2.31-infopoint-datetime]` entry (no version bump); new `infopoint_timestamp_format_v1` resolved default |
 | `docs/product/autheon-context-pack.md` | Version trail gains the `v2.31-infopoint-datetime` entry |
+## v2.31 addendum — Pickup and drop-off location names in committed order details (2026-07-31)
+
+**Numbering note:** authored as “PRD v2.28” before rebasing onto `main`, where that number was already taken. Recorded here as an addendum under **v2.31**; the PRD version is not bumped.
+
+**Baseline:** PRD v2.31 + `[v2.31-success-mark]` + `[v2.31-infopoint-datetime]`
+**Source:** work order "Show pickup and drop-off location names in accepted-order details" (Figma comment `139-144#1849581318`; the written requirements are authoritative and were used, as the link could not be opened).
+**Type:** presentation refinement of the committed order view. Refines `driver_visibility_matrix` by making an implied rule explicit.
+**Data model / API:** **UNCHANGED.** The value already exists on the order. No field, request, column, endpoint or migration added.
+
+### 1. Previous behaviour (v2.27)
+
+The complete order view's route timeline showed, per stop, only **city** and **street + postal code + city**:
+
+```
+München
+Ludwigstr. 12 · 80539 München        [View on map]
+```
+
+The driver could not tell **who** was at either end — which company or person to ask for on arrival — even though the order already recorded it.
+
+### 2. New behaviour (v2.28)
+
+The saved location name renders **between the city and the street address**, so a stop reads **city → who → where**:
+
+```
+München
+Muller Munich yard                    <- new
+Ludwigstr. 12 · 80539 München        [View on map]
+```
+
+Applied to both the pickup and the drop-off stop, in `JobUnlocked` — the single full-detail component, which both shells mount only when `activeJob.mode === "unlocked"` (reached after a successful acceptance, or from My orders). **Directly assigned orders reuse the same component and the same entitlement**, so they gain it automatically.
+
+### 3. Canonical field — verified, not assumed
+
+The work order expected something like `pickupName` / `deliveryName`. The **actual** repository names are:
+
+| Layer | Field | Notes |
+| --- | --- | --- |
+| Snapshot on the order | `job.pickup.name`, `job.delivery.name` | `mkLocation()`, seeded from the address book's `label` |
+| Denormalized display field | `job.startCompany`, `job.endCompany` | `syncDisplayFields`: `job.startCompany = pu.name \|\| ""` |
+
+The renderer reads `startCompany` / `endCompany`, because the street, postal-code and city lines beside it already read the same flat display tier — so the whole stop block stays consistent. **Snapshot semantics are preserved:** the value is derived from the order's own recorded location, not a live master-data lookup, so an order keeps the name it was created with even after the address book changes.
+
+### 4. Never the customer name
+
+There is **no** fallback to `customerName` / `customer`. The customer is the order's counterparty and is frequently a different entity from the site at the kerb — the seed data makes this concrete:
+
+| Order | `customerName` | Pickup stop | Drop-off stop |
+| --- | --- | --- | --- |
+| `A-2026-00847` | Muller Automobile GmbH | **Muller Munich yard** | **Autohaus Nord Berlin** |
+| `A-2026-00844` | Muller Automobile GmbH | **Muller Hamburg** | **Hannover outlet** |
+| `A-2026-00846` | Classic Cars AG | **Classic Cars Stuttgart** | **Classic Cars Munich showroom** |
+
+Substituting the customer would assert something the order does not record. Each name is bound to its own stop, so pickup and delivery can never display each other's value.
+
+### 5. Absent means gone
+
+`null`, `undefined`, empty string and **whitespace-only** all drop the **entire line** — no label, no placeholder, no dash, no reserved space, no layout gap. Handled by one helper (`routeStopName`) that trims and returns `null`, so both stops share one definition of "absent". The line is unlabelled data, exactly like the street line above it, so **no i18n key was added**.
+
+> Note for testing: all 17 seeded addresses carry a label, so **no seeded order exercises the hide path**. Reaching it requires an order created without a company name (via the admin order form, which allows it).
+
+### 6. Visibility is unchanged — and now explicit
+
+Two rows were **added** to `driver_visibility_matrix`, recording the tier the full address already had rather than granting anything new:
+
+| Field | Before acceptance | After acceptance / assignment |
+| --- | --- | --- |
+| `pickup_location_name` | `false` | `true` |
+| `delivery_location_name` | `false` | `true` |
+
+No pre-acceptance surface can leak the name:
+
+- **Marketplace preview (`JobLocked`)** uses a *different* route renderer — `.detail-route-city`, city + `PLZ` only, **no street at all**. `.city-location-name` appears nowhere in it.
+- **Notification tour preview** already omitted `name` and `street` for a non-committed order at the **store projection** level (`driverNotificationJobPreview` → `restricted = !driverIsCommittedToJob(j)`), so there is nothing to render. Untouched.
+- **Admin Backend** renders these fields through its own separate call sites. Untouched — `.city-address` and `.city-location-name` appear zero times in `admin.jsx`.
+
+### 7. Long names
+
+`.city-info` gained `flex: 1` + `min-width: 0`, and both the name and the address break on overflow. `.map-link` already had `flex-shrink: 0`. So a long company string wraps inside the stop column instead of stretching the flex row and pushing the map button off the card.
+
+### 8. What deliberately did NOT change
+
+City, postal code, street, house number, country, map actions, dates, time windows, navigation, and **contacts** — which are `contactPerson` (surfaced as `contactPickup.name` / `contactDelivery.name`), a genuinely different field from the location name and left exactly as it was.
+
+### 9. Files changed
+
+| File | Change |
+| --- | --- |
+| `prototype/project/driver.jsx` | New `routeStopName` helper; `pickupStopName` / `deliveryStopName` locals; a `.city-location-name` line in each of the two route-timeline stops |
+| `prototype/project/styles.css` | New `.city-location-name`; `.city-info` given `flex: 1` + `min-width: 0`; `.city-address` given `overflow-wrap: anywhere` |
+| `docs/design/driver-screen-spec.md` | New "Route stop identity" section |
+| `docs/requirements/prd.json` | `version` gains the `[v2.31-stop-names]` entry (no version bump); new `route_stop_location_names_v1`; two new `driver_visibility_matrix` rows |
+| `docs/product/autheon-context-pack.md` | Version trail gains the `v2.31-stop-names` entry |

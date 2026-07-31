@@ -3847,6 +3847,25 @@ const JobInvoiceUpload = JobTourDocuments;
 // =========================================================================
 // JOB DETAIL — UNLOCKED (after acceptance / running)
 // =========================================================================
+/**
+ * The company or person responsible for ONE route stop.
+ *
+ * Reads the denormalized `startCompany`/`endCompany` display fields, which
+ * `syncDisplayFields` mirrors from the order's own `pickup.name` / `delivery.name`
+ * snapshot — so this is the historical value recorded on the order, never a live
+ * master-data lookup, and it stays a per-stop value that pickup and delivery
+ * cannot swap.
+ *
+ * Deliberately NO fallback to `customerName` / `customer`: the customer is the
+ * order's counterparty, which is not necessarily who is at the kerb, so
+ * substituting it would state something the order does not record. Whitespace-only
+ * counts as absent, so the caller drops the line instead of rendering a blank row.
+ */
+const routeStopName = (raw) => {
+  const name = typeof raw === "string" ? raw.trim() : "";
+  return name || null;
+};
+
 const JobUnlocked = ({
   job,
   onBack,
@@ -3875,6 +3894,12 @@ const JobUnlocked = ({
   const canReportProblem = store.canServicePartnerReport(job);
   const pickup = job.contactPickup || {};
   const drop = job.contactDelivery || {};
+  // Route-stop location names — distinct from the contacts above, which are
+  // `contactPerson`. Only rendered in this component, which is the committed /
+  // full-detail view; the locked marketplace preview has its own route renderer
+  // and shows city + PLZ only.
+  const pickupStopName = routeStopName(job.startCompany);
+  const deliveryStopName = routeStopName(job.endCompany);
   const pickupMaps = googleMapsSearchUrl(
     job.startStreet,
     job.startPlz,
@@ -4157,6 +4182,9 @@ const JobUnlocked = ({
                   <div className="timeline-content">
                     <div className="city-info">
                       <div className="city-name">{job.startCity}</div>
+                      {pickupStopName ? (
+                        <div className="city-location-name">{pickupStopName}</div>
+                      ) : null}
                       <div className="city-address">
                         {job.startStreet} · {job.startPlz} {job.startCity}
                       </div>
@@ -4184,6 +4212,9 @@ const JobUnlocked = ({
                   <div className="timeline-content">
                     <div className="city-info">
                       <div className="city-name">{job.endCity}</div>
+                      {deliveryStopName ? (
+                        <div className="city-location-name">{deliveryStopName}</div>
+                      ) : null}
                       <div className="city-address">
                         {job.endStreet} · {job.endPlz} {job.endCity}
                       </div>
