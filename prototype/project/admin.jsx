@@ -116,12 +116,11 @@ const AdminNav = ({ section, setSection }) => {
       I: Ic.N.Audit,
     },
     {
-      id: "masterdata",
-      label: t("navMasterDataRequests"),
+      id: "drivers",
+      label: t("navDrivers"),
       count: mdrOpenCount || null,
       I: Ic.N.Users,
     },
-    { id: "drivers", label: t("navDrivers"), count: null, I: Ic.N.Users },
     { id: "staff", label: t("navStaff"), count: null, I: Ic.N.Users },
     {
       id: "customercenter",
@@ -5240,6 +5239,54 @@ const DRIVER_STATUS_TRANSITIONS = {
   ],
 };
 
+// Client requirement (Phase 7 #1): merge "Drivers" and "Profile Changes" into
+// one "Service Partners" nav entry with switchable views — same pattern as
+// CustomerCenterPane (Phase 9) and TourBillingCenterPane (Phase 12).
+const ServicePartnersCenterPane = ({
+  showToast,
+  initialRequestId,
+  onOpenJob,
+}) => {
+  const { t } = useI18n();
+  const [view, setView] = useStateA(
+    initialRequestId ? "changerequests" : "partners",
+  );
+  useEffectA(() => {
+    if (initialRequestId) setView("changerequests");
+  }, [initialRequestId]);
+  return (
+    <div id="servicepartnercenter">
+      <div className="tabs">
+        {[
+          ["partners", t("navDrivers")],
+          ["changerequests", t("navMasterDataRequests")],
+        ].map(([id, lbl]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={view === id}
+            className={view === id ? "on" : ""}
+            style={{ cursor: "pointer" }}
+            onClick={() => setView(id)}
+          >
+            {lbl}
+          </button>
+        ))}
+      </div>
+      {view === "partners" ? (
+        <DriversPane showToast={showToast} />
+      ) : (
+        <MasterDataRequestsPane
+          showToast={showToast}
+          initialRequestId={initialRequestId}
+          onOpenJob={onOpenJob}
+        />
+      )}
+    </div>
+  );
+};
+
 const DriversPane = ({ showToast }) => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -9547,7 +9594,6 @@ const TourBillingPane = ({
             <th>{t("invoiceColFile")}</th>
             <th>{t("billingColType")}</th>
             <th>{t("invoiceColDriver")}</th>
-            <th>{t("invoiceColJob")}</th>
             <th>{t("invoiceColUploaded")}</th>
             <th>{t("adminInvoiceColSource")}</th>
             <th>{t("billingColReview")}</th>
@@ -9558,7 +9604,7 @@ const TourBillingPane = ({
           {groupedByTour.length === 0 ? (
             <tr>
               <td
-                colSpan={10}
+                colSpan={8}
                 className="label"
                 style={{ padding: "22px 12px" }}
               >
@@ -9571,7 +9617,7 @@ const TourBillingPane = ({
             groupedByTour.map((group) => (
               <React.Fragment key={group.jobId}>
                 <tr className="tbl-group-row">
-                  <td colSpan={10} style={{ background: "var(--paper-2)" }}>
+                  <td colSpan={8} style={{ background: "var(--paper-2)" }}>
                     <div
                       style={{
                         display: "flex",
@@ -9651,30 +9697,6 @@ const TourBillingPane = ({
                         {displayTourDocType(u.documentType, t)}
                       </td>
                       <td>{u.driverName}</td>
-                      <td
-                        style={{ minWidth: 220 }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {u.jobId ? (
-                          (() => {
-                            const j = jobs.find((x) => x.id === u.jobId);
-                            return j ? (
-                              <span style={{ fontSize: 13 }}>
-                                {j.tour} · {j.customer}
-                              </span>
-                            ) : (
-                              <span
-                                className="mono label"
-                                style={{ fontSize: 12 }}
-                              >
-                                {u.jobId}
-                              </span>
-                            );
-                          })()
-                        ) : (
-                          <span className="label">{t("invoiceJobNone")}</span>
-                        )}
-                      </td>
                       <td className="mono" style={{ fontSize: 12 }}>
                         {fmtIso(u.uploadedAt)}
                       </td>
@@ -12769,6 +12791,7 @@ Object.assign(window, {
   NewOrderFooter,
   Stub,
   DriversPane,
+  ServicePartnersCenterPane,
   StaffPane,
   CustomerCenterPane,
   CustomersPane,

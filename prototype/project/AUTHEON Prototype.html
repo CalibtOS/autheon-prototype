@@ -505,7 +505,7 @@
         const clearBillingNav = () => setBillingNav(null);
         const openMasterDataRequest = (requestId) => {
           setSelectedMdrId(requestId || "");
-          setSection("masterdata");
+          setSection("drivers");
         };
         const closeAssignDialog = () => setAssignDialog(null);
 
@@ -1138,7 +1138,16 @@
             />
           );
         } else if (section === "drivers") {
-          body = <DriversPane showToast={showToast} />;
+          body = (
+            <ServicePartnersCenterPane
+              showToast={showToast}
+              initialRequestId={selectedMdrId}
+              onOpenJob={(j) => {
+                setActiveJob(j);
+                setSection("detail");
+              }}
+            />
+          );
         } else if (section === "staff") {
           body = <StaffPane showToast={showToast} />;
         } else if (section === "customercenter") {
@@ -1190,17 +1199,6 @@
             <NotificationFeedPane
               showToast={showToast}
               onReviewMasterDataRequest={openMasterDataRequest}
-              onOpenJob={(j) => {
-                setActiveJob(j);
-                setSection("detail");
-              }}
-            />
-          );
-        } else if (section === "masterdata") {
-          body = (
-            <MasterDataRequestsPane
-              showToast={showToast}
-              initialRequestId={selectedMdrId}
               onOpenJob={(j) => {
                 setActiveJob(j);
                 setSection("detail");
