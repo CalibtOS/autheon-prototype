@@ -3433,7 +3433,11 @@ window.AuthStore = (() => {
         ? tourDocuments.find((x) => x.id === row.documentId)
         : null;
       if (!doc) {
-        return { ...base, available: false, unavailableReason: "document_gone" };
+        return {
+          ...base,
+          available: false,
+          unavailableReason: "document_gone",
+        };
       }
       const j = api.getJob(doc.jobId);
       if (!j) {
@@ -3443,7 +3447,11 @@ window.AuthStore = (() => {
       // driver is committed to that tour — an order the driver has not taken
       // exposes no documents.
       if (!driverIsCommittedToJob(j)) {
-        return { ...base, available: false, unavailableReason: "not_permitted" };
+        return {
+          ...base,
+          available: false,
+          unavailableReason: "not_permitted",
+        };
       }
       return {
         ...base,
@@ -5023,7 +5031,10 @@ window.AuthStore = (() => {
     getJob: (id) => jobs.find((j) => j.id === id),
     getDriverOffer: (id) => driverOfferAmount(api.getJob(id)),
     driverOfferAmount,
-    getDrivers: () => drivers,
+    // Soft-deleted drivers are retained (job/invoice history still resolves
+    // their name via direct id lookups) but excluded from the admin list —
+    // mirrors the real backend's deletedAt-filtered reads.
+    getDrivers: () => drivers.filter((d) => !d.deletedAt),
     getAdmins: () => admins,
     // The demo console is always signed in as the seeded dispatcher. The
     // sidebar footer and the User settings account forms both bind to this one
@@ -6945,6 +6956,25 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
+    // Permanent offboarding — distinct from setDriverStatus (operational,
+    // reversible). Same active-jobs guard: delete means "fully wound down,"
+    // not "pull off a job mid-tour." The driver record itself is kept (not
+    // spliced out) so historical tours/invoices still resolve — mirrors the
+    // real backend's soft-delete (deletedAt set, row retained).
+    deleteDriver(id) {
+      const d = drivers.find((x) => x.id === id);
+      if (!d) return { ok: false, reason: "not_found" };
+      const activeJobs = api.countActiveJobsForDriver(id);
+      if (activeJobs > 0) {
+        return { ok: false, reason: "active_jobs", count: activeJobs };
+      }
+      d.deletedAt = nowStamp();
+      d.status = "Inactive";
+      log("driver_deleted", DEMO_ADMIN, d.name, d.id);
+      emit();
+      return { ok: true };
+    },
+
     updateDriver(id, patch = {}) {
       const d = drivers.find((x) => x.id === id);
       if (!d) return { ok: false, reason: "not_found" };
@@ -7590,7 +7620,9 @@ window.AuthStore = (() => {
         tour: jn?.tour || "",
         documentId: doc.id,
         title: t2("notifDocumentRejectedTitle"),
-        body: visibleToPartner ? (doc.rejectionReason || t2("notifDocumentRejectedBody")) : "",
+        body: visibleToPartner
+          ? doc.rejectionReason || t2("notifDocumentRejectedBody")
+          : "",
         driverId: doc.driverId,
       });
       emit();

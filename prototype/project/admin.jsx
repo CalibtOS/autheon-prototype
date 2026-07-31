@@ -5355,6 +5355,34 @@ const DriversPane = ({ showToast }) => {
     showToast?.(t("adminUsersToastAccountStatusChanged"), record.name);
   };
 
+  const handleDeleteDriver = (driver) => {
+    void window
+      .requestAdminConfirm(
+        t("adminDeleteDriverConfirmBody", { name: driver.name }),
+        {
+          title: t("adminDeleteDriverConfirmTitle", { name: driver.name }),
+          destructive: true,
+          confirmLabel: t("adminDeleteDriverConfirmAction"),
+        },
+      )
+      .then((ok) => {
+        if (!ok) return;
+        const result = store.deleteDriver(driver.id);
+        if (!result.ok) {
+          if (result.reason === "active_jobs") {
+            showToast?.(
+              t("adminUsersToastDriverActiveJobs", { count: result.count }),
+              driver.name,
+            );
+          } else {
+            showToast?.(t("adminUsersSaveFailed"), driver.name);
+          }
+          return;
+        }
+        showToast?.(t("adminUsersDeleted"), driver.name);
+      });
+  };
+
   // Activating isn't destructive — fires immediately, same precedent as
   // StaffPane's applyAdminStatus. Block/Deactivate remove the driver from
   // job matching, so they get a confirm step first.
@@ -5576,6 +5604,14 @@ const DriversPane = ({ showToast }) => {
                     onClick={() => openEditDriver(d)}
                   >
                     {t("adminUsersEdit")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn xs danger"
+                    style={{ marginLeft: 6 }}
+                    onClick={() => handleDeleteDriver(d)}
+                  >
+                    {t("adminUsersDelete")}
                   </button>
                 </td>
               </tr>
