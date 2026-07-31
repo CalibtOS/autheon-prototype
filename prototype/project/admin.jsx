@@ -5351,7 +5351,15 @@ const DriversPane = ({ showToast }) => {
 
   const applyAccountStatus = (record, kind, status) => {
     const result = store.setAccountStatus(kind, record.id, status);
-    if (!result.ok) return;
+    if (!result.ok) {
+      if (result.reason === "active_jobs") {
+        showToast?.(
+          t("adminUsersToastDriverActiveJobs", { count: result.count }),
+          record.name,
+        );
+      }
+      return;
+    }
     showToast?.(t("adminUsersToastAccountStatusChanged"), record.name);
   };
 

@@ -6970,6 +6970,9 @@ window.AuthStore = (() => {
       }
       d.deletedAt = nowStamp();
       d.status = "Inactive";
+      // Deleting a driver is one action, not two — the linked login account
+      // is offboarded with it, same as the real backend's cascading soft-delete.
+      d.accountStatus = "Inactive";
       log("driver_deleted", DEMO_ADMIN, d.name, d.id);
       emit();
       return { ok: true };
@@ -7252,6 +7255,16 @@ window.AuthStore = (() => {
       }
       const d = drivers.find((x) => x.id === id);
       if (!d) return { ok: false };
+      // Same active-jobs guard as setDriverStatus/deleteDriver — suspending a
+      // driver's login is blocked while they have an active job, matching the
+      // real backend's assertUserCanBeDeactivated check. Reactivating (back to
+      // Active) is always allowed.
+      if (status !== "Active") {
+        const activeJobs = api.countActiveJobsForDriver(id);
+        if (activeJobs > 0) {
+          return { ok: false, reason: "active_jobs", count: activeJobs };
+        }
+      }
       d.accountStatus = status;
       log("driver_account_status_changed", DEMO_ADMIN, d.name, status);
       emit();
