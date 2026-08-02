@@ -13,6 +13,25 @@
 
 Includes v1.9/v2.0 outcomes: one-time probation acceptance model, probation-only driver UI, in-PWA document preview + share/print, Infopoint separate View/Download, auto immutable driver IDs, and same-day per-leg time-window hard blocks.
 
+## Profile help contacts - accepted implementation evidence (2026-07-30)
+
+| Requirement | Prototype evidence |
+|---|---|
+| Feedback and Report an error remain separate Profile actions | `ProfileMailtoRow` is rendered twice with distinct `data-profile-row` values in `driver.jsx` |
+| No form subpage or fake submission | Both rows open external `mailto:` URIs directly; the former feedback/error form pages are absent |
+| Independent recipients and subjects | `driverSupportContact.feedbackEmail` / `reportErrorEmail` and `profileFeedbackMailSubject` / `profileReportErrorMailSubject` |
+| Partner ID included | `ProfilePaneFull` resolves both localized subjects with `partnerId` |
+| Recipient and subject only | `buildProfileMailtoHref()` emits `mailto:<encoded-recipient>?subject=<encoded-subject>` with no body, CC, BCC or attachment parameters |
+| Admin owns all three contact purposes | `HelpContactsForm` edits Infopoint hotline/email, Feedback email and Report-an-error email in one card |
+| One Save/Discard boundary | `HelpContactsForm` keeps one draft and calls `setDriverSupportContact()` once; discard restores all stored values |
+| Three vertical rows | `.help-contacts-list` renders Infopoint, Feedback and Report an error sequentially; narrow layouts stack fields within each row |
+| EN/DE and regression coverage | `driver-i18n-index.md`, `tests/e2e/help-contacts-mailto.spec.ts`, and the Profile drill-down E2E mailto assertions |
+
+This is a documentation catch-up for accepted prototype behavior already
+merged through `feat/help-contacts-mailto` (`5e9cc82`; merge `2e9cc82`). It
+does not add a feedback submission endpoint, DTO, route, persistence model or
+database change.
+
 ---
 
 ## v2.0 checklist

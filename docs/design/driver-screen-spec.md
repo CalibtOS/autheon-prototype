@@ -257,7 +257,7 @@ Audit item 43 resolved 2026-07-28.
 | Remove document | `RemoveDocModal` | confirm; blocked once in review | Remove (outline danger) |
 | Report problem | `ReportProblemSheet` | 7 codes, min 10 chars, evidence | Submit |
 | Notifications | `DriverNotificationsPane` | grouped by day, unread, empty, tour card collapsed / expanded, unavailable order, message + document deep-link cards | Expand preview \| View order \| To my orders \| View more orders \| open message \| open document |
-| Profile | `ProfilePaneFull` | view, edit MDR, pending | Request changes |
+| Profile | `ProfilePaneFull` | navigation list, active/completed probation, configured/unavailable help contacts | Request changes / Feedback mail / Report-error mail |
 | Change email | Account nav row → `ChangeEmailSheet` | enter, confirm code (+resend), success, pending resume | Cancel \| Send code → Confirm change |
 | Infopoint | `Infopoint` | docs + news + help tabs, empty (swipe between tabs) | Download / Help / open message |
 | Infopoint message detail | `InfopointMessageDetail` | short message, long message (AGB-length), unread → read on entry | Back (arrow + left-edge swipe) |
@@ -273,6 +273,32 @@ Audit item 43 resolved 2026-07-28.
 - **Slide-to-confirm** (binding acceptance, binding cancellation, **mark performed**): must clearly prevent accidental actions — full-width deliberate drag, locked until preconditions are met (e.g. 10-char reason), clear track label (sentence case), performant transform-only feedback. Shared control: `SlideToConfirm` (`driver.jsx`).
 - **Swipe between in-screen tabs** (`SwipeViews`, `driver.jsx` — 2026-07, PR #17): My Jobs (Active / Performed / Cancelled / Empty run) and Infopoint (Documents / News / Help) are a paged carousel — a horizontal drag moves the track so the adjacent tab peeks in and snaps on release; the tab pills stay in sync and tapping still works. The gesture locks to one axis after ~10px so vertical list scrolling is preserved (`touch-action: pan-y`, per-pane `overflow-y`); transform-only, reduced-motion friendly. Not the bottom nav — that switches on tap only.
 - **Digit-only numeric inputs** (2026-07, PR #17): the preferred postal-code input (profile push prefs) and the Marketplace filter PLZ fields strip non-digits on input (`inputMode="numeric"`). Mirrors the admin Create/Edit-Job numeric rules (postal code, house no., distance = digits; phone allows a leading `+`; money allows one decimal separator).
+
+### Profile help mail actions
+
+The **Help** group contains two independent list rows: **Feedback** and
+**Report an error**. They use the same full-row hit target, icon alignment,
+type scale, divider rhythm and trailing affordance as the other Profile
+navigation rows, but they are actions rather than drill-down routes.
+
+- Activating a row opens the device email client with `mailto:`; no Profile
+  form page, modal or sheet is inserted first.
+- Feedback and Report an error use different system-configured recipients and
+  different localized subjects. Each subject includes the Partner ID.
+- The URI contains recipient + subject only. Body, CC, BCC and attachments are
+  absent, and both values are URL-encoded.
+- The PWA never shows a sent/success state. It cannot know whether the user
+  sends or abandons the draft in the external client.
+- Long German labels wrap inside the row without clipping the icon or reducing
+  the 44px minimum touch target. Keyboard activation and visible focus use the
+  existing list-row behavior.
+
+Admin System settings presents the backing values in one **Help contacts**
+card. Its three rows are ordered Infopoint, Feedback, Report an error.
+Infopoint has hotline + email; the other rows have email only. All rows use one
+vertical spacing rhythm and one shared Discard changes / Save changes footer.
+On narrow layouts fields stack within their row; the three purposes never
+become a two-column card grid.
 
 ---
 

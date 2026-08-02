@@ -261,6 +261,17 @@ Per §6.2 — full-height page replaces the popover. Layout: day group headers (
 
 **Update 2026-07 (Task 1 — Account & sign-in; nav IA 2026-07-27):** sign-in email is a Profile **Account** nav row (`profileNavChangeEmail`, `Ic.Mail`) opening a **centered** `ChangeEmailSheet` with Cancel|Primary footer (same grammar as Sign out). Enter → confirm-with-code → success; pending resume on reopen; `accountSigninHint` in the enter step; localized `CodeInput` aria. Probation card sits under identity on the main Profile list. (Supersedes the earlier standalone `.account-signin-card` + bottom-sheet description.)
 
+**Update 2026-07-30 - configurable help mail actions:** the Profile Help
+rows **Feedback** and **Report an error** no longer navigate to form stubs.
+They are full-row external actions that open separate `mailto:` URIs using
+independent system-configured recipients and localized Partner-ID subjects.
+The mail draft contains no body, CC, BCC or attachment and the PWA shows no
+false sent state. Admin System settings owns the configuration in one **Help
+contacts** card: Infopoint (hotline + email), Feedback (email), Report an error
+(email), vertically stacked with one shared Discard/Save footer. This reuses
+the existing list-row, field and action-footer grammars; no new token or base
+component is introduced.
+
 ### 7.8 Infopoint (`Infopoint`, L3729)
 
 **Current:** two text tabs with gray numeral badge; document rows OK but icon-only download buttons unlabeled; meta line mixes sans + mono mid-line (`Operations · Global · v1.3` sans, `04.05. 09:10` mono); active tab keeps red "2" badge while you're on it; news items lack read/unread logic tie-in with the tab badge; 27 inline styles, 8 font sizes.
@@ -791,6 +802,8 @@ Driven by the client confirmation **“Systemlogik Fahrzeugeingabe”**. Busines
 ---
 
 ## Changelog
+
+- **v4.0 - 2026-08-02 (Profile help contacts documentation catch-up).** Recorded the already-merged `feat/help-contacts-mailto` behavior: separate Feedback and Report-an-error Profile list actions open recipient-specific `mailto:` drafts with localized Partner-ID subjects and no body/CC/BCC/attachments; the removed stub forms do not fake submission. Admin System settings groups Infopoint, Feedback and Report an error into one vertically stacked Help contacts card with a shared Discard/Save footer. Canonical behavior lives in `prd.json`; implementation evidence lives in `prd-prototype-validation.md`; screen structure lives in `driver-screen-spec.md`; visual history is remediation F14. **No new tokens, routes, submission endpoint or data-model change.**
 
 - **v3.5 — 2026-07-27 (document-upload source selection).** Stakeholder report on the tour-completion upload screen: the upload control opened the device camera directly, so an invoice already saved as a PDF on the phone could not be attached. Reflected from `driver.jsx`/`styles.css`/`store.js`/`i18n.js`: (1) **Upload-source action sheet** — after the document-type step the driver picks *Foto aufnehmen* (camera capture, images only, `capture="environment"`) or *Datei auswählen* (plain OS picker, `application/pdf` + supported images, no `capture`); the generic upload control never opens the camera (§7.4 status note, new `.upload-source-*` CSS, new `uploadSource*` / `docKind*` i18n). (2) **One shared `UploadSourcePicker`** for all three driver upload entry points and for *Replace file* — the per-screen hidden inputs were removed, not duplicated. (3) **25 MB enforced** on every store upload path, matching the limit the UI already advertised (`invoiceUploadTooLarge`). New workstream **W7** (items 24–31); closes audit v1.6 addendum U1–U4 / remediation F8. No token, DDB-contract, schema or status-model change.
 - **v3.9 — 2026-07-29.** Authentication screens documented retroactively (new §7.15). PR #32 shipped a login **gate** in front of both surfaces plus eight screens, four shared primitives (`LoginForm`, `AuthOtpInput`, `ForgotPasswordFlow`, `SetPasswordForm`), fifteen store methods, ten audit actions and 107 i18n keys per locale — with no documentation. Every screen in §7.1–§7.14 now sits behind sign-in. Recorded: no-account-enumeration and bounded recovery codes as **production** behaviours; the displayed 6-digit code and "any non-empty password" as **demo-only** and not shippable. Documented in brand-tokens ("Component token map — authentication screens", no new tokens), remediation F13, driver-screen-spec ("Authentication screens + the gate"), driver-i18n-index (auth key contract), sitemap (auth entry rows). **prd.json, PRD changelog and the context pack updated** (v2.24). **No data-model change** — Keycloak owns credentials and sessions, so no session or reset table exists by design. Open: production login ceremony, and code-vs-Keycloak-link for driver recovery.
