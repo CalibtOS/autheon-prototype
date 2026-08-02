@@ -13,7 +13,7 @@
 | Cancelled tour | My Jobs → Cancelled | Shows admin cancellation **reason + message** |
 | Report Problem | Tour footer | Cancel (7 codes, 10+ chars) or Not performable |
 | Infopoint | Bottom tab | General documents + news |
-| Profile | Bottom tab | Read-only master data; profile + **daily limit increase** change requests |
+| Profile | Bottom tab | Navigation-list/drill-down structure; read-only master data + change request; account/email and password actions; notification and appearance/language settings; Feedback and Report an error open separate system-configured `mailto:` actions |
 
 ## Admin console
 
@@ -26,7 +26,7 @@
 | Tour documents | Sidebar | Review / reject / replace |
 | Users / drivers | Sidebar | Driver profile incl. **daily job limit** |
 | Profile change requests | Sidebar | Approve / reject queue |
-| Settings | Sidebar Features | Three tabs: **User settings** (change email + change password, language + appearance) · **System settings** (operational policies: cutoffs, message rules · Infopoint help contacts: dispatcher hotline + support email) · **Prototype settings** (branding display name + finance-module flag) |
+| Settings | Sidebar Features | Three tabs: **User settings** (change email + change password, language + appearance) · **System settings** (operational policies plus one Help contacts card: Infopoint hotline/email, Feedback email, Report-an-error email) · **Prototype settings** (branding display name) |
 | Infopoint | Sidebar | General docs + news |
 | Audit log | Sidebar | Immutable actions |
 
