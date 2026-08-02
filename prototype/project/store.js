@@ -2850,6 +2850,8 @@ window.AuthStore = (() => {
       Number(ss) || 0,
     );
     return Number.isNaN(d.getTime()) ? null : d;
+  }
+
   /**
    * Machine-readable instant. `nowStamp()` is the human display string the
    * audit table renders; anything that has to be formatted for a time zone
