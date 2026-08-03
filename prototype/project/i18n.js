@@ -499,11 +499,16 @@ window.I18n = (() => {
       adminMdrTitle: "Profile change requests",
       adminMdrSub:
         "Review proposed driver profile changes. Approving applies the submitted values automatically; rejecting closes the request without changes.",
+      adminMdrFilterLabel: "Status",
       adminMdrFilterOpen: "Open",
       adminMdrFilterApproved: "Approved",
       adminMdrFilterRejected: "Rejected",
       adminMdrFilterAll: "All",
       adminMdrEmpty: "No requests in this filter.",
+      adminMdrEmptyHint: "Try a different status filter to see other requests.",
+      adminMdrSelectTitle: "Select a change request",
+      adminMdrSelectBody:
+        "Choose a request to compare and review its values.",
       adminMdrStatusOpen: "Open",
       adminMdrStatusApproved: "Approved",
       adminMdrStatusRejected: "Rejected",
@@ -2557,11 +2562,17 @@ window.I18n = (() => {
       adminMdrTitle: "Profiländerungs-Anfragen",
       adminMdrSub:
         "Vorgeschlagene Driver-Profiländerungen prüfen. Genehmigen übernimmt die Werte automatisch; Ablehnen schließt die Anfrage ohne Änderung.",
+      adminMdrFilterLabel: "Status",
       adminMdrFilterOpen: "Offen",
       adminMdrFilterApproved: "Genehmigt",
       adminMdrFilterRejected: "Abgelehnt",
       adminMdrFilterAll: "Alle",
       adminMdrEmpty: "Keine Anfragen in diesem Filter.",
+      adminMdrEmptyHint:
+        "Wählen Sie einen anderen Statusfilter, um weitere Anfragen zu sehen.",
+      adminMdrSelectTitle: "Änderungsantrag auswählen",
+      adminMdrSelectBody:
+        "Wählen Sie eine Anfrage aus, um die Werte zu vergleichen und zu prüfen.",
       adminMdrStatusOpen: "Offen",
       adminMdrStatusApproved: "Genehmigt",
       adminMdrStatusRejected: "Abgelehnt",

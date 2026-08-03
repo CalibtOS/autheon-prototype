@@ -10753,14 +10753,19 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   const [filter, setFilter] = useStateA("open");
   const [selectedId, setSelectedId] = useStateA(initialRequestId || "");
   const [adminNote, setAdminNote] = useStateA("");
+  const [page, setPage] = useStateA(1);
+  const [rowsPerPage, setRowsPerPage] = useStateA(25);
 
   useEffectA(() => {
     if (initialRequestId) setSelectedId(initialRequestId);
   }, [initialRequestId]);
 
-  const rows = store.listMasterDataChangeRequests(
+  const allRows = store.listMasterDataChangeRequests(
     filter === "all" ? {} : { status: filter },
   );
+  // The production queue is paginated server-side; page the mock list so the
+  // footer, the result count and the reset-to-page-1 behaviour all match.
+  const rows = allRows.slice((page - 1) * rowsPerPage, page * rowsPerPage);
   const selected =
     store.getMasterDataChangeRequest(selectedId) ||
     rows.find((r) => r.id === selectedId) ||
@@ -10793,30 +10798,43 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   return (
     <div style={{ maxWidth: 1040 }}>
       <p className="pane-lead">{t("adminMdrSub")}</p>
-      <div className="seg" style={{ display: "inline-flex", marginBottom: 18 }}>
-        {[
-          ["open", t("adminMdrFilterOpen")],
-          ["approved", t("adminMdrFilterApproved")],
-          ["rejected", t("adminMdrFilterRejected")],
-          ["all", t("adminMdrFilterAll")],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            className={filter === id ? "on" : ""}
-            onClick={() => {
-              setFilter(id);
-              setSelectedId("");
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {/*
+        A dropdown rather than a segmented control: the four statuses exceed the
+        three-option limit the segmented control is specified for, and this is
+        what the admin app ships.
+      */}
+      <label
+        className="label"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 18,
+        }}
+      >
+        <span>{t("adminMdrFilterLabel")}</span>
+        <select
+          className="input"
+          style={{ width: 170 }}
+          value={filter}
+          onChange={(e) => {
+            setFilter(e.target.value);
+            setPage(1);
+            setSelectedId("");
+          }}
+        >
+          <option value="open">{t("adminMdrFilterOpen")}</option>
+          <option value="approved">{t("adminMdrFilterApproved")}</option>
+          <option value="rejected">{t("adminMdrFilterRejected")}</option>
+          <option value="all">{t("adminMdrFilterAll")}</option>
+        </select>
+      </label>
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: selected ? "1fr 1.1fr" : "1fr",
+          // Always two columns — the review column now holds a placeholder when
+          // nothing is selected, so the layout no longer reflows on selection.
+          gridTemplateColumns: "1fr 1.1fr",
           gap: 18,
           marginTop: 18,
           alignItems: "start",
@@ -10831,7 +10849,10 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                 color: "var(--muted)",
               }}
             >
-              {t("adminMdrEmpty")}
+              <div>{t("adminMdrEmpty")}</div>
+              <div className="label" style={{ marginTop: 6 }}>
+                {t("adminMdrEmptyHint")}
+              </div>
             </div>
           ) : (
             rows.map((row) => (
@@ -10887,6 +10908,27 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
               </button>
             ))
           )}
+          {/* Reuses the overview footer so the queue counts and pager look and
+              behave exactly like every other admin list. */}
+          {allRows.length > 0 ? (
+            <div className="admin-foot">
+              <OverviewFooter
+                filteredCount={allRows.length}
+                totalCount={allRows.length}
+                page={page}
+                rows={rowsPerPage}
+                onPageChange={(next) => {
+                  setPage(next);
+                  setSelectedId("");
+                }}
+                onRowsChange={(next) => {
+                  setRowsPerPage(next);
+                  setPage(1);
+                  setSelectedId("");
+                }}
+              />
+            </div>
+          ) : null}
         </section>
         {selected ? (
           <section className="card" style={{ padding: 22 }}>
@@ -11026,7 +11068,21 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
               </div>
             )}
           </section>
-        ) : null}
+        ) : (
+          /* The admin app always fills the second column, so the reviewer is
+             told what to do instead of facing an unexplained gap. */
+          <section
+            className="card"
+            style={{ padding: 28, textAlign: "center" }}
+          >
+            <h2 className="dialog-title" style={{ margin: 0 }}>
+              {t("adminMdrSelectTitle")}
+            </h2>
+            <p className="label" style={{ margin: "6px 0 0" }}>
+              {t("adminMdrSelectBody")}
+            </p>
+          </section>
+        )}
       </div>
     </div>
   );
