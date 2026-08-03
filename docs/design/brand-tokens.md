@@ -235,6 +235,26 @@ Because the notice is always **text-labelled** it satisfies the never-color-only
 
 **Wrapping:** unlike the other single-word `.vehicle-flag` chips, the red-plate chip sets `white-space: normal` so the long German string wraps inside a narrow card instead of overflowing.
 
+### Success-mark gradient (2026-07-30) [CLIENT]
+
+The driver success checkmark became a standalone gradient mark with no disc. The gradient greens are a
+**narrowly scoped new family** rather than a reuse of `--st-accepted`, because the approved reference
+mark is a lighter, warmer green than the `#059669` status semantic — reusing the status token would
+have changed the mark away from the reference, and re-toning `--st-accepted` to match would have
+repainted every Accepted pill, badge and label in both surfaces. These tokens therefore paint **only**
+the mark and its bloom; `--st-accepted` keeps its status meaning untouched.
+
+| Purpose | Token | Light | Dark | Notes |
+|---------|-------|-------|------|-------|
+| Stroke, vertex end | `--success-mark-from` | `#54B765` | inherits light | Deepest green, at the mark's elbow |
+| Stroke, mid stop | `--success-mark-mid` | `#6BC67B` | inherits light | Keeps the ramp faithful to the reference |
+| Stroke, tip end | `--success-mark-to` | `#8FDE9C` | inherits light | Lightest green, at the long arm's tip |
+| Bloom centre | `--success-glow` | `rgba(87,221,132,0.18)` | `rgba(87,221,132,0.22)` | Only token re-tuned for dark — a tint that lifts on white needs more presence on `--paper` |
+| Bloom fade | `--success-glow-fade` | `rgba(87,221,132,0)` | same | Same hue at zero alpha, so the fade never interpolates through grey |
+
+All five values were sampled from the approved reference image. The mark is `aria-hidden` and always
+accompanied by a success title and description, so it satisfies the never-color-only rule.
+
 > **Gap — `--st-ok` (2026-07):** the driver Account & sign-in "Verified account" badge (`.account-email-verified`) references `var(--st-ok, #1f9d55)`, but **`--st-ok` is not defined** in `:root`/`[data-theme="dark"]` — it silently falls back to the hardcoded green `#1F9D55`, which is *not* the existing `--st-accepted #059669`. This is an off-token hex by the back door. Resolve by either **defining `--st-ok`** (light + dark, contrast-checked) as a first-class positive/confirmation semantic, or **reusing `--st-accepted`** for the badge. The badge is always text-labelled, so it satisfies the "never color-only" rule regardless.
 
 ---
@@ -285,7 +305,8 @@ and dark on both surfaces.
 | Content | `.dialog-content` | inherits; 14px gap | [CLIENT] |
 | Reference summary card | `.accept-tour-summary` | `--paper-2` on `--line`, `--r-2` — was an inline style on the reference dialog itself | [CLIENT] |
 | Actions | `.dialog-actions` | the existing canonical `minmax(0,1fr)/minmax(0,1.6fr)` grid, 12px gap, 44px floor — shared with `.sheet-foot` | [CLIENT] |
-| Status icon disc | `.dialog-icon` | 52px disc; tone from `--st-accepted-bg`/`--st-accepted`, `--st-assigned-bg`/`--st-assigned`, `--st-cancelled-bg`/`--st-cancelled` — the same treatment the remove-document dialog already used | [CLIENT] |
+| Status icon disc | `.dialog-icon` | 52px disc; tone from `--st-assigned-bg`/`--st-assigned` (warning) and `--st-cancelled-bg`/`--st-cancelled` (destructive) — the same treatment the remove-document dialog already used. **Success is no longer a disc** — see the success-mark row below | [CLIENT] |
+| Success mark | `.dialog-icon-success`, `.performed-success-check` | 80px box, **no disc**, hosting a 56px gradient checkmark over a radial bloom. Stroke gradient `--success-mark-from` → `--success-mark-mid` → `--success-mark-to`; bloom `--success-glow` → `--success-glow-fade`. Added 2026-07-30 | [CLIENT] |
 | Focus state | global `:where(button, [role="button"], a):focus-visible` | `--primary` 2px outline, 2px offset | [CLIENT] |
 
 **No off-token colour and no new radius.** The one previously off-standard value — hand-rolled action
