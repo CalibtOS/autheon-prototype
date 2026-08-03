@@ -1,5 +1,5 @@
 /* global React, ReactDOM, AuthStore, useAuthStore */
-const { useState, useEffect, useRef, useMemo } = React;
+const { useState, useEffect, useRef, useMemo, useId } = React;
 
 const UI = window.DriverUI || {};
 const {
@@ -2724,6 +2724,10 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
 
   useEffect(() => {
     let cancelled = false;
+    // A generated transport order arrives as print-ready HTML, not as a file
+    // to fetch — it is rendered in the iframe branch below, so the pdf.js
+    // canvas path is skipped entirely.
+    if (preview?.previewHtml) return undefined;
     if (!preview?.pdfUrl) {
       setPdfState("fallback");
       return undefined;
@@ -2776,6 +2780,15 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
     preview.downloadName || preview.fileName || "document.pdf";
 
   const download = () => {
+    // The generated transport order has no stored file in a static prototype:
+    // Chromium turns the print-ready HTML into the PDF the driver saves.
+    if (preview.previewHtml) {
+      window.AutheonTransportOrderPdf?.printDocumentHtml(
+        preview.previewHtml,
+        preview.fileName,
+      );
+      return;
+    }
     const a = document.createElement("a");
     if (preview.pdfUrl) {
       a.href = preview.pdfUrl;
@@ -2791,6 +2804,12 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
 
   const share = async () => {
     setShareMsg("");
+    if (preview.previewHtml) {
+      // Nothing to hand to the Web Share API without PDF bytes; the print
+      // dialog is the only path to a file in the prototype.
+      setShareMsg(t("shareNotSupported"));
+      return;
+    }
     try {
       const blob = preview.pdfUrl
         ? await fetch(preview.pdfUrl).then((r) => r.blob())
@@ -2856,7 +2875,21 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
           </button>
         </div>
         <div className="docview-body">
-          {preview.pdfUrl && pdfState !== "fallback" ? (
+          {preview.previewHtml ? (
+            /* Generated A4 document. `srcDoc` keeps it same-origin so Print
+               can drive the frame, and the transform scales the 210 mm page to
+               the phone width without reflowing the approved layout. */
+            <div className="docview-pages scroll">
+              <div className="docview-a4-scaler">
+                <iframe
+                  ref={iframeRef}
+                  className="docview-a4"
+                  title={preview.title || t("documentPreviewTitle")}
+                  srcDoc={preview.previewHtml}
+                />
+              </div>
+            </div>
+          ) : preview.pdfUrl && pdfState !== "fallback" ? (
             <div className="docview-pages scroll">
               {pdfState === "loading" ? (
                 <div className="docview-loading" aria-busy="true">
@@ -3861,6 +3894,25 @@ const JobInvoiceUpload = JobTourDocuments;
 // =========================================================================
 // JOB DETAIL — UNLOCKED (after acceptance / running)
 // =========================================================================
+/**
+ * The company or person responsible for ONE route stop.
+ *
+ * Reads the denormalized `startCompany`/`endCompany` display fields, which
+ * `syncDisplayFields` mirrors from the order's own `pickup.name` / `delivery.name`
+ * snapshot — so this is the historical value recorded on the order, never a live
+ * master-data lookup, and it stays a per-stop value that pickup and delivery
+ * cannot swap.
+ *
+ * Deliberately NO fallback to `customerName` / `customer`: the customer is the
+ * order's counterparty, which is not necessarily who is at the kerb, so
+ * substituting it would state something the order does not record. Whitespace-only
+ * counts as absent, so the caller drops the line instead of rendering a blank row.
+ */
+const routeStopName = (raw) => {
+  const name = typeof raw === "string" ? raw.trim() : "";
+  return name || null;
+};
+
 const JobUnlocked = ({
   job,
   onBack,
@@ -3889,6 +3941,12 @@ const JobUnlocked = ({
   const canReportProblem = store.canServicePartnerReport(job);
   const pickup = job.contactPickup || {};
   const drop = job.contactDelivery || {};
+  // Route-stop location names — distinct from the contacts above, which are
+  // `contactPerson`. Only rendered in this component, which is the committed /
+  // full-detail view; the locked marketplace preview has its own route renderer
+  // and shows city + PLZ only.
+  const pickupStopName = routeStopName(job.startCompany);
+  const deliveryStopName = routeStopName(job.endCompany);
   const pickupMaps = googleMapsSearchUrl(
     job.startStreet,
     job.startPlz,
@@ -3899,6 +3957,9 @@ const JobUnlocked = ({
     job.endPlz,
     job.endCity,
   );
+  // Active transport-order document (Task 17). Only the current version is
+  // exposed in the driver flow; the store enforces that and the authorization.
+  const activeTransportOrderDoc = store.getActiveTransportOrderDocument(job.id);
   const [docPreview, setDocPreview] = useState(null);
   // A deep-linked document resolves through the same audited preview call the
   // document row uses. A file that has since been removed simply opens the tour
@@ -4168,6 +4229,11 @@ const JobUnlocked = ({
                   <div className="timeline-content">
                     <div className="city-info">
                       <div className="city-name">{job.startCity}</div>
+                      {pickupStopName ? (
+                        <div className="city-location-name">
+                          {pickupStopName}
+                        </div>
+                      ) : null}
                       <div className="city-address">
                         {job.startStreet} · {job.startPlz} {job.startCity}
                       </div>
@@ -4195,6 +4261,11 @@ const JobUnlocked = ({
                   <div className="timeline-content">
                     <div className="city-info">
                       <div className="city-name">{job.endCity}</div>
+                      {deliveryStopName ? (
+                        <div className="city-location-name">
+                          {deliveryStopName}
+                        </div>
+                      ) : null}
                       <div className="city-address">
                         {job.endStreet} · {job.endPlz} {job.endCity}
                       </div>
@@ -4397,16 +4468,86 @@ const JobUnlocked = ({
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Operational Instructions Card */}
+            <div className="detail-card">
+              <div className="detail-section-title">
+                <Ic.TabInfo />
+                <span>{t("operationalInstructions")}</span>
+              </div>
+
+              <div className="detail-pdf-card">
+                <div className="pdf-icon-wrap">
+                  <Ic.Pdf />
+                </div>
+
+                <div className="flex-1-min-0">
+                  {/* Filename, displayed version and audit entry all come from the
+                  active document record, so they can never disagree. */}
+                  <div className="pdf-name">
+                    {activeTransportOrderDoc?.fileName ||
+                      `Fahrauftrag-${job.tour}.pdf`}
+                  </div>
+
+                  <div className="pdf-meta">
+                    v{activeTransportOrderDoc?.version || job.pdfVersion || 1}
+                  </div>
+                </div>
+
+                <div className="pdf-actions">
+                  <button
+                    type="button"
+                    className="pdf-btn"
+                    title={t("view")}
+                    aria-label={t("view")}
+                    onClick={() => {
+                      const result = store.getTransportOrderPreview(
+                        job.id,
+                        DRIVER_ACCESS,
+                      );
+
+                      if (result.ok) {
+                        setDocPreview(result.preview);
+                      }
+                    }}
+                  >
+                    <Ic.Eye />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="pdf-btn"
+                    title={t("download")}
+                    aria-label={t("download")}
+                    onClick={() => {
+                      const result = store.downloadPdf(job.id, DRIVER_ACCESS);
+
+                      if (result.ok) {
+                        window.AutheonTransportOrderPdf?.printDocumentHtml(
+                          result.previewHtml,
+                          result.fileName,
+                        );
+                      }
+                    }}
+                  >
+                    <Ic.Down />
+                  </button>
+                </div>
+              </div>
+
               <p
                 className="text-muted-sm"
                 style={{ lineHeight: 1.6, margin: 0, fontSize: 13 }}
               >
                 {displayDriverNote(job.notesDriver, t) || t("noDriverAddons")}
               </p>
+
               {job.notes ? (
                 <>
                   <hr className="detail-card-divider" />
                   <div className="time-label">{t("dispatchNotes")}</div>
+
                   <p
                     className="text-muted-sm"
                     style={{ lineHeight: 1.6, margin: 0, fontSize: 13 }}
@@ -5491,26 +5632,47 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   );
 };
 
-// Meaningful status icon — a success disc. Extracted because two success
-// dialogs carried byte-identical copies of it; the `--st-accepted` tone is what
-// makes it information rather than decoration.
-const DialogSuccessIcon = () => (
-  <svg
-    width="26"
-    height="26"
-    viewBox="0 0 24 24"
-    fill="none"
-    aria-hidden="true"
-  >
-    <path
-      d="M6 12l4 4 8-9"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
+// Meaningful status icon — the success mark. The one success glyph for the
+// whole Driver PWA: both success dialogs below and the mark-performed success
+// stage, which used to carry its own copy of this SVG.
+//
+// Standalone by design — no disc (styles.css "SUCCESS MARK"). The stroke is
+// painted by a gradient running from the vertex out to the long arm's tip, so
+// the mark itself carries the status the disc used to. Stop colours come from
+// tokens via CSS classes, because `var()` is not resolved inside an SVG
+// presentation attribute.
+//
+// `useId` scopes the gradient id: three marks can share one DOM (a dialog over
+// the performed stage), and a duplicate id would make them all resolve to the
+// first paint server. React 18 ids contain colons, which are legal in an id but
+// not in a `url(#…)` reference, so they are stripped.
+const DialogSuccessIcon = () => {
+  const gradientId = `success-mark-${useId().replace(/:/g, "")}`;
+  return (
+    <svg
+      width="56"
+      height="56"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" className="success-mark-from" />
+          <stop offset="55%" className="success-mark-mid" />
+          <stop offset="100%" className="success-mark-to" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M6 12l4 4 8-9"
+        stroke={`url(#${gradientId})`}
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+};
 
 const PendingNotice = ({ onClose, kind }) => {
   const { t } = useI18n();
@@ -5759,15 +5921,7 @@ const MarkPerformedSheet = ({ job, onClose }) => {
       >
         <div className="performed-success-scroll">
           <div className="performed-success-check" aria-hidden="true">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M6 12l4 4 8-9"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <DialogSuccessIcon />
           </div>
           <h3 id="performed-success-title" className="performed-success-title">
             {t("performedSuccessTitle")}
@@ -8150,8 +8304,8 @@ const InfopointMessageDetail = ({ item, onBack }) => {
           <h2 className="infopoint-message-title">
             {displayNewsTitle(item, t)}
           </h2>
-          <div className="mono text-muted-sm infopoint-message-date">
-            {item.publishedAt}
+          <div className="mono infopoint-meta-datetime infopoint-message-date">
+            {F().formatDateTime(item.publishedAt)}
           </div>
           {/* Full text, never truncated. `pre-line` preserves the paragraph
               breaks admins type into the message body. */}
@@ -8322,11 +8476,11 @@ const Infopoint = ({
                               {displayDocScope(d.scope, t)} · {d.version}
                             </div>
                             <div
-                              className="mono text-muted-sm"
+                              className="mono infopoint-meta-datetime"
                               style={{ marginTop: 4 }}
                             >
                               {d.size ? `${d.size} · ` : ""}
-                              {d.updatedAt}
+                              {F().formatDateTime(d.updatedAt)}
                             </div>
                           </div>
                           <div style={{ display: "flex", gap: 6 }}>
@@ -8449,10 +8603,10 @@ const Infopoint = ({
                                   {displayNewsTitle(n, t)}
                                 </div>
                                 <div
-                                  className="mono text-muted-sm"
+                                  className="mono infopoint-meta-datetime"
                                   style={{ marginTop: 4 }}
                                 >
-                                  {n.publishedAt}
+                                  {F().formatDateTime(n.publishedAt)}
                                 </div>
                               </div>
                               {/* Unread is marked in words as well as by the dot, so

@@ -8,6 +8,7 @@
 - [`design-system.md`](design-system.md) records the reusable visual and interaction decisions from the executable prototype styles.
 - [`database/`](database/) contains the production database design draft and DBML schema.
 - [`requirements/prd-client-source-validation.md`](requirements/prd-client-source-validation.md) and [`requirements/prd-prototype-validation.md`](requirements/prd-prototype-validation.md) record validation evidence.
+- [`requirements/transport-order-pdf-traceability.md`](requirements/transport-order-pdf-traceability.md) maps the transport-order PDF requirements to code, tests and the open blockers (PRD v2.26, Task 17).
 - [`research/client-feedback-comparison.md`](research/client-feedback-comparison.md) maps the client feedback to the PRD and prototype.
 
 ## Historical documents

@@ -61,6 +61,17 @@
   --st-cancelled-bg: #fef2f2;
   --st-warn-bg: #ffedd5;
 
+  /* Success mark — the standalone gradient checkmark, sampled from the approved
+     reference: deepest at the vertex, lightest at the long arm's tip, over a
+     soft radial bloom. Narrowly scoped to that one glyph on purpose — the
+     reference green is lighter than `--st-accepted`, which stays the status /
+     badge / label green and is NOT re-toned by these. */
+  --success-mark-from: #54b765;
+  --success-mark-mid: #6bc67b;
+  --success-mark-to: #8fde9c;
+  --success-glow: rgba(87, 221, 132, 0.18);
+  --success-glow-fade: rgba(87, 221, 132, 0);
+
   /* Diff / master-data compare */
   --diff-added: #065f46;
   --diff-added-bright: #6ee7b7;
@@ -213,6 +224,11 @@
   --st-empty-run-bg: #2c1f50;
   --st-cancelled-bg: #3e1520;
   --st-warn-bg: #4a2b12;
+  /* The mark's own greens carry over unchanged — they are mid-greens that read
+     on `--paper` #2c2c2e as well as on white. Only the bloom is re-tuned: a
+     tint that is a soft lift on white needs slightly more presence to register
+     against a dark panel at all. */
+  --success-glow: rgba(87, 221, 132, 0.22);
   --diff-added: #6ee7b7;
   --diff-added-bright: #6ee7b7;
   --diff-removed-bright: #fca5a5;
@@ -1997,19 +2013,37 @@ select.input {
   justify-content: space-between;
   gap: 12px;
 }
+/* `min-width: 0` + `flex: 1` let a long company name wrap inside the column
+   instead of stretching the flex row and pushing the map button off the card. */
 .phone-shell .unlocked-route-timeline .city-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 .phone-shell .unlocked-route-timeline .city-name {
   font-size: 15px;
   font-weight: 600;
   color: var(--text);
 }
+/* Route-stop location name — the company or person responsible for this stop.
+   Sits BETWEEN the city and the street address, so the stop reads
+   city → who → where. Pitched between the two: darker than the muted address
+   because it is content rather than supporting detail, but lighter than the
+   15px/600 city so it does not compete for the row's heading. A name can be a
+   long company string, so it wraps and breaks rather than overflowing. */
+.phone-shell .unlocked-route-timeline .city-location-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
 .phone-shell .unlocked-route-timeline .city-address {
   font-size: 12px;
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 .phone-shell .unlocked-route-timeline .map-link {
   font-size: 12px;
@@ -2914,11 +2948,8 @@ select.input {
   max-width: 360px;
 }
 /* The `Dialog` primitive renders one status disc; the tone modifier is applied
-   on the panel so a caller does not have to reach inside. */
-.dialog-icon-success > .dialog-icon {
-  background: var(--st-accepted-bg);
-  color: var(--st-accepted);
-}
+   on the panel so a caller does not have to reach inside. Success is the one
+   tone that is NOT a disc — see "SUCCESS MARK" below. */
 .dialog-icon-warning > .dialog-icon {
   background: var(--st-assigned-bg);
   color: var(--st-assigned);
@@ -2926,6 +2957,54 @@ select.input {
 .dialog-icon-danger > .dialog-icon {
   background: var(--st-cancelled-bg);
   color: var(--st-cancelled);
+}
+/* =========================================================================
+   SUCCESS MARK — a standalone gradient checkmark, no disc.
+   Success is the one status tone that drops the 52px disc. Once the glyph grew
+   and took a gradient it carried the status on its own, and the container was
+   just a ring around it. Warning and danger keep their discs deliberately: a
+   small `!` or `×` reads as an alert only inside one, so the disc is still
+   load-bearing there and this is a success-only deviation, not the disc
+   standard being retired.
+   The box is larger than the glyph because it hosts the bloom as its own
+   background. That is why the bloom is a background and not a pseudo-element:
+   `.performed-success-scroll` is an `overflow-y: auto` container, so anything
+   painted outside the box would be clipped at the scroll edge and could add a
+   scrollbar. A background is bounded by the box and cannot.
+   The bloom is a diffuse radial fade with no edge — it reads as light behind
+   the mark, not as the disc that was removed.
+   ========================================================================= */
+.dialog-icon-success > .dialog-icon,
+.phone-shell .performed-success-check {
+  width: 80px;
+  height: 80px;
+  border-radius: 0;
+  box-shadow: none;
+  background: radial-gradient(
+    circle at 50% 50%,
+    var(--success-glow) 0%,
+    var(--success-glow-fade) 75%
+  );
+}
+/* Trim the surrounding margin as the box grows, so the mark gets bigger without
+   the gap to the title growing with it. */
+.dialog-icon-success > .dialog-icon {
+  margin: 0 auto 6px;
+}
+.phone-shell .performed-success-check {
+  margin: 0 auto 8px;
+}
+/* Gradient stops are tokens applied through CSS, because `var()` is not
+   resolved inside an SVG presentation attribute. Theming the mark therefore
+   means changing the tokens only — never the JSX. */
+.success-mark-from {
+  stop-color: var(--success-mark-from);
+}
+.success-mark-mid {
+  stop-color: var(--success-mark-mid);
+}
+.success-mark-to {
+  stop-color: var(--success-mark-to);
 }
 /* Reference-dialog tour summary — was an inline style object on the one dialog
    every other dialog is measured against. */
@@ -4436,14 +4515,10 @@ select.input {
   overflow-y: auto;
   min-height: 0;
 }
+/* Box, bloom and margin come from the shared "SUCCESS MARK" block above, which
+   this stage now renders through the same `DialogSuccessIcon` as the success
+   dialogs. Only the centring is local. */
 .phone-shell .performed-success-check {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: var(--st-accepted);
-  color: var(--on-accent);
-  box-shadow: 0 0 0 8px var(--st-accepted-bg);
-  margin: 10px auto 18px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5558,6 +5633,42 @@ select.input {
 }
 .phone-shell .docview-loading {
   padding: 8px 4px;
+}
+/* Admin-side A4 preview of a generated transport order. The frame carries the
+   real 210 mm-wide document and scrolls inside the dialog's content area, so
+   the approved layout is inspected at true proportions. */
+.admin-a4-preview {
+  display: block;
+  width: 100%;
+  height: min(62vh, 720px);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  background: #fff;
+}
+
+/* Generated transport-order document (Task 17). The frame is a full 210×297 mm
+   A4 page; scaling it down with a transform preserves the approved layout
+   exactly, whereas letting it reflow to the phone width would not. The wrapper
+   reserves the SCALED height so the scroll container measures correctly. */
+.phone-shell .docview-a4-scaler {
+  --a4-scale: 0.42;
+  width: calc(210mm * var(--a4-scale));
+  height: calc(297mm * var(--a4-scale));
+  margin: 0 auto;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: var(--sh-1);
+  overflow: hidden;
+}
+.phone-shell .docview-a4 {
+  display: block;
+  width: 210mm;
+  height: 297mm;
+  border: 0;
+  background: #fff;
+  transform: scale(var(--a4-scale));
+  transform-origin: top left;
 }
 .phone-shell .docview-frame {
   display: block;
@@ -7087,6 +7198,18 @@ button.notifications-dropdown-backdrop {
 }
 .infopoint-message-date {
   margin: 0;
+}
+/* Infopoint date metadata — message list, message detail, document list.
+   One step below `--text-body-sm` (14px), because the full `DD.MM.YYYY + HH:MM`
+   stamp is a longer string than the bare `DD.MM. HH:MM` it replaced and 14px
+   put it level with the 14px row title it sits under. Dropping it to 12.5px
+   restores the hierarchy and buys the width back without wrapping. `.mono` on
+   the element supplies the tabular figures, so the stamps stay column-aligned
+   down the list. */
+.infopoint-meta-datetime {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--muted);
 }
 .infopoint-message-body {
   margin: 8px 0 0;

@@ -404,6 +404,19 @@ Present only for **success / warning / destructive** status. Two byte-identical 
 were deduplicated into one `DialogSuccessIcon`. No decorative icon exists, and removing one never
 removed information — the title and description always carry the meaning.
 
+**Success is the one tone that is not a disc (2026-07-30).** `DialogSuccessIcon` is now a standalone
+56px checkmark with a gradient stroke over a soft radial bloom, and `.dialog-icon-success` drops the
+52px disc. Warning and destructive **keep** their discs: a small `!` or `×` reads as an alert only
+inside a container, so the disc is still load-bearing there. This is a success-only deviation from the
+disc treatment, not the disc standard being retired.
+
+The mark-performed success stage was the third success surface and still carried its own copy of the
+old SVG; it now renders the same `DialogSuccessIcon`, so there is again **one** success glyph rather
+than a shared primitive plus a divergent duplicate. Gradient stops come from tokens through CSS
+classes (`var()` is not resolved inside an SVG presentation attribute), and the gradient id is scoped
+per instance with `useId` so several marks can share one DOM without capturing each other's paint
+server. The glyph stays `aria-hidden` — the title and description still carry the meaning.
+
 ### Bottom sheets are a separate spec
 
 `FilterSheet`, `ReportProblemSheet`, `UploadSourcePicker` and the tour-completion upload stage stay
@@ -415,13 +428,13 @@ the action grammar. Converting them to centred dialogs would change **interactio
 | Dialog | Type | Before | Now |
 |---|---|---|---|
 | **Accept tour** (`AcceptanceModal`) — *the reference* | operational summary + binding confirm | inline `padding: 24`, inline 24px `h2`, inline summary-card style, left title | the standard's own classes; **slide-to-confirm untouched**; actions stack full width (deviation 1) |
-| Tour booked success | success | inline 26px padding, duplicated success SVG, 19px `h3` | `Dialog` + `DialogSuccessIcon`, `--narrow` |
-| Report-problem submitted (`PendingNotice`) | success | identical duplicate of the above | `Dialog` + `DialogSuccessIcon`, `--narrow` |
+| Tour booked success | success | inline 26px padding, duplicated success SVG, 19px `h3` | `Dialog` + `DialogSuccessIcon`, `--narrow`; **discless gradient mark** (2026-07-30) |
+| Report-problem submitted (`PendingNotice`) | success | identical duplicate of the above | `Dialog` + `DialogSuccessIcon`, `--narrow`; **discless gradient mark** (2026-07-30) |
 | Probation limit reached | warning/info | `.confirm-sheet-panel` 22px, `Lbl` as title, flex-end single action | `Dialog`, single action spans the row |
 | Same-day overlap | confirmation | `.confirm-sheet-panel`, flex-end actions | `Dialog`, eyebrow + centered title, canonical action grid |
 | Remove document | destructive | own `.remove-doc-*` title/body/1fr-1fr actions | shared classes; **danger icon kept** (meaningful), canonical action grid |
 | Tour-document category picker | selection | inline `padding: 20`, eyebrow used **as** the title | shared classes, real `.dialog-title` |
-| Mark performed | confirm → success | slide stage + success stage | shared classes; **slide untouched** |
+| Mark performed | confirm → success | slide stage + success stage | shared classes; **slide untouched**; success stage's duplicate SVG replaced by `DialogSuccessIcon` (2026-07-30) |
 | Sign out / leave page (`ConfirmSheet`) | confirmation / 3-way | `Sheet centered`, left title | title centred via `.sheet.modal .sheet-head` |
 | Document preview | content viewer | full-frame overlay, not a dialog | unchanged — deliberately not a dialog |
 | Filter · Report problem · Upload source | bottom sheets | — | unchanged (separate spec) |
@@ -474,6 +487,48 @@ see the v2.22 changelog open question.
 
 ---
 
+## Route stop identity — pickup / drop-off location name (2026-07-31)
+
+> **A stop reads city → who → where.** After acceptance the driver needs to know *which company or
+> person* is at each end of the route, not just the street.
+
+Component: `JobUnlocked` (`driver.jsx`) — the single full-detail / committed order view, mounted by both
+shells (`pwa/pwa-app.jsx`, framed prototype) only when `activeJob.mode === "unlocked"`.
+
+| Element | Class | Notes |
+|---------|-------|-------|
+| City | `.city-name` | 15px / 600. Unchanged. |
+| **Location name** | `.city-location-name` | **New.** 13px / 500, `--text`. The company or person responsible for this stop, between the city and the street. Wraps and breaks on overflow. |
+| Street + postal code + city | `.city-address` | 12px muted. Unchanged; now also breaks on overflow. |
+| Map action | `.map-link` | Unchanged; already `flex-shrink: 0`. |
+
+**Source.** `job.startCompany` / `job.endCompany` — the denormalized display fields `syncDisplayFields`
+mirrors from the order's own `pickup.name` / `delivery.name` **snapshot**. These are the same flat fields
+the street/postal/city lines beside them already read, so the whole stop block comes from one tier.
+Snapshot semantics are preserved: no live master-data lookup, so an order keeps the name it recorded
+even after the address book changes.
+
+**Never the customer.** There is no fallback to `customerName` / `customer`. The customer is the order's
+counterparty and is often a different entity from the site at the kerb — the seed data shows customer
+*Muller Automobile GmbH* against pickup stop *Muller Munich yard*. Substituting it would state something
+the order does not record.
+
+**Absent means gone.** `null`, `undefined`, empty and whitespace-only all drop the entire line — no
+label, no placeholder, no dash, no reserved space. The line is unlabelled data, exactly like the street
+line above it, so **no i18n key was added**.
+
+**Visibility is unchanged.** See `driver_visibility_matrix` rows `pickup_location_name` /
+`delivery_location_name` — the same tier the full address already had. The pre-acceptance marketplace
+preview (`JobLocked`) uses a **different** route renderer (`.detail-route-city`: city + `PLZ` only, no
+street), so the name cannot leak there; the notification tour preview already omits `name`/`street` for a
+non-committed order at the store-projection level.
+
+**Long names.** `.city-info` gained `flex: 1` + `min-width: 0` and the name breaks on overflow, so a long
+company string wraps inside the stop column instead of stretching the flex row and pushing the map button
+off the card.
+
+---
+
 ## Infopoint messages — list + detail page (2026-07-29)
 
 > **A message is a page, not an accordion.** Longer announcements (updated **AGB**, standing client
@@ -488,7 +543,7 @@ Components: `Infopoint` → `InfopointMessageDetail` (`driver.jsx`), on the shar
 |---------|-------|-------|
 | Calendar icon + unread dot | `.infopoint-news-icon` (+`.unread`/`.read`), `.infopoint-news-unread-dot` | Unchanged treatment; the dot moved from an inline style to a class. |
 | Title | `.infopoint-news-title` | 14px; 600 while unread, 500 once read. |
-| Date | `.mono.text-muted-sm` | Unchanged. |
+| Date | `.mono.infopoint-meta-datetime` | **Full stamp `DD.MM.YYYY + HH:MM` at 12.5px (2026-07-31, PRD v2.31, `[v2.31-infopoint-datetime]`).** Was the raw `publishedAt` string (`DD.MM. HH:MM`, no year) at 14px, which sat level with the 14px title. |
 | Read state | `.infopoint-news-state` (+`.unread`) | *New* / *Read* as a small pill. **Colour is never the only signal** — the state is in words and in the row's accessible name (`"New: <title>"` / `"Read: <title>"`). |
 | Forward chevron | `.infopoint-news-chev` (`Ic.Chev`) | Indicates navigation. Replaces the rotating `Ic.Down` accordion chevron. |
 
@@ -505,7 +560,8 @@ on the row — the row navigates, it does not disclose.
   title (`infopointMessage` — "Message" / "Nachricht"), mirrored spacer, and the heading takes focus on
   entry so the new view is announced.
 - Body card: `h2` title (`.infopoint-message-title`, wraps freely, `overflow-wrap: anywhere`), the date
-  (`.infopoint-message-date`), then the **complete** message (`.infopoint-message-body`) with
+  (`.infopoint-message-date` + `.infopoint-meta-datetime`, full `DD.MM.YYYY + HH:MM`), then the
+  **complete** message (`.infopoint-message-body`) with
   `white-space: pre-line` so admin-typed paragraph breaks survive. **Never clamped, never truncated.**
 - Opening marks the message read immediately; the list shows the new state on return. The open is also
   audited as a message view (see PRD v2.19).

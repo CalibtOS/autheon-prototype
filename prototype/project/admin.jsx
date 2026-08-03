@@ -2110,6 +2110,58 @@ const AdminCancelJobModal = ({ job, onClose, onConfirm, showToast }) => {
 // =========================================================================
 // ADMIN — DETAIL
 // =========================================================================
+/**
+ * Admin-side preview of a generated transport order.
+ *
+ * Renders the print-ready A4 document itself — same HTML the driver flow and
+ * `tools/pdf/` use — inside a full-size same-origin frame, so Print can drive
+ * the frame and produce the real PDF through Chromium.
+ */
+const AdminTransportOrderPreview = ({ preview, onClose }) => {
+  const { t } = useI18n();
+  if (!preview) return null;
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      size="lg"
+      eyebrow={`${t("transportOrderPdf")} · ${preview.documentVersion}`}
+      title={preview.fileName}
+      actions={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            {t("close")}
+          </button>
+          <button
+            type="button"
+            className="btn cta"
+            onClick={() =>
+              window.AutheonTransportOrderPdf?.printDocumentHtml(
+                preview.previewHtml,
+                preview.fileName,
+              )
+            }
+          >
+            <Ic.Down /> {t("download")}
+          </button>
+        </>
+      }
+    >
+      <iframe
+        className="admin-a4-preview"
+        title={preview.fileName}
+        srcDoc={preview.previewHtml}
+      />
+      <div
+        className="label mono"
+        style={{ marginTop: 10, overflowWrap: "anywhere" }}
+      >
+        {t("adminPdfChecksum")} {preview.checksumSha256}
+      </div>
+    </Dialog>
+  );
+};
+
 const AdminDetail = ({
   job,
   onBack,
@@ -2125,6 +2177,11 @@ const AdminDetail = ({
   const { t } = useI18n();
   const store = useAuthStore();
   const [cancelOpen, setCancelOpen] = useStateA(false);
+  // Transport-order PDF (Task 17): the active document drives the card, the
+  // full immutable history drives the version list.
+  const transportOrderDocs = store.getTransportOrderDocuments(job.id);
+  const activeTransportOrderDoc = transportOrderDocs.find((d) => d.isActive) || null;
+  const [pdfPreview, setPdfPreview] = useStateA(null);
   return (
     <>
       {cancelOpen ? (
@@ -2592,12 +2649,12 @@ const AdminDetail = ({
                 {t("transportOrderPdf")}
               </h3>
               <span className="label">
-                {job.status === "draft"
-                  ? t("notGenerated")
-                  : `v${job.pdfVersion || 1} · ${t("demoFile")}`}
+                {activeTransportOrderDoc
+                  ? `${t("adminPdfActiveVersion")} v${activeTransportOrderDoc.version} · ${activeTransportOrderDoc.title}`
+                  : t("notGenerated")}
               </span>
             </div>
-            {job.status === "draft" ? (
+            {!activeTransportOrderDoc ? (
               <div
                 className="dash-area"
                 style={{
@@ -2624,12 +2681,26 @@ const AdminDetail = ({
                 }}
               >
                 <Ic.Pdf />
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="mono" style={{ fontSize: 13 }}>
-                    transport-order-{job.id}.pdf
+                    {activeTransportOrderDoc.fileName}
                   </div>
                   <div className="label" style={{ marginTop: 2 }}>
-                    {t("adminPdfIssued", { at: job.createdAt })}
+                    {t("adminPdfIssued", {
+                      at: activeTransportOrderDoc.generatedAt,
+                    })}
+                    {" · "}
+                    {t("adminPdfDataRevision")}{" "}
+                    {activeTransportOrderDoc.dataRevision}
+                    {" · "}
+                    {t("adminPdfTrigger")} {activeTransportOrderDoc.trigger}
+                  </div>
+                  <div
+                    className="label mono"
+                    style={{ marginTop: 2, overflowWrap: "anywhere" }}
+                  >
+                    {t("adminPdfChecksum")}{" "}
+                    {activeTransportOrderDoc.checksumSha256}
                   </div>
                 </div>
                 <button
@@ -2637,8 +2708,7 @@ const AdminDetail = ({
                   className="btn xs"
                   onClick={() => {
                     const r = AuthStore.getTransportOrderPreview(job.id);
-                    if (r.ok && r.preview?.blobUrl)
-                      window.open(r.preview.blobUrl, "_blank", "noopener");
+                    if (r.ok) setPdfPreview(r.preview);
                   }}
                 >
                   <Ic.Eye /> {t("view")}
@@ -2646,7 +2716,15 @@ const AdminDetail = ({
                 <button
                   type="button"
                   className="btn xs"
-                  onClick={() => AuthStore.downloadPdf(job.id)}
+                  onClick={() => {
+                    const r = AuthStore.downloadPdf(job.id);
+                    if (r.ok) {
+                      window.AutheonTransportOrderPdf?.printDocumentHtml(
+                        r.previewHtml,
+                        r.fileName,
+                      );
+                    }
+                  }}
                 >
                   <Ic.Down /> {t("download")}
                 </button>
@@ -2659,7 +2737,58 @@ const AdminDetail = ({
                 </button>
               </div>
             )}
+            {/* Immutable version history. Superseded versions are never
+                overwritten, so each one keeps its own checksum, revision and
+                booking-time partner snapshot. */}
+            {transportOrderDocs.length > 1 ? (
+              <div style={{ marginTop: 14 }}>
+                <div className="label">{t("adminPdfVersionHistory")}</div>
+                <ul
+                  className="mono"
+                  style={{
+                    listStyle: "none",
+                    margin: "6px 0 0",
+                    padding: 0,
+                    fontSize: 11,
+                  }}
+                >
+                  {transportOrderDocs
+                    .slice()
+                    .reverse()
+                    .map((d) => (
+                      <li
+                        key={d.id}
+                        style={{
+                          display: "flex",
+                          gap: 10,
+                          padding: "3px 0",
+                          opacity: d.isActive ? 1 : 0.62,
+                        }}
+                      >
+                        <span style={{ minWidth: 28 }}>v{d.version}</span>
+                        <span style={{ minWidth: 92 }}>{d.generatedAt}</span>
+                        <span style={{ minWidth: 130 }}>{d.trigger}</span>
+                        <span
+                          style={{ flex: 1, overflowWrap: "anywhere" }}
+                          title={d.checksumSha256}
+                        >
+                          {d.checksumSha256.slice(0, 24)}…
+                        </span>
+                        {!d.isActive ? (
+                          <span>{t("adminPdfSupersededVersion")}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            ) : null}
           </section>
+          {pdfPreview ? (
+            <AdminTransportOrderPreview
+              preview={pdfPreview}
+              onClose={() => setPdfPreview(null)}
+            />
+          ) : null}
 
           {/* Notes */}
           <section className="card" style={{ padding: 22 }}>
