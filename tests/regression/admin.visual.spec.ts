@@ -12,9 +12,13 @@ import {
  *
  * All snapshots are EN + light on the single desktop viewport (see
  * playwright.config.ts). The in-memory store re-seeds on every page load, so
- * every screen/popup is deterministic. Seed timestamps are hardcoded strings;
- * no dynamic regions on the admin surface need masking, except the generated
- * credentials in the Account Access dialog.
+ * every screen/popup is deterministic in layout — but not every region is
+ * deterministic in content, and those regions are masked:
+ *
+ *   - the Audit-Log's time column, because seeded audit events are dated as
+ *     offsets from the current date and therefore render differently every day;
+ *   - the generated credentials in the Account Access dialog;
+ *   - the live status-history entry appended behind the admin toast.
  */
 
 const NAV = {
@@ -144,7 +148,13 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
   test('audit log screen', async ({ page }) => {
     await prepareAdminVisual(page);
     await openAdminSection(page, NAV.audit);
-    await expect(page).toHaveScreenshot('admin-audit.png', { fullPage: true });
+    // Seeded audit events are dated as offsets from the current date, so the
+    // time column reads differently every day -> mask it, the same idiom the
+    // Account Access dialog and the toast baselines below already use.
+    await expect(page).toHaveScreenshot('admin-audit.png', {
+      fullPage: true,
+      mask: [prototypeFrame(page).locator('.tbl tbody td.mono')],
+    });
   });
 
   test('settings / features screen', async ({ page }) => {

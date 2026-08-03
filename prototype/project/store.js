@@ -2133,41 +2133,51 @@ window.AuthStore = (() => {
     ];
   }
 
+  /**
+   * Seeded audit events, newest first, dated as offsets from the current date
+   * via `seedAuditStamp()` — never as hardcoded date strings.
+   *
+   * The spread deliberately straddles the ninety-day retention window: the
+   * first three events sit well inside it and the last two well outside it, so
+   * the Audit-Log always has both recent history worth keeping and older
+   * history a retention purge can visibly remove. The offsets stay far from the
+   * window's edge on purpose, so no demo ever lands on the boundary.
+   */
   function seedAudit() {
     return [
       {
         action: "prototype_loaded",
         actor: "System",
         entity: "Transport Portal demo",
-        at: "05.05. 15:49",
+        ...seedAuditStamp(2, 15, 49, 12), // inside the window
         meta: "PRD v1.6 client-side prototype",
       },
       {
         action: "job_published",
         actor: DEMO_ADMIN,
         entity: "0847-26",
-        at: "23.04. 11:02",
+        ...seedAuditStamp(9, 11, 2, 37), // inside the window
         meta: "Marketplace preview",
       },
       {
         action: "job_accepted",
         actor: DEMO_DRIVER,
         entity: "0845-26",
-        at: "21.04. 14:22",
+        ...seedAuditStamp(34, 14, 22, 5), // inside the window
         meta: "Binding slide confirmation",
       },
       {
         action: "empty_run_reported",
         actor: DEMO_DRIVER,
         entity: "0846-26",
-        at: "23.04. 08:40",
+        ...seedAuditStamp(118, 8, 40, 44), // outside the window
         meta: "Empty run reported — yard closed",
       },
       {
         action: "tour_document_uploaded",
         actor: DEMO_DRIVER,
         entity: "driver-invoice-0842.pdf",
-        at: "21.04. 12:52",
+        ...seedAuditStamp(172, 12, 52, 19), // outside the window
         meta: "A-2026-00842 · invoice",
       },
     ];
@@ -2810,11 +2820,13 @@ window.AuthStore = (() => {
     return `${dd}.${mm}. ${hh}:${mi}`;
   }
 
-  // Client requirement (Phase 13): audit entries display date as DD.MM.YYYY
+  // Client requirement (Phase 13): audit events display date as DD.MM.YYYY
   // and time with seconds as HH:MM:SS — a stricter format than nowStamp(),
-  // used only for the audit log.
-  function auditStamp() {
-    const d = new Date();
+  // used only for the Audit-Log. Takes an optional instant so the seeded
+  // audit events can be stamped in exactly the same shape as recorded ones;
+  // called with no argument it stamps "now".
+  function auditStamp(at) {
+    const d = at instanceof Date ? at : new Date();
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yyyy = d.getFullYear();
@@ -2827,28 +2839,31 @@ window.AuthStore = (() => {
     };
   }
 
-  // Seed audit rows predate this format and only carry "DD.MM. HH:MM" (no
-  // year, no seconds, real recording precision was never captured for the
-  // mock dataset) — assume the seed dataset's year (2026) so date filtering
-  // still works against them, without fabricating a false display format.
+  /**
+   * Stamps a seeded audit event `daysAgo` days before today at a fixed local
+   * wall-clock time, in exactly the shape `log()` writes: a display string
+   * plus a machine-readable instant.
+   *
+   * Seeded audit events are dated relative to the current date rather than
+   * frozen to hardcoded strings, so the demo log stays believable however long
+   * after it was written the demo happens — and so the Audit-Log's date filter
+   * keeps narrowing against real, present-day dates instead of rotting against
+   * a year nobody recorded.
+   */
+  function seedAuditStamp(daysAgo, hh, mi, ss) {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(hh, mi, ss, 0);
+    const stamp = auditStamp(d);
+    return { at: stamp.display, atIso: stamp.iso };
+  }
+
+  // The instant an audit event was recorded, for the Audit-Log's date filter.
+  // Every audit event — seeded or recorded — carries `atIso`, so no year is
+  // ever inferred and the display string is never parsed back. Returns null
+  // (never throws) on anything unreadable.
   function parseAuditEntryDate(entry) {
-    if (entry.atIso) {
-      const d = new Date(entry.atIso);
-      return Number.isNaN(d.getTime()) ? null : d;
-    }
-    const m = String(entry.at || "").match(
-      /^(\d{2})\.(\d{2})\.(\d{4})?\s*(\d{2}):(\d{2})(?::(\d{2}))?/,
-    );
-    if (!m) return null;
-    const [, dd, mm, yyyy, hh, mi, ss] = m;
-    const d = new Date(
-      Number(yyyy) || 2026,
-      Number(mm) - 1,
-      Number(dd),
-      Number(hh),
-      Number(mi),
-      Number(ss) || 0,
-    );
+    const d = new Date(entry?.atIso);
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
