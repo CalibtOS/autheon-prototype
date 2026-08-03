@@ -4,7 +4,7 @@
 
 :root {
   /* Client Farbgebung §3 — brand tokens (see docs/design/brand-tokens.md) */
-  --brand-accent: #6f29ff;
+  --brand-accent: #000000;
   --brand-text: #111111;
   --brand-text-secondary: #6e6e73;
   --brand-canvas: #f5f5f7;
@@ -12,8 +12,8 @@
   --brand-border: #e5e5ea;
 
   --primary: var(--brand-accent);
-  --primary-rgb: 111, 41, 255;
-  --primary-ink: #5a16d9;
+  --primary-rgb: 0, 0, 0;
+  --primary-ink: #1c1c1e;
   --cta: #ea580c;
   --cta-rgb: 234, 88, 12;
   --destructive: #dc2626;

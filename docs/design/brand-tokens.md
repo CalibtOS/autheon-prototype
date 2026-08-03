@@ -39,7 +39,7 @@ Retained uppercase meta labels (pending client confirmation — see audit "Clien
 
 | Token | Hex | German (source) | Usage |
 |-------|-----|-----------------|-------|
-| `--brand-accent` | `#6F29FF` | Primäre Akzentfarbe | Focus rings, selected markers, limited accents, appropriate primary actions **only** |
+| `--brand-accent` | `#000000` | Primäre Akzentfarbe | Focus rings, selected markers, limited accents, appropriate primary actions **only** |
 | `--brand-text` | `#111111` | Primäre Schriftfarbe | Body, headlines, numbers, important UI text |
 | `--brand-text-secondary` | `#6E6E73` | Sekundäre Schriftfarbe | Meta, help, supplementary labels |
 | `--brand-canvas` | `#F5F5F7` | App Hintergrund | App background |
@@ -48,11 +48,11 @@ Retained uppercase meta labels (pending client confirmation — see audit "Clien
 
 ### Accent rules [CLIENT]
 
-- Use the purple accent **very sparingly**: focus, selected markers, limited accents, appropriate primary actions.
-- **No purple as a large decorative surface.**
-- **No dominant purple navigation** — neither a purple bottom-nav capsule (driver) nor a purple-filled sidebar item (admin). Active navigation uses black/white/gray contrast, darker text, filled icons, or a subtle marker; purple may appear only as a restrained marker that does not dominate.
+- Use the black accent **very sparingly**: focus, selected markers, limited accents, appropriate primary actions.
+- **No accent as a large decorative surface.**
+- **No dominant accent navigation** — neither a filled bottom-nav capsule (driver) nor a filled sidebar item (admin). Active navigation uses black/white/gray contrast, darker text, filled icons, or a subtle marker.
 - White cards and content surfaces must clearly separate from the light-gray canvas (fine border and/or very subtle shadow).
-- Do not conflate the brand purple with workflow status colors.
+- Do not conflate the brand accent with workflow status colors.
 
 ## Semantic aliases (CSS)
 
@@ -60,9 +60,9 @@ These map 1:1 in `styles.css`:
 
 | Alias | Light | Class | Role |
 |-------|-------|-------|------|
-| `--primary` | `#6F29FF` | [CLIENT] | Brand accent |
-| `--primary-ink` | `#5A16D9` | [INTERNAL] | Hover / pressed accent |
-| `--primary-rgb` | `111, 41, 255` | [CLIENT] | RGBA accents |
+| `--primary` | `#000000` | [CLIENT] | Brand accent |
+| `--primary-ink` | `#1C1C1E` | [INTERNAL] | Hover / pressed accent (near-black lift for feedback on `#000000`) |
+| `--primary-rgb` | `0, 0, 0` | [CLIENT] | RGBA accents |
 | `--text`, `--ink` | `#111111` | [CLIENT] | Primary text |
 | `--muted` | `#6E6E73` | [CLIENT] | Secondary text |
 | `--muted-2` | `#8E8E93` | [INTERNAL] | Tertiary / disabled — never body-size text (contrast) |
@@ -75,7 +75,7 @@ These map 1:1 in `styles.css`:
 
 ### Button hierarchy (client button board, PDF p.6)
 
-Primär (filled) · Sekundär (white + fine gray outline) · Tertiär (text) · Deaktiviert · Mit-Icon variants. The board renders the **Primär button near-black**, while §2 permits `#6F29FF` for primary CTAs — the prototype keeps purple primaries until the client decides (**open decision: dark vs purple primary**). Secondary/tertiary/disabled treatments match the board.
+Primär (filled) · Sekundär (white + fine gray outline) · Tertiär (text) · Deaktiviert · Mit-Icon variants. Client decided near-black primaries (`--brand-accent` `#000000`); secondary/tertiary/disabled treatments match the board.
 
 ### Header icon buttons — one shared treatment [INTERNAL]
 
@@ -416,8 +416,8 @@ other bottom-anchored driver surfaces.
 **Don't**
 
 - Use 700+ weights or UPPERCASE as default hierarchy
-- Use purple for active navigation fills, large surfaces, hover washes, or toasts
-- Use brand purple for Published status pills
+- Use brand accent for active navigation fills, large surfaces, hover washes, or toasts
+- Use brand accent for Published status pills
 - Use `#2563EB` / `#3B82F6` for primary buttons or nav (legacy ops blue)
 - Hard-code hex in JSX — use CSS variables and utility classes
 - Present `--cta` orange or any `--st-*` / dark-theme value as client-selected
@@ -429,4 +429,4 @@ other bottom-anchored driver surfaces.
 | Property | Light | Dark |
 |----------|-------|------|
 | `theme_color` | `#FFFFFF` (restrained chrome; changed from `#6F29FF` per board accent rules) | `#1C1C1E` |
-| Icon background | `#6F29FF` (brand mark itself — acceptable as identity, not UI surface) | `#6F29FF` |
+| Icon background | `#000000` (brand mark / identity; matches light `--brand-accent`) | `#000000` |
