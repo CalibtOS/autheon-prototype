@@ -1256,6 +1256,12 @@ window.I18n = (() => {
       adminPdfDraftPlaceholder:
         "Generated when you publish or assign. Driver access remains gated until acceptance (per PRD).",
       adminPdfIssued: "Issued {at}",
+      adminPdfActiveVersion: "Active version",
+      adminPdfVersionHistory: "Version history",
+      adminPdfChecksum: "SHA-256",
+      adminPdfDataRevision: "Data revision",
+      adminPdfTrigger: "Trigger",
+      adminPdfSupersededVersion: "superseded",
       sectionNotes: "Notes",
       adminInternalNotes: "Internal notes",
       adminDriverVisibleNotes: "Driver-visible notes",
@@ -1678,6 +1684,11 @@ window.I18n = (() => {
         "The empty run reported for order {tour} was not recognised by Autheon.",
       notifOrderUpdatedTitle: "Order {tour} updated",
       notifOrderUpdatedIntro: "The following details changed:",
+      // A relevant order change produced a NEW active transport-order PDF.
+      // Deliberately free of admin-only data: version pointer only.
+      notifTransportOrderPdfUpdatedTitle: "New transport order for {tour}",
+      notifTransportOrderPdfUpdatedBody:
+        "A relevant change created a new version of your transport order ({version}). The previous version is no longer valid.",
       notifJobAssignedTitle: "New order assigned: {tour}",
       notifJobAssignedBody: "You have been assigned order {tour}.",
       // Notification categories — chip on every notification card.
@@ -3306,6 +3317,12 @@ window.I18n = (() => {
       adminPdfDraftPlaceholder:
         "Wird bei Veröffentlichung oder Zuweisung erzeugt. Fahrerzugriff bleibt bis zur Annahme begrenzt (laut PRD).",
       adminPdfIssued: "Ausgestellt {at}",
+      adminPdfActiveVersion: "Aktive Version",
+      adminPdfVersionHistory: "Versionshistorie",
+      adminPdfChecksum: "SHA-256",
+      adminPdfDataRevision: "Datenrevision",
+      adminPdfTrigger: "Auslöser",
+      adminPdfSupersededVersion: "ersetzt",
       sectionNotes: "Notizen",
       adminInternalNotes: "Interne Notizen",
       adminDriverVisibleNotes: "Fahrer-sichtbare Notizen",
@@ -3724,6 +3741,9 @@ window.I18n = (() => {
         "Die gemeldete Leerfahrt für den Auftrag {tour} wurde durch Autheon nicht anerkannt.",
       notifOrderUpdatedTitle: "Auftrag {tour} wurde aktualisiert",
       notifOrderUpdatedIntro: "Folgende Daten wurden geändert:",
+      notifTransportOrderPdfUpdatedTitle: "Neuer Fahrauftrag für {tour}",
+      notifTransportOrderPdfUpdatedBody:
+        "Eine relevante Änderung hat eine neue Version Ihres Fahrauftrags erzeugt ({version}). Die vorherige Version ist nicht mehr gültig.",
       notifJobAssignedTitle: "Neuer Auftrag zugewiesen: {tour}",
       notifJobAssignedBody: "Ihnen wurde der Auftrag {tour} zugewiesen.",
       // Benachrichtigungskategorien — Chip auf jeder Benachrichtigungskarte.
