@@ -897,6 +897,27 @@ window.I18n = (() => {
       adminAuditExportTitle: "Audit log exported",
       adminAuditExportSub:
         "CSV downloaded — use spreadsheet filters or search tools to review history.",
+      // Audit-Log retention. This copy is the agreed wording for an
+      // irreversible action in both languages and is reused verbatim by the
+      // admin console — change it here and there together, never in one place.
+      // "Audit event" is the record, "audit log" the screen; the wording states
+      // the window and never the current result set, because the purge ignores
+      // the screen's filters and the label must not suggest otherwise.
+      adminAuditRetentionAction: "Delete audit events older than {days} days",
+      adminAuditRetentionTitle: "Delete audit events older than {days} days",
+      adminAuditRetentionCount_one:
+        "1 audit event was recorded before {cutoff} and will be permanently deleted.",
+      adminAuditRetentionCount_other:
+        "{count} audit events were recorded before {cutoff} and will be permanently deleted.",
+      adminAuditRetentionNothing:
+        "No audit event is older than {days} days. Nothing will be deleted.",
+      adminAuditRetentionWarning:
+        "This cannot be undone. Export the audit log first if you want a copy.",
+      adminAuditRetentionConfirm: "Delete permanently",
+      adminAuditRetentionDoneTitle_one: "1 audit event deleted",
+      adminAuditRetentionDoneTitle_other: "{count} audit events deleted",
+      adminAuditRetentionDoneSub:
+        "Everything recorded before {cutoff} has been permanently removed. The deletion itself is recorded in the audit log.",
       adminDocumentsColDoc: "Document",
       adminDocumentsColCat: "Category",
       adminDocumentsColScope: "Scope",
@@ -2958,6 +2979,24 @@ window.I18n = (() => {
       adminAuditExportTitle: "Audit-Protokoll exportiert",
       adminAuditExportSub:
         "CSV heruntergeladen — in Tabellenkalkulation filtern oder extern durchsuchen.",
+      // Aufbewahrung im Audit-Log — siehe den englischen Block: dieselbe
+      // Formulierung wird in der Admin-Konsole wortgleich wiederverwendet.
+      adminAuditRetentionAction:
+        "Audit-Ereignisse älter als {days} Tage löschen",
+      adminAuditRetentionTitle: "Audit-Ereignisse älter als {days} Tage löschen",
+      adminAuditRetentionCount_one:
+        "1 Audit-Ereignis wurde vor dem {cutoff} aufgezeichnet und wird endgültig gelöscht.",
+      adminAuditRetentionCount_other:
+        "{count} Audit-Ereignisse wurden vor dem {cutoff} aufgezeichnet und werden endgültig gelöscht.",
+      adminAuditRetentionNothing:
+        "Kein Audit-Ereignis ist älter als {days} Tage. Es wird nichts gelöscht.",
+      adminAuditRetentionWarning:
+        "Dies kann nicht rückgängig gemacht werden. Exportieren Sie das Audit-Log vorher, wenn Sie eine Kopie benötigen.",
+      adminAuditRetentionConfirm: "Endgültig löschen",
+      adminAuditRetentionDoneTitle_one: "1 Audit-Ereignis gelöscht",
+      adminAuditRetentionDoneTitle_other: "{count} Audit-Ereignisse gelöscht",
+      adminAuditRetentionDoneSub:
+        "Alles, was vor dem {cutoff} aufgezeichnet wurde, ist endgültig entfernt. Die Löschung selbst ist im Audit-Log aufgezeichnet.",
       adminDocumentsColDoc: "Dokument",
       adminDocumentsColCat: "Kategorie",
       adminDocumentsColScope: "Geltung",

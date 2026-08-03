@@ -10459,12 +10459,19 @@ const TourBillingCenterPane = (props) => {
 };
 
 const AuditPane = ({ showToast }) => {
-  const { t } = useI18n();
+  const { t, tPlural } = useI18n();
   const store = useAuthStore();
   const drivers = store.getDrivers();
   const [filterDate, setFilterDate] = useStateA("");
   const [filterDriver, setFilterDriver] = useStateA("");
   const [filterTour, setFilterTour] = useStateA("");
+  // The retention confirmation, holding the preview it was opened with. Null
+  // means closed — the preview is read when the dialog OPENS and never on
+  // render, mirroring the product, where it is a second exact count over the
+  // whole table and running it per visit would double the cost retention
+  // exists to reduce.
+  const [retentionPreview, setRetentionPreview] = useStateA(null);
+  const retentionDays = store.AUDIT_RETENTION_WINDOW_DAYS;
 
   const allEntries = store.getAuditLog();
   const visibleEntries = useMemoA(() => {
@@ -10500,30 +10507,95 @@ const AuditPane = ({ showToast }) => {
     setFilterTour("");
   };
 
+  const confirmRetentionPurge = () => {
+    // No argument, and deliberately none available: the purge deletes by age
+    // and by nothing else, so the filters above cannot narrow it. They are also
+    // left applied — housekeeping should not cost the admin the investigation
+    // they were in the middle of.
+    const result = store.purgeAuditEvents();
+    setRetentionPreview(null);
+    showToast?.(
+      tPlural("adminAuditRetentionDoneTitle", result.deletedCount),
+      t("adminAuditRetentionDoneSub", { cutoff: result.cutoffDisplay }),
+    );
+  };
+
   return (
     <div>
       <div className="pane-toolbar">
         <p className="pane-lead">{t("auditDesc")}</p>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => {
-            const csv = store.exportAuditLogCsv();
-            const blob = new Blob([csv], {
-              type: "text/csv;charset=utf-8",
-            });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "autheon-audit-log.csv";
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast?.(t("adminAuditExportTitle"), t("adminAuditExportSub"));
-          }}
-        >
-          <Ic.Down /> {t("adminAuditDownloadCsv")}
-        </button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              const csv = store.exportAuditLogCsv();
+              const blob = new Blob([csv], {
+                type: "text/csv;charset=utf-8",
+              });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "autheon-audit-log.csv";
+              a.click();
+              URL.revokeObjectURL(url);
+              showToast?.(t("adminAuditExportTitle"), t("adminAuditExportSub"));
+            }}
+          >
+            <Ic.Down /> {t("adminAuditDownloadCsv")}
+          </button>
+          {/* Destructive styling, so the retention action is never mistaken for
+              the export beside it. The label states the WINDOW and never the
+              current result set — it reads identically whether filters are
+              active or not, because the purge ignores them. */}
+          <button
+            type="button"
+            className="btn danger"
+            onClick={() => setRetentionPreview(store.getAuditRetentionPreview())}
+          >
+            {t("adminAuditRetentionAction", { days: retentionDays })}
+          </button>
+        </div>
       </div>
+      {retentionPreview ? (
+        <Dialog
+          open
+          alertdialog
+          onClose={() => setRetentionPreview(null)}
+          title={t("adminAuditRetentionTitle", { days: retentionDays })}
+          description={
+            retentionPreview.eligibleCount === 0
+              ? t("adminAuditRetentionNothing", { days: retentionDays })
+              : tPlural(
+                  "adminAuditRetentionCount",
+                  retentionPreview.eligibleCount,
+                  { cutoff: retentionPreview.cutoffDisplay },
+                )
+          }
+          actions={
+            <>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setRetentionPreview(null)}
+              >
+                {t("adminInvoiceCancel")}
+              </button>
+              <button
+                type="button"
+                className="btn danger"
+                onClick={confirmRetentionPurge}
+              >
+                {t("adminAuditRetentionConfirm")}
+              </button>
+            </>
+          }
+        >
+          <div className="banner banner-warn dialog-banner">
+            {t("adminAuditRetentionWarning")}
+          </div>
+        </Dialog>
+      ) : null}
       <div
         className="card"
         style={{
