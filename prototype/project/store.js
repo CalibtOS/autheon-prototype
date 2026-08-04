@@ -2904,6 +2904,11 @@ window.AuthStore = (() => {
   // is an accepted consequence mirroring the product.
   const PLATFORM_UPLOAD_CEILING_BYTES = 50 * BYTES_PER_MEGABYTE;
 
+  // Upper bound on the configured area total. Not a ceiling on any one upload —
+  // it only stops an area total being set to an absurd figure. The admin form
+  // shows the same number in its range message.
+  const MAX_UPLOAD_AREA_TOTAL_MB = 1024;
+
   function exceedsPlatformUploadCeiling(file) {
     const size = file && typeof file.size === "number" ? file.size : 0;
     return size > PLATFORM_UPLOAD_CEILING_BYTES;
@@ -5326,6 +5331,7 @@ window.AuthStore = (() => {
     isAllowedTourDocumentFile,
     exceedsPlatformUploadCeiling,
     PLATFORM_UPLOAD_CEILING_BYTES,
+    MAX_UPLOAD_AREA_TOTAL_MB,
     assertAttachmentAllowed,
     assertTourDocumentAttachment,
     tourDocumentsUsageBytes,
@@ -5736,11 +5742,32 @@ window.AuthStore = (() => {
 
     getDriverUploadLimits: () => driverUploadLimitsSnapshot(),
 
+    /**
+     * Bounds live here, not only in the admin form. The platform ceiling is
+     * "the backstop no upload of any kind may exceed" — if the configured
+     * per-file limit could be set above it, a tour document could exceed the
+     * backstop and the ceiling would mean nothing. The admin card enforces the
+     * same numbers for the message it can show; this is the invariant.
+     */
     setDriverUploadLimits(partial = {}) {
-      if (partial.maxFileMb != null)
-        driverUploadLimits.maxFileMb = Number(partial.maxFileMb);
-      if (partial.maxTotalMb != null)
-        driverUploadLimits.maxTotalMb = Number(partial.maxTotalMb);
+      const clampMb = (value, max) => {
+        const parsed = Math.floor(Number(value));
+        if (!Number.isFinite(parsed)) return null;
+        return Math.min(Math.max(parsed, 1), max);
+      };
+      if (partial.maxFileMb != null) {
+        const next = clampMb(
+          partial.maxFileMb,
+          PLATFORM_UPLOAD_CEILING_BYTES / BYTES_PER_MEGABYTE,
+        );
+        if (next == null) return { ok: false, reason: "invalid_max_file" };
+        driverUploadLimits.maxFileMb = next;
+      }
+      if (partial.maxTotalMb != null) {
+        const next = clampMb(partial.maxTotalMb, MAX_UPLOAD_AREA_TOTAL_MB);
+        if (next == null) return { ok: false, reason: "invalid_max_total" };
+        driverUploadLimits.maxTotalMb = next;
+      }
       log(
         "driver_upload_limits_changed",
         DEMO_ADMIN,

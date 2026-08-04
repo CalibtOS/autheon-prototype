@@ -11281,10 +11281,16 @@ const policyNumberError = (current, baseline, message, max) =>
     ? message
     : "";
 
-// Bounds the admin form enforces on driver upload limits, matching the product
-// console and the store's platform ceiling. Megabytes; both fields are integers.
-const UPLOAD_LIMIT_MAX_FILE_MB = 50;
-const UPLOAD_LIMIT_MAX_TOTAL_MB = 1024;
+// Bounds the admin form enforces on driver upload limits. Read from the store
+// rather than restated here: the store clamps to the same numbers, and two
+// copies of a bound are two chances for the form to promise what the store
+// will not honour. Megabytes; both fields are integers. Resolved lazily
+// because this module is evaluated before window.AuthStore exists.
+const uploadLimitMaxFileMb = () =>
+  (window.AuthStore?.PLATFORM_UPLOAD_CEILING_BYTES ?? 50 * 1024 * 1024) /
+  (1024 * 1024);
+const uploadLimitMaxTotalMb = () =>
+  window.AuthStore?.MAX_UPLOAD_AREA_TOTAL_MB ?? 1024;
 // Labelled pill switch. The console renders a role="switch" button beside its
 // label; the prototype's pill treatment is a checkbox + slider, so the label
 // wraps the control and carries role="switch" on the input for parity.
@@ -12049,6 +12055,9 @@ const DriverUploadLimitsForm = ({ showToast }) => {
 
   const [maxFileMb, setMaxFileMb] = useStateA(String(storedMaxFileMb));
   const [maxTotalMb, setMaxTotalMb] = useStateA(String(storedMaxTotalMb));
+
+  const UPLOAD_LIMIT_MAX_FILE_MB = uploadLimitMaxFileMb();
+  const UPLOAD_LIMIT_MAX_TOTAL_MB = uploadLimitMaxTotalMb();
 
   const seedFromStore = () => {
     setMaxFileMb(String(storedMaxFileMb));

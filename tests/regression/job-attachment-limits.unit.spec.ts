@@ -76,6 +76,32 @@ test.describe('AuthStore job attachment size limits (store-level)', () => {
     expect(result.ceiling).toBe(50 * MB);
   });
 
+  test('the platform ceiling bounds the configured per-file limit in the store, not just the form', async ({
+    page,
+  }) => {
+    const result = await withStore(page, (store) => {
+      // A configured per-file limit above the platform ceiling would let a tour
+      // document exceed the backstop no upload of any kind may exceed.
+      store.setDriverUploadLimits({ maxFileMb: 500, maxTotalMb: 99999 });
+      const clamped = store.getDriverUploadLimits();
+      store.setDriverUploadLimits({ maxFileMb: 0, maxTotalMb: -4 });
+      const floored = store.getDriverUploadLimits();
+      store.setDriverUploadLimits({ maxFileMb: 12.7, maxTotalMb: 30.2 });
+      const truncated = store.getDriverUploadLimits();
+      return {
+        clamped,
+        floored,
+        truncated,
+        ceilingMb: store.PLATFORM_UPLOAD_CEILING_BYTES / (1024 * 1024),
+        maxTotalMb: store.MAX_UPLOAD_AREA_TOTAL_MB,
+      };
+    });
+    expect(result.clamped.maxFileMb).toBe(result.ceilingMb);
+    expect(result.clamped.maxTotalMb).toBe(result.maxTotalMb);
+    expect(result.floored).toMatchObject({ maxFileMb: 1, maxTotalMb: 1 });
+    expect(result.truncated).toMatchObject({ maxFileMb: 12, maxTotalMb: 30 });
+  });
+
   test('usage counts driver and off-channel docs, excludes replaced rows and transport orders', async ({
     page,
   }) => {
