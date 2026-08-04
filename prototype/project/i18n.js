@@ -527,6 +527,24 @@ window.I18n = (() => {
       adminMdrSnapshot: "Data at time of request",
       adminMdrAdminNote: "Resolution note (optional)",
       adminMdrAdminNotePh: "Note to the driver, e.g. why rejected…",
+      adminMdrAdminNoteHelp:
+        "Shared with the service partner when the request is rejected. For internal remarks use the Notes field on the partner's master data.",
+      adminMdrBulkBarLabel: "Bulk review",
+      adminMdrBulkSelectRow: "Select the request from {name}",
+      adminMdrBulkSelectAllOpen: "Select all open on this page ({count})",
+      // Plural forms resolved via tPlural(...) — see the note on filtersApplied.
+      adminMdrBulkSelected_one: "1 selected",
+      adminMdrBulkSelected_other: "{count} selected",
+      adminMdrBulkClear: "Clear",
+      adminMdrBulkReject: "Reject selected",
+      adminMdrBulkCancel: "Keep them",
+      adminMdrBulkConfirm_one:
+        "Reject this request? The profile stays unchanged and the partner is notified.",
+      adminMdrBulkConfirm_other:
+        "Reject {count} requests? The profiles stay unchanged and each partner is notified.",
+      adminMdrBulkConfirmAction: "Yes, reject",
+      adminMdrBulkRejectedToast_one: "1 request rejected",
+      adminMdrBulkRejectedToast_other: "{count} requests rejected",
       adminMdrApproveHint:
         "Approve applies the proposed values and closes the request. Reject closes without saving.",
       adminMdrApprove: "Approve changes",
@@ -2591,6 +2609,24 @@ window.I18n = (() => {
       adminMdrSnapshot: "Daten zum Zeitpunkt der Anfrage",
       adminMdrAdminNote: "Hinweis zur Entscheidung (optional)",
       adminMdrAdminNotePh: "Hinweis an den Fahrer, z. B. Ablehnungsgrund…",
+      adminMdrAdminNoteHelp:
+        "Wird dem Servicepartner bei einer Ablehnung mitgeteilt. Interne Anmerkungen gehören in das Feld „Notizen“ in den Stammdaten des Partners.",
+      adminMdrBulkBarLabel: "Sammelprüfung",
+      adminMdrBulkSelectRow: "Anfrage von {name} auswählen",
+      adminMdrBulkSelectAllOpen: "Alle offenen auf dieser Seite auswählen ({count})",
+      // Siehe EN-Hinweis — via tPlural(...).
+      adminMdrBulkSelected_one: "1 ausgewählt",
+      adminMdrBulkSelected_other: "{count} ausgewählt",
+      adminMdrBulkClear: "Auswahl aufheben",
+      adminMdrBulkReject: "Auswahl ablehnen",
+      adminMdrBulkCancel: "Beibehalten",
+      adminMdrBulkConfirm_one:
+        "Diese Anfrage ablehnen? Das Profil bleibt unverändert und der Partner wird benachrichtigt.",
+      adminMdrBulkConfirm_other:
+        "{count} Anfragen ablehnen? Die Profile bleiben unverändert und jeder Partner wird benachrichtigt.",
+      adminMdrBulkConfirmAction: "Ja, ablehnen",
+      adminMdrBulkRejectedToast_one: "1 Anfrage abgelehnt",
+      adminMdrBulkRejectedToast_other: "{count} Anfragen abgelehnt",
       adminMdrApproveHint:
         "Genehmigen übernimmt die vorgeschlagenen Werte und schließt die Anfrage. Ablehnen ohne Speichern.",
       adminMdrApprove: "Änderungen genehmigen",

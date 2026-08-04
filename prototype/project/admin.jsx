@@ -10864,7 +10864,7 @@ const ChangeRequestQueueFooter = ({
 };
 
 const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
-  const { t } = useI18n();
+  const { t, tPlural } = useI18n();
   const store = useAuthStore();
   const [filter, setFilter] = useStateA("open");
   const [selectedId, setSelectedId] = useStateA(initialRequestId || "");
@@ -10872,6 +10872,10 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   const [page, setPage] = useStateA(1);
   // 20 to match the admin app's queue page size, not the 25 the overview uses.
   const [rowsPerPage, setRowsPerPage] = useStateA(20);
+  // Bulk selection is a *set of ids*, not indexes: paging and filtering must not
+  // silently retarget a pending bulk action at different rows.
+  const [bulkIds, setBulkIds] = useStateA([]);
+  const [bulkConfirm, setBulkConfirm] = useStateA(false);
 
   useEffectA(() => {
     if (initialRequestId) setSelectedId(initialRequestId);
@@ -10880,6 +10884,15 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   const allRows = store.listMasterDataChangeRequests(
     filter === "all" ? {} : { status: filter },
   );
+  // Counts per status so the reviewer can see the size of the backlog without
+  // clicking each filter to find out.
+  const statusCounts = {
+    open: store.listMasterDataChangeRequests({ status: "open" }).length,
+    approved: store.listMasterDataChangeRequests({ status: "approved" }).length,
+    rejected: store.listMasterDataChangeRequests({ status: "rejected" }).length,
+  };
+  statusCounts.all =
+    statusCounts.open + statusCounts.approved + statusCounts.rejected;
   // The production queue is paginated server-side; page the mock list so the
   // footer, the result count and the reset-to-page-1 behaviour all match.
   const rows = allRows.slice((page - 1) * rowsPerPage, page * rowsPerPage);
@@ -10887,6 +10900,42 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
     store.getMasterDataChangeRequest(selectedId) ||
     rows.find((r) => r.id === selectedId) ||
     null;
+
+  // Only open requests can be bulk-rejected; a resolved one has nothing to do.
+  const bulkTargets = rows.filter(
+    (r) => r.status === "open" && bulkIds.includes(r.id),
+  );
+  const openOnPage = rows.filter((r) => r.status === "open");
+  const allOpenChecked =
+    openOnPage.length > 0 && openOnPage.every((r) => bulkIds.includes(r.id));
+
+  const toggleBulk = (id) =>
+    setBulkIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
+  const clearBulk = () => {
+    setBulkIds([]);
+    setBulkConfirm(false);
+  };
+
+  /**
+   * Bulk *reject* only. Approving applies reviewed field values, which needs the
+   * per-request form, so batching it would mean approving values nobody read.
+   */
+  const rejectSelected = () => {
+    const targets = bulkTargets;
+    let done = 0;
+    targets.forEach((r) => {
+      if (store.resolveMasterDataChangeRequest(r.id, "reject", adminNote.trim()).ok) {
+        done += 1;
+      }
+    });
+    clearBulk();
+    setAdminNote("");
+    if (targets.some((r) => r.id === selectedId)) setSelectedId("");
+    showToast?.(tPlural("adminMdrBulkRejectedToast", done));
+  };
 
   const resolve = (decision) => {
     if (!selected) return;
@@ -10916,30 +10965,122 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
     <div style={{ maxWidth: 1040 }}>
       <p className="pane-lead">{t("adminMdrSub")}</p>
       {/*
-        Segmented control, not a dropdown: every status stays visible and
-        switching costs one click — the most repeated action on this screen.
+        Sticky: in a long queue the applied filter used to scroll away, so the
+        reviewer lost track of which subset they were looking at.
       */}
-      <div className="seg" style={{ display: "inline-flex", marginBottom: 18 }}>
-        {[
-          ["open", t("adminMdrFilterOpen")],
-          ["approved", t("adminMdrFilterApproved")],
-          ["rejected", t("adminMdrFilterRejected")],
-          ["all", t("adminMdrFilterAll")],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            className={filter === id ? "on" : ""}
-            aria-pressed={filter === id}
-            onClick={() => {
-              setFilter(id);
-              setPage(1);
-              setSelectedId("");
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 2,
+          background: "var(--paper)",
+          paddingBottom: 12,
+          marginBottom: 6,
+        }}
+      >
+        {/*
+          Segmented control, not a dropdown: every status stays visible and
+          switching costs one click — the most repeated action on this screen.
+          Each segment carries its count so the backlog size is readable without
+          clicking through the filters.
+        */}
+        <div className="seg" style={{ display: "inline-flex" }}>
+          {[
+            ["open", t("adminMdrFilterOpen")],
+            ["approved", t("adminMdrFilterApproved")],
+            ["rejected", t("adminMdrFilterRejected")],
+            ["all", t("adminMdrFilterAll")],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={filter === id ? "on" : ""}
+              aria-pressed={filter === id}
+              aria-label={`${label} (${String(statusCounts[id])})`}
+              onClick={() => {
+                setFilter(id);
+                setPage(1);
+                setSelectedId("");
+                clearBulk();
+              }}
+            >
+              {label}
+              <span
+                className="mono"
+                aria-hidden="true"
+                style={{ marginLeft: 7, opacity: 0.65 }}
+              >
+                {statusCounts[id]}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Bulk bar appears only with a selection, so it costs nothing when idle. */}
+        {bulkTargets.length > 0 ? (
+          <div
+            role="group"
+            aria-label={t("adminMdrBulkBarLabel")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 10,
+              marginTop: 12,
+              padding: "10px 14px",
+              border: "1px solid var(--line)",
+              borderRadius: "var(--r-2)",
+              background: "var(--paper-2)",
             }}
           >
-            {label}
-          </button>
-        ))}
+            <span className="label">
+              {tPlural("adminMdrBulkSelected", bulkTargets.length)}
+            </span>
+            <div style={{ display: "inline-flex", gap: 8, marginLeft: "auto" }}>
+              <button type="button" className="btn xs" onClick={clearBulk}>
+                {t("adminMdrBulkClear")}
+              </button>
+              <button
+                type="button"
+                className="btn xs"
+                onClick={() => setBulkConfirm(true)}
+              >
+                {t("adminMdrBulkReject")}
+              </button>
+            </div>
+            {bulkConfirm ? (
+              <div
+                style={{
+                  flexBasis: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 10,
+                }}
+              >
+                <span className="label">
+                  {tPlural("adminMdrBulkConfirm", bulkTargets.length)}
+                </span>
+                <div style={{ display: "inline-flex", gap: 8, marginLeft: "auto" }}>
+                  <button
+                    type="button"
+                    className="btn xs"
+                    onClick={() => setBulkConfirm(false)}
+                  >
+                    {t("adminMdrBulkCancel")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn xs primary"
+                    onClick={rejectSelected}
+                  >
+                    {t("adminMdrBulkConfirmAction")}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       <div
         style={{
@@ -10952,6 +11093,36 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
         }}
       >
         <section className="card" style={{ padding: 0 }}>
+          {/* Makes bulk review discoverable without keeping a toolbar on screen. */}
+          {openOnPage.length > 0 ? (
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 16px",
+                borderBottom: "1px solid var(--line)",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={allOpenChecked}
+                onChange={() => {
+                  const ids = openOnPage.map((r) => r.id);
+                  setBulkIds((prev) =>
+                    allOpenChecked
+                      ? prev.filter((id) => !ids.includes(id))
+                      : [...new Set([...prev, ...ids])],
+                  );
+                  setBulkConfirm(false);
+                }}
+              />
+              <span className="label">
+                {t("adminMdrBulkSelectAllOpen", { count: openOnPage.length })}
+              </span>
+            </label>
+          ) : null}
           {rows.length === 0 ? (
             <div
               style={{
@@ -10967,27 +11138,62 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
             </div>
           ) : (
             rows.map((row) => (
-              <button
+              /*
+                Wrapper, not a single button: the select checkbox cannot live
+                inside the row button (invalid markup, and the two clicks would
+                fight). The border and selected background move up here.
+              */
+              <div
                 key={row.id}
-                type="button"
-                className="btn ghost"
                 style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "14px 18px",
-                  borderRadius: 0,
+                  display: "flex",
+                  alignItems: "flex-start",
                   borderBottom: "1px solid var(--line)",
                   background:
                     selectedId === row.id
                       ? "color-mix(in srgb, var(--st-published) 6%, transparent)"
                       : "transparent",
                 }}
-                onClick={() => {
-                  setSelectedId(row.id);
-                  setAdminNote("");
-                }}
               >
+                {row.status === "open" ? (
+                  <label
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      padding: "18px 0 0 16px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={bulkIds.includes(row.id)}
+                      aria-label={t("adminMdrBulkSelectRow", {
+                        name: row.driverName,
+                      })}
+                      onChange={() => toggleBulk(row.id)}
+                    />
+                  </label>
+                ) : (
+                  /* Keeps every row's text on the same left edge. */
+                  <span aria-hidden="true" style={{ width: 29 }} />
+                )}
+                <button
+                  type="button"
+                  className="btn ghost"
+                  style={{
+                    display: "block",
+                    flex: 1,
+                    minWidth: 0,
+                    textAlign: "left",
+                    padding: "14px 18px",
+                    borderRadius: 0,
+                    background: "transparent",
+                  }}
+                  onClick={() => {
+                    setSelectedId(row.id);
+                    setAdminNote("");
+                  }}
+                >
                 <div style={{ fontWeight: 600, fontSize: 14 }}>
                   {row.driverName}
                 </div>
@@ -11016,7 +11222,8 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                       ? t("adminMdrStatusApproved")
                       : t("adminMdrStatusRejected")}
                 </Pill>
-              </button>
+                </button>
+              </div>
             ))
           )}
           {/* Reuses the overview footer so the queue counts and pager look and
@@ -11114,14 +11321,27 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
             ) : null}
             {selected.status === "open" ? (
               <div className="mdr-detail-actions">
-                <label className="field-label">{t("adminMdrAdminNote")}</label>
+                <label className="field-label" htmlFor="mdr-admin-note">
+                  {t("adminMdrAdminNote")}
+                </label>
                 <textarea
+                  id="mdr-admin-note"
                   className="input"
                   style={{ marginTop: 8, minHeight: 72 }}
                   value={adminNote}
                   onChange={(e) => setAdminNote(e.target.value)}
                   placeholder={t("adminMdrAdminNotePh")}
+                  aria-describedby="mdr-admin-note-help"
                 />
+                {/* Says who sees this, so it is not confused with the internal
+                    operations note on the partner's master data. */}
+                <p
+                  id="mdr-admin-note-help"
+                  className="label"
+                  style={{ marginTop: 6, fontSize: 11, lineHeight: 1.45 }}
+                >
+                  {t("adminMdrAdminNoteHelp")}
+                </p>
                 {selected.proposed ? (
                   <p
                     className="label"
