@@ -5100,17 +5100,20 @@ select.input {
   font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
+/* Semantic tokens, not literals: --st-warn / --destructive are the same pair
+   the evidence rows and every inline form error already use, and they are
+   re-toned for dark mode. A hardcoded hex here would not be. */
 .phone-shell .staged-upload-warn {
   margin: 6px 0 0;
   font-size: 12px;
   line-height: 1.35;
-  color: var(--warn, #b7791f);
+  color: var(--st-warn);
 }
 .phone-shell .staged-upload-fail {
   margin: 6px 0 0;
   font-size: 12px;
   line-height: 1.35;
-  color: var(--danger, #c0392b);
+  color: var(--destructive);
 }
 .phone-shell .staged-upload-remove {
   flex: 0 0 auto;

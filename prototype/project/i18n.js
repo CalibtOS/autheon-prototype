@@ -1759,6 +1759,11 @@ window.I18n = (() => {
       emptyRunSlide: "Report empty run",
       emptyRunSlideDone: "Empty run reported",
       emptyRunSlideLocked: "Enter at least 30 characters to unlock",
+      // Prototype-only: the product's empty-run sheet submits with a button and
+      // has no locked-slide copy to lift. Names evidence, not the character
+      // minimum, so a driver who has already written enough is not sent back to
+      // the wrong field.
+      emptyRunSlideLockedEvidence: "Remove the flagged evidence file to unlock",
       emptyRunSuccessTitle: "Empty run reported",
       emptyRunSuccessBody:
         "Your report was submitted to Autheon and will be reviewed.",
@@ -3904,6 +3909,8 @@ window.I18n = (() => {
       emptyRunSlide: "Leerfahrt melden",
       emptyRunSlideDone: "Leerfahrt gemeldet",
       emptyRunSlideLocked: "Mind. 30 Zeichen eingeben zum Freischalten",
+      emptyRunSlideLockedEvidence:
+        "Markierten Nachweis entfernen zum Freischalten",
       emptyRunSuccessTitle: "Leerfahrt gemeldet",
       emptyRunSuccessBody:
         "Ihre Meldung wurde an Autheon übermittelt und wird geprüft.",

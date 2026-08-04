@@ -3499,7 +3499,10 @@ const TourDocAmountFormSheet = ({
         {amountErr ? (
           <p
             style={{
-              color: "var(--danger, #c0392b)",
+              // `--danger` is not a token this repo defines; the three copies
+              // of this form carried the literal fallback. Now that there is
+              // one copy, it uses the real one.
+              color: "var(--destructive)",
               fontSize: 12.5,
               marginTop: 8,
             }}
@@ -3930,25 +3933,22 @@ const TourDocumentUploadFlow = ({
         return;
       }
       const failure = classifyStoreUploadRefusal(r.reason);
+      closeAmountWalk();
       if (failure.scope === "batch") {
         // Stop the walk; leave this file and the rest unmarked for resume.
-        closeAmountWalk();
         setStagedError(t("stagedBatchStopped"));
         return;
       }
-      // File-scoped refusal: mark this file, keep walking unmarked rest.
-      const failed = { file: head.file, failure: failure.reason };
-      const rest = stagedFiles.slice(1);
-      const nextUnmarkedIdx = rest.findIndex((s) => s.failure == null);
-      if (nextUnmarkedIdx === -1) {
-        setStagedFiles([failed, ...rest]);
-        closeAmountWalk();
-        return;
-      }
-      const unmarked = rest[nextUnmarkedIdx];
-      const others = rest.filter((_, i) => i !== nextUnmarkedIdx);
-      setStagedFiles([unmarked, ...others, failed]);
-      openAmountFormForWalk(walk.current + 1, walk.total, category);
+      // File-scoped refusal: mark the file and end the walk rather than
+      // advancing to the next receipt. The mark, the reason and both remedies
+      // live on the staged list, and the amount form covers that list while it
+      // is open — carrying on would step over a rejection the driver was never
+      // shown. Everything already written stays written, the rest stay staged
+      // and unmarked, so Upload is still a resume.
+      setStagedFiles([
+        { file: head.file, failure: failure.reason },
+        ...stagedFiles.slice(1),
+      ]);
       return;
     }
 
@@ -3979,9 +3979,15 @@ const TourDocumentUploadFlow = ({
     openAmountFormForWalk(walk.current + 1, walk.total, category);
   };
 
-  if (apiRef) {
+  // Published after commit, not during render: a render may be discarded or
+  // run twice, and the parent's button must only ever reach a mounted flow.
+  useEffect(() => {
+    if (!apiRef) return;
     apiRef.current = { openCategory, openReplace };
-  }
+    return () => {
+      apiRef.current = {};
+    };
+  });
 
   const limits = store.getDriverUploadLimits();
   // Capture usage before any mutating call in this render — the store hands
@@ -4015,14 +4021,15 @@ const TourDocumentUploadFlow = ({
         isOffline={!isOnline}
         errorMessage={stagedError}
         onRemoveFile={(index) => {
-          setStagedFiles((prev) => {
-            const next = prev.filter((_, i) => i !== index);
-            if (next.length === 0) {
-              setStagedType(null);
-              setStagedError(null);
-            }
-            return next;
-          });
+          // Derive from the rendered list rather than setting sibling state
+          // inside an updater callback — updaters must stay pure, React is
+          // free to run them twice.
+          const next = stagedFiles.filter((_, i) => i !== index);
+          setStagedFiles(next);
+          if (next.length === 0) {
+            setStagedType(null);
+            setStagedError(null);
+          }
         }}
         onCancel={cancelStagedBatch}
         onUpload={runStagedUpload}
@@ -5432,9 +5439,15 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   const slideDoneLabel = isCancel
     ? t("spCancelSlideDone")
     : t("emptyRunSlideDone");
+  // Two different reasons the slide can be locked, and they must not borrow
+  // each other's wording: an explanation that is too short, or evidence that
+  // breaks a limit. Naming the character minimum while the driver already has
+  // 100 characters typed sends them to fix the wrong thing.
   const slideLockedLabel = isCancel
     ? t("spCancelSlideLocked")
-    : t("emptyRunSlideLocked");
+    : valid && evidenceBlocked
+      ? t("emptyRunSlideLockedEvidence")
+      : t("emptyRunSlideLocked");
 
   // Latest submit closure for the slide gesture (evidence only for empty run).
   const submitRef = useRef(() => {});
@@ -5742,15 +5755,13 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                       // breaks a limit: it is marked in the list and blocks
                       // submission there, so the driver can see and remove
                       // exactly what is wrong.
-                      setEvidenceFiles((prev) => {
-                        const merged = [...prev, ...picked].slice(0, 5);
-                        setEvidenceNotice(
-                          prev.length + picked.length > 5
-                            ? t("reportProblemEvidenceTooMany")
-                            : null,
-                        );
-                        return merged;
-                      });
+                      const merged = [...evidenceFiles, ...picked].slice(0, 5);
+                      setEvidenceFiles(merged);
+                      setEvidenceNotice(
+                        evidenceFiles.length + picked.length > 5
+                          ? t("reportProblemEvidenceTooMany")
+                          : null,
+                      );
                       setSlidePos(0);
                       setSlideDone(false);
                       e.target.value = "";
