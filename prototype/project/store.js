@@ -1697,6 +1697,15 @@ window.AuthStore = (() => {
     };
   }
 
+  /**
+   * Demo timestamps are computed relative to "now" rather than frozen, so the
+   * inactivity states below stay meaningful however long after this file was
+   * written the prototype is opened.
+   */
+  function daysAgoIso(days) {
+    return new Date(Date.now() - days * 86400000).toISOString();
+  }
+
   function seedDrivers() {
     return [
       {
@@ -1720,6 +1729,9 @@ window.AuthStore = (() => {
         accountStatus: "Active",
         probationJobLimit: 3,
         probationClearedAt: null,
+        lastActiveAt: daysAgoIso(2),
+        inactivityWarningSentAt: null,
+        deactivationReason: null,
         prefs: {
           postalAreas: ["80"],
           vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
@@ -1747,6 +1759,12 @@ window.AuthStore = (() => {
         accountStatus: "Invite failed",
         probationJobLimit: 3,
         probationClearedAt: "01.04.2026 10:00",
+        // Active and inside the warning window (75-89 days idle under the
+        // default 90/15 policy): the first sweep warns this partner
+        // rather than deactivating them.
+        lastActiveAt: daysAgoIso(80),
+        inactivityWarningSentAt: null,
+        deactivationReason: null,
         prefs: {
           postalAreas: ["60"],
           // Filter preferences only offer APPROVED types — the removed
@@ -1776,6 +1794,12 @@ window.AuthStore = (() => {
         accountStatus: "Pending verification",
         probationJobLimit: 3,
         probationClearedAt: null,
+        // Inside the warning window (75-89 days idle at the default 90/15
+        // policy), so the first sweep warns this partner rather than
+        // deactivating them.
+        lastActiveAt: daysAgoIso(80),
+        inactivityWarningSentAt: null,
+        deactivationReason: null,
         prefs: {
           postalAreas: ["10"],
           vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
@@ -1808,6 +1832,9 @@ window.AuthStore = (() => {
         accountStatus: "Active",
         probationJobLimit: 3,
         probationClearedAt: null,
+        lastActiveAt: daysAgoIso(120),
+        inactivityWarningSentAt: null,
+        deactivationReason: null,
         prefs: {
           postalAreas: ["10"],
           vehicleType: "All",
@@ -2541,6 +2568,43 @@ window.AuthStore = (() => {
     driverOfferMinEur: 0.01,
     driverOfferMaxEur: 999.99,
     driverOfferHighWarningEur: 200.0,
+  };
+
+  /** DD.MM.YYYY (the seed format for joinedAt) -> Date, or null. */
+  function parseGermanDate(value) {
+    const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(value || ""));
+    return m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null;
+  }
+
+  /**
+   * Days a partner has been dormant.
+   *
+   * Falls back to the join date when they have never been active — reading a
+   * null as "idle forever" would deactivate every partner the day they are
+   * onboarded, before their invitation has even been opened.
+   */
+  function inactiveDaysFor(driver, now = new Date()) {
+    if (!driver) return 0;
+    const since = driver.lastActiveAt
+      ? new Date(driver.lastActiveAt)
+      : parseGermanDate(driver.joinedAt);
+    if (!since || Number.isNaN(since.getTime())) return 0;
+    return Math.floor((now.getTime() - since.getTime()) / 86400000);
+  }
+
+  /**
+   * Automatic deactivation of dormant service partners (PRD OQ-15).
+   *
+   * 90/15 is the client's own figure from the post-v1.8 meeting — a partner who
+   * goes three months without driving. `warningDays` is a LEAD TIME, not an
+   * absolute age: the warning fires at `thresholdDays - warningDays` days idle,
+   * so raising the threshold does not silently move the warning earlier.
+   * `warningDays: 0` deactivates with no notice.
+   */
+  const driverInactivityPolicy = {
+    enabled: true,
+    thresholdDays: 90,
+    warningDays: 15,
   };
 
   const cancellationPolicies = {
@@ -5361,7 +5425,105 @@ window.AuthStore = (() => {
       ...operationalPolicies,
       cancellation: { ...cancellationPolicies },
       driverAcceptance: { ...driverAcceptanceDefaults },
+      driverInactivity: { ...driverInactivityPolicy },
     }),
+
+    getDriverInactivityPolicy: () => ({ ...driverInactivityPolicy }),
+
+    setDriverInactivityPolicy(partial = {}) {
+      Object.assign(driverInactivityPolicy, partial);
+      log(
+        "operational_policies_changed",
+        DEMO_ADMIN,
+        "app_settings",
+        JSON.stringify({ driverInactivity: partial }),
+      );
+      emit();
+      return { ok: true };
+    },
+
+    /** Days a partner has been dormant; measured from joinedAt if never active. */
+    driverInactiveDays(driver) {
+      return inactiveDaysFor(driver);
+    },
+
+    /**
+     * Stamp a partner as active. Called wherever the prototype simulates a
+     * driver interaction, mirroring the production interceptor that stamps on
+     * any authenticated request.
+     */
+    recordDriverActivity(driverId, at = new Date()) {
+      const driver = drivers.find((d) => d.id === driverId);
+      if (!driver) return { ok: false, reason: "not_found" };
+      driver.lastActiveAt = at.toISOString();
+      // Coming back cancels a pending warning — the next dormancy earns a fresh
+      // one rather than being deactivated silently on last year's notice.
+      driver.inactivityWarningSentAt = null;
+      emit();
+      return { ok: true };
+    },
+
+    /**
+     * One pass of the inactivity policy: warn those approaching the threshold,
+     * deactivate those past it.
+     *
+     * Deactivation runs first and the warning pass only considers partners still
+     * Active, so nobody is warned about a deactivation that just happened.
+     * Partners holding live tours are skipped rather than deactivated — the same
+     * guard that stops an admin doing it — and are picked up on a later run.
+     */
+    runInactivitySweep(now = new Date()) {
+      const result = {
+        enabled: driverInactivityPolicy.enabled,
+        thresholdDays: driverInactivityPolicy.thresholdDays,
+        warningDays: driverInactivityPolicy.warningDays,
+        deactivated: [],
+        warned: [],
+        skippedWithActiveJobs: [],
+      };
+      if (!driverInactivityPolicy.enabled) return result;
+
+      const threshold = driverInactivityPolicy.thresholdDays;
+      const warnAt = threshold - driverInactivityPolicy.warningDays;
+
+      drivers.forEach((driver) => {
+        if (driver.deletedAt || driver.status !== "Active") return;
+        const idle = inactiveDaysFor(driver, now);
+
+        if (idle >= threshold) {
+          if (api.countActiveJobsForDriver(driver.id) > 0) {
+            result.skippedWithActiveJobs.push(driver.id);
+            return;
+          }
+          driver.status = "Inactive";
+          driver.deactivationReason = "inactivity";
+          result.deactivated.push(driver.id);
+          log("driver_auto_deactivated", "System", driver.name, {
+            reason: "Automatic inactivity suspension",
+            thresholdDays: threshold,
+            inactiveDays: idle,
+          });
+          return;
+        }
+
+        if (
+          driverInactivityPolicy.warningDays > 0 &&
+          idle >= warnAt &&
+          !driver.inactivityWarningSentAt
+        ) {
+          driver.inactivityWarningSentAt = now.toISOString();
+          result.warned.push(driver.id);
+          log("driver_inactivity_warning_sent", "System", driver.name, {
+            thresholdDays: threshold,
+            inactiveDays: idle,
+            daysUntilDeactivation: threshold - idle,
+          });
+        }
+      });
+
+      emit();
+      return result;
+    },
 
     setOperationalPolicies(partial = {}) {
       if (partial.operational)
@@ -7375,6 +7537,19 @@ window.AuthStore = (() => {
         }
       }
       d.status = status;
+      if (status === "Active") {
+        /*
+         * Reactivation clears the automatic cause and re-arms the clock. A
+         * partner reinstated while lastActiveAt is still months old would be
+         * swept again on the next run, silently undoing the admin's decision.
+         */
+        d.deactivationReason = null;
+        d.lastActiveAt = new Date().toISOString();
+        d.inactivityWarningSentAt = null;
+      } else {
+        // A moderator's decision is not an automatic one.
+        d.deactivationReason = null;
+      }
       log("driver_status_changed", DEMO_ADMIN, d.name, status);
       emit();
       return { ok: true };

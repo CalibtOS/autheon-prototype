@@ -1616,7 +1616,11 @@ const Portal = ({
     const d = store.getCurrentDriver();
     return (
       <div className="scroll profile-header-block">
-        <h1 className="profile-header-title">{t("blockedDriverTitle")}</h1>
+        <h1 className="profile-header-title">
+          {d?.deactivationReason === "inactivity"
+            ? t("driverInactiveByInactivityTitle")
+            : t("blockedDriverTitle")}
+        </h1>
         <div
           className="card"
           style={{
@@ -1636,7 +1640,12 @@ const Portal = ({
               color: "var(--muted)",
             }}
           >
-            {t("blockedDriverBody")}
+            {/* Naming the cause matters: without it, losing marketplace
+                access reads as an outage rather than a policy the partner can
+                reverse with one phone call. */}
+            {d?.deactivationReason === "inactivity"
+              ? t("driverInactiveByInactivityBody")
+              : t("blockedDriverBody")}
           </p>
         </div>
       </div>
@@ -4214,30 +4223,49 @@ const JobUnlocked = ({
               </div>
             </div>
 
-            {/* Route Card with Vertical Timeline */}
+            {/* Route Card — same RouteTimeline as JobLocked / FE My Jobs detail,
+                then unlocked street + map details (content parity with prior layout). */}
             <div className="detail-card">
               <div className="detail-section-title">
                 <Ic.Map />
                 <span>{t("route")}</span>
               </div>
-              <div className="unlocked-route-timeline">
-                <div className="timeline-item">
-                  <div className="timeline-marker">
-                    <span className="dot blue"></span>
-                    <span className="line"></span>
+              <RouteTimeline
+                spacing="compact"
+                start={{
+                  city: job.startCity,
+                  plz: job.startPlz
+                    ? `${t("postalCodeAbbr")}: ${job.startPlz}`
+                    : null,
+                  label: t("pickup"),
+                }}
+                end={{
+                  city: job.endCity,
+                  plz: job.endPlz
+                    ? `${t("postalCodeAbbr")}: ${job.endPlz}`
+                    : null,
+                  label: t("delivery"),
+                }}
+                distanceKm={job.distanceKm}
+                distanceNote={estimateDriveTime(job.distanceKm) || null}
+              />
+              <hr className="detail-card-divider" />
+              <div className="detail-unlocked-stops">
+                <div className="detail-unlocked-stop">
+                  <div className="time-label">{t("pickup")}</div>
+                  {pickupStopName ? (
+                    <div className="city-location-name">{pickupStopName}</div>
+                  ) : null}
+                  <div className="city-address">
+                    {job.startStreet} · {job.startPlz} {job.startCity}
                   </div>
-                  <div className="timeline-content">
-                    <div className="city-info">
-                      <div className="city-name">{job.startCity}</div>
-                      {pickupStopName ? (
-                        <div className="city-location-name">
-                          {pickupStopName}
-                        </div>
-                      ) : null}
-                      <div className="city-address">
-                        {job.startStreet} · {job.startPlz} {job.startCity}
-                      </div>
-                    </div>
+                  <div className="time-val">
+                    {AuthStore.formatLocationSchedule(
+                      job.pickup,
+                      t("flexible"),
+                    )}
+                  </div>
+                  {pickupMaps ? (
                     <a
                       href={pickupMaps}
                       target="_blank"
@@ -4246,30 +4274,23 @@ const JobUnlocked = ({
                     >
                       <Ic.Map /> {t("viewOnMap")}
                     </a>
-                  </div>
+                  ) : null}
                 </div>
-                <div className="timeline-item-middle">
-                  <span className="info-badge">🚙 {job.distanceKm} km</span>
-                  <span className="info-badge">
-                    ⏱ {estimateDriveTime(job.distanceKm) || "—"}
-                  </span>
-                </div>
-                <div className="timeline-item">
-                  <div className="timeline-marker">
-                    <span className="dot dark"></span>
+                <div className="detail-unlocked-stop">
+                  <div className="time-label">{t("delivery")}</div>
+                  {deliveryStopName ? (
+                    <div className="city-location-name">{deliveryStopName}</div>
+                  ) : null}
+                  <div className="city-address">
+                    {job.endStreet} · {job.endPlz} {job.endCity}
                   </div>
-                  <div className="timeline-content">
-                    <div className="city-info">
-                      <div className="city-name">{job.endCity}</div>
-                      {deliveryStopName ? (
-                        <div className="city-location-name">
-                          {deliveryStopName}
-                        </div>
-                      ) : null}
-                      <div className="city-address">
-                        {job.endStreet} · {job.endPlz} {job.endCity}
-                      </div>
-                    </div>
+                  <div className="time-val">
+                    {AuthStore.formatLocationSchedule(
+                      job.delivery,
+                      t("flexible"),
+                    )}
+                  </div>
+                  {deliveryMaps ? (
                     <a
                       href={deliveryMaps}
                       target="_blank"
@@ -4278,28 +4299,7 @@ const JobUnlocked = ({
                     >
                       <Ic.Map /> {t("viewOnMap")}
                     </a>
-                  </div>
-                </div>
-              </div>
-              <hr className="detail-card-divider" />
-              <div className="detail-route-times">
-                <div>
-                  <div className="time-label">{t("pickupTime")}</div>
-                  <div className="time-val">
-                    {AuthStore.formatLocationSchedule(
-                      job.pickup,
-                      t("flexible"),
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <div className="time-label">{t("deliveryTime")}</div>
-                  <div className="time-val">
-                    {AuthStore.formatLocationSchedule(
-                      job.delivery,
-                      t("flexible"),
-                    )}
-                  </div>
+                  ) : null}
                 </div>
               </div>
             </div>
