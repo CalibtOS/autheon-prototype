@@ -6,9 +6,9 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <!-- theme-color = header paper under Island (not list canvas) -->
-    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#2C2C2E" media="(prefers-color-scheme: dark)" />
+    <!-- theme-color = FE DriverShell surface-muted / canvas under Island -->
+    <meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)" />
     <meta name="description" content="AUTHEON Driver — vehicle transport jobs, documents, and tour status." />
     <meta name="application-name" content="AUTHEON" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -44,7 +44,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=38" />
-    <link rel="stylesheet" href="../../pwa/pwa.css?v=12" />
+    <link rel="stylesheet" href="../../pwa/pwa.css?v=13" />
     <script>
       // Apply theme before first paint: persisted prototype choice first,
       // then the device preference. Same key as the client-preview page.
@@ -55,8 +55,8 @@
             ? "dark"
             : "light");
         document.documentElement.setAttribute("data-theme", t);
-        // First-paint system chrome: match header paper under the Island.
-        var surface = t === "dark" ? "#2C2C2E" : "#FFFFFF";
+        // First-paint system chrome: match FE ThemeSync (canvas / surface-muted).
+        var surface = t === "dark" ? "#1C1C1E" : "#F5F5F7";
         document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) {
           meta.setAttribute("content", surface);
           meta.removeAttribute("media");
@@ -132,7 +132,7 @@
 
         var JSX = [
           "/prototype/project/driver-ui.jsx?v=2",
-          "/prototype/project/driver.jsx?v=31",
+          "/prototype/project/driver.jsx?v=32",
           "/pwa/pwa-app.jsx?v=13",
         ];
 

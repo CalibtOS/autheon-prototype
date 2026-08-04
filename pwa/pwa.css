@@ -13,10 +13,12 @@
      ≥ 1536px   large desktop   — centered 720px phone-column preview
    =============================================================== */
 
-/* Match FE DriverShell ground = canvas / surface-muted (#F5F5F7).
-   Shell stays position:fixed (stable flex/scroll geometry for header + lists).
-   Island paint: root + shell + phone-screen canvas; primary headers pull up
-   into the safe-area with paper so there is no grey band above Marketplace. */
+/* Match FE DriverShell exactly:
+   - Ground = canvas / surface-muted (#F5F5F7 light, #1C1C1E dark)
+   - One top safe-area owner: .phone-screen (FE content column)
+   - Paper headers sit BELOW that muted band (no negative-margin pull-up)
+   - theme-color tracks canvas, not paper (see applyAppTheme / index.html)
+   Shell stays position:fixed for stable flex/scroll with the install mode bar. */
 html.pwa-page,
 body.pwa-page {
   margin: 0;
@@ -180,22 +182,13 @@ body.pwa-standalone .phone-shell.pwa-viewport {
   background: var(--canvas);
 }
 .phone-shell.pwa-viewport .phone-screen {
-  /* Safe-area slot above the header — primary headers pull back up with paper
-     so Marketplace/etc. are continuous under the Island (no grey strip). */
+  /* Sole top safe-area owner — same role as FE DriverShell content column
+     `pt-[env(safe-area-inset-top)]`. Muted canvas paints under the Island;
+     `.pwa-screen-header` / detail headers keep their normal paper padding
+     from styles.css and must NOT re-add or pull into this inset. */
   --phone-chrome-top: env(safe-area-inset-top, 0px);
   padding-top: env(safe-area-inset-top, 0px);
   background: var(--canvas);
-}
-
-/* White app chrome extends into the status-bar band (covers canvas pad). */
-.phone-shell.pwa-viewport .pwa-screen-header {
-  margin-top: calc(-1 * env(safe-area-inset-top, 0px));
-  padding-top: calc(16px + env(safe-area-inset-top, 0px));
-}
-.phone-shell.pwa-viewport .pwa-detail-header,
-.phone-shell.pwa-viewport .driver-subpage-header {
-  margin-top: calc(-1 * env(safe-area-inset-top, 0px));
-  padding-top: calc(12px + env(safe-area-inset-top, 0px));
 }
 
 /*

@@ -7343,11 +7343,18 @@ function applyAppTheme(theme) {
     /* no-op */
   }
   const isPwaPage = document.body?.classList?.contains("pwa-page");
-  // Primary PWA headers pull --paper into the safe-area band, so system chrome
-  // tracks --brand-surface (same as header), not canvas list ground.
-  const fallback = theme === "dark" ? "#2C2C2E" : "#FFFFFF";
+  // Match FE ThemeSync / DriverShell: PWA system chrome = surface-muted
+  // (canvas under Island). Framed desktop prototype keeps paper chrome.
+  const fallback = isPwaPage
+    ? theme === "dark"
+      ? "#1C1C1E"
+      : "#F5F5F7"
+    : theme === "dark"
+      ? "#2C2C2E"
+      : "#FFFFFF";
+  const token = isPwaPage ? "--brand-canvas" : "--brand-surface";
   const resolved = getComputedStyle(document.documentElement)
-    .getPropertyValue("--brand-surface")
+    .getPropertyValue(token)
     .trim();
   const chrome =
     resolved && !resolved.startsWith("var(") ? resolved : fallback;
