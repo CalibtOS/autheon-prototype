@@ -6,9 +6,9 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <!-- theme-color = --brand-canvas (FE surface-muted), not pure white -->
-    <meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)" />
+    <!-- theme-color = header paper under Island (not list canvas) -->
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#2C2C2E" media="(prefers-color-scheme: dark)" />
     <meta name="description" content="AUTHEON Driver — vehicle transport jobs, documents, and tour status." />
     <meta name="application-name" content="AUTHEON" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -44,7 +44,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=38" />
-    <link rel="stylesheet" href="../../pwa/pwa.css?v=11" />
+    <link rel="stylesheet" href="../../pwa/pwa.css?v=12" />
     <script>
       // Apply theme before first paint: persisted prototype choice first,
       // then the device preference. Same key as the client-preview page.
@@ -55,8 +55,8 @@
             ? "dark"
             : "light");
         document.documentElement.setAttribute("data-theme", t);
-        // First-paint system chrome: match --brand-canvas / FE surface-muted.
-        var surface = t === "dark" ? "#1C1C1E" : "#F5F5F7";
+        // First-paint system chrome: match header paper under the Island.
+        var surface = t === "dark" ? "#2C2C2E" : "#FFFFFF";
         document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) {
           meta.setAttribute("content", surface);
           meta.removeAttribute("media");
@@ -65,7 +65,6 @@
           'meta[name="apple-mobile-web-app-status-bar-style"]',
         );
         if (appleStatus) appleStatus.setAttribute("content", "black-translucent");
-        // Paint root immediately so black-translucent never shows an empty band.
         document.documentElement.style.backgroundColor = surface;
         if (document.body) document.body.style.backgroundColor = surface;
         if (
