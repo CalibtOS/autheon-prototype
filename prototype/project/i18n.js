@@ -493,10 +493,14 @@ window.I18n = (() => {
       reportProblemCancelTermsIntro: "The current driver terms apply.",
       reportProblemEvidenceLabel: "Evidence (optional)",
       reportProblemEvidenceHint:
-        "Photos or documents help dispatch review the case (PDF or images, max 5 files).",
+        "Attach up to 5 PDFs or photos, max {maxMb} MB each.",
       reportProblemEvidenceAdd: "Add file",
       reportProblemEvidenceRemove: "Remove",
       reportProblemEvidenceTooMany: "Maximum 5 files per report.",
+      reportProblemEvidenceTooLarge:
+        "File is too large. Max file size: {maxMb} MB.",
+      reportProblemEvidenceTotalExceeded:
+        "Your evidence is over the {maxMb} MB limit for one report. Remove a file to continue.",
       masterDataChangeRequest: "Request profile change",
       masterDataChangeFormHint:
         "Update any fields that need changing, then submit for operations to review.",
@@ -2638,10 +2642,14 @@ window.I18n = (() => {
         "Es gelten die aktuellen Fahrer-Bedingungen.",
       reportProblemEvidenceLabel: "Nachweise (optional)",
       reportProblemEvidenceHint:
-        "Fotos oder Dokumente helfen der Disposition (PDF oder Bilder, max. 5 Dateien).",
+        "Bis zu 5 PDFs oder Fotos anhängen, max. {maxMb} MB pro Datei.",
       reportProblemEvidenceAdd: "Datei hinzufügen",
       reportProblemEvidenceRemove: "Entfernen",
       reportProblemEvidenceTooMany: "Maximal 5 Dateien pro Meldung.",
+      reportProblemEvidenceTooLarge:
+        "Datei ist zu groß. Maximale Dateigröße: {maxMb} MB.",
+      reportProblemEvidenceTotalExceeded:
+        "Ihr Nachweis überschreitet das Limit von {maxMb} MB pro Meldung. Zum Fortfahren eine Datei entfernen.",
       masterDataChangeRequest: "Profiländerung anfragen",
       masterDataChangeFormHint:
         "Felder anpassen und zur Prüfung durch die Disposition senden.",

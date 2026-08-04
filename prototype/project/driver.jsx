@@ -5380,6 +5380,7 @@ const MyJobs = ({ onOpen, onOpenNotifications, notificationsOpen = false }) => {
 // final action can't be triggered accidentally.
 const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   const { t } = useI18n();
+  const store = useAuthStore();
   const [path, setPath] = useState(null); // 'cancel' | 'not_performable'
   const [cancelStep, setCancelStep] = useState("warn"); // 'warn' | 'form'
   const [termsOpen, setTermsOpen] = useState(false);
@@ -5394,6 +5395,13 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   const evidenceInputRef = useRef(null);
   const MIN = 30;
   const valid = text.trim().length >= MIN;
+  // Evidence is its own upload area scoped to this report. The report does
+  // not exist yet, so usage starts at zero and the selection in hand is the
+  // whole of it — no prior-usage figure, matching the shipped sheet.
+  const limits = store.getDriverUploadLimits();
+  const evidenceSummary = summariseUploadSelection(0, evidenceFiles, limits);
+  const evidenceBlocked =
+    evidenceSummary.hasOversizedFile || evidenceSummary.exceedsTotal;
 
   const cancelReasons = [
     ["appointment_not_kept", t("spCancelReasonAppointment")],
@@ -5430,10 +5438,17 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
 
   // Latest submit closure for the slide gesture (evidence only for empty run).
   const submitRef = useRef(() => {});
-  submitRef.current = () =>
+  submitRef.current = () => {
+    // Hold submit back while evidence breaks a limit — the driver still holds
+    // the files and can remove the one that is wrong.
+    if (!isCancel && evidenceBlocked) return;
     onSubmit(path, reason, text.trim(), isCancel ? [] : evidenceFiles);
+  };
 
-  const slideEnabled = valid && !slideDone;
+  // Empty-run evidence that breaks a limit locks the slide the same way an
+  // incomplete explanation does; cancel never carries evidence.
+  const slideReady = valid && (isCancel || !evidenceBlocked);
+  const slideEnabled = slideReady && !slideDone;
 
   const choosePath = (id) => {
     setPath(id);
@@ -5522,26 +5537,34 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
         aria-disabled={!slideEnabled}
       >
         <div className="track-text">
-          {slideDone ? slideDoneLabel : valid ? slideLabel : slideLockedLabel}
+          {slideDone
+            ? slideDoneLabel
+            : slideReady
+              ? slideLabel
+              : slideLockedLabel}
         </div>
-        <div className="slide-fill" style={{ width: valid ? slidePos : 0 }} />
+        <div className="slide-fill" style={{ width: slideReady ? slidePos : 0 }} />
         <div
           className="track-text track-text-fill"
           style={{
-            clipPath: `inset(0 calc(100% - ${valid ? slidePos : 0}px) 0 0)`,
+            clipPath: `inset(0 calc(100% - ${slideReady ? slidePos : 0}px) 0 0)`,
           }}
         >
-          {slideDone ? slideDoneLabel : valid ? slideLabel : slideLockedLabel}
+          {slideDone
+            ? slideDoneLabel
+            : slideReady
+              ? slideLabel
+              : slideLockedLabel}
         </div>
         <div
           className="thumb"
-          style={{ transform: `translateX(${valid ? slidePos : 0}px)` }}
+          style={{ transform: `translateX(${slideReady ? slidePos : 0}px)` }}
           onPointerDown={slideEnabled ? onSlideStart : undefined}
           tabIndex={slideEnabled ? 0 : -1}
         >
           {slideDone ? (
             <SlideCheckIcon />
-          ) : valid ? (
+          ) : slideReady ? (
             <SlideArrowIcon />
           ) : (
             <SlideLockIcon />
@@ -5702,7 +5725,9 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                     className="req-panel-desc"
                     style={{ margin: "6px 0 10px" }}
                   >
-                    {t("emptyRunEvidenceHint")}
+                    {t("reportProblemEvidenceHint", {
+                      maxMb: limits.maxFileMb,
+                    })}
                   </p>
                   <input
                     ref={evidenceInputRef}
@@ -5713,6 +5738,10 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                     onChange={(e) => {
                       const picked = Array.from(e.target.files || []);
                       if (!picked.length) return;
+                      // Everything picked is staged, including a file that
+                      // breaks a limit: it is marked in the list and blocks
+                      // submission there, so the driver can see and remove
+                      // exactly what is wrong.
                       setEvidenceFiles((prev) => {
                         const merged = [...prev, ...picked].slice(0, 5);
                         setEvidenceNotice(
@@ -5722,6 +5751,8 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                         );
                         return merged;
                       });
+                      setSlidePos(0);
+                      setSlideDone(false);
                       e.target.value = "";
                     }}
                   />
@@ -5753,35 +5784,75 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                         gap: 8,
                       }}
                     >
-                      {evidenceFiles.map((f, idx) => (
-                        <li
-                          key={`${f.name}-${idx}`}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            gap: 8,
-                            fontSize: 12,
-                            padding: "8px 10px",
-                            border: "1px solid var(--line)",
-                            borderRadius: "var(--r-2)",
-                          }}
-                        >
-                          <span className="pdf-name">{f.name}</span>
-                          <button
-                            type="button"
-                            className="btn ghost xs"
-                            onClick={() =>
-                              setEvidenceFiles((prev) =>
-                                prev.filter((_, i) => i !== idx),
-                              )
-                            }
+                      {evidenceFiles.map((f, idx) => {
+                        const oversized = exceedsDocumentUploadLimit(
+                          f,
+                          limits.maxFileBytes,
+                        );
+                        return (
+                          <li
+                            key={`${f.name}-${String(f.size)}-${idx}`}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "flex-start",
+                              gap: 8,
+                              fontSize: 12,
+                              padding: "8px 10px",
+                              border: "1px solid var(--line)",
+                              borderRadius: "var(--r-2)",
+                            }}
                           >
-                            {t("reportProblemEvidenceRemove")}
-                          </button>
-                        </li>
-                      ))}
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <span className="pdf-name">{f.name}</span>
+                              {/* The problem is named on the file that causes
+                                  it, so the driver removes that one rather
+                                  than starting over. */}
+                              {oversized ? (
+                                <p
+                                  style={{
+                                    margin: "4px 0 0",
+                                    color: "var(--st-warn)",
+                                    fontSize: 11,
+                                    lineHeight: 1.4,
+                                  }}
+                                >
+                                  {t("reportProblemEvidenceTooLarge", {
+                                    maxMb: limits.maxFileMb,
+                                  })}
+                                </p>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              className="btn ghost xs"
+                              onClick={() => {
+                                setEvidenceFiles((prev) =>
+                                  prev.filter((_, i) => i !== idx),
+                                );
+                                setSlidePos(0);
+                                setSlideDone(false);
+                              }}
+                            >
+                              {t("reportProblemEvidenceRemove")}
+                            </button>
+                          </li>
+                        );
+                      })}
                     </ul>
+                  ) : null}
+                  {/* The area total, distinct from any one file being too
+                      big: the remedy is to drop something, not to shrink a
+                      scan. */}
+                  {evidenceSummary.exceedsTotal ? (
+                    <div className="stack-8" style={{ marginTop: 10 }}>
+                      <InlineAlert
+                        tone="warn"
+                        message={t("reportProblemEvidenceTotalExceeded", {
+                          maxMb: limits.maxTotalMb,
+                        })}
+                      />
+                    </div>
                   ) : null}
                   <div
                     role="alert"
