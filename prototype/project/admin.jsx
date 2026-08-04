@@ -10916,36 +10916,31 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
     <div style={{ maxWidth: 1040 }}>
       <p className="pane-lead">{t("adminMdrSub")}</p>
       {/*
-        A dropdown rather than a segmented control: the four statuses exceed the
-        three-option limit the segmented control is specified for, and this is
-        what the admin app ships.
+        Segmented control, not a dropdown: every status stays visible and
+        switching costs one click — the most repeated action on this screen.
       */}
-      <label
-        className="label"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 10,
-          marginBottom: 18,
-        }}
-      >
-        <span>{t("adminMdrFilterLabel")}</span>
-        <select
-          className="input"
-          style={{ width: 170 }}
-          value={filter}
-          onChange={(e) => {
-            setFilter(e.target.value);
-            setPage(1);
-            setSelectedId("");
-          }}
-        >
-          <option value="open">{t("adminMdrFilterOpen")}</option>
-          <option value="approved">{t("adminMdrFilterApproved")}</option>
-          <option value="rejected">{t("adminMdrFilterRejected")}</option>
-          <option value="all">{t("adminMdrFilterAll")}</option>
-        </select>
-      </label>
+      <div className="seg" style={{ display: "inline-flex", marginBottom: 18 }}>
+        {[
+          ["open", t("adminMdrFilterOpen")],
+          ["approved", t("adminMdrFilterApproved")],
+          ["rejected", t("adminMdrFilterRejected")],
+          ["all", t("adminMdrFilterAll")],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className={filter === id ? "on" : ""}
+            aria-pressed={filter === id}
+            onClick={() => {
+              setFilter(id);
+              setPage(1);
+              setSelectedId("");
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <div
         style={{
           display: "grid",
