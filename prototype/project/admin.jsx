@@ -10880,6 +10880,15 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   const allRows = store.listMasterDataChangeRequests(
     filter === "all" ? {} : { status: filter },
   );
+  // Per-status counts so the reviewer can see the size of the backlog without
+  // clicking each filter to find out what is in it.
+  const statusCounts = {
+    open: store.listMasterDataChangeRequests({ status: "open" }).length,
+    approved: store.listMasterDataChangeRequests({ status: "approved" }).length,
+    rejected: store.listMasterDataChangeRequests({ status: "rejected" }).length,
+  };
+  statusCounts.all =
+    statusCounts.open + statusCounts.approved + statusCounts.rejected;
   // The production queue is paginated server-side; page the mock list so the
   // footer, the result count and the reset-to-page-1 behaviour all match.
   const rows = allRows.slice((page - 1) * rowsPerPage, page * rowsPerPage);
@@ -10918,6 +10927,8 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
       {/*
         Segmented control, not a dropdown: every status stays visible and
         switching costs one click — the most repeated action on this screen.
+        Each segment carries its count so the backlog size is readable without
+        clicking through the filters.
       */}
       <div className="seg" style={{ display: "inline-flex", marginBottom: 18 }}>
         {[
@@ -10931,6 +10942,9 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
             type="button"
             className={filter === id ? "on" : ""}
             aria-pressed={filter === id}
+            /* One coherent accessible name — the numeral is hidden below so a
+               screen reader does not read a stray number after the label. */
+            aria-label={`${label} (${String(statusCounts[id])})`}
             onClick={() => {
               setFilter(id);
               setPage(1);
@@ -10938,6 +10952,13 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
             }}
           >
             {label}
+            <span
+              className="mono"
+              aria-hidden="true"
+              style={{ marginLeft: 7, opacity: 0.65 }}
+            >
+              {statusCounts[id]}
+            </span>
           </button>
         ))}
       </div>
