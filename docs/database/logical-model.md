@@ -392,6 +392,43 @@ Key/value JSON configuration managed by admins (see PRD Task 31 and `resolved_de
 | `operational.policies`                | Minimum hours before pickup for admin cancel and schedule change; optional override-with-audit flag                                                                      |
 | `cancellation.policies`               | Required reason code, minimum driver message length for admin cancel                                                                                                     |
 | `driver.acceptance.probationJobCount` | System-wide probation allowance; its value is **copied into** `drivers.probation_job_limit` at driver creation (replaces `driver.acceptance.defaultDailyJobLimit`, F-01) |
+| `driver.inactivity.policy`            | Automatic deactivation of dormant service partners: `{ enabled, thresholdDays, warningDays }`, default `{ true, 90, 15 }`. Read **live** by the sweep — deliberately *not* snapshotted onto the driver row like `probationJobCount`, because the policy is a platform-wide rule evaluated fresh each run rather than a term fixed per partner at signup |
+
+## Automatic deactivation of inactive service partners (resolves OQ-15)
+
+Three columns on `drivers` carry this feature. Full decision record: `prd.json` →
+`resolved_defaults.driver_inactivity_auto_deactivation_v1`.
+
+| Column | Meaning |
+| --- | --- |
+| `last_activity_at` | Last authenticated request by the partner. Written by a global interceptor on any driver-authenticated request, throttled to one write per hour per partner. **Indexed** (`idx_drivers_last_activity_at`) — the sweep's only predicate is a range scan over it. |
+| `inactivity_warning_sent_at` | Idempotency marker for the pre-deactivation warning; cleared whenever `last_activity_at` is stamped. |
+| `deactivation_reason` | `'inactivity'` when the platform deactivated the partner; `NULL` when a human did. |
+
+**Dormancy is `COALESCE(last_activity_at, created_at)`.** A `NULL` activity
+timestamp means "never signed in", not "idle forever" — reading it the second way
+would deactivate every partner on their onboarding day, before the invitation
+email had been opened. The fallback is applied in SQL, not by filtering in
+memory, so the sweep never loads the whole partner table to discard most of it.
+
+**Which axis this touches.** Deactivation sets `drivers.status = 'inactive'` —
+the operational/marketplace axis **only**. `users.status` and the identity
+provider are untouched, so the partner can still sign in, read their tour
+history, and see why marketplace access was lost. This matches
+`update-driver-status` (operational, no identity call) and differs from
+`suspend-user` (disables the Keycloak user and revokes sessions) and
+`delete-driver` (deletes the identity). Enforcement needs no new call sites:
+`inactive` was already an access-restricting status.
+
+**Reversal.** An admin setting the partner back to `active` clears
+`deactivation_reason` **and** re-stamps `last_activity_at`. Without the re-stamp
+the partner's last activity would still be months old and the next nightly sweep
+would silently undo the reactivation.
+
+**Concurrency.** The sweep runs inside a transaction holding
+`pg_try_advisory_xact_lock('drivers:inactivity-sweep')`, so in a multi-replica
+deployment exactly one instance acts and a partner cannot be deactivated — or
+notified — once per pod.
 
 ## Driver probation acceptance limit (PRD v1.9, F-01)
 

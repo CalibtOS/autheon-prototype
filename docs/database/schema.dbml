@@ -268,9 +268,24 @@ Table drivers {
   // One-time probation model (F-01, replaces former per-day daily_job_limit).
   probation_job_limit smallint [not null, default: 3]  // Per-driver SNAPSHOT of the probation allowance AND Performed-count release threshold. Seeded at driver creation from app_settings 'driver.acceptance.probationJobCount' by the application layer (see logical-model.md); the literal default here is only a safety fallback when the setting is unavailable. Snapshot semantics: later changes to the app_settings value do NOT retroactively affect existing drivers. Remaining allowance is derived (probation_job_limit minus count of Performed jobs from job_status_history), not stored.
   probation_cleared_at timestamptz  // set when driver is released from probation (auto after probation_job_limit Performed jobs, or manual admin release); null = still on probation
+  // Automatic deactivation of inactive service partners (resolves OQ-15; see
+  // prd.json resolved_defaults.driver_inactivity_auto_deactivation_v1).
+  last_activity_at timestamptz  // Last authenticated request by this partner, stamped by a global interceptor and write-throttled to once per hour per driver. NULL = has never signed in, which is NOT the same as "idle forever": dormancy then falls back to created_at, so a newly onboarded partner is never swept on day one. Indexed — the sweep's only predicate is a range scan over this column.
+  inactivity_warning_sent_at timestamptz  // Set when the pre-deactivation warning is sent, so it is sent once rather than on every daily sweep across the whole lead-time window. Cleared whenever last_activity_at is stamped: a partner who returns and later goes dormant again earns a fresh warning.
+  deactivation_reason varchar(32)  // Why the partner left ACTIVE when the PLATFORM decided it rather than a person. Currently only 'inactivity'. NULL = a human made the call (their reasoning lives in the audit log). Deliberately a separate axis from status rather than a fourth status value: suspension for inactivity has exactly the access consequences of 'inactive', so a new status would duplicate every guard/filter/badge to express a distinction about cause, not effect.
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
+
+  Indexes {
+    last_activity_at [name: 'idx_drivers_last_activity_at']  // inactivity sweep range scan
+  }
 }
+
+// NOTE (pre-existing model gap, not introduced by the inactivity feature):
+// `drivers` also has `status varchar` (active | blocked | inactive, the
+// operational/marketplace axis) and `deleted_at timestamptz` (soft delete) in
+// the running schema, neither of which is modelled above. Worth closing the
+// next time this file is revised.
 
 Table customers {
   id uuid [pk]

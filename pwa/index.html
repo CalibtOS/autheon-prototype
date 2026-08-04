@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <!-- theme-color = --brand-canvas (FE surface-muted), not pure white -->
+    <!-- theme-color = FE DriverShell surface-muted / canvas under Island -->
     <meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)" />
     <meta name="description" content="AUTHEON Driver — vehicle transport jobs, documents, and tour status." />
@@ -44,7 +44,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=38" />
-    <link rel="stylesheet" href="../../pwa/pwa.css?v=11" />
+    <link rel="stylesheet" href="../../pwa/pwa.css?v=13" />
     <script>
       // Apply theme before first paint: persisted prototype choice first,
       // then the device preference. Same key as the client-preview page.
@@ -55,7 +55,7 @@
             ? "dark"
             : "light");
         document.documentElement.setAttribute("data-theme", t);
-        // First-paint system chrome: match --brand-canvas / FE surface-muted.
+        // First-paint system chrome: match FE ThemeSync (canvas / surface-muted).
         var surface = t === "dark" ? "#1C1C1E" : "#F5F5F7";
         document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) {
           meta.setAttribute("content", surface);
@@ -65,7 +65,6 @@
           'meta[name="apple-mobile-web-app-status-bar-style"]',
         );
         if (appleStatus) appleStatus.setAttribute("content", "black-translucent");
-        // Paint root immediately so black-translucent never shows an empty band.
         document.documentElement.style.backgroundColor = surface;
         if (document.body) document.body.style.backgroundColor = surface;
         if (
@@ -124,16 +123,16 @@
         // Absolute paths: fetch() ignores <base href>, unlike classic script src.
         var PLAIN = [
           "/prototype/project/feature-flags.js?v=1",
-          "/prototype/project/i18n.js?v=38",
+          "/prototype/project/i18n.js?v=39",
           "/prototype/project/formatters.js?v=1",
           "/prototype/project/inputFormatters.js?v=1",
           "/prototype/project/transport-order-pdf.js?v=1",
-          "/prototype/project/store.js?v=4",
+          "/prototype/project/store.js?v=5",
         ];
 
         var JSX = [
           "/prototype/project/driver-ui.jsx?v=2",
-          "/prototype/project/driver.jsx?v=30",
+          "/prototype/project/driver.jsx?v=32",
           "/pwa/pwa-app.jsx?v=13",
         ];
 

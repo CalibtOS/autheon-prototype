@@ -902,6 +902,27 @@ window.I18n = (() => {
       adminAuditExportTitle: "Audit log exported",
       adminAuditExportSub:
         "CSV downloaded — use spreadsheet filters or search tools to review history.",
+      // Audit-Log retention. This copy is the agreed wording for an
+      // irreversible action in both languages and is reused verbatim by the
+      // admin console — change it here and there together, never in one place.
+      // "Audit event" is the record, "audit log" the screen; the wording states
+      // the window and never the current result set, because the purge ignores
+      // the screen's filters and the label must not suggest otherwise.
+      adminAuditRetentionAction: "Delete audit events older than {days} days",
+      adminAuditRetentionTitle: "Delete audit events older than {days} days",
+      adminAuditRetentionCount_one:
+        "1 audit event was recorded before {cutoff} and will be permanently deleted.",
+      adminAuditRetentionCount_other:
+        "{count} audit events were recorded before {cutoff} and will be permanently deleted.",
+      adminAuditRetentionNothing:
+        "No audit event is older than {days} days. Nothing will be deleted.",
+      adminAuditRetentionWarning:
+        "This cannot be undone. Export the audit log first if you want a copy.",
+      adminAuditRetentionConfirm: "Delete permanently",
+      adminAuditRetentionDoneTitle_one: "1 audit event deleted",
+      adminAuditRetentionDoneTitle_other: "{count} audit events deleted",
+      adminAuditRetentionDoneSub:
+        "Everything recorded before {cutoff} has been permanently removed. The deletion itself is recorded in the audit log.",
       adminDocumentsColDoc: "Document",
       adminDocumentsColCat: "Category",
       adminDocumentsColScope: "Scope",
@@ -952,6 +973,27 @@ window.I18n = (() => {
       adminUsersColActions: "Actions",
       adminUsersBlock: "Block",
       adminUsersActivate: "Activate",
+      adminUsersLastActivity: "Last activity",
+      adminUsersLastActivityNever: "Never",
+      adminUsersAutoBadge: "Auto",
+      adminUsersAutoBadgeTitle: "Automatically deactivated for inactivity",
+      adminInactivityTitle: "Automatic deactivation",
+      adminInactivityBlurb:
+        "Service partners who stop using the platform are set to Inactive automatically. They can no longer see the marketplace or accept tours, and any admin can reactivate them at any time. Partners with tours still running are always skipped.",
+      adminInactivityEnabled: "Deactivate inactive service partners automatically",
+      adminInactivityThreshold: "Deactivate after (days without activity)",
+      adminInactivityWarning: "Warn this many days beforehand",
+      adminInactivityWarningHelp:
+        "Any sign-in or action in the app counts as activity. Set the warning to 0 to deactivate without notice.",
+      adminInactivityWarningTooLate:
+        "The warning must come before the deactivation — enter fewer days than the threshold.",
+      adminInactivityRunNow: "Run check now",
+      adminInactivityRunResult:
+        "Inactivity check complete: {deactivated} deactivated, {warned} warned, {skipped} skipped.",
+      adminInactivitySave: "Save deactivation policy",
+      driverInactiveByInactivityTitle: "Account deactivated for inactivity",
+      driverInactiveByInactivityBody:
+        "Your account was set to inactive because it had not been used for a long time. Contact your dispatcher and they can reactivate it right away.",
       adminUsersDeactivate: "Deactivate",
       adminUsersStatus_Active: "Active",
       adminUsersStatus_Blocked: "Blocked",
@@ -2969,6 +3011,24 @@ window.I18n = (() => {
       adminAuditExportTitle: "Audit-Protokoll exportiert",
       adminAuditExportSub:
         "CSV heruntergeladen — in Tabellenkalkulation filtern oder extern durchsuchen.",
+      // Aufbewahrung im Audit-Log — siehe den englischen Block: dieselbe
+      // Formulierung wird in der Admin-Konsole wortgleich wiederverwendet.
+      adminAuditRetentionAction:
+        "Audit-Ereignisse älter als {days} Tage löschen",
+      adminAuditRetentionTitle: "Audit-Ereignisse älter als {days} Tage löschen",
+      adminAuditRetentionCount_one:
+        "1 Audit-Ereignis wurde vor dem {cutoff} aufgezeichnet und wird endgültig gelöscht.",
+      adminAuditRetentionCount_other:
+        "{count} Audit-Ereignisse wurden vor dem {cutoff} aufgezeichnet und werden endgültig gelöscht.",
+      adminAuditRetentionNothing:
+        "Kein Audit-Ereignis ist älter als {days} Tage. Es wird nichts gelöscht.",
+      adminAuditRetentionWarning:
+        "Dies kann nicht rückgängig gemacht werden. Exportieren Sie das Audit-Log vorher, wenn Sie eine Kopie benötigen.",
+      adminAuditRetentionConfirm: "Endgültig löschen",
+      adminAuditRetentionDoneTitle_one: "1 Audit-Ereignis gelöscht",
+      adminAuditRetentionDoneTitle_other: "{count} Audit-Ereignisse gelöscht",
+      adminAuditRetentionDoneSub:
+        "Alles, was vor dem {cutoff} aufgezeichnet wurde, ist endgültig entfernt. Die Löschung selbst ist im Audit-Log aufgezeichnet.",
       adminDocumentsColDoc: "Dokument",
       adminDocumentsColCat: "Kategorie",
       adminDocumentsColScope: "Geltung",
@@ -3019,6 +3079,27 @@ window.I18n = (() => {
       adminUsersColActions: "Aktionen",
       adminUsersBlock: "Sperren",
       adminUsersActivate: "Aktivieren",
+      adminUsersLastActivity: "Letzte Aktivität",
+      adminUsersLastActivityNever: "Nie",
+      adminUsersAutoBadge: "Auto",
+      adminUsersAutoBadgeTitle: "Automatisch wegen Inaktivität deaktiviert",
+      adminInactivityTitle: "Automatische Deaktivierung",
+      adminInactivityBlurb:
+        "Servicepartner, die die Plattform nicht mehr nutzen, werden automatisch auf Inaktiv gesetzt. Sie sehen dann den Marktplatz nicht mehr und können keine Touren annehmen; jede Administratorin und jeder Administrator kann sie jederzeit wieder aktivieren. Partner mit laufenden Touren werden immer übersprungen.",
+      adminInactivityEnabled: "Inaktive Servicepartner automatisch deaktivieren",
+      adminInactivityThreshold: "Deaktivieren nach (Tagen ohne Aktivität)",
+      adminInactivityWarning: "So viele Tage vorher warnen",
+      adminInactivityWarningHelp:
+        "Jede Anmeldung oder Aktion in der App zählt als Aktivität. Setzen Sie die Warnung auf 0, um ohne Vorankündigung zu deaktivieren.",
+      adminInactivityWarningTooLate:
+        "Die Warnung muss vor der Deaktivierung liegen — geben Sie weniger Tage als den Schwellenwert ein.",
+      adminInactivityRunNow: "Prüfung jetzt ausführen",
+      adminInactivityRunResult:
+        "Inaktivitätsprüfung abgeschlossen: {deactivated} deaktiviert, {warned} gewarnt, {skipped} übersprungen.",
+      adminInactivitySave: "Deaktivierungsregel speichern",
+      driverInactiveByInactivityTitle: "Konto wegen Inaktivität deaktiviert",
+      driverInactiveByInactivityBody:
+        "Ihr Konto wurde auf inaktiv gesetzt, weil es längere Zeit nicht genutzt wurde. Wenden Sie sich an Ihren Disponenten, er kann es sofort wieder freischalten.",
       adminUsersDeactivate: "Deaktivieren",
       adminUsersStatus_Active: "Aktiv",
       adminUsersStatus_Blocked: "Gesperrt",

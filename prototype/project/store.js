@@ -1697,6 +1697,15 @@ window.AuthStore = (() => {
     };
   }
 
+  /**
+   * Demo timestamps are computed relative to "now" rather than frozen, so the
+   * inactivity states below stay meaningful however long after this file was
+   * written the prototype is opened.
+   */
+  function daysAgoIso(days) {
+    return new Date(Date.now() - days * 86400000).toISOString();
+  }
+
   function seedDrivers() {
     return [
       {
@@ -1720,6 +1729,9 @@ window.AuthStore = (() => {
         accountStatus: "Active",
         probationJobLimit: 3,
         probationClearedAt: null,
+        lastActiveAt: daysAgoIso(2),
+        inactivityWarningSentAt: null,
+        deactivationReason: null,
         prefs: {
           postalAreas: ["80"],
           vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
@@ -1747,6 +1759,12 @@ window.AuthStore = (() => {
         accountStatus: "Invite failed",
         probationJobLimit: 3,
         probationClearedAt: "01.04.2026 10:00",
+        // Active and inside the warning window (75-89 days idle under the
+        // default 90/15 policy): the first sweep warns this partner
+        // rather than deactivating them.
+        lastActiveAt: daysAgoIso(80),
+        inactivityWarningSentAt: null,
+        deactivationReason: null,
         prefs: {
           postalAreas: ["60"],
           // Filter preferences only offer APPROVED types — the removed
@@ -1776,6 +1794,12 @@ window.AuthStore = (() => {
         accountStatus: "Pending verification",
         probationJobLimit: 3,
         probationClearedAt: null,
+        // Inside the warning window (75-89 days idle at the default 90/15
+        // policy), so the first sweep warns this partner rather than
+        // deactivating them.
+        lastActiveAt: daysAgoIso(80),
+        inactivityWarningSentAt: null,
+        deactivationReason: null,
         prefs: {
           postalAreas: ["10"],
           vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
@@ -1808,6 +1832,9 @@ window.AuthStore = (() => {
         accountStatus: "Active",
         probationJobLimit: 3,
         probationClearedAt: null,
+        lastActiveAt: daysAgoIso(120),
+        inactivityWarningSentAt: null,
+        deactivationReason: null,
         prefs: {
           postalAreas: ["10"],
           vehicleType: "All",
@@ -2543,6 +2570,43 @@ window.AuthStore = (() => {
     driverOfferHighWarningEur: 200.0,
   };
 
+  /** DD.MM.YYYY (the seed format for joinedAt) -> Date, or null. */
+  function parseGermanDate(value) {
+    const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(value || ""));
+    return m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null;
+  }
+
+  /**
+   * Days a partner has been dormant.
+   *
+   * Falls back to the join date when they have never been active — reading a
+   * null as "idle forever" would deactivate every partner the day they are
+   * onboarded, before their invitation has even been opened.
+   */
+  function inactiveDaysFor(driver, now = new Date()) {
+    if (!driver) return 0;
+    const since = driver.lastActiveAt
+      ? new Date(driver.lastActiveAt)
+      : parseGermanDate(driver.joinedAt);
+    if (!since || Number.isNaN(since.getTime())) return 0;
+    return Math.floor((now.getTime() - since.getTime()) / 86400000);
+  }
+
+  /**
+   * Automatic deactivation of dormant service partners (PRD OQ-15).
+   *
+   * 90/15 is the client's own figure from the post-v1.8 meeting — a partner who
+   * goes three months without driving. `warningDays` is a LEAD TIME, not an
+   * absolute age: the warning fires at `thresholdDays - warningDays` days idle,
+   * so raising the threshold does not silently move the warning earlier.
+   * `warningDays: 0` deactivates with no notice.
+   */
+  const driverInactivityPolicy = {
+    enabled: true,
+    thresholdDays: 90,
+    warningDays: 15,
+  };
+
   const cancellationPolicies = {
     adminCancelRequiresReasonCode: true,
     adminCancelRequiresDriverMessage: true,
@@ -2865,6 +2929,88 @@ window.AuthStore = (() => {
   function parseAuditEntryDate(entry) {
     const d = new Date(entry?.atIso);
     return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  // =======================================================================
+  // AUDIT-LOG RETENTION — the ninety-day purge.
+  //
+  // The Audit-Log grows without bound, so an admin can trim it back to a
+  // bounded window of recent history. Everything below mirrors the product's
+  // behaviour exactly, because a stakeholder signing off on this prototype is
+  // signing off on what gets built:
+  //
+  //   - The window is a FIXED CONSTANT, never a client input and never an app
+  //     setting. A configurable window on a manually-triggered destructive
+  //     action means the log can be emptied in two clicks.
+  //   - The cutoff is derived HERE, from the constant and the current instant.
+  //     A caller-supplied cutoff would be a filter, and one submitting "now"
+  //     would delete the whole log.
+  //   - The purge takes NO FILTERS. Deletion is by age and by nothing else.
+  //     This is the one property that separates retention from censorship: a
+  //     filter-scoped purge would let an admin narrow the log to their own
+  //     actions and destroy exactly the evidence of them.
+  //   - Purge events are PERMANENTLY EXEMPT. Without that, an admin purges,
+  //     waits out the window, purges again, and nothing survives to say the
+  //     log was ever trimmed — a retention tool becomes a cover-up tool.
+  // =======================================================================
+
+  const AUDIT_RETENTION_WINDOW_DAYS = 90;
+
+  // The action a purge records against itself. Stable, English, never
+  // localized — same convention as every other action name.
+  const AUDIT_ACTION_LOG_PURGED = "audit_log_purged";
+
+  /**
+   * The actions a purge may never remove.
+   *
+   * Not a filter, and never widened by a caller — nothing outside this module
+   * contributes to it.
+   */
+  const AUDIT_PURGE_EXEMPT_ACTIONS = [AUDIT_ACTION_LOG_PURGED];
+
+  const AUDIT_RETENTION_MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+  /**
+   * The instant a purge deletes strictly before, derived from `now`.
+   *
+   * A rolling instant rather than a calendar-day boundary in a named zone: the
+   * Audit-Log already renders timestamps in the viewer's zone, and a second
+   * time convention on the same surface buys an admin nothing. `now` is passed
+   * in so the arithmetic stays a pure function and can be driven by a test.
+   */
+  function auditRetentionCutoff(now) {
+    const at = now instanceof Date ? now : new Date();
+    return new Date(
+      at.getTime() - AUDIT_RETENTION_WINDOW_DAYS * AUDIT_RETENTION_MS_PER_DAY,
+    );
+  }
+
+  /**
+   * The ONE deletion predicate, shared by the preview count and the delete, so
+   * "the dialog said 2 and 2 disappeared" is structural rather than two
+   * conditions that have to keep agreeing.
+   *
+   * Strictly less-than: an audit event recorded exactly on the cutoff survives
+   * — one stated rule for the boundary. An audit event whose instant cannot be
+   * read is never deleted; retention removes what it can prove is old, and
+   * proves nothing about an unreadable timestamp.
+   */
+  function isAuditEventPurgeable(entry, cutoff) {
+    if (AUDIT_PURGE_EXEMPT_ACTIONS.includes(entry?.action)) return false;
+    const at = parseAuditEntryDate(entry);
+    if (!at) return false;
+    return at.getTime() < cutoff.getTime();
+  }
+
+  /** How far back the given audit events reach; null when there are none. */
+  function oldestAuditEventIso(list) {
+    let oldest = null;
+    for (const entry of list) {
+      const at = parseAuditEntryDate(entry);
+      if (!at) continue;
+      if (!oldest || at.getTime() < oldest.getTime()) oldest = at;
+    }
+    return oldest ? oldest.toISOString() : null;
   }
 
   /**
@@ -5361,7 +5507,105 @@ window.AuthStore = (() => {
       ...operationalPolicies,
       cancellation: { ...cancellationPolicies },
       driverAcceptance: { ...driverAcceptanceDefaults },
+      driverInactivity: { ...driverInactivityPolicy },
     }),
+
+    getDriverInactivityPolicy: () => ({ ...driverInactivityPolicy }),
+
+    setDriverInactivityPolicy(partial = {}) {
+      Object.assign(driverInactivityPolicy, partial);
+      log(
+        "operational_policies_changed",
+        DEMO_ADMIN,
+        "app_settings",
+        JSON.stringify({ driverInactivity: partial }),
+      );
+      emit();
+      return { ok: true };
+    },
+
+    /** Days a partner has been dormant; measured from joinedAt if never active. */
+    driverInactiveDays(driver) {
+      return inactiveDaysFor(driver);
+    },
+
+    /**
+     * Stamp a partner as active. Called wherever the prototype simulates a
+     * driver interaction, mirroring the production interceptor that stamps on
+     * any authenticated request.
+     */
+    recordDriverActivity(driverId, at = new Date()) {
+      const driver = drivers.find((d) => d.id === driverId);
+      if (!driver) return { ok: false, reason: "not_found" };
+      driver.lastActiveAt = at.toISOString();
+      // Coming back cancels a pending warning — the next dormancy earns a fresh
+      // one rather than being deactivated silently on last year's notice.
+      driver.inactivityWarningSentAt = null;
+      emit();
+      return { ok: true };
+    },
+
+    /**
+     * One pass of the inactivity policy: warn those approaching the threshold,
+     * deactivate those past it.
+     *
+     * Deactivation runs first and the warning pass only considers partners still
+     * Active, so nobody is warned about a deactivation that just happened.
+     * Partners holding live tours are skipped rather than deactivated — the same
+     * guard that stops an admin doing it — and are picked up on a later run.
+     */
+    runInactivitySweep(now = new Date()) {
+      const result = {
+        enabled: driverInactivityPolicy.enabled,
+        thresholdDays: driverInactivityPolicy.thresholdDays,
+        warningDays: driverInactivityPolicy.warningDays,
+        deactivated: [],
+        warned: [],
+        skippedWithActiveJobs: [],
+      };
+      if (!driverInactivityPolicy.enabled) return result;
+
+      const threshold = driverInactivityPolicy.thresholdDays;
+      const warnAt = threshold - driverInactivityPolicy.warningDays;
+
+      drivers.forEach((driver) => {
+        if (driver.deletedAt || driver.status !== "Active") return;
+        const idle = inactiveDaysFor(driver, now);
+
+        if (idle >= threshold) {
+          if (api.countActiveJobsForDriver(driver.id) > 0) {
+            result.skippedWithActiveJobs.push(driver.id);
+            return;
+          }
+          driver.status = "Inactive";
+          driver.deactivationReason = "inactivity";
+          result.deactivated.push(driver.id);
+          log("driver_auto_deactivated", "System", driver.name, {
+            reason: "Automatic inactivity suspension",
+            thresholdDays: threshold,
+            inactiveDays: idle,
+          });
+          return;
+        }
+
+        if (
+          driverInactivityPolicy.warningDays > 0 &&
+          idle >= warnAt &&
+          !driver.inactivityWarningSentAt
+        ) {
+          driver.inactivityWarningSentAt = now.toISOString();
+          result.warned.push(driver.id);
+          log("driver_inactivity_warning_sent", "System", driver.name, {
+            thresholdDays: threshold,
+            inactiveDays: idle,
+            daysUntilDeactivation: threshold - idle,
+          });
+        }
+      });
+
+      emit();
+      return result;
+    },
 
     setOperationalPolicies(partial = {}) {
       if (partial.operational)
@@ -5459,6 +5703,14 @@ window.AuthStore = (() => {
     getNewsAdmin: () => newsItems.slice(),
     getAuditLog: () => auditLog,
     parseAuditEntryDate,
+    // Retention: the window drives the Audit-Log button's label and the cutoff
+    // alike, so the promise made to the admin and the predicate applied to the
+    // log cannot drift apart. The pure helpers are exposed so the retention
+    // arithmetic is drivable directly, without going through the screen.
+    AUDIT_RETENTION_WINDOW_DAYS,
+    AUDIT_PURGE_EXEMPT_ACTIONS,
+    auditRetentionCutoff,
+    isAuditEventPurgeable,
     getAdminEmailQueue: () => adminEmailQueue.slice(),
     getDriverNotifications: (driverId) => {
       const id =
@@ -7375,6 +7627,19 @@ window.AuthStore = (() => {
         }
       }
       d.status = status;
+      if (status === "Active") {
+        /*
+         * Reactivation clears the automatic cause and re-arms the clock. A
+         * partner reinstated while lastActiveAt is still months old would be
+         * swept again on the next run, silently undoing the admin's decision.
+         */
+        d.deactivationReason = null;
+        d.lastActiveAt = new Date().toISOString();
+        d.inactivityWarningSentAt = null;
+      } else {
+        // A moderator's decision is not an automatic one.
+        d.deactivationReason = null;
+      }
       log("driver_status_changed", DEMO_ADMIN, d.name, status);
       emit();
       return { ok: true };
@@ -8578,6 +8843,88 @@ window.AuthStore = (() => {
       log("audit_log_exported", DEMO_ADMIN, "CSV", `${list.length} rows`);
       emit();
       return rows.join("\n");
+    },
+
+    /**
+     * What a purge would remove right now, read before an admin confirms one.
+     *
+     * Takes no arguments, because it takes no filters and no date. The count
+     * comes back from the same predicate the purge deletes with, so the number
+     * an admin consents to is the number that disappears.
+     *
+     * Read when the confirmation OPENS, never on page load — in the product
+     * this is a second unfiltered exact count over the table, and running it on
+     * every visit would double the cost retention exists to reduce.
+     *
+     * `cutoffDisplay` is the cutoff in the Audit-Log's own time format, so the
+     * dialog names the boundary in the same terms as the table's Time column.
+     */
+    getAuditRetentionPreview() {
+      const cutoff = auditRetentionCutoff(new Date());
+      return {
+        cutoffAt: cutoff.toISOString(),
+        cutoffDisplay: auditStamp(cutoff).display,
+        eligibleCount: auditLog.filter((a) => isAuditEventPurgeable(a, cutoff))
+          .length,
+        oldestEventAt: oldestAuditEventIso(auditLog),
+      };
+    },
+
+    /**
+     * Permanently delete every audit event older than the retention window,
+     * and record that this happened.
+     *
+     * Takes no arguments: no cutoff, no date range, no actor, no filters, and
+     * none may be added — every parameter here would be a way to aim the
+     * deletion. The screen's date, service-partner and tour filters are
+     * therefore ignored by construction rather than by discipline: an admin
+     * with filters applied removes exactly the same set as one without.
+     *
+     * A purge with nothing eligible is a SUCCESS that reports zero, not a
+     * failure — an admin who trims a log that was already inside the window has
+     * done nothing wrong.
+     */
+    purgeAuditEvents() {
+      const cutoff = auditRetentionCutoff(new Date());
+      const cutoffAt = cutoff.toISOString();
+      const cutoffDisplay = auditStamp(cutoff).display;
+
+      const surviving = auditLog.filter(
+        (a) => !isAuditEventPurgeable(a, cutoff),
+      );
+      const deletedCount = auditLog.length - surviving.length;
+      auditLog = surviving;
+
+      /*
+       * Read AFTER the delete and BEFORE the purge event is written, so it
+       * states how far back the surviving history reaches rather than pointing
+       * at the record of this purge. Null means the purge emptied the log —
+       * the honest answer, and one the count alone cannot give.
+       */
+      const oldestEventAt = oldestAuditEventIso(auditLog);
+
+      /*
+       * Trimming the record is itself accountable, so the purge is recorded
+       * under the demo admin's name and carries the three facts an auditor
+       * needs to reconstruct the trim: where the boundary fell, how much went,
+       * and what coverage the log can still offer. This event is exempt from
+       * every future purge.
+       */
+      log(
+        AUDIT_ACTION_LOG_PURGED,
+        DEMO_ADMIN,
+        "Audit log",
+        `${deletedCount} audit events removed · cutoff ${cutoffDisplay}`,
+        {
+          entityType: "audit_log",
+          entityId: "purge",
+          cutoffAt,
+          deletedCount,
+          oldestEventAt,
+        },
+      );
+      emit();
+      return { cutoffAt, cutoffDisplay, deletedCount, oldestEventAt };
     },
 
     transportOrderText(id) {

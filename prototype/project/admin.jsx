@@ -5622,6 +5622,7 @@ const DriversPane = ({ showToast }) => {
               <th>{t("adminUsersColName")}</th>
               <th>{t("adminUsersColDriverCode")}</th>
               <th>{t("adminUsersColStatus")}</th>
+              <th>{t("adminUsersLastActivity")}</th>
               <th>{t("adminUsersColAccess")}</th>
               <th>{t("adminUsersColActions")}</th>
             </tr>
@@ -5655,6 +5656,23 @@ const DriversPane = ({ showToast }) => {
                   >
                     {t(`adminUsersStatus_${d.status}`)}
                   </Pill>
+                  {/* An admin reading "Inactive" cannot otherwise tell a
+                      moderator's decision from the nightly sweep's. */}
+                  {d.deactivationReason === "inactivity" && (
+                    <span
+                      className="label"
+                      title={t("adminUsersAutoBadgeTitle")}
+                      style={{
+                        marginLeft: 6,
+                        padding: "1px 6px",
+                        border: "1px solid var(--border)",
+                        borderRadius: 999,
+                        fontSize: 9.5,
+                      }}
+                    >
+                      {t("adminUsersAutoBadge")}
+                    </span>
+                  )}
                   <div
                     style={{
                       display: "flex",
@@ -5678,6 +5696,21 @@ const DriversPane = ({ showToast }) => {
                       ),
                     )}
                   </div>
+                </td>
+                {/* Last activity drives the automatic-deactivation clock. */}
+                <td>
+                  {d.lastActiveAt ? (
+                    window.AutheonFormatters.formatDate(
+                      new Date(d.lastActiveAt),
+                    )
+                  ) : (
+                    /* "Never signed in" is a different fact from "signed in long
+                       ago" - an em-dash would read as "unknown" and hide a
+                       partner who never onboarded at all. */
+                    <span className="label" style={{ fontStyle: "italic" }}>
+                      {t("adminUsersLastActivityNever")}
+                    </span>
+                  )}
                 </td>
                 <td>
                   <Pill status={accountStatusPillVariant(d.accountStatus)}>
@@ -10459,12 +10492,19 @@ const TourBillingCenterPane = (props) => {
 };
 
 const AuditPane = ({ showToast }) => {
-  const { t } = useI18n();
+  const { t, tPlural } = useI18n();
   const store = useAuthStore();
   const drivers = store.getDrivers();
   const [filterDate, setFilterDate] = useStateA("");
   const [filterDriver, setFilterDriver] = useStateA("");
   const [filterTour, setFilterTour] = useStateA("");
+  // The retention confirmation, holding the preview it was opened with. Null
+  // means closed — the preview is read when the dialog OPENS and never on
+  // render, mirroring the product, where it is a second exact count over the
+  // whole table and running it per visit would double the cost retention
+  // exists to reduce.
+  const [retentionPreview, setRetentionPreview] = useStateA(null);
+  const retentionDays = store.AUDIT_RETENTION_WINDOW_DAYS;
 
   const allEntries = store.getAuditLog();
   const visibleEntries = useMemoA(() => {
@@ -10500,30 +10540,95 @@ const AuditPane = ({ showToast }) => {
     setFilterTour("");
   };
 
+  const confirmRetentionPurge = () => {
+    // No argument, and deliberately none available: the purge deletes by age
+    // and by nothing else, so the filters above cannot narrow it. They are also
+    // left applied — housekeeping should not cost the admin the investigation
+    // they were in the middle of.
+    const result = store.purgeAuditEvents();
+    setRetentionPreview(null);
+    showToast?.(
+      tPlural("adminAuditRetentionDoneTitle", result.deletedCount),
+      t("adminAuditRetentionDoneSub", { cutoff: result.cutoffDisplay }),
+    );
+  };
+
   return (
     <div>
       <div className="pane-toolbar">
         <p className="pane-lead">{t("auditDesc")}</p>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => {
-            const csv = store.exportAuditLogCsv();
-            const blob = new Blob([csv], {
-              type: "text/csv;charset=utf-8",
-            });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "autheon-audit-log.csv";
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast?.(t("adminAuditExportTitle"), t("adminAuditExportSub"));
-          }}
-        >
-          <Ic.Down /> {t("adminAuditDownloadCsv")}
-        </button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              const csv = store.exportAuditLogCsv();
+              const blob = new Blob([csv], {
+                type: "text/csv;charset=utf-8",
+              });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "autheon-audit-log.csv";
+              a.click();
+              URL.revokeObjectURL(url);
+              showToast?.(t("adminAuditExportTitle"), t("adminAuditExportSub"));
+            }}
+          >
+            <Ic.Down /> {t("adminAuditDownloadCsv")}
+          </button>
+          {/* Destructive styling, so the retention action is never mistaken for
+              the export beside it. The label states the WINDOW and never the
+              current result set — it reads identically whether filters are
+              active or not, because the purge ignores them. */}
+          <button
+            type="button"
+            className="btn danger"
+            onClick={() => setRetentionPreview(store.getAuditRetentionPreview())}
+          >
+            {t("adminAuditRetentionAction", { days: retentionDays })}
+          </button>
+        </div>
       </div>
+      {retentionPreview ? (
+        <Dialog
+          open
+          alertdialog
+          onClose={() => setRetentionPreview(null)}
+          title={t("adminAuditRetentionTitle", { days: retentionDays })}
+          description={
+            retentionPreview.eligibleCount === 0
+              ? t("adminAuditRetentionNothing", { days: retentionDays })
+              : tPlural(
+                  "adminAuditRetentionCount",
+                  retentionPreview.eligibleCount,
+                  { cutoff: retentionPreview.cutoffDisplay },
+                )
+          }
+          actions={
+            <>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setRetentionPreview(null)}
+              >
+                {t("adminInvoiceCancel")}
+              </button>
+              <button
+                type="button"
+                className="btn danger"
+                onClick={confirmRetentionPurge}
+              >
+                {t("adminAuditRetentionConfirm")}
+              </button>
+            </>
+          }
+        >
+          <div className="banner banner-warn dialog-banner">
+            {t("adminAuditRetentionWarning")}
+          </div>
+        </Dialog>
+      ) : null}
       <div
         className="card"
         style={{
@@ -11358,6 +11463,160 @@ const PolicySwitchRow = ({ id, label, checked, onChange }) => (
     </span>
   </label>
 );
+
+/**
+ * Automatic deactivation of dormant service partners (PRD OQ-15).
+ *
+ * Mirrors OperationalPoliciesForm: local string state seeded from the store,
+ * dirty/valid gating, Save + Discard. The one departure is the warning lead
+ * time, whose floor is 0 rather than 1 — "0" is the configured way to
+ * deactivate with no notice, which isPolicyNumberValid would reject.
+ */
+const DriverInactivityForm = ({ showToast }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const policy = store.getDriverInactivityPolicy();
+
+  const storedEnabled = policy.enabled;
+  const storedThreshold = policy.thresholdDays;
+  const storedWarning = policy.warningDays;
+
+  const [enabled, setEnabled] = useStateA(storedEnabled);
+  const [threshold, setThreshold] = useStateA(String(storedThreshold));
+  const [warning, setWarning] = useStateA(String(storedWarning));
+
+  const seedFromStore = () => {
+    setEnabled(storedEnabled);
+    setThreshold(String(storedThreshold));
+    setWarning(String(storedWarning));
+  };
+
+  useEffectA(seedFromStore, [storedEnabled, storedThreshold, storedWarning]);
+
+  const isWarningValid = (current) => {
+    const trimmed = String(current).trim();
+    if (trimmed === "") return false;
+    const parsed = Number(trimmed);
+    return Number.isInteger(parsed) && parsed >= 0;
+  };
+
+  const thresholdValid = isPolicyNumberValid(threshold);
+  const warningValid = isWarningValid(warning);
+  // Mirrors the server's cross-field rule. Without it the only feedback would
+  // be a rejected save with no indication which field is wrong.
+  const warningFits =
+    thresholdValid && warningValid && Number(warning) < Number(threshold);
+
+  const dirty =
+    enabled !== storedEnabled ||
+    isPolicyNumberDirty(threshold, storedThreshold) ||
+    isPolicyNumberDirty(warning, storedWarning);
+
+  const canSave = dirty && thresholdValid && warningValid && warningFits;
+
+  const numericMessage = t("settings.system.policyWholeNumberError");
+  const thresholdError = policyNumberError(
+    threshold,
+    storedThreshold,
+    numericMessage,
+  );
+  const warningError =
+    isPolicyNumberDirty(warning, storedWarning) && !warningValid
+      ? numericMessage
+      : thresholdValid && warningValid && !warningFits
+        ? t("adminInactivityWarningTooLate")
+        : "";
+
+  const onSave = () => {
+    store.setDriverInactivityPolicy({
+      enabled,
+      thresholdDays: Number(threshold),
+      warningDays: Number(warning),
+    });
+    showToast(t("adminOperationalPoliciesSaved"));
+  };
+
+  const onRunNow = () => {
+    const result = store.runInactivitySweep();
+    showToast(
+      t("adminInactivityRunResult")
+        .replace("{deactivated}", result.deactivated.length)
+        .replace("{warned}", result.warned.length)
+        .replace("{skipped}", result.skippedWithActiveJobs.length),
+    );
+  };
+
+  return (
+    <div className="policy-grid" style={{ marginTop: 16 }}>
+      <PolicySwitchRow
+        id="inactivity-enabled"
+        label={t("adminInactivityEnabled")}
+        checked={enabled}
+        onChange={setEnabled}
+      />
+      <label className="field">
+        <span className="label">{t("adminInactivityThreshold")}</span>
+        <input
+          id="inactivity-threshold-days"
+          type="number"
+          min={MIN_POLICY_NUMBER}
+          step={1}
+          value={threshold}
+          onChange={(e) => setThreshold(e.target.value)}
+        />
+        {thresholdError ? (
+          <span className="field-error">{thresholdError}</span>
+        ) : null}
+      </label>
+      <label className="field">
+        <span className="label">{t("adminInactivityWarning")}</span>
+        <input
+          id="inactivity-warning-days"
+          type="number"
+          min={0}
+          step={1}
+          value={warning}
+          onChange={(e) => setWarning(e.target.value)}
+        />
+        {warningError ? (
+          <span className="field-error">{warningError}</span>
+        ) : null}
+      </label>
+      <p className="label policy-grid-full" style={{ lineHeight: 1.55 }}>
+        {t("adminInactivityWarningHelp")}
+      </p>
+      <div className="policy-actions policy-grid-full">
+        <button
+          type="button"
+          className="btn primary"
+          disabled={!canSave}
+          onClick={onSave}
+        >
+          {t("adminInactivitySave")}
+        </button>
+        <button
+          type="button"
+          className="btn"
+          disabled={!dirty}
+          onClick={seedFromStore}
+        >
+          {t("settings.system.discardChanges")}
+        </button>
+        {/* Disabled while dirty: a check applies the SAVED policy, so offering
+            it beside unsaved edits invites the admin to think they just tested
+            the numbers on screen. */}
+        <button
+          type="button"
+          className="btn"
+          disabled={dirty}
+          onClick={onRunNow}
+        >
+          {t("adminInactivityRunNow")}
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const OperationalPoliciesForm = ({ showToast }) => {
   const { t } = useI18n();
@@ -12398,6 +12657,27 @@ const SettingsPane = ({ showToast }) => {
               {t("adminOperationalPoliciesBlurb")}
             </p>
             <OperationalPoliciesForm showToast={showToast} />
+          </section>
+
+          {/* Its own card rather than another row in Operational policies: this
+              is the only setting that makes the platform change a partner's
+              status unattended, and it owns a manual trigger. */}
+          <section className="card" style={{ padding: 22, marginTop: 18 }}>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
+              {t("adminInactivityTitle")}
+            </h2>
+            <p
+              style={{
+                color: "var(--muted)",
+                marginTop: 8,
+                marginBottom: 0,
+                fontSize: 13,
+                lineHeight: 1.55,
+              }}
+            >
+              {t("adminInactivityBlurb")}
+            </p>
+            <DriverInactivityForm showToast={showToast} />
           </section>
 
           <section className="card" style={{ padding: 22, marginTop: 18 }}>
