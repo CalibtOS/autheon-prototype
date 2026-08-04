@@ -13,6 +13,9 @@
      ≥ 1536px   large desktop   — centered 720px phone-column preview
    =============================================================== */
 
+/* Shell + document fill use --paper (--brand-surface). theme-color and the
+   Island/status-bar region must match this, not --canvas / --brand-canvas. */
+html.pwa-page,
 body.pwa-page {
   margin: 0;
   background: var(--paper);
@@ -140,7 +143,7 @@ html.pwa-standalone .pwa-ios-sheet {
   place-items: stretch;
   padding: 0;
   overflow: hidden;
-  background: var(--canvas);
+  background: var(--paper);
 }
 
 html.pwa-standalone .phone-shell.pwa-viewport,
@@ -162,6 +165,31 @@ body.pwa-standalone .phone-shell.pwa-viewport {
   /* Real device safe areas replace the mockup status bar (44px). */
   --phone-chrome-top: env(safe-area-inset-top, 0px);
   padding-top: env(safe-area-inset-top, 0px);
+}
+
+/*
+  Full-screen overlays (document preview, notifications) must cover the entire
+  .phone-screen — including the safe-area padding band. Insetting them with
+  --phone-chrome-* leaves a strip of the previous screen visible (reported on
+  iPhone for Infopoint + order PDFs) and double-counts bottom inset on the
+  Download/Share/Print bar. Safe-area is applied on the overlay chrome instead.
+*/
+.phone-shell.pwa-viewport .docview-panel,
+.phone-shell.pwa-viewport .notifications-dropdown {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+.phone-shell.pwa-viewport .docview-head {
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+}
+.phone-shell.pwa-viewport .notifications-dropdown-header {
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+}
+/* Panel is already bottom:0; keep a single home-indicator pad on the toolbar. */
+.phone-shell.pwa-viewport .docview-actions {
+  padding-bottom: max(12px, calc(12px + env(safe-area-inset-bottom, 0px)));
 }
 
 /* ---- Bottom navigation & sheets vs. home indicator ------------- */

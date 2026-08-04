@@ -1,5 +1,5 @@
 /* Autheon /pwa service worker — installable shell + stale-while-revalidate assets */
-const CACHE_VERSION = "autheon-pwa-v30";
+const CACHE_VERSION = "autheon-pwa-v31";
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -8,7 +8,7 @@ const PRECACHE_URLS = [
   "/pwa/index.html",
   "/pwa/manifest.webmanifest",
   "/pwa/manifest.json",
-  "/pwa/pwa.css?v=8",
+  "/pwa/pwa.css?v=9",
   "/pwa/pwa-app.jsx?v=13",
   "/pwa/pwa-install.js?v=5",
   "/pwa/splash.js?v=2",
@@ -29,7 +29,7 @@ const PRECACHE_URLS = [
   "/prototype/project/inputFormatters.js?v=1",
   "/prototype/project/store.js?v=3",
   "/prototype/project/driver-ui.jsx?v=2",
-  "/prototype/project/driver.jsx?v=27",
+  "/prototype/project/driver.jsx?v=28",
   "https://unpkg.com/react@18.3.1/umd/react.development.js",
   "https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js",
   "https://unpkg.com/@babel/standalone@7.29.0/babel.min.js",

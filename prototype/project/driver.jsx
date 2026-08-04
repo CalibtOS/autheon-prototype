@@ -7342,12 +7342,15 @@ function applyAppTheme(theme) {
   } catch (_) {
     /* no-op */
   }
-  const canvas = getComputedStyle(document.documentElement)
-    .getPropertyValue("--brand-canvas")
+  // Match the painted phone-screen / PWA shell (--paper → --brand-surface),
+  // not --brand-canvas. Using canvas made the Island/status-bar strip disagree
+  // with the app surface after theme sync landed.
+  const surface = getComputedStyle(document.documentElement)
+    .getPropertyValue("--brand-surface")
     .trim();
-  if (canvas) {
+  if (surface) {
     document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
-      meta.setAttribute("content", canvas);
+      meta.setAttribute("content", surface);
       meta.removeAttribute("media");
     });
   }
@@ -7355,9 +7358,13 @@ function applyAppTheme(theme) {
     'meta[name="apple-mobile-web-app-status-bar-style"]',
   );
   if (appleStatus) {
+    const isPwaPage = document.body?.classList?.contains("pwa-page");
+    // black-translucent + viewport-fit=cover lets .phone-screen's padding-top
+    // safe-area paint under the Island; "default" draws an opaque system bar
+    // that drifts from the shell when theme-color ≠ surface.
     appleStatus.setAttribute(
       "content",
-      theme === "dark" ? "black-translucent" : "default",
+      isPwaPage || theme === "dark" ? "black-translucent" : "default",
     );
   }
 }
