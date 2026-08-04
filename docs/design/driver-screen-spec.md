@@ -249,9 +249,9 @@ Audit item 43 resolved 2026-07-28.
 | Marketplace | `Portal` | default, filtered, empty, loading, blocked driver | Filter / open job |
 | My Jobs | `MyJobs` | 4 tabs × empty / loading / populated (swipe between tabs) | Open job |
 | Job detail (locked) | `JobLocked` | masked addresses, dashed route card | Accept (opens sheet) |
-| Job detail (unlocked) | `JobUnlocked` | route, contacts, docs, cancellation; performed → `Job details / My documents` tab pills | Mark performed |
-| Tour documents (active tours) | `JobTourDocuments` | empty, uploading, review | Upload |
-| My documents tab (performed) | `MyDocRow` list in `JobUnlocked` | empty, populated, review states, remove | Upload document (fixed bottom bar) |
+| Job detail (unlocked) | `JobUnlocked` | route, contacts, cancellation; **always** `Job details / My documents` tab pills | Mark performed (details) / Upload (docs, when allowed) |
+| My documents tab (all statuses) | `MyDocRow` list in `JobUnlocked` | empty, populated, review states, remove; upload bar when `canDriverUploadTourDocument` | Upload document (fixed bottom bar) |
+| Tour documents (legacy inline) | `JobTourDocuments` | retained helper; **not** mounted in unlocked detail — uploads live in My documents tab | — |
 | Accept flow | `AcceptanceModal` | valid / invalid, daily limit hint | Accept bindingly (slide-to-confirm) |
 | Mark performed flow | `MarkPerformedSheet` | confirm (slide), success empty, success + uploads | Slide to confirm → Done |
 | Remove document | `RemoveDocModal` | confirm; blocked once in review | Remove (outline danger) |
@@ -307,8 +307,8 @@ become a two-column card grid.
 Source of truth: Figma file `CgaMrN7nmXS8xub0RxyzsJ` — nodes `8:2268` (details tab), `8:2387` (My documents tab), `8:2545` (remove confirmation), `8:2663`/`8:2567` (performed success, empty / with uploads).
 
 - **Mark performed** opens `MarkPerformedSheet`: slide-to-confirm stage (tour summary card, protective copy, Cancel) → on slide, the store transition runs and the **success stage** appears: green disc check (`--st-accepted` disc, white check, `--st-accepted-bg` ring), "Tour performed successfully.", upload guidance with explicit skip option, dashed **Click to upload** dropzone (hint: `Max file size: 25 MB` when empty, file-type hint once uploads exist), document rows, Done. Activating the dropzone opens the document-type picker and then the **upload-source sheet** — see "Document upload — source selection" below. It never opens the camera.
-- **Performed tour detail** gets tab pills under the header: inactive = white pill, fine `--line` outline; active = `--ink` fill with `--paper` text (board §H contrast, no purple); My documents carries a count badge.
-- **My documents tab** ("Meine Dokumente"): clean rows — `FileTypeBadge` (40×48, `--muted-2` file shape with folded corner, uppercase extension), filename + size, document type right-aligned, review-status pill only when the document left the `uploaded` state, × remove. Fixed bottom action bar with `Upload document` (design-system `btn primary`, radius `--r-2` — **not** the Figma pill shape) + file-type hint. Upload reuses the grouped `TourDocCategoryModal` and then the shared **upload-source sheet** — identical behaviour to the tour-completion dropzone.
+- **Unlocked tour detail** gets tab pills under the header on **every** owned-tour status (assigned / accepted / performed / cancelled / empty-run): inactive = white pill, fine `--line` outline; active = `--ink` fill with `--paper` text (board §H contrast, no purple); My documents carries a count badge. Driver uploads are never inlined on the details tab.
+- **My documents tab** ("Meine Dokumente"): clean rows — `FileTypeBadge` (40×48, `--muted-2` file shape with folded corner, uppercase extension), filename + size, document type right-aligned, review-status pill only when the document left the `uploaded` state, × remove. Fixed bottom action bar with `Upload document` when `canDriverUploadTourDocument` allows it (design-system `btn primary`, radius `--r-2` — **not** the Figma pill shape) + file-type hint. Upload reuses the grouped `TourDocCategoryModal` and then the shared **upload-source sheet** — identical behaviour to the tour-completion dropzone.
 - **Remove document** (`RemoveDocModal`): red-tinted trash icon (`--st-cancelled-bg`/`--st-cancelled`), title/body copy, Cancel + Remove. Remove follows the app's **outline danger** convention (board §I) instead of Figma's filled red. Store rule: `removeDriverTourDocument` allows removal only while `reviewStatus === "uploaded"` — reviewed documents are audit-relevant and can only be replaced.
 - **Marketplace preview Route card** (locked detail): city + 8px dot (`--primary` start, `--ink` end), dashed `--line-dash` connectors both sides of a centered distance (14/600) over estimated duration (12, muted), PLZ beneath each city. Marketplace **cards** keep the original arrow route line.
 - Deliberate deviations from the Figma mocks: no `docx` in the accepted-types hint (store accepts PDF + images only), no simulated failed-upload/Retry row (prototype uploads resolve synchronously), review-status pills added to rows (PRD requires visible correction needs).
@@ -674,8 +674,7 @@ document-upload entry point. Do not add a second upload implementation.
 | Entry point | Control | Component |
 |-------------|---------|-----------|
 | Tour-completion success modal | dashed **Click to upload** / *Zum Hochladen tippen* dropzone | `MarkPerformedSheet` |
-| Tour detail → **Tour documents** card | `Upload document / receipt` button, and **Replace file** on an existing row | `JobTourDocuments` |
-| Performed tour → **Meine Dokumente** tab | fixed bottom `Upload document` bar | job-detail documents tab |
+| Tour detail → **Meine Dokumente** tab | fixed bottom `Upload document` bar (when upload allowed) | job-detail documents tab |
 
 ### Flow
 
