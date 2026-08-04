@@ -947,6 +947,27 @@ window.I18n = (() => {
       adminUsersColActions: "Actions",
       adminUsersBlock: "Block",
       adminUsersActivate: "Activate",
+      adminUsersLastActivity: "Last activity",
+      adminUsersLastActivityNever: "Never",
+      adminUsersAutoBadge: "Auto",
+      adminUsersAutoBadgeTitle: "Automatically deactivated for inactivity",
+      adminInactivityTitle: "Automatic deactivation",
+      adminInactivityBlurb:
+        "Service partners who stop using the platform are set to Inactive automatically. They can no longer see the marketplace or accept tours, and any admin can reactivate them at any time. Partners with tours still running are always skipped.",
+      adminInactivityEnabled: "Deactivate inactive service partners automatically",
+      adminInactivityThreshold: "Deactivate after (days without activity)",
+      adminInactivityWarning: "Warn this many days beforehand",
+      adminInactivityWarningHelp:
+        "Any sign-in or action in the app counts as activity. Set the warning to 0 to deactivate without notice.",
+      adminInactivityWarningTooLate:
+        "The warning must come before the deactivation — enter fewer days than the threshold.",
+      adminInactivityRunNow: "Run check now",
+      adminInactivityRunResult:
+        "Inactivity check complete: {deactivated} deactivated, {warned} warned, {skipped} skipped.",
+      adminInactivitySave: "Save deactivation policy",
+      driverInactiveByInactivityTitle: "Account deactivated for inactivity",
+      driverInactiveByInactivityBody:
+        "Your account was set to inactive because it had not been used for a long time. Contact your dispatcher and they can reactivate it right away.",
       adminUsersDeactivate: "Deactivate",
       adminUsersStatus_Active: "Active",
       adminUsersStatus_Blocked: "Blocked",
@@ -3031,6 +3052,27 @@ window.I18n = (() => {
       adminUsersColActions: "Aktionen",
       adminUsersBlock: "Sperren",
       adminUsersActivate: "Aktivieren",
+      adminUsersLastActivity: "Letzte Aktivität",
+      adminUsersLastActivityNever: "Nie",
+      adminUsersAutoBadge: "Auto",
+      adminUsersAutoBadgeTitle: "Automatisch wegen Inaktivität deaktiviert",
+      adminInactivityTitle: "Automatische Deaktivierung",
+      adminInactivityBlurb:
+        "Servicepartner, die die Plattform nicht mehr nutzen, werden automatisch auf Inaktiv gesetzt. Sie sehen dann den Marktplatz nicht mehr und können keine Touren annehmen; jede Administratorin und jeder Administrator kann sie jederzeit wieder aktivieren. Partner mit laufenden Touren werden immer übersprungen.",
+      adminInactivityEnabled: "Inaktive Servicepartner automatisch deaktivieren",
+      adminInactivityThreshold: "Deaktivieren nach (Tagen ohne Aktivität)",
+      adminInactivityWarning: "So viele Tage vorher warnen",
+      adminInactivityWarningHelp:
+        "Jede Anmeldung oder Aktion in der App zählt als Aktivität. Setzen Sie die Warnung auf 0, um ohne Vorankündigung zu deaktivieren.",
+      adminInactivityWarningTooLate:
+        "Die Warnung muss vor der Deaktivierung liegen — geben Sie weniger Tage als den Schwellenwert ein.",
+      adminInactivityRunNow: "Prüfung jetzt ausführen",
+      adminInactivityRunResult:
+        "Inaktivitätsprüfung abgeschlossen: {deactivated} deaktiviert, {warned} gewarnt, {skipped} übersprungen.",
+      adminInactivitySave: "Deaktivierungsregel speichern",
+      driverInactiveByInactivityTitle: "Konto wegen Inaktivität deaktiviert",
+      driverInactiveByInactivityBody:
+        "Ihr Konto wurde auf inaktiv gesetzt, weil es längere Zeit nicht genutzt wurde. Wenden Sie sich an Ihren Disponenten, er kann es sofort wieder freischalten.",
       adminUsersDeactivate: "Deaktivieren",
       adminUsersStatus_Active: "Aktiv",
       adminUsersStatus_Blocked: "Gesperrt",

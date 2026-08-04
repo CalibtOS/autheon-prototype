@@ -1970,82 +1970,45 @@ select.input {
   font-weight: 600;
   color: var(--text);
 }
-.phone-shell .unlocked-route-timeline {
+/* Unlocked My Jobs detail: street / stop / schedule / map under RouteTimeline
+   (FE MarketplaceJobUnlockedView parity). Old custom vertical timeline removed. */
+.phone-shell .detail-unlocked-stops {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin: 4px 0;
+  gap: 14px;
 }
-.phone-shell .unlocked-route-timeline .timeline-item {
-  display: flex;
-  gap: 16px;
+.phone-shell .detail-unlocked-stop .time-label {
+  font-size: var(--text-caption);
+  color: var(--muted);
+  font-weight: 500;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
-.phone-shell .unlocked-route-timeline .timeline-marker {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 12px;
-}
-.phone-shell .unlocked-route-timeline .timeline-marker .dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: block;
-  margin-top: 5px;
-}
-.phone-shell .unlocked-route-timeline .timeline-marker .dot.blue {
-  background: var(--primary);
-}
-.phone-shell .unlocked-route-timeline .timeline-marker .dot.dark {
-  background: var(--ink);
-}
-.phone-shell .unlocked-route-timeline .timeline-marker .line {
-  flex: 1;
-  width: 2px;
-  border-left: 2px dashed var(--line);
-  margin: 6px 0;
-  min-height: 48px;
-}
-.phone-shell .unlocked-route-timeline .timeline-content {
-  flex: 1;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-/* `min-width: 0` + `flex: 1` let a long company name wrap inside the column
-   instead of stretching the flex row and pushing the map button off the card. */
-.phone-shell .unlocked-route-timeline .city-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-}
-.phone-shell .unlocked-route-timeline .city-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text);
-}
-/* Route-stop location name — the company or person responsible for this stop.
-   Sits BETWEEN the city and the street address, so the stop reads
-   city → who → where. Pitched between the two: darker than the muted address
-   because it is content rather than supporting detail, but lighter than the
-   15px/600 city so it does not compete for the row's heading. A name can be a
-   long company string, so it wraps and breaks rather than overflowing. */
-.phone-shell .unlocked-route-timeline .city-location-name {
+.phone-shell .detail-unlocked-stop .city-location-name {
   font-size: 13px;
   font-weight: 500;
   color: var(--text);
   line-height: 1.35;
   overflow-wrap: anywhere;
+  margin-top: 2px;
 }
-.phone-shell .unlocked-route-timeline .city-address {
-  font-size: 12px;
-  color: var(--muted);
+.phone-shell .detail-unlocked-stop .city-address {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
   overflow-wrap: anywhere;
+  margin-top: 2px;
 }
-.phone-shell .unlocked-route-timeline .map-link {
+.phone-shell .detail-unlocked-stop .time-val {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.phone-shell .detail-unlocked-stop .map-link {
   font-size: 12px;
   font-weight: 600;
   color: var(--primary);
@@ -2056,21 +2019,8 @@ select.input {
   padding: 4px 8px;
   border-radius: 8px;
   background: var(--canvas);
-  flex-shrink: 0;
-}
-.phone-shell .unlocked-route-timeline .timeline-item-middle {
-  display: flex;
-  gap: 8px;
-  padding-left: 28px;
-  margin: -10px 0 10px;
-}
-.phone-shell .unlocked-route-timeline .info-badge {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text);
-  background: var(--canvas);
-  padding: 4px 8px;
-  border-radius: 6px;
+  margin-top: 8px;
+  width: fit-content;
 }
 .phone-shell .plate-badge {
   font-family: var(--font-mono);
