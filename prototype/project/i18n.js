@@ -1420,6 +1420,26 @@ window.I18n = (() => {
           helpContactsEmailError: "Enter a valid email address.",
           helpContactsHotlineRequired: "Dispatcher hotline is required.",
           helpContactsEmailRequired: "Support email is required.",
+          // Driver upload limits. Lifted verbatim from the console's
+          // common.json settings.system.uploadLimits* (placeholders use the
+          // prototype's single-brace interpolator rather than i18next's
+          // double braces). Labels never say "per tour" — one number governs
+          // tour documents and problem-report evidence alike.
+          uploadLimitsTitle: "Driver upload limits",
+          uploadLimitsBlurb:
+            "Set how large the files drivers upload may be. Changes take effect immediately.",
+          uploadLimitsMaxFileLabel: "Max. size per file (MB)",
+          uploadLimitsMaxFileHint:
+            "Applies to every file a driver uploads, in tour documents and in problem report evidence alike.",
+          uploadLimitsMaxTotalLabel: "Max. total per upload area (MB)",
+          uploadLimitsMaxTotalHint:
+            "Counted separately for a tour's documents and for each problem report's evidence, so a tour can hold this much in each of those areas.",
+          uploadLimitsRangeError:
+            "Enter a whole number between {min} and {max}.",
+          uploadLimitsTotalBelowFileError:
+            "The total must be at least the max. size per file ({maxFileMb} MB), otherwise no file can be uploaded.",
+          uploadLimitsSave: "Save upload limits",
+          uploadLimitsSaved: "Driver upload limits updated.",
         },
         prototype: {
           title: "Prototype settings",
@@ -3515,6 +3535,24 @@ window.I18n = (() => {
           helpContactsEmailError: "Bitte gültige E-Mail-Adresse eingeben.",
           helpContactsHotlineRequired: "Disponent-Hotline ist erforderlich.",
           helpContactsEmailRequired: "Support-E-Mail ist erforderlich.",
+          // Upload-Limits für Fahrer. Wörtlich aus common.json
+          // settings.system.uploadLimits* der Konsole (Platzhalter mit
+          // einfacher Klammer für den Prototyp-Interpolator).
+          uploadLimitsTitle: "Upload-Limits für Fahrer",
+          uploadLimitsBlurb:
+            "Festlegen, wie groß die von Fahrern hochgeladenen Dateien sein dürfen. Änderungen gelten sofort.",
+          uploadLimitsMaxFileLabel: "Max. Größe pro Datei (MB)",
+          uploadLimitsMaxFileHint:
+            "Gilt für jede Datei, die ein Fahrer hochlädt — für Tourdokumente ebenso wie für Nachweise zu Problemmeldungen.",
+          uploadLimitsMaxTotalLabel: "Max. Gesamtgröße pro Upload-Bereich (MB)",
+          uploadLimitsMaxTotalHint:
+            "Wird für die Dokumente einer Tour und für die Nachweise jeder Problemmeldung getrennt gezählt — eine Tour kann diese Menge also in jedem dieser Bereiche enthalten.",
+          uploadLimitsRangeError:
+            "Bitte eine ganze Zahl zwischen {min} und {max} eingeben.",
+          uploadLimitsTotalBelowFileError:
+            "Die Gesamtgröße muss mindestens der max. Größe pro Datei entsprechen ({maxFileMb} MB), sonst kann keine Datei hochgeladen werden.",
+          uploadLimitsSave: "Upload-Limits speichern",
+          uploadLimitsSaved: "Upload-Limits für Fahrer aktualisiert.",
         },
         prototype: {
           title: "Prototyp-Einstellungen",

@@ -4898,6 +4898,20 @@ select.input {
   }
 }
 
+/* System settings — driver upload limits card (two MB fields + hints). */
+.upload-limits-form {
+  margin-top: 16px;
+}
+.upload-limits-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.upload-limits-actions {
+  margin-top: 16px;
+}
+
 .field-counter {
   margin-top: 4px;
   font-size: 11px;
