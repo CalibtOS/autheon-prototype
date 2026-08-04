@@ -248,6 +248,7 @@ for phone widths). The shared *component* is `LoginForm`; the copy is injected, 
 | `accountStatus` | Account status | Kontostatus |
 | `active` | Active | Aktiv |
 | `addPlzArea` | Add | Hinzufügen |
+| `adminSupplierInvoiceNumberLabel` | Supplier invoice number | Lieferanten-Rechnungsnummer |
 | `all` | All | Alle |
 | `appAppearanceHint` | Language and display preferences for this device. | Sprache und Anzeigeeinstellungen für dieses Gerät. |
 | `appLanguage` | Language | Sprache |
@@ -620,25 +621,35 @@ for phone widths). The shared *component* is `LoginForm`; the copy is injected, 
 | `today` | Today | Heute |
 | `tourBookedSuccessBody` | The tour is now active — you'll find it under My jobs. | Die Tour ist jetzt aktiv — du findest sie unter Meine Aufträge. |
 | `tourBookedSuccessTitle` | Tour booked successfully. | Tour erfolgreich gebucht. |
+| `tourDocAmountFormSubmit` | Save and upload | Speichern und hochladen |
+| `tourDocAmountFormTitle` | Document details | Dokumentdetails |
+| `tourDocAmountMathError` | Net, tax rate, and gross amount don't add up (expected gross: {expected}). | Netto, Steuersatz und Bruttobetrag passen nicht zusammen (erwarteter Brutto: {expected}). |
 | `tourDocChooseCategory` | Choose document type | Dokumenttyp wählen |
 | `tourDocDeliveryNote` | Delivery note | Lieferschein |
 | `tourDocEmptyAction` | Add receipts, delivery notes, or proof while this tour is active. | Belege, Lieferscheine oder Nachweise während der aktiven Tour hinzufügen. |
 | `tourDocEmptyTitle` | No documents yet | Noch keine Dokumente |
 | `tourDocFuelReceipt` | Fuel receipt | Tankbeleg |
+| `tourDocGrossAmount` | Gross amount | Bruttobetrag |
 | `tourDocGroupCore` | Core Documents | Kernbelege |
 | `tourDocGroupOperational` | Operational Documents | Betriebliche Belege |
 | `tourDocGroupOther` | Other Documents | Sonstige Belege |
 | `tourDocHelperFuel` | Please make sure that the vehicle registration number is noted on the fuel receipt. | Bitte darauf achten, dass die Fahrzeug-Identifikationsnummer auf dem Tankbeleg vermerkt ist. |
 | `tourDocHelperWaiting` | Please upload comprehensible proof of the start, end, and reason for the waiting time. | Bitte einen nachvollziehbaren Nachweis über Beginn, Ende und Grund der Wartezeit hochladen. |
 | `tourDocInvoice` | Billing invoice | Abrechnungsrechnung |
+| `tourDocInvoiceDate` | Invoice date | Rechnungsdatum |
+| `tourDocNetAmount` | Net amount | Nettobetrag |
 | `tourDocOfficialNotReplaceable` | Documents from dispatch cannot be replaced. Upload your own receipts in Tour documents below. | Dokumente der Disposition können nicht ersetzt werden. Eigene Belege unten unter Tour-Dokumente hochladen. |
 | `tourDocOtherProof` | Other proof | Sonstiger Nachweis |
 | `tourDocOtherReceipt` | Other receipt | Sonstiger Beleg |
+| `tourDocReceiptDate` | Receipt date | Belegdatum |
 | `tourDocRejectionReason` | Rejection: {reason} | Ablehnung: {reason} |
 | `tourDocReplaceButton` | Replace file | Datei ersetzen |
 | `tourDocReplaceNotAllowed` | Accepted documents cannot be replaced. Contact dispatch if needed. | Angenommene Dokumente können nicht ersetzt werden. Bei Bedarf Disposition kontaktieren. |
 | `tourDocReplaceNotOwner` | You can only replace your own uploads for this tour. | Sie können nur eigene Uploads für diese Tour ersetzen. |
 | `tourDocRequiresPerformed` | Document upload is not available for this tour status. | Dokument-Upload ist für diesen Tour-Status nicht verfügbar. |
+| `tourDocServicePeriodFrom` | Service period from | Leistungszeitraum von |
+| `tourDocServicePeriodTo` | Service period to | Leistungszeitraum bis |
+| `tourDocTaxRate` | Tax rate (%) | Steuersatz (%) |
 | `tourDocTollReceipt` | Toll receipt | Mautbeleg |
 | `tourDocUploadAvailable` | Upload available | Upload möglich |
 | `tourDocUploadButton` | Upload document | Dokument hochladen |
@@ -678,4 +689,4 @@ for phone widths). The shared *component* is `LoginForm`; the copy is injected, 
 | `warnEntryCancelSub` | End the tour and notify dispatch. | Beendet den Auftrag und informiert die Disposition. |
 | `warnEntryEmptyRunOption` | Report empty run | Leerfahrt melden |
 | `warnEntryEmptyRunSub` | The order itself can't be executed — Autheon reviews it. | Der Auftrag selbst kann nicht durchgeführt werden — Autheon prüft die Meldung. |
-| `weekend` | — | — |
+| `weekend` | Weekend | Wochenende |

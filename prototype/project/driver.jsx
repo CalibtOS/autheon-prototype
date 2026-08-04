@@ -216,7 +216,9 @@ const displayNewsBody = (item, t) =>
  * read localized in the Infopoint and English in the Notification Center.
  */
 const displayNotificationTitle = (row, t) =>
-  row?.newsId ? displayNewsTitle({ id: row.newsId, title: row.title }, t) : row?.title || "";
+  row?.newsId
+    ? displayNewsTitle({ id: row.newsId, title: row.title }, t)
+    : row?.title || "";
 
 const displayNotificationBody = (row, t) => {
   if (!row?.newsId) return row?.body || "";
@@ -1406,43 +1408,98 @@ const RedPlatesNotice = (props) => (
   <DriverUI.RedPlatesRequiredNotice {...props} />
 );
 
+// One stop in the vertical route timeline. The rail is a grid cell that
+// stretches to the row's own height, so the dashed connector always meets the
+// pin centers exactly — no guessed offsets that drift when content grows.
+const RouteLeg = ({ stop, connectBelow, connectAbove }) => (
+  <div className="route-leg">
+    <div className="route-rail" aria-hidden="true">
+      {connectAbove ? (
+        <span className="route-connector route-connector-above"></span>
+      ) : null}
+      {connectBelow ? <span className="route-connector"></span> : null}
+      <span className="route-dot">
+        <Ic.Map />
+      </span>
+    </div>
+    <div className="route-leg-main">
+      <div className="route-leg-place">
+        <div className="route-city-name">{stop.city}</div>
+        {stop.plz != null && stop.plz !== "" ? (
+          <div className="route-city-plz">{stop.plz}</div>
+        ) : null}
+        {stop.children}
+      </div>
+      {stop.label != null || stop.when != null ? (
+        <div className="route-leg-meta">
+          {stop.label != null ? (
+            <span className="route-pill">{stop.label}</span>
+          ) : null}
+          {stop.when != null ? (
+            <div className="route-leg-when">{stop.when}</div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  </div>
+);
+
+// SHARED vertical route presentation — client-confirmed layout (2026-08-03):
+// pickup above delivery joined by a dashed connector, distance between them.
+// Single source of truth for start/destination display across the marketplace
+// card, My Jobs card and the job-detail route card, so the same data can never
+// render two different ways. Mirrors packages/ui/src/RouteTimeline.tsx in the FE.
+const RouteTimeline = ({
+  start,
+  end,
+  distanceKm,
+  distanceNote,
+  spacing = "default",
+}) => {
+  const hasMiddle = distanceKm != null || distanceNote != null;
+  return (
+    <div className="jobcard-route-timeline">
+      <RouteLeg stop={start} connectBelow />
+      <div
+        className={`route-distance-row${spacing === "compact" ? " compact" : ""}`}
+        aria-hidden={!hasMiddle}
+      >
+        <span className="route-connector route-connector-full"></span>
+        {hasMiddle ? (
+          <span className="route-distance">
+            {distanceKm != null ? `${distanceKm} km` : null}
+            {distanceNote != null ? (
+              <span className="route-distance-note">{distanceNote}</span>
+            ) : null}
+          </span>
+        ) : null}
+      </div>
+      <RouteLeg stop={end} connectAbove />
+    </div>
+  );
+};
+
 // Shared card body (marketplace + My Jobs) — client reference layout
-// (Design Direction Board p.5): route line, pickup/delivery legs,
-// footer meta + price right.
+// (Design Direction Board p.5): vertical route timeline, footer meta + price right.
 const JobCardBody = ({ job }) => {
   const { t } = useI18n();
   return (
     <>
-      <div className="jobcard-route-line">
-        <div className="route-city start">
-          <div className="route-city-name">{job.startCity}</div>
-          <div className="route-city-plz">{job.startPlz}</div>
-        </div>
-        <div className="route-mid" aria-hidden="true">
-          <span className="route-arrow">→</span>
-          {job.distanceKm ? (
-            <span className="route-distance">{job.distanceKm} km</span>
-          ) : null}
-        </div>
-        <div className="route-city end">
-          <div className="route-city-name">{job.endCity}</div>
-          <div className="route-city-plz">{job.endPlz}</div>
-        </div>
-      </div>
-      <div className="jobcard-legs">
-        <div className="jobcard-leg">
-          <span className="leg-label">
-            <Ic.Map /> {t("pickup")}
-          </span>
-          <div className="leg-when">{legWhen(job.pickup, t)}</div>
-        </div>
-        <div className="jobcard-leg">
-          <span className="leg-label">
-            <Ic.Map /> {t("delivery")}
-          </span>
-          <div className="leg-when">{legWhen(job.delivery, t)}</div>
-        </div>
-      </div>
+      <RouteTimeline
+        start={{
+          city: job.startCity,
+          plz: job.startPlz,
+          label: t("pickup"),
+          when: legWhen(job.pickup, t),
+        }}
+        end={{
+          city: job.endCity,
+          plz: job.endPlz,
+          label: t("delivery"),
+          when: legWhen(job.delivery, t),
+        }}
+        distanceKm={job.distanceKm}
+      />
       <hr className="jobcard-divider" />
       <div className="jobcard-footer">
         <span className="vehicle-meta">
@@ -2320,34 +2377,25 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
             <Ic.Map />
             <span>{t("route")}</span>
           </div>
-          <div className="detail-route-row">
-            <div className="detail-route-city start">
-              <div className="city-top">
-                <span className="city-name">{job.startCity}</span>
-                <span className="route-point start" aria-hidden="true"></span>
-              </div>
-              <div className="city-pc">
-                {t("postalCodeAbbr")}: {job.startPlz}
-              </div>
-            </div>
-            <div className="detail-route-dash" aria-hidden="true"></div>
-            <div className="detail-route-info">
-              <div className="dist">{job.distanceKm}km</div>
-              <div className="time">
-                {estimateDriveTime(job.distanceKm) || "—"}
-              </div>
-            </div>
-            <div className="detail-route-dash" aria-hidden="true"></div>
-            <div className="detail-route-city end">
-              <div className="city-top">
-                <span className="route-point end" aria-hidden="true"></span>
-                <span className="city-name">{job.endCity}</span>
-              </div>
-              <div className="city-pc">
-                {t("postalCodeAbbr")}: {job.endPlz}
-              </div>
-            </div>
-          </div>
+          {/* Vertical route timeline — same shared component as the job cards
+              so start/destination never render two different ways. */}
+          <RouteTimeline
+            spacing="compact"
+            start={{
+              city: job.startCity,
+              plz: job.startPlz
+                ? `${t("postalCodeAbbr")}: ${job.startPlz}`
+                : null,
+              label: t("pickup"),
+            }}
+            end={{
+              city: job.endCity,
+              plz: job.endPlz ? `${t("postalCodeAbbr")}: ${job.endPlz}` : null,
+              label: t("delivery"),
+            }}
+            distanceKm={job.distanceKm}
+            distanceNote={estimateDriveTime(job.distanceKm) || null}
+          />
           <hr className="detail-card-divider" />
           <div className="detail-route-times">
             <div>
@@ -2559,36 +2607,35 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
         </h2>
 
         <div className="dialog-content">
-        <div className="accept-tour-summary">
-          <div className="label" style={{ marginBottom: 8 }}>
-            Tour #{job.id}
+          <div className="accept-tour-summary">
+            <div className="label" style={{ marginBottom: 8 }}>
+              Tour #{job.id}
+            </div>
+            <div className="mono mono-strong">
+              {job.startPlz} → {job.endPlz} · {job.distanceKm} km
+            </div>
+            <div className="mono text-muted-sm" style={{ marginTop: 6 }}>
+              {AuthStore.formatJobScheduleShort(job, t("flexible"))} ·{" "}
+              {displayVehicle(job.vehicleType, t)} ·{" "}
+              {displayTransportType(job.transportType, t)}
+            </div>
+            <div
+              style={{ fontSize: 18, fontWeight: 600, marginTop: 10 }}
+              className="tnum"
+            >
+              € {fmtDriverOffer(job).toFixed(2)}
+            </div>
           </div>
-          <div className="mono mono-strong">
-            {job.startPlz} → {job.endPlz} · {job.distanceKm} km
-          </div>
-          <div className="mono text-muted-sm" style={{ marginTop: 6 }}>
-            {AuthStore.formatJobScheduleShort(job, t("flexible"))} ·{" "}
-            {displayVehicle(job.vehicleType, t)} ·{" "}
-            {displayTransportType(job.transportType, t)}
-          </div>
-          <div
-            style={{ fontSize: 18, fontWeight: 600, marginTop: 10 }}
-            className="tnum"
-          >
-            € {fmtDriverOffer(job).toFixed(2)}
-          </div>
-        </div>
 
-        {/* Derived notice — location 4 of 5: booking dialog, clearly
+          {/* Derived notice — location 4 of 5: booking dialog, clearly
             highlighted before the binding slide-to-confirm so the partner sees
             the execution requirement while committing. */}
-        <RedPlatesNotice job={job} variant="banner" />
+          <RedPlatesNotice job={job} variant="banner" />
 
-        <p className="para-intro">{t("acceptanceLegal")}</p>
-        <div className="para-muted-xs">
-          <PolicyDisclosure />
-        </div>
-
+          <p className="para-intro">{t("acceptanceLegal")}</p>
+          <div className="para-muted-xs">
+            <PolicyDisclosure />
+          </div>
         </div>
 
         {/* Deviation 1: a slide control cannot share a row with a button, so
@@ -4183,7 +4230,9 @@ const JobUnlocked = ({
                     <div className="city-info">
                       <div className="city-name">{job.startCity}</div>
                       {pickupStopName ? (
-                        <div className="city-location-name">{pickupStopName}</div>
+                        <div className="city-location-name">
+                          {pickupStopName}
+                        </div>
                       ) : null}
                       <div className="city-address">
                         {job.startStreet} · {job.startPlz} {job.startCity}
@@ -4213,7 +4262,9 @@ const JobUnlocked = ({
                     <div className="city-info">
                       <div className="city-name">{job.endCity}</div>
                       {deliveryStopName ? (
-                        <div className="city-location-name">{deliveryStopName}</div>
+                        <div className="city-location-name">
+                          {deliveryStopName}
+                        </div>
                       ) : null}
                       <div className="city-address">
                         {job.endStreet} · {job.endPlz} {job.endCity}
@@ -4417,96 +4468,95 @@ const JobUnlocked = ({
                   </button>
                 </div>
               </div>
-              
-             </div>
-
-        {/* Operational Instructions Card */}
-        <div className="detail-card">
-          <div className="detail-section-title">
-            <Ic.TabInfo />
-            <span>{t("operationalInstructions")}</span>
-          </div>
-
-          <div className="detail-pdf-card">
-            <div className="pdf-icon-wrap">
-              <Ic.Pdf />
             </div>
 
-            <div className="flex-1-min-0">
-              {/* Filename, displayed version and audit entry all come from the
+            {/* Operational Instructions Card */}
+            <div className="detail-card">
+              <div className="detail-section-title">
+                <Ic.TabInfo />
+                <span>{t("operationalInstructions")}</span>
+              </div>
+
+              <div className="detail-pdf-card">
+                <div className="pdf-icon-wrap">
+                  <Ic.Pdf />
+                </div>
+
+                <div className="flex-1-min-0">
+                  {/* Filename, displayed version and audit entry all come from the
                   active document record, so they can never disagree. */}
-              <div className="pdf-name">
-                {activeTransportOrderDoc?.fileName ||
-                  `Fahrauftrag-${job.tour}.pdf`}
+                  <div className="pdf-name">
+                    {activeTransportOrderDoc?.fileName ||
+                      `Fahrauftrag-${job.tour}.pdf`}
+                  </div>
+
+                  <div className="pdf-meta">
+                    v{activeTransportOrderDoc?.version || job.pdfVersion || 1}
+                  </div>
+                </div>
+
+                <div className="pdf-actions">
+                  <button
+                    type="button"
+                    className="pdf-btn"
+                    title={t("view")}
+                    aria-label={t("view")}
+                    onClick={() => {
+                      const result = store.getTransportOrderPreview(
+                        job.id,
+                        DRIVER_ACCESS,
+                      );
+
+                      if (result.ok) {
+                        setDocPreview(result.preview);
+                      }
+                    }}
+                  >
+                    <Ic.Eye />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="pdf-btn"
+                    title={t("download")}
+                    aria-label={t("download")}
+                    onClick={() => {
+                      const result = store.downloadPdf(job.id, DRIVER_ACCESS);
+
+                      if (result.ok) {
+                        window.AutheonTransportOrderPdf?.printDocumentHtml(
+                          result.previewHtml,
+                          result.fileName,
+                        );
+                      }
+                    }}
+                  >
+                    <Ic.Down />
+                  </button>
+                </div>
               </div>
-
-              <div className="pdf-meta">
-                v{activeTransportOrderDoc?.version || job.pdfVersion || 1}
-              </div>
-            </div>
-
-            <div className="pdf-actions">
-              <button
-                type="button"
-                className="pdf-btn"
-                title={t("view")}
-                aria-label={t("view")}
-                onClick={() => {
-                  const result = store.getTransportOrderPreview(
-                    job.id,
-                    DRIVER_ACCESS,
-                  );
-
-                  if (result.ok) {
-                    setDocPreview(result.preview);
-                  }
-                }}
-              >
-                <Ic.Eye />
-              </button>
-
-              <button
-                type="button"
-                className="pdf-btn"
-                title={t("download")}
-                aria-label={t("download")}
-                onClick={() => {
-                  const result = store.downloadPdf(job.id, DRIVER_ACCESS);
-
-                  if (result.ok) {
-                    window.AutheonTransportOrderPdf?.printDocumentHtml(
-                      result.previewHtml,
-                      result.fileName,
-                    );
-                  }
-                }}
-              >
-                <Ic.Down />
-              </button>
-            </div>
-          </div>
-
-          <p
-            className="text-muted-sm"
-            style={{ lineHeight: 1.6, margin: 0, fontSize: 13 }}
-          >
-            {displayDriverNote(job.notesDriver, t) || t("noDriverAddons")}
-          </p>
-
-          {job.notes ? (
-            <>
-              <hr className="detail-card-divider" />
-              <div className="time-label">{t("dispatchNotes")}</div>
 
               <p
                 className="text-muted-sm"
                 style={{ lineHeight: 1.6, margin: 0, fontSize: 13 }}
               >
-                {job.notes}
+                {displayDriverNote(job.notesDriver, t) || t("noDriverAddons")}
               </p>
-            </>
-          ) : null}
-        </div>
+
+              {job.notes ? (
+                <>
+                  <hr className="detail-card-divider" />
+                  <div className="time-label">{t("dispatchNotes")}</div>
+
+                  <p
+                    className="text-muted-sm"
+                    style={{ lineHeight: 1.6, margin: 0, fontSize: 13 }}
+                  >
+                    {job.notes}
+                  </p>
+                </>
+              ) : null}
+            </div>
 
             {/* Official Documents Component */}
             <JobOfficialTourDocuments job={job} onPreview={setDocPreview} />
@@ -5599,7 +5649,13 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
 const DialogSuccessIcon = () => {
   const gradientId = `success-mark-${useId().replace(/:/g, "")}`;
   return (
-    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width="56"
+      height="56"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="1" x2="1" y2="0">
           <stop offset="0%" className="success-mark-from" />
@@ -5632,11 +5688,7 @@ const PendingNotice = ({ onClose, kind }) => {
         isCancel ? t("spCancelSuccessBody") : t("emptyRunSuccessBody")
       }
       actions={
-        <button
-          type="button"
-          className="btn primary"
-          onClick={onClose}
-        >
+        <button type="button" className="btn primary" onClick={onClose}>
           {t("ok")}
         </button>
       }
@@ -5826,20 +5878,20 @@ const MarkPerformedSheet = ({ job, onClose }) => {
             {t("markPerformedConfirmTitle")}
           </h2>
           <div className="dialog-content">
-          <div className="accept-tour-summary">
-            <div className="label" style={{ marginBottom: 8 }}>
-              Tour #{job.id}
+            <div className="accept-tour-summary">
+              <div className="label" style={{ marginBottom: 8 }}>
+                Tour #{job.id}
+              </div>
+              <div className="mono mono-strong">
+                {job.startPlz} → {job.endPlz} · {job.distanceKm} km
+              </div>
             </div>
-            <div className="mono mono-strong">
-              {job.startPlz} → {job.endPlz} · {job.distanceKm} km
-            </div>
-          </div>
-          <p className="para-intro">{t("markPerformedConfirmBody")}</p>
-          <InlineAlert
-            tone="error"
-            message={error}
-            onDismiss={() => setError(null)}
-          />
+            <p className="para-intro">{t("markPerformedConfirmBody")}</p>
+            <InlineAlert
+              tone="error"
+              message={error}
+              onDismiss={() => setError(null)}
+            />
           </div>
           {/* Same documented deviation as the reference dialog: a
               slide-to-confirm cannot share a row with a button. */}
@@ -6359,7 +6411,10 @@ const NotificationTourPreview = ({ preview }) => {
     if (!leg) return "—";
     const place = [leg.postalCode, leg.city].filter(Boolean).join(" ") || "—";
     // `name` / `street` are present only in the unrestricted projection.
-    const address = [leg.name, [leg.street, leg.houseNumber].filter(Boolean).join(" ")]
+    const address = [
+      leg.name,
+      [leg.street, leg.houseNumber].filter(Boolean).join(" "),
+    ]
       .filter(Boolean)
       .join(" · ");
     return address ? `${address}, ${place}` : place;
@@ -6564,7 +6619,11 @@ const DriverNotificationsList = ({
               );
 
               return (
-                <li key={row.id} className={enterClass.trim() || undefined} style={enterStyle}>
+                <li
+                  key={row.id}
+                  className={enterClass.trim() || undefined}
+                  style={enterStyle}
+                >
                   <div
                     className={`notification-card${row.read ? "" : " unread"}${
                       expanded ? " expanded" : ""
@@ -6605,7 +6664,10 @@ const DriverNotificationsList = ({
                         onClick={() => openDeepLink(row, target)}
                       >
                         {head}
-                        <span className="notification-row-chevron" aria-hidden="true">
+                        <span
+                          className="notification-row-chevron"
+                          aria-hidden="true"
+                        >
                           <Ic.Chev />
                         </span>
                         <span className="sr-only">
@@ -7280,22 +7342,35 @@ function applyAppTheme(theme) {
   } catch (_) {
     /* no-op */
   }
-  const canvas = getComputedStyle(document.documentElement)
-    .getPropertyValue("--brand-canvas")
+  const isPwaPage = document.body?.classList?.contains("pwa-page");
+  // PWA must match FE DriverShell (surface-muted / canvas). Fall back to hex if
+  // custom props are not resolved yet (early call before styles.css applies).
+  const colorVar = isPwaPage ? "--brand-canvas" : "--brand-surface";
+  const fallback = isPwaPage
+    ? theme === "dark"
+      ? "#1C1C1E"
+      : "#F5F5F7"
+    : theme === "dark"
+      ? "#2C2C2E"
+      : "#FFFFFF";
+  const resolved = getComputedStyle(document.documentElement)
+    .getPropertyValue(colorVar)
     .trim();
-  if (canvas) {
-    document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
-      meta.setAttribute("content", canvas);
-      meta.removeAttribute("media");
-    });
-  }
+  const chrome =
+    resolved && !resolved.startsWith("var(") ? resolved : fallback;
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.setAttribute("content", chrome);
+    meta.removeAttribute("media");
+  });
+  document.documentElement.style.backgroundColor = chrome;
+  if (document.body) document.body.style.backgroundColor = chrome;
   const appleStatus = document.querySelector(
     'meta[name="apple-mobile-web-app-status-bar-style"]',
   );
   if (appleStatus) {
     appleStatus.setAttribute(
       "content",
-      theme === "dark" ? "black-translucent" : "default",
+      isPwaPage || theme === "dark" ? "black-translucent" : "default",
     );
   }
 }
@@ -8166,7 +8241,10 @@ const useEdgeSwipeBack = (onBack) => {
     const moveX = p.clientX - g.x;
     const moveY = p.clientY - g.y;
     if (g.axis === null) {
-      if (Math.abs(moveX) < EDGE_SWIPE_AXIS_LOCK_PX && Math.abs(moveY) < EDGE_SWIPE_AXIS_LOCK_PX)
+      if (
+        Math.abs(moveX) < EDGE_SWIPE_AXIS_LOCK_PX &&
+        Math.abs(moveY) < EDGE_SWIPE_AXIS_LOCK_PX
+      )
         return;
       g.axis = Math.abs(moveX) > Math.abs(moveY) ? "x" : "y";
     }
@@ -8178,7 +8256,8 @@ const useEdgeSwipeBack = (onBack) => {
   };
 
   const onTouchEnd = () => {
-    const committed = gesture.current?.axis === "x" && dx >= EDGE_SWIPE_COMMIT_PX;
+    const committed =
+      gesture.current?.axis === "x" && dx >= EDGE_SWIPE_COMMIT_PX;
     reset();
     if (committed) onBack?.();
   };
@@ -8220,7 +8299,11 @@ const InfopointMessageDetail = ({ item, onBack }) => {
       // While the finger is down the page must track it exactly, so the CSS
       // snap-back transition is suppressed; releasing drops the inline style
       // and the transition animates the page home.
-      style={dx ? { transform: `translateX(${dx}px)`, transition: "none" } : undefined}
+      style={
+        dx
+          ? { transform: `translateX(${dx}px)`, transition: "none" }
+          : undefined
+      }
       {...handlers}
     >
       <DriverSubpageHeader
@@ -8314,245 +8397,260 @@ const Infopoint = ({
           onBack={() => setDetailNewsId(null)}
         />
       ) : (
-      <>
-      <DriverScreenHeader
-        title={t("infopoint")}
-        subtitle={t("infopointSubtitle")}
-        onOpenNotifications={onOpenNotifications}
-        notificationsOpen={notificationsOpen}
-      />
+        <>
+          <DriverScreenHeader
+            title={t("infopoint")}
+            subtitle={t("infopointSubtitle")}
+            onOpenNotifications={onOpenNotifications}
+            notificationsOpen={notificationsOpen}
+          />
 
-      {/* Horizontal Tab Pills Selector — a sibling band BELOW the header, the
+          {/* Horizontal Tab Pills Selector — a sibling band BELOW the header, the
           same way My orders places its search row and tabs. Keeping the tabs
           out of `.pwa-screen-header` is what keeps the header's grey divider at
           the identical height on all four primary screens; the band then draws
           its own divider under the tabs. */}
-      <div className="myjobs-tabs-slider infopoint-tabs-slider">
-        {[
-          ["documents", t("infopointDocsTab")],
-          ["news", t("infopointNewsTab"), unreadCount],
-          ["help", t("infopointHelpTab")],
-        ].map(([id, lbl, n]) => (
-          <button
-            key={id}
-            type="button"
-            className={`myjobs-tab-pill ${subTab === id ? "active" : ""}`}
-            onClick={() => setSubTab(id)}
-          >
-            <span>{lbl}</span>
-            {id === "news" && n > 0 ? (
-              <span className="pill-badge">{n}</span>
-            ) : null}
-          </button>
-        ))}
-      </div>
-
-      {/* Swipeable tab content — drag left/right to switch tabs */}
-      <SwipeViews
-        index={INFO_TABS.indexOf(subTab)}
-        count={INFO_TABS.length}
-        onIndexChange={(i) => setSubTab(INFO_TABS[i])}
-        style={{ flex: 1, minHeight: 0, background: "var(--paper-2)" }}
-      >
-        {INFO_TABS.map((paneId) => (
-          <div
-            key={paneId}
-            className="swipe-pane-body"
-            style={{ padding: "16px 20px 24px" }}
-          >
-            {paneId === "documents" ? (
-              <>
-                <div className="infopoint-card">
-                  {docs.map((d, index) => (
-                    <div
-                      key={d.id}
-                      className={
-                        "infopoint-doc-row" + (index < 4 ? " list-enter" : "")
-                      }
-                      style={
-                        index < 4 ? { ["--list-enter-i"]: index } : undefined
-                      }
-                    >
-                      <div
-                        className="infopoint-news-icon read"
-                        style={{ color: "var(--primary)" }}
-                      >
-                        <Ic.Pdf />
-                      </div>
-                      <div className="flex-1-min-0">
-                        <div style={{ fontWeight: 600, fontSize: 14 }}>
-                          {displayDocTitle(d, t)}
-                        </div>
-                        {d.description ? (
-                          <div
-                            className="text-muted-sm"
-                            style={{ marginTop: 4, lineHeight: 1.4 }}
-                          >
-                            {d.description}
-                          </div>
-                        ) : null}
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "var(--muted-2)",
-                            marginTop: 6,
-                            fontWeight: 500,
-                          }}
-                        >
-                          {displayDocCategory(d.category, t)} ·{" "}
-                          {displayDocScope(d.scope, t)} · {d.version}
-                        </div>
-                    <div
-                      className="mono infopoint-meta-datetime"
-                      style={{ marginTop: 4 }}
-                    >
-                      {d.size ? `${d.size} · ` : ""}
-                      {F().formatDateTime(d.updatedAt)}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button
-                      type="button"
-                      className="btn icon sm touch-target"
-                      style={{
-                        background: "var(--paper-2)",
-                        border: "1px solid var(--line)",
-                      }}
-                      onClick={() => {
-                        const r = store.getInfopointDocumentPreview(
-                          d.id,
-                          DRIVER_ACCESS,
-                        );
-                        if (r.ok) setDocPreview(r.preview);
-                      }}
-                      title={t("view")}
-                      aria-label={`${t("view")}: ${d.title}`}
-                    >
-                      <Ic.Eye />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn icon sm touch-target"
-                      style={{
-                        background: "var(--paper-2)",
-                        border: "1px solid var(--line)",
-                      }}
-                      onClick={() =>
-                        store.downloadInfopointDocument(d.id, DRIVER_ACCESS)
-                      }
-                      title={t("download")}
-                      aria-label={`${t("download")}: ${d.title}`}
-                    >
-                      <Ic.Down />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div
-              className="dash-area"
-              style={{
-                marginTop: 16,
-                fontFamily: "var(--font-sans)",
-                fontSize: 12,
-                letterSpacing: 0,
-                textTransform: "none",
-                borderRadius: 12,
-                padding: 12,
-              }}
-            >
-              {t("emergencyDispatchNotice")}
-            </div>
-          </>
-        ) : paneId === "help" ? (
-          <HelpSupportContent />
-        ) : (
-          <>
-            {news.length === 0 ? (
-              <div
-                className="dash-area"
-                style={{ padding: 28, textAlign: "center", borderRadius: 16 }}
+          <div className="myjobs-tabs-slider infopoint-tabs-slider">
+            {[
+              ["documents", t("infopointDocsTab")],
+              ["news", t("infopointNewsTab"), unreadCount],
+              ["help", t("infopointHelpTab")],
+            ].map(([id, lbl, n]) => (
+              <button
+                key={id}
+                type="button"
+                className={`myjobs-tab-pill ${subTab === id ? "active" : ""}`}
+                onClick={() => setSubTab(id)}
               >
-                <div style={{ fontWeight: 600 }}>{t("infopointNewsEmpty")}</div>
-                <div className="infopoint-empty-hint">
-                  {t("infopointNewsAdminHint")}
-                </div>
-              </div>
-            ) : (
-              <div className="infopoint-card">
-                {/* Title, date and read state only — the message body lives on
-                    its own page, so nothing here is truncated or expandable. */}
-                {news.map((n, index) => {
-                  const unread = !n.readBy.includes(readerId);
-                  return (
-                    <button
-                      key={n.id}
-                      type="button"
-                      className={
-                        "infopoint-news-row" + (index < 4 ? " list-enter" : "")
-                      }
-                      style={
-                        index < 4 ? { ["--list-enter-i"]: index } : undefined
-                      }
-                      onClick={() => openNews(n)}
-                      aria-label={
-                        unread
-                          ? `${t("infopointNewsUnread")}: ${displayNewsTitle(n, t)}`
-                          : `${t("infopointNewsRead")}: ${displayNewsTitle(n, t)}`
-                      }
+                <span>{lbl}</span>
+                {id === "news" && n > 0 ? (
+                  <span className="pill-badge">{n}</span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+
+          {/* Swipeable tab content — drag left/right to switch tabs */}
+          <SwipeViews
+            index={INFO_TABS.indexOf(subTab)}
+            count={INFO_TABS.length}
+            onIndexChange={(i) => setSubTab(INFO_TABS[i])}
+            style={{ flex: 1, minHeight: 0, background: "var(--paper-2)" }}
+          >
+            {INFO_TABS.map((paneId) => (
+              <div
+                key={paneId}
+                className="swipe-pane-body"
+                style={{ padding: "16px 20px 24px" }}
+              >
+                {paneId === "documents" ? (
+                  <>
+                    <div className="infopoint-card">
+                      {docs.map((d, index) => (
+                        <div
+                          key={d.id}
+                          className={
+                            "infopoint-doc-row" +
+                            (index < 4 ? " list-enter" : "")
+                          }
+                          style={
+                            index < 4
+                              ? { ["--list-enter-i"]: index }
+                              : undefined
+                          }
+                        >
+                          <div
+                            className="infopoint-news-icon read"
+                            style={{ color: "var(--primary)" }}
+                          >
+                            <Ic.Pdf />
+                          </div>
+                          <div className="flex-1-min-0">
+                            <div style={{ fontWeight: 600, fontSize: 14 }}>
+                              {displayDocTitle(d, t)}
+                            </div>
+                            {d.description ? (
+                              <div
+                                className="text-muted-sm"
+                                style={{ marginTop: 4, lineHeight: 1.4 }}
+                              >
+                                {d.description}
+                              </div>
+                            ) : null}
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: "var(--muted-2)",
+                                marginTop: 6,
+                                fontWeight: 500,
+                              }}
+                            >
+                              {displayDocCategory(d.category, t)} ·{" "}
+                              {displayDocScope(d.scope, t)} · {d.version}
+                            </div>
+                            <div
+                              className="mono infopoint-meta-datetime"
+                              style={{ marginTop: 4 }}
+                            >
+                              {d.size ? `${d.size} · ` : ""}
+                              {F().formatDateTime(d.updatedAt)}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button
+                              type="button"
+                              className="btn icon sm touch-target"
+                              style={{
+                                background: "var(--paper-2)",
+                                border: "1px solid var(--line)",
+                              }}
+                              onClick={() => {
+                                const r = store.getInfopointDocumentPreview(
+                                  d.id,
+                                  DRIVER_ACCESS,
+                                );
+                                if (r.ok) setDocPreview(r.preview);
+                              }}
+                              title={t("view")}
+                              aria-label={`${t("view")}: ${d.title}`}
+                            >
+                              <Ic.Eye />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn icon sm touch-target"
+                              style={{
+                                background: "var(--paper-2)",
+                                border: "1px solid var(--line)",
+                              }}
+                              onClick={() =>
+                                store.downloadInfopointDocument(
+                                  d.id,
+                                  DRIVER_ACCESS,
+                                )
+                              }
+                              title={t("download")}
+                              aria-label={`${t("download")}: ${d.title}`}
+                            >
+                              <Ic.Down />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div
+                      className="dash-area"
+                      style={{
+                        marginTop: 16,
+                        fontFamily: "var(--font-sans)",
+                        fontSize: 12,
+                        letterSpacing: 0,
+                        textTransform: "none",
+                        borderRadius: 12,
+                        padding: 12,
+                      }}
                     >
-                      <div className="infopoint-news-icon read">
-                        <Ic.Calendar />
-                        {unread ? (
-                          <span
-                            className="infopoint-news-unread-dot"
-                            aria-hidden="true"
-                          ></span>
-                        ) : null}
-                      </div>
-                      <div className="flex-1-min-0">
-                        <div
-                          className="infopoint-news-title"
-                          style={{ fontWeight: unread ? 600 : 500 }}
-                        >
-                          {displayNewsTitle(n, t)}
+                      {t("emergencyDispatchNotice")}
+                    </div>
+                  </>
+                ) : paneId === "help" ? (
+                  <HelpSupportContent />
+                ) : (
+                  <>
+                    {news.length === 0 ? (
+                      <div
+                        className="dash-area"
+                        style={{
+                          padding: 28,
+                          textAlign: "center",
+                          borderRadius: 16,
+                        }}
+                      >
+                        <div style={{ fontWeight: 600 }}>
+                          {t("infopointNewsEmpty")}
                         </div>
-                        <div
-                          className="mono infopoint-meta-datetime"
-                          style={{ marginTop: 4 }}
-                        >
-                          {F().formatDateTime(n.publishedAt)}
+                        <div className="infopoint-empty-hint">
+                          {t("infopointNewsAdminHint")}
                         </div>
                       </div>
-                      {/* Unread is marked in words as well as by the dot, so
+                    ) : (
+                      <div className="infopoint-card">
+                        {/* Title, date and read state only — the message body lives on
+                    its own page, so nothing here is truncated or expandable. */}
+                        {news.map((n, index) => {
+                          const unread = !n.readBy.includes(readerId);
+                          return (
+                            <button
+                              key={n.id}
+                              type="button"
+                              className={
+                                "infopoint-news-row" +
+                                (index < 4 ? " list-enter" : "")
+                              }
+                              style={
+                                index < 4
+                                  ? { ["--list-enter-i"]: index }
+                                  : undefined
+                              }
+                              onClick={() => openNews(n)}
+                              aria-label={
+                                unread
+                                  ? `${t("infopointNewsUnread")}: ${displayNewsTitle(n, t)}`
+                                  : `${t("infopointNewsRead")}: ${displayNewsTitle(n, t)}`
+                              }
+                            >
+                              <div className="infopoint-news-icon read">
+                                <Ic.Calendar />
+                                {unread ? (
+                                  <span
+                                    className="infopoint-news-unread-dot"
+                                    aria-hidden="true"
+                                  ></span>
+                                ) : null}
+                              </div>
+                              <div className="flex-1-min-0">
+                                <div
+                                  className="infopoint-news-title"
+                                  style={{ fontWeight: unread ? 600 : 500 }}
+                                >
+                                  {displayNewsTitle(n, t)}
+                                </div>
+                                <div
+                                  className="mono infopoint-meta-datetime"
+                                  style={{ marginTop: 4 }}
+                                >
+                                  {F().formatDateTime(n.publishedAt)}
+                                </div>
+                              </div>
+                              {/* Unread is marked in words as well as by the dot, so
                           it never depends on colour alone. A read message
                           carries no badge — the state is still explicit in the
                           row's accessible name above. */}
-                      {unread ? (
-                        <span className="infopoint-news-state">
-                          {t("infopointNewsUnread")}
-                        </span>
-                      ) : null}
-                      <span
-                        className="infopoint-news-chev"
-                        aria-hidden="true"
-                      >
-                        <Ic.Chev />
-                      </span>
-                    </button>
-                  );
-                })}
+                              {unread ? (
+                                <span className="infopoint-news-state">
+                                  {t("infopointNewsUnread")}
+                                </span>
+                              ) : null}
+                              <span
+                                className="infopoint-news-chev"
+                                aria-hidden="true"
+                              >
+                                <Ic.Chev />
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-            )}
-          </>
-        )}
-      </div>
-    ))}
-  </SwipeViews>
-</>
-)}
-</div>
-);
+            ))}
+          </SwipeViews>
+        </>
+      )}
+    </div>
+  );
 };
 
 const InfoPaneFull = Infopoint;

@@ -592,8 +592,8 @@ if (!process.exitCode) {
 
   const readiness = [
     [
-      /--brand-accent:\s*#6f29ff/i.test(css),
-      "Farbgebung --brand-accent #6F29FF in styles.css",
+      /--brand-accent:\s*#000000/i.test(css),
+      "Farbgebung --brand-accent #000000 in styles.css",
     ],
     [
       /--st-empty-run:\s*#9333ea/i.test(css),

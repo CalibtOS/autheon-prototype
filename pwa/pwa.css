@@ -13,10 +13,34 @@
      ≥ 1536px   large desktop   — centered 720px phone-column preview
    =============================================================== */
 
+/* Match FE DriverShell: shell ground = canvas / surface-muted (#F5F5F7).
+   CRITICAL: do NOT use position:fixed for the main shell. With
+   apple-mobile-web-app-status-bar-style=black-translucent, iOS only composites
+   in-flow (or root) backgrounds under the Island. A fixed shell leaves that
+   band unpainted → solid black, while FE's in-flow 100dvh shell matches. */
+html.pwa-page,
 body.pwa-page {
   margin: 0;
-  background: var(--paper);
+  min-height: 100%;
+  min-height: 100dvh;
+  height: 100%;
+  background: var(--canvas);
   overscroll-behavior-y: none;
+}
+html.pwa-page {
+  background: var(--canvas);
+}
+body.pwa-page {
+  display: flex;
+  flex-direction: column;
+}
+body.pwa-page #root {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  min-height: 100dvh;
+  background: var(--canvas);
 }
 
 /* Install / preview chrome — hidden when launched as installed app */
@@ -123,30 +147,32 @@ html.pwa-standalone .pwa-ios-sheet {
 
 /* ---- Frame neutralization -------------------------------------- */
 .phone-shell.pwa-viewport {
-  --pwa-chrome-offset: 52px;
-  position: fixed;
-  top: var(--pwa-chrome-offset);
-  top: max(
-    var(--pwa-chrome-offset),
-    calc(42px + env(safe-area-inset-top, 0px))
-  );
-  left: 0;
-  right: 0;
-  height: calc(100vh - var(--pwa-chrome-offset));
-  height: calc(
-    100dvh - max(var(--pwa-chrome-offset), calc(42px + env(safe-area-inset-top, 0px)))
-  );
+  /* In-flow full viewport — same model as FE DriverShell (h-dvh, not fixed). */
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  min-height: 100dvh;
+  max-height: 100dvh;
   display: grid;
   place-items: stretch;
   padding: 0;
   overflow: hidden;
   background: var(--canvas);
+  box-sizing: border-box;
 }
 
-html.pwa-standalone .phone-shell.pwa-viewport,
+/* Browser preview: fixed install bar overlays the top; keep content clear. */
+body.pwa-page:not(.pwa-standalone) .phone-shell.pwa-viewport {
+  padding-top: max(52px, calc(42px + env(safe-area-inset-top, 0px)));
+}
+
+html.pwa-standalone body.pwa-page .phone-shell.pwa-viewport,
 body.pwa-standalone .phone-shell.pwa-viewport {
-  top: 0;
-  height: 100vh;
+  padding-top: 0;
+  min-height: 100dvh;
+  max-height: 100dvh;
   height: 100dvh;
 }
 .phone-shell.pwa-viewport .phone {
@@ -157,11 +183,39 @@ body.pwa-standalone .phone-shell.pwa-viewport {
   border: 0;
   border-radius: 0;
   box-shadow: none;
+  background: var(--canvas);
 }
 .phone-shell.pwa-viewport .phone-screen {
   /* Real device safe areas replace the mockup status bar (44px). */
   --phone-chrome-top: env(safe-area-inset-top, 0px);
   padding-top: env(safe-area-inset-top, 0px);
+  /* Same ground as FE bg-surface-muted — fills the Island / status-bar band. */
+  background: var(--canvas);
+}
+
+/*
+  Full-screen overlays (document preview, notifications) must cover the entire
+  .phone-screen — including the safe-area padding band. Insetting them with
+  --phone-chrome-* leaves a strip of the previous screen visible (reported on
+  iPhone for Infopoint + order PDFs) and double-counts bottom inset on the
+  Download/Share/Print bar. Safe-area is applied on the overlay chrome instead.
+*/
+.phone-shell.pwa-viewport .docview-panel,
+.phone-shell.pwa-viewport .notifications-dropdown {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+.phone-shell.pwa-viewport .docview-head {
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+}
+.phone-shell.pwa-viewport .notifications-dropdown-header {
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+}
+/* Panel is already bottom:0; keep a single home-indicator pad on the toolbar. */
+.phone-shell.pwa-viewport .docview-actions {
+  padding-bottom: max(12px, calc(12px + env(safe-area-inset-bottom, 0px)));
 }
 
 /* ---- Bottom navigation & sheets vs. home indicator ------------- */
