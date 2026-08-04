@@ -13,13 +13,20 @@
      ≥ 1536px   large desktop   — centered 720px phone-column preview
    =============================================================== */
 
-/* Shell + document fill use --paper (--brand-surface). theme-color and the
-   Island/status-bar region must match this, not --canvas / --brand-canvas. */
+/* Match FE DriverShell: shell ground = canvas / surface-muted (#F5F5F7).
+   black-translucent shows whatever is painted at y=0 — if html/body height
+   collapses around a position:fixed shell, iOS paints black in the Island band. */
 html.pwa-page,
 body.pwa-page {
   margin: 0;
-  background: var(--paper);
+  min-height: 100%;
+  min-height: 100dvh;
+  background: var(--canvas);
   overscroll-behavior-y: none;
+}
+html.pwa-page {
+  /* Root canvas must cover the viewport even when body only hosts fixed UI. */
+  background: var(--canvas);
 }
 
 /* Install / preview chrome — hidden when launched as installed app */
@@ -143,7 +150,7 @@ html.pwa-standalone .pwa-ios-sheet {
   place-items: stretch;
   padding: 0;
   overflow: hidden;
-  background: var(--paper);
+  background: var(--canvas);
 }
 
 html.pwa-standalone .phone-shell.pwa-viewport,
@@ -160,11 +167,14 @@ body.pwa-standalone .phone-shell.pwa-viewport {
   border: 0;
   border-radius: 0;
   box-shadow: none;
+  background: var(--canvas);
 }
 .phone-shell.pwa-viewport .phone-screen {
   /* Real device safe areas replace the mockup status bar (44px). */
   --phone-chrome-top: env(safe-area-inset-top, 0px);
   padding-top: env(safe-area-inset-top, 0px);
+  /* Same ground as FE bg-surface-muted — fills the Island / status-bar band. */
+  background: var(--canvas);
 }
 
 /*

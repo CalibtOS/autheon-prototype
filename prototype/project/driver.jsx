@@ -7342,15 +7342,17 @@ function applyAppTheme(theme) {
   } catch (_) {
     /* no-op */
   }
-  // Match the painted phone-screen / PWA shell (--paper → --brand-surface),
-  // not --brand-canvas. Using canvas made the Island/status-bar strip disagree
-  // with the app surface after theme sync landed.
-  const surface = getComputedStyle(document.documentElement)
-    .getPropertyValue("--brand-surface")
+  const isPwaPage = document.body?.classList?.contains("pwa-page");
+  // PWA / FE DriverShell paint canvas (surface-muted #F5F5F7). Using surface
+  // white left a black Island band under black-translucent when the fixed
+  // shell didn't fill the root canvas.
+  const colorVar = isPwaPage ? "--brand-canvas" : "--brand-surface";
+  const chrome = getComputedStyle(document.documentElement)
+    .getPropertyValue(colorVar)
     .trim();
-  if (surface) {
+  if (chrome) {
     document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
-      meta.setAttribute("content", surface);
+      meta.setAttribute("content", chrome);
       meta.removeAttribute("media");
     });
   }
@@ -7358,10 +7360,6 @@ function applyAppTheme(theme) {
     'meta[name="apple-mobile-web-app-status-bar-style"]',
   );
   if (appleStatus) {
-    const isPwaPage = document.body?.classList?.contains("pwa-page");
-    // black-translucent + viewport-fit=cover lets .phone-screen's padding-top
-    // safe-area paint under the Island; "default" draws an opaque system bar
-    // that drifts from the shell when theme-color ≠ surface.
     appleStatus.setAttribute(
       "content",
       isPwaPage || theme === "dark" ? "black-translucent" : "default",
