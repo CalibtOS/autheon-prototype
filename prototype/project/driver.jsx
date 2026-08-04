@@ -7343,18 +7343,11 @@ function applyAppTheme(theme) {
     /* no-op */
   }
   const isPwaPage = document.body?.classList?.contains("pwa-page");
-  // PWA must match FE DriverShell (surface-muted / canvas). Fall back to hex if
-  // custom props are not resolved yet (early call before styles.css applies).
-  const colorVar = isPwaPage ? "--brand-canvas" : "--brand-surface";
-  const fallback = isPwaPage
-    ? theme === "dark"
-      ? "#1C1C1E"
-      : "#F5F5F7"
-    : theme === "dark"
-      ? "#2C2C2E"
-      : "#FFFFFF";
+  // Primary PWA headers pull --paper into the safe-area band, so system chrome
+  // tracks --brand-surface (same as header), not canvas list ground.
+  const fallback = theme === "dark" ? "#2C2C2E" : "#FFFFFF";
   const resolved = getComputedStyle(document.documentElement)
-    .getPropertyValue(colorVar)
+    .getPropertyValue("--brand-surface")
     .trim();
   const chrome =
     resolved && !resolved.startsWith("var(") ? resolved : fallback;
