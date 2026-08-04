@@ -40,9 +40,17 @@ limits, without inventing a server:
   configured numbers and starts at zero for a report still being composed.
 - Seed tour `A-2026-00845` carries a ~40 MB accepted document so a nearly full
   allowance is demoable without editing settings first.
-- Store-level proof:
-  `tests/regression/job-attachment-limits.unit.spec.ts` (drives
-  `window.AuthStore` in the page realm).
+- The platform ceiling and the area-total bound are enforced in
+  `setDriverUploadLimits` itself, not only in the admin form: a configured
+  per-file limit can never be raised above the ceiling, so the backstop keeps
+  its meaning whoever writes the value.
+- Proof:
+  `tests/regression/job-attachment-limits.unit.spec.ts` for the arithmetic
+  (drives `window.AuthStore` in the page realm) and
+  `tests/regression/job-attachment-limits.integration.spec.ts` for the screens
+  — the staged sheet's marks and gating, the amount walk, a real mid-walk size
+  refusal, the admin card reaching the driver without a reload, and the
+  evidence lock. Neither takes a screenshot, so both gate on a fresh clone.
 
 Vocabulary follows [`DOMAIN.md`](../../prototype/project/DOMAIN.md): **tour
 document**, **upload area**, **allowance**, **platform ceiling**,
@@ -115,6 +123,19 @@ Recorded so they are not treated as regressions:
    `assertTourDocumentAttachment`. The driver then sees remaining allowance
    clamped at **zero**, never a negative figure, and cannot add more of their
    own until something live is removed or replaced with a smaller file.
+3. **The store's own size refusals are near-unreachable from the staged
+   sheet.** The sheet runs the same arithmetic as the store, so the two cannot
+   disagree while it is on screen — Upload is held back instead of a refusal
+   being raised. `file_too_large` / `allowance_exhausted` therefore surface
+   only when the rules change under a driver who is already mid-batch (an
+   administrator saving a lower limit during the amount walk), which the
+   walkthrough shows. In the product the same copy is reached more often
+   because the server is authoritative there. The strings are the product's, so
+   wording feedback still lands upstream either way.
+4. **One prototype-only string.** `emptyRunSlideLockedEvidence` — the product's
+   empty-run sheet submits with a button and has no locked-slide copy to lift.
+   Written here in EN and DE so the slide names the evidence rather than the
+   character minimum a driver has already satisfied.
 
 ---
 

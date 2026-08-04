@@ -213,22 +213,23 @@ async function main() {
   await page.waitForTimeout(400);
   await shot(page, '01c-admin-limits-saved', card);
 
-  // Restore demo-friendly limits for driver walk (25/50) then tune per step.
-  frame = await getFrame(page);
-  await frame.evaluate(() => {
-    window.AuthStore.setDriverUploadLimits({ maxFileMb: 10, maxTotalMb: 50 });
-  });
-
   // ── 2. Mixed batch with oversized file ──────────────────────────────
-  // Tour 0843 is accepted with little/no seed docs — room for a mixed batch.
-  // Prefer 0845 for nearly-full later; use 0843 here if it exists for the driver.
+  // Set through the admin card above, not injected: 10 MB per file is what an
+  // administrator just saved, and the driver screens below read it with no
+  // reload. Raise only the area total, so 0845's seeded ~40 MB leaves room for
+  // a mixed batch — the per-file mark is what this shot is about.
+  await openAdminUploadLimits(page);
+  frame = await getFrame(page);
+  await frame.locator('#upload-limits-max-file').fill('10');
+  await frame.locator('#upload-limits-max-total').fill('100');
+  await frame
+    .locator('.upload-limits-form')
+    .getByRole('button', { name: /Save upload limits|Upload-Limits speichern/i })
+    .click();
+  await page.waitForTimeout(400);
+
   await openDriverJob(page, '0845-26');
   frame = await getFrame(page);
-  // Give 0845 headroom for the mixed-batch demo by temporarily raising total
-  // and removing nothing — instead bump total to 100 via store so used~40 leaves room.
-  await frame.evaluate(() => {
-    window.AuthStore.setDriverUploadLimits({ maxFileMb: 10, maxTotalMb: 100 });
-  });
   await startStagedBatch(page, /Other proof|Sonstiger Nachweis/i);
   await setStagedFiles(page, [
     filePayload('delivery-note.pdf', 2 * MB),
@@ -236,8 +237,6 @@ async function main() {
     filePayload('gate-photo.jpg', 1 * MB, 'image/jpeg'),
   ]);
   frame = await getFrame(page);
-  const staged = frame.locator('.staged-upload-sheet, .sheet.staged-upload-sheet, [class*="staged"]').first();
-  // Sheet uses class staged-upload-sheet on Sheet root — fall back to dialog
   const sheet = frame.locator('.sheet').filter({ hasText: /Check your selection|Auswahl prüfen/i });
   await sheet.waitFor({ state: 'visible' });
   await shot(page, '02-driver-mixed-batch-oversized', sheet);
@@ -291,34 +290,65 @@ async function main() {
     .click();
   await page.waitForTimeout(200);
 
-  // ── 5. Nearly-full tour: zero remaining + exhausted refusal ─────────
+  // ── 4b. A real size refusal, mid-walk ───────────────────────────────
+  // The staged sheet pre-checks size, so the store's per-file size refusal is
+  // only reachable when the tour's rules change under the driver — here, an
+  // administrator lowering the per-file limit while a receipt batch is being
+  // walked. Nothing is faked: the store refuses, and the walk hands the driver
+  // back to the list with the mark on the file that caused it.
+  await startStagedBatch(page, /Fuel receipt|Tankbeleg/i);
+  await setStagedFiles(page, [
+    filePayload('fuel-big.pdf', 8 * MB),
+    filePayload('fuel-small.pdf', 0.2 * MB),
+  ]);
   frame = await getFrame(page);
-  // Restore defaults then set total at/under seed usage so remaining is 0.
+  await frame
+    .locator('.sheet')
+    .filter({ hasText: /Check your selection|Auswahl prüfen/i })
+    .getByRole('button', { name: /^Upload$|^Hochladen$/i })
+    .click();
+  await page.waitForTimeout(400);
+  // The shell shows one surface at a time and switching unmounts the driver,
+  // taking the in-flight batch with it. So the administrator's save is made
+  // here through the same store call the admin card's Save button makes —
+  // which is exactly the real situation: a second administrator, in their own
+  // session, lowering the limit while this driver is mid-walk.
+  frame = await getFrame(page);
   await frame.evaluate(() => {
-    window.AuthStore.setDriverUploadLimits({ maxFileMb: 25, maxTotalMb: 50 });
-    const jobId = 'A-2026-00845';
-    const used = window.AuthStore.tourDocumentsUsageBytes(jobId);
-    const totalMb = Math.max(1, Math.floor(used / (1024 * 1024)));
-    // Cap total at current used MB so remaining clamps to 0.
-    window.AuthStore.setDriverUploadLimits({
-      maxFileMb: 25,
-      maxTotalMb: totalMb,
-    });
-    return {
-      used,
-      remaining: window.AuthStore.tourDocumentsRemainingBytes(jobId),
-      limits: window.AuthStore.getDriverUploadLimits(),
-    };
+    window.AuthStore.setDriverUploadLimits({ maxFileMb: 5 });
   });
-  // Back out and re-open so usage figure refreshes cleanly
-  const back = frame.locator('.phone-shell').getByRole('button', { name: /Back|Zurück/i }).first();
-  if (await back.count()) {
-    await back.click();
-    await page.waitForTimeout(300);
-  }
+  await page.waitForTimeout(200);
+  await frame.locator('#td-net').fill('100');
+  await frame.locator('#td-tax').fill('19');
+  await frame.locator('#td-gross').fill('119');
+  await frame
+    .getByRole('button', { name: /Save and upload|Speichern und hochladen/i })
+    .click();
+  await page.waitForTimeout(500);
+  const sheet4b = frame
+    .locator('.sheet')
+    .filter({ hasText: /Check your selection|Auswahl prüfen/i });
+  await sheet4b.waitFor({ state: 'visible' });
+  await shot(page, '04b-driver-size-refusal-mid-walk', sheet4b);
+  await sheet4b.getByRole('button', { name: /^Cancel$|^Abbrechen$/i }).click();
+  await page.waitForTimeout(200);
+
+  // ── 5. Nearly-full tour: zero remaining + exhausted refusal ─────────
+  // Defaults restored through the admin card. The point of the ~40 MB seeded
+  // document is that this state needs NO settings edit: 40.3 MB used of 50,
+  // and a 10 MB pick takes the tour to zero remaining.
+  await openAdminUploadLimits(page);
+  frame = await getFrame(page);
+  await frame.locator('#upload-limits-max-file').fill('25');
+  await frame.locator('#upload-limits-max-total').fill('50');
+  await frame
+    .locator('.upload-limits-form')
+    .getByRole('button', { name: /Save upload limits|Upload-Limits speichern/i })
+    .click();
+  await page.waitForTimeout(300);
   await openDriverJob(page, '0845-26');
   await startStagedBatch(page, /Other proof|Sonstiger Nachweis/i);
-  await setStagedFiles(page, [filePayload('one-more.pdf', 1 * MB)]);
+  await setStagedFiles(page, [filePayload('yard-scan.pdf', 10 * MB)]);
   frame = await getFrame(page);
   const sheet5 = frame.locator('.sheet').filter({ hasText: /Check your selection|Auswahl prüfen/i });
   await sheet5.waitFor({ state: 'visible' });
@@ -332,12 +362,10 @@ async function main() {
   await page.waitForTimeout(200);
 
   // ── 6. Amount walk across a batch of receipts ───────────────────────
+  // Still on the 25 / 50 the admin card saved above. Accepted tour 0845 exposes
+  // the tour-documents card (performed tours move uploads to the My documents
+  // tab). Same TourDocumentUploadFlow either way.
   frame = await getFrame(page);
-  await frame.evaluate(() => {
-    window.AuthStore.setDriverUploadLimits({ maxFileMb: 25, maxTotalMb: 50 });
-  });
-  // Accepted tour 0845 exposes the tour-documents card (performed tours move
-  // uploads to the My documents tab). Same TourDocumentUploadFlow either way.
   const back2 = frame.locator('.phone-shell').getByRole('button', { name: /Back|Zurück/i }).first();
   if (await back2.count()) await back2.click();
   await page.waitForTimeout(300);
@@ -386,11 +414,19 @@ async function main() {
   }
 
   // ── 7. Evidence blocked at submit on problem report ─────────────────
+  // 5 MB per file, saved from the console, so the shot shows the driver
+  // reading the administrator's number rather than an injected one.
+  await openAdminUploadLimits(page);
   frame = await getFrame(page);
-  await frame.evaluate(() => {
-    window.AuthStore.setDriverUploadLimits({ maxFileMb: 5, maxTotalMb: 10 });
-  });
-  // Already on tour 0845 detail after cancelling the amount batch.
+  await frame.locator('#upload-limits-max-file').fill('5');
+  await frame.locator('#upload-limits-max-total').fill('10');
+  await frame
+    .locator('.upload-limits-form')
+    .getByRole('button', { name: /Save upload limits|Upload-Limits speichern/i })
+    .click();
+  await page.waitForTimeout(300);
+  await openDriverJob(page, '0845-26');
+  frame = await getFrame(page);
   await frame.getByRole('button', { name: /Report problem|Problem melden/i }).click();
   await page.waitForTimeout(400);
   // Empty-run path (carries evidence)
