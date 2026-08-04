@@ -342,7 +342,9 @@ const PolicyDisclosure = ({ introKey = "partnerTermsApply" }) => {
 
 const tourDocUploadErrorMessage = (reason, t) => {
   if (reason === "invalid_type") return t("invoiceUploadInvalidType");
-  if (reason === "file_too_large") return t("invoiceUploadTooLarge");
+  if (reason === "file_too_large") return t("stagedFailureFileTooLarge");
+  if (reason === "allowance_exhausted")
+    return t("stagedFailureQuotaExceeded");
   if (reason === "driver_restricted") return t("invoiceUploadRestricted");
   if (reason === "job_not_performed" || reason === "job_not_uploadable")
     return t("tourDocRequiresPerformed");
@@ -354,6 +356,82 @@ const tourDocUploadErrorMessage = (reason, t) => {
   if (reason === "official_doc_not_replaceable")
     return t("tourDocOfficialNotReplaceable");
   return t("invoiceUploadTourRequired");
+};
+
+const STAGED_BYTES_PER_MB = 1024 * 1024;
+
+const formatUploadMegabytes = (bytes) =>
+  (Number(bytes) / STAGED_BYTES_PER_MB).toFixed(1);
+
+/** Pre-check: this file alone is over the configured per-file limit. */
+const exceedsDocumentUploadLimit = (file, maxFileBytes) => {
+  const size = file && typeof file.size === "number" ? file.size : 0;
+  return size > maxFileBytes;
+};
+
+/**
+ * What a staged selection means for the limits in force — projected usage,
+ * remaining clamped at zero (dispatch can push a tour past its allowance),
+ * and whether either rule is already broken before a byte leaves the device.
+ */
+const summariseUploadSelection = (usedBytes, files, limits) => {
+  const selectedBytes = (files || []).reduce(
+    (total, file) => total + (typeof file.size === "number" ? file.size : 0),
+    0,
+  );
+  const projectedBytes = usedBytes + selectedBytes;
+  return {
+    selectedBytes,
+    projectedBytes,
+    remainingBytes: Math.max(0, limits.maxTotalBytes - projectedBytes),
+    exceedsTotal: projectedBytes > limits.maxTotalBytes,
+    hasOversizedFile: (files || []).some((file) =>
+      exceedsDocumentUploadLimit(file, limits.maxFileBytes),
+    ),
+  };
+};
+
+/**
+ * Map a store refusal onto the product's failure scopes. A reason that names
+ * this file continues the batch; anything that would repeat for every
+ * remaining file stops the run and leaves the rest staged and unmarked.
+ */
+const classifyStoreUploadRefusal = (reason) => {
+  if (reason === "file_too_large")
+    return { scope: "file", reason: "fileTooLarge" };
+  if (reason === "allowance_exhausted")
+    return { scope: "file", reason: "quotaExceeded" };
+  if (reason === "invalid_type")
+    return { scope: "file", reason: "unsupportedType" };
+  if (reason === "no_file" || reason === "amount_math_invalid")
+    return { scope: "file", reason: "rejected" };
+  return { scope: "batch" };
+};
+
+const stagedFailureMessage = (failureReason, t) => {
+  if (failureReason === "fileTooLarge") return t("stagedFailureFileTooLarge");
+  if (failureReason === "quotaExceeded")
+    return t("stagedFailureQuotaExceeded");
+  if (failureReason === "unsupportedType")
+    return t("stagedFailureUnsupportedType");
+  return t("stagedFailureRejected");
+};
+
+/** navigator.onLine plus online/offline events — same gate every action uses. */
+const useDriverOnline = () => {
+  const [online, setOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine !== false,
+  );
+  useEffect(() => {
+    const sync = () => setOnline(navigator.onLine !== false);
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
+  return online;
 };
 
 const jobNeedsDocCorrection = (job, store) =>
@@ -3054,7 +3132,15 @@ const UploadSourceSheet = ({ open, onClose, onTakePhoto, onChooseFile }) => {
 // Shared picker: action sheet + the two hidden inputs. Stays mounted while
 // the sheet is closed so the native picker can be opened from a ref, and
 // resets `value` on every change so re-picking the same file still fires.
-const UploadSourcePicker = ({ open, onClose, onFile, returnFocusRef }) => {
+// `multiple` is on for a new upload (the whole batch at once) and off for
+// replace (one file, immediate, no review step).
+const UploadSourcePicker = ({
+  open,
+  onClose,
+  onFiles,
+  returnFocusRef,
+  multiple = false,
+}) => {
   const photoInputRef = useRef(null);
   const fileInputRef = useRef(null);
   const busyRef = useRef(false);
@@ -3071,15 +3157,16 @@ const UploadSourcePicker = ({ open, onClose, onFile, returnFocusRef }) => {
   };
 
   const onChange = (e) => {
-    const f = e.target.files?.[0] || null;
+    const list = e.target.files;
+    const picked = list ? Array.from(list) : [];
     e.target.value = "";
     // A dismissed picker usually fires no event at all; if it does, treat it
     // as a no-op — never create an empty attachment or an upload error.
-    if (!f) {
+    if (picked.length === 0) {
       returnFocusRef?.current?.focus?.();
       return;
     }
-    onFile?.(f);
+    onFiles?.(picked);
   };
 
   const dismiss = () => {
@@ -3100,6 +3187,7 @@ const UploadSourcePicker = ({ open, onClose, onFile, returnFocusRef }) => {
         type="file"
         accept={DOC_PHOTO_ACCEPT}
         capture="environment"
+        multiple={multiple || undefined}
         className="hidden"
         onChange={onChange}
       />
@@ -3107,6 +3195,7 @@ const UploadSourcePicker = ({ open, onClose, onFile, returnFocusRef }) => {
         ref={fileInputRef}
         type="file"
         accept={DOC_FILE_ACCEPT}
+        multiple={multiple || undefined}
         className="hidden"
         onChange={onChange}
       />
@@ -3422,14 +3511,165 @@ const TourDocAmountFormSheet = ({
   );
 };
 
-// One attach-a-tour-document sequence — category → source → optional amount
-// form → write — used by the tour-detail documents card, the performed-tour
-// documents tab, and the mark-performed success screen.
+// Staged review between the file picker and the upload. The allowance figure
+// lives HERE and nowhere else — a driver who never approaches the limit never
+// learns one exists. The documents list itself is unchanged.
+const DocumentUploadStagingSheet = ({
+  open,
+  documentType,
+  files,
+  limits,
+  usedBytes,
+  isUploading,
+  isOffline,
+  errorMessage,
+  onRemoveFile,
+  onCancel,
+  onUpload,
+}) => {
+  const { t } = useI18n();
+  if (!open) return null;
+
+  const summary = summariseUploadSelection(
+    usedBytes,
+    (files || []).map((staged) => staged.file),
+    limits,
+  );
+  const blocked = summary.hasOversizedFile || summary.exceedsTotal;
+  const uploadDisabled =
+    blocked || files.length === 0 || isUploading || isOffline;
+  const hasFailures = files.some((staged) => staged.failure != null);
+
+  return (
+    <Sheet
+      open={open}
+      onClose={() => {
+        if (!isUploading) onCancel?.();
+      }}
+      title={t("stagedTitle")}
+      centered
+      className="staged-upload-sheet"
+      footer={
+        <>
+          <button
+            type="button"
+            className="btn"
+            disabled={isUploading}
+            onClick={onCancel}
+          >
+            {t("cancel")}
+          </button>
+          <button
+            type="button"
+            className="btn primary"
+            disabled={uploadDisabled}
+            onClick={onUpload}
+          >
+            {hasFailures ? t("stagedRetry") : t("stagedUpload")}
+          </button>
+        </>
+      }
+    >
+      {documentType ? (
+        <p className="staged-upload-category">
+          {t("stagedCategory", {
+            category: displayTourDocType(documentType, t),
+          })}
+        </p>
+      ) : null}
+
+      <p className="staged-upload-usage" role="status">
+        {t("stagedUsage", {
+          used: formatUploadMegabytes(summary.projectedBytes),
+          total: limits.maxTotalMb,
+          remaining: formatUploadMegabytes(summary.remainingBytes),
+        })}
+      </p>
+
+      <ul className="staged-upload-list">
+        {files.map(({ file, failure }, index) => {
+          const oversized = exceedsDocumentUploadLimit(
+            file,
+            limits.maxFileBytes,
+          );
+          return (
+            <li
+              key={`${file.name}-${String(file.size)}-${String(index)}`}
+              className="staged-upload-row"
+            >
+              <div className="staged-upload-row-main">
+                <p className="staged-upload-name" title={file.name}>
+                  {file.name}
+                </p>
+                <p className="staged-upload-size">
+                  {t("stagedFileSize", {
+                    size: formatUploadMegabytes(file.size),
+                  })}
+                </p>
+                {oversized ? (
+                  <p className="staged-upload-warn">
+                    {t("stagedFileTooLarge", { maxMb: limits.maxFileMb })}
+                  </p>
+                ) : null}
+                {failure ? (
+                  <p className="staged-upload-fail">
+                    {stagedFailureMessage(failure, t)}
+                  </p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className="staged-upload-remove touch-target"
+                disabled={isUploading}
+                aria-label={t("stagedRemoveFile", { name: file.name })}
+                onClick={() => onRemoveFile(index)}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      {summary.exceedsTotal ? (
+        <InlineAlert tone="warn" message={t("stagedTotalExceeded")} />
+      ) : null}
+
+      {errorMessage ? (
+        <InlineAlert tone="error" message={errorMessage} />
+      ) : null}
+
+      {isOffline ? (
+        <p className="staged-upload-offline">{t("documentsOfflineHint")}</p>
+      ) : null}
+    </Sheet>
+  );
+};
+
+// One attach-a-tour-document sequence — category → source → staged review →
+// sequential write — used by the tour-detail documents card, the
+// performed-tour documents tab, and the mark-performed success screen.
 //
 // Site differences preserved via props (do not unify silently):
 //   gateUpload  — tour-detail card re-checks canDriverUploadTourDocument on
 //                 category pick / replace; the other two sites do not.
 //   allowReplace — only the tour-detail card exposes replace.
+//
+// Amounts-per-receipt walk (ticket 05) runs off the confirmed batch; until
+// then, categories that ask for amounts still upload without the form —
+// amounts are optional in the store. Replace stays a single-file immediate
+// upload with no staging.
 const TourDocumentUploadFlow = ({
   jobId,
   returnFocusRef,
@@ -3441,13 +3681,17 @@ const TourDocumentUploadFlow = ({
 }) => {
   const { t } = useI18n();
   const store = useAuthStore();
+  const isOnline = useDriverOnline();
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(false);
   const [pendingType, setPendingType] = useState(null);
   const [replaceDocId, setReplaceDocId] = useState(null);
-  const [amountUpload, setAmountUpload] = useState(null);
-  const [amountForm, setAmountForm] = useState(null);
-  const [amountErr, setAmountErr] = useState("");
+  const [stagedType, setStagedType] = useState(null);
+  const [stagedFiles, setStagedFiles] = useState([]);
+  const [stagedError, setStagedError] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  // idPrefix reserved for the ticket-05 amount-form walk (input ids).
+  void idPrefix;
 
   const showUploadError = (reason) => {
     onFeedback?.({
@@ -3483,103 +3727,133 @@ const TourDocumentUploadFlow = ({
         return;
       }
       onFeedback?.(null);
-      setReplaceDocId(null);
     }
+    setReplaceDocId(null);
     setPendingType(documentType);
     setCategoryOpen(false);
     setSourceOpen(true);
   };
 
-  const finishUpload = (f, documentType, extra = {}) => {
-    const r = store.addTourDocument(f, { jobId, documentType, ...extra });
-    if (!r.ok) {
-      if (r.reason === "amount_math_invalid") {
-        setAmountErr(
-          t("tourDocAmountMathError", {
-            expected:
-              r.expectedGross != null ? r.expectedGross.toFixed(2) : "?",
-          }),
-        );
-        return false;
-      }
-      showUploadError(r.reason);
-      return true;
-    }
-    onFeedback?.({ tone: "success", message: t("tourDocUploadSuccess") });
-    return true;
+  const cancelStagedBatch = () => {
+    if (isUploading) return;
+    setStagedType(null);
+    setStagedFiles([]);
+    setStagedError(null);
   };
 
-  const onPick = (f) => {
-    if (!f) return;
+  const onFilesPicked = (picked) => {
+    if (!picked || picked.length === 0) return;
+
+    // Replace: one file, immediate, no review step.
     if (allowReplace && replaceDocId) {
-      const r = store.replaceTourDocument(replaceDocId, f);
+      const f = picked[0];
+      const replacingId = replaceDocId;
       setReplaceDocId(null);
+      const r = store.replaceTourDocument(replacingId, f);
       if (!r.ok) showUploadError(r.reason);
       else
         onFeedback?.({ tone: "success", message: t("tourDocUploadSuccess") });
       return;
     }
+
     if (!pendingType) return;
-    if (store.tourDocumentRequiresAmountMetadata(pendingType)) {
-      setAmountUpload(f);
-      setAmountForm(emptyTourDocAmountForm(pendingType));
-      setAmountErr("");
-      setPendingType(null);
-      return;
-    }
-    finishUpload(f, pendingType);
+    const category = pendingType;
     setPendingType(null);
+    setStagedType(category);
+    setStagedFiles(picked.map((file) => ({ file, failure: null })));
+    setStagedError(null);
   };
 
-  const closeAmountUpload = () => {
-    setAmountUpload(null);
-    setAmountForm(null);
-    setAmountErr("");
-  };
+  /**
+   * One write per file, in sequence. A refusal that names the file marks it
+   * and the run continues; a failure that would repeat for every remaining
+   * file stops the run and leaves the rest staged and unmarked. Files that
+   * land leave the list, so running again is the retry.
+   */
+  const runStagedUpload = () => {
+    if (!stagedType || !isOnline || stagedFiles.length === 0 || isUploading)
+      return;
+    setStagedError(null);
+    setIsUploading(true);
 
-  const submitAmountUpload = () => {
-    if (!amountUpload || !amountForm) return;
-    const isInvoice = amountForm.documentType === "invoice";
-    const ok = finishUpload(amountUpload, amountForm.documentType, {
-      receiptDate: isInvoice ? "" : amountForm.receiptDate,
-      supplierInvoiceNumber: isInvoice ? amountForm.supplierInvoiceNumber : "",
-      supplierInvoiceDate: isInvoice ? amountForm.supplierInvoiceDate : "",
-      servicePeriodFrom: isInvoice ? amountForm.servicePeriodFrom : "",
-      servicePeriodTo: isInvoice ? amountForm.servicePeriodTo : "",
-      netAmount: amountForm.netAmount,
-      grossAmount: amountForm.grossAmount,
-      taxRatePercent: amountForm.taxRatePercent,
-    });
-    if (ok) closeAmountUpload();
+    // Reasons from the previous run are cleared up front.
+    const queue = stagedFiles.map(({ file }) => ({ file, failure: null }));
+    setStagedFiles(queue);
+    const failed = [];
+    const category = stagedType;
+
+    for (let index = 0; index < queue.length; index += 1) {
+      const staged = queue[index];
+      const r = store.addTourDocument(staged.file, {
+        jobId,
+        documentType: category,
+      });
+      if (!r.ok) {
+        const failure = classifyStoreUploadRefusal(r.reason);
+        if (failure.scope === "batch") {
+          setStagedFiles([...failed, ...queue.slice(index)]);
+          setStagedError(t("stagedBatchStopped"));
+          setIsUploading(false);
+          return;
+        }
+        failed.push({ file: staged.file, failure: failure.reason });
+      }
+      setStagedFiles([...failed, ...queue.slice(index + 1)]);
+    }
+
+    setIsUploading(false);
+    if (failed.length === 0) {
+      setStagedType(null);
+      setStagedFiles([]);
+      onFeedback?.({ tone: "success", message: t("tourDocUploadSuccess") });
+    }
   };
 
   if (apiRef) {
     apiRef.current = { openCategory, openReplace };
   }
 
+  const limits = store.getDriverUploadLimits();
+  // Capture usage before any mutating call in this render — the store hands
+  // out live objects; a later addTourDocument would change what we show.
+  const usedBytes = store.tourDocumentsUsageBytes(jobId);
+
   return (
     <>
       <UploadSourcePicker
         open={sourceOpen}
         onClose={() => setSourceOpen(false)}
-        onFile={onPick}
+        onFiles={onFilesPicked}
         returnFocusRef={returnFocusRef}
+        multiple={!replaceDocId}
       />
       <TourDocCategoryModal
         open={categoryOpen}
         onClose={() => setCategoryOpen(false)}
         onPick={onCategoryPick}
       />
-      {amountUpload && amountForm ? (
-        <TourDocAmountFormSheet
-          amountForm={amountForm}
-          amountErr={amountErr}
-          idPrefix={idPrefix}
-          onChange={setAmountForm}
-          onCancel={closeAmountUpload}
-          onSubmit={submitAmountUpload}
-        />
-      ) : null}
+      <DocumentUploadStagingSheet
+        open={stagedType != null && stagedFiles.length > 0}
+        documentType={stagedType}
+        files={stagedFiles}
+        limits={limits}
+        usedBytes={usedBytes}
+        isUploading={isUploading}
+        isOffline={!isOnline}
+        errorMessage={stagedError}
+        onRemoveFile={(index) => {
+          setStagedFiles((prev) => {
+            const next = prev.filter((_, i) => i !== index);
+            if (next.length === 0) {
+              setStagedType(null);
+              setStagedError(null);
+            }
+            return next;
+          });
+        }}
+        onCancel={cancelStagedBatch}
+        onUpload={runStagedUpload}
+      />
     </>
   );
 };

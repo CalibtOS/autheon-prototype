@@ -289,6 +289,31 @@ window.I18n = (() => {
       uploadSourcePhotoDesc: "Open the camera",
       uploadSourceFile: "Choose file",
       uploadSourceFileDesc: "Select a PDF or image from your device",
+      // Staged multi-select review — lifted verbatim from autheon-fe
+      // marketplace.json documents.staged ({{vars}} → {vars}).
+      stagedTitle: "Check your selection",
+      stagedCategory: "Category: {category}",
+      stagedUsage:
+        "{used} of {total} MB used · {remaining} MB left on this tour",
+      stagedFileSize: "{size} MB",
+      stagedFileTooLarge:
+        "Too large — max {maxMb} MB per file. Remove it to continue.",
+      stagedTotalExceeded:
+        "This tour has no room left for your selection. Remove a file to continue.",
+      stagedRemoveFile: "Remove {name}",
+      stagedUpload: "Upload",
+      stagedRetry: "Retry these files",
+      stagedBatchStopped:
+        "Upload stopped — the remaining files were not sent. Check your connection and try again.",
+      stagedFailureFileTooLarge:
+        "Rejected — this file is too large. Remove it or replace it with a smaller one.",
+      stagedFailureQuotaExceeded:
+        "Rejected — this tour is full. Remove a document already attached to make room.",
+      stagedFailureUnsupportedType:
+        "Rejected — this file type is not accepted. Remove it and upload a PDF or photo.",
+      stagedFailureRejected:
+        "Rejected — this file could not be read. Remove it or try again.",
+      documentsOfflineHint: "Reconnect to upload or open documents.",
       docKindPdf: "PDF document",
       docKindImage: "Image file",
       docKindFile: "File",
@@ -2399,6 +2424,32 @@ window.I18n = (() => {
       uploadSourcePhotoDesc: "Kamera öffnen",
       uploadSourceFile: "Datei auswählen",
       uploadSourceFileDesc: "PDF oder Bild vom Gerät auswählen",
+      // Staged multi-select review — lifted verbatim from autheon-fe
+      // marketplace.json documents.staged ({{vars}} → {vars}).
+      stagedTitle: "Auswahl prüfen",
+      stagedCategory: "Kategorie: {category}",
+      stagedUsage:
+        "{used} von {total} MB belegt · {remaining} MB frei auf dieser Tour",
+      stagedFileSize: "{size} MB",
+      stagedFileTooLarge:
+        "Zu groß — max. {maxMb} MB pro Datei. Zum Fortfahren entfernen.",
+      stagedTotalExceeded:
+        "Für diese Auswahl ist auf dieser Tour kein Platz mehr. Zum Fortfahren eine Datei entfernen.",
+      stagedRemoveFile: "{name} entfernen",
+      stagedUpload: "Hochladen",
+      stagedRetry: "Diese Dateien erneut senden",
+      stagedBatchStopped:
+        "Upload gestoppt — die restlichen Dateien wurden nicht gesendet. Bitte Verbindung prüfen und erneut versuchen.",
+      stagedFailureFileTooLarge:
+        "Abgelehnt — diese Datei ist zu groß. Entfernen oder durch eine kleinere ersetzen.",
+      stagedFailureQuotaExceeded:
+        "Abgelehnt — diese Tour ist voll. Ein bereits angehängtes Dokument entfernen, um Platz zu schaffen.",
+      stagedFailureUnsupportedType:
+        "Abgelehnt — dieser Dateityp wird nicht akzeptiert. Entfernen und ein PDF oder Foto hochladen.",
+      stagedFailureRejected:
+        "Abgelehnt — diese Datei konnte nicht gelesen werden. Entfernen oder erneut versuchen.",
+      documentsOfflineHint:
+        "Für Upload oder Öffnen von Dokumenten erneut verbinden.",
       docKindPdf: "PDF-Dokument",
       docKindImage: "Bilddatei",
       docKindFile: "Datei",
