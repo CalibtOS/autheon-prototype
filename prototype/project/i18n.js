@@ -506,9 +506,9 @@ window.I18n = (() => {
       adminMdrFilterAll: "All",
       adminMdrEmpty: "No requests in this filter.",
       adminMdrEmptyHint: "Try a different status filter to see other requests.",
-      adminMdrSelectTitle: "Select a change request",
-      adminMdrSelectBody:
-        "Choose a request to compare and review its values.",
+      adminMdrShowingRange: "Showing {from}-{to} of {total}",
+      adminMdrPagerPrev: "Previous",
+      adminMdrPagerNext: "Next",
       adminMdrStatusOpen: "Open",
       adminMdrStatusApproved: "Approved",
       adminMdrStatusRejected: "Rejected",
@@ -2570,9 +2570,9 @@ window.I18n = (() => {
       adminMdrEmpty: "Keine Anfragen in diesem Filter.",
       adminMdrEmptyHint:
         "Wählen Sie einen anderen Statusfilter, um weitere Anfragen zu sehen.",
-      adminMdrSelectTitle: "Änderungsantrag auswählen",
-      adminMdrSelectBody:
-        "Wählen Sie eine Anfrage aus, um die Werte zu vergleichen und zu prüfen.",
+      adminMdrShowingRange: "Zeige {from}-{to} von {total}",
+      adminMdrPagerPrev: "Zurück",
+      adminMdrPagerNext: "Weiter",
       adminMdrStatusOpen: "Offen",
       adminMdrStatusApproved: "Genehmigt",
       adminMdrStatusRejected: "Abgelehnt",

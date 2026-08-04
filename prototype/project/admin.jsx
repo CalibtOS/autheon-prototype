@@ -10747,6 +10747,122 @@ const MasterDataCompareTable = ({
   );
 };
 
+/**
+ * Compact page list, mirroring the admin app's `getPaginationItems`:
+ * `1 … 4 5 6 … 20`. Up to 7 pages every number is shown.
+ */
+const queuePageItems = (page, totalPages) => {
+  const safeTotal = Math.max(1, totalPages);
+  const current = Math.min(Math.max(1, page), safeTotal);
+  if (safeTotal <= 7) {
+    return Array.from({ length: safeTotal }, (_, i) => i + 1);
+  }
+  const items = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(safeTotal - 1, current + 1);
+  if (start > 2) items.push("ellipsis");
+  for (let p = start; p <= end; p += 1) items.push(p);
+  if (end < safeTotal - 1) items.push("ellipsis");
+  items.push(safeTotal);
+  return items;
+};
+
+/**
+ * Queue footer for the change-request list.
+ *
+ * Deliberately not `OverviewFooter`: that one is built for the full-width
+ * overview table (it never wraps, and hardcodes page buttons 1/2/3) so it looked
+ * squeezed and behaved differently inside this narrower card. This mirrors the
+ * admin app's `Pagination` — summary on the left, rows-per-page plus a windowed
+ * pager on the right — using only existing prototype classes.
+ */
+const ChangeRequestQueueFooter = ({
+  total,
+  page,
+  rows,
+  onPageChange,
+  onRowsChange,
+}) => {
+  const { t } = useI18n();
+  const totalPages = Math.max(1, Math.ceil(total / Math.max(1, rows)));
+  const current = Math.min(Math.max(1, page), totalPages);
+  const from = total === 0 ? 0 : (current - 1) * rows + 1;
+  const to = Math.min(current * rows, total);
+
+  return (
+    <div
+      className="admin-foot"
+      style={{ flexWrap: "wrap", justifyContent: "space-between" }}
+    >
+      <span className="label">
+        {t("adminMdrShowingRange", { from, to, total })}
+      </span>
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 14,
+          flexWrap: "wrap",
+        }}
+      >
+        <span className="label">{t("rowsPerPage")}</span>
+        <select
+          className="input"
+          style={{ width: 74 }}
+          value={rows}
+          onChange={(e) => onRowsChange(Number(e.target.value))}
+        >
+          <option>20</option>
+          <option>50</option>
+          <option>100</option>
+        </select>
+        <div style={{ display: "inline-flex", gap: 4 }}>
+          <button
+            type="button"
+            className="btn icon sm"
+            disabled={current <= 1}
+            aria-label={t("adminMdrPagerPrev")}
+            onClick={() => onPageChange(current - 1)}
+          >
+            ‹
+          </button>
+          {queuePageItems(current, totalPages).map((item, index) =>
+            item === "ellipsis" ? (
+              <span
+                key={`gap-${index}`}
+                aria-hidden="true"
+                style={{ padding: "0 6px", color: "var(--muted)" }}
+              >
+                …
+              </span>
+            ) : (
+              <button
+                key={item}
+                type="button"
+                className={item === current ? "btn xs primary" : "btn xs"}
+                style={{ minWidth: 30 }}
+                aria-current={item === current ? "page" : undefined}
+                onClick={() => onPageChange(item)}
+              >
+                {item}
+              </button>
+            ),
+          )}
+          <button
+            type="button"
+            className="btn icon sm"
+            disabled={current >= totalPages}
+            aria-label={t("adminMdrPagerNext")}
+            onClick={() => onPageChange(current + 1)}
+          >
+            ›
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -10754,7 +10870,8 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   const [selectedId, setSelectedId] = useStateA(initialRequestId || "");
   const [adminNote, setAdminNote] = useStateA("");
   const [page, setPage] = useStateA(1);
-  const [rowsPerPage, setRowsPerPage] = useStateA(25);
+  // 20 to match the admin app's queue page size, not the 25 the overview uses.
+  const [rowsPerPage, setRowsPerPage] = useStateA(20);
 
   useEffectA(() => {
     if (initialRequestId) setSelectedId(initialRequestId);
@@ -10832,9 +10949,8 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
       <div
         style={{
           display: "grid",
-          // Always two columns — the review column now holds a placeholder when
-          // nothing is selected, so the layout no longer reflows on selection.
-          gridTemplateColumns: "1fr 1.1fr",
+          // Single column until a request is selected, matching the admin app.
+          gridTemplateColumns: selected ? "1fr 1.1fr" : "1fr",
           gap: 18,
           marginTop: 18,
           alignItems: "start",
@@ -10911,23 +11027,20 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
           {/* Reuses the overview footer so the queue counts and pager look and
               behave exactly like every other admin list. */}
           {allRows.length > 0 ? (
-            <div className="admin-foot">
-              <OverviewFooter
-                filteredCount={allRows.length}
-                totalCount={allRows.length}
-                page={page}
-                rows={rowsPerPage}
-                onPageChange={(next) => {
-                  setPage(next);
-                  setSelectedId("");
-                }}
-                onRowsChange={(next) => {
-                  setRowsPerPage(next);
-                  setPage(1);
-                  setSelectedId("");
-                }}
-              />
-            </div>
+            <ChangeRequestQueueFooter
+              total={allRows.length}
+              page={page}
+              rows={rowsPerPage}
+              onPageChange={(next) => {
+                setPage(next);
+                setSelectedId("");
+              }}
+              onRowsChange={(next) => {
+                setRowsPerPage(next);
+                setPage(1);
+                setSelectedId("");
+              }}
+            />
           ) : null}
         </section>
         {selected ? (
@@ -11068,21 +11181,7 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
               </div>
             )}
           </section>
-        ) : (
-          /* The admin app always fills the second column, so the reviewer is
-             told what to do instead of facing an unexplained gap. */
-          <section
-            className="card"
-            style={{ padding: 28, textAlign: "center" }}
-          >
-            <h2 className="dialog-title" style={{ margin: 0 }}>
-              {t("adminMdrSelectTitle")}
-            </h2>
-            <p className="label" style={{ margin: "6px 0 0" }}>
-              {t("adminMdrSelectBody")}
-            </p>
-          </section>
-        )}
+        ) : null}
       </div>
     </div>
   );
