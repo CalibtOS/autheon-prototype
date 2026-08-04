@@ -7343,19 +7343,27 @@ function applyAppTheme(theme) {
     /* no-op */
   }
   const isPwaPage = document.body?.classList?.contains("pwa-page");
-  // PWA / FE DriverShell paint canvas (surface-muted #F5F5F7). Using surface
-  // white left a black Island band under black-translucent when the fixed
-  // shell didn't fill the root canvas.
+  // PWA must match FE DriverShell (surface-muted / canvas). Fall back to hex if
+  // custom props are not resolved yet (early call before styles.css applies).
   const colorVar = isPwaPage ? "--brand-canvas" : "--brand-surface";
-  const chrome = getComputedStyle(document.documentElement)
+  const fallback = isPwaPage
+    ? theme === "dark"
+      ? "#1C1C1E"
+      : "#F5F5F7"
+    : theme === "dark"
+      ? "#2C2C2E"
+      : "#FFFFFF";
+  const resolved = getComputedStyle(document.documentElement)
     .getPropertyValue(colorVar)
     .trim();
-  if (chrome) {
-    document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
-      meta.setAttribute("content", chrome);
-      meta.removeAttribute("media");
-    });
-  }
+  const chrome =
+    resolved && !resolved.startsWith("var(") ? resolved : fallback;
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.setAttribute("content", chrome);
+    meta.removeAttribute("media");
+  });
+  document.documentElement.style.backgroundColor = chrome;
+  if (document.body) document.body.style.backgroundColor = chrome;
   const appleStatus = document.querySelector(
     'meta[name="apple-mobile-web-app-status-bar-style"]',
   );

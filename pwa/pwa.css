@@ -14,18 +14,32 @@
    =============================================================== */
 
 /* Match FE DriverShell: shell ground = canvas / surface-muted (#F5F5F7).
-   black-translucent shows whatever is painted at y=0 — if html/body height
-   collapses around a position:fixed shell, iOS paints black in the Island band. */
+   CRITICAL: do NOT use position:fixed for the main shell. With
+   apple-mobile-web-app-status-bar-style=black-translucent, iOS only composites
+   in-flow (or root) backgrounds under the Island. A fixed shell leaves that
+   band unpainted → solid black, while FE's in-flow 100dvh shell matches. */
 html.pwa-page,
 body.pwa-page {
   margin: 0;
   min-height: 100%;
   min-height: 100dvh;
+  height: 100%;
   background: var(--canvas);
   overscroll-behavior-y: none;
 }
 html.pwa-page {
-  /* Root canvas must cover the viewport even when body only hosts fixed UI. */
+  background: var(--canvas);
+}
+body.pwa-page {
+  display: flex;
+  flex-direction: column;
+}
+body.pwa-page #root {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  min-height: 100dvh;
   background: var(--canvas);
 }
 
@@ -133,30 +147,32 @@ html.pwa-standalone .pwa-ios-sheet {
 
 /* ---- Frame neutralization -------------------------------------- */
 .phone-shell.pwa-viewport {
-  --pwa-chrome-offset: 52px;
-  position: fixed;
-  top: var(--pwa-chrome-offset);
-  top: max(
-    var(--pwa-chrome-offset),
-    calc(42px + env(safe-area-inset-top, 0px))
-  );
-  left: 0;
-  right: 0;
-  height: calc(100vh - var(--pwa-chrome-offset));
-  height: calc(
-    100dvh - max(var(--pwa-chrome-offset), calc(42px + env(safe-area-inset-top, 0px)))
-  );
+  /* In-flow full viewport — same model as FE DriverShell (h-dvh, not fixed). */
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  min-height: 100dvh;
+  max-height: 100dvh;
   display: grid;
   place-items: stretch;
   padding: 0;
   overflow: hidden;
   background: var(--canvas);
+  box-sizing: border-box;
 }
 
-html.pwa-standalone .phone-shell.pwa-viewport,
+/* Browser preview: fixed install bar overlays the top; keep content clear. */
+body.pwa-page:not(.pwa-standalone) .phone-shell.pwa-viewport {
+  padding-top: max(52px, calc(42px + env(safe-area-inset-top, 0px)));
+}
+
+html.pwa-standalone body.pwa-page .phone-shell.pwa-viewport,
 body.pwa-standalone .phone-shell.pwa-viewport {
-  top: 0;
-  height: 100vh;
+  padding-top: 0;
+  min-height: 100dvh;
+  max-height: 100dvh;
   height: 100dvh;
 }
 .phone-shell.pwa-viewport .phone {
