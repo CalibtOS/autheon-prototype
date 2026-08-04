@@ -95,7 +95,7 @@ const AdminNav = ({ section, setSection }) => {
   const store = useAuthStore();
   const total = store.getJobs().length;
   const invCount = store.getTourDocuments().length;
-  const alertCount = store.getAdminEmailQueue().length;
+  const alertCount = store.getOpenAdminAlertCount();
   const mdrOpenCount = store.getOpenMasterDataChangeRequestCount();
   // Footer identity — the console's exact shape: the name, falling back to the
   // email only when the name is blank, with the role line beneath. An email
@@ -174,7 +174,18 @@ const AdminNav = ({ section, setSection }) => {
               </span>{" "}
               {it.label}
             </span>
-            {it.count != null && <span className="count">{it.count}</span>}
+            {it.count != null && (
+              <span
+                className={
+                  "count" +
+                  (it.id === "notifications" && it.count > 0
+                    ? " count-pulse"
+                    : "")
+                }
+              >
+                {it.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -5368,6 +5379,7 @@ const DRIVER_STATUS_TRANSITIONS = {
 const ServicePartnersCenterPane = ({
   showToast,
   initialRequestId,
+  initialDriverId,
   onOpenJob,
 }) => {
   const { t } = useI18n();
@@ -5377,6 +5389,9 @@ const ServicePartnersCenterPane = ({
   useEffectA(() => {
     if (initialRequestId) setView("changerequests");
   }, [initialRequestId]);
+  useEffectA(() => {
+    if (initialDriverId) setView("partners");
+  }, [initialDriverId]);
   return (
     <div id="servicepartnercenter">
       <div className="tabs">
@@ -5398,7 +5413,7 @@ const ServicePartnersCenterPane = ({
         ))}
       </div>
       {view === "partners" ? (
-        <DriversPane showToast={showToast} />
+        <DriversPane showToast={showToast} initialDriverId={initialDriverId} />
       ) : (
         <MasterDataRequestsPane
           showToast={showToast}
@@ -5410,13 +5425,18 @@ const ServicePartnersCenterPane = ({
   );
 };
 
-const DriversPane = ({ showToast }) => {
+const DriversPane = ({ showToast, initialDriverId }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [driverModal, setDriverModal] = useStateA(null);
   const [driverForm, setDriverForm] = useStateA(emptyDriverEditForm());
   const [driverErrors, setDriverErrors] = useStateA({});
-  const [profileDriverId, setProfileDriverId] = useStateA(null);
+  const [profileDriverId, setProfileDriverId] = useStateA(
+    initialDriverId || null,
+  );
+  useEffectA(() => {
+    if (initialDriverId) setProfileDriverId(initialDriverId);
+  }, [initialDriverId]);
   const setDF = (k, v) => {
     setDriverForm((p) => ({ ...p, [k]: v }));
     setDriverErrors((e) => ({ ...e, [k]: undefined }));
@@ -9136,6 +9156,7 @@ const ConsolidatedInvoicesPane = ({ showToast, onOpenJob }) => {
 const TourBillingPane = ({
   showToast,
   filterJobId,
+  filterDocumentId,
   onClearFilter,
   onOpenJob,
 }) => {
@@ -9399,6 +9420,13 @@ const TourBillingPane = ({
     if (!f) return;
     setEditForm((p) => (p ? { ...p, replaceFile: f, fileName: f.name } : p));
   };
+
+  useEffectA(() => {
+    if (!filterDocumentId) return undefined;
+    document
+      .getElementById("doc-row-" + filterDocumentId)
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [filterDocumentId, visibleUploads]);
 
   useEffectA(() => {
     if (!viewId) return undefined;
@@ -9835,7 +9863,11 @@ const TourBillingPane = ({
                   return (
                     <tr
                       key={u.id}
-                      className={index < 4 ? "list-enter" : undefined}
+                      id={"doc-row-" + u.id}
+                      className={
+                        (u.id === filterDocumentId ? "row fresh " : "") +
+                        (index < 4 ? "list-enter" : "")
+                      }
                       style={
                         index < 4 ? { ["--list-enter-i"]: index } : undefined
                       }
@@ -10629,22 +10661,61 @@ const AuditPane = ({ showToast }) => {
 // list below renders one row per key here.
 const FLAG_I18N = {};
 
-const CRITICAL_ALERT_EVENTS = new Set([
-  "report_problem_cancel",
-  "empty_run_reported",
-  "job_cancelled",
-  "tour_document_reuploaded",
-]);
-
 const ADMIN_ALERT_EVENT_I18N = {
   master_data_change_requested: "adminNotifMasterDataChange",
   report_problem_cancel: "adminNotifReportProblemCancel",
+  order_cancelled_by_sp: "adminNotifOrderCancelledBySp",
   empty_run_reported: "adminNotifEmptyRunReported",
+  empty_run_recognised: "adminNotifEmptyRunRecognised",
+  empty_run_not_recognised: "adminNotifEmptyRunNotRecognised",
   job_accepted: "adminNotifJobAccepted",
   job_performed: "adminNotifJobPerformed",
+  job_assigned: "adminNotifJobAssigned",
+  job_reassigned: "adminNotifJobReassigned",
+  job_cancelled: "adminNotifJobCancelled",
+  cancelled_by_autheon: "adminNotifCancelledByAutheon",
   tour_document_uploaded: "adminNotifDocumentUploaded",
   tour_document_reuploaded: "adminNotifDocumentReuploaded",
+  tour_document_rejected: "adminNotifDocumentRejected",
+  order_not_accepted_cutoff: "adminNotifOrderNotAcceptedCutoff",
+  document_unreviewed_stale: "adminNotifDocumentUnreviewedStale",
+  service_partner_inactive: "adminNotifServicePartnerInactive",
 };
+
+// Notification spec: severity is always paired with text, never color alone,
+// and every event in the feed must resolve to exactly one tier. `red` =
+// urgent/blocking, needs immediate attention; `orange` = needs admin action
+// but isn't urgent; `gray` = informational, no action required. Unlisted
+// events fall back to gray in ADMIN_ALERT_SEVERITY_LABEL_KEY below rather
+// than rendering unstyled.
+const ADMIN_ALERT_SEVERITY = {
+  empty_run_reported: "red",
+  order_cancelled_by_sp: "red",
+  report_problem_cancel: "red",
+  job_cancelled: "red",
+  tour_document_reuploaded: "red",
+  tour_document_rejected: "red",
+  order_not_accepted_cutoff: "red",
+  master_data_change_requested: "orange",
+  empty_run_not_recognised: "orange",
+  document_unreviewed_stale: "orange",
+  service_partner_inactive: "orange",
+  job_accepted: "gray",
+  job_performed: "gray",
+  job_assigned: "gray",
+  job_reassigned: "gray",
+  cancelled_by_autheon: "gray",
+  tour_document_uploaded: "gray",
+  empty_run_recognised: "gray",
+};
+
+const ADMIN_ALERT_SEVERITY_LABEL_KEY = {
+  red: "adminNotifSeverityCritical",
+  orange: "adminNotifSeverityWarning",
+  gray: "adminNotifSeverityInfo",
+};
+
+const adminAlertSeverity = (event) => ADMIN_ALERT_SEVERITY[event] || "gray";
 
 const parseMasterDataRequestIdFromMeta = (meta) => {
   const m = String(meta || "").match(/(MDR-[A-Za-z0-9-]+)/);
@@ -11032,23 +11103,65 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   );
 };
 
+const AdminAlertSeverityBadge = ({ event, t }) => {
+  const severity = adminAlertSeverity(event);
+  return (
+    <span className={`notif-severity sev-${severity}`}>
+      {t(ADMIN_ALERT_SEVERITY_LABEL_KEY[severity])}
+    </span>
+  );
+};
+
 const NotificationFeedPane = ({
   showToast,
   onOpenJob,
+  onOpenDocument,
+  onOpenDriver,
   onReviewMasterDataRequest,
 }) => {
   const { t } = useI18n();
   const store = useAuthStore();
-  const rows = store.getAdminEmailQueue();
+  const [tab, setTab] = useStateA("open");
+  const allRows = store.getAdminEmailQueue();
+  const rows = allRows.filter((row) =>
+    tab === "processed" ? row.status === "processed" : row.status !== "processed",
+  );
+  const openCount = allRows.filter((row) => row.status !== "processed").length;
+
+  const markProcessed = (id) => {
+    store.markAdminAlertProcessed(id);
+  };
+
   return (
     <div style={{ maxWidth: 900 }}>
       <p className="pane-lead">{t("adminNotificationFeedSub")}</p>
+      <div className="tabs" style={{ marginBottom: 14 }}>
+        {[
+          ["open", t("adminNotificationTabOpen"), openCount],
+          ["processed", t("adminNotificationTabProcessed"), null],
+        ].map(([id, lbl, count]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            className={tab === id ? "on" : ""}
+            style={{ cursor: "pointer" }}
+            onClick={() => setTab(id)}
+          >
+            {lbl}
+            {count != null && count > 0 ? ` (${count})` : ""}
+          </button>
+        ))}
+      </div>
       <section className="card" style={{ padding: 0 }}>
         {rows.length === 0 ? (
           <div
             style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}
           >
-            {t("adminNotificationEmpty")}
+            {tab === "processed"
+              ? t("adminNotificationProcessedEmpty")
+              : t("adminNotificationEmpty")}
           </div>
         ) : (
           rows.map((row) => (
@@ -11061,16 +11174,23 @@ const NotificationFeedPane = ({
                 gap: 16,
                 padding: "14px 18px",
                 borderBottom: "1px solid var(--line)",
-                background: CRITICAL_ALERT_EVENTS.has(row.event)
-                  ? "color-mix(in srgb, var(--destructive) 4%, transparent)"
-                  : "transparent",
               }}
             >
               <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>
-                  {ADMIN_ALERT_EVENT_I18N[row.event]
-                    ? t(ADMIN_ALERT_EVENT_I18N[row.event])
-                    : row.event}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span style={{ fontWeight: 600, fontSize: 14 }}>
+                    {ADMIN_ALERT_EVENT_I18N[row.event]
+                      ? t(ADMIN_ALERT_EVENT_I18N[row.event])
+                      : row.event}
+                  </span>
+                  <AdminAlertSeverityBadge event={row.event} t={t} />
                 </div>
                 <div
                   style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}
@@ -11087,6 +11207,12 @@ const NotificationFeedPane = ({
                   }}
                 >
                   {row.at}
+                  {row.status === "processed"
+                    ? ` · ${t("adminNotificationProcessedBy", {
+                        name: row.processedBy || "—",
+                        at: row.processedAt || "—",
+                      })}`
+                    : ""}
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -11103,7 +11229,30 @@ const NotificationFeedPane = ({
                     {t("adminMdrReviewFromFeed")}
                   </button>
                 ) : null}
-                {row.jobId ? (
+                {row.event === "document_unreviewed_stale" &&
+                row.documentId &&
+                onOpenDocument ? (
+                  <button
+                    type="button"
+                    className="btn xs"
+                    onClick={() => onOpenDocument(row.jobId, row.documentId)}
+                  >
+                    {t("adminNotificationOpenDocument")}
+                  </button>
+                ) : null}
+                {row.event === "service_partner_inactive" &&
+                row.driverId &&
+                onOpenDriver ? (
+                  <button
+                    type="button"
+                    className="btn xs"
+                    onClick={() => onOpenDriver(row.driverId)}
+                  >
+                    {t("adminNotificationOpenDriver")}
+                  </button>
+                ) : null}
+                {row.jobId &&
+                row.event !== "document_unreviewed_stale" ? (
                   <button
                     type="button"
                     className="btn xs"
@@ -11114,6 +11263,16 @@ const NotificationFeedPane = ({
                     }}
                   >
                     {t("adminNotificationOpenJob")}
+                  </button>
+                ) : null}
+                {row.status !== "processed" ? (
+                  <button
+                    type="button"
+                    className="btn xs ghost"
+                    title={t("adminNotificationMarkProcessed")}
+                    onClick={() => markProcessed(row.id)}
+                  >
+                    ✓ {t("adminNotificationMarkProcessed")}
                   </button>
                 ) : null}
               </div>

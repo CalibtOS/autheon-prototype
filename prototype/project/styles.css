@@ -3497,6 +3497,49 @@ select.input {
 .nav-item.on .count {
   color: var(--muted);
 }
+/* Nav badge pulse — only ever applied to the notifications count while it
+   has open (unprocessed) alerts, so it stops on its own once the backlog is
+   cleared instead of needing a separate "seen" flag. */
+.nav-item .count.count-pulse {
+  color: var(--destructive);
+  font-weight: 700;
+  animation: navBadgePulse 1.6s ease-in-out infinite;
+}
+@keyframes navBadgePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Notification feed severity badge — spec requires color to always be
+   paired with text, never used alone, so this is a labelled chip rather
+   than a bare color dot. Reuses the same semantic tokens as job/document
+   status pills (already theme-safe in light + dark). */
+.notif-severity {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: var(--r-2, 6px);
+}
+.notif-severity.sev-red {
+  color: var(--destructive);
+  background: color-mix(in srgb, var(--destructive) 14%, transparent);
+}
+.notif-severity.sev-orange {
+  color: var(--st-warn);
+  background: var(--st-warn-bg);
+}
+.notif-severity.sev-gray {
+  color: var(--st-draft);
+  background: var(--st-draft-bg);
+}
 .admin-nav .nav-foot {
   margin-top: auto;
   padding: 14px 18px;

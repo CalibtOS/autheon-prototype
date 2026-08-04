@@ -1705,6 +1705,7 @@ window.AuthStore = (() => {
         company: "Blake Transport Services",
         driverCode: "AU-41-0228",
         joinedAt: "14.03.2024",
+        ...seedLastLoginStampFields(2, 18, 40),
         address: "Landsberger Str. 22, 80339 Munchen",
         street: "Landsberger Str.",
         houseNumber: "22",
@@ -1734,6 +1735,7 @@ window.AuthStore = (() => {
         company: "Neumann Logistik",
         driverCode: "AU-41-0301",
         joinedAt: "02.09.2023",
+        ...seedLastLoginStampFields(9, 8, 15),
         address: "Hanauer Landstr. 12, 60314 Frankfurt",
         street: "Hanauer Landstr.",
         houseNumber: "12",
@@ -1763,6 +1765,7 @@ window.AuthStore = (() => {
         company: "Vogt Fahrservice",
         driverCode: "AU-41-0177",
         joinedAt: "20.11.2023",
+        ...seedLastLoginStampFields(30, 11, 0),
         address: "Kantstr. 18, 10623 Berlin",
         street: "Kantstr.",
         houseNumber: "18",
@@ -1793,6 +1796,10 @@ window.AuthStore = (() => {
         company: "Driver One Transport",
         driverCode: "DRV-001",
         joinedAt: "01.01.2026",
+        // Deliberately past SERVICE_PARTNER_INACTIVITY_DAYS — the seeded
+        // ALERT-SEED-005 service_partner_inactive row points at this driver,
+        // so this timestamp and that alert must never disagree.
+        ...seedLastLoginStampFields(95, 7, 0),
         address: "Fahrerweg 5, 10557 Berlin",
         street: "Fahrerweg",
         houseNumber: "5",
@@ -2120,6 +2127,9 @@ window.AuthStore = (() => {
         meta: "Report Problem: empty run reported — yard closed · 1 file(s)",
         at: "23.04. 08:41",
         sent: true,
+        status: "open",
+        processedAt: "",
+        processedBy: "",
       },
       {
         id: "ALERT-SEED-002",
@@ -2129,6 +2139,50 @@ window.AuthStore = (() => {
         meta: "Driver cancellation — customer cancelled",
         at: "21.04. 22:01",
         sent: true,
+        status: "open",
+        processedAt: "",
+        processedBy: "",
+      },
+      // Schedule-driven types (cutoff / staleness / inactivity) have no real
+      // clock in this prototype, so they are seeded pre-fired against real
+      // seeded records instead of computed live — same end state a cron tick
+      // would leave behind, without needing one here.
+      {
+        id: "ALERT-SEED-003",
+        event: "order_not_accepted_cutoff",
+        jobId: "A-2026-00847",
+        tour: "0847-26",
+        meta: "Published tour still has no driver past the acceptance cutoff",
+        at: "22.04. 15:45",
+        sent: true,
+        status: "open",
+        processedAt: "",
+        processedBy: "",
+      },
+      {
+        id: "ALERT-SEED-004",
+        event: "document_unreviewed_stale",
+        jobId: "A-2026-00842",
+        documentId: "TD-SEED-001",
+        tour: "0842-26",
+        meta: "driver-invoice-0842.pdf has been awaiting review for 10+ days",
+        at: "01.05. 09:00",
+        sent: true,
+        status: "open",
+        processedAt: "",
+        processedBy: "",
+      },
+      {
+        id: "ALERT-SEED-005",
+        event: "service_partner_inactive",
+        driverId: "DRV-0001",
+        tour: "",
+        meta: "Dana Driver has not logged in for 90+ days",
+        at: "15.07. 07:00",
+        sent: true,
+        status: "open",
+        processedAt: "",
+        processedBy: "",
       },
     ];
   }
@@ -2857,6 +2911,39 @@ window.AuthStore = (() => {
     const stamp = auditStamp(d);
     return { at: stamp.display, atIso: stamp.iso };
   }
+
+  /**
+   * Same reasoning as seedAuditStamp: a driver's last-login is dated relative
+   * to today, never as a hardcoded string, so the "inactive 90+ days" alert
+   * stays true however long after this file was written the demo runs.
+   * Returns a display string in the same DD.MM.YYYY HH:MM shape shown next to
+   * joinedAt on the SP profile overview tab, plus the ISO instant the
+   * inactivity check itself reads.
+   */
+  function seedLastLoginStamp(daysAgo, hh = 9, mi = 0) {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(hh, mi, 0, 0);
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    const HH = String(d.getHours()).padStart(2, "0");
+    const MI = String(d.getMinutes()).padStart(2, "0");
+    return { display: `${dd}.${mm}.${yyyy} ${HH}:${MI}`, iso: d.toISOString() };
+  }
+
+  // Spread-ready form of seedLastLoginStamp() for seed driver literals:
+  // `...seedLastLoginStampFields(2, 18, 40)` sets both the human display
+  // field and the ISO instant the inactivity check reads from one call.
+  function seedLastLoginStampFields(daysAgo, hh, mi) {
+    const stamp = seedLastLoginStamp(daysAgo, hh, mi);
+    return { lastLoginAt: stamp.display, lastLoginAtIso: stamp.iso };
+  }
+
+  // Service-partner inactivity threshold (PRD notification type 6). Kept as
+  // one named constant so the seed data above and the live check below can
+  // never drift to different numbers.
+  const SERVICE_PARTNER_INACTIVITY_DAYS = 90;
 
   // The instant an audit event was recorded, for the Audit-Log's date filter.
   // Every audit event — seeded or recorded — carries `atIso`, so no year is
@@ -3905,7 +3992,7 @@ window.AuthStore = (() => {
     return job.documentReviewSummary || job.status || "";
   }
 
-  function queueAdminEmailAlert(event, jobId, meta) {
+  function queueAdminEmailAlert(event, jobId, meta, extra) {
     const j = jobId ? jobs.find((x) => x.id === jobId) : null;
     const row = {
       id: `ALERT-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -3915,6 +4002,13 @@ window.AuthStore = (() => {
       meta: meta || "",
       at: nowStamp(),
       sent: false,
+      // Open/processed is a distinct lifecycle from `sent` (email delivery) —
+      // viewing the feed must never flip this; only the explicit checkmark
+      // action in markAdminAlertProcessed() may.
+      status: "open",
+      processedAt: "",
+      processedBy: "",
+      ...(extra || {}),
     };
     adminEmailQueue.unshift(row);
     log("admin_email_alert_queued", "System", j?.tour || event, meta || event);
@@ -5460,6 +5554,28 @@ window.AuthStore = (() => {
     getAuditLog: () => auditLog,
     parseAuditEntryDate,
     getAdminEmailQueue: () => adminEmailQueue.slice(),
+    // Nav badge count — open only, so a processed backlog never keeps the
+    // badge (and its pulse) lit. Mirrors getOpenMasterDataChangeRequestCount.
+    getOpenAdminAlertCount: () =>
+      adminEmailQueue.filter((r) => r.status !== "processed").length,
+    // The only path that may ever flip an alert to "processed" — viewing the
+    // feed must never do this, per the notification spec's explicit-action
+    // requirement. Processed rows are kept, never deleted, for audit.
+    markAdminAlertProcessed: (ids) => {
+      const set = new Set(Array.isArray(ids) ? ids : [ids]);
+      let n = 0;
+      for (const row of adminEmailQueue) {
+        if (set.size && !set.has(row.id)) continue;
+        if (row.status !== "processed") {
+          row.status = "processed";
+          row.processedAt = nowStamp();
+          row.processedBy = api.getCurrentAdmin()?.name || "";
+          n++;
+        }
+      }
+      if (n) emit();
+      return { ok: true, count: n };
+    },
     getDriverNotifications: (driverId) => {
       const id =
         driverId ||
@@ -7541,6 +7657,7 @@ window.AuthStore = (() => {
         status: "Active",
         joinedAt: nowStamp(),
         lastLoginAt: null,
+        lastLoginAtIso: null,
         taxStatus: normalizeTaxStatus(data.taxStatus),
         taxNumber: String(data.taxNumber || "").trim(),
         vatId: String(data.vatId || "").trim(),
