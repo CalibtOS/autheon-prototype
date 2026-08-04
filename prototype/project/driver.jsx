@@ -3325,10 +3325,14 @@ const emptyTourDocAmountForm = (documentType) => ({
 
 // Amount metadata sheet for invoice / fuel / toll receipts. Shared by all
 // three attach-a-tour-document entry points; only the input-id prefix differs.
+// When walkCurrent/walkTotal are set, the sheet names the position in the
+// confirmed batch so the driver does not lose their place mid-walk.
 const TourDocAmountFormSheet = ({
   amountForm,
   amountErr,
   idPrefix,
+  walkCurrent,
+  walkTotal,
   onChange,
   onCancel,
   onSubmit,
@@ -3337,6 +3341,11 @@ const TourDocAmountFormSheet = ({
   if (!amountForm) return null;
   const isInvoice = amountForm.documentType === "invoice";
   const set = (patch) => onChange((f) => ({ ...f, ...patch }));
+  const showWalk =
+    walkCurrent != null &&
+    walkTotal != null &&
+    walkTotal > 0 &&
+    walkCurrent >= 1;
   return (
     <div
       role="dialog"
@@ -3348,6 +3357,22 @@ const TourDocAmountFormSheet = ({
         <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>
           {t("tourDocAmountFormTitle")}
         </h2>
+        {showWalk ? (
+          <p
+            className="tour-doc-amount-walk-progress"
+            style={{
+              margin: "0 0 12px",
+              fontSize: 13,
+              color: "var(--muted, #666)",
+            }}
+            role="status"
+          >
+            {t("tourDocAmountWalkProgress", {
+              current: walkCurrent,
+              total: walkTotal,
+            })}
+          </p>
+        ) : null}
         {isInvoice ? (
           <>
             <div>
@@ -3658,18 +3683,22 @@ const DocumentUploadStagingSheet = ({
 };
 
 // One attach-a-tour-document sequence — category → source → staged review →
-// sequential write — used by the tour-detail documents card, the
-// performed-tour documents tab, and the mark-performed success screen.
+// (amounts walk when needed) → sequential write — used by the tour-detail
+// documents card, the performed-tour documents tab, and the mark-performed
+// success screen.
 //
 // Site differences preserved via props (do not unify silently):
 //   gateUpload  — tour-detail card re-checks canDriverUploadTourDocument on
 //                 category pick / replace; the other two sites do not.
 //   allowReplace — only the tour-detail card exposes replace.
 //
-// Amounts-per-receipt walk (ticket 05) runs off the confirmed batch; until
-// then, categories that ask for amounts still upload without the form —
-// amounts are optional in the store. Replace stays a single-file immediate
-// upload with no staging.
+// Amounts are per receipt, so the form is per file. Confirming a batch of
+// invoice / fuel / toll receipts walks those files one at a time; categories
+// that need no amounts upload straight through. Abandoning the walk keeps
+// every file already written and leaves the rest staged and unmarked, so
+// Upload becomes a resume. An amount that does not add up stays inside the
+// form and never marks the file as refused. Replace stays a single-file
+// immediate upload with no staging.
 const TourDocumentUploadFlow = ({
   jobId,
   returnFocusRef,
@@ -3690,8 +3719,11 @@ const TourDocumentUploadFlow = ({
   const [stagedFiles, setStagedFiles] = useState([]);
   const [stagedError, setStagedError] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  // idPrefix reserved for the ticket-05 amount-form walk (input ids).
-  void idPrefix;
+  // amountWalk: { current, total } while the per-file amount form is open.
+  // current is 1-based within this walk session (remaining files at start).
+  const [amountWalk, setAmountWalk] = useState(null);
+  const [amountForm, setAmountForm] = useState(null);
+  const [amountErr, setAmountErr] = useState("");
 
   const showUploadError = (reason) => {
     onFeedback?.({
@@ -3734,11 +3766,44 @@ const TourDocumentUploadFlow = ({
     setSourceOpen(true);
   };
 
+  const closeAmountWalk = () => {
+    setAmountWalk(null);
+    setAmountForm(null);
+    setAmountErr("");
+  };
+
+  // Abandon mid-walk: keep files already written; leave the rest staged and
+  // unmarked so Upload resumes rather than restarting.
+  const abandonAmountWalk = () => {
+    closeAmountWalk();
+  };
+
+  const openAmountFormForWalk = (current, total, documentType) => {
+    setAmountWalk({ current, total });
+    setAmountForm(emptyTourDocAmountForm(documentType));
+    setAmountErr("");
+  };
+
+  const amountOptsFromForm = (form) => {
+    const isInvoice = form.documentType === "invoice";
+    return {
+      receiptDate: isInvoice ? "" : form.receiptDate,
+      supplierInvoiceNumber: isInvoice ? form.supplierInvoiceNumber : "",
+      supplierInvoiceDate: isInvoice ? form.supplierInvoiceDate : "",
+      servicePeriodFrom: isInvoice ? form.servicePeriodFrom : "",
+      servicePeriodTo: isInvoice ? form.servicePeriodTo : "",
+      netAmount: form.netAmount,
+      grossAmount: form.grossAmount,
+      taxRatePercent: form.taxRatePercent,
+    };
+  };
+
   const cancelStagedBatch = () => {
-    if (isUploading) return;
+    if (isUploading || amountWalk) return;
     setStagedType(null);
     setStagedFiles([]);
     setStagedError(null);
+    closeAmountWalk();
   };
 
   const onFilesPicked = (picked) => {
@@ -3762,25 +3827,19 @@ const TourDocumentUploadFlow = ({
     setStagedType(category);
     setStagedFiles(picked.map((file) => ({ file, failure: null })));
     setStagedError(null);
+    closeAmountWalk();
   };
 
   /**
-   * One write per file, in sequence. A refusal that names the file marks it
-   * and the run continues; a failure that would repeat for every remaining
-   * file stops the run and leaves the rest staged and unmarked. Files that
-   * land leave the list, so running again is the retry.
+   * Categories that need no amounts: one write per file, in sequence. A
+   * refusal that names the file marks it and the run continues; a failure
+   * that would repeat for every remaining file stops the run and leaves the
+   * rest staged and unmarked. Files that land leave the list, so running
+   * again is the retry.
    */
-  const runStagedUpload = () => {
-    if (!stagedType || !isOnline || stagedFiles.length === 0 || isUploading)
-      return;
-    setStagedError(null);
+  const runStraightUpload = (queue, category) => {
     setIsUploading(true);
-
-    // Reasons from the previous run are cleared up front.
-    const queue = stagedFiles.map(({ file }) => ({ file, failure: null }));
-    setStagedFiles(queue);
     const failed = [];
-    const category = stagedType;
 
     for (let index = 0; index < queue.length; index += 1) {
       const staged = queue[index];
@@ -3809,6 +3868,117 @@ const TourDocumentUploadFlow = ({
     }
   };
 
+  /**
+   * Confirm the staged batch. Amount categories open the per-file form walk;
+   * everything else uploads straight through. Pressing Upload again after a
+   * mid-walk abandon resumes with whatever is still staged.
+   */
+  const runStagedUpload = () => {
+    if (
+      !stagedType ||
+      !isOnline ||
+      stagedFiles.length === 0 ||
+      isUploading ||
+      amountWalk
+    )
+      return;
+    setStagedError(null);
+
+    // Reasons from the previous run are cleared up front.
+    const queue = stagedFiles.map(({ file }) => ({ file, failure: null }));
+    setStagedFiles(queue);
+    const category = stagedType;
+
+    if (store.tourDocumentRequiresAmountMetadata(category)) {
+      openAmountFormForWalk(1, queue.length, category);
+      return;
+    }
+
+    runStraightUpload(queue, category);
+  };
+
+  /**
+   * Write the current receipt with the amounts on the form, then advance.
+   * amount_math_invalid stays on the form — it must never mark the file as
+   * refused (that vocabulary is for limit/type refusals only).
+   */
+  const submitAmountUpload = () => {
+    if (!amountWalk || !amountForm || !stagedType || stagedFiles.length === 0)
+      return;
+    if (!isOnline) return;
+
+    const category = stagedType;
+    const walk = amountWalk;
+    // Always the head of the remaining list — successes leave as they land.
+    const head = stagedFiles[0];
+    if (!head || head.failure) return;
+
+    const r = store.addTourDocument(head.file, {
+      jobId,
+      documentType: category,
+      ...amountOptsFromForm(amountForm),
+    });
+
+    if (!r.ok) {
+      if (r.reason === "amount_math_invalid") {
+        setAmountErr(
+          t("tourDocAmountMathError", {
+            expected:
+              r.expectedGross != null ? r.expectedGross.toFixed(2) : "?",
+          }),
+        );
+        return;
+      }
+      const failure = classifyStoreUploadRefusal(r.reason);
+      if (failure.scope === "batch") {
+        // Stop the walk; leave this file and the rest unmarked for resume.
+        closeAmountWalk();
+        setStagedError(t("stagedBatchStopped"));
+        return;
+      }
+      // File-scoped refusal: mark this file, keep walking unmarked rest.
+      const failed = { file: head.file, failure: failure.reason };
+      const rest = stagedFiles.slice(1);
+      const nextUnmarkedIdx = rest.findIndex((s) => s.failure == null);
+      if (nextUnmarkedIdx === -1) {
+        setStagedFiles([failed, ...rest]);
+        closeAmountWalk();
+        return;
+      }
+      const unmarked = rest[nextUnmarkedIdx];
+      const others = rest.filter((_, i) => i !== nextUnmarkedIdx);
+      setStagedFiles([unmarked, ...others, failed]);
+      openAmountFormForWalk(walk.current + 1, walk.total, category);
+      return;
+    }
+
+    // Success — file leaves the list; remaining stay for the next form or resume.
+    const remaining = stagedFiles.slice(1);
+    if (remaining.length === 0) {
+      setStagedFiles([]);
+      closeAmountWalk();
+      setStagedType(null);
+      onFeedback?.({ tone: "success", message: t("tourDocUploadSuccess") });
+      return;
+    }
+    const nextUnmarkedIdx = remaining.findIndex((s) => s.failure == null);
+    if (nextUnmarkedIdx === -1) {
+      setStagedFiles(remaining);
+      closeAmountWalk();
+      return;
+    }
+    if (nextUnmarkedIdx === 0) {
+      setStagedFiles(remaining);
+    } else {
+      const unmarked = remaining[nextUnmarkedIdx];
+      setStagedFiles([
+        unmarked,
+        ...remaining.filter((_, i) => i !== nextUnmarkedIdx),
+      ]);
+    }
+    openAmountFormForWalk(walk.current + 1, walk.total, category);
+  };
+
   if (apiRef) {
     apiRef.current = { openCategory, openReplace };
   }
@@ -3817,6 +3987,7 @@ const TourDocumentUploadFlow = ({
   // Capture usage before any mutating call in this render — the store hands
   // out live objects; a later addTourDocument would change what we show.
   const usedBytes = store.tourDocumentsUsageBytes(jobId);
+  const amountFormOpen = amountWalk != null && amountForm != null;
 
   return (
     <>
@@ -3833,7 +4004,9 @@ const TourDocumentUploadFlow = ({
         onPick={onCategoryPick}
       />
       <DocumentUploadStagingSheet
-        open={stagedType != null && stagedFiles.length > 0}
+        open={
+          stagedType != null && stagedFiles.length > 0 && !amountFormOpen
+        }
         documentType={stagedType}
         files={stagedFiles}
         limits={limits}
@@ -3854,6 +4027,18 @@ const TourDocumentUploadFlow = ({
         onCancel={cancelStagedBatch}
         onUpload={runStagedUpload}
       />
+      {amountFormOpen ? (
+        <TourDocAmountFormSheet
+          amountForm={amountForm}
+          amountErr={amountErr}
+          idPrefix={idPrefix || "td-amount"}
+          walkCurrent={amountWalk.current}
+          walkTotal={amountWalk.total}
+          onChange={setAmountForm}
+          onCancel={abandonAmountWalk}
+          onSubmit={submitAmountUpload}
+        />
+      ) : null}
     </>
   );
 };

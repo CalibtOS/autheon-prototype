@@ -412,6 +412,7 @@ window.I18n = (() => {
       tourDocAmountMathError:
         "Net, tax rate, and gross amount don't add up (expected gross: {expected}).",
       tourDocAmountFormSubmit: "Save and upload",
+      tourDocAmountWalkProgress: "Receipt {current} of {total}",
       tourDocRejectionReason: "Rejection: {reason}",
       tourDocReplaceButton: "Replace file",
       tourDocReplaceNotAllowed:
@@ -2549,6 +2550,7 @@ window.I18n = (() => {
       tourDocAmountMathError:
         "Netto, Steuersatz und Bruttobetrag passen nicht zusammen (erwarteter Brutto: {expected}).",
       tourDocAmountFormSubmit: "Speichern und hochladen",
+      tourDocAmountWalkProgress: "Beleg {current} von {total}",
       tourDocRejectionReason: "Ablehnung: {reason}",
       tourDocReplaceButton: "Datei ersetzen",
       tourDocReplaceNotAllowed:
