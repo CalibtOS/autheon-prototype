@@ -11027,56 +11027,76 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   };
 
   return (
-    <div style={{ maxWidth: 1040 }}>
-      <p className="pane-lead">{t("adminMdrSub")}</p>
+    // No width cap — the queue is a work surface, so it fills the pane and the
+    // reviewer gets every pixel the window offers.
+    <div>
       {/*
-        Segmented control, not a dropdown: every status stays visible and
-        switching costs one click — the most repeated action on this screen.
-        Each segment carries its count so the backlog size is readable without
-        clicking through the filters.
+        Lead text and status filter share one card so the segmented control reads
+        as a single control rather than four loose labels. On the bare pane the
+        track sits directly on the shell and its edges are hard to make out.
       */}
-      <div className="seg" style={{ display: "inline-flex", marginBottom: 18 }}>
-        {[
-          ["open", t("adminMdrFilterOpen")],
-          ["approved", t("adminMdrFilterApproved")],
-          ["rejected", t("adminMdrFilterRejected")],
-          ["all", t("adminMdrFilterAll")],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            className={filter === id ? "on" : ""}
-            aria-pressed={filter === id}
-            /* One coherent accessible name — the numeral is hidden below so a
-               screen reader does not read a stray number after the label. */
-            aria-label={`${label} (${String(statusCounts[id])})`}
-            onClick={() => {
-              setFilter(id);
-              setPage(1);
-              setSelectedId("");
-            }}
-          >
-            {label}
-            <span
-              className="mono"
-              aria-hidden="true"
-              style={{ marginLeft: 7, opacity: 0.65 }}
-            >
-              {statusCounts[id]}
-            </span>
-          </button>
-        ))}
-      </div>
       <div
+        className="card"
         style={{
-          display: "grid",
-          // Single column until a request is selected, matching the admin app.
-          gridTemplateColumns: selected ? "1fr 1.1fr" : "1fr",
-          gap: 18,
-          marginTop: 18,
-          alignItems: "start",
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          padding: "16px 20px",
+          marginBottom: 18,
         }}
       >
+        <p className="pane-lead" style={{ margin: 0 }}>
+          {t("adminMdrSub")}
+        </p>
+        {/*
+          Segmented control, not a dropdown: every status stays visible and
+          switching costs one click — the most repeated action on this screen.
+          Each segment carries its count so the backlog size is readable without
+          clicking through the filters.
+          `flexWrap` so four segments wrap onto a second row on a narrow pane
+          instead of pushing horizontal overflow through the whole screen.
+        */}
+        <div
+          className="seg"
+          style={{ display: "inline-flex", flexWrap: "wrap" }}
+        >
+          {[
+            ["open", t("adminMdrFilterOpen")],
+            ["approved", t("adminMdrFilterApproved")],
+            ["rejected", t("adminMdrFilterRejected")],
+            ["all", t("adminMdrFilterAll")],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={filter === id ? "on" : ""}
+              aria-pressed={filter === id}
+              /* One coherent accessible name — the numeral is hidden below so a
+                 screen reader does not read a stray number after the label. */
+              aria-label={`${label} (${String(statusCounts[id])})`}
+              onClick={() => {
+                setFilter(id);
+                setPage(1);
+                setSelectedId("");
+              }}
+            >
+              {label}
+              <span
+                className="mono"
+                aria-hidden="true"
+                style={{ marginLeft: 7, opacity: 0.65 }}
+              >
+                {statusCounts[id]}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* Single column until a request is selected, and even then only from
+          1280px up — see `.mdr-split` for why the width gate is needed. */}
+      <div className={selected ? "mdr-split two" : "mdr-split"}>
         <section className="card" style={{ padding: 0 }}>
           {rows.length === 0 ? (
             <div

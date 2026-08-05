@@ -4247,6 +4247,29 @@ select.input {
   padding-top: 16px;
   border-top: 1px solid var(--line);
 }
+/* Change-request queue: single column by default, list + review side by side
+   only once two usable columns actually fit. The admin shell reserves a fixed
+   248px sidebar that a viewport media query cannot see, so splitting at every
+   width collapsed the review column to ~340px — inputs down to ~26px — at
+   1024px and below. The minmax floors keep the review form legible. Mirrors the
+   admin app's `xl:` gate. */
+.mdr-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  align-items: start;
+}
+@media (min-width: 1280px) {
+  .mdr-split.two {
+    grid-template-columns: minmax(20rem, 1fr) minmax(28rem, 1.1fr);
+  }
+}
+/* As a grid item each column defaults to `min-width: auto` and refuses to
+   shrink below its content, widening the pane instead of letting it fit. */
+.mdr-split > * {
+  min-width: 0;
+}
+
 .mdr-list-changes {
   display: inline-flex;
   flex-wrap: wrap;

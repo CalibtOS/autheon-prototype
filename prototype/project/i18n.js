@@ -497,8 +497,11 @@ window.I18n = (() => {
         "Submitted {date}. Operations will review your request before you can send another.",
       navMasterDataRequests: "Profile change requests",
       adminMdrTitle: "Profile change requests",
+      // Kept to one short line so the status filter sits beside it in the header
+      // card instead of being pushed onto its own row. What approving and
+      // rejecting do is stated on the review pane, where the action is taken.
       adminMdrSub:
-        "Review proposed driver profile changes. Approving applies the submitted values automatically; rejecting closes the request without changes.",
+        "Review requested master-data updates across all service partners.",
       adminMdrFilterLabel: "Status",
       adminMdrFilterOpen: "Open",
       adminMdrFilterApproved: "Approved",
@@ -2603,7 +2606,7 @@ window.I18n = (() => {
       navMasterDataRequests: "Profiländerungen",
       adminMdrTitle: "Profiländerungs-Anfragen",
       adminMdrSub:
-        "Vorgeschlagene Driver-Profiländerungen prüfen. Genehmigen übernimmt die Werte automatisch; Ablehnen schließt die Anfrage ohne Änderung.",
+        "Prüfen Sie angeforderte Stammdatenänderungen aller Servicepartner.",
       adminMdrFilterLabel: "Status",
       adminMdrFilterOpen: "Offen",
       adminMdrFilterApproved: "Genehmigt",
