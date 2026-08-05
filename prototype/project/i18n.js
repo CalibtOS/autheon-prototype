@@ -289,6 +289,31 @@ window.I18n = (() => {
       uploadSourcePhotoDesc: "Open the camera",
       uploadSourceFile: "Choose file",
       uploadSourceFileDesc: "Select a PDF or image from your device",
+      // Staged multi-select review — lifted verbatim from autheon-fe
+      // marketplace.json documents.staged ({{vars}} → {vars}).
+      stagedTitle: "Check your selection",
+      stagedCategory: "Category: {category}",
+      stagedUsage:
+        "{used} of {total} MB used · {remaining} MB left on this tour",
+      stagedFileSize: "{size} MB",
+      stagedFileTooLarge:
+        "Too large — max {maxMb} MB per file. Remove it to continue.",
+      stagedTotalExceeded:
+        "This tour has no room left for your selection. Remove a file to continue.",
+      stagedRemoveFile: "Remove {name}",
+      stagedUpload: "Upload",
+      stagedRetry: "Retry these files",
+      stagedBatchStopped:
+        "Upload stopped — the remaining files were not sent. Check your connection and try again.",
+      stagedFailureFileTooLarge:
+        "Rejected — this file is too large. Remove it or replace it with a smaller one.",
+      stagedFailureQuotaExceeded:
+        "Rejected — this tour is full. Remove a document already attached to make room.",
+      stagedFailureUnsupportedType:
+        "Rejected — this file type is not accepted. Remove it and upload a PDF or photo.",
+      stagedFailureRejected:
+        "Rejected — this file could not be read. Remove it or try again.",
+      documentsOfflineHint: "Reconnect to upload or open documents.",
       docKindPdf: "PDF document",
       docKindImage: "Image file",
       docKindFile: "File",
@@ -387,6 +412,7 @@ window.I18n = (() => {
       tourDocAmountMathError:
         "Net, tax rate, and gross amount don't add up (expected gross: {expected}).",
       tourDocAmountFormSubmit: "Save and upload",
+      tourDocAmountWalkProgress: "Receipt {current} of {total}",
       tourDocRejectionReason: "Rejection: {reason}",
       tourDocReplaceButton: "Replace file",
       tourDocReplaceNotAllowed:
@@ -467,10 +493,14 @@ window.I18n = (() => {
       reportProblemCancelTermsIntro: "The current driver terms apply.",
       reportProblemEvidenceLabel: "Evidence (optional)",
       reportProblemEvidenceHint:
-        "Photos or documents help dispatch review the case (PDF or images, max 5 files).",
+        "Attach up to 5 PDFs or photos, max {maxMb} MB each.",
       reportProblemEvidenceAdd: "Add file",
       reportProblemEvidenceRemove: "Remove",
       reportProblemEvidenceTooMany: "Maximum 5 files per report.",
+      reportProblemEvidenceTooLarge:
+        "File is too large. Max file size: {maxMb} MB.",
+      reportProblemEvidenceTotalExceeded:
+        "Your evidence is over the {maxMb} MB limit for one report. Remove a file to continue.",
       masterDataChangeRequest: "Request profile change",
       masterDataChangeFormHint:
         "Update any fields that need changing, then submit for operations to review.",
@@ -897,6 +927,27 @@ window.I18n = (() => {
       adminAuditExportTitle: "Audit log exported",
       adminAuditExportSub:
         "CSV downloaded — use spreadsheet filters or search tools to review history.",
+      // Audit-Log retention. This copy is the agreed wording for an
+      // irreversible action in both languages and is reused verbatim by the
+      // admin console — change it here and there together, never in one place.
+      // "Audit event" is the record, "audit log" the screen; the wording states
+      // the window and never the current result set, because the purge ignores
+      // the screen's filters and the label must not suggest otherwise.
+      adminAuditRetentionAction: "Delete audit events older than {days} days",
+      adminAuditRetentionTitle: "Delete audit events older than {days} days",
+      adminAuditRetentionCount_one:
+        "1 audit event was recorded before {cutoff} and will be permanently deleted.",
+      adminAuditRetentionCount_other:
+        "{count} audit events were recorded before {cutoff} and will be permanently deleted.",
+      adminAuditRetentionNothing:
+        "No audit event is older than {days} days. Nothing will be deleted.",
+      adminAuditRetentionWarning:
+        "This cannot be undone. Export the audit log first if you want a copy.",
+      adminAuditRetentionConfirm: "Delete permanently",
+      adminAuditRetentionDoneTitle_one: "1 audit event deleted",
+      adminAuditRetentionDoneTitle_other: "{count} audit events deleted",
+      adminAuditRetentionDoneSub:
+        "Everything recorded before {cutoff} has been permanently removed. The deletion itself is recorded in the audit log.",
       adminDocumentsColDoc: "Document",
       adminDocumentsColCat: "Category",
       adminDocumentsColScope: "Scope",
@@ -1399,6 +1450,26 @@ window.I18n = (() => {
           helpContactsEmailError: "Enter a valid email address.",
           helpContactsHotlineRequired: "Dispatcher hotline is required.",
           helpContactsEmailRequired: "Support email is required.",
+          // Driver upload limits. Lifted verbatim from the console's
+          // common.json settings.system.uploadLimits* (placeholders use the
+          // prototype's single-brace interpolator rather than i18next's
+          // double braces). Labels never say "per tour" — one number governs
+          // tour documents and problem-report evidence alike.
+          uploadLimitsTitle: "Driver upload limits",
+          uploadLimitsBlurb:
+            "Set how large the files drivers upload may be. Changes take effect immediately.",
+          uploadLimitsMaxFileLabel: "Max. size per file (MB)",
+          uploadLimitsMaxFileHint:
+            "Applies to every file a driver uploads, in tour documents and in problem report evidence alike.",
+          uploadLimitsMaxTotalLabel: "Max. total per upload area (MB)",
+          uploadLimitsMaxTotalHint:
+            "Counted separately for a tour's documents and for each problem report's evidence, so a tour can hold this much in each of those areas.",
+          uploadLimitsRangeError:
+            "Enter a whole number between {min} and {max}.",
+          uploadLimitsTotalBelowFileError:
+            "The total must be at least the max. size per file ({maxFileMb} MB), otherwise no file can be uploaded.",
+          uploadLimitsSave: "Save upload limits",
+          uploadLimitsSaved: "Driver upload limits updated.",
         },
         prototype: {
           title: "Prototype settings",
@@ -1688,6 +1759,11 @@ window.I18n = (() => {
       emptyRunSlide: "Report empty run",
       emptyRunSlideDone: "Empty run reported",
       emptyRunSlideLocked: "Enter at least 30 characters to unlock",
+      // Prototype-only: the product's empty-run sheet submits with a button and
+      // has no locked-slide copy to lift. Names evidence, not the character
+      // minimum, so a driver who has already written enough is not sent back to
+      // the wrong field.
+      emptyRunSlideLockedEvidence: "Remove the flagged evidence file to unlock",
       emptyRunSuccessTitle: "Empty run reported",
       emptyRunSuccessBody:
         "Your report was submitted to Autheon and will be reviewed.",
@@ -2383,6 +2459,32 @@ window.I18n = (() => {
       uploadSourcePhotoDesc: "Kamera öffnen",
       uploadSourceFile: "Datei auswählen",
       uploadSourceFileDesc: "PDF oder Bild vom Gerät auswählen",
+      // Staged multi-select review — lifted verbatim from autheon-fe
+      // marketplace.json documents.staged ({{vars}} → {vars}).
+      stagedTitle: "Auswahl prüfen",
+      stagedCategory: "Kategorie: {category}",
+      stagedUsage:
+        "{used} von {total} MB belegt · {remaining} MB frei auf dieser Tour",
+      stagedFileSize: "{size} MB",
+      stagedFileTooLarge:
+        "Zu groß — max. {maxMb} MB pro Datei. Zum Fortfahren entfernen.",
+      stagedTotalExceeded:
+        "Für diese Auswahl ist auf dieser Tour kein Platz mehr. Zum Fortfahren eine Datei entfernen.",
+      stagedRemoveFile: "{name} entfernen",
+      stagedUpload: "Hochladen",
+      stagedRetry: "Diese Dateien erneut senden",
+      stagedBatchStopped:
+        "Upload gestoppt — die restlichen Dateien wurden nicht gesendet. Bitte Verbindung prüfen und erneut versuchen.",
+      stagedFailureFileTooLarge:
+        "Abgelehnt — diese Datei ist zu groß. Entfernen oder durch eine kleinere ersetzen.",
+      stagedFailureQuotaExceeded:
+        "Abgelehnt — diese Tour ist voll. Ein bereits angehängtes Dokument entfernen, um Platz zu schaffen.",
+      stagedFailureUnsupportedType:
+        "Abgelehnt — dieser Dateityp wird nicht akzeptiert. Entfernen und ein PDF oder Foto hochladen.",
+      stagedFailureRejected:
+        "Abgelehnt — diese Datei konnte nicht gelesen werden. Entfernen oder erneut versuchen.",
+      documentsOfflineHint:
+        "Für Upload oder Öffnen von Dokumenten erneut verbinden.",
       docKindPdf: "PDF-Dokument",
       docKindImage: "Bilddatei",
       docKindFile: "Datei",
@@ -2482,6 +2584,7 @@ window.I18n = (() => {
       tourDocAmountMathError:
         "Netto, Steuersatz und Bruttobetrag passen nicht zusammen (erwarteter Brutto: {expected}).",
       tourDocAmountFormSubmit: "Speichern und hochladen",
+      tourDocAmountWalkProgress: "Beleg {current} von {total}",
       tourDocRejectionReason: "Ablehnung: {reason}",
       tourDocReplaceButton: "Datei ersetzen",
       tourDocReplaceNotAllowed:
@@ -2569,10 +2672,14 @@ window.I18n = (() => {
         "Es gelten die aktuellen Fahrer-Bedingungen.",
       reportProblemEvidenceLabel: "Nachweise (optional)",
       reportProblemEvidenceHint:
-        "Fotos oder Dokumente helfen der Disposition (PDF oder Bilder, max. 5 Dateien).",
+        "Bis zu 5 PDFs oder Fotos anhängen, max. {maxMb} MB pro Datei.",
       reportProblemEvidenceAdd: "Datei hinzufügen",
       reportProblemEvidenceRemove: "Entfernen",
       reportProblemEvidenceTooMany: "Maximal 5 Dateien pro Meldung.",
+      reportProblemEvidenceTooLarge:
+        "Datei ist zu groß. Maximale Dateigröße: {maxMb} MB.",
+      reportProblemEvidenceTotalExceeded:
+        "Ihr Nachweis überschreitet das Limit von {maxMb} MB pro Meldung. Zum Fortfahren eine Datei entfernen.",
       masterDataChangeRequest: "Profiländerung anfragen",
       masterDataChangeFormHint:
         "Felder anpassen und zur Prüfung durch die Disposition senden.",
@@ -3004,6 +3111,24 @@ window.I18n = (() => {
       adminAuditExportTitle: "Audit-Protokoll exportiert",
       adminAuditExportSub:
         "CSV heruntergeladen — in Tabellenkalkulation filtern oder extern durchsuchen.",
+      // Aufbewahrung im Audit-Log — siehe den englischen Block: dieselbe
+      // Formulierung wird in der Admin-Konsole wortgleich wiederverwendet.
+      adminAuditRetentionAction:
+        "Audit-Ereignisse älter als {days} Tage löschen",
+      adminAuditRetentionTitle: "Audit-Ereignisse älter als {days} Tage löschen",
+      adminAuditRetentionCount_one:
+        "1 Audit-Ereignis wurde vor dem {cutoff} aufgezeichnet und wird endgültig gelöscht.",
+      adminAuditRetentionCount_other:
+        "{count} Audit-Ereignisse wurden vor dem {cutoff} aufgezeichnet und werden endgültig gelöscht.",
+      adminAuditRetentionNothing:
+        "Kein Audit-Ereignis ist älter als {days} Tage. Es wird nichts gelöscht.",
+      adminAuditRetentionWarning:
+        "Dies kann nicht rückgängig gemacht werden. Exportieren Sie das Audit-Log vorher, wenn Sie eine Kopie benötigen.",
+      adminAuditRetentionConfirm: "Endgültig löschen",
+      adminAuditRetentionDoneTitle_one: "1 Audit-Ereignis gelöscht",
+      adminAuditRetentionDoneTitle_other: "{count} Audit-Ereignisse gelöscht",
+      adminAuditRetentionDoneSub:
+        "Alles, was vor dem {cutoff} aufgezeichnet wurde, ist endgültig entfernt. Die Löschung selbst ist im Audit-Log aufgezeichnet.",
       adminDocumentsColDoc: "Dokument",
       adminDocumentsColCat: "Kategorie",
       adminDocumentsColScope: "Geltung",
@@ -3501,6 +3626,24 @@ window.I18n = (() => {
           helpContactsEmailError: "Bitte gültige E-Mail-Adresse eingeben.",
           helpContactsHotlineRequired: "Disponent-Hotline ist erforderlich.",
           helpContactsEmailRequired: "Support-E-Mail ist erforderlich.",
+          // Upload-Limits für Fahrer. Wörtlich aus common.json
+          // settings.system.uploadLimits* der Konsole (Platzhalter mit
+          // einfacher Klammer für den Prototyp-Interpolator).
+          uploadLimitsTitle: "Upload-Limits für Fahrer",
+          uploadLimitsBlurb:
+            "Festlegen, wie groß die von Fahrern hochgeladenen Dateien sein dürfen. Änderungen gelten sofort.",
+          uploadLimitsMaxFileLabel: "Max. Größe pro Datei (MB)",
+          uploadLimitsMaxFileHint:
+            "Gilt für jede Datei, die ein Fahrer hochlädt — für Tourdokumente ebenso wie für Nachweise zu Problemmeldungen.",
+          uploadLimitsMaxTotalLabel: "Max. Gesamtgröße pro Upload-Bereich (MB)",
+          uploadLimitsMaxTotalHint:
+            "Wird für die Dokumente einer Tour und für die Nachweise jeder Problemmeldung getrennt gezählt — eine Tour kann diese Menge also in jedem dieser Bereiche enthalten.",
+          uploadLimitsRangeError:
+            "Bitte eine ganze Zahl zwischen {min} und {max} eingeben.",
+          uploadLimitsTotalBelowFileError:
+            "Die Gesamtgröße muss mindestens der max. Größe pro Datei entsprechen ({maxFileMb} MB), sonst kann keine Datei hochgeladen werden.",
+          uploadLimitsSave: "Upload-Limits speichern",
+          uploadLimitsSaved: "Upload-Limits für Fahrer aktualisiert.",
         },
         prototype: {
           title: "Prototyp-Einstellungen",
@@ -3791,6 +3934,8 @@ window.I18n = (() => {
       emptyRunSlide: "Leerfahrt melden",
       emptyRunSlideDone: "Leerfahrt gemeldet",
       emptyRunSlideLocked: "Mind. 30 Zeichen eingeben zum Freischalten",
+      emptyRunSlideLockedEvidence:
+        "Markierten Nachweis entfernen zum Freischalten",
       emptyRunSuccessTitle: "Leerfahrt gemeldet",
       emptyRunSuccessBody:
         "Ihre Meldung wurde an Autheon übermittelt und wird geprüft.",

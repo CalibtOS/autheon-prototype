@@ -342,7 +342,9 @@ const PolicyDisclosure = ({ introKey = "partnerTermsApply" }) => {
 
 const tourDocUploadErrorMessage = (reason, t) => {
   if (reason === "invalid_type") return t("invoiceUploadInvalidType");
-  if (reason === "file_too_large") return t("invoiceUploadTooLarge");
+  if (reason === "file_too_large") return t("stagedFailureFileTooLarge");
+  if (reason === "allowance_exhausted")
+    return t("stagedFailureQuotaExceeded");
   if (reason === "driver_restricted") return t("invoiceUploadRestricted");
   if (reason === "job_not_performed" || reason === "job_not_uploadable")
     return t("tourDocRequiresPerformed");
@@ -354,6 +356,82 @@ const tourDocUploadErrorMessage = (reason, t) => {
   if (reason === "official_doc_not_replaceable")
     return t("tourDocOfficialNotReplaceable");
   return t("invoiceUploadTourRequired");
+};
+
+const STAGED_BYTES_PER_MB = 1024 * 1024;
+
+const formatUploadMegabytes = (bytes) =>
+  (Number(bytes) / STAGED_BYTES_PER_MB).toFixed(1);
+
+/** Pre-check: this file alone is over the configured per-file limit. */
+const exceedsDocumentUploadLimit = (file, maxFileBytes) => {
+  const size = file && typeof file.size === "number" ? file.size : 0;
+  return size > maxFileBytes;
+};
+
+/**
+ * What a staged selection means for the limits in force — projected usage,
+ * remaining clamped at zero (dispatch can push a tour past its allowance),
+ * and whether either rule is already broken before a byte leaves the device.
+ */
+const summariseUploadSelection = (usedBytes, files, limits) => {
+  const selectedBytes = (files || []).reduce(
+    (total, file) => total + (typeof file.size === "number" ? file.size : 0),
+    0,
+  );
+  const projectedBytes = usedBytes + selectedBytes;
+  return {
+    selectedBytes,
+    projectedBytes,
+    remainingBytes: Math.max(0, limits.maxTotalBytes - projectedBytes),
+    exceedsTotal: projectedBytes > limits.maxTotalBytes,
+    hasOversizedFile: (files || []).some((file) =>
+      exceedsDocumentUploadLimit(file, limits.maxFileBytes),
+    ),
+  };
+};
+
+/**
+ * Map a store refusal onto the product's failure scopes. A reason that names
+ * this file continues the batch; anything that would repeat for every
+ * remaining file stops the run and leaves the rest staged and unmarked.
+ */
+const classifyStoreUploadRefusal = (reason) => {
+  if (reason === "file_too_large")
+    return { scope: "file", reason: "fileTooLarge" };
+  if (reason === "allowance_exhausted")
+    return { scope: "file", reason: "quotaExceeded" };
+  if (reason === "invalid_type")
+    return { scope: "file", reason: "unsupportedType" };
+  if (reason === "no_file" || reason === "amount_math_invalid")
+    return { scope: "file", reason: "rejected" };
+  return { scope: "batch" };
+};
+
+const stagedFailureMessage = (failureReason, t) => {
+  if (failureReason === "fileTooLarge") return t("stagedFailureFileTooLarge");
+  if (failureReason === "quotaExceeded")
+    return t("stagedFailureQuotaExceeded");
+  if (failureReason === "unsupportedType")
+    return t("stagedFailureUnsupportedType");
+  return t("stagedFailureRejected");
+};
+
+/** navigator.onLine plus online/offline events — same gate every action uses. */
+const useDriverOnline = () => {
+  const [online, setOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine !== false,
+  );
+  useEffect(() => {
+    const sync = () => setOnline(navigator.onLine !== false);
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
+  return online;
 };
 
 const jobNeedsDocCorrection = (job, store) =>
@@ -3054,7 +3132,15 @@ const UploadSourceSheet = ({ open, onClose, onTakePhoto, onChooseFile }) => {
 // Shared picker: action sheet + the two hidden inputs. Stays mounted while
 // the sheet is closed so the native picker can be opened from a ref, and
 // resets `value` on every change so re-picking the same file still fires.
-const UploadSourcePicker = ({ open, onClose, onFile, returnFocusRef }) => {
+// `multiple` is on for a new upload (the whole batch at once) and off for
+// replace (one file, immediate, no review step).
+const UploadSourcePicker = ({
+  open,
+  onClose,
+  onFiles,
+  returnFocusRef,
+  multiple = false,
+}) => {
   const photoInputRef = useRef(null);
   const fileInputRef = useRef(null);
   const busyRef = useRef(false);
@@ -3071,15 +3157,16 @@ const UploadSourcePicker = ({ open, onClose, onFile, returnFocusRef }) => {
   };
 
   const onChange = (e) => {
-    const f = e.target.files?.[0] || null;
+    const list = e.target.files;
+    const picked = list ? Array.from(list) : [];
     e.target.value = "";
     // A dismissed picker usually fires no event at all; if it does, treat it
     // as a no-op — never create an empty attachment or an upload error.
-    if (!f) {
+    if (picked.length === 0) {
       returnFocusRef?.current?.focus?.();
       return;
     }
-    onFile?.(f);
+    onFiles?.(picked);
   };
 
   const dismiss = () => {
@@ -3100,6 +3187,7 @@ const UploadSourcePicker = ({ open, onClose, onFile, returnFocusRef }) => {
         type="file"
         accept={DOC_PHOTO_ACCEPT}
         capture="environment"
+        multiple={multiple || undefined}
         className="hidden"
         onChange={onChange}
       />
@@ -3107,6 +3195,7 @@ const UploadSourcePicker = ({ open, onClose, onFile, returnFocusRef }) => {
         ref={fileInputRef}
         type="file"
         accept={DOC_FILE_ACCEPT}
+        multiple={multiple || undefined}
         className="hidden"
         onChange={onChange}
       />
@@ -3114,9 +3203,10 @@ const UploadSourcePicker = ({ open, onClose, onFile, returnFocusRef }) => {
   );
 };
 
-// Document-type chooser — used by the tour-documents card and the
-// mark-performed success screen. Grouped per client feedback: core /
-// operational / other. Runs BEFORE the upload-source sheet above.
+// Document-type chooser — used by TourDocumentUploadFlow (tour-detail
+// card, performed-tour documents tab, mark-performed success). Grouped
+// per client feedback: core / operational / other. Runs BEFORE the
+// upload-source sheet above.
 const TourDocCategoryModal = ({ open, onClose, onPick }) => {
   const { t } = useI18n();
   if (!open) return null;
@@ -3221,6 +3311,749 @@ const TourDocCategoryModal = ({ open, onClose, onPick }) => {
   );
 };
 
+const emptyTourDocAmountForm = (documentType) => ({
+  receiptDate: "",
+  supplierInvoiceNumber: "",
+  supplierInvoiceDate: "",
+  servicePeriodFrom: "",
+  servicePeriodTo: "",
+  netAmount: "",
+  grossAmount: "",
+  taxRatePercent: "19",
+  documentType,
+});
+
+// Amount metadata sheet for invoice / fuel / toll receipts. Shared by all
+// three attach-a-tour-document entry points; only the input-id prefix differs.
+// When walkCurrent/walkTotal are set, the sheet names the position in the
+// confirmed batch so the driver does not lose their place mid-walk.
+const TourDocAmountFormSheet = ({
+  amountForm,
+  amountErr,
+  idPrefix,
+  walkCurrent,
+  walkTotal,
+  onChange,
+  onCancel,
+  onSubmit,
+}) => {
+  const { t } = useI18n();
+  if (!amountForm) return null;
+  const isInvoice = amountForm.documentType === "invoice";
+  const set = (patch) => onChange((f) => ({ ...f, ...patch }));
+  const showWalk =
+    walkCurrent != null &&
+    walkTotal != null &&
+    walkTotal > 0 &&
+    walkCurrent >= 1;
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="sheet-backdrop"
+      onClick={onCancel}
+    >
+      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>
+          {t("tourDocAmountFormTitle")}
+        </h2>
+        {showWalk ? (
+          <p
+            className="tour-doc-amount-walk-progress"
+            style={{
+              margin: "0 0 12px",
+              fontSize: 13,
+              color: "var(--muted, #666)",
+            }}
+            role="status"
+          >
+            {t("tourDocAmountWalkProgress", {
+              current: walkCurrent,
+              total: walkTotal,
+            })}
+          </p>
+        ) : null}
+        {isInvoice ? (
+          <>
+            <div>
+              <label className="field-label" htmlFor={`${idPrefix}-inv-num`}>
+                {t("adminSupplierInvoiceNumberLabel")}
+              </label>
+              <input
+                id={`${idPrefix}-inv-num`}
+                className="input"
+                value={amountForm.supplierInvoiceNumber}
+                onChange={(e) => set({ supplierInvoiceNumber: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="field-label" htmlFor={`${idPrefix}-inv-date`}>
+                {t("tourDocInvoiceDate")}
+              </label>
+              <input
+                id={`${idPrefix}-inv-date`}
+                className="input"
+                placeholder="DD.MM.YYYY"
+                value={amountForm.supplierInvoiceDate}
+                onChange={(e) => set({ supplierInvoiceDate: e.target.value })}
+              />
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 10,
+              }}
+            >
+              <div>
+                <label
+                  className="field-label"
+                  htmlFor={`${idPrefix}-svc-from`}
+                >
+                  {t("tourDocServicePeriodFrom")}
+                </label>
+                <input
+                  id={`${idPrefix}-svc-from`}
+                  className="input"
+                  placeholder="DD.MM.YYYY"
+                  value={amountForm.servicePeriodFrom}
+                  onChange={(e) => set({ servicePeriodFrom: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor={`${idPrefix}-svc-to`}>
+                  {t("tourDocServicePeriodTo")}
+                </label>
+                <input
+                  id={`${idPrefix}-svc-to`}
+                  className="input"
+                  placeholder="DD.MM.YYYY"
+                  value={amountForm.servicePeriodTo}
+                  onChange={(e) => set({ servicePeriodTo: e.target.value })}
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div>
+            <label
+              className="field-label"
+              htmlFor={`${idPrefix}-receipt-date`}
+            >
+              {t("tourDocReceiptDate")}
+            </label>
+            <input
+              id={`${idPrefix}-receipt-date`}
+              className="input"
+              placeholder="DD.MM.YYYY"
+              value={amountForm.receiptDate}
+              onChange={(e) => set({ receiptDate: e.target.value })}
+            />
+          </div>
+        )}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            gap: 10,
+            marginTop: 10,
+          }}
+        >
+          <div>
+            <label className="field-label" htmlFor={`${idPrefix}-net`}>
+              {t("tourDocNetAmount")}
+            </label>
+            <input
+              id={`${idPrefix}-net`}
+              className="input mono"
+              inputMode="decimal"
+              value={amountForm.netAmount}
+              onChange={(e) => set({ netAmount: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="field-label" htmlFor={`${idPrefix}-tax`}>
+              {t("tourDocTaxRate")}
+            </label>
+            <input
+              id={`${idPrefix}-tax`}
+              className="input mono"
+              inputMode="decimal"
+              value={amountForm.taxRatePercent}
+              onChange={(e) => set({ taxRatePercent: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="field-label" htmlFor={`${idPrefix}-gross`}>
+              {t("tourDocGrossAmount")}
+            </label>
+            <input
+              id={`${idPrefix}-gross`}
+              className="input mono"
+              inputMode="decimal"
+              value={amountForm.grossAmount}
+              onChange={(e) => set({ grossAmount: e.target.value })}
+            />
+          </div>
+        </div>
+        {amountErr ? (
+          <p
+            style={{
+              // `--danger` is not a token this repo defines; the three copies
+              // of this form carried the literal fallback. Now that there is
+              // one copy, it uses the real one.
+              color: "var(--destructive)",
+              fontSize: 12.5,
+              marginTop: 8,
+            }}
+          >
+            {amountErr}
+          </p>
+        ) : null}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginTop: 16,
+            justifyContent: "flex-end",
+          }}
+        >
+          <button type="button" className="btn" onClick={onCancel}>
+            {t("cancel")}
+          </button>
+          <button
+            type="button"
+            className="btn primary"
+            disabled={
+              !amountForm.netAmount ||
+              !amountForm.grossAmount ||
+              !amountForm.taxRatePercent
+            }
+            onClick={onSubmit}
+          >
+            {t("tourDocAmountFormSubmit")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Staged review between the file picker and the upload. The allowance figure
+// lives HERE and nowhere else — a driver who never approaches the limit never
+// learns one exists. The documents list itself is unchanged.
+const DocumentUploadStagingSheet = ({
+  open,
+  documentType,
+  files,
+  limits,
+  usedBytes,
+  isUploading,
+  isOffline,
+  errorMessage,
+  onRemoveFile,
+  onCancel,
+  onUpload,
+}) => {
+  const { t } = useI18n();
+  if (!open) return null;
+
+  const summary = summariseUploadSelection(
+    usedBytes,
+    (files || []).map((staged) => staged.file),
+    limits,
+  );
+  const blocked = summary.hasOversizedFile || summary.exceedsTotal;
+  const uploadDisabled =
+    blocked || files.length === 0 || isUploading || isOffline;
+  const hasFailures = files.some((staged) => staged.failure != null);
+
+  return (
+    <Sheet
+      open={open}
+      onClose={() => {
+        if (!isUploading) onCancel?.();
+      }}
+      title={t("stagedTitle")}
+      centered
+      className="staged-upload-sheet"
+      footer={
+        <>
+          <button
+            type="button"
+            className="btn"
+            disabled={isUploading}
+            onClick={onCancel}
+          >
+            {t("cancel")}
+          </button>
+          <button
+            type="button"
+            className="btn primary"
+            disabled={uploadDisabled}
+            onClick={onUpload}
+          >
+            {hasFailures ? t("stagedRetry") : t("stagedUpload")}
+          </button>
+        </>
+      }
+    >
+      {documentType ? (
+        <p className="staged-upload-category">
+          {t("stagedCategory", {
+            category: displayTourDocType(documentType, t),
+          })}
+        </p>
+      ) : null}
+
+      <p className="staged-upload-usage" role="status">
+        {t("stagedUsage", {
+          used: formatUploadMegabytes(summary.projectedBytes),
+          total: limits.maxTotalMb,
+          remaining: formatUploadMegabytes(summary.remainingBytes),
+        })}
+      </p>
+
+      <ul className="staged-upload-list">
+        {files.map(({ file, failure }, index) => {
+          const oversized = exceedsDocumentUploadLimit(
+            file,
+            limits.maxFileBytes,
+          );
+          return (
+            <li
+              key={`${file.name}-${String(file.size)}-${String(index)}`}
+              className="staged-upload-row"
+            >
+              <div className="staged-upload-row-main">
+                <p className="staged-upload-name" title={file.name}>
+                  {file.name}
+                </p>
+                <p className="staged-upload-size">
+                  {t("stagedFileSize", {
+                    size: formatUploadMegabytes(file.size),
+                  })}
+                </p>
+                {oversized ? (
+                  <p className="staged-upload-warn">
+                    {t("stagedFileTooLarge", { maxMb: limits.maxFileMb })}
+                  </p>
+                ) : null}
+                {failure ? (
+                  <p className="staged-upload-fail">
+                    {stagedFailureMessage(failure, t)}
+                  </p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className="staged-upload-remove touch-target"
+                disabled={isUploading}
+                aria-label={t("stagedRemoveFile", { name: file.name })}
+                onClick={() => onRemoveFile(index)}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      {summary.exceedsTotal ? (
+        <InlineAlert tone="warn" message={t("stagedTotalExceeded")} />
+      ) : null}
+
+      {errorMessage ? (
+        <InlineAlert tone="error" message={errorMessage} />
+      ) : null}
+
+      {isOffline ? (
+        <p className="staged-upload-offline">{t("documentsOfflineHint")}</p>
+      ) : null}
+    </Sheet>
+  );
+};
+
+// One attach-a-tour-document sequence — category → source → staged review →
+// (amounts walk when needed) → sequential write — used by the tour-detail
+// documents card, the performed-tour documents tab, and the mark-performed
+// success screen.
+//
+// Site differences preserved via props (do not unify silently):
+//   gateUpload  — tour-detail card re-checks canDriverUploadTourDocument on
+//                 category pick / replace; the other two sites do not — their
+//                 upload affordance is already hidden when the gate is closed.
+//   allowReplace — every site now exposes replace (My documents tab and the
+//                 mark-performed success list gained it with the all-statuses
+//                 documents tab); each call site still decides per row via
+//                 canDriverReplaceTourDocument.
+//
+// Amounts are per receipt, so the form is per file. Confirming a batch of
+// invoice / fuel / toll receipts walks those files one at a time; categories
+// that need no amounts upload straight through. Abandoning the walk keeps
+// every file already written and leaves the rest staged and unmarked, so
+// Upload becomes a resume. An amount that does not add up stays inside the
+// form and never marks the file as refused. Replace stays a single-file
+// immediate upload with no staging.
+const TourDocumentUploadFlow = ({
+  jobId,
+  returnFocusRef,
+  idPrefix,
+  gateUpload = false,
+  allowReplace = false,
+  onFeedback,
+  apiRef,
+}) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const isOnline = useDriverOnline();
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [sourceOpen, setSourceOpen] = useState(false);
+  const [pendingType, setPendingType] = useState(null);
+  const [replaceDocId, setReplaceDocId] = useState(null);
+  const [stagedType, setStagedType] = useState(null);
+  const [stagedFiles, setStagedFiles] = useState([]);
+  const [stagedError, setStagedError] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  // amountWalk: { current, total } while the per-file amount form is open.
+  // current is 1-based within this walk session (remaining files at start).
+  const [amountWalk, setAmountWalk] = useState(null);
+  const [amountForm, setAmountForm] = useState(null);
+  const [amountErr, setAmountErr] = useState("");
+
+  const showUploadError = (reason) => {
+    onFeedback?.({
+      tone: "error",
+      message: tourDocUploadErrorMessage(reason, t),
+    });
+  };
+
+  const openCategory = () => setCategoryOpen(true);
+
+  const openReplace = (docId) => {
+    if (!allowReplace) return;
+    if (gateUpload) {
+      const gate = store.canDriverUploadTourDocument(jobId);
+      if (!gate.ok) {
+        showUploadError(gate.reason || "job_not_uploadable");
+        return;
+      }
+      onFeedback?.(null);
+    }
+    setPendingType(null);
+    setReplaceDocId(docId);
+    setCategoryOpen(false);
+    setSourceOpen(true);
+  };
+
+  const onCategoryPick = (documentType) => {
+    if (gateUpload) {
+      const gate = store.canDriverUploadTourDocument(jobId);
+      if (!gate.ok) {
+        showUploadError(gate.reason);
+        // Leave the category modal open — matches the tour-detail card today.
+        return;
+      }
+      onFeedback?.(null);
+    }
+    setReplaceDocId(null);
+    setPendingType(documentType);
+    setCategoryOpen(false);
+    setSourceOpen(true);
+  };
+
+  const closeAmountWalk = () => {
+    setAmountWalk(null);
+    setAmountForm(null);
+    setAmountErr("");
+  };
+
+  // Abandon mid-walk: keep files already written; leave the rest staged and
+  // unmarked so Upload resumes rather than restarting.
+  const abandonAmountWalk = () => {
+    closeAmountWalk();
+  };
+
+  const openAmountFormForWalk = (current, total, documentType) => {
+    setAmountWalk({ current, total });
+    setAmountForm(emptyTourDocAmountForm(documentType));
+    setAmountErr("");
+  };
+
+  const amountOptsFromForm = (form) => {
+    const isInvoice = form.documentType === "invoice";
+    return {
+      receiptDate: isInvoice ? "" : form.receiptDate,
+      supplierInvoiceNumber: isInvoice ? form.supplierInvoiceNumber : "",
+      supplierInvoiceDate: isInvoice ? form.supplierInvoiceDate : "",
+      servicePeriodFrom: isInvoice ? form.servicePeriodFrom : "",
+      servicePeriodTo: isInvoice ? form.servicePeriodTo : "",
+      netAmount: form.netAmount,
+      grossAmount: form.grossAmount,
+      taxRatePercent: form.taxRatePercent,
+    };
+  };
+
+  const cancelStagedBatch = () => {
+    if (isUploading || amountWalk) return;
+    setStagedType(null);
+    setStagedFiles([]);
+    setStagedError(null);
+    closeAmountWalk();
+  };
+
+  const onFilesPicked = (picked) => {
+    if (!picked || picked.length === 0) return;
+
+    // Replace: one file, immediate, no review step.
+    if (allowReplace && replaceDocId) {
+      const f = picked[0];
+      const replacingId = replaceDocId;
+      setReplaceDocId(null);
+      const r = store.replaceTourDocument(replacingId, f);
+      if (!r.ok) showUploadError(r.reason);
+      else
+        onFeedback?.({ tone: "success", message: t("tourDocUploadSuccess") });
+      return;
+    }
+
+    if (!pendingType) return;
+    const category = pendingType;
+    setPendingType(null);
+    setStagedType(category);
+    setStagedFiles(picked.map((file) => ({ file, failure: null })));
+    setStagedError(null);
+    closeAmountWalk();
+  };
+
+  /**
+   * Categories that need no amounts: one write per file, in sequence. A
+   * refusal that names the file marks it and the run continues; a failure
+   * that would repeat for every remaining file stops the run and leaves the
+   * rest staged and unmarked. Files that land leave the list, so running
+   * again is the retry.
+   */
+  const runStraightUpload = (queue, category) => {
+    setIsUploading(true);
+    const failed = [];
+
+    for (let index = 0; index < queue.length; index += 1) {
+      const staged = queue[index];
+      const r = store.addTourDocument(staged.file, {
+        jobId,
+        documentType: category,
+      });
+      if (!r.ok) {
+        const failure = classifyStoreUploadRefusal(r.reason);
+        if (failure.scope === "batch") {
+          setStagedFiles([...failed, ...queue.slice(index)]);
+          setStagedError(t("stagedBatchStopped"));
+          setIsUploading(false);
+          return;
+        }
+        failed.push({ file: staged.file, failure: failure.reason });
+      }
+      setStagedFiles([...failed, ...queue.slice(index + 1)]);
+    }
+
+    setIsUploading(false);
+    if (failed.length === 0) {
+      setStagedType(null);
+      setStagedFiles([]);
+      onFeedback?.({ tone: "success", message: t("tourDocUploadSuccess") });
+    }
+  };
+
+  /**
+   * Confirm the staged batch. Amount categories open the per-file form walk;
+   * everything else uploads straight through. Pressing Upload again after a
+   * mid-walk abandon resumes with whatever is still staged.
+   */
+  const runStagedUpload = () => {
+    if (
+      !stagedType ||
+      !isOnline ||
+      stagedFiles.length === 0 ||
+      isUploading ||
+      amountWalk
+    )
+      return;
+    setStagedError(null);
+
+    // Reasons from the previous run are cleared up front.
+    const queue = stagedFiles.map(({ file }) => ({ file, failure: null }));
+    setStagedFiles(queue);
+    const category = stagedType;
+
+    if (store.tourDocumentRequiresAmountMetadata(category)) {
+      openAmountFormForWalk(1, queue.length, category);
+      return;
+    }
+
+    runStraightUpload(queue, category);
+  };
+
+  /**
+   * Write the current receipt with the amounts on the form, then advance.
+   * amount_math_invalid stays on the form — it must never mark the file as
+   * refused (that vocabulary is for limit/type refusals only).
+   */
+  const submitAmountUpload = () => {
+    if (!amountWalk || !amountForm || !stagedType || stagedFiles.length === 0)
+      return;
+    if (!isOnline) return;
+
+    const category = stagedType;
+    const walk = amountWalk;
+    // Always the head of the remaining list — successes leave as they land.
+    const head = stagedFiles[0];
+    if (!head || head.failure) return;
+
+    const r = store.addTourDocument(head.file, {
+      jobId,
+      documentType: category,
+      ...amountOptsFromForm(amountForm),
+    });
+
+    if (!r.ok) {
+      if (r.reason === "amount_math_invalid") {
+        setAmountErr(
+          t("tourDocAmountMathError", {
+            expected:
+              r.expectedGross != null ? r.expectedGross.toFixed(2) : "?",
+          }),
+        );
+        return;
+      }
+      const failure = classifyStoreUploadRefusal(r.reason);
+      closeAmountWalk();
+      if (failure.scope === "batch") {
+        // Stop the walk; leave this file and the rest unmarked for resume.
+        setStagedError(t("stagedBatchStopped"));
+        return;
+      }
+      // File-scoped refusal: mark the file and end the walk rather than
+      // advancing to the next receipt. The mark, the reason and both remedies
+      // live on the staged list, and the amount form covers that list while it
+      // is open — carrying on would step over a rejection the driver was never
+      // shown. Everything already written stays written, the rest stay staged
+      // and unmarked, so Upload is still a resume.
+      setStagedFiles([
+        { file: head.file, failure: failure.reason },
+        ...stagedFiles.slice(1),
+      ]);
+      return;
+    }
+
+    // Success — file leaves the list; remaining stay for the next form or resume.
+    const remaining = stagedFiles.slice(1);
+    if (remaining.length === 0) {
+      setStagedFiles([]);
+      closeAmountWalk();
+      setStagedType(null);
+      onFeedback?.({ tone: "success", message: t("tourDocUploadSuccess") });
+      return;
+    }
+    const nextUnmarkedIdx = remaining.findIndex((s) => s.failure == null);
+    if (nextUnmarkedIdx === -1) {
+      setStagedFiles(remaining);
+      closeAmountWalk();
+      return;
+    }
+    if (nextUnmarkedIdx === 0) {
+      setStagedFiles(remaining);
+    } else {
+      const unmarked = remaining[nextUnmarkedIdx];
+      setStagedFiles([
+        unmarked,
+        ...remaining.filter((_, i) => i !== nextUnmarkedIdx),
+      ]);
+    }
+    openAmountFormForWalk(walk.current + 1, walk.total, category);
+  };
+
+  // Published after commit, not during render: a render may be discarded or
+  // run twice, and the parent's button must only ever reach a mounted flow.
+  useEffect(() => {
+    if (!apiRef) return;
+    apiRef.current = { openCategory, openReplace };
+    return () => {
+      apiRef.current = {};
+    };
+  });
+
+  const limits = store.getDriverUploadLimits();
+  // Capture usage before any mutating call in this render — the store hands
+  // out live objects; a later addTourDocument would change what we show.
+  const usedBytes = store.tourDocumentsUsageBytes(jobId);
+  const amountFormOpen = amountWalk != null && amountForm != null;
+
+  return (
+    <>
+      <UploadSourcePicker
+        open={sourceOpen}
+        onClose={() => setSourceOpen(false)}
+        onFiles={onFilesPicked}
+        returnFocusRef={returnFocusRef}
+        multiple={!replaceDocId}
+      />
+      <TourDocCategoryModal
+        open={categoryOpen}
+        onClose={() => setCategoryOpen(false)}
+        onPick={onCategoryPick}
+      />
+      <DocumentUploadStagingSheet
+        open={
+          stagedType != null && stagedFiles.length > 0 && !amountFormOpen
+        }
+        documentType={stagedType}
+        files={stagedFiles}
+        limits={limits}
+        usedBytes={usedBytes}
+        isUploading={isUploading}
+        isOffline={!isOnline}
+        errorMessage={stagedError}
+        onRemoveFile={(index) => {
+          // Derive from the rendered list rather than setting sibling state
+          // inside an updater callback — updaters must stay pure, React is
+          // free to run them twice.
+          const next = stagedFiles.filter((_, i) => i !== index);
+          setStagedFiles(next);
+          if (next.length === 0) {
+            setStagedType(null);
+            setStagedError(null);
+          }
+        }}
+        onCancel={cancelStagedBatch}
+        onUpload={runStagedUpload}
+      />
+      {amountFormOpen ? (
+        <TourDocAmountFormSheet
+          amountForm={amountForm}
+          amountErr={amountErr}
+          idPrefix={idPrefix || "td-amount"}
+          walkCurrent={amountWalk.current}
+          walkTotal={amountWalk.total}
+          onChange={setAmountForm}
+          onCancel={abandonAmountWalk}
+          onSubmit={submitAmountUpload}
+        />
+      ) : null}
+    </>
+  );
+};
+
 // File-extension badge (Figma 8:2387) — folded-corner file shape with
 // the uppercase extension.
 const fileExt = (name) => {
@@ -3251,56 +4084,111 @@ const docKindLabel = (doc, t) => {
   return t("docKindFile");
 };
 
-// Driver document row (Figma 8:2387): ext badge · name + size ·
-// type right-aligned · remove (only while the upload is not yet reviewed).
-const MyDocRow = ({ doc, onRemove, t }) => (
-  <div className="mydoc-row">
-    <FileTypeBadge fileName={doc.fileName} />
-    <div className="mydoc-main">
-      <div className="mydoc-name" title={doc.fileName}>
-        {doc.fileName}
+// Driver document row — My documents tab (all statuses).
+// Parity with legacy JobTourDocuments rows: type, review status, rejection
+// reason, View / Download / Replace, plus Remove while still `uploaded`.
+const MyDocRow = ({
+  doc,
+  t,
+  onRemove,
+  onView,
+  onDownload,
+  onReplace,
+}) => {
+  const rejectionReason =
+    (doc.reviewStatus === "rejected" ||
+      doc.reviewStatus === "correction_required") &&
+    doc.rejectionReason
+      ? t("tourDocRejectionReason", { reason: doc.rejectionReason })
+      : null;
+
+  return (
+    <div className="mydoc-row">
+      <div className="mydoc-row-mainline">
+        <FileTypeBadge fileName={doc.fileName} />
+        <div className="mydoc-main">
+          <div className="mydoc-name" title={doc.fileName}>
+            {doc.fileName}
+          </div>
+          <div className="mydoc-size">
+            <span className="sr-only">{docKindLabel(doc, t)} · </span>
+            {F().formatFileSize(doc.sizeBytes)}
+          </div>
+        </div>
+        <div className="mydoc-side">
+          <div className="mydoc-type">
+            {displayTourDocType(doc.documentType, t)}
+          </div>
+          <Pill
+            status={tourDocReviewPillStatus(doc.reviewStatus)}
+            className="no-dot"
+          >
+            {displayDocReviewStatus(doc.reviewStatus, t)}
+          </Pill>
+        </div>
+        <div className="mydoc-actions">
+          {onReplace ? (
+            <button
+              type="button"
+              className="pdf-btn"
+              onClick={onReplace}
+              title={t("tourDocReplaceButton")}
+              aria-label={t("tourDocReplaceButton")}
+            >
+              <Ic.Refresh />
+            </button>
+          ) : null}
+          {onView ? (
+            <button
+              type="button"
+              className="pdf-btn"
+              onClick={onView}
+              title={t("view")}
+              aria-label={t("view")}
+            >
+              <Ic.Eye />
+            </button>
+          ) : null}
+          {onDownload ? (
+            <button
+              type="button"
+              className="pdf-btn"
+              onClick={onDownload}
+              title={t("download")}
+              aria-label={t("download")}
+            >
+              <Ic.Down />
+            </button>
+          ) : null}
+          {onRemove ? (
+            <button
+              type="button"
+              className="mydoc-remove touch-target"
+              onClick={onRemove}
+              aria-label={t("removeDocTitle")}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+          ) : null}
+        </div>
       </div>
-      <div className="mydoc-size">
-        <span className="sr-only">{docKindLabel(doc, t)} · </span>
-        {F().formatFileSize(doc.sizeBytes)}
-      </div>
-    </div>
-    <div className="mydoc-side">
-      <div className="mydoc-type">
-        {displayTourDocType(doc.documentType, t)}
-      </div>
-      {doc.reviewStatus !== "uploaded" ? (
-        <Pill
-          status={tourDocReviewPillStatus(doc.reviewStatus)}
-          className="no-dot"
-        >
-          {displayDocReviewStatus(doc.reviewStatus, t)}
-        </Pill>
+      {rejectionReason ? (
+        <p className="mydoc-rejection">{rejectionReason}</p>
       ) : null}
     </div>
-    {onRemove ? (
-      <button
-        type="button"
-        className="mydoc-remove touch-target"
-        onClick={onRemove}
-        aria-label={t("removeDocTitle")}
-      >
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          aria-hidden="true"
-        >
-          <path d="M6 6l12 12M18 6 6 18" />
-        </svg>
-      </button>
-    ) : null}
-  </div>
-);
+  );
+};
 
 // Remove-document confirmation (Figma 8:2545).
 const RemoveDocModal = ({ open, onCancel, onConfirm }) => {
@@ -3477,126 +4365,12 @@ const JobTourDocuments = ({ job, onPreview }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const uploadBtnRef = useRef(null);
+  const uploadFlowRef = useRef({});
   const jobId = job.id;
   const uploadGate = store.canDriverUploadTourDocument(jobId);
   const canUpload = uploadGate.ok;
   const uploads = store.getDriverTourDocumentsForJob(jobId);
-  const [categoryModal, setCategoryModal] = useState(false);
-  const [sourceOpen, setSourceOpen] = useState(false);
-  const [pendingType, setPendingType] = useState(null);
-  const [replaceDocId, setReplaceDocId] = useState(null);
   const [feedback, setFeedback] = useState(null);
-  // Client requirement (Phase 14): fuel/toll receipts and invoices request
-  // structured amount metadata before the upload completes.
-  const [amountUpload, setAmountUpload] = useState(null);
-  const [amountForm, setAmountForm] = useState(null);
-  const [amountErr, setAmountErr] = useState("");
-
-  const showUploadError = (reason) => {
-    setFeedback({
-      tone: "error",
-      message: tourDocUploadErrorMessage(reason, t),
-    });
-  };
-
-  const startUpload = (documentType) => {
-    const gate = store.canDriverUploadTourDocument(jobId);
-    if (!gate.ok) {
-      showUploadError(gate.reason);
-      return;
-    }
-    setFeedback(null);
-    setReplaceDocId(null);
-    setPendingType(documentType);
-    setCategoryModal(false);
-    setSourceOpen(true);
-  };
-
-  const emptyAmountForm = (documentType) => ({
-    receiptDate: "",
-    supplierInvoiceNumber: "",
-    supplierInvoiceDate: "",
-    servicePeriodFrom: "",
-    servicePeriodTo: "",
-    netAmount: "",
-    grossAmount: "",
-    taxRatePercent: "19",
-    documentType,
-  });
-
-  const finishUpload = (f, documentType, extra = {}) => {
-    const r = store.addTourDocument(f, { jobId, documentType, ...extra });
-    if (!r.ok) {
-      if (r.reason === "amount_math_invalid") {
-        setAmountErr(
-          t("tourDocAmountMathError", {
-            expected:
-              r.expectedGross != null ? r.expectedGross.toFixed(2) : "?",
-          }),
-        );
-        return false;
-      }
-      showUploadError(r.reason);
-      return true;
-    }
-    setFeedback({ tone: "success", message: t("tourDocUploadSuccess") });
-    return true;
-  };
-
-  const onPick = (f) => {
-    if (!f) return;
-    if (replaceDocId) {
-      const r = store.replaceTourDocument(replaceDocId, f);
-      setReplaceDocId(null);
-      if (!r.ok) showUploadError(r.reason);
-      else setFeedback({ tone: "success", message: t("tourDocUploadSuccess") });
-      return;
-    }
-    if (!pendingType) return;
-    if (store.tourDocumentRequiresAmountMetadata(pendingType)) {
-      setAmountUpload(f);
-      setAmountForm(emptyAmountForm(pendingType));
-      setAmountErr("");
-      setPendingType(null);
-      return;
-    }
-    finishUpload(f, pendingType);
-    setPendingType(null);
-  };
-
-  const closeAmountUpload = () => {
-    setAmountUpload(null);
-    setAmountForm(null);
-    setAmountErr("");
-  };
-
-  const submitAmountUpload = () => {
-    if (!amountUpload || !amountForm) return;
-    const isInvoice = amountForm.documentType === "invoice";
-    const ok = finishUpload(amountUpload, amountForm.documentType, {
-      receiptDate: isInvoice ? "" : amountForm.receiptDate,
-      supplierInvoiceNumber: isInvoice ? amountForm.supplierInvoiceNumber : "",
-      supplierInvoiceDate: isInvoice ? amountForm.supplierInvoiceDate : "",
-      servicePeriodFrom: isInvoice ? amountForm.servicePeriodFrom : "",
-      servicePeriodTo: isInvoice ? amountForm.servicePeriodTo : "",
-      netAmount: amountForm.netAmount,
-      grossAmount: amountForm.grossAmount,
-      taxRatePercent: amountForm.taxRatePercent,
-    });
-    if (ok) closeAmountUpload();
-  };
-
-  const startReplace = (docId) => {
-    if (!canUpload) {
-      showUploadError(uploadGate.reason || "job_not_uploadable");
-      return;
-    }
-    setFeedback(null);
-    setPendingType(null);
-    setReplaceDocId(docId);
-    setCategoryModal(false);
-    setSourceOpen(true);
-  };
 
   const canReplaceDoc = (u) =>
     canUpload && store.canDriverReplaceTourDocument(u);
@@ -3629,220 +4403,20 @@ const JobTourDocuments = ({ job, onPreview }) => {
           ref={uploadBtnRef}
           type="button"
           className="btn touch-target tour-doc-upload-btn"
-          onClick={() => setCategoryModal(true)}
+          onClick={() => uploadFlowRef.current.openCategory?.()}
         >
           <Ic.Plus /> {t("tourDocUploadReceiptButton")}
         </button>
       ) : null}
-      <UploadSourcePicker
-        open={sourceOpen}
-        onClose={() => setSourceOpen(false)}
-        onFile={onPick}
+      <TourDocumentUploadFlow
+        jobId={jobId}
         returnFocusRef={uploadBtnRef}
+        idPrefix="td"
+        gateUpload
+        allowReplace
+        onFeedback={setFeedback}
+        apiRef={uploadFlowRef}
       />
-      {amountUpload && amountForm ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="sheet-backdrop"
-          onClick={closeAmountUpload}
-        >
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>
-              {t("tourDocAmountFormTitle")}
-            </h2>
-            {amountForm.documentType === "invoice" ? (
-              <>
-                <div>
-                  <label className="field-label" htmlFor="td-inv-num">
-                    {t("adminSupplierInvoiceNumberLabel")}
-                  </label>
-                  <input
-                    id="td-inv-num"
-                    className="input"
-                    value={amountForm.supplierInvoiceNumber}
-                    onChange={(e) =>
-                      setAmountForm((f) => ({
-                        ...f,
-                        supplierInvoiceNumber: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="td-inv-date">
-                    {t("tourDocInvoiceDate")}
-                  </label>
-                  <input
-                    id="td-inv-date"
-                    className="input"
-                    placeholder="DD.MM.YYYY"
-                    value={amountForm.supplierInvoiceDate}
-                    onChange={(e) =>
-                      setAmountForm((f) => ({
-                        ...f,
-                        supplierInvoiceDate: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 10,
-                  }}
-                >
-                  <div>
-                    <label className="field-label" htmlFor="td-svc-from">
-                      {t("tourDocServicePeriodFrom")}
-                    </label>
-                    <input
-                      id="td-svc-from"
-                      className="input"
-                      placeholder="DD.MM.YYYY"
-                      value={amountForm.servicePeriodFrom}
-                      onChange={(e) =>
-                        setAmountForm((f) => ({
-                          ...f,
-                          servicePeriodFrom: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="field-label" htmlFor="td-svc-to">
-                      {t("tourDocServicePeriodTo")}
-                    </label>
-                    <input
-                      id="td-svc-to"
-                      className="input"
-                      placeholder="DD.MM.YYYY"
-                      value={amountForm.servicePeriodTo}
-                      onChange={(e) =>
-                        setAmountForm((f) => ({
-                          ...f,
-                          servicePeriodTo: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div>
-                <label className="field-label" htmlFor="td-receipt-date">
-                  {t("tourDocReceiptDate")}
-                </label>
-                <input
-                  id="td-receipt-date"
-                  className="input"
-                  placeholder="DD.MM.YYYY"
-                  value={amountForm.receiptDate}
-                  onChange={(e) =>
-                    setAmountForm((f) => ({
-                      ...f,
-                      receiptDate: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-            )}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
-                gap: 10,
-                marginTop: 10,
-              }}
-            >
-              <div>
-                <label className="field-label" htmlFor="td-net">
-                  {t("tourDocNetAmount")}
-                </label>
-                <input
-                  id="td-net"
-                  className="input mono"
-                  inputMode="decimal"
-                  value={amountForm.netAmount}
-                  onChange={(e) =>
-                    setAmountForm((f) => ({ ...f, netAmount: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="td-tax">
-                  {t("tourDocTaxRate")}
-                </label>
-                <input
-                  id="td-tax"
-                  className="input mono"
-                  inputMode="decimal"
-                  value={amountForm.taxRatePercent}
-                  onChange={(e) =>
-                    setAmountForm((f) => ({
-                      ...f,
-                      taxRatePercent: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="td-gross">
-                  {t("tourDocGrossAmount")}
-                </label>
-                <input
-                  id="td-gross"
-                  className="input mono"
-                  inputMode="decimal"
-                  value={amountForm.grossAmount}
-                  onChange={(e) =>
-                    setAmountForm((f) => ({
-                      ...f,
-                      grossAmount: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-            {amountErr ? (
-              <p
-                style={{
-                  color: "var(--danger, #c0392b)",
-                  fontSize: 12.5,
-                  marginTop: 8,
-                }}
-              >
-                {amountErr}
-              </p>
-            ) : null}
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginTop: 16,
-                justifyContent: "flex-end",
-              }}
-            >
-              <button type="button" className="btn" onClick={closeAmountUpload}>
-                {t("cancel")}
-              </button>
-              <button
-                type="button"
-                className="btn primary"
-                disabled={
-                  !amountForm.netAmount ||
-                  !amountForm.grossAmount ||
-                  !amountForm.taxRatePercent
-                }
-                onClick={submitAmountUpload}
-              >
-                {t("tourDocAmountFormSubmit")}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
       {uploads.length > 0 ? (
         <div className="tour-doc-list">
           {uploads.map((u) => (
@@ -3865,7 +4439,11 @@ const JobTourDocuments = ({ job, onPreview }) => {
                   ? t("tourDocRejectionReason", { reason: u.rejectionReason })
                   : null
               }
-              onReplace={canReplaceDoc(u) ? () => startReplace(u.id) : null}
+              onReplace={
+                canReplaceDoc(u)
+                  ? () => uploadFlowRef.current.openReplace?.(u.id)
+                  : null
+              }
               onView={() => {
                 const r = store.getTourDocumentPreview(u.id, DRIVER_ACCESS);
                 if (r.ok) onPreview?.(r.preview);
@@ -3889,11 +4467,6 @@ const JobTourDocuments = ({ job, onPreview }) => {
           <p className="tour-doc-empty-title">{t("tourDocUploadEmpty")}</p>
         </div>
       )}
-      <TourDocCategoryModal
-        open={categoryModal}
-        onClose={() => setCategoryModal(false)}
-        onPick={startUpload}
-      />
     </div>
   );
 };
@@ -3922,6 +4495,17 @@ const routeStopName = (raw) => {
   return name || null;
 };
 
+// JobUnlocked — one detail screen for every owned-tour status.
+// Consistency contract (do not fork per-status layouts):
+//   Tabs (always): Job details | My documents — driver uploads live only in
+//     the My documents tab (aligned chrome across assigned/accepted/performed/
+//     cancelled/empty-run).
+//   Shared details body: customer → route → vehicle → contacts →
+//     operational instructions → official docs → offer
+//   Status chrome only (additive, details tab):
+//     active/empty-run-reported → in-execution banner + bottom CTAs
+//     cancelled → cancellation card
+//     My documents tab → list + upload bar when store allows upload
 const JobUnlocked = ({
   job,
   onBack,
@@ -3973,106 +4557,33 @@ const JobUnlocked = ({
   // A deep-linked document resolves through the same audited preview call the
   // document row uses. A file that has since been removed simply opens the tour
   // with no preview — never an empty or broken sheet.
+  // All owned-tour statuses share Job details / My documents tabs so the
+  // chrome stays aligned; only upload eligibility and status banners differ.
+  const [detailTab, setDetailTab] = useState(
+    openDocumentId ? "documents" : "details",
+  );
   useEffect(() => {
     if (!openDocumentId) return;
+    setDetailTab("documents");
     const r = store.getTourDocumentPreview(openDocumentId, DRIVER_ACCESS);
     if (r.ok) setDocPreview(r.preview);
   }, [openDocumentId]);
-  // Performed tours split into two tabs (Figma 8:2268 / 8:2387): job
-  // details and the driver's own tour documents.
-  const [detailTab, setDetailTab] = useState("details");
   const docs = store.getDriverTourDocumentsForJob(job.id);
   const docCount = docs.length;
-  const showDocsTab = isPerformed && detailTab === "documents";
-  // My-documents tab: upload + remove state
-  const [docsCategoryOpen, setDocsCategoryOpen] = useState(false);
-  const [docsPendingType, setDocsPendingType] = useState(null);
+  const showDocsTab = detailTab === "documents";
+  const docsUploadGate = store.canDriverUploadTourDocument(job.id);
+  const canUploadDocs = docsUploadGate.ok;
+  // My-documents tab: upload + remove state. Category / source / staging /
+  // amount state belongs to TourDocumentUploadFlow, not to this screen.
   const [docsFeedback, setDocsFeedback] = useState(null);
   const [removeDocId, setRemoveDocId] = useState(null);
-  const [docsSourceOpen, setDocsSourceOpen] = useState(false);
   const docsUploadBtnRef = useRef(null);
+  const docsUploadFlowRef = useRef({});
 
-  // Client requirement (Phase 14): fuel/toll receipts and invoices request
-  // structured amount metadata before the upload completes — same pattern
-  // as JobTourDocuments' onPick.
-  const [docsAmountUpload, setDocsAmountUpload] = useState(null);
-  const [docsAmountForm, setDocsAmountForm] = useState(null);
-  const [docsAmountErr, setDocsAmountErr] = useState("");
-
-  const docsPickType = (documentType) => {
-    setDocsCategoryOpen(false);
-    setDocsPendingType(documentType);
-    setDocsSourceOpen(true);
-  };
-  const docsFinishUpload = (f, documentType, extra = {}) => {
-    const r = store.addTourDocument(f, {
-      jobId: job.id,
-      documentType,
-      ...extra,
-    });
-    if (!r.ok) {
-      if (r.reason === "amount_math_invalid") {
-        setDocsAmountErr(
-          t("tourDocAmountMathError", {
-            expected:
-              r.expectedGross != null ? r.expectedGross.toFixed(2) : "?",
-          }),
-        );
-        return false;
-      }
-      setDocsFeedback({
-        tone: "error",
-        message: tourDocUploadErrorMessage(r.reason, t),
-      });
-      return true;
-    }
-    setDocsFeedback({ tone: "success", message: t("tourDocUploadSuccess") });
-    return true;
-  };
-  const docsOnFile = (f) => {
-    if (!f || !docsPendingType) return;
-    if (store.tourDocumentRequiresAmountMetadata(docsPendingType)) {
-      setDocsAmountUpload(f);
-      setDocsAmountForm({
-        receiptDate: "",
-        supplierInvoiceNumber: "",
-        supplierInvoiceDate: "",
-        servicePeriodFrom: "",
-        servicePeriodTo: "",
-        netAmount: "",
-        grossAmount: "",
-        taxRatePercent: "19",
-        documentType: docsPendingType,
-      });
-      setDocsAmountErr("");
-      setDocsPendingType(null);
-      return;
-    }
-    docsFinishUpload(f, docsPendingType);
-    setDocsPendingType(null);
-  };
-  const closeDocsAmountUpload = () => {
-    setDocsAmountUpload(null);
-    setDocsAmountForm(null);
-    setDocsAmountErr("");
-  };
-  const submitDocsAmountUpload = () => {
-    if (!docsAmountUpload || !docsAmountForm) return;
-    const isInvoice = docsAmountForm.documentType === "invoice";
-    const ok = docsFinishUpload(docsAmountUpload, docsAmountForm.documentType, {
-      receiptDate: isInvoice ? "" : docsAmountForm.receiptDate,
-      supplierInvoiceNumber: isInvoice
-        ? docsAmountForm.supplierInvoiceNumber
-        : "",
-      supplierInvoiceDate: isInvoice ? docsAmountForm.supplierInvoiceDate : "",
-      servicePeriodFrom: isInvoice ? docsAmountForm.servicePeriodFrom : "",
-      servicePeriodTo: isInvoice ? docsAmountForm.servicePeriodTo : "",
-      netAmount: docsAmountForm.netAmount,
-      grossAmount: docsAmountForm.grossAmount,
-      taxRatePercent: docsAmountForm.taxRatePercent,
-    });
-    if (ok) closeDocsAmountUpload();
-  };
+  // Replace is a single-file immediate upload owned by the flow below;
+  // offering it here needs only the eligibility gate.
+  const docsCanReplace = (u) =>
+    canUploadDocs && store.canDriverReplaceTourDocument(u);
   const docsConfirmRemove = () => {
     const r = store.removeDriverTourDocument(removeDocId);
     setRemoveDocId(null);
@@ -4129,26 +4640,28 @@ const JobUnlocked = ({
         <div className="w-40-spacer"></div>
       </div>
 
-      {/* Performed tours: details / my documents tab pills (Figma 8:2387) */}
-      {isPerformed ? (
-        <div className="detail-tabs-row">
-          <button
-            type="button"
-            className={`detail-tab-pill ${detailTab === "details" ? "active" : ""}`}
-            onClick={() => setDetailTab("details")}
-          >
-            <span>{t("jobDetailsTab")}</span>
-          </button>
-          <button
-            type="button"
-            className={`detail-tab-pill ${detailTab === "documents" ? "active" : ""}`}
-            onClick={() => setDetailTab("documents")}
-          >
-            <span>{t("myDocumentsTab")}</span>
-            <span className="detail-tab-count">{docCount}</span>
-          </button>
-        </div>
-      ) : null}
+      {/* Job details / My documents — same tab chrome for every status */}
+      <div className="detail-tabs-row" role="tablist" aria-label={t("jobDetailsTab")}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={detailTab === "details"}
+          className={`detail-tab-pill ${detailTab === "details" ? "active" : ""}`}
+          onClick={() => setDetailTab("details")}
+        >
+          <span>{t("jobDetailsTab")}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={detailTab === "documents"}
+          className={`detail-tab-pill ${detailTab === "documents" ? "active" : ""}`}
+          onClick={() => setDetailTab("documents")}
+        >
+          <span>{t("myDocumentsTab")}</span>
+          <span className="detail-tab-count">{docCount}</span>
+        </button>
+      </div>
 
       {/* Main Content Area */}
       <div className="scroll pwa-detail-body">
@@ -4162,7 +4675,11 @@ const JobUnlocked = ({
             {docs.length === 0 ? (
               <EmptyState
                 title={t("tourDocEmptyTitle")}
-                description={t("tourDocUploadEmpty")}
+                description={
+                  canUploadDocs
+                    ? t("tourDocUploadEmpty")
+                    : t("tourDocRequiresPerformed")
+                }
               />
             ) : (
               docs.map((u) => (
@@ -4170,6 +4687,18 @@ const JobUnlocked = ({
                   key={u.id}
                   doc={u}
                   t={t}
+                  onView={() => {
+                    const r = store.getTourDocumentPreview(u.id, DRIVER_ACCESS);
+                    if (r.ok) setDocPreview(r.preview);
+                  }}
+                  onDownload={() =>
+                    store.downloadTourDocumentPlaceholder(u.id, DRIVER_ACCESS)
+                  }
+                  onReplace={
+                    docsCanReplace(u)
+                      ? () => docsUploadFlowRef.current.openReplace?.(u.id)
+                      : null
+                  }
                   onRemove={
                     u.reviewStatus === "uploaded"
                       ? () => setRemoveDocId(u.id)
@@ -4427,50 +4956,9 @@ const JobUnlocked = ({
               </div>
             </div>
 
-            {/* Operational Instructions Card */}
-            <div className="detail-card">
-              <div className="detail-section-title">
-                <Ic.TabInfo />
-                <span>{t("operationalInstructions")}</span>
-              </div>
-              <div className="detail-pdf-card">
-                <div className="pdf-icon-wrap">
-                  <Ic.Pdf />
-                </div>
-                <div className="flex-1-min-0">
-                  <div className="pdf-name">transport-order-{job.id}.pdf</div>
-                  <div className="pdf-meta">v{job.pdfVersion || 1}</div>
-                </div>
-                <div className="pdf-actions">
-                  <button
-                    type="button"
-                    className="pdf-btn"
-                    title={t("view")}
-                    aria-label={t("view")}
-                    onClick={() => {
-                      const r = store.getTransportOrderPreview(
-                        job.id,
-                        DRIVER_ACCESS,
-                      );
-                      if (r.ok) setDocPreview(r.preview);
-                    }}
-                  >
-                    <Ic.Eye />
-                  </button>
-                  <button
-                    type="button"
-                    className="pdf-btn"
-                    title={t("download")}
-                    aria-label={t("download")}
-                    onClick={() => store.downloadPdf(job.id, DRIVER_ACCESS)}
-                  >
-                    <Ic.Down />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Operational Instructions Card */}
+            {/* Shared details body (all statuses): one Operational Instructions
+                card — transport-order PDF + driver/dispatch notes. Do not
+                duplicate this block; status chrome lives above/below only. */}
             <div className="detail-card">
               <div className="detail-section-title">
                 <Ic.TabInfo />
@@ -4561,11 +5049,7 @@ const JobUnlocked = ({
             {/* Official Documents Component */}
             <JobOfficialTourDocuments job={job} onPreview={setDocPreview} />
 
-            {/* Tour Documents Component — performed tours show these in the
-            dedicated My documents tab instead */}
-            {!isPerformed && (
-              <JobTourDocuments job={job} onPreview={setDocPreview} />
-            )}
+            {/* Driver tour uploads live only in the My documents tab. */}
 
             {/* Financial Offer summary */}
             <div className="detail-card price-summary-card">
@@ -4586,14 +5070,14 @@ const JobUnlocked = ({
         )}
       </div>
 
-      {/* Bottom Bar */}
+      {/* Bottom Bar — details tab CTAs; My documents tab owns upload. */}
       {/* Empty-run report pending review — locked for the partner (§3.4). */}
-      {isEmptyRunReported && (
+      {isEmptyRunReported && !showDocsTab && (
         <div style={{ padding: "0 16px 12px" }}>
           <InlineAlert tone="info" message={t("emptyRunPendingLock")} />
         </div>
       )}
-      {canPerform && (
+      {canPerform && !showDocsTab && (
         <div className="pwa-unlocked-bottom">
           <button
             type="button"
@@ -4631,14 +5115,14 @@ const JobUnlocked = ({
         </div>
       )}
 
-      {/* My documents tab: fixed bottom upload bar (Figma 8:2387) */}
-      {showDocsTab && (
+      {/* My documents tab: fixed bottom upload bar when upload is allowed */}
+      {showDocsTab && canUploadDocs && (
         <div className="pwa-unlocked-bottom mydocs-upload-bar">
           <button
             ref={docsUploadBtnRef}
             type="button"
             className="btn primary"
-            onClick={() => setDocsCategoryOpen(true)}
+            onClick={() => docsUploadFlowRef.current.openCategory?.()}
           >
             {t("tourDocUploadButton")} <UploadTrayIcon />
           </button>
@@ -4647,238 +5131,19 @@ const JobUnlocked = ({
       )}
       {showDocsTab && (
         <>
-          <UploadSourcePicker
-            open={docsSourceOpen}
-            onClose={() => setDocsSourceOpen(false)}
-            onFile={docsOnFile}
+          <TourDocumentUploadFlow
+            jobId={job.id}
+            allowReplace
             returnFocusRef={docsUploadBtnRef}
-          />
-          <TourDocCategoryModal
-            open={docsCategoryOpen}
-            onClose={() => setDocsCategoryOpen(false)}
-            onPick={docsPickType}
+            idPrefix="mydocs"
+            onFeedback={setDocsFeedback}
+            apiRef={docsUploadFlowRef}
           />
           <RemoveDocModal
             open={!!removeDocId}
             onCancel={() => setRemoveDocId(null)}
             onConfirm={docsConfirmRemove}
           />
-          {docsAmountUpload && docsAmountForm ? (
-            <div
-              role="dialog"
-              aria-modal="true"
-              className="sheet-backdrop"
-              onClick={closeDocsAmountUpload}
-            >
-              <div className="sheet" onClick={(e) => e.stopPropagation()}>
-                <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>
-                  {t("tourDocAmountFormTitle")}
-                </h2>
-                {docsAmountForm.documentType === "invoice" ? (
-                  <>
-                    <div>
-                      <label className="field-label" htmlFor="mydocs-inv-num">
-                        {t("adminSupplierInvoiceNumberLabel")}
-                      </label>
-                      <input
-                        id="mydocs-inv-num"
-                        className="input"
-                        value={docsAmountForm.supplierInvoiceNumber}
-                        onChange={(e) =>
-                          setDocsAmountForm((f) => ({
-                            ...f,
-                            supplierInvoiceNumber: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="field-label" htmlFor="mydocs-inv-date">
-                        {t("tourDocInvoiceDate")}
-                      </label>
-                      <input
-                        id="mydocs-inv-date"
-                        className="input"
-                        placeholder="DD.MM.YYYY"
-                        value={docsAmountForm.supplierInvoiceDate}
-                        onChange={(e) =>
-                          setDocsAmountForm((f) => ({
-                            ...f,
-                            supplierInvoiceDate: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 10,
-                      }}
-                    >
-                      <div>
-                        <label
-                          className="field-label"
-                          htmlFor="mydocs-svc-from"
-                        >
-                          {t("tourDocServicePeriodFrom")}
-                        </label>
-                        <input
-                          id="mydocs-svc-from"
-                          className="input"
-                          placeholder="DD.MM.YYYY"
-                          value={docsAmountForm.servicePeriodFrom}
-                          onChange={(e) =>
-                            setDocsAmountForm((f) => ({
-                              ...f,
-                              servicePeriodFrom: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="field-label" htmlFor="mydocs-svc-to">
-                          {t("tourDocServicePeriodTo")}
-                        </label>
-                        <input
-                          id="mydocs-svc-to"
-                          className="input"
-                          placeholder="DD.MM.YYYY"
-                          value={docsAmountForm.servicePeriodTo}
-                          onChange={(e) =>
-                            setDocsAmountForm((f) => ({
-                              ...f,
-                              servicePeriodTo: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div>
-                    <label
-                      className="field-label"
-                      htmlFor="mydocs-receipt-date"
-                    >
-                      {t("tourDocReceiptDate")}
-                    </label>
-                    <input
-                      id="mydocs-receipt-date"
-                      className="input"
-                      placeholder="DD.MM.YYYY"
-                      value={docsAmountForm.receiptDate}
-                      onChange={(e) =>
-                        setDocsAmountForm((f) => ({
-                          ...f,
-                          receiptDate: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                )}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr 1fr",
-                    gap: 10,
-                    marginTop: 10,
-                  }}
-                >
-                  <div>
-                    <label className="field-label" htmlFor="mydocs-net">
-                      {t("tourDocNetAmount")}
-                    </label>
-                    <input
-                      id="mydocs-net"
-                      className="input mono"
-                      inputMode="decimal"
-                      value={docsAmountForm.netAmount}
-                      onChange={(e) =>
-                        setDocsAmountForm((f) => ({
-                          ...f,
-                          netAmount: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="field-label" htmlFor="mydocs-tax">
-                      {t("tourDocTaxRate")}
-                    </label>
-                    <input
-                      id="mydocs-tax"
-                      className="input mono"
-                      inputMode="decimal"
-                      value={docsAmountForm.taxRatePercent}
-                      onChange={(e) =>
-                        setDocsAmountForm((f) => ({
-                          ...f,
-                          taxRatePercent: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="field-label" htmlFor="mydocs-gross">
-                      {t("tourDocGrossAmount")}
-                    </label>
-                    <input
-                      id="mydocs-gross"
-                      className="input mono"
-                      inputMode="decimal"
-                      value={docsAmountForm.grossAmount}
-                      onChange={(e) =>
-                        setDocsAmountForm((f) => ({
-                          ...f,
-                          grossAmount: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-                {docsAmountErr ? (
-                  <p
-                    style={{
-                      color: "var(--danger, #c0392b)",
-                      fontSize: 12.5,
-                      marginTop: 8,
-                    }}
-                  >
-                    {docsAmountErr}
-                  </p>
-                ) : null}
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 10,
-                    marginTop: 16,
-                    justifyContent: "flex-end",
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={closeDocsAmountUpload}
-                  >
-                    {t("cancel")}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn primary"
-                    disabled={
-                      !docsAmountForm.netAmount ||
-                      !docsAmountForm.grossAmount ||
-                      !docsAmountForm.taxRatePercent
-                    }
-                    onClick={submitDocsAmountUpload}
-                  >
-                    {t("tourDocAmountFormSubmit")}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null}
         </>
       )}
     </>
@@ -5176,6 +5441,7 @@ const MyJobs = ({ onOpen, onOpenNotifications, notificationsOpen = false }) => {
 // final action can't be triggered accidentally.
 const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   const { t } = useI18n();
+  const store = useAuthStore();
   const [path, setPath] = useState(null); // 'cancel' | 'not_performable'
   const [cancelStep, setCancelStep] = useState("warn"); // 'warn' | 'form'
   const [termsOpen, setTermsOpen] = useState(false);
@@ -5190,6 +5456,13 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   const evidenceInputRef = useRef(null);
   const MIN = 30;
   const valid = text.trim().length >= MIN;
+  // Evidence is its own upload area scoped to this report. The report does
+  // not exist yet, so usage starts at zero and the selection in hand is the
+  // whole of it — no prior-usage figure, matching the shipped sheet.
+  const limits = store.getDriverUploadLimits();
+  const evidenceSummary = summariseUploadSelection(0, evidenceFiles, limits);
+  const evidenceBlocked =
+    evidenceSummary.hasOversizedFile || evidenceSummary.exceedsTotal;
 
   const cancelReasons = [
     ["appointment_not_kept", t("spCancelReasonAppointment")],
@@ -5220,16 +5493,29 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
   const slideDoneLabel = isCancel
     ? t("spCancelSlideDone")
     : t("emptyRunSlideDone");
+  // Two different reasons the slide can be locked, and they must not borrow
+  // each other's wording: an explanation that is too short, or evidence that
+  // breaks a limit. Naming the character minimum while the driver already has
+  // 100 characters typed sends them to fix the wrong thing.
   const slideLockedLabel = isCancel
     ? t("spCancelSlideLocked")
-    : t("emptyRunSlideLocked");
+    : valid && evidenceBlocked
+      ? t("emptyRunSlideLockedEvidence")
+      : t("emptyRunSlideLocked");
 
   // Latest submit closure for the slide gesture (evidence only for empty run).
   const submitRef = useRef(() => {});
-  submitRef.current = () =>
+  submitRef.current = () => {
+    // Hold submit back while evidence breaks a limit — the driver still holds
+    // the files and can remove the one that is wrong.
+    if (!isCancel && evidenceBlocked) return;
     onSubmit(path, reason, text.trim(), isCancel ? [] : evidenceFiles);
+  };
 
-  const slideEnabled = valid && !slideDone;
+  // Empty-run evidence that breaks a limit locks the slide the same way an
+  // incomplete explanation does; cancel never carries evidence.
+  const slideReady = valid && (isCancel || !evidenceBlocked);
+  const slideEnabled = slideReady && !slideDone;
 
   const choosePath = (id) => {
     setPath(id);
@@ -5318,26 +5604,34 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
         aria-disabled={!slideEnabled}
       >
         <div className="track-text">
-          {slideDone ? slideDoneLabel : valid ? slideLabel : slideLockedLabel}
+          {slideDone
+            ? slideDoneLabel
+            : slideReady
+              ? slideLabel
+              : slideLockedLabel}
         </div>
-        <div className="slide-fill" style={{ width: valid ? slidePos : 0 }} />
+        <div className="slide-fill" style={{ width: slideReady ? slidePos : 0 }} />
         <div
           className="track-text track-text-fill"
           style={{
-            clipPath: `inset(0 calc(100% - ${valid ? slidePos : 0}px) 0 0)`,
+            clipPath: `inset(0 calc(100% - ${slideReady ? slidePos : 0}px) 0 0)`,
           }}
         >
-          {slideDone ? slideDoneLabel : valid ? slideLabel : slideLockedLabel}
+          {slideDone
+            ? slideDoneLabel
+            : slideReady
+              ? slideLabel
+              : slideLockedLabel}
         </div>
         <div
           className="thumb"
-          style={{ transform: `translateX(${valid ? slidePos : 0}px)` }}
+          style={{ transform: `translateX(${slideReady ? slidePos : 0}px)` }}
           onPointerDown={slideEnabled ? onSlideStart : undefined}
           tabIndex={slideEnabled ? 0 : -1}
         >
           {slideDone ? (
             <SlideCheckIcon />
-          ) : valid ? (
+          ) : slideReady ? (
             <SlideArrowIcon />
           ) : (
             <SlideLockIcon />
@@ -5498,7 +5792,9 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                     className="req-panel-desc"
                     style={{ margin: "6px 0 10px" }}
                   >
-                    {t("emptyRunEvidenceHint")}
+                    {t("reportProblemEvidenceHint", {
+                      maxMb: limits.maxFileMb,
+                    })}
                   </p>
                   <input
                     ref={evidenceInputRef}
@@ -5509,15 +5805,19 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                     onChange={(e) => {
                       const picked = Array.from(e.target.files || []);
                       if (!picked.length) return;
-                      setEvidenceFiles((prev) => {
-                        const merged = [...prev, ...picked].slice(0, 5);
-                        setEvidenceNotice(
-                          prev.length + picked.length > 5
-                            ? t("reportProblemEvidenceTooMany")
-                            : null,
-                        );
-                        return merged;
-                      });
+                      // Everything picked is staged, including a file that
+                      // breaks a limit: it is marked in the list and blocks
+                      // submission there, so the driver can see and remove
+                      // exactly what is wrong.
+                      const merged = [...evidenceFiles, ...picked].slice(0, 5);
+                      setEvidenceFiles(merged);
+                      setEvidenceNotice(
+                        evidenceFiles.length + picked.length > 5
+                          ? t("reportProblemEvidenceTooMany")
+                          : null,
+                      );
+                      setSlidePos(0);
+                      setSlideDone(false);
                       e.target.value = "";
                     }}
                   />
@@ -5549,35 +5849,75 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
                         gap: 8,
                       }}
                     >
-                      {evidenceFiles.map((f, idx) => (
-                        <li
-                          key={`${f.name}-${idx}`}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            gap: 8,
-                            fontSize: 12,
-                            padding: "8px 10px",
-                            border: "1px solid var(--line)",
-                            borderRadius: "var(--r-2)",
-                          }}
-                        >
-                          <span className="pdf-name">{f.name}</span>
-                          <button
-                            type="button"
-                            className="btn ghost xs"
-                            onClick={() =>
-                              setEvidenceFiles((prev) =>
-                                prev.filter((_, i) => i !== idx),
-                              )
-                            }
+                      {evidenceFiles.map((f, idx) => {
+                        const oversized = exceedsDocumentUploadLimit(
+                          f,
+                          limits.maxFileBytes,
+                        );
+                        return (
+                          <li
+                            key={`${f.name}-${String(f.size)}-${idx}`}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "flex-start",
+                              gap: 8,
+                              fontSize: 12,
+                              padding: "8px 10px",
+                              border: "1px solid var(--line)",
+                              borderRadius: "var(--r-2)",
+                            }}
                           >
-                            {t("reportProblemEvidenceRemove")}
-                          </button>
-                        </li>
-                      ))}
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <span className="pdf-name">{f.name}</span>
+                              {/* The problem is named on the file that causes
+                                  it, so the driver removes that one rather
+                                  than starting over. */}
+                              {oversized ? (
+                                <p
+                                  style={{
+                                    margin: "4px 0 0",
+                                    color: "var(--st-warn)",
+                                    fontSize: 11,
+                                    lineHeight: 1.4,
+                                  }}
+                                >
+                                  {t("reportProblemEvidenceTooLarge", {
+                                    maxMb: limits.maxFileMb,
+                                  })}
+                                </p>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              className="btn ghost xs"
+                              onClick={() => {
+                                setEvidenceFiles((prev) =>
+                                  prev.filter((_, i) => i !== idx),
+                                );
+                                setSlidePos(0);
+                                setSlideDone(false);
+                              }}
+                            >
+                              {t("reportProblemEvidenceRemove")}
+                            </button>
+                          </li>
+                        );
+                      })}
                     </ul>
+                  ) : null}
+                  {/* The area total, distinct from any one file being too
+                      big: the remedy is to drop something, not to shrink a
+                      scan. */}
+                  {evidenceSummary.exceedsTotal ? (
+                    <div className="stack-8" style={{ marginTop: 10 }}>
+                      <InlineAlert
+                        tone="warn"
+                        message={t("reportProblemEvidenceTotalExceeded", {
+                          maxMb: limits.maxTotalMb,
+                        })}
+                      />
+                    </div>
                   ) : null}
                   <div
                     role="alert"
@@ -5749,13 +6089,15 @@ const MarkPerformedSheet = ({ job, onClose }) => {
   const store = useAuthStore();
   const [stage, setStage] = useState("confirm"); // confirm | success
   const [error, setError] = useState(null);
-  const [categoryOpen, setCategoryOpen] = useState(false);
-  const [pendingType, setPendingType] = useState(null);
   const [uploadFeedback, setUploadFeedback] = useState(null);
   const [removeId, setRemoveId] = useState(null);
-  const [sourceOpen, setSourceOpen] = useState(false);
+  const [docPreview, setDocPreview] = useState(null);
   const dropzoneRef = useRef(null);
+  const uploadFlowRef = useRef({});
   const uploads = store.getDriverTourDocumentsForJob(job.id);
+  const canUpload = store.canDriverUploadTourDocument(job.id).ok;
+  const canReplaceDoc = (u) =>
+    canUpload && store.canDriverReplaceTourDocument(u);
 
   const confirmRemove = () => {
     const r = store.removeDriverTourDocument(removeId);
@@ -5771,96 +6113,6 @@ const MarkPerformedSheet = ({ job, onClose }) => {
       return;
     }
     setStage("success");
-  };
-
-  const pickType = (documentType) => {
-    setCategoryOpen(false);
-    setPendingType(documentType);
-    setSourceOpen(true);
-  };
-
-  // Client requirement (Phase 14): fuel/toll receipts and invoices request
-  // structured amount metadata before the upload completes — same pattern
-  // as JobTourDocuments' onPick.
-  const [successAmountUpload, setSuccessAmountUpload] = useState(null);
-  const [successAmountForm, setSuccessAmountForm] = useState(null);
-  const [successAmountErr, setSuccessAmountErr] = useState("");
-
-  const successFinishUpload = (f, documentType, extra = {}) => {
-    const r = store.addTourDocument(f, {
-      jobId: job.id,
-      documentType,
-      ...extra,
-    });
-    if (!r.ok) {
-      if (r.reason === "amount_math_invalid") {
-        setSuccessAmountErr(
-          t("tourDocAmountMathError", {
-            expected:
-              r.expectedGross != null ? r.expectedGross.toFixed(2) : "?",
-          }),
-        );
-        return false;
-      }
-      setUploadFeedback({
-        tone: "error",
-        message: tourDocUploadErrorMessage(r.reason, t),
-      });
-      return true;
-    }
-    setUploadFeedback({ tone: "success", message: t("tourDocUploadSuccess") });
-    return true;
-  };
-
-  const onPickFile = (f) => {
-    if (!f || !pendingType) return;
-    if (store.tourDocumentRequiresAmountMetadata(pendingType)) {
-      setSuccessAmountUpload(f);
-      setSuccessAmountForm({
-        receiptDate: "",
-        supplierInvoiceNumber: "",
-        supplierInvoiceDate: "",
-        servicePeriodFrom: "",
-        servicePeriodTo: "",
-        netAmount: "",
-        grossAmount: "",
-        taxRatePercent: "19",
-        documentType: pendingType,
-      });
-      setSuccessAmountErr("");
-      setPendingType(null);
-      return;
-    }
-    successFinishUpload(f, pendingType);
-    setPendingType(null);
-  };
-  const closeSuccessAmountUpload = () => {
-    setSuccessAmountUpload(null);
-    setSuccessAmountForm(null);
-    setSuccessAmountErr("");
-  };
-  const submitSuccessAmountUpload = () => {
-    if (!successAmountUpload || !successAmountForm) return;
-    const isInvoice = successAmountForm.documentType === "invoice";
-    const ok = successFinishUpload(
-      successAmountUpload,
-      successAmountForm.documentType,
-      {
-        receiptDate: isInvoice ? "" : successAmountForm.receiptDate,
-        supplierInvoiceNumber: isInvoice
-          ? successAmountForm.supplierInvoiceNumber
-          : "",
-        supplierInvoiceDate: isInvoice
-          ? successAmountForm.supplierInvoiceDate
-          : "",
-        servicePeriodFrom: isInvoice ? successAmountForm.servicePeriodFrom : "",
-        servicePeriodTo: isInvoice ? successAmountForm.servicePeriodTo : "",
-        netAmount: successAmountForm.netAmount,
-        grossAmount: successAmountForm.grossAmount,
-        taxRatePercent: successAmountForm.taxRatePercent,
-      },
-    );
-    if (ok) closeSuccessAmountUpload();
   };
 
   if (stage === "confirm") {
@@ -5931,7 +6183,7 @@ const MarkPerformedSheet = ({ job, onClose }) => {
             ref={dropzoneRef}
             type="button"
             className="performed-upload-drop touch-target"
-            onClick={() => setCategoryOpen(true)}
+            onClick={() => uploadFlowRef.current.openCategory?.()}
           >
             <span className="performed-upload-icn">
               <UploadTrayIcon />
@@ -5957,6 +6209,18 @@ const MarkPerformedSheet = ({ job, onClose }) => {
                   key={u.id}
                   doc={u}
                   t={t}
+                  onView={() => {
+                    const r = store.getTourDocumentPreview(u.id, DRIVER_ACCESS);
+                    if (r.ok) setDocPreview(r.preview);
+                  }}
+                  onDownload={() =>
+                    store.downloadTourDocumentPlaceholder(u.id, DRIVER_ACCESS)
+                  }
+                  onReplace={
+                    canReplaceDoc(u)
+                      ? () => uploadFlowRef.current.openReplace?.(u.id)
+                      : null
+                  }
                   onRemove={
                     u.reviewStatus === "uploaded"
                       ? () => setRemoveId(u.id)
@@ -5974,232 +6238,25 @@ const MarkPerformedSheet = ({ job, onClose }) => {
         >
           {t("performedDone")}
         </button>
-        <UploadSourcePicker
-          open={sourceOpen}
-          onClose={() => setSourceOpen(false)}
-          onFile={onPickFile}
+        {docPreview ? (
+          <DocumentPreviewSheet
+            preview={docPreview}
+            onClose={() => setDocPreview(null)}
+          />
+        ) : null}
+        <TourDocumentUploadFlow
+          jobId={job.id}
+          allowReplace
           returnFocusRef={dropzoneRef}
-        />
-        <TourDocCategoryModal
-          open={categoryOpen}
-          onClose={() => setCategoryOpen(false)}
-          onPick={pickType}
+          idPrefix="success"
+          onFeedback={setUploadFeedback}
+          apiRef={uploadFlowRef}
         />
         <RemoveDocModal
           open={!!removeId}
           onCancel={() => setRemoveId(null)}
           onConfirm={confirmRemove}
         />
-        {successAmountUpload && successAmountForm ? (
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="sheet-backdrop"
-            onClick={closeSuccessAmountUpload}
-          >
-            <div className="sheet" onClick={(e) => e.stopPropagation()}>
-              <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>
-                {t("tourDocAmountFormTitle")}
-              </h2>
-              {successAmountForm.documentType === "invoice" ? (
-                <>
-                  <div>
-                    <label className="field-label" htmlFor="success-inv-num">
-                      {t("adminSupplierInvoiceNumberLabel")}
-                    </label>
-                    <input
-                      id="success-inv-num"
-                      className="input"
-                      value={successAmountForm.supplierInvoiceNumber}
-                      onChange={(e) =>
-                        setSuccessAmountForm((f) => ({
-                          ...f,
-                          supplierInvoiceNumber: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="field-label" htmlFor="success-inv-date">
-                      {t("tourDocInvoiceDate")}
-                    </label>
-                    <input
-                      id="success-inv-date"
-                      className="input"
-                      placeholder="DD.MM.YYYY"
-                      value={successAmountForm.supplierInvoiceDate}
-                      onChange={(e) =>
-                        setSuccessAmountForm((f) => ({
-                          ...f,
-                          supplierInvoiceDate: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: 10,
-                    }}
-                  >
-                    <div>
-                      <label className="field-label" htmlFor="success-svc-from">
-                        {t("tourDocServicePeriodFrom")}
-                      </label>
-                      <input
-                        id="success-svc-from"
-                        className="input"
-                        placeholder="DD.MM.YYYY"
-                        value={successAmountForm.servicePeriodFrom}
-                        onChange={(e) =>
-                          setSuccessAmountForm((f) => ({
-                            ...f,
-                            servicePeriodFrom: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="field-label" htmlFor="success-svc-to">
-                        {t("tourDocServicePeriodTo")}
-                      </label>
-                      <input
-                        id="success-svc-to"
-                        className="input"
-                        placeholder="DD.MM.YYYY"
-                        value={successAmountForm.servicePeriodTo}
-                        onChange={(e) =>
-                          setSuccessAmountForm((f) => ({
-                            ...f,
-                            servicePeriodTo: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div>
-                  <label className="field-label" htmlFor="success-receipt-date">
-                    {t("tourDocReceiptDate")}
-                  </label>
-                  <input
-                    id="success-receipt-date"
-                    className="input"
-                    placeholder="DD.MM.YYYY"
-                    value={successAmountForm.receiptDate}
-                    onChange={(e) =>
-                      setSuccessAmountForm((f) => ({
-                        ...f,
-                        receiptDate: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              )}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr",
-                  gap: 10,
-                  marginTop: 10,
-                }}
-              >
-                <div>
-                  <label className="field-label" htmlFor="success-net">
-                    {t("tourDocNetAmount")}
-                  </label>
-                  <input
-                    id="success-net"
-                    className="input mono"
-                    inputMode="decimal"
-                    value={successAmountForm.netAmount}
-                    onChange={(e) =>
-                      setSuccessAmountForm((f) => ({
-                        ...f,
-                        netAmount: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="success-tax">
-                    {t("tourDocTaxRate")}
-                  </label>
-                  <input
-                    id="success-tax"
-                    className="input mono"
-                    inputMode="decimal"
-                    value={successAmountForm.taxRatePercent}
-                    onChange={(e) =>
-                      setSuccessAmountForm((f) => ({
-                        ...f,
-                        taxRatePercent: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="success-gross">
-                    {t("tourDocGrossAmount")}
-                  </label>
-                  <input
-                    id="success-gross"
-                    className="input mono"
-                    inputMode="decimal"
-                    value={successAmountForm.grossAmount}
-                    onChange={(e) =>
-                      setSuccessAmountForm((f) => ({
-                        ...f,
-                        grossAmount: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-              {successAmountErr ? (
-                <p
-                  style={{
-                    color: "var(--danger, #c0392b)",
-                    fontSize: 12.5,
-                    marginTop: 8,
-                  }}
-                >
-                  {successAmountErr}
-                </p>
-              ) : null}
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  marginTop: 16,
-                  justifyContent: "flex-end",
-                }}
-              >
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={closeSuccessAmountUpload}
-                >
-                  {t("cancel")}
-                </button>
-                <button
-                  type="button"
-                  className="btn primary"
-                  disabled={
-                    !successAmountForm.netAmount ||
-                    !successAmountForm.grossAmount ||
-                    !successAmountForm.taxRatePercent
-                  }
-                  onClick={submitSuccessAmountUpload}
-                >
-                  {t("tourDocAmountFormSubmit")}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
       </div>
     </div>
   );
@@ -7343,11 +7400,18 @@ function applyAppTheme(theme) {
     /* no-op */
   }
   const isPwaPage = document.body?.classList?.contains("pwa-page");
-  // Primary PWA headers pull --paper into the safe-area band, so system chrome
-  // tracks --brand-surface (same as header), not canvas list ground.
-  const fallback = theme === "dark" ? "#2C2C2E" : "#FFFFFF";
+  // Match FE ThemeSync / DriverShell: PWA system chrome = surface-muted
+  // (canvas under Island). Framed desktop prototype keeps paper chrome.
+  const fallback = isPwaPage
+    ? theme === "dark"
+      ? "#1C1C1E"
+      : "#F5F5F7"
+    : theme === "dark"
+      ? "#2C2C2E"
+      : "#FFFFFF";
+  const token = isPwaPage ? "--brand-canvas" : "--brand-surface";
   const resolved = getComputedStyle(document.documentElement)
-    .getPropertyValue("--brand-surface")
+    .getPropertyValue(token)
     .trim();
   const chrome =
     resolved && !resolved.startsWith("var(") ? resolved : fallback;

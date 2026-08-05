@@ -1936,6 +1936,27 @@ window.AuthStore = (() => {
         supplierInvoiceNumber: "",
         supplierInvoiceDate: "",
       },
+      // ~40 MB accepted document so tour 0845 sits nearly full at the default
+      // 50 MB area total — exhausted-allowance and a remaining figure of zero
+      // (after a further dispatch attach) are demoable without editing settings.
+      {
+        id: "TD-SEED-LARGE-0845",
+        jobId: "A-2026-00845",
+        driverId: "DRV-0228",
+        driverName: DEMO_DRIVER,
+        fileName: "bulk-delivery-photos-0845.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 40 * 1024 * 1024,
+        uploadedAt: "2026-04-23T09:00:00.000Z",
+        documentType: "other_proof",
+        reviewStatus: "accepted",
+        rejectionReason: "",
+        processed: true,
+        source: "driver",
+        notes: "Large accepted batch kept for attachment-allowance demos.",
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
+      },
       {
         id: "TD-SEED-001",
         jobId: "A-2026-00842",
@@ -2661,6 +2682,14 @@ window.AuthStore = (() => {
     warningDays: 15,
   };
 
+  // Driver upload limits — same defaults the product catalog seeds
+  // (`driver.uploads.limits`). Megabytes because that is what the admin form
+  // and the driver copy both speak. In-memory; resets on refresh / reloadDemo.
+  const driverUploadLimits = {
+    maxFileMb: 25,
+    maxTotalMb: 50,
+  };
+
   const cancellationPolicies = {
     adminCancelRequiresReasonCode: true,
     adminCancelRequiresDriverMessage: true,
@@ -2919,14 +2948,96 @@ window.AuthStore = (() => {
     return ["pdf", "jpg", "jpeg", "png", "webp", "gif"].includes(ext);
   }
 
-  // 25 MB — the limit the driver PWA advertises on the upload dropzone
-  // ("Max. Dateigröße: 25 MB"). Enforced here so every upload path (camera
-  // photo, device file, PDF, admin off-channel registration) shares one rule.
-  const MAX_TOUR_DOCUMENT_BYTES = 25 * 1024 * 1024;
+  const BYTES_PER_MEGABYTE = 1024 * 1024;
 
-  function exceedsTourDocumentSizeLimit(file) {
+  // Platform ceiling — the fixed backstop no upload of any kind may exceed.
+  // Distinct from the configured per-file limit that governs only tour
+  // documents and problem-report evidence. Dispatch off-channel attach and
+  // driver personal documents (licence/ID) stay on this ceiling alone; the
+  // rise from the previous compiled-in 25 MB to 50 MB for personal documents
+  // is an accepted consequence mirroring the product.
+  const PLATFORM_UPLOAD_CEILING_BYTES = 50 * BYTES_PER_MEGABYTE;
+
+  // Upper bound on the configured area total. Not a ceiling on any one upload —
+  // it only stops an area total being set to an absurd figure. The admin form
+  // shows the same number in its range message.
+  const MAX_UPLOAD_AREA_TOTAL_MB = 1024;
+
+  function exceedsPlatformUploadCeiling(file) {
     const size = file && typeof file.size === "number" ? file.size : 0;
-    return size > MAX_TOUR_DOCUMENT_BYTES;
+    return size > PLATFORM_UPLOAD_CEILING_BYTES;
+  }
+
+  function driverUploadLimitsSnapshot() {
+    return {
+      maxFileMb: driverUploadLimits.maxFileMb,
+      maxTotalMb: driverUploadLimits.maxTotalMb,
+      maxFileBytes: driverUploadLimits.maxFileMb * BYTES_PER_MEGABYTE,
+      maxTotalBytes: driverUploadLimits.maxTotalMb * BYTES_PER_MEGABYTE,
+    };
+  }
+
+  /**
+   * Bytes one tour's documents upload area currently occupies.
+   *
+   * Counts live driver uploads and dispatch off-channel attachments. A row
+   * whose review status is `replaced` does not count — replace keeps the old
+   * row as reviewable history, so what is listed and what is counted
+   * legitimately differ. Generated transport orders live in a different
+   * collection and never appear here. `excludingDocumentId` lets a replace
+   * charge as a delta (outgoing bytes off before incoming bytes on).
+   */
+  function tourDocumentsUsageBytes(jobId, opts = {}) {
+    if (!jobId) return 0;
+    const excluding = opts.excludingDocumentId || null;
+    let total = 0;
+    for (const d of tourDocuments) {
+      if (d.jobId !== jobId) continue;
+      if (excluding && d.id === excluding) continue;
+      if (normalizeTourDocumentReviewStatus(d.reviewStatus) === "replaced")
+        continue;
+      total += typeof d.sizeBytes === "number" ? d.sizeBytes : 0;
+    }
+    return total;
+  }
+
+  function tourDocumentsRemainingBytes(jobId, opts = {}) {
+    const maxTotal = driverUploadLimits.maxTotalMb * BYTES_PER_MEGABYTE;
+    return Math.max(0, maxTotal - tourDocumentsUsageBytes(jobId, opts));
+  }
+
+  /**
+   * Shared policy for the two upload areas (tour documents and problem-report
+   * evidence). Two distinct refusal reasons so later screens can show different
+   * copy: `file_too_large` names this file; `allowance_exhausted` names the
+   * area and points at removal as the remedy.
+   */
+  function assertAttachmentAllowed(check = {}) {
+    const limits = driverUploadLimitsSnapshot();
+    const size =
+      typeof check.fileSizeBytes === "number" && check.fileSizeBytes >= 0
+        ? check.fileSizeBytes
+        : 0;
+    const usage =
+      typeof check.currentUsageBytes === "number" &&
+      check.currentUsageBytes >= 0
+        ? check.currentUsageBytes
+        : 0;
+    if (size > limits.maxFileBytes) {
+      return { ok: false, reason: "file_too_large" };
+    }
+    if (usage + size > limits.maxTotalBytes) {
+      return { ok: false, reason: "allowance_exhausted" };
+    }
+    return { ok: true };
+  }
+
+  function assertTourDocumentAttachment(jobId, file, opts = {}) {
+    const size = file && typeof file.size === "number" ? file.size : 0;
+    return assertAttachmentAllowed({
+      fileSizeBytes: size,
+      currentUsageBytes: tourDocumentsUsageBytes(jobId, opts),
+    });
   }
 
   function nowStamp() {
@@ -2983,6 +3094,88 @@ window.AuthStore = (() => {
   function parseAuditEntryDate(entry) {
     const d = new Date(entry?.atIso);
     return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  // =======================================================================
+  // AUDIT-LOG RETENTION — the ninety-day purge.
+  //
+  // The Audit-Log grows without bound, so an admin can trim it back to a
+  // bounded window of recent history. Everything below mirrors the product's
+  // behaviour exactly, because a stakeholder signing off on this prototype is
+  // signing off on what gets built:
+  //
+  //   - The window is a FIXED CONSTANT, never a client input and never an app
+  //     setting. A configurable window on a manually-triggered destructive
+  //     action means the log can be emptied in two clicks.
+  //   - The cutoff is derived HERE, from the constant and the current instant.
+  //     A caller-supplied cutoff would be a filter, and one submitting "now"
+  //     would delete the whole log.
+  //   - The purge takes NO FILTERS. Deletion is by age and by nothing else.
+  //     This is the one property that separates retention from censorship: a
+  //     filter-scoped purge would let an admin narrow the log to their own
+  //     actions and destroy exactly the evidence of them.
+  //   - Purge events are PERMANENTLY EXEMPT. Without that, an admin purges,
+  //     waits out the window, purges again, and nothing survives to say the
+  //     log was ever trimmed — a retention tool becomes a cover-up tool.
+  // =======================================================================
+
+  const AUDIT_RETENTION_WINDOW_DAYS = 90;
+
+  // The action a purge records against itself. Stable, English, never
+  // localized — same convention as every other action name.
+  const AUDIT_ACTION_LOG_PURGED = "audit_log_purged";
+
+  /**
+   * The actions a purge may never remove.
+   *
+   * Not a filter, and never widened by a caller — nothing outside this module
+   * contributes to it.
+   */
+  const AUDIT_PURGE_EXEMPT_ACTIONS = [AUDIT_ACTION_LOG_PURGED];
+
+  const AUDIT_RETENTION_MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+  /**
+   * The instant a purge deletes strictly before, derived from `now`.
+   *
+   * A rolling instant rather than a calendar-day boundary in a named zone: the
+   * Audit-Log already renders timestamps in the viewer's zone, and a second
+   * time convention on the same surface buys an admin nothing. `now` is passed
+   * in so the arithmetic stays a pure function and can be driven by a test.
+   */
+  function auditRetentionCutoff(now) {
+    const at = now instanceof Date ? now : new Date();
+    return new Date(
+      at.getTime() - AUDIT_RETENTION_WINDOW_DAYS * AUDIT_RETENTION_MS_PER_DAY,
+    );
+  }
+
+  /**
+   * The ONE deletion predicate, shared by the preview count and the delete, so
+   * "the dialog said 2 and 2 disappeared" is structural rather than two
+   * conditions that have to keep agreeing.
+   *
+   * Strictly less-than: an audit event recorded exactly on the cutoff survives
+   * — one stated rule for the boundary. An audit event whose instant cannot be
+   * read is never deleted; retention removes what it can prove is old, and
+   * proves nothing about an unreadable timestamp.
+   */
+  function isAuditEventPurgeable(entry, cutoff) {
+    if (AUDIT_PURGE_EXEMPT_ACTIONS.includes(entry?.action)) return false;
+    const at = parseAuditEntryDate(entry);
+    if (!at) return false;
+    return at.getTime() < cutoff.getTime();
+  }
+
+  /** How far back the given audit events reach; null when there are none. */
+  function oldestAuditEventIso(list) {
+    let oldest = null;
+    for (const entry of list) {
+      const at = parseAuditEntryDate(entry);
+      if (!at) continue;
+      if (!oldest || at.getTime() < oldest.getTime()) oldest = at;
+    }
+    return oldest ? oldest.toISOString() : null;
   }
 
   /**
@@ -5075,7 +5268,7 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
-      if (exceedsTourDocumentSizeLimit(file))
+      if (exceedsPlatformUploadCeiling(file))
         return { ok: false, reason: "file_too_large" };
       const category = normalizeDriverDocCategory(opts.category);
       const prior = driverDocuments.find(
@@ -5197,8 +5390,13 @@ window.AuthStore = (() => {
     isValidSupportPhone,
     isValidSupportEmail,
     isAllowedTourDocumentFile,
-    exceedsTourDocumentSizeLimit,
-    MAX_TOUR_DOCUMENT_BYTES,
+    exceedsPlatformUploadCeiling,
+    PLATFORM_UPLOAD_CEILING_BYTES,
+    MAX_UPLOAD_AREA_TOTAL_MB,
+    assertAttachmentAllowed,
+    assertTourDocumentAttachment,
+    tourDocumentsUsageBytes,
+    tourDocumentsRemainingBytes,
     jobWasEverCommitted,
 
     // ---- Auth session (client-preview + /pwa login gate) ----
@@ -5603,6 +5801,47 @@ window.AuthStore = (() => {
       return { ok: true };
     },
 
+    getDriverUploadLimits: () => driverUploadLimitsSnapshot(),
+
+    /**
+     * Bounds live here, not only in the admin form. The platform ceiling is
+     * "the backstop no upload of any kind may exceed" — if the configured
+     * per-file limit could be set above it, a tour document could exceed the
+     * backstop and the ceiling would mean nothing. The admin card enforces the
+     * same numbers for the message it can show; this is the invariant.
+     */
+    setDriverUploadLimits(partial = {}) {
+      const clampMb = (value, max) => {
+        const parsed = Math.floor(Number(value));
+        if (!Number.isFinite(parsed)) return null;
+        return Math.min(Math.max(parsed, 1), max);
+      };
+      if (partial.maxFileMb != null) {
+        const next = clampMb(
+          partial.maxFileMb,
+          PLATFORM_UPLOAD_CEILING_BYTES / BYTES_PER_MEGABYTE,
+        );
+        if (next == null) return { ok: false, reason: "invalid_max_file" };
+        driverUploadLimits.maxFileMb = next;
+      }
+      if (partial.maxTotalMb != null) {
+        const next = clampMb(partial.maxTotalMb, MAX_UPLOAD_AREA_TOTAL_MB);
+        if (next == null) return { ok: false, reason: "invalid_max_total" };
+        driverUploadLimits.maxTotalMb = next;
+      }
+      log(
+        "driver_upload_limits_changed",
+        DEMO_ADMIN,
+        "app_settings",
+        JSON.stringify({
+          maxFileMb: driverUploadLimits.maxFileMb,
+          maxTotalMb: driverUploadLimits.maxTotalMb,
+        }),
+      );
+      emit();
+      return { ok: true };
+    },
+
     checkAdminCancelPolicy(job, opts = {}) {
       const minH = operationalPolicies.adminCancelMinHoursBeforePickupStart;
       if (minH == null || minH <= 0) return { ok: true };
@@ -5682,6 +5921,14 @@ window.AuthStore = (() => {
     getNewsAdmin: () => newsItems.slice(),
     getAuditLog: () => auditLog,
     parseAuditEntryDate,
+    // Retention: the window drives the Audit-Log button's label and the cutoff
+    // alike, so the promise made to the admin and the predicate applied to the
+    // log cannot drift apart. The pure helpers are exposed so the retention
+    // arithmetic is drivable directly, without going through the screen.
+    AUDIT_RETENTION_WINDOW_DAYS,
+    AUDIT_PURGE_EXEMPT_ACTIONS,
+    auditRetentionCutoff,
+    isAuditEventPurgeable,
     getAdminEmailQueue: () => adminEmailQueue.slice(),
     // Nav badge count — open only, so a processed backlog never keeps the
     // badge (and its pulse) lit. Mirrors getOpenMasterDataChangeRequestCount.
@@ -6384,9 +6631,17 @@ window.AuthStore = (() => {
     buildEmptyRunEvidenceMeta(files) {
       const list = Array.isArray(files) ? files.slice(0, 5) : [];
       const evidence = [];
+      const limits = driverUploadLimitsSnapshot();
+      let usageBytes = 0;
       for (const file of list) {
         if (!file || !isAllowedTourDocumentFile(file)) continue;
-        if (exceedsTourDocumentSizeLimit(file)) continue;
+        const size = typeof file.size === "number" ? file.size : 0;
+        // Evidence reads the same configured limits as tour documents, as its
+        // own upload area. Oversized or over-total picks are dropped here;
+        // the Report Problem sheet (later ticket) surfaces the reason before
+        // submit via assertAttachmentAllowed.
+        if (size > limits.maxFileBytes) continue;
+        if (usageBytes + size > limits.maxTotalBytes) continue;
         const mime = (file.type || guessMimeFromName(file.name) || "").trim();
         const isImage = /^image\//i.test(mime);
         // Keep an in-session object URL for image evidence so the admin review
@@ -6405,11 +6660,12 @@ window.AuthStore = (() => {
           id: `ERE-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           fileName: file.name,
           mimeType: mime || "application/octet-stream",
-          sizeBytes: typeof file.size === "number" ? file.size : 0,
+          sizeBytes: size,
           uploadedAt: new Date().toISOString(),
           isImage,
           previewUrl,
         });
+        usageBytes += size;
       }
       return evidence;
     },
@@ -8070,10 +8326,10 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
-      if (exceedsTourDocumentSizeLimit(file))
-        return { ok: false, reason: "file_too_large" };
       const gate = api.canDriverUploadTourDocument(opts.jobId);
       if (!gate.ok) return gate;
+      const sizeCheck = assertTourDocumentAttachment(gate.jobId, file);
+      if (!sizeCheck.ok) return sizeCheck;
       const hasAmountFields =
         opts.netAmount != null ||
         opts.grossAmount != null ||
@@ -8237,8 +8493,10 @@ window.AuthStore = (() => {
         if (!file) return { ok: false, reason: "no_file" };
         if (!isAllowedTourDocumentFile(file))
           return { ok: false, reason: "invalid_type" };
-        if (exceedsTourDocumentSizeLimit(file))
-          return { ok: false, reason: "file_too_large" };
+        const sizeCheck = assertTourDocumentAttachment(jobId, file, {
+          excludingDocumentId: doc.id,
+        });
+        if (!sizeCheck.ok) return sizeCheck;
         doc.fileName = file.name;
         doc.mimeType =
           (file.type || guessMimeFromName(file.name) || "").trim() ||
@@ -8366,8 +8624,6 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
-      if (exceedsTourDocumentSizeLimit(file))
-        return { ok: false, reason: "file_too_large" };
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false, reason: "not_found" };
       const jobId = doc.jobId;
@@ -8396,6 +8652,13 @@ window.AuthStore = (() => {
       ];
       if (!replaceable.includes(st))
         return { ok: false, reason: "not_replaceable" };
+      // Delta charge: outgoing bytes leave the usage figure before the
+      // incoming file is weighed, so a like-for-like correction on a full
+      // tour always succeeds.
+      const sizeCheck = assertTourDocumentAttachment(jobId, file, {
+        excludingDocumentId: doc.id,
+      });
+      if (!sizeCheck.ok) return sizeCheck;
       const who =
         actor === "driver"
           ? api.getCurrentDriver()?.name || DEMO_DRIVER
@@ -8504,7 +8767,7 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
-      if (exceedsTourDocumentSizeLimit(file))
+      if (exceedsPlatformUploadCeiling(file))
         return { ok: false, reason: "file_too_large" };
       const invNum = String(data?.supplierInvoiceNumber || "").trim();
       if (!invNum) return { ok: false, reason: "no_invoice_id" };
@@ -8620,7 +8883,7 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
-      if (exceedsTourDocumentSizeLimit(file))
+      if (exceedsPlatformUploadCeiling(file))
         return { ok: false, reason: "file_too_large" };
       const dr = jobDriverRecord(j);
       const mime =
@@ -8676,7 +8939,7 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
-      if (exceedsTourDocumentSizeLimit(file))
+      if (exceedsPlatformUploadCeiling(file))
         return { ok: false, reason: "file_too_large" };
       const mime =
         (file.type || guessMimeFromName(file.name) || "").trim() ||
@@ -8836,6 +9099,88 @@ window.AuthStore = (() => {
       log("audit_log_exported", DEMO_ADMIN, "CSV", `${list.length} rows`);
       emit();
       return rows.join("\n");
+    },
+
+    /**
+     * What a purge would remove right now, read before an admin confirms one.
+     *
+     * Takes no arguments, because it takes no filters and no date. The count
+     * comes back from the same predicate the purge deletes with, so the number
+     * an admin consents to is the number that disappears.
+     *
+     * Read when the confirmation OPENS, never on page load — in the product
+     * this is a second unfiltered exact count over the table, and running it on
+     * every visit would double the cost retention exists to reduce.
+     *
+     * `cutoffDisplay` is the cutoff in the Audit-Log's own time format, so the
+     * dialog names the boundary in the same terms as the table's Time column.
+     */
+    getAuditRetentionPreview() {
+      const cutoff = auditRetentionCutoff(new Date());
+      return {
+        cutoffAt: cutoff.toISOString(),
+        cutoffDisplay: auditStamp(cutoff).display,
+        eligibleCount: auditLog.filter((a) => isAuditEventPurgeable(a, cutoff))
+          .length,
+        oldestEventAt: oldestAuditEventIso(auditLog),
+      };
+    },
+
+    /**
+     * Permanently delete every audit event older than the retention window,
+     * and record that this happened.
+     *
+     * Takes no arguments: no cutoff, no date range, no actor, no filters, and
+     * none may be added — every parameter here would be a way to aim the
+     * deletion. The screen's date, service-partner and tour filters are
+     * therefore ignored by construction rather than by discipline: an admin
+     * with filters applied removes exactly the same set as one without.
+     *
+     * A purge with nothing eligible is a SUCCESS that reports zero, not a
+     * failure — an admin who trims a log that was already inside the window has
+     * done nothing wrong.
+     */
+    purgeAuditEvents() {
+      const cutoff = auditRetentionCutoff(new Date());
+      const cutoffAt = cutoff.toISOString();
+      const cutoffDisplay = auditStamp(cutoff).display;
+
+      const surviving = auditLog.filter(
+        (a) => !isAuditEventPurgeable(a, cutoff),
+      );
+      const deletedCount = auditLog.length - surviving.length;
+      auditLog = surviving;
+
+      /*
+       * Read AFTER the delete and BEFORE the purge event is written, so it
+       * states how far back the surviving history reaches rather than pointing
+       * at the record of this purge. Null means the purge emptied the log —
+       * the honest answer, and one the count alone cannot give.
+       */
+      const oldestEventAt = oldestAuditEventIso(auditLog);
+
+      /*
+       * Trimming the record is itself accountable, so the purge is recorded
+       * under the demo admin's name and carries the three facts an auditor
+       * needs to reconstruct the trim: where the boundary fell, how much went,
+       * and what coverage the log can still offer. This event is exempt from
+       * every future purge.
+       */
+      log(
+        AUDIT_ACTION_LOG_PURGED,
+        DEMO_ADMIN,
+        "Audit log",
+        `${deletedCount} audit events removed · cutoff ${cutoffDisplay}`,
+        {
+          entityType: "audit_log",
+          entityId: "purge",
+          cutoffAt,
+          deletedCount,
+          oldestEventAt,
+        },
+      );
+      emit();
+      return { cutoffAt, cutoffDisplay, deletedCount, oldestEventAt };
     },
 
     transportOrderText(id) {
@@ -9145,6 +9490,8 @@ window.AuthStore = (() => {
       Object.assign(featureFlags, {
         ...reloadOnlyFlags,
       });
+      driverUploadLimits.maxFileMb = 25;
+      driverUploadLimits.maxTotalMb = 50;
       log("demo_reloaded", "System", "Transport Portal", "PRD v1.8 seed");
       emit();
       return { ok: true };

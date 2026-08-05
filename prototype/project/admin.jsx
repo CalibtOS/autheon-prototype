@@ -10524,12 +10524,19 @@ const TourBillingCenterPane = (props) => {
 };
 
 const AuditPane = ({ showToast }) => {
-  const { t } = useI18n();
+  const { t, tPlural } = useI18n();
   const store = useAuthStore();
   const drivers = store.getDrivers();
   const [filterDate, setFilterDate] = useStateA("");
   const [filterDriver, setFilterDriver] = useStateA("");
   const [filterTour, setFilterTour] = useStateA("");
+  // The retention confirmation, holding the preview it was opened with. Null
+  // means closed — the preview is read when the dialog OPENS and never on
+  // render, mirroring the product, where it is a second exact count over the
+  // whole table and running it per visit would double the cost retention
+  // exists to reduce.
+  const [retentionPreview, setRetentionPreview] = useStateA(null);
+  const retentionDays = store.AUDIT_RETENTION_WINDOW_DAYS;
 
   const allEntries = store.getAuditLog();
   const visibleEntries = useMemoA(() => {
@@ -10565,30 +10572,95 @@ const AuditPane = ({ showToast }) => {
     setFilterTour("");
   };
 
+  const confirmRetentionPurge = () => {
+    // No argument, and deliberately none available: the purge deletes by age
+    // and by nothing else, so the filters above cannot narrow it. They are also
+    // left applied — housekeeping should not cost the admin the investigation
+    // they were in the middle of.
+    const result = store.purgeAuditEvents();
+    setRetentionPreview(null);
+    showToast?.(
+      tPlural("adminAuditRetentionDoneTitle", result.deletedCount),
+      t("adminAuditRetentionDoneSub", { cutoff: result.cutoffDisplay }),
+    );
+  };
+
   return (
     <div>
       <div className="pane-toolbar">
         <p className="pane-lead">{t("auditDesc")}</p>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => {
-            const csv = store.exportAuditLogCsv();
-            const blob = new Blob([csv], {
-              type: "text/csv;charset=utf-8",
-            });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "autheon-audit-log.csv";
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast?.(t("adminAuditExportTitle"), t("adminAuditExportSub"));
-          }}
-        >
-          <Ic.Down /> {t("adminAuditDownloadCsv")}
-        </button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              const csv = store.exportAuditLogCsv();
+              const blob = new Blob([csv], {
+                type: "text/csv;charset=utf-8",
+              });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "autheon-audit-log.csv";
+              a.click();
+              URL.revokeObjectURL(url);
+              showToast?.(t("adminAuditExportTitle"), t("adminAuditExportSub"));
+            }}
+          >
+            <Ic.Down /> {t("adminAuditDownloadCsv")}
+          </button>
+          {/* Destructive styling, so the retention action is never mistaken for
+              the export beside it. The label states the WINDOW and never the
+              current result set — it reads identically whether filters are
+              active or not, because the purge ignores them. */}
+          <button
+            type="button"
+            className="btn danger"
+            onClick={() => setRetentionPreview(store.getAuditRetentionPreview())}
+          >
+            {t("adminAuditRetentionAction", { days: retentionDays })}
+          </button>
+        </div>
       </div>
+      {retentionPreview ? (
+        <Dialog
+          open
+          alertdialog
+          onClose={() => setRetentionPreview(null)}
+          title={t("adminAuditRetentionTitle", { days: retentionDays })}
+          description={
+            retentionPreview.eligibleCount === 0
+              ? t("adminAuditRetentionNothing", { days: retentionDays })
+              : tPlural(
+                  "adminAuditRetentionCount",
+                  retentionPreview.eligibleCount,
+                  { cutoff: retentionPreview.cutoffDisplay },
+                )
+          }
+          actions={
+            <>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setRetentionPreview(null)}
+              >
+                {t("adminInvoiceCancel")}
+              </button>
+              <button
+                type="button"
+                className="btn danger"
+                onClick={confirmRetentionPurge}
+              >
+                {t("adminAuditRetentionConfirm")}
+              </button>
+            </>
+          }
+        >
+          <div className="banner banner-warn dialog-banner">
+            {t("adminAuditRetentionWarning")}
+          </div>
+        </Dialog>
+      ) : null}
       <div
         className="card"
         style={{
@@ -11347,11 +11419,18 @@ const isPolicyNumberDirty = (current, baseline) => {
   return parsed !== baseline;
 };
 
-const isPolicyNumberValid = (current) => {
+// `max` is optional because operational policies are bounded from below only;
+// the driver upload limits are the fields with a ceiling to respect (platform
+// per-file ceiling of 50 MB, area total of 1024 MB).
+const isPolicyNumberValid = (current, max = Number.POSITIVE_INFINITY) => {
   const trimmed = String(current).trim();
   if (trimmed === "") return false;
   const parsed = Number(trimmed);
-  return Number.isInteger(parsed) && parsed >= MIN_POLICY_NUMBER;
+  return (
+    Number.isInteger(parsed) &&
+    parsed >= MIN_POLICY_NUMBER &&
+    parsed <= max
+  );
 };
 
 // EUR policy fields (driver-offer max / high-offer warning threshold) are
@@ -11372,12 +11451,23 @@ const isPolicyTimeValid = (current) =>
 
 // Gated on the field being dirty so a freshly opened screen never nags — the
 // stored values always satisfy the rule. One message covers cleared, zero and
-// fractional alike: it reads as a complete instruction in every case.
-const policyNumberError = (current, baseline, message) =>
-  isPolicyNumberDirty(current, baseline) && !isPolicyNumberValid(current)
+// fractional alike: it reads as a complete instruction in every case. Optional
+// `max` matches isPolicyNumberValid so upload-limit fields reuse this helper.
+const policyNumberError = (current, baseline, message, max) =>
+  isPolicyNumberDirty(current, baseline) && !isPolicyNumberValid(current, max)
     ? message
     : "";
 
+// Bounds the admin form enforces on driver upload limits. Read from the store
+// rather than restated here: the store clamps to the same numbers, and two
+// copies of a bound are two chances for the form to promise what the store
+// will not honour. Megabytes; both fields are integers. Resolved lazily
+// because this module is evaluated before window.AuthStore exists.
+const uploadLimitMaxFileMb = () =>
+  (window.AuthStore?.PLATFORM_UPLOAD_CEILING_BYTES ?? 50 * 1024 * 1024) /
+  (1024 * 1024);
+const uploadLimitMaxTotalMb = () =>
+  window.AuthStore?.MAX_UPLOAD_AREA_TOTAL_MB ?? 1024;
 // Labelled pill switch. The console renders a role="switch" button beside its
 // label; the prototype's pill treatment is a checkbox + slider, so the label
 // wraps the control and carries role="switch" on the input for parity.
@@ -12170,6 +12260,185 @@ const HelpContactsForm = ({ showToast }) => {
   );
 };
 
+// Driver upload limits — the largest single file a driver may upload, and the
+// largest total one upload area may hold. Both in megabytes. Follows the
+// numeric-policy helpers above (dirty-gated inline errors, Save gated on
+// validity) and adds the one rule the other cards do not have: a total below
+// the per-file limit is rejected here, since it would configure a state in
+// which no permitted file could ever be uploaded.
+const DriverUploadLimitsForm = ({ showToast }) => {
+  const { t } = useI18n();
+  const store = useAuthStore();
+  const limits = store.getDriverUploadLimits();
+
+  // Stored values as primitives. getDriverUploadLimits() hands back a fresh
+  // object on every call, so the re-seed effect depends on these and not on
+  // `limits` — an object dep would fire on every render and wipe typing.
+  const storedMaxFileMb = Number(limits.maxFileMb);
+  const storedMaxTotalMb = Number(limits.maxTotalMb);
+
+  const [maxFileMb, setMaxFileMb] = useStateA(String(storedMaxFileMb));
+  const [maxTotalMb, setMaxTotalMb] = useStateA(String(storedMaxTotalMb));
+
+  const UPLOAD_LIMIT_MAX_FILE_MB = uploadLimitMaxFileMb();
+  const UPLOAD_LIMIT_MAX_TOTAL_MB = uploadLimitMaxTotalMb();
+
+  const seedFromStore = () => {
+    setMaxFileMb(String(storedMaxFileMb));
+    setMaxTotalMb(String(storedMaxTotalMb));
+  };
+
+  useEffectA(seedFromStore, [storedMaxFileMb, storedMaxTotalMb]);
+
+  const dirty =
+    isPolicyNumberDirty(maxFileMb, storedMaxFileMb) ||
+    isPolicyNumberDirty(maxTotalMb, storedMaxTotalMb);
+
+  const isMaxFileValid = isPolicyNumberValid(
+    maxFileMb,
+    UPLOAD_LIMIT_MAX_FILE_MB,
+  );
+  const isMaxTotalValid = isPolicyNumberValid(
+    maxTotalMb,
+    UPLOAD_LIMIT_MAX_TOTAL_MB,
+  );
+
+  // Cross-field rule: only meaningful once both fields are individually
+  // valid — otherwise the field's own message is the actionable one.
+  const isTotalBelowFile =
+    isMaxFileValid &&
+    isMaxTotalValid &&
+    Number(maxTotalMb) < Number(maxFileMb);
+
+  const canSave =
+    dirty && isMaxFileValid && isMaxTotalValid && !isTotalBelowFile;
+
+  const maxFileError = policyNumberError(
+    maxFileMb,
+    storedMaxFileMb,
+    t("settings.system.uploadLimitsRangeError", {
+      min: MIN_POLICY_NUMBER,
+      max: UPLOAD_LIMIT_MAX_FILE_MB,
+    }),
+    UPLOAD_LIMIT_MAX_FILE_MB,
+  );
+  // Cross-field message sits on the total — that is the field the admin must
+  // raise (or the per-file limit they must lower) — and only after the field's
+  // own range rule is satisfied.
+  const maxTotalError =
+    policyNumberError(
+      maxTotalMb,
+      storedMaxTotalMb,
+      t("settings.system.uploadLimitsRangeError", {
+        min: MIN_POLICY_NUMBER,
+        max: UPLOAD_LIMIT_MAX_TOTAL_MB,
+      }),
+      UPLOAD_LIMIT_MAX_TOTAL_MB,
+    ) ||
+    (dirty && isTotalBelowFile
+      ? t("settings.system.uploadLimitsTotalBelowFileError", {
+          maxFileMb: Number(maxFileMb),
+        })
+      : "");
+
+  const save = (event) => {
+    event.preventDefault();
+    if (!canSave) return;
+    store.setDriverUploadLimits({
+      maxFileMb: Number(maxFileMb),
+      maxTotalMb: Number(maxTotalMb),
+    });
+    showToast?.(t("settings.system.uploadLimitsSaved"));
+  };
+
+  return (
+    <form
+      className="upload-limits-form"
+      onSubmit={save}
+      noValidate
+    >
+      <div className="policy-grid">
+        <div className="policy-field">
+          <label className="field-label" htmlFor="upload-limits-max-file">
+            {t("settings.system.uploadLimitsMaxFileLabel")}
+          </label>
+          <input
+            id="upload-limits-max-file"
+            className="input"
+            type="number"
+            min={MIN_POLICY_NUMBER}
+            max={UPLOAD_LIMIT_MAX_FILE_MB}
+            step={1}
+            value={maxFileMb}
+            style={maxFileError ? userInputErrStyle : undefined}
+            aria-invalid={maxFileError ? true : undefined}
+            aria-describedby={
+              maxFileError
+                ? "upload-limits-max-file-hint upload-limits-max-file-error"
+                : "upload-limits-max-file-hint"
+            }
+            onChange={(e) => setMaxFileMb(e.target.value)}
+          />
+          <p id="upload-limits-max-file-hint" className="upload-limits-hint">
+            {t("settings.system.uploadLimitsMaxFileHint")}
+          </p>
+          <UserFormError
+            id="upload-limits-max-file-error"
+            message={maxFileError}
+          />
+        </div>
+        <div className="policy-field">
+          <label className="field-label" htmlFor="upload-limits-max-total">
+            {t("settings.system.uploadLimitsMaxTotalLabel")}
+          </label>
+          <input
+            id="upload-limits-max-total"
+            className="input"
+            type="number"
+            min={MIN_POLICY_NUMBER}
+            max={UPLOAD_LIMIT_MAX_TOTAL_MB}
+            step={1}
+            value={maxTotalMb}
+            style={maxTotalError ? userInputErrStyle : undefined}
+            aria-invalid={maxTotalError ? true : undefined}
+            aria-describedby={
+              maxTotalError
+                ? "upload-limits-max-total-hint upload-limits-max-total-error"
+                : "upload-limits-max-total-hint"
+            }
+            onChange={(e) => setMaxTotalMb(e.target.value)}
+          />
+          <p id="upload-limits-max-total-hint" className="upload-limits-hint">
+            {t("settings.system.uploadLimitsMaxTotalHint")}
+          </p>
+          <UserFormError
+            id="upload-limits-max-total-error"
+            message={maxTotalError}
+          />
+        </div>
+      </div>
+
+      <div className="policy-actions upload-limits-actions">
+        <button
+          type="submit"
+          className="btn primary touch-target"
+          disabled={!canSave}
+        >
+          {t("settings.system.uploadLimitsSave")}
+        </button>
+        <button
+          type="button"
+          className="btn touch-target"
+          disabled={!dirty}
+          onClick={seedFromStore}
+        >
+          {t("settings.system.discardChanges")}
+        </button>
+      </div>
+    </form>
+  );
+};
+
 // Appearance toggle icon — matches the Autheon console's ThemeToggle: in
 // dark mode it shows the sun (click → light), in light mode the moon
 // (click → dark). Lucide-equivalent strokes, drawn with prototype tokens.
@@ -12677,6 +12946,24 @@ const SettingsPane = ({ showToast }) => {
               {t("settings.system.helpContactsBlurb")}
             </p>
             <HelpContactsForm showToast={showToast} />
+          </section>
+
+          <section className="card" style={{ padding: 22, marginTop: 18 }}>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
+              {t("settings.system.uploadLimitsTitle")}
+            </h2>
+            <p
+              style={{
+                color: "var(--muted)",
+                marginTop: 8,
+                marginBottom: 0,
+                fontSize: 13,
+                lineHeight: 1.55,
+              }}
+            >
+              {t("settings.system.uploadLimitsBlurb")}
+            </p>
+            <DriverUploadLimitsForm showToast={showToast} />
           </section>
 
           <section className="card" style={{ padding: 22, marginTop: 18 }}>
