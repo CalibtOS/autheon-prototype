@@ -49,8 +49,10 @@ const usageLine = (page: Page): Locator => prototypeFrame(page).locator('.staged
 const uploadButton = (page: Page): Locator =>
   stagedSheet(page).locator('.sheet-foot .btn.primary, footer .btn.primary').last();
 
+// Driver tour uploads are listed in the My documents tab, not inline in the
+// details body — the tab is the only upload site on a tour detail.
 const documentRows = (page: Page): Locator =>
-  prototypeFrame(page).locator('.tour-doc-list .tour-doc-row, .tour-doc-list > *');
+  prototypeFrame(page).locator('.mydocs-list .mydoc-row');
 
 async function setLimits(page: Page, maxFileMb: number, maxTotalMb: number): Promise<void> {
   await prototypeFrame(page)
@@ -73,6 +75,15 @@ async function openTour(page: Page): Promise<void> {
     .locator('.phone-shell')
     .getByRole('button', { name: new RegExp(`Tour #${TOUR}`) })
     .first()
+    .click();
+  await settleForCapture(page);
+}
+
+/** Uploads live behind the My documents tab on every owned-tour status. */
+async function openDocumentsTab(page: Page): Promise<void> {
+  await prototypeFrame(page)
+    .locator('.detail-tabs-row')
+    .getByRole('tab', { name: /My documents/i })
     .click();
   await settleForCapture(page);
 }
@@ -101,6 +112,7 @@ test.describe('Job attachment size limits (driver + admin surfaces)', () => {
     await prepareDriverVisual(page);
     await setLimits(page, 10, 100);
     await openTour(page);
+    await openDocumentsTab(page);
     await stageBatch(page, /Other proof/i, [
       pdf('delivery-note.pdf', 2 * MB),
       pdf('oversized-scan.pdf', 12 * MB),
@@ -134,6 +146,7 @@ test.describe('Job attachment size limits (driver + admin surfaces)', () => {
     // The seeded ~40 MB accepted document already puts 0845 over a 20 MB area.
     await setLimits(page, 25, 20);
     await openTour(page);
+    await openDocumentsTab(page);
     await stageBatch(page, /Other proof/i, [pdf('one-more.pdf', 1 * MB)]);
 
     await expect(usageLine(page)).toContainText('0.0 MB left');
@@ -151,6 +164,7 @@ test.describe('Job attachment size limits (driver + admin surfaces)', () => {
     await prepareDriverVisual(page);
     await setLimits(page, 25, 100);
     await openTour(page);
+    await openDocumentsTab(page);
     const before = await documentRows(page).count();
 
     await stageBatch(page, /Other proof/i, [
@@ -183,6 +197,7 @@ test.describe('Job attachment size limits (driver + admin surfaces)', () => {
     await prepareDriverVisual(page);
     await setLimits(page, 25, 100);
     await openTour(page);
+    await openDocumentsTab(page);
     const before = await documentRows(page).count();
 
     await stageBatch(page, /Fuel receipt/i, [
@@ -195,9 +210,9 @@ test.describe('Job attachment size limits (driver + admin surfaces)', () => {
     const walk = prototypeFrame(page).locator('.tour-doc-amount-walk-progress');
     await expect(walk).toHaveText('Receipt 1 of 3');
 
-    await prototypeFrame(page).locator('#td-net').fill('100');
-    await prototypeFrame(page).locator('#td-tax').fill('19');
-    await prototypeFrame(page).locator('#td-gross').fill('119');
+    await prototypeFrame(page).locator('#mydocs-net').fill('100');
+    await prototypeFrame(page).locator('#mydocs-tax').fill('19');
+    await prototypeFrame(page).locator('#mydocs-gross').fill('119');
     await prototypeFrame(page).getByRole('button', { name: /Save and upload/i }).click();
     await expect(walk).toHaveText('Receipt 2 of 3');
 
@@ -225,6 +240,7 @@ test.describe('Job attachment size limits (driver + admin surfaces)', () => {
     await prepareDriverVisual(page);
     await setLimits(page, 25, 100);
     await openTour(page);
+    await openDocumentsTab(page);
 
     await stageBatch(page, /Fuel receipt/i, [
       pdf('fuel-big.pdf', 8 * MB),
@@ -240,9 +256,9 @@ test.describe('Job attachment size limits (driver + admin surfaces)', () => {
     // administrator lowers the limit while the driver is mid-batch. Same call
     // the admin card makes on Save.
     await setLimits(page, 5, 100);
-    await prototypeFrame(page).locator('#td-net').fill('100');
-    await prototypeFrame(page).locator('#td-tax').fill('19');
-    await prototypeFrame(page).locator('#td-gross').fill('119');
+    await prototypeFrame(page).locator('#mydocs-net').fill('100');
+    await prototypeFrame(page).locator('#mydocs-tax').fill('19');
+    await prototypeFrame(page).locator('#mydocs-gross').fill('119');
     await prototypeFrame(page).getByRole('button', { name: /Save and upload/i }).click();
 
     // The walk ends and hands the driver back to the staged list, because that
@@ -294,6 +310,7 @@ test.describe('Job attachment size limits (driver + admin surfaces)', () => {
     await switchToDriverPWA(page);
     await settleForCapture(page);
     await openTour(page);
+    await openDocumentsTab(page);
     await stageBatch(page, /Other proof/i, [pdf('twelve-mb.pdf', 12 * MB)]);
     await expect(prototypeFrame(page).locator('.staged-upload-warn')).toContainText(
       'max 10 MB per file',

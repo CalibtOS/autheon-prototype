@@ -32,9 +32,13 @@ limits, without inventing a server:
   cross-field rule that the total cannot sit below the per-file limit, immediate
   effect via `setDriverUploadLimits`, audited as `driver_upload_limits_changed`.
 - **Driver** tour-document upload is one staged multi-select flow at every site
-  (tour detail, documents tab, post-Performed): category once, batch review with
+  (`TourDocumentUploadFlow`): category once, batch review with
   sizes and remaining allowance, upload disabled while the selection breaks a
   limit, successful files leave the list, refused files stay with a reason.
+  Since the My-documents tab became the single upload site on a tour detail
+  (`fix/my-job-details`, merged 2026-08-05), the live sites are that tab and
+  the mark-performed success screen; the retained `JobTourDocuments` helper
+  drives the same flow and is no longer mounted.
   Invoice / fuel / toll batches then walk an **amount form per receipt**.
   **Report Problem** evidence is a separate upload area that reads the same two
   configured numbers and starts at zero for a report still being composed.
@@ -150,5 +154,6 @@ node prototype/project/_audit-prototype.mjs
 
 Admin path: Settings → Driver upload limits — confirm the total label says
 "per upload area" and the hint names tour documents and problem-report
-evidence. Driver path: tour documents staged batch + Report Problem evidence
-on the same tour — each area reads the configured total independently.
+evidence. Driver path: open a tour → **My documents** tab → staged batch, then
+Report Problem evidence on the same tour — each area reads the configured
+total independently.
