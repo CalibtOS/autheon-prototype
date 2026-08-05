@@ -2087,6 +2087,28 @@ window.AuthStore = (() => {
         createdAt: "04.05. 17:40",
       },
       {
+        // Direct assignment. Demo seed only — `job_assigned` already exists as
+        // an event and a channel-matrix row (driver_in_app true, driver_push
+        // false); this adds no event, channel or eligibility rule. It is here so
+        // the assigned-ride presentation (inline expansion) and its navigation
+        // (full ride detail, NOT the Marketplace) are reachable in the
+        // prototype, which no seeded row previously exercised.
+        //
+        // Points at A-2026-00848: status `assigned` with `driver: DEMO_DRIVER`,
+        // so the driver is committed to it and the ride resolves to the full
+        // detail view rather than a Marketplace preview.
+        id: "DN-SEED-ASSIGNED-001",
+        type: "job_assigned",
+        jobId: "A-2026-00848",
+        tour: "0848-26",
+        newsId: "",
+        documentId: "",
+        title: t2("notifJobAssignedTitle", { tour: "0848-26" }),
+        body: t2("notifJobAssignedBody", { tour: "0848-26" }),
+        read: false,
+        createdAt: "04.05. 13:20",
+      },
+      {
         id: "DN-SEED-ORDER-UPDATED",
         type: "order_updated",
         jobId: "A-2026-00845",
@@ -3636,113 +3658,100 @@ window.AuthStore = (() => {
   }
 
   // =======================================================================
-  // DRIVER NOTIFICATION TAXONOMY (PRD Task 20)
+  // DRIVER NOTIFICATION TAXONOMY (PRD Task 20, presentation v2 — 2026-08-04)
   //
-  // Two orthogonal classifications, both derived from `notification.type` —
-  // never stored on the row, so a taxonomy change can never leave stale data:
+  // ONE classification, derived from `notification.type` and never stored on
+  // the row, so a taxonomy change can never leave stale data:
   //
-  //   CATEGORY  what the notification is about. Shown as a chip on every card.
-  //             Order · Account · System · General information.
   //   KIND      the interaction model the card uses. This is the agreed model
   //             (no universal bottom sheet for every type):
-  //               tour      inline expandable tour preview + contextual action
+  //               tour      inline expandable ride preview + contextual action
   //               message   deep-links straight to the Infopoint message
   //               document  deep-links straight to the document / its preview
+  //               profile   deep-links straight to a Profile destination
   //               plain     informational; no preview, no deep link
+  //
+  // There is NO visible category and no category code. The client dropped the
+  // Order/Account/System/General-information chip on 2026-08-04; notifications
+  // stay type-aware for BEHAVIOUR only (which screen opens, what is shown,
+  // which fallback applies). Adding a category back means adding presentation,
+  // not restoring data — nothing here ever stored one.
   //
   // User-facing labels NEVER live here — they come from i18n.js.
   // =======================================================================
-  const NOTIF_CATEGORY_ORDER = "order";
-  const NOTIF_CATEGORY_ACCOUNT = "account";
-  const NOTIF_CATEGORY_SYSTEM = "system";
-  const NOTIF_CATEGORY_GENERAL_INFO = "general_information";
-
   const NOTIF_KIND_TOUR = "tour";
   const NOTIF_KIND_MESSAGE = "message";
   const NOTIF_KIND_DOCUMENT = "document";
+  const NOTIF_KIND_PROFILE = "profile";
   const NOTIF_KIND_PLAIN = "plain";
 
-  const NOTIF_CATEGORY_I18N = {
-    [NOTIF_CATEGORY_ORDER]: "notifCategoryOrder",
-    [NOTIF_CATEGORY_ACCOUNT]: "notifCategoryAccount",
-    [NOTIF_CATEGORY_SYSTEM]: "notifCategorySystem",
-    [NOTIF_CATEGORY_GENERAL_INFO]: "notifCategoryGeneralInfo",
-  };
+  // Stable Profile destination keys. These are route/subpage keys owned by the
+  // Driver PWA's Profile screen, never localized labels, so a deep link cannot
+  // break when copy changes. `""` means the Profile landing page — the correct
+  // destination for an event whose subject lives on the landing page itself
+  // (confirmed 2026-08-04: no Account & sign-in subpage exists, and inventing
+  // one for this task was explicitly ruled out).
+  const NOTIF_PROFILE_MASTER_DATA = "masterData";
+  const NOTIF_PROFILE_LANDING = "";
 
   // `marketplace: true` marks a notification about an order the driver has NOT
-  // committed to — its preview is the reduced pre-acceptance projection and its
-  // availability has to be re-checked before any action is offered.
+  // committed to: availability has to be re-checked before any action is
+  // offered, and its push lands on the Marketplace rather than on a ride.
+  //
+  // `rideFallback` is where a ride event goes when its own target cannot be
+  // opened, and which parent a cold-start push inherits. A ride event is NOT
+  // forced into the Marketplace — an assigned or historical ride belongs to
+  // My Jobs (`mine`).
   const NOTIF_TYPES = {
     new_published_job: {
-      category: NOTIF_CATEGORY_ORDER,
       kind: NOTIF_KIND_TOUR,
       marketplace: true,
+      rideFallback: "marketplace",
     },
-    order_updated: { category: NOTIF_CATEGORY_ORDER, kind: NOTIF_KIND_TOUR },
-    cancelled_by_autheon: {
-      category: NOTIF_CATEGORY_ORDER,
-      kind: NOTIF_KIND_TOUR,
-    },
-    empty_run_recognised: {
-      category: NOTIF_CATEGORY_ORDER,
-      kind: NOTIF_KIND_TOUR,
-    },
-    empty_run_not_recognised: {
-      category: NOTIF_CATEGORY_ORDER,
-      kind: NOTIF_KIND_TOUR,
-    },
-    // Document outcomes concern a tour but are DOCUMENT notifications: they
-    // deep-link to the file, they never render the tour accordion.
-    document_rejected: {
-      category: NOTIF_CATEGORY_ORDER,
-      kind: NOTIF_KIND_DOCUMENT,
-    },
-    document_accepted: {
-      category: NOTIF_CATEGORY_ORDER,
-      kind: NOTIF_KIND_DOCUMENT,
-    },
-    infopoint_news: {
-      category: NOTIF_CATEGORY_GENERAL_INFO,
-      kind: NOTIF_KIND_MESSAGE,
-    },
+    // Direct assignment (channel matrix: driver_in_app true, driver_push
+    // false — unchanged). Previously missing from this map, which silently
+    // demoted an assigned ride to `plain`: no expansion and no deep link.
+    job_assigned: { kind: NOTIF_KIND_TOUR, rideFallback: "mine" },
+    order_updated: { kind: NOTIF_KIND_TOUR, rideFallback: "mine" },
+    cancelled_by_autheon: { kind: NOTIF_KIND_TOUR, rideFallback: "mine" },
+    empty_run_recognised: { kind: NOTIF_KIND_TOUR, rideFallback: "mine" },
+    empty_run_not_recognised: { kind: NOTIF_KIND_TOUR, rideFallback: "mine" },
+    // Document outcomes concern a ride but are DOCUMENT notifications: they
+    // deep-link to the file, they never render the ride accordion.
+    document_rejected: { kind: NOTIF_KIND_DOCUMENT },
+    document_accepted: { kind: NOTIF_KIND_DOCUMENT },
+    // Was missing from this map even though the row carries a documentId.
+    document_correction_required: { kind: NOTIF_KIND_DOCUMENT },
+    infopoint_news: { kind: NOTIF_KIND_MESSAGE },
+    // Account / profile events deep-link to the Profile destination that
+    // actually holds their subject, not to a generic landing page.
     master_data_change_sent: {
-      category: NOTIF_CATEGORY_ACCOUNT,
-      kind: NOTIF_KIND_PLAIN,
+      kind: NOTIF_KIND_PROFILE,
+      profileTarget: NOTIF_PROFILE_MASTER_DATA,
     },
     master_data_change_approved: {
-      category: NOTIF_CATEGORY_ACCOUNT,
-      kind: NOTIF_KIND_PLAIN,
+      kind: NOTIF_KIND_PROFILE,
+      profileTarget: NOTIF_PROFILE_MASTER_DATA,
     },
     master_data_change_rejected: {
-      category: NOTIF_CATEGORY_ACCOUNT,
-      kind: NOTIF_KIND_PLAIN,
+      kind: NOTIF_KIND_PROFILE,
+      profileTarget: NOTIF_PROFILE_MASTER_DATA,
     },
+    // The email row and the Account group live on the Profile landing page;
+    // there is no Account & sign-in subpage to open (confirmed 2026-08-04).
     email_changed: {
-      category: NOTIF_CATEGORY_ACCOUNT,
-      kind: NOTIF_KIND_PLAIN,
+      kind: NOTIF_KIND_PROFILE,
+      profileTarget: NOTIF_PROFILE_LANDING,
     },
   };
 
-  const NOTIF_TYPE_FALLBACK = {
-    category: NOTIF_CATEGORY_SYSTEM,
-    kind: NOTIF_KIND_PLAIN,
-  };
+  const NOTIF_TYPE_FALLBACK = { kind: NOTIF_KIND_PLAIN };
 
   function notificationTypeSpec(type) {
     return NOTIF_TYPES[String(type || "")] || NOTIF_TYPE_FALLBACK;
   }
 
-  /** Canonical category code for a notification type. */
-  function notificationCategory(type) {
-    return notificationTypeSpec(type).category;
-  }
-
-  /** i18n key for a notification category — the label itself lives in i18n.js. */
-  function notificationCategoryI18nKey(type) {
-    return NOTIF_CATEGORY_I18N[notificationCategory(type)];
-  }
-
-  /** Interaction model for a notification type: tour | message | document | plain. */
+  /** Interaction model for a type: tour | message | document | profile | plain. */
   function notificationKind(type) {
     return notificationTypeSpec(type).kind;
   }
@@ -3763,7 +3772,11 @@ window.AuthStore = (() => {
       // In-app notification for the same, unchanged eligibility set — the push
       // gate (enabled + newly-published toggle + postal-area match) decides who
       // is notified about a newly published order, and this does not widen it.
-      pushDriverNotification({
+      //
+      // The ROW keeps its city → city preview: those two values are inside the
+      // approved notification data set, and inside the app the driver is looking
+      // at a list they opened deliberately. The PUSH does not — see below.
+      const row = pushDriverNotification({
         type: "new_published_job",
         jobId: job.id,
         tour: job.tour,
@@ -3774,11 +3787,17 @@ window.AuthStore = (() => {
         }),
         driverId: d.id,
       });
+      // The simulated push is built by `driverPushProjection`, so the generic
+      // copy is not a convention the log happens to follow — it is the only
+      // thing available to write. The audit entry still records WHICH order
+      // triggered the send (Task 20: notification sending stays traceable);
+      // that is admin-facing internal traceability, not push content.
+      const push = driverPushProjection(row);
       log(
         "push_notification_simulated",
         "System",
         job.tour,
-        `new published → ${d.name}`,
+        `${push.body} → ${d.name}`,
       );
     }
     if (!notified.length) {
@@ -3858,63 +3877,141 @@ window.AuthStore = (() => {
   }
 
   /**
-   * Driver-visible projection of a tour for a notification preview.
+   * Driver-visible projection of a ride for a notification preview.
    *
-   * `restricted` means the driver has not committed to this tour, i.e. the
-   * pre-acceptance Marketplace projection: region + schedule + vehicle class
-   * are decision-relevant and included; customer, full addresses, contacts,
-   * plate and VIN are NOT PRESENT IN THE RETURNED OBJECT AT ALL. Stripping at
-   * the data layer — rather than hiding in the view — is what guarantees a
-   * Marketplace notification cannot leak protected fields
-   * (prd.json driver_visibility_matrix).
+   * Presentation v2 (2026-08-04) reduced this to EXACTLY the five confirmed
+   * values — ride id, pickup city, delivery city, the ride's scheduled (pickup)
+   * date, and the app's existing vehicle display name. Everything else is gone
+   * from the RETURNED OBJECT, not merely unrendered:
+   *
+   *   never included   postal code · distance · price / driver offer · customer
+   *                    · street / house number / location name · contacts
+   *                    · licence plate · VIN · time windows · transport type
+   *                    · registration status · order status
+   *
+   * Two rules are doing work here at once. Protected fields must be absent so a
+   * Marketplace notification cannot leak them through a styling mistake
+   * (prd.json driver_visibility_matrix), and the confirmed field set must be
+   * absent so the preview cannot quietly regrow into a sixth execution surface.
+   * The projection is therefore IDENTICAL whether or not the driver has
+   * committed to the ride — there is no longer anything to reveal on
+   * acceptance, which is why the old `restricted` flag and its
+   * "visible after you accept" hint are gone.
+   *
+   * `vehicleName` is composed here from the same fields, in the same order, as
+   * the Marketplace / My Jobs order card (see `vehicleDisplayName` in
+   * driver.jsx) — manufacturer + model, falling back to the vehicle-type label.
+   * Composing it in the view instead would need `manufacturer`/`vehicleModel`
+   * in the payload; keeping it here means the payload carries the display name
+   * and nothing more.
    */
-  function driverNotificationJobPreview(jobId) {
+  function driverNotificationJobPreview(jobId, translate) {
     const j = api.getJob(jobId);
     if (!j) return null;
-    const restricted = !driverIsCommittedToJob(j);
-    const leg = (loc) => {
-      if (!loc) return null;
-      const open = {
-        city: loc.city || "",
-        postalCode: loc.postalCode || "",
-        date: loc.date || "",
-        windowFrom: loc.windowFrom || "",
-        windowTo: loc.windowTo || "",
-      };
-      if (restricted) return open;
-      return {
-        ...open,
-        name: loc.name || "",
-        street: loc.street || "",
-        houseNumber: loc.houseNumber || "",
-        contactPerson: loc.contactPerson || "",
-      };
-    };
-    const preview = {
+    return {
       jobId: j.id,
       tour: j.tour || "",
-      restricted,
-      status: j.status || "",
-      displayStatus: getJobDisplayStatus(j),
-      distanceKm: j.distanceKm ?? null,
-      startCity: j.startCity || "",
-      startPlz: j.startPlz || "",
-      endCity: j.endCity || "",
-      endPlz: j.endPlz || "",
-      pickup: leg(j.pickup),
-      delivery: leg(j.delivery),
-      vehicleType: j.vehicleType || "",
-      manufacturer: j.manufacturer || "",
-      vehicleModel: j.vehicleModel || "",
-      transportType: j.transportType || "",
-      registrationStatus: j.registrationStatus || "",
+      pickupCity: j.pickup?.city || j.startCity || "",
+      deliveryCity: j.delivery?.city || j.endCity || "",
+      // The ride's scheduled date is its PICKUP date (confirmed 2026-08-04).
+      date: j.pickup?.date || "",
+      vehicleName: vehicleDisplayName(j, translate),
     };
-    if (!restricted) {
-      preview.customerName = j.customerName || "";
-      preview.plate = j.plate || "";
-      preview.vin = j.vin || "";
+  }
+
+  /**
+   * The app's ONE vehicle display name, shared by the order card and the
+   * notification preview so the same vehicle can never read two ways.
+   *
+   * Mirrors the existing Marketplace / My Jobs card composition verbatim:
+   * manufacturer + model when either is present, otherwise the canonical
+   * vehicle-type label. `"—"` is a placeholder in the seed data, not a value.
+   *
+   * `translate` is optional — `vehicleTypeLabel` falls back to the store's own
+   * i18n lookup, so a caller that has no `t` in scope still gets a localized
+   * label rather than a raw key.
+   */
+  function vehicleDisplayName(job, translate) {
+    const j = typeof job === "string" ? api.getJob(job) : job;
+    if (!j) return "";
+    const named = [j.manufacturer, j.vehicleModel]
+      .filter((v) => v && v !== "—")
+      .join(" ");
+    return named || vehicleTypeLabel(j.vehicleType, translate);
+  }
+
+  /**
+   * What a SMARTPHONE PUSH says and where tapping it lands.
+   *
+   * Deliberately separate from the in-app notification row. The row is a
+   * type-aware record the driver reads inside the app, where the reduced ride
+   * projection above already bounds what it may show. A push is a message
+   * delivered to the lock screen, and for newly available Marketplace work the
+   * client requires it to stay GENERIC (2026-08-04): announce that work exists,
+   * name none of it.
+   *
+   * So the returned body for a Marketplace-availability push carries no job
+   * count, no vehicle, no route, no city, no price, no distance and no job id —
+   * not hidden from the copy, absent from the object. That is what makes the
+   * rule testable rather than a phrasing convention, and it is what stops a
+   * push from asserting a specific job is still free when the driver taps it
+   * minutes later.
+   *
+   * `destination` is a shell navigation intent, resolved the same way for every
+   * launch state. `marketplace` re-reads live availability through the existing
+   * load-on-open / pull-to-refresh policy, so a job that has since been booked,
+   * withdrawn, cancelled or expired is simply not in the list; an empty
+   * Marketplace is the correct outcome, not an error state.
+   */
+  function driverPushProjection(notification) {
+    const row = findDriverNotification(notification);
+    const spec = notificationTypeSpec(row?.type);
+    if (spec.marketplace) {
+      return {
+        // Generic by construction: no interpolation, so there is no value to
+        // leak and nothing to go stale between delivery and the tap.
+        title: t2("pushNewOrdersTitle"),
+        body: t2("pushNewOrdersBody"),
+        destination: "marketplace",
+        generic: true,
+      };
     }
-    return preview;
+    if (!row) return null;
+    // Every other event keeps the copy it was created with and lands on its own
+    // target — resolution still goes through resolveDriverNotificationTarget().
+    return {
+      title: row.title || "",
+      body: row.body || "",
+      destination: "notification_target",
+      notificationId: row.id,
+      generic: false,
+    };
+  }
+
+  /**
+   * Accepts either a notification id or a notification row and returns the row,
+   * or null.
+   *
+   * The type guard is the point. A deep link's id arrives from a URL, so it can
+   * be anything at all — and a value that is neither a string nor a row object
+   * (a number, an array, a URL fragment) must not be waved through as if it
+   * were a row. Without this check `resolveDriverNotificationTarget(42)`
+   * reported `ok: true` for a target that does not exist, which is exactly the
+   * "malformed target id" case that has to fail safe.
+   */
+  function findDriverNotification(notification) {
+    if (typeof notification === "string") {
+      return driverNotifications.find((n) => n.id === notification) || null;
+    }
+    if (
+      notification &&
+      typeof notification === "object" &&
+      !Array.isArray(notification) &&
+      typeof notification.type === "string"
+    ) {
+      return notification;
+    }
+    return null;
   }
 
   /**
@@ -3923,20 +4020,16 @@ window.AuthStore = (() => {
    * push deep links, so both behave identically and both fail safe.
    *
    * Never throws and never returns a partially-usable target: an unknown
-   * notification, a deleted tour, or a Marketplace order that has since been
-   * taken, withdrawn or cancelled all come back with `available: false` and a
-   * machine-readable `unavailableReason`.
+   * notification, a malformed id, a deleted tour, or a Marketplace order that
+   * has since been taken, withdrawn or cancelled all come back with
+   * `available: false` and a machine-readable `unavailableReason`.
    */
   function resolveDriverNotificationTarget(notification) {
-    const row =
-      typeof notification === "string"
-        ? driverNotifications.find((n) => n.id === notification)
-        : notification;
+    const row = findDriverNotification(notification);
     if (!row) {
       return {
         ok: false,
         kind: NOTIF_KIND_PLAIN,
-        category: NOTIF_CATEGORY_SYSTEM,
         available: false,
         unavailableReason: "notification_missing",
       };
@@ -3947,11 +4040,25 @@ window.AuthStore = (() => {
       notificationId: row.id,
       type: row.type,
       kind: spec.kind,
-      category: spec.category,
       marketplace: Boolean(spec.marketplace),
+      // Where this event goes when its own target is unreachable, and which
+      // parent a cold-start push inherits. Not every ride falls back to the
+      // Marketplace — an assigned or historical ride belongs to My Jobs.
+      rideFallback: spec.rideFallback || "",
       available: true,
       unavailableReason: "",
     };
+
+    // A profile/account event opens the Profile destination that actually holds
+    // its subject. The target is a stable subpage key, never a localized label,
+    // and `""` legitimately means the Profile landing page — so availability is
+    // decided by the driver session existing, not by the key being truthy.
+    if (spec.kind === NOTIF_KIND_PROFILE) {
+      if (!api.getCurrentDriver()) {
+        return { ...base, available: false, unavailableReason: "not_permitted" };
+      }
+      return { ...base, profileTarget: spec.profileTarget || "" };
+    }
 
     if (spec.kind === NOTIF_KIND_MESSAGE) {
       const item = row.newsId
@@ -5737,25 +5844,24 @@ window.AuthStore = (() => {
       return { ok: true, count: n };
     },
     pushDriverNotification,
-    // Notification taxonomy + navigation. Categories and the interaction model
-    // are DERIVED from `type`, never stored, and every deep link resolves
-    // through `resolveDriverNotificationTarget` so the list and a push tap can
-    // never disagree.
-    notificationCategory,
-    notificationCategoryI18nKey,
+    // Notification navigation. The interaction model is DERIVED from `type`,
+    // never stored, and every deep link resolves through
+    // `resolveDriverNotificationTarget` so the list and a push tap can never
+    // disagree. There is no category — see the taxonomy comment above.
     notificationKind,
     resolveDriverNotificationTarget,
     driverNotificationJobPreview,
+    driverPushProjection,
+    vehicleDisplayName,
     driverJobViewMode,
     driverIsCommittedToJob,
-    NOTIF_CATEGORY_ORDER,
-    NOTIF_CATEGORY_ACCOUNT,
-    NOTIF_CATEGORY_SYSTEM,
-    NOTIF_CATEGORY_GENERAL_INFO,
     NOTIF_KIND_TOUR,
     NOTIF_KIND_MESSAGE,
     NOTIF_KIND_DOCUMENT,
+    NOTIF_KIND_PROFILE,
     NOTIF_KIND_PLAIN,
+    NOTIF_PROFILE_MASTER_DATA,
+    NOTIF_PROFILE_LANDING,
     getJobDisplayStatus,
 
     getCurrentDriver: () =>
@@ -8361,8 +8467,16 @@ window.AuthStore = (() => {
         type: "document_correction_required",
         jobId: doc.jobId,
         tour: jn?.tour || "",
-        title: "Document correction required",
-        body: visibleToPartner ? doc.rejectionReason || "" : "",
+        // Was hardcoded English. Every other notification resolves its copy
+        // through i18n at creation time; this one now does too, so a DE driver
+        // no longer gets one English row in an otherwise German list.
+        title: t2("notifDocumentCorrectionRequiredTitle"),
+        body: visibleToPartner
+          ? doc.rejectionReason || t2("notifDocumentCorrectionRequiredBody")
+          : "",
+        // The document this points at, so the card deep-links to the exact file
+        // the driver has to replace instead of being an informational dead end.
+        documentId: doc.id,
         driverId: doc.driverId,
       });
       emit();

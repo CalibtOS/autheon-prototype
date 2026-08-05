@@ -59,6 +59,33 @@ function PwaDriverApp() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [expandNotificationId, setExpandNotificationId] = useState(null);
   const [deepLinkNewsId, setDeepLinkNewsId] = useState(null);
+  const [deepLinkProfileSubpage, setDeepLinkProfileSubpage] = useState(null);
+  // The menu page the Notification Center was opened FROM. Transient navigation
+  // state only — never persisted and never written to the notification row.
+  // Consumed by the first Back out of the notification target, then cleared.
+  const [notifOrigin, setNotifOrigin] = useState(null);
+
+  const openNotifications = () => {
+    setNotifOrigin(tab);
+    setShowNotifications(true);
+  };
+
+  /** Returns to the menu page the Notification Center was opened from. */
+  const returnToNotifOrigin = () => {
+    const origin = notifOrigin;
+    setNotifOrigin(null);
+    setActiveJob(null);
+    setDeepLinkNewsId(null);
+    setDeepLinkProfileSubpage(null);
+    if (origin) setTab(origin);
+  };
+
+  // Any deliberate tab navigation starts a new journey, so a stale origin must
+  // not survive to hijack a later, unrelated Back.
+  const navigateTab = (next) => {
+    setNotifOrigin(null);
+    setTab(next);
+  };
 
   const handleOpenJob = (j, mode = null, fromTab = tab) => {
     // One shared entitlement rule (store.driverJobViewMode) decides Marketplace
@@ -71,20 +98,42 @@ function PwaDriverApp() {
     });
   };
 
-  /** Applies a resolved push-notification deep link (see useNotificationDeepLink). */
+  /**
+   * Applies a resolved push-notification deep link (see useNotificationDeepLink).
+   *
+   * A push launch has NO originating menu page, so none is invented: each target
+   * inherits its own parent screen (`fromTab`), which is what the driver would
+   * have had if they had navigated there themselves.
+   */
   const applyNotificationDeepLink = (notificationId, nav) => {
     // A tapped push has been seen.
     store.markDriverNotificationsRead([notificationId]);
+    setShowNotifications(false);
+    setNotifOrigin(null);
+    setDeepLinkNewsId(null);
+    setDeepLinkProfileSubpage(null);
+    if (nav.kind === "tab") {
+      setActiveJob(null);
+      setTab(nav.tab);
+      return;
+    }
     if (nav.kind === "news") {
-      setShowNotifications(false);
       setActiveJob(null);
       setDeepLinkNewsId(nav.newsId);
       setTab("info");
       return;
     }
+    if (nav.kind === "profile") {
+      setActiveJob(null);
+      setDeepLinkProfileSubpage(nav.subpage);
+      setTab("profile");
+      return;
+    }
+    if (nav.kind === "ride") {
+      setActiveJob({ id: nav.jobId, mode: nav.mode, fromTab: "mine" });
+      return;
+    }
     if (nav.kind === "document") {
-      setShowNotifications(false);
-      setDeepLinkNewsId(null);
       setActiveJob({
         id: nav.jobId,
         mode: nav.mode,
@@ -100,12 +149,17 @@ function PwaDriverApp() {
 
   useNotificationDeepLink(applyNotificationDeepLink);
   const back = () => {
+    // A ride or document opened through the Notification Center carries the
+    // origin in `fromTab`, so this one path serves both notification and
+    // ordinary navigation.
     const returnTab = activeJob?.fromTab || tab;
     setActiveJob(null);
+    setNotifOrigin(null);
     if (returnTab) setTab(returnTab);
   };
   const backToMarketplace = () => {
     setActiveJob(null);
+    setNotifOrigin(null);
     setTab("portal");
   };
 
@@ -141,7 +195,7 @@ function PwaDriverApp() {
         setFilters={setFilters}
         openFilter={() => setShowFilter(true)}
         onOpenJob={handleOpenJob}
-        onOpenNotifications={() => setShowNotifications(true)}
+        onOpenNotifications={openNotifications}
         notificationsOpen={showNotifications}
       />
     );
@@ -151,24 +205,30 @@ function PwaDriverApp() {
         onOpen={(j) =>
           setActiveJob({ id: j.id, mode: "unlocked", fromTab: "mine" })
         }
-        onOpenNotifications={() => setShowNotifications(true)}
+        onOpenNotifications={openNotifications}
         notificationsOpen={showNotifications}
       />
     );
   } else if (tab === "info") {
     body = (
       <Infopoint
-        onOpenNotifications={() => setShowNotifications(true)}
+        onOpenNotifications={openNotifications}
         notificationsOpen={showNotifications}
         deepLinkNewsId={deepLinkNewsId}
         onDeepLinkConsumed={() => setDeepLinkNewsId(null)}
+        // Only pass an origin return when there is an origin: without it the
+        // message detail keeps its ordinary Infopoint-list parent.
+        onReturnToOrigin={notifOrigin ? returnToNotifOrigin : undefined}
       />
     );
   } else {
     body = (
       <ProfilePaneFull
-        onOpenNotifications={() => setShowNotifications(true)}
+        onOpenNotifications={openNotifications}
         notificationsOpen={showNotifications}
+        deepLinkSubpage={deepLinkProfileSubpage}
+        onDeepLinkConsumed={() => setDeepLinkProfileSubpage(null)}
+        onReturnToOrigin={notifOrigin ? returnToNotifOrigin : undefined}
       />
     );
   }
@@ -288,18 +348,23 @@ function PwaDriverApp() {
             {body}
           </div>
           {!activeJob && (
-            <TabBar tab={tab} setTab={setTab} />
+            <TabBar tab={tab} setTab={navigateTab} />
           )}
           {showNotifications && (
             <DriverNotificationsPane
               onClose={() => {
                 setShowNotifications(false);
                 setExpandNotificationId(null);
+                // Closed without navigating anywhere: there is no notification
+                // journey left to return from.
+                setNotifOrigin(null);
               }}
               initialExpandedId={expandNotificationId}
+              // Every handler below keeps `notifOrigin` intact — it is the page
+              // this navigation has to come back to.
               onOpenJob={(job, mode) => {
                 setShowNotifications(false);
-                handleOpenJob(job, mode);
+                handleOpenJob(job, mode, notifOrigin || tab);
               }}
               onOpenInfopoint={() => {
                 setShowNotifications(false);
@@ -315,14 +380,15 @@ function PwaDriverApp() {
                 setActiveJob({
                   id: jobId,
                   mode: "unlocked",
-                  fromTab: tab,
+                  fromTab: notifOrigin || tab,
                   openDocumentId: documentId,
                 });
               }}
-              onOpenMarketplace={() => {
+              onOpenProfile={(subpage) => {
                 setShowNotifications(false);
                 setActiveJob(null);
-                setTab("portal");
+                setDeepLinkProfileSubpage(subpage);
+                setTab("profile");
               }}
             />
           )}

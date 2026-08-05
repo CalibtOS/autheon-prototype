@@ -352,18 +352,18 @@ cards theme correctly in light and dark without their own palette.
 | Card surface — unread | `.notification-card.unread` | `--paper-2` (the existing unread tint, moved from the row to the card so the row and the expanded panel read as one surface) | [CLIENT] |
 | Card border — expanded | `.notification-card.expanded` | `--primary` | [CLIENT] |
 | Unread dot | `.notification-row-dot` | `--primary`, 8px | [CLIENT] |
-| Category chip | `.notification-row-cat` | `--muted` text on `--paper-2` inside `--line`; `--paper` fill on an unread card. Pill radius 999px — a chip, not a status pill, so it never borrows a `--st-*` colour | [CLIENT] |
+| ~~Category chip~~ | ~~`.notification-row-cat`~~ | **REMOVED 2026-08-04** (PRD v2.32) — the client dropped visible notification categories. No token was retired with it: the chip only ever reused `--muted` / `--paper-2` / `--line` | — |
 | Event heading | `.notification-row-title` | `--text`, 13px/600 | [CLIENT] |
 | Preview text (2-line clamp) | `.notification-row-text` | `--muted`, 12px | [CLIENT] |
 | Date / tour meta | `.notification-row-meta` | `--muted-2`, `--text-caption`, mono | [INTERNAL] |
 | Right-hand chevron | `.notification-row-chevron` | `--muted-2`; 180° rotation for the open accordion | [INTERNAL] |
 | Expanded panel divider | `.notification-card-panel` | 1px `--line` top border | [INTERNAL] |
 | Preview labels / values | `.notification-preview-row dt` / `dd` | `--muted` 11px/600 / `--text` 12px/500 | [CLIENT] |
-| Preview sub-line (schedule, transport type) | `.notification-preview-sub` | `--muted-2`, 11px | [INTERNAL] |
-| Order status inside the preview | `Pill` | Existing `--st-*` family via `AuthStore.statusCls()` — reused, never re-declared | [CLIENT] |
-| Pre-acceptance visibility hint | `.notification-preview-hint` | `--muted`, 11px | [CLIENT] |
-| Unavailable-order copy | `.notification-unavailable` | **`--danger-ink`** — the defined light/dark danger text token. Deliberately not `--st-rejected-fg`, which is **not defined** in the token set (same class of bug as audit item on `--st-ok`, `.pill.verified`) | [CLIENT] |
-| Card actions | `.notification-card-actions .btn` | Design-system `btn primary sm` / `btn sm`; no bespoke button treatment | [CLIENT] |
+| ~~Preview sub-line (schedule, transport type)~~ | ~~`.notification-preview-sub`~~ | **REMOVED 2026-08-04** (PRD v2.32) — the ride expansion is now five single-value rows, so there is no second line | — |
+| ~~Order status inside the preview~~ | ~~`Pill`~~ | **REMOVED 2026-08-04** (PRD v2.32) — the status pill is not part of the five approved ride values. The `--st-*` family is untouched and still used everywhere else | — |
+| ~~Pre-acceptance visibility hint~~ | ~~`.notification-preview-hint`~~ | **REMOVED 2026-08-04** (PRD v2.32) — the ride projection is now identical before and after acceptance, so the hint had become false | — |
+| Unavailable-target copy | `.notification-unavailable` | **`--danger-ink`** — the defined light/dark danger text token. Deliberately not `--st-rejected-fg`, which is **not defined** in the token set (same class of bug as audit item on `--st-ok`, `.pill.verified`) | [CLIENT] |
+| Card actions | `.notification-card-actions .btn` | Design-system `btn primary`; no bespoke button treatment. Since 2026-08-04 there is exactly ONE action, rendered only when the ride can be opened — the *View more orders* secondary is gone | [CLIENT] |
 | Focus state | global `:where(button, [role="button"], a):focus-visible` | `--primary` 2px outline, 2px offset | [CLIENT] |
 
 **Colour is never the only signal.** The category is a text chip (no per-category hue), the expanded state is
