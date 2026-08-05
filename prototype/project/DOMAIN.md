@@ -1,6 +1,6 @@
-# AUTHEON prototype — domain glossary (PRD v1.8)
+# AUTHEON prototype — domain glossary
 
-Canonical spec: [`../../docs/requirements/prd.json`](../../docs/requirements/prd.json). This file explains terms used in the static prototype (`store.js`, admin, driver).
+Canonical spec: [`../../docs/requirements/prd.json`](../../docs/requirements/prd.json) (currently PRD v2.32). This file explains terms used in the static prototype (`store.js`, admin, driver).
 
 ## Operational tour status (stored on `job.status`)
 
@@ -123,6 +123,27 @@ Replaces the removed v1.4 “return request” flow: cancel order or report not 
 
 **Admin permissions:** Dispatch may replace or update `admin_off_channel` documents from the admin console. Transport order PDF uses regenerate, not driver-style file replace.
 
+**Allowance:** Off-channel bytes **count** toward the tour-documents upload area total but are **never refused** by that total (dispatch can push a tour past its allowance; the driver then sees remaining clamped at zero).
+
+## Job attachment size limits (PRD v2.32)
+
+Configurable driver upload rules held in the store as `driverUploadLimits` / production setting `driver.uploads.limits` (`maxFileMb` default 25, `maxTotalMb` default 50). Admin System settings card edits both; drivers feel the change immediately.
+
+### Language
+
+**Upload area**:
+An independent bucket of bytes governed by the configured per-file and per-area totals. There are two: (1) a tour's documents, (2) a single Report Problem report's evidence. They read the **same** two configured numbers but do **not** share one combined total.
+_Avoid_: labelling the admin total field "per tour" or "per job" — one number drives two areas.
+
+**Allowance**:
+How much of an upload area's `maxTotalMb` is still free: used bytes subtracted from the configured total, **clamped at zero** (never displayed negative). Used for tour documents = live driver uploads + admin off-channel rows; rows whose `reviewStatus` is `replaced` do **not** count; generated transport orders live in another collection and never count. Replace is charged as a **delta** (outgoing off, incoming on).
+
+**Platform ceiling**:
+Named 50 MB hard backstop no upload of any kind may exceed. Stays on dispatch attach and driver **personal** documents (licence/ID). The configurable per-file limit governs tour documents and evidence only. Accepted side effect: personal docs rose 25 MB → 50 MB when the old single constant was split.
+
+**Refusal reasons** (keep distinct in copy and code):
+`file_too_large` — this file exceeds the per-file limit; `allowance_exhausted` — the upload area total is full and removing something is the remedy.
+
 ## Driver probation acceptance limit (`drivers.probationJobLimit`)
 
 One-time probation model: each driver may book up to `probationJobLimit` initial jobs (default 3) and must have that many marked **Performed** before release (`probationClearedAt`). Enforced only on driver marketplace `acceptJob()`; admin direct assignment is exempt. Auto-release on perform; admin may manually `releaseDriverFromProbation`. No daily quota and no limit-increase request. Driver profile shows `DriverProbationCard` while on probation.
@@ -130,6 +151,8 @@ One-time probation model: each driver may book up to `probationJobLimit` initial
 ## Operational policies (Settings)
 
 `operationalPolicies` in `store.js` mirrors production `app_settings`: admin-cancel cutoff, schedule-change cutoff, min driver message length, `probationJobCount` default for new drivers. Override requires audit note when `allowPolicyOverrideWithAuditNote` is true.
+
+Driver upload limits sit beside those policies on System settings (`driverUploadLimits` / `driver.uploads.limits`) — see **Job attachment size limits** above.
 
 ## Prototype-only
 
