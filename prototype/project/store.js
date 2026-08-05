@@ -1936,6 +1936,27 @@ window.AuthStore = (() => {
         supplierInvoiceNumber: "",
         supplierInvoiceDate: "",
       },
+      // ~40 MB accepted document so tour 0845 sits nearly full at the default
+      // 50 MB area total — exhausted-allowance and a remaining figure of zero
+      // (after a further dispatch attach) are demoable without editing settings.
+      {
+        id: "TD-SEED-LARGE-0845",
+        jobId: "A-2026-00845",
+        driverId: "DRV-0228",
+        driverName: DEMO_DRIVER,
+        fileName: "bulk-delivery-photos-0845.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 40 * 1024 * 1024,
+        uploadedAt: "2026-04-23T09:00:00.000Z",
+        documentType: "other_proof",
+        reviewStatus: "accepted",
+        rejectionReason: "",
+        processed: true,
+        source: "driver",
+        notes: "Large accepted batch kept for attachment-allowance demos.",
+        supplierInvoiceNumber: "",
+        supplierInvoiceDate: "",
+      },
       {
         id: "TD-SEED-001",
         jobId: "A-2026-00842",
@@ -2607,6 +2628,14 @@ window.AuthStore = (() => {
     warningDays: 15,
   };
 
+  // Driver upload limits — same defaults the product catalog seeds
+  // (`driver.uploads.limits`). Megabytes because that is what the admin form
+  // and the driver copy both speak. In-memory; resets on refresh / reloadDemo.
+  const driverUploadLimits = {
+    maxFileMb: 25,
+    maxTotalMb: 50,
+  };
+
   const cancellationPolicies = {
     adminCancelRequiresReasonCode: true,
     adminCancelRequiresDriverMessage: true,
@@ -2865,14 +2894,96 @@ window.AuthStore = (() => {
     return ["pdf", "jpg", "jpeg", "png", "webp", "gif"].includes(ext);
   }
 
-  // 25 MB — the limit the driver PWA advertises on the upload dropzone
-  // ("Max. Dateigröße: 25 MB"). Enforced here so every upload path (camera
-  // photo, device file, PDF, admin off-channel registration) shares one rule.
-  const MAX_TOUR_DOCUMENT_BYTES = 25 * 1024 * 1024;
+  const BYTES_PER_MEGABYTE = 1024 * 1024;
 
-  function exceedsTourDocumentSizeLimit(file) {
+  // Platform ceiling — the fixed backstop no upload of any kind may exceed.
+  // Distinct from the configured per-file limit that governs only tour
+  // documents and problem-report evidence. Dispatch off-channel attach and
+  // driver personal documents (licence/ID) stay on this ceiling alone; the
+  // rise from the previous compiled-in 25 MB to 50 MB for personal documents
+  // is an accepted consequence mirroring the product.
+  const PLATFORM_UPLOAD_CEILING_BYTES = 50 * BYTES_PER_MEGABYTE;
+
+  // Upper bound on the configured area total. Not a ceiling on any one upload —
+  // it only stops an area total being set to an absurd figure. The admin form
+  // shows the same number in its range message.
+  const MAX_UPLOAD_AREA_TOTAL_MB = 1024;
+
+  function exceedsPlatformUploadCeiling(file) {
     const size = file && typeof file.size === "number" ? file.size : 0;
-    return size > MAX_TOUR_DOCUMENT_BYTES;
+    return size > PLATFORM_UPLOAD_CEILING_BYTES;
+  }
+
+  function driverUploadLimitsSnapshot() {
+    return {
+      maxFileMb: driverUploadLimits.maxFileMb,
+      maxTotalMb: driverUploadLimits.maxTotalMb,
+      maxFileBytes: driverUploadLimits.maxFileMb * BYTES_PER_MEGABYTE,
+      maxTotalBytes: driverUploadLimits.maxTotalMb * BYTES_PER_MEGABYTE,
+    };
+  }
+
+  /**
+   * Bytes one tour's documents upload area currently occupies.
+   *
+   * Counts live driver uploads and dispatch off-channel attachments. A row
+   * whose review status is `replaced` does not count — replace keeps the old
+   * row as reviewable history, so what is listed and what is counted
+   * legitimately differ. Generated transport orders live in a different
+   * collection and never appear here. `excludingDocumentId` lets a replace
+   * charge as a delta (outgoing bytes off before incoming bytes on).
+   */
+  function tourDocumentsUsageBytes(jobId, opts = {}) {
+    if (!jobId) return 0;
+    const excluding = opts.excludingDocumentId || null;
+    let total = 0;
+    for (const d of tourDocuments) {
+      if (d.jobId !== jobId) continue;
+      if (excluding && d.id === excluding) continue;
+      if (normalizeTourDocumentReviewStatus(d.reviewStatus) === "replaced")
+        continue;
+      total += typeof d.sizeBytes === "number" ? d.sizeBytes : 0;
+    }
+    return total;
+  }
+
+  function tourDocumentsRemainingBytes(jobId, opts = {}) {
+    const maxTotal = driverUploadLimits.maxTotalMb * BYTES_PER_MEGABYTE;
+    return Math.max(0, maxTotal - tourDocumentsUsageBytes(jobId, opts));
+  }
+
+  /**
+   * Shared policy for the two upload areas (tour documents and problem-report
+   * evidence). Two distinct refusal reasons so later screens can show different
+   * copy: `file_too_large` names this file; `allowance_exhausted` names the
+   * area and points at removal as the remedy.
+   */
+  function assertAttachmentAllowed(check = {}) {
+    const limits = driverUploadLimitsSnapshot();
+    const size =
+      typeof check.fileSizeBytes === "number" && check.fileSizeBytes >= 0
+        ? check.fileSizeBytes
+        : 0;
+    const usage =
+      typeof check.currentUsageBytes === "number" &&
+      check.currentUsageBytes >= 0
+        ? check.currentUsageBytes
+        : 0;
+    if (size > limits.maxFileBytes) {
+      return { ok: false, reason: "file_too_large" };
+    }
+    if (usage + size > limits.maxTotalBytes) {
+      return { ok: false, reason: "allowance_exhausted" };
+    }
+    return { ok: true };
+  }
+
+  function assertTourDocumentAttachment(jobId, file, opts = {}) {
+    const size = file && typeof file.size === "number" ? file.size : 0;
+    return assertAttachmentAllowed({
+      fileSizeBytes: size,
+      currentUsageBytes: tourDocumentsUsageBytes(jobId, opts),
+    });
   }
 
   function nowStamp() {
@@ -5096,7 +5207,7 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
-      if (exceedsTourDocumentSizeLimit(file))
+      if (exceedsPlatformUploadCeiling(file))
         return { ok: false, reason: "file_too_large" };
       const category = normalizeDriverDocCategory(opts.category);
       const prior = driverDocuments.find(
@@ -5218,8 +5329,13 @@ window.AuthStore = (() => {
     isValidSupportPhone,
     isValidSupportEmail,
     isAllowedTourDocumentFile,
-    exceedsTourDocumentSizeLimit,
-    MAX_TOUR_DOCUMENT_BYTES,
+    exceedsPlatformUploadCeiling,
+    PLATFORM_UPLOAD_CEILING_BYTES,
+    MAX_UPLOAD_AREA_TOTAL_MB,
+    assertAttachmentAllowed,
+    assertTourDocumentAttachment,
+    tourDocumentsUsageBytes,
+    tourDocumentsRemainingBytes,
     jobWasEverCommitted,
 
     // ---- Auth session (client-preview + /pwa login gate) ----
@@ -5619,6 +5735,47 @@ window.AuthStore = (() => {
         DEMO_ADMIN,
         "app_settings",
         JSON.stringify(partial),
+      );
+      emit();
+      return { ok: true };
+    },
+
+    getDriverUploadLimits: () => driverUploadLimitsSnapshot(),
+
+    /**
+     * Bounds live here, not only in the admin form. The platform ceiling is
+     * "the backstop no upload of any kind may exceed" — if the configured
+     * per-file limit could be set above it, a tour document could exceed the
+     * backstop and the ceiling would mean nothing. The admin card enforces the
+     * same numbers for the message it can show; this is the invariant.
+     */
+    setDriverUploadLimits(partial = {}) {
+      const clampMb = (value, max) => {
+        const parsed = Math.floor(Number(value));
+        if (!Number.isFinite(parsed)) return null;
+        return Math.min(Math.max(parsed, 1), max);
+      };
+      if (partial.maxFileMb != null) {
+        const next = clampMb(
+          partial.maxFileMb,
+          PLATFORM_UPLOAD_CEILING_BYTES / BYTES_PER_MEGABYTE,
+        );
+        if (next == null) return { ok: false, reason: "invalid_max_file" };
+        driverUploadLimits.maxFileMb = next;
+      }
+      if (partial.maxTotalMb != null) {
+        const next = clampMb(partial.maxTotalMb, MAX_UPLOAD_AREA_TOTAL_MB);
+        if (next == null) return { ok: false, reason: "invalid_max_total" };
+        driverUploadLimits.maxTotalMb = next;
+      }
+      log(
+        "driver_upload_limits_changed",
+        DEMO_ADMIN,
+        "app_settings",
+        JSON.stringify({
+          maxFileMb: driverUploadLimits.maxFileMb,
+          maxTotalMb: driverUploadLimits.maxTotalMb,
+        }),
       );
       emit();
       return { ok: true };
@@ -6391,9 +6548,17 @@ window.AuthStore = (() => {
     buildEmptyRunEvidenceMeta(files) {
       const list = Array.isArray(files) ? files.slice(0, 5) : [];
       const evidence = [];
+      const limits = driverUploadLimitsSnapshot();
+      let usageBytes = 0;
       for (const file of list) {
         if (!file || !isAllowedTourDocumentFile(file)) continue;
-        if (exceedsTourDocumentSizeLimit(file)) continue;
+        const size = typeof file.size === "number" ? file.size : 0;
+        // Evidence reads the same configured limits as tour documents, as its
+        // own upload area. Oversized or over-total picks are dropped here;
+        // the Report Problem sheet (later ticket) surfaces the reason before
+        // submit via assertAttachmentAllowed.
+        if (size > limits.maxFileBytes) continue;
+        if (usageBytes + size > limits.maxTotalBytes) continue;
         const mime = (file.type || guessMimeFromName(file.name) || "").trim();
         const isImage = /^image\//i.test(mime);
         // Keep an in-session object URL for image evidence so the admin review
@@ -6412,11 +6577,12 @@ window.AuthStore = (() => {
           id: `ERE-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           fileName: file.name,
           mimeType: mime || "application/octet-stream",
-          sizeBytes: typeof file.size === "number" ? file.size : 0,
+          sizeBytes: size,
           uploadedAt: new Date().toISOString(),
           isImage,
           previewUrl,
         });
+        usageBytes += size;
       }
       return evidence;
     },
@@ -8077,10 +8243,10 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
-      if (exceedsTourDocumentSizeLimit(file))
-        return { ok: false, reason: "file_too_large" };
       const gate = api.canDriverUploadTourDocument(opts.jobId);
       if (!gate.ok) return gate;
+      const sizeCheck = assertTourDocumentAttachment(gate.jobId, file);
+      if (!sizeCheck.ok) return sizeCheck;
       const hasAmountFields =
         opts.netAmount != null ||
         opts.grossAmount != null ||
@@ -8244,8 +8410,10 @@ window.AuthStore = (() => {
         if (!file) return { ok: false, reason: "no_file" };
         if (!isAllowedTourDocumentFile(file))
           return { ok: false, reason: "invalid_type" };
-        if (exceedsTourDocumentSizeLimit(file))
-          return { ok: false, reason: "file_too_large" };
+        const sizeCheck = assertTourDocumentAttachment(jobId, file, {
+          excludingDocumentId: doc.id,
+        });
+        if (!sizeCheck.ok) return sizeCheck;
         doc.fileName = file.name;
         doc.mimeType =
           (file.type || guessMimeFromName(file.name) || "").trim() ||
@@ -8373,8 +8541,6 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
-      if (exceedsTourDocumentSizeLimit(file))
-        return { ok: false, reason: "file_too_large" };
       const doc = tourDocuments.find((x) => x.id === id);
       if (!doc) return { ok: false, reason: "not_found" };
       const jobId = doc.jobId;
@@ -8403,6 +8569,13 @@ window.AuthStore = (() => {
       ];
       if (!replaceable.includes(st))
         return { ok: false, reason: "not_replaceable" };
+      // Delta charge: outgoing bytes leave the usage figure before the
+      // incoming file is weighed, so a like-for-like correction on a full
+      // tour always succeeds.
+      const sizeCheck = assertTourDocumentAttachment(jobId, file, {
+        excludingDocumentId: doc.id,
+      });
+      if (!sizeCheck.ok) return sizeCheck;
       const who =
         actor === "driver"
           ? api.getCurrentDriver()?.name || DEMO_DRIVER
@@ -8511,7 +8684,7 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
-      if (exceedsTourDocumentSizeLimit(file))
+      if (exceedsPlatformUploadCeiling(file))
         return { ok: false, reason: "file_too_large" };
       const invNum = String(data?.supplierInvoiceNumber || "").trim();
       if (!invNum) return { ok: false, reason: "no_invoice_id" };
@@ -8627,7 +8800,7 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
-      if (exceedsTourDocumentSizeLimit(file))
+      if (exceedsPlatformUploadCeiling(file))
         return { ok: false, reason: "file_too_large" };
       const dr = jobDriverRecord(j);
       const mime =
@@ -8683,7 +8856,7 @@ window.AuthStore = (() => {
       if (!file) return { ok: false, reason: "no_file" };
       if (!isAllowedTourDocumentFile(file))
         return { ok: false, reason: "invalid_type" };
-      if (exceedsTourDocumentSizeLimit(file))
+      if (exceedsPlatformUploadCeiling(file))
         return { ok: false, reason: "file_too_large" };
       const mime =
         (file.type || guessMimeFromName(file.name) || "").trim() ||
@@ -9234,6 +9407,8 @@ window.AuthStore = (() => {
       Object.assign(featureFlags, {
         ...reloadOnlyFlags,
       });
+      driverUploadLimits.maxFileMb = 25;
+      driverUploadLimits.maxTotalMb = 50;
       log("demo_reloaded", "System", "Transport Portal", "PRD v1.8 seed");
       emit();
       return { ok: true };
