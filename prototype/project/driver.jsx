@@ -161,6 +161,12 @@ const displayVehicle = (value, t) =>
     ? t("all")
     : AuthStore.vehicleTypeLabel(value, t);
 
+// The app's ONE vehicle display name — manufacturer + model, falling back to
+// the canonical vehicle-type label. Delegates to the store so the Marketplace
+// card, the My Jobs card and the notification ride preview cannot render the
+// same vehicle three different ways. Do not inline this composition again.
+const vehicleDisplayName = (job, t) => AuthStore.vehicleDisplayName(job, t);
+
 // Icon mapping for the three confirmed vehicle types.
 const vehicleTypeIcon = (vehicleType) => {
   switch (AuthStore.normalizeVehicleType(vehicleType)) {
@@ -1781,9 +1787,7 @@ const JobCardBody = ({ job }) => {
       <div className="jobcard-footer">
         <span className="vehicle-meta">
           {vehicleTypeIcon(job.vehicleType)}
-          {[job.manufacturer, job.vehicleModel]
-            .filter((v) => v && v !== "—")
-            .join(" ") || displayVehicle(job.vehicleType, t)}
+          {vehicleDisplayName(job, t)}
         </span>
         <div className="jobcard-price tnum">
           {F().formatMoney
@@ -6818,6 +6822,18 @@ const ProfilePane = () => {
   );
 };
 
+// Where a ride event goes when its own target cannot be opened, and which
+// parent screen a cold-start push inherits. Deliberately NOT one global answer:
+// a Marketplace order that has gone falls back to the Marketplace, but an
+// assigned or historical ride belongs to My Jobs and must not be dumped into a
+// marketplace listing it is not part of.
+const RIDE_FALLBACK_TAB = { marketplace: "portal", mine: "mine" };
+
+const rideFallbackNav = (target) => ({
+  kind: "tab",
+  tab: RIDE_FALLBACK_TAB[target?.rideFallback] || "mine",
+});
+
 /**
  * Turns "the driver tapped a push notification" into shell navigation intent.
  *
@@ -6829,27 +6845,61 @@ const ProfilePane = () => {
  * notification list uses, so a push can never reach a screen the list would
  * refuse to open.
  *
- * A push never lands on the generic Notification Center for a reachable
- * non-tour target: an Infopoint push opens that message, a document push opens
- * that document. Tour pushes open the Notification Center with the matching
- * card already expanded, which is the agreed model.
+ * A push lands on CONTENT, never on the generic Notification Center, whenever
+ * the target is reachable:
  *
- * Anything missing, withdrawn, expired or no longer permitted resolves to the
- * Notification Center with that card expanded, where it states why — a safe
- * fallback, never a blank or broken screen.
+ *   marketplace availability  → the Marketplace, current data, nothing named
+ *   ride (assigned/updated/…) → that ride, on the screen the driver is entitled
+ *                               to (`store.driverJobViewMode`)
+ *   Infopoint message         → that message's detail page
+ *   document                  → that document's preview on its tour
+ *   profile / account         → the Profile destination holding its subject
+ *
+ * The Marketplace-availability case is the one that changed on 2026-08-04. It
+ * used to open the Notification Center with the card expanded; because the push
+ * that carries it is now generic — it never claimed a specific job — landing on
+ * the current Marketplace is both truthful and useful. If the job that triggered
+ * it is gone, the driver sees whatever work actually remains, and an empty
+ * Marketplace is a correct answer rather than an error.
+ *
+ * Anything missing, withdrawn, expired or no longer permitted falls back to the
+ * event's own parent screen — never a blank screen, never a dedicated
+ * "no longer available" screen, and never a stale action.
  */
 const resolveNotificationNavigation = (notificationId) => {
   const store = window.AuthStore;
   if (!notificationId || !store) return null;
   const target = store.resolveDriverNotificationTarget(notificationId);
+  // An unknown id carries no context at all — the Notification Center over the
+  // safe root is the only honest destination.
   if (!target.ok) return { kind: "notifications", expandId: null };
+
+  // A generic Marketplace-availability push opens the Marketplace whether or
+  // not the originating order survived: the push named no order, so there is no
+  // specific promise to keep and no stale state to honour.
+  if (target.marketplace && target.kind === store.NOTIF_KIND_TOUR) {
+    return { kind: "tab", tab: "portal", refreshMarketplace: true };
+  }
+
   if (!target.available) {
+    if (target.kind === store.NOTIF_KIND_TOUR) return rideFallbackNav(target);
+    if (target.kind === store.NOTIF_KIND_MESSAGE) {
+      return { kind: "tab", tab: "info" };
+    }
+    if (target.kind === store.NOTIF_KIND_DOCUMENT) {
+      return { kind: "tab", tab: "mine" };
+    }
+    if (target.kind === store.NOTIF_KIND_PROFILE) {
+      return { kind: "tab", tab: "profile" };
+    }
+    // No type-specific parent (plain / legacy row): state why in the pane.
     return {
       kind: "notifications",
       expandId: notificationId,
       unavailableReason: target.unavailableReason,
     };
   }
+
   if (target.kind === store.NOTIF_KIND_MESSAGE) {
     return { kind: "news", newsId: target.newsId };
   }
@@ -6861,12 +6911,16 @@ const resolveNotificationNavigation = (notificationId) => {
       mode: target.mode,
     };
   }
-  // Tour and plain notifications both land in the Notification Center; only a
-  // tour card has a preview to expand.
-  return {
-    kind: "notifications",
-    expandId: target.kind === store.NOTIF_KIND_TOUR ? notificationId : null,
-  };
+  if (target.kind === store.NOTIF_KIND_PROFILE) {
+    return { kind: "profile", subpage: target.profileTarget || "" };
+  }
+  if (target.kind === store.NOTIF_KIND_TOUR) {
+    // A non-Marketplace ride opens the ride itself — My Jobs detail for a
+    // committed tour, the permitted historical view for a closed one.
+    return { kind: "ride", jobId: target.jobId, mode: target.mode };
+  }
+  // Plain informational row: nothing to open, so the pane it came from.
+  return { kind: "notifications", expandId: null };
 };
 
 /**
@@ -6929,111 +6983,70 @@ const notifUnavailableText = (reason, t) =>
   t(NOTIF_UNAVAILABLE_I18N[reason] || "notifTargetUnavailable");
 
 /**
- * Expanded tour preview inside a notification card.
+ * Expanded ride preview inside a notification card.
  *
- * Renders ONLY what `store.driverNotificationJobPreview()` returned. That
- * projection already omits customer, full address, contact and plate for an
- * order the driver has not committed to, so this component cannot leak a
- * protected field even by accident — there is nothing to read.
+ * FIVE values, and only five (client decision 2026-08-04): ride id, pickup
+ * city, delivery city, the ride's scheduled date, and the app's existing
+ * vehicle display name. The card is a decision aid, not a sixth execution
+ * surface — the full detail screen is one tap away behind the action below it.
+ *
+ * There is nothing to leak here, by construction rather than by discipline:
+ * `store.driverNotificationJobPreview()` returns exactly these five fields, so
+ * postal code, distance, price, customer, street, contacts, plate and VIN are
+ * absent from the object this component receives. A styling mistake cannot
+ * reveal what was never passed in.
  */
-const NotificationTourPreview = ({ preview }) => {
+const NotificationRidePreview = ({ preview }) => {
   const { t } = useI18n();
   if (!preview) return null;
-  const legLine = (leg) => {
-    if (!leg) return "—";
-    const place = [leg.postalCode, leg.city].filter(Boolean).join(" ") || "—";
-    // `name` / `street` are present only in the unrestricted projection.
-    const address = [
-      leg.name,
-      [leg.street, leg.houseNumber].filter(Boolean).join(" "),
-    ]
-      .filter(Boolean)
-      .join(" · ");
-    return address ? `${address}, ${place}` : place;
-  };
-  const schedule = (leg) =>
-    leg
-      ? AuthStore.formatLocationSchedule(
-          {
-            date: leg.date,
-            windowFrom: leg.windowFrom,
-            windowTo: leg.windowTo,
-          },
-          t("flexible"),
-        )
-      : "—";
+  const value = (v) => v || "—";
 
   return (
     <div className="notification-preview">
       <div className="notification-preview-head">
         <span className="notification-preview-tour mono">{preview.tour}</span>
-        {preview.status ? <Pill status={preview.status} /> : null}
       </div>
       <dl className="notification-preview-list">
         <div className="notification-preview-row">
           <dt>{t("pickup")}</dt>
-          <dd>
-            {legLine(preview.pickup)}
-            <span className="notification-preview-sub">
-              {schedule(preview.pickup)}
-            </span>
-          </dd>
+          {/* City only. No postal code, no street, no time window. */}
+          <dd>{value(preview.pickupCity)}</dd>
         </div>
         <div className="notification-preview-row">
           <dt>{t("delivery")}</dt>
-          <dd>
-            {legLine(preview.delivery)}
-            <span className="notification-preview-sub">
-              {schedule(preview.delivery)}
-            </span>
-          </dd>
+          <dd>{value(preview.deliveryCity)}</dd>
+        </div>
+        <div className="notification-preview-row">
+          <dt>{t("date")}</dt>
+          {/* Full date (DD.MM.YYYY) via the shared formatter — the ride's
+              scheduled date, i.e. its pickup date. */}
+          <dd>{preview.date ? F().formatDate(preview.date) : "—"}</dd>
         </div>
         <div className="notification-preview-row">
           <dt>{t("vehicle")}</dt>
-          <dd>
-            {[
-              displayVehicle(preview.vehicleType, t),
-              preview.manufacturer,
-              preview.vehicleModel,
-            ]
-              .filter(Boolean)
-              .join(" · ") || "—"}
-            <span className="notification-preview-sub">
-              {displayTransportType(preview.transportType, t)}
-              {preview.registrationStatus
-                ? ` · ${AuthStore.registrationStatusLabel(preview.registrationStatus, t)}`
-                : ""}
-            </span>
-          </dd>
+          <dd>{value(preview.vehicleName)}</dd>
         </div>
-        {preview.plate ? (
-          <div className="notification-preview-row">
-            <dt>{t("licensePlate")}</dt>
-            <dd className="mono">{preview.plate}</dd>
-          </div>
-        ) : null}
       </dl>
-      {preview.restricted ? (
-        <p className="notification-preview-hint">
-          {t("notifPreviewProtectedHint")}
-        </p>
-      ) : null}
     </div>
   );
 };
 
+// No `onOpenMarketplace`: nothing in the list navigates to the Marketplace any
+// more. An unavailable Marketplace ride states why and offers no action, and the
+// Marketplace fallback for a gone target belongs to the shell's push / deep-link
+// resolution (see `resolveNotificationNavigation`).
 const DriverNotificationsList = ({
   onOpenJob,
   onOpenInfopoint,
   onOpenNews,
   onOpenTourDocument,
-  onOpenMarketplace,
+  onOpenProfile,
   initialExpandedId = null,
 }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const rows = store.getDriverNotifications();
-  // Which tour notification is expanded. A push deep link can pre-expand one
+  // Which ride notification is expanded. A push deep link can pre-expand one
   // (`initialExpandedId`); otherwise the driver drives it.
   const [expandedId, setExpandedId] = useState(initialExpandedId);
 
@@ -7056,7 +7069,7 @@ const DriverNotificationsList = ({
     if (!row.read) store.markDriverNotificationsRead([row.id]);
   };
 
-  /** Opens a tour notification's order on the screen the driver is entitled to. */
+  /** Opens a ride notification's order on the screen the driver is entitled to. */
   const openOrder = (target) => {
     const job = store.getJob(target.jobId);
     if (!job) return;
@@ -7078,7 +7091,20 @@ const DriverNotificationsList = ({
         jobId: target.jobId,
         documentId: target.documentId,
       });
+      return;
     }
+    if (target.kind === store.NOTIF_KIND_PROFILE) {
+      // A stable subpage key, never a localized label. `""` is a legitimate
+      // value meaning the Profile landing page.
+      onOpenProfile?.(target.profileTarget || "");
+    }
+  };
+
+  /** The screen-reader label for a deep-link card's action. */
+  const deepLinkActionLabel = (kind) => {
+    if (kind === store.NOTIF_KIND_MESSAGE) return t("notifOpenMessage");
+    if (kind === store.NOTIF_KIND_DOCUMENT) return t("notifOpenDocument");
+    return t("notifOpenProfile");
   };
 
   if (!rows.length) {
@@ -7108,18 +7134,22 @@ const DriverNotificationsList = ({
               const enterStyle =
                 flatIndex < 4 ? { ["--list-enter-i"]: flatIndex } : undefined;
               const target = store.resolveDriverNotificationTarget(row);
-              const isTour = target.kind === store.NOTIF_KIND_TOUR;
-              const expanded = isTour && expandedId === row.id;
+              const isRide = target.kind === store.NOTIF_KIND_TOUR;
+              const expanded = isRide && expandedId === row.id;
               const bodyId = `notification-preview-${row.id}`;
-              // Non-tour cards deep-link; a card with an unreachable target is
-              // never a link — it states why instead.
+              // Only rides expand — they are the one type where extra context
+              // helps before committing. Everything else with a reachable
+              // target deep-links straight there; a card whose target is gone
+              // is never a link and states why instead.
               const deepLinkable =
-                !isTour &&
+                !isRide &&
                 target.available &&
                 ((target.kind === store.NOTIF_KIND_MESSAGE &&
                   Boolean(onOpenNews || onOpenInfopoint)) ||
                   (target.kind === store.NOTIF_KIND_DOCUMENT &&
-                    Boolean(onOpenTourDocument)));
+                    Boolean(onOpenTourDocument)) ||
+                  (target.kind === store.NOTIF_KIND_PROFILE &&
+                    Boolean(onOpenProfile)));
 
               const head = (
                 <>
@@ -7131,10 +7161,9 @@ const DriverNotificationsList = ({
                       aria-hidden="true"
                     />
                   )}
+                  {/* No category chip. The heading carries the meaning; a
+                      taxonomy label above it was dropped on 2026-08-04. */}
                   <span className="notification-row-body">
-                    <span className="notification-row-cat">
-                      {t(store.notificationCategoryI18nKey(row.type))}
-                    </span>
                     <span className="notification-row-title">
                       {displayNotificationTitle(row, t)}
                     </span>
@@ -7161,7 +7190,7 @@ const DriverNotificationsList = ({
                       expanded ? " expanded" : ""
                     }`}
                   >
-                    {isTour ? (
+                    {isRide ? (
                       // Expand/collapse control on the right. Expanding stays
                       // inside the Notification Center — it never navigates.
                       <button
@@ -7203,9 +7232,7 @@ const DriverNotificationsList = ({
                           <Ic.Chev />
                         </span>
                         <span className="sr-only">
-                          {target.kind === store.NOTIF_KIND_MESSAGE
-                            ? t("notifOpenMessage")
-                            : t("notifOpenDocument")}
+                          {deepLinkActionLabel(target.kind)}
                         </span>
                       </button>
                     ) : (
@@ -7214,27 +7241,36 @@ const DriverNotificationsList = ({
                       </div>
                     )}
 
-                    {!isTour && !target.available ? (
+                    {!isRide && !target.available ? (
                       <p className="notification-unavailable">
                         {notifUnavailableText(target.unavailableReason, t)}
                       </p>
                     ) : null}
 
-                    {isTour ? (
+                    {isRide ? (
                       <div
                         id={bodyId}
                         className="notification-card-panel"
                         hidden={!expanded}
                       >
                         {target.available ? (
-                          <NotificationTourPreview preview={target.preview} />
+                          <NotificationRidePreview preview={target.preview} />
                         ) : (
                           <p className="notification-unavailable">
                             {notifUnavailableText(target.unavailableReason, t)}
                           </p>
                         )}
-                        <div className="notification-card-actions">
-                          {target.available ? (
+                        {/* One contextual action, and only when the ride can
+                            actually be opened. An unavailable order states why
+                            and offers NOTHING: no "View order" that would fail,
+                            and no replacement action either — the v2.20
+                            "View more orders" button was removed on 2026-08-04
+                            because a dead-end card must not grow a second
+                            journey out of it. Reaching the Marketplace from a
+                            gone Marketplace order is the job of the push/deep-
+                            link fallback, not of a button here. */}
+                        {target.available ? (
+                          <div className="notification-card-actions">
                             <button
                               type="button"
                               className="btn primary"
@@ -7247,22 +7283,8 @@ const DriverNotificationsList = ({
                                 ? t("notifToMyOrders")
                                 : t("notifViewOrder")}
                             </button>
-                          ) : null}
-                          {/* An unavailable Marketplace order offers the
-                              marketplace instead of a dead "View order". */}
-                          {!target.available && target.marketplace ? (
-                            <button
-                              type="button"
-                              className="btn"
-                              onClick={() => {
-                                markRead(row);
-                                onOpenMarketplace?.();
-                              }}
-                            >
-                              {t("notifViewMoreOrders")}
-                            </button>
-                          ) : null}
-                        </div>
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
@@ -7283,7 +7305,7 @@ const DriverNotificationsPane = ({
   onOpenInfopoint,
   onOpenNews,
   onOpenTourDocument,
-  onOpenMarketplace,
+  onOpenProfile,
   initialExpandedId = null,
 }) => {
   const { t } = useI18n();
@@ -7360,7 +7382,7 @@ const DriverNotificationsPane = ({
             onOpenInfopoint={onOpenInfopoint}
             onOpenNews={onOpenNews}
             onOpenTourDocument={onOpenTourDocument}
-            onOpenMarketplace={onOpenMarketplace}
+            onOpenProfile={onOpenProfile}
             initialExpandedId={initialExpandedId}
           />
         </div>
@@ -8049,6 +8071,15 @@ const DriverSubpageHeader = ({ title, backLabel, onBack, titleRef }) => (
 const ProfilePaneFull = ({
   onOpenNotifications,
   notificationsOpen = false,
+  // Profile deep link from a notification or a push tap: a stable subpage key
+  // (never a localized label). `""` means the Profile landing page — the right
+  // destination for an event whose subject lives there, such as the sign-in
+  // email row in the Account group.
+  deepLinkSubpage = null,
+  onDeepLinkConsumed,
+  // Origin-aware Back — set only when the Profile screen was reached THROUGH a
+  // notification. See `leaveSubpage`.
+  onReturnToOrigin,
 }) => {
   const { t, locale, setLocale } = useI18n();
   const store = useAuthStore();
@@ -8140,6 +8171,45 @@ const ProfilePaneFull = ({
     listScrollTop.current = scrollBodyRef.current?.scrollTop || 0;
     lastSubpage.current = id;
     setSubpage(id);
+    // Opened from the Profile list, so Back belongs to the Profile list.
+    setSubpageFromNotification(false);
+  };
+
+  // True while the OPEN subpage is the one a notification deep-linked to. Bound
+  // to this opening, not to the screen, so a later ordinary drill-down here
+  // returns to the Profile landing page as it always did.
+  const [subpageFromNotification, setSubpageFromNotification] = useState(false);
+
+  /**
+   * A notification pointed at a Profile destination.
+   *
+   * `""` is a real value meaning "the landing page" — the Account group and the
+   * sign-in email row live there and no Account & sign-in subpage exists. In
+   * that case there is no subpage to open and Back stays the shell's own,
+   * because the driver is already on the destination.
+   */
+  useEffect(() => {
+    if (deepLinkSubpage == null) return;
+    const target = SUBPAGES[deepLinkSubpage] ? deepLinkSubpage : null;
+    lastSubpage.current = target;
+    setSubpage(target);
+    setSubpageFromNotification(Boolean(target) && Boolean(onReturnToOrigin));
+    onDeepLinkConsumed?.();
+  }, [deepLinkSubpage]);
+
+  /**
+   * Leaving a Profile subpage.
+   *
+   * Same rule as the Infopoint message detail: the parent is decided by how the
+   * subpage was REACHED. A notification deep link returns to the menu page the
+   * Notification Center was opened from; an ordinary drill-down returns to the
+   * Profile landing page. The origin is consumed here.
+   */
+  const leaveSubpage = () => {
+    const toOrigin = subpageFromNotification;
+    setSubpage(null);
+    setSubpageFromNotification(false);
+    if (toOrigin) onReturnToOrigin?.();
   };
 
   useEffect(() => {
@@ -8561,7 +8631,7 @@ const ProfilePaneFull = ({
           <DriverSubpageHeader
             title={activeSub.title}
             backLabel={t("profileBackLabel")}
-            onBack={() => setSubpage(null)}
+            onBack={leaveSubpage}
             titleRef={subpageTitleRef}
           />
           <div className="scroll scroll-body" ref={scrollBodyRef}>
@@ -8907,6 +8977,12 @@ const Infopoint = ({
   // detail page open rather than on a broken screen.
   deepLinkNewsId = null,
   onDeepLinkConsumed,
+  // Origin-aware Back. Set only when this message was reached THROUGH a
+  // notification: Back then returns to the menu page the Notification Center
+  // was opened from, not to the Infopoint list the driver never visited.
+  // Absent for an ordinary Infopoint → message navigation, which keeps its
+  // existing parent (the list) — see `closeDetail`.
+  onReturnToOrigin,
 }) => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -8914,6 +8990,10 @@ const Infopoint = ({
   const INFO_TABS = ["documents", "news", "help"];
   // Which message's detail page is open. Null = the message list.
   const [detailNewsId, setDetailNewsId] = useState(null);
+  // True while the OPEN detail page is the one a notification deep-linked to.
+  // Bound to this specific opening, not to the screen, so navigating onward
+  // inside Infopoint afterwards restores ordinary list-parent Back.
+  const [detailFromNotification, setDetailFromNotification] = useState(false);
   const [docPreview, setDocPreview] = useState(null);
   const readerId = store.getCurrentDriver()?.id || AuthStore.DEMO_DRIVER;
   const docs = store.getDocuments().filter((d) => d.visible);
@@ -8928,6 +9008,10 @@ const Infopoint = ({
     setSubTab("news");
     const r = store.openInfopointNews(deepLinkNewsId, readerId);
     setDetailNewsId(r.ok ? deepLinkNewsId : null);
+    // Only an opening that actually succeeded is notification-originated; a
+    // message that has since been removed leaves the driver on the News list,
+    // which is its own parent.
+    setDetailFromNotification(r.ok && Boolean(onReturnToOrigin));
     // Consume it: the driver navigating back here later must not silently
     // re-open (and re-audit) the same message.
     onDeepLinkConsumed?.();
@@ -8939,6 +9023,24 @@ const Infopoint = ({
     // is already read.
     store.openInfopointNews(item.id, readerId);
     setDetailNewsId(item.id);
+    // Opened from the list, so Back belongs to the list.
+    setDetailFromNotification(false);
+  };
+
+  /**
+   * Leaving a message detail page.
+   *
+   * Two different parents, decided by how this page was REACHED rather than by
+   * where it lives: a notification deep link returns to the menu page the
+   * Notification Center was opened from, an ordinary list tap returns to the
+   * list. The notification origin is consumed here, so a second visit to the
+   * same message from the list behaves normally.
+   */
+  const closeDetail = () => {
+    const toOrigin = detailFromNotification;
+    setDetailNewsId(null);
+    setDetailFromNotification(false);
+    if (toOrigin) onReturnToOrigin?.();
   };
 
   return (
@@ -8962,10 +9064,7 @@ const Infopoint = ({
           tabs and all — so a long announcement gets the full viewport. Back
           returns to the complete message list with the tab still on News. */}
       {detailItem ? (
-        <InfopointMessageDetail
-          item={detailItem}
-          onBack={() => setDetailNewsId(null)}
-        />
+        <InfopointMessageDetail item={detailItem} onBack={closeDetail} />
       ) : (
         <>
           <DriverScreenHeader
@@ -9472,7 +9571,7 @@ Object.assign(window, {
   JobTourDocuments,
   DriverNotificationsList,
   DriverNotificationsPane,
-  NotificationTourPreview,
+  NotificationRidePreview,
   // One push-tap → navigation mapping, shared by both driver shells.
   resolveNotificationNavigation,
   useNotificationDeepLink,

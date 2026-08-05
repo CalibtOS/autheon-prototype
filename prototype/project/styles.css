@@ -7225,21 +7225,10 @@ select.input {
 .notification-row-chevron.open {
   transform: rotate(180deg);
 }
-.notification-row-cat {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--muted);
-  background: var(--paper-2);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 1px 8px;
-  margin-bottom: 4px;
-}
-.notification-card.unread .notification-row-cat {
-  background: var(--paper);
-}
+/* NOTE: `.notification-row-cat` (the category chip) was removed on 2026-08-04
+   when the client dropped visible notification categories. The card now starts
+   at `.notification-row-title`, so there is no chip rule and no empty container
+   left behind — the heading's own line-height owns the top of the text block. */
 .notification-card-panel {
   padding: 0 var(--space-3) var(--space-3);
   border-top: 1px solid var(--line);
@@ -7266,10 +7255,11 @@ select.input {
 .notification-preview {
   padding-top: var(--space-3);
 }
+/* Ride id alone since 2026-08-04 — the status pill that used to sit opposite it
+   was dropped with the rest of the metadata the expansion no longer shows. */
 .notification-preview-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
 }
@@ -7302,14 +7292,11 @@ select.input {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.notification-preview-sub {
-  display: block;
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--muted-2);
-  margin-top: 2px;
-}
-.notification-preview-hint,
+/* `.notification-preview-sub` (the muted second line under each preview value)
+   and `.notification-preview-hint` (the "visible after you accept" note) were
+   removed on 2026-08-04: the ride expansion is now five single-value rows, and
+   because the projection is identical before and after acceptance there is no
+   longer anything the hint could promise. */
 .notification-unavailable {
   font-size: 11px;
   line-height: 1.45;

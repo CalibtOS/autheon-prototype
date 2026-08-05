@@ -256,7 +256,7 @@ Audit item 43 resolved 2026-07-28.
 | Mark performed flow | `MarkPerformedSheet` | confirm (slide), success empty, success + uploads | Slide to confirm → Done |
 | Remove document | `RemoveDocModal` | confirm; blocked once in review | Remove (outline danger) |
 | Report problem | `ReportProblemSheet` | 7 codes, min 10 chars, evidence | Submit |
-| Notifications | `DriverNotificationsPane` | grouped by day, unread, empty, tour card collapsed / expanded, unavailable order, message + document deep-link cards | Expand preview \| View order \| To my orders \| View more orders \| open message \| open document |
+| Notifications | `DriverNotificationsPane` | grouped by day, unread, empty, **ride** card collapsed / expanded (no category chip), unreachable target (reason only, no action), message + document + **profile** deep-link cards | Expand preview \| View order \| To my orders \| open message \| open document \| open profile |
 | Profile | `ProfilePaneFull` | navigation list, active/completed probation, configured/unavailable help contacts | Request changes / Feedback mail / Report-error mail |
 | Change email | Account nav row → `ChangeEmailSheet` | enter, confirm code (+resend), success, pending resume | Cancel \| Send code → Confirm change |
 | Infopoint | `Infopoint` | docs + news + help tabs, empty (swipe between tabs) | Download / Help / open message |
@@ -520,8 +520,8 @@ line above it, so **no i18n key was added**.
 **Visibility is unchanged.** See `driver_visibility_matrix` rows `pickup_location_name` /
 `delivery_location_name` — the same tier the full address already had. The pre-acceptance marketplace
 preview (`JobLocked`) uses a **different** route renderer (`.detail-route-city`: city + `PLZ` only, no
-street), so the name cannot leak there; the notification tour preview already omits `name`/`street` for a
-non-committed order at the store-projection level.
+street), so the name cannot leak there; the notification **ride** preview carries no location name at all —
+since v2.37 its projection is city-only for both stops, for a committed ride as well as an uncommitted one.
 
 **Long names.** `.city-info` gained `flex: 1` + `min-width: 0` and the name breaks on overflow, so a long
 company string wraps inside the stop column instead of stretching the flex row and pushing the map button
@@ -584,14 +584,18 @@ edge** and travels right follows the finger and commits past **72px**; abandonin
 
 ---
 
-## Notification cards — categories, tour previews, deep links (2026-07-29)
+## Notification cards — no categories, ride previews, contextual deep links (2026-08-04)
 
-> **Two interaction models, and only two.** Tour events expand inline; Infopoint messages and documents
-> deep-link. A universal overlay or bottom sheet for every notification type is explicitly **not** the model.
+> **Supersedes the 2026-07-29 (v2.20) section.** Three things changed: the **category chip is gone**,
+> the ride expansion shows **five values and nothing else**, and the **unavailable-order presentation
+> and its *View more orders* action are removed**. What survived: two interaction models only — rides
+> expand inline, everything else deep-links. A universal overlay or bottom sheet for every
+> notification type is still explicitly **not** the model.
 
-Components: `DriverNotificationsPane` → `DriverNotificationsList` → `NotificationTourPreview` (`driver.jsx`).
-Taxonomy and navigation come from the store (`notificationCategoryI18nKey`, `notificationKind`,
-`resolveDriverNotificationTarget`) — the view decides nothing about entitlement.
+Components: `DriverNotificationsPane` → `DriverNotificationsList` → `NotificationRidePreview`
+(`driver.jsx`; the component was `NotificationTourPreview`). Navigation and entitlement come from the
+store (`notificationKind`, `resolveDriverNotificationTarget`, `driverNotificationJobPreview`,
+`driverPushProjection`) — the view decides nothing about what a driver may see or reach.
 
 ### Card anatomy (every card, every type)
 
@@ -601,63 +605,150 @@ focusable element, so an expandable card is still one tab stop.
 | Element | Class | Notes |
 |---------|-------|-------|
 | Unread dot / spacer | `.notification-row-dot` / `.notification-row-dot-spacer` | Unchanged. The spacer keeps read and unread cards aligned. |
-| Category chip | `.notification-row-cat` | 10px/600 pill, `--muted` on `--paper-2` inside `--line`; flips to `--paper` on an unread card so it stays legible on the tinted surface. Text only — no colour coding per category, so nothing depends on hue. |
-| Event heading | `.notification-row-title` | 13px/600. |
+| ~~Category chip~~ | ~~`.notification-row-cat`~~ | **REMOVED 2026-08-04.** No chip, no category tabs, no category filtering; `notifCategory*` and `notificationCategoryI18nKey()` are deleted. The card's text block now **starts** at the heading — no empty container is left behind, and no accessible name announces a category. |
+| Event heading | `.notification-row-title` | 13px/600. First child of `.notification-row-body`. |
 | Preview text | `.notification-row-text` | **Clamped to two lines** (`-webkit-line-clamp: 2`) so every card has a predictable height and the meta line is never pushed out of view. `white-space: pre-line` keeps the multi-line "order updated" body readable within the clamp. |
 | Date / tour meta | `.notification-row-meta.mono` | Unchanged: `createdAt · tour`. |
-| Right-hand control | `.notification-row-chevron` | `Ic.Down` rotated 180° when expanded (tour cards) or `Ic.Chev` pointing forward (deep-link cards). Vertically centred, `--muted-2`. |
+| Right-hand control | `.notification-row-chevron` | `Ic.Down` rotated 180° when expanded (ride cards) or `Ic.Chev` pointing forward (deep-link cards). Vertically centred, `--muted-2`. |
 
-### Tour cards — inline expandable preview
+### Ride cards — the one expandable type
+
+Only rides expand: they are the single case where extra context genuinely helps before the driver
+commits. Messages, documents and profile events have nothing to preview — they have a destination.
 
 - The whole row is the toggle (`.notification-row-toggle`), carrying `aria-expanded` and `aria-controls` to the
   panel; the panel uses the `hidden` attribute so collapsed content is out of the a11y tree entirely.
-- A screen-reader-only label states the action (`notifExpandPreview` / `notifCollapsePreview`) — the chevron is
-  decorative.
+- A screen-reader-only label states the action (`notifExpandPreview` / `notifCollapsePreview`).
 - Expanding **never navigates.** The Notification Center stays open.
-- One card is expanded at a time; expanding also marks the notification read (same rule as any other interaction).
-- `.notification-card.expanded` takes a `--primary` border so the open card is identifiable without colour alone
-  (the chevron rotation and `aria-expanded` carry the same information).
-- Panel content (`.notification-preview`): tour number + status `Pill`, then a `dl` of Pickup / Delivery / Vehicle
-  (+ Licence plate when visible), each value with a muted sub-line (schedule, transport + registration status).
-  The red-plate notice is deliberately **not** repeated here — it stays on its five canonical surfaces
-  (`DOMAIN.md`), and the notification preview is a summary, not a sixth execution surface.
-- **Visibility.** The panel renders only the projection `store.driverNotificationJobPreview()` returns. For an
-  order the driver has not committed to, customer, company name, street, contact and plate are **absent from the
-  object**, not hidden by CSS — so no protected field can leak through a styling mistake. Those cards also show
-  `notifPreviewProtectedHint` ("… become visible after you accept").
-- **Actions** (`.notification-card-actions`): exactly one primary — *View order* for an order on the marketplace,
-  *To my orders* for a committed tour. Buttons are the design-system `btn primary sm` / `btn sm`; they stretch to
-  share the row and stack full-width at ≤359px.
+- One card is expanded at a time; expanding also marks the notification read.
+- `.notification-card.expanded` takes a `--primary` border so the open card is identifiable without colour alone.
 
-### Unavailable orders
+#### The five values, and only five
 
-`.notification-unavailable` in `--danger-ink` states the reason (*booked by another service partner* / *withdrawn
-from the marketplace* / *cancelled* / *closed*). *View order* is **removed, not disabled** — matching the
-repository's convention of hiding rather than disabling unavailable actions (cf. the admin row-actions menu) — and
-*View more orders* is offered instead, opening the Marketplace.
+`.notification-preview` renders the ride id (`.notification-preview-tour`, unlabelled) then a `dl` of
+exactly four rows:
 
-### Deep-link cards (Infopoint messages, documents)
+| Row | Source | Rendered |
+|-----|--------|----------|
+| Ride id | `preview.tour` ← `job.tour` | Mono, no label. Display only — navigation uses `job.id`. |
+| Pickup | `preview.pickupCity` | **City only.** No postal code, no street, no time window. |
+| Delivery | `preview.deliveryCity` | City only. |
+| Date | `preview.date` ← `job.pickup.date` | Full date `DD.MM.YYYY` via `F().formatDate()`. The ride's scheduled date **is its pickup date**. |
+| Vehicle | `preview.vehicleName` | The app's **existing** vehicle display name — `AuthStore.vehicleDisplayName()`: manufacturer + model, falling back to the canonical vehicle-type label. **The same helper the Marketplace and My Jobs order cards call**, so one vehicle cannot read two ways. This is not a format invented for notifications; the v2.20 `type · manufacturer · model` composition was. |
+
+**Removed with the metadata:** the status `Pill` in `.notification-preview-head`, the muted
+`.notification-preview-sub` second lines (schedule, transport + registration status), the licence-plate
+row, and `.notification-preview-hint` (*"…become visible after you accept"*). The hint went because the
+projection is now **identical before and after acceptance** — there is nothing left to reveal, so
+promising a reveal would be false. The red-plate notice stays absent: it keeps to its five canonical
+surfaces (`DOMAIN.md`), and this preview is a summary, not a sixth execution surface.
+
+**Visibility is a data property, not a styling one.** The panel can only render what
+`store.driverNotificationJobPreview()` returned, and that projection is exactly
+`{ jobId, tour, pickupCity, deliveryCity, date, vehicleName }`. Postal code, distance, price, customer,
+street, location name, contacts, plate and VIN are **absent from the object** — so no CSS or markup
+mistake can leak them, and no future edit can quietly re-add a field by rendering it.
+
+**Action** (`.notification-card-actions`): exactly one primary, and **only when the ride can be
+opened** — *View order* for a Marketplace order, *To my orders* for a committed ride. Design-system
+`btn primary`; stretches to share the row and goes full width at ≤359px.
+
+### Unreachable targets
+
+`.notification-unavailable` in `--danger-ink` states the reason (*booked by another service partner* /
+*withdrawn from the marketplace* / *cancelled* / *closed* / *gone* / *no longer permitted*).
+
+*View order* is **removed, not disabled** — matching the repository's convention of hiding rather than
+disabling unavailable actions. **No replacement action is offered:** the v2.20 *View more orders*
+button (and `notifViewMoreOrders`) is **gone**, because a dead-end card must not grow a second journey
+out of it. Reaching current work from a vanished Marketplace order is the job of push / deep-link
+resolution, which falls back to the Marketplace. There is **no dedicated unavailable-order screen**.
+
+A non-ride card whose target is gone is **not** a link: it renders static (`.notification-row-static`)
+with `.notification-unavailable` underneath.
+
+### Deep-link cards (Infopoint messages, documents, profile events)
 
 - No accordion, no panel. The row itself is the link; the chevron points forward.
-- An Infopoint card opens **that message** (News tab, expanded). A document card opens **that document's preview**
-  on its tour. The previous "Also in Infopoint → New messages" hint is gone — the card goes there instead of
-  describing where to look, and `driverNotifInfopointHint` was removed with it.
-- A card whose target is gone or no longer permitted is **not** a link: it renders static with
-  `.notification-unavailable` underneath.
+- An Infopoint card opens **that message's detail page**. A document card opens **that document's
+  preview** on its tour. A **profile/account** card opens the Profile destination that holds its
+  subject — master-data change sent/approved/rejected → the **Basic data** subpage; the sign-in email
+  change → the Profile **landing page**, where the Account group and the email row live. No Profile
+  subpage was invented for this, and no profile event is dumped on the landing page when a relevant
+  subpage exists.
+- Screen-reader labels: `notifOpenMessage` / `notifOpenDocument` / `notifOpenProfile`.
+- Destinations are **stable keys** (`documentId`, `newsId`, `profileTarget`), never localized labels.
+  `profileTarget: ""` legitimately means the landing page, so availability is decided by the driver
+  session existing — not by the key being truthy.
+
+### Origin-aware Back
+
+**The reported defect:** Back after a notification deep link returned to the *target's* parent instead
+of the menu page the Notification Center was opened from. It worked for rides only by accident — they
+already carried `activeJob.fromTab` — while `onOpenNews` discarded the origin and profile events had no
+destination at all.
+
+- Each shell holds `notifOrigin`, set to the current tab when the bell is tapped. **Transient shell
+  state only:** never persisted, never written to `user_notifications`, never inferred from
+  notification text.
+- It travels with the navigation: rides and documents through `activeJob.fromTab`; messages through
+  `deepLinkNewsId` + `onReturnToOrigin`; Profile through `deepLinkSubpage` + `onReturnToOrigin`.
+- `Infopoint` and `ProfilePaneFull` each track whether **the currently open** detail/subpage is the
+  deep-linked one (`detailFromNotification` / `subpageFromNotification`). That flag — not the screen —
+  decides the parent, which is why **ordinary navigation is unchanged**: Infopoint list → message →
+  Back → list, My Jobs → ride → Back → My Jobs, Profile → subpage → Back → Profile.
+- The origin is **consumed on use**, cleared when the pane is closed without navigating, and cleared by
+  any deliberate tab navigation — so no later journey can inherit a stale one.
+- The Profile **landing page** destination has no Back control by nature: the driver is already on the
+  destination, with the tab bar visible.
+
+**Browser/app Back is deliberately not wired.** The driver shells have no `pushState` history for
+their own screens (only the admin app does, via its `returnSection` pattern), so the **visible** Back
+control is the Back they support and the one made origin-aware here. Adding a driver history stack is
+tracked as a separate open item; if it lands, the origin must move into history state so a `popstate`
+Back honours it too.
 
 ### Push taps
 
-`useNotificationDeepLink` (`driver.jsx`) reads `?notify=<notification id>` and both driver shells apply the result
-identically. A tour push opens the pane with that card already expanded; an Infopoint push opens the message; a
-document push opens the document. One handler covers cold start, home-screen launch and a tap on an already-open or
-backgrounded instance (`popstate` / `hashchange`). Push *delivery* is still simulated.
+`useNotificationDeepLink` (`driver.jsx`) reads `?notify=<notification id>` and both driver shells apply
+the result identically through `resolveNotificationNavigation`. One handler covers cold start,
+home-screen launch, background and a tap on an already-open instance (`popstate` / `hashchange`). Push
+*delivery* is still simulated; there is no `push` / `notificationclick` handler in `pwa/sw.js`, and this
+URL is the seam a real one would use.
+
+| Push | Opens | Cold-start Back parent |
+|------|-------|------------------------|
+| **Marketplace availability** (generic) | The **Marketplace**, current data — *not* the pane, *not* a card expanded | Marketplace root |
+| Marketplace ride, still available | Its Marketplace preview | Marketplace |
+| Assigned / updated / historical ride | That ride's detail | My Jobs |
+| Infopoint message | That message's detail page | Infopoint |
+| Document | That document's preview on its tour | My Jobs |
+| Profile / account | Its Profile destination | Profile |
+| Missing, gone, unauthorized, malformed | Notification Center over the safe root | Marketplace |
+
+A push launch has **no** originating menu page and **none is fabricated** — each target inherits the
+parent the driver would have had by navigating there themselves.
+
+**Generic Marketplace copy.** `store.driverPushProjection()` returns
+`{ title, body, destination, generic }` for a Marketplace-availability event, with `body` =
+*"New orders are available."* / *"Neue Aufträge sind verfügbar."* — **uninterpolated**, and the payload
+has no field able to carry a job count, vehicle, route, city, price, distance or even the triggering
+notification id. "The push names nothing specific" is therefore a property of the payload, not a
+convention of the copy, and no stale claim can survive to the tap. The **in-app card keeps** its
+pickup-city → delivery-city preview: those two values are inside the approved data set, and the driver
+opened that list deliberately.
+
+**On arrival** the Marketplace loads current availability through the existing load-on-open /
+pull-to-refresh policy. A booked, withdrawn, cancelled or expired order is simply not listed — an
+**empty Marketplace is a correct outcome**, shown through the existing empty state, never an error and
+never a blank screen.
 
 ### Responsive
 
 Phone-first inside the 392px frame. The preview `dl` is a 88px label column + value; at **≤359px** it stacks to one
-column and the action buttons go full width, so a long DE label ("Zustell-PLZ (erste 2 Ziffern)") never squeezes a
-value to two characters. Values use `overflow-wrap: anywhere`, so a long address or filename wraps instead of
-widening the pane.
+column and the action button goes full width, so a long DE label never squeezes a value to two characters.
+Values use `overflow-wrap: anywhere`, so a long city name wraps instead of widening the pane.
+
 
 ---
 

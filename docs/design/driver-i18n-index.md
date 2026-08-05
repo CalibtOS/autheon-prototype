@@ -137,22 +137,28 @@ it was reused rather than duplicated.
 
 ---
 
-## Notification keys (type-aware cards + deep links, 2026-07-29)
+## Notification keys (type-aware cards + contextual deep links, updated 2026-08-04)
 
-Notification **category** labels are resolved from a DYNAMIC key —
-`t(store.notificationCategoryI18nKey(row.type))`, where the store maps `notification_type` to one of
-four category codes. A literal-scanning indexer cannot see them, so they are listed here to keep them
-from looking unused and being deleted:
+**There are no notification category keys.** The four `notifCategory*` labels documented here until
+2026-08-04 were deleted with the visible chip (see *Removed* below). Nothing resolves a category key
+any more — `notificationCategoryI18nKey()` is gone from the store, so a dynamic-key note is no longer
+needed. Notifications stay type-aware for **behaviour**, and behaviour needs no copy.
 
-| Category code | Key | EN | DE |
-|---------------|-----|----|----|
-| `order` | `notifCategoryOrder` | Order | Auftrag |
-| `account` | `notifCategoryAccount` | Account | Konto |
-| `system` | `notifCategorySystem` | System | System |
-| `general_information` | `notifCategoryGeneralInfo` | General information | Allgemeine Information |
+### Generic Marketplace availability push
 
-The taxonomy is **derived from the type and never stored**, so adding a category means one entry in
-the store map plus one key here — never a migration.
+The push announcing newly available Marketplace work is **uninterpolated by design** — no `{from}`,
+no `{to}`, no count, no vehicle. That is the requirement, not a shortening: the push must not claim a
+specific order is still free, and a string with no placeholders cannot.
+
+| Key | EN | DE |
+|-----|----|----|
+| `pushNewOrdersTitle` | New orders | Neue Aufträge |
+| `pushNewOrdersBody` | New orders are available. | Neue Aufträge sind verfügbar. |
+
+Resolved by `store.driverPushProjection()`, not by a component — a literal-scanning indexer over
+`driver.jsx` will not see them. **Do not add placeholders to `pushNewOrdersBody`.** The in-app card
+keeps its own `notifNewPublishedJobBody` with `{from} → {to}`, which is a different string for a
+different surface and is allowed to name the two cities.
 
 ### Notification titles and bodies
 
@@ -168,6 +174,7 @@ these either:
 | Empty run recognised / not recognised | `notifEmptyRunRecognisedTitle` / `notifEmptyRunNotRecognisedTitle` | `notifEmptyRunRecognisedBody` / `notifEmptyRunNotRecognisedBody` (`{tour}`) |
 | Document accepted | `notifDocumentAcceptedTitle` | `notifDocumentAcceptedBody` (`{file}`) |
 | Document rejected | `notifDocumentRejectedTitle` | the admin's rejection reason, falling back to `notifDocumentRejectedBody` |
+| Document correction required | `notifDocumentCorrectionRequiredTitle` | the admin's rejection reason, falling back to `notifDocumentCorrectionRequiredBody` — **added 2026-08-04**, this event previously carried hardcoded English copy |
 | Profile change sent / approved / declined | `notifMasterDataSentTitle` / `notifMasterDataApprovedTitle` / `notifMasterDataRejectedTitle` | `notifMasterDataSentBody` / `notifMasterDataApprovedBody` / `notifMasterDataRejectedBody` |
 | Sign-in email changed | `emailChangedNotifyTitle` | `emailChangedNotifyBody` (`{email}`) |
 | New Infopoint message | the message's own subject | the message's own text (truncated) |
@@ -195,11 +202,32 @@ map (`NOTIF_UNAVAILABLE_I18N`, `driver.jsx`) so no screen invents its own wordin
 There is deliberately **no** generic "something went wrong" string — the driver always gets the actual
 reason, the same principle the upload errors follow above.
 
+### Card action labels
+
+| Key | EN | DE | Used by |
+|-----|----|----|---------|
+| `notifExpandPreview` / `notifCollapsePreview` | Show / Hide order details | Auftragsdetails anzeigen / ausblenden | Screen-reader label on a **ride** card's toggle. Reworded from "tour details" on 2026-08-04. |
+| `notifViewOrder` | View order | Auftrag ansehen | Ride action, Marketplace order |
+| `notifDocumentCorrectionRequiredTitle` | Document correction required | Dokumentkorrektur erforderlich |
+| `notifDocumentCorrectionRequiredBody` | Please replace this document with a corrected version. | Bitte ersetzen Sie dieses Dokument durch eine korrigierte Version. |
+| `notifToMyOrders` | To my orders | Zu meinen Aufträgen | Ride action, committed ride |
+| `notifOpenMessage` | Open message | Nachricht öffnen |
+| `notifOpenProfile` | Open profile | Profil öffnen | Infopoint deep-link card |
+| `notifOpenDocument` | Open document | Dokument öffnen | Document deep-link card |
+| `notifOpenProfile` | Open profile | Profil öffnen | **Added 2026-08-04** — profile/account cards became deep links instead of informational dead ends |
+
+Profile destinations themselves are **stable route keys**, never localized text: `masterData` for the
+Basic data subpage and `""` for the Profile landing page. A notification target must never be resolved
+from a translated label.
+
 ### Removed
 
 | Key | Status | Reason |
 |-----|--------|--------|
 | `driverNotifInfopointHint` | **Removed 2026-07-29** (EN + DE) | "Also in Infopoint → New messages" described where to find a message. The card now deep-links to that exact message, so the hint had no purpose and no other consumer. |
+| `notifCategoryOrder`, `notifCategoryAccount`, `notifCategorySystem`, `notifCategoryGeneralInfo` | **Removed 2026-08-04** (EN + DE) | The client dropped the visible category chip. All four were consumed by exactly one dynamic call site (`t(store.notificationCategoryI18nKey(row.type))`), which is gone with the chip. **Not retained for compatibility:** nothing persists a category — the taxonomy was always derived from `notification_type` at render time — so there is no stored value that could go unlabelled. |
+| `notifViewMoreOrders` | **Removed 2026-08-04** (EN + DE) | Labelled the *View more orders* button on an unavailable Marketplace card. That action was removed: a dead-end card must not offer a second journey, and reaching current work is handled by push/deep-link resolution falling back to the Marketplace. |
+| `notifPreviewProtectedHint` | **Removed 2026-08-04** (EN + DE) | "Customer, full addresses and licence plate become visible after you accept." The reduced ride projection is now **identical** before and after acceptance, so the sentence had become false — nothing is revealed on commitment. Removed with the data it described, not merely hidden. |
 
 ---
 
@@ -490,15 +518,15 @@ for phone widths). The shared *component* is `LoginForm`; the copy is injected, 
 | `noteConfirmArrival` | Please confirm arrival 15 minutes early. | Bitte Ankunft 15 Minuten vorher bestätigen. |
 | `noteReportPickupDelay` | Report any pickup delay immediately to dispatch. | Verzögerungen bei der Abholung sofort an die Disposition melden. |
 | `nothingHereYet` | Nothing here yet. | Hier ist noch nichts. |
-| `notifCollapsePreview` | Hide tour details | Tourdetails ausblenden |
-| `notifExpandPreview` | Show tour details | Tourdetails anzeigen |
+| `notifCollapsePreview` | Hide order details | Auftragsdetails ausblenden |
+| `notifExpandPreview` | Show order details | Auftragsdetails anzeigen |
 | `notifOpenDocument` | Open document | Dokument öffnen |
 | `notifOpenMessage` | Open message | Nachricht öffnen |
-| `notifPreviewProtectedHint` | Customer, full addresses and licence plate become visible after you accept. | Kunde, vollständige Adressen und Kennzeichen werden nach der Annahme sichtbar. |
 | `notifToMyOrders` | To my orders | Zu meinen Aufträgen |
-| `notifViewMoreOrders` | View more orders | Weitere Aufträge ansehen |
 | `notifViewOrder` | View order | Auftrag ansehen |
 | `notifications` | Notifications | Benachrichtigungen |
+| `pushNewOrdersTitle` | New orders | Neue Aufträge |
+| `pushNewOrdersBody` | New orders are available. | Neue Aufträge sind verfügbar. |
 | `notificationsSub` | Push filters mirror Portal preferences | Push-Filter spiegeln die Portal-Einstellungen |
 | `offer` | Offer | Angebot |
 | `officialLicencePlate` | Official licence plate | Amtliches Kennzeichen |

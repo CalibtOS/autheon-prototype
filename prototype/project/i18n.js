@@ -1861,11 +1861,17 @@ window.I18n = (() => {
         "A relevant change created a new version of your transport order ({version}). The previous version is no longer valid.",
       notifJobAssignedTitle: "New order assigned: {tour}",
       notifJobAssignedBody: "You have been assigned order {tour}.",
-      // Notification categories — chip on every notification card.
-      notifCategoryOrder: "Order",
-      notifCategoryAccount: "Account",
-      notifCategorySystem: "System",
-      notifCategoryGeneralInfo: "General information",
+      // NOTE: there are deliberately NO notification category labels. The
+      // visible Order/Account/System/General-information chip was dropped by
+      // the client on 2026-08-04 and `notifCategory*` was removed with it.
+      // Notifications stay type-aware for behaviour only.
+      //
+      // GENERIC Marketplace availability PUSH. Announces that work exists and
+      // names none of it — no count, no vehicle, no route, no price, no job.
+      // Uninterpolated on purpose: nothing to leak, nothing to go stale between
+      // delivery and the tap.
+      pushNewOrdersTitle: "New orders",
+      pushNewOrdersBody: "New orders are available.",
       // Event headings + preview text
       notifNewPublishedJobTitle: "New matching order",
       notifNewPublishedJobBody:
@@ -1874,6 +1880,9 @@ window.I18n = (() => {
       notifDocumentRejectedBody: "Please upload a corrected document.",
       notifDocumentAcceptedTitle: "Document accepted",
       notifDocumentAcceptedBody: "{file} was accepted.",
+      notifDocumentCorrectionRequiredTitle: "Document correction required",
+      notifDocumentCorrectionRequiredBody:
+        "Please replace this document with a corrected version.",
       notifMasterDataSentTitle: "Change request sent",
       notifMasterDataSentBody:
         "The operations team received your profile change request.",
@@ -1884,15 +1893,13 @@ window.I18n = (() => {
       notifMasterDataRejectedBody:
         "Your master-data change request was declined.",
       // Expand / collapse + contextual actions
-      notifExpandPreview: "Show tour details",
-      notifCollapsePreview: "Hide tour details",
+      notifExpandPreview: "Show order details",
+      notifCollapsePreview: "Hide order details",
       notifViewOrder: "View order",
       notifToMyOrders: "To my orders",
-      notifViewMoreOrders: "View more orders",
       notifOpenMessage: "Open message",
       notifOpenDocument: "Open document",
-      notifPreviewProtectedHint:
-        "Customer, full addresses and licence plate become visible after you accept.",
+      notifOpenProfile: "Open profile",
       // Unavailable / safe-fallback states
       notifUnavailableTaken:
         "This order is no longer available — another service partner has booked it.",
@@ -4145,11 +4152,15 @@ window.I18n = (() => {
         "Eine relevante Änderung hat eine neue Version Ihres Fahrauftrags erzeugt ({version}). Die vorherige Version ist nicht mehr gültig.",
       notifJobAssignedTitle: "Neuer Auftrag zugewiesen: {tour}",
       notifJobAssignedBody: "Ihnen wurde der Auftrag {tour} zugewiesen.",
-      // Benachrichtigungskategorien — Chip auf jeder Benachrichtigungskarte.
-      notifCategoryOrder: "Auftrag",
-      notifCategoryAccount: "Konto",
-      notifCategorySystem: "System",
-      notifCategoryGeneralInfo: "Allgemeine Information",
+      // HINWEIS: Es gibt bewusst KEINE Kategorielabels für Benachrichtigungen.
+      // Der sichtbare Chip (Auftrag/Konto/System/Allgemeine Information) wurde
+      // am 04.08.2026 vom Kunden gestrichen; `notifCategory*` wurde entfernt.
+      //
+      // GENERISCHER Push für neue Marktplatz-Aufträge. Kündigt an, dass Arbeit
+      // verfügbar ist, benennt aber nichts davon — keine Anzahl, kein Fahrzeug,
+      // keine Route, kein Preis, kein Auftrag. Absichtlich ohne Platzhalter.
+      pushNewOrdersTitle: "Neue Aufträge",
+      pushNewOrdersBody: "Neue Aufträge sind verfügbar.",
       // Überschriften + Vorschautexte
       notifNewPublishedJobTitle: "Neuer passender Auftrag",
       notifNewPublishedJobBody:
@@ -4159,6 +4170,9 @@ window.I18n = (() => {
         "Bitte laden Sie ein korrigiertes Dokument hoch.",
       notifDocumentAcceptedTitle: "Dokument akzeptiert",
       notifDocumentAcceptedBody: "{file} wurde akzeptiert.",
+      notifDocumentCorrectionRequiredTitle: "Dokumentkorrektur erforderlich",
+      notifDocumentCorrectionRequiredBody:
+        "Bitte ersetzen Sie dieses Dokument durch eine korrigierte Version.",
       notifMasterDataSentTitle: "Änderungsantrag gesendet",
       notifMasterDataSentBody:
         "Der Betrieb hat Ihren Antrag auf Profiländerung erhalten.",
@@ -4169,15 +4183,13 @@ window.I18n = (() => {
       notifMasterDataRejectedBody:
         "Ihr Antrag auf Änderung der Stammdaten wurde abgelehnt.",
       // Aufklappen / Zuklappen + kontextbezogene Aktionen
-      notifExpandPreview: "Tourdetails anzeigen",
-      notifCollapsePreview: "Tourdetails ausblenden",
+      notifExpandPreview: "Auftragsdetails anzeigen",
+      notifCollapsePreview: "Auftragsdetails ausblenden",
       notifViewOrder: "Auftrag ansehen",
       notifToMyOrders: "Zu meinen Aufträgen",
-      notifViewMoreOrders: "Weitere Aufträge ansehen",
       notifOpenMessage: "Nachricht öffnen",
       notifOpenDocument: "Dokument öffnen",
-      notifPreviewProtectedHint:
-        "Kunde, vollständige Adressen und Kennzeichen werden nach der Annahme sichtbar.",
+      notifOpenProfile: "Profil öffnen",
       // Nicht-verfügbar- / Fallback-Zustände
       notifUnavailableTaken:
         "Dieser Auftrag ist nicht mehr verfügbar — ein anderer Servicepartner hat ihn gebucht.",
