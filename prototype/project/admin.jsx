@@ -10766,6 +10766,20 @@ const MASTER_DATA_CHANGE_FIELDS = [
   ["phone", "phone"],
 ];
 
+/** Queue/detail title — company like the admin FE partner label, not contact name. */
+const mdrPartnerLabel = (row, store) => {
+  const live = row?.driverId
+    ? store?.getDrivers?.()?.find((d) => d.id === row.driverId)?.company
+    : "";
+  return (
+    live ||
+    row?.snapshot?.company ||
+    row?.proposed?.company ||
+    row?.driverName ||
+    "—"
+  );
+};
+
 const mdrFieldsForRow = (row) =>
   row?.changeType === "daily_limit_override"
     ? [["dailyJobLimit", "adminUsersFieldProbationLimit"]]
@@ -11133,7 +11147,7 @@ const MasterDataRequestsPane = ({
                 }}
               >
                 <div style={{ fontWeight: 600, fontSize: 14 }}>
-                  {row.driverName}
+                  {mdrPartnerLabel(row, store)}
                 </div>
                 <div
                   className="mono"
@@ -11188,7 +11202,7 @@ const MasterDataRequestsPane = ({
         {selected ? (
           <section className="card" style={{ padding: 22 }}>
             <h2 className="dialog-title" style={{ textAlign: "left" }}>
-              {selected.driverName}
+              {mdrPartnerLabel(selected, store)}
             </h2>
             <p
               className="mono"
