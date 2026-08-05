@@ -4452,8 +4452,10 @@ select.input {
   margin-top: 10px;
 }
 
+/* Spacing comes from `.pwa-detail-body` gap — no extra margin, so cancelled
+   chrome aligns with the in-execution banner and detail cards. */
 .cancellation-card {
-  margin-bottom: 14px;
+  margin: 0;
   padding: 14px 16px;
   border-radius: var(--r-3);
   border: 1px solid color-mix(in srgb, var(--destructive) 22%, transparent);
@@ -4616,13 +4618,31 @@ select.input {
 }
 .phone-shell .mydoc-row {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  gap: 10px;
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 16px;
   box-shadow: var(--sh-1);
+}
+.phone-shell .mydoc-row-mainline {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.phone-shell .mydoc-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.phone-shell .mydoc-rejection {
+  margin: 0;
+  padding-top: 2px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--st-cancelled);
 }
 .phone-shell .doc-file-badge {
   position: relative;

@@ -3251,56 +3251,111 @@ const docKindLabel = (doc, t) => {
   return t("docKindFile");
 };
 
-// Driver document row (Figma 8:2387): ext badge · name + size ·
-// type right-aligned · remove (only while the upload is not yet reviewed).
-const MyDocRow = ({ doc, onRemove, t }) => (
-  <div className="mydoc-row">
-    <FileTypeBadge fileName={doc.fileName} />
-    <div className="mydoc-main">
-      <div className="mydoc-name" title={doc.fileName}>
-        {doc.fileName}
+// Driver document row — My documents tab (all statuses).
+// Parity with legacy JobTourDocuments rows: type, review status, rejection
+// reason, View / Download / Replace, plus Remove while still `uploaded`.
+const MyDocRow = ({
+  doc,
+  t,
+  onRemove,
+  onView,
+  onDownload,
+  onReplace,
+}) => {
+  const rejectionReason =
+    (doc.reviewStatus === "rejected" ||
+      doc.reviewStatus === "correction_required") &&
+    doc.rejectionReason
+      ? t("tourDocRejectionReason", { reason: doc.rejectionReason })
+      : null;
+
+  return (
+    <div className="mydoc-row">
+      <div className="mydoc-row-mainline">
+        <FileTypeBadge fileName={doc.fileName} />
+        <div className="mydoc-main">
+          <div className="mydoc-name" title={doc.fileName}>
+            {doc.fileName}
+          </div>
+          <div className="mydoc-size">
+            <span className="sr-only">{docKindLabel(doc, t)} · </span>
+            {F().formatFileSize(doc.sizeBytes)}
+          </div>
+        </div>
+        <div className="mydoc-side">
+          <div className="mydoc-type">
+            {displayTourDocType(doc.documentType, t)}
+          </div>
+          <Pill
+            status={tourDocReviewPillStatus(doc.reviewStatus)}
+            className="no-dot"
+          >
+            {displayDocReviewStatus(doc.reviewStatus, t)}
+          </Pill>
+        </div>
+        <div className="mydoc-actions">
+          {onReplace ? (
+            <button
+              type="button"
+              className="pdf-btn"
+              onClick={onReplace}
+              title={t("tourDocReplaceButton")}
+              aria-label={t("tourDocReplaceButton")}
+            >
+              <Ic.Refresh />
+            </button>
+          ) : null}
+          {onView ? (
+            <button
+              type="button"
+              className="pdf-btn"
+              onClick={onView}
+              title={t("view")}
+              aria-label={t("view")}
+            >
+              <Ic.Eye />
+            </button>
+          ) : null}
+          {onDownload ? (
+            <button
+              type="button"
+              className="pdf-btn"
+              onClick={onDownload}
+              title={t("download")}
+              aria-label={t("download")}
+            >
+              <Ic.Down />
+            </button>
+          ) : null}
+          {onRemove ? (
+            <button
+              type="button"
+              className="mydoc-remove touch-target"
+              onClick={onRemove}
+              aria-label={t("removeDocTitle")}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+          ) : null}
+        </div>
       </div>
-      <div className="mydoc-size">
-        <span className="sr-only">{docKindLabel(doc, t)} · </span>
-        {F().formatFileSize(doc.sizeBytes)}
-      </div>
-    </div>
-    <div className="mydoc-side">
-      <div className="mydoc-type">
-        {displayTourDocType(doc.documentType, t)}
-      </div>
-      {doc.reviewStatus !== "uploaded" ? (
-        <Pill
-          status={tourDocReviewPillStatus(doc.reviewStatus)}
-          className="no-dot"
-        >
-          {displayDocReviewStatus(doc.reviewStatus, t)}
-        </Pill>
+      {rejectionReason ? (
+        <p className="mydoc-rejection">{rejectionReason}</p>
       ) : null}
     </div>
-    {onRemove ? (
-      <button
-        type="button"
-        className="mydoc-remove touch-target"
-        onClick={onRemove}
-        aria-label={t("removeDocTitle")}
-      >
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          aria-hidden="true"
-        >
-          <path d="M6 6l12 12M18 6 6 18" />
-        </svg>
-      </button>
-    ) : null}
-  </div>
-);
+  );
+};
 
 // Remove-document confirmation (Figma 8:2545).
 const RemoveDocModal = ({ open, onCancel, onConfirm }) => {
@@ -3922,6 +3977,17 @@ const routeStopName = (raw) => {
   return name || null;
 };
 
+// JobUnlocked — one detail screen for every owned-tour status.
+// Consistency contract (do not fork per-status layouts):
+//   Tabs (always): Job details | My documents — driver uploads live only in
+//     the My documents tab (aligned chrome across assigned/accepted/performed/
+//     cancelled/empty-run).
+//   Shared details body: customer → route → vehicle → contacts →
+//     operational instructions → official docs → offer
+//   Status chrome only (additive, details tab):
+//     active/empty-run-reported → in-execution banner + bottom CTAs
+//     cancelled → cancellation card
+//     My documents tab → list + upload bar when store allows upload
 const JobUnlocked = ({
   job,
   onBack,
@@ -3973,20 +4039,26 @@ const JobUnlocked = ({
   // A deep-linked document resolves through the same audited preview call the
   // document row uses. A file that has since been removed simply opens the tour
   // with no preview — never an empty or broken sheet.
+  // All owned-tour statuses share Job details / My documents tabs so the
+  // chrome stays aligned; only upload eligibility and status banners differ.
+  const [detailTab, setDetailTab] = useState(
+    openDocumentId ? "documents" : "details",
+  );
   useEffect(() => {
     if (!openDocumentId) return;
+    setDetailTab("documents");
     const r = store.getTourDocumentPreview(openDocumentId, DRIVER_ACCESS);
     if (r.ok) setDocPreview(r.preview);
   }, [openDocumentId]);
-  // Performed tours split into two tabs (Figma 8:2268 / 8:2387): job
-  // details and the driver's own tour documents.
-  const [detailTab, setDetailTab] = useState("details");
   const docs = store.getDriverTourDocumentsForJob(job.id);
   const docCount = docs.length;
-  const showDocsTab = isPerformed && detailTab === "documents";
+  const showDocsTab = detailTab === "documents";
+  const docsUploadGate = store.canDriverUploadTourDocument(job.id);
+  const canUploadDocs = docsUploadGate.ok;
   // My-documents tab: upload + remove state
   const [docsCategoryOpen, setDocsCategoryOpen] = useState(false);
   const [docsPendingType, setDocsPendingType] = useState(null);
+  const [docsReplaceDocId, setDocsReplaceDocId] = useState(null);
   const [docsFeedback, setDocsFeedback] = useState(null);
   const [removeDocId, setRemoveDocId] = useState(null);
   const [docsSourceOpen, setDocsSourceOpen] = useState(false);
@@ -4001,9 +4073,19 @@ const JobUnlocked = ({
 
   const docsPickType = (documentType) => {
     setDocsCategoryOpen(false);
+    setDocsReplaceDocId(null);
     setDocsPendingType(documentType);
     setDocsSourceOpen(true);
   };
+  const docsStartReplace = (docId) => {
+    setDocsFeedback(null);
+    setDocsPendingType(null);
+    setDocsReplaceDocId(docId);
+    setDocsCategoryOpen(false);
+    setDocsSourceOpen(true);
+  };
+  const docsCanReplace = (u) =>
+    canUploadDocs && store.canDriverReplaceTourDocument(u);
   const docsFinishUpload = (f, documentType, extra = {}) => {
     const r = store.addTourDocument(f, {
       jobId: job.id,
@@ -4030,7 +4112,21 @@ const JobUnlocked = ({
     return true;
   };
   const docsOnFile = (f) => {
-    if (!f || !docsPendingType) return;
+    if (!f) return;
+    if (docsReplaceDocId) {
+      const r = store.replaceTourDocument(docsReplaceDocId, f);
+      setDocsReplaceDocId(null);
+      if (!r.ok) {
+        setDocsFeedback({
+          tone: "error",
+          message: tourDocUploadErrorMessage(r.reason, t),
+        });
+      } else {
+        setDocsFeedback({ tone: "success", message: t("tourDocUploadSuccess") });
+      }
+      return;
+    }
+    if (!docsPendingType) return;
     if (store.tourDocumentRequiresAmountMetadata(docsPendingType)) {
       setDocsAmountUpload(f);
       setDocsAmountForm({
@@ -4129,26 +4225,28 @@ const JobUnlocked = ({
         <div className="w-40-spacer"></div>
       </div>
 
-      {/* Performed tours: details / my documents tab pills (Figma 8:2387) */}
-      {isPerformed ? (
-        <div className="detail-tabs-row">
-          <button
-            type="button"
-            className={`detail-tab-pill ${detailTab === "details" ? "active" : ""}`}
-            onClick={() => setDetailTab("details")}
-          >
-            <span>{t("jobDetailsTab")}</span>
-          </button>
-          <button
-            type="button"
-            className={`detail-tab-pill ${detailTab === "documents" ? "active" : ""}`}
-            onClick={() => setDetailTab("documents")}
-          >
-            <span>{t("myDocumentsTab")}</span>
-            <span className="detail-tab-count">{docCount}</span>
-          </button>
-        </div>
-      ) : null}
+      {/* Job details / My documents — same tab chrome for every status */}
+      <div className="detail-tabs-row" role="tablist" aria-label={t("jobDetailsTab")}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={detailTab === "details"}
+          className={`detail-tab-pill ${detailTab === "details" ? "active" : ""}`}
+          onClick={() => setDetailTab("details")}
+        >
+          <span>{t("jobDetailsTab")}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={detailTab === "documents"}
+          className={`detail-tab-pill ${detailTab === "documents" ? "active" : ""}`}
+          onClick={() => setDetailTab("documents")}
+        >
+          <span>{t("myDocumentsTab")}</span>
+          <span className="detail-tab-count">{docCount}</span>
+        </button>
+      </div>
 
       {/* Main Content Area */}
       <div className="scroll pwa-detail-body">
@@ -4162,7 +4260,11 @@ const JobUnlocked = ({
             {docs.length === 0 ? (
               <EmptyState
                 title={t("tourDocEmptyTitle")}
-                description={t("tourDocUploadEmpty")}
+                description={
+                  canUploadDocs
+                    ? t("tourDocUploadEmpty")
+                    : t("tourDocRequiresPerformed")
+                }
               />
             ) : (
               docs.map((u) => (
@@ -4170,6 +4272,16 @@ const JobUnlocked = ({
                   key={u.id}
                   doc={u}
                   t={t}
+                  onView={() => {
+                    const r = store.getTourDocumentPreview(u.id, DRIVER_ACCESS);
+                    if (r.ok) setDocPreview(r.preview);
+                  }}
+                  onDownload={() =>
+                    store.downloadTourDocumentPlaceholder(u.id, DRIVER_ACCESS)
+                  }
+                  onReplace={
+                    docsCanReplace(u) ? () => docsStartReplace(u.id) : null
+                  }
                   onRemove={
                     u.reviewStatus === "uploaded"
                       ? () => setRemoveDocId(u.id)
@@ -4427,50 +4539,9 @@ const JobUnlocked = ({
               </div>
             </div>
 
-            {/* Operational Instructions Card */}
-            <div className="detail-card">
-              <div className="detail-section-title">
-                <Ic.TabInfo />
-                <span>{t("operationalInstructions")}</span>
-              </div>
-              <div className="detail-pdf-card">
-                <div className="pdf-icon-wrap">
-                  <Ic.Pdf />
-                </div>
-                <div className="flex-1-min-0">
-                  <div className="pdf-name">transport-order-{job.id}.pdf</div>
-                  <div className="pdf-meta">v{job.pdfVersion || 1}</div>
-                </div>
-                <div className="pdf-actions">
-                  <button
-                    type="button"
-                    className="pdf-btn"
-                    title={t("view")}
-                    aria-label={t("view")}
-                    onClick={() => {
-                      const r = store.getTransportOrderPreview(
-                        job.id,
-                        DRIVER_ACCESS,
-                      );
-                      if (r.ok) setDocPreview(r.preview);
-                    }}
-                  >
-                    <Ic.Eye />
-                  </button>
-                  <button
-                    type="button"
-                    className="pdf-btn"
-                    title={t("download")}
-                    aria-label={t("download")}
-                    onClick={() => store.downloadPdf(job.id, DRIVER_ACCESS)}
-                  >
-                    <Ic.Down />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Operational Instructions Card */}
+            {/* Shared details body (all statuses): one Operational Instructions
+                card — transport-order PDF + driver/dispatch notes. Do not
+                duplicate this block; status chrome lives above/below only. */}
             <div className="detail-card">
               <div className="detail-section-title">
                 <Ic.TabInfo />
@@ -4561,11 +4632,7 @@ const JobUnlocked = ({
             {/* Official Documents Component */}
             <JobOfficialTourDocuments job={job} onPreview={setDocPreview} />
 
-            {/* Tour Documents Component — performed tours show these in the
-            dedicated My documents tab instead */}
-            {!isPerformed && (
-              <JobTourDocuments job={job} onPreview={setDocPreview} />
-            )}
+            {/* Driver tour uploads live only in the My documents tab. */}
 
             {/* Financial Offer summary */}
             <div className="detail-card price-summary-card">
@@ -4586,14 +4653,14 @@ const JobUnlocked = ({
         )}
       </div>
 
-      {/* Bottom Bar */}
+      {/* Bottom Bar — details tab CTAs; My documents tab owns upload. */}
       {/* Empty-run report pending review — locked for the partner (§3.4). */}
-      {isEmptyRunReported && (
+      {isEmptyRunReported && !showDocsTab && (
         <div style={{ padding: "0 16px 12px" }}>
           <InlineAlert tone="info" message={t("emptyRunPendingLock")} />
         </div>
       )}
-      {canPerform && (
+      {canPerform && !showDocsTab && (
         <div className="pwa-unlocked-bottom">
           <button
             type="button"
@@ -4631,8 +4698,8 @@ const JobUnlocked = ({
         </div>
       )}
 
-      {/* My documents tab: fixed bottom upload bar (Figma 8:2387) */}
-      {showDocsTab && (
+      {/* My documents tab: fixed bottom upload bar when upload is allowed */}
+      {showDocsTab && canUploadDocs && (
         <div className="pwa-unlocked-bottom mydocs-upload-bar">
           <button
             ref={docsUploadBtnRef}
@@ -5751,11 +5818,16 @@ const MarkPerformedSheet = ({ job, onClose }) => {
   const [error, setError] = useState(null);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [pendingType, setPendingType] = useState(null);
+  const [replaceDocId, setReplaceDocId] = useState(null);
   const [uploadFeedback, setUploadFeedback] = useState(null);
   const [removeId, setRemoveId] = useState(null);
   const [sourceOpen, setSourceOpen] = useState(false);
+  const [docPreview, setDocPreview] = useState(null);
   const dropzoneRef = useRef(null);
   const uploads = store.getDriverTourDocumentsForJob(job.id);
+  const canUpload = store.canDriverUploadTourDocument(job.id).ok;
+  const canReplaceDoc = (u) =>
+    canUpload && store.canDriverReplaceTourDocument(u);
 
   const confirmRemove = () => {
     const r = store.removeDriverTourDocument(removeId);
@@ -5775,7 +5847,16 @@ const MarkPerformedSheet = ({ job, onClose }) => {
 
   const pickType = (documentType) => {
     setCategoryOpen(false);
+    setReplaceDocId(null);
     setPendingType(documentType);
+    setSourceOpen(true);
+  };
+
+  const startReplace = (docId) => {
+    setUploadFeedback(null);
+    setPendingType(null);
+    setReplaceDocId(docId);
+    setCategoryOpen(false);
     setSourceOpen(true);
   };
 
@@ -5813,7 +5894,24 @@ const MarkPerformedSheet = ({ job, onClose }) => {
   };
 
   const onPickFile = (f) => {
-    if (!f || !pendingType) return;
+    if (!f) return;
+    if (replaceDocId) {
+      const r = store.replaceTourDocument(replaceDocId, f);
+      setReplaceDocId(null);
+      if (!r.ok) {
+        setUploadFeedback({
+          tone: "error",
+          message: tourDocUploadErrorMessage(r.reason, t),
+        });
+      } else {
+        setUploadFeedback({
+          tone: "success",
+          message: t("tourDocUploadSuccess"),
+        });
+      }
+      return;
+    }
+    if (!pendingType) return;
     if (store.tourDocumentRequiresAmountMetadata(pendingType)) {
       setSuccessAmountUpload(f);
       setSuccessAmountForm({
@@ -5957,6 +6055,16 @@ const MarkPerformedSheet = ({ job, onClose }) => {
                   key={u.id}
                   doc={u}
                   t={t}
+                  onView={() => {
+                    const r = store.getTourDocumentPreview(u.id, DRIVER_ACCESS);
+                    if (r.ok) setDocPreview(r.preview);
+                  }}
+                  onDownload={() =>
+                    store.downloadTourDocumentPlaceholder(u.id, DRIVER_ACCESS)
+                  }
+                  onReplace={
+                    canReplaceDoc(u) ? () => startReplace(u.id) : null
+                  }
                   onRemove={
                     u.reviewStatus === "uploaded"
                       ? () => setRemoveId(u.id)
@@ -5974,6 +6082,12 @@ const MarkPerformedSheet = ({ job, onClose }) => {
         >
           {t("performedDone")}
         </button>
+        {docPreview ? (
+          <DocumentPreviewSheet
+            preview={docPreview}
+            onClose={() => setDocPreview(null)}
+          />
+        ) : null}
         <UploadSourcePicker
           open={sourceOpen}
           onClose={() => setSourceOpen(false)}
