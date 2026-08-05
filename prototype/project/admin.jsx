@@ -5368,6 +5368,7 @@ const DRIVER_STATUS_TRANSITIONS = {
 const ServicePartnersCenterPane = ({
   showToast,
   initialRequestId,
+  onClearInitialRequest,
   onOpenJob,
 }) => {
   const { t } = useI18n();
@@ -5403,6 +5404,7 @@ const ServicePartnersCenterPane = ({
         <MasterDataRequestsPane
           showToast={showToast}
           initialRequestId={initialRequestId}
+          onClearInitialRequest={onClearInitialRequest}
           onOpenJob={onOpenJob}
         />
       )}
@@ -10798,9 +10800,9 @@ const MasterDataChangeListChips = ({ row, t }) => {
     );
   }
   return (
-    <div className="mdr-list-changes">
+    <div className="queue-list-changes">
       {changed.map(([key, labelKey]) => (
-        <span key={key} className="mdr-list-chip on">
+        <span key={key} className="queue-list-chip on">
           {t(labelKey)}
         </span>
       ))}
@@ -10828,11 +10830,11 @@ const MasterDataCompareTable = ({
       return (
         <div
           key={key}
-          className={`mdr-compare-row${changed ? " is-changed" : ""}`}
+          className={`compare-table-row${changed ? " is-changed" : ""}`}
         >
-          <div className="mdr-compare-cell label">{t(labelKey)}</div>
-          <div className="mdr-compare-cell before">{before || "—"}</div>
-          <div className="mdr-compare-cell after">{after || "—"}</div>
+          <div className="compare-table-cell">{t(labelKey)}</div>
+          <div className="compare-table-cell before">{before || "—"}</div>
+          <div className="compare-table-cell after">{after || "—"}</div>
         </div>
       );
     })
@@ -10841,8 +10843,8 @@ const MasterDataCompareTable = ({
     return <div style={{ color: "var(--muted)", fontSize: 13 }}>—</div>;
   }
   return (
-    <div className="mdr-compare">
-      <div className="mdr-compare-header">
+    <div className="compare-table">
+      <div className="compare-table-header">
         <span>{t("adminMdrCompareField")}</span>
         <span>{t("adminMdrCompareBefore")}</span>
         <span>{t("adminMdrCompareAfter")}</span>
@@ -10968,7 +10970,11 @@ const ChangeRequestQueueFooter = ({
   );
 };
 
-const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
+const MasterDataRequestsPane = ({
+  showToast,
+  initialRequestId,
+  onClearInitialRequest,
+}) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [filter, setFilter] = useStateA("open");
@@ -10978,8 +10984,26 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   // 20 to match the admin app's queue page size, not the 25 the overview uses.
   const [rowsPerPage, setRowsPerPage] = useStateA(20);
 
+  // Deep-link: select the request, jump the filter to its status (so an
+  // approved id never sits under Open), then clear the parent sticky id so
+  // remounts / later Service Partners visits do not reopen this tab.
   useEffectA(() => {
-    if (initialRequestId) setSelectedId(initialRequestId);
+    if (!initialRequestId) return;
+    const row = store.getMasterDataChangeRequest(initialRequestId);
+    if (row) {
+      setSelectedId(row.id);
+      if (
+        row.status === "open" ||
+        row.status === "approved" ||
+        row.status === "rejected"
+      ) {
+        setFilter(row.status);
+        setPage(1);
+      }
+    } else {
+      setSelectedId(initialRequestId);
+    }
+    onClearInitialRequest?.();
   }, [initialRequestId]);
 
   const allRows = store.listMasterDataChangeRequests(
@@ -10997,8 +11021,10 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   // The production queue is paginated server-side; page the mock list so the
   // footer, the result count and the reset-to-page-1 behaviour all match.
   const rows = allRows.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+  // Only show a detail pane for requests visible under the active filter —
+  // looking up by id alone caused empty Open + resolved detail side-by-side.
   const selected =
-    store.getMasterDataChangeRequest(selectedId) ||
+    allRows.find((r) => r.id === selectedId) ||
     rows.find((r) => r.id === selectedId) ||
     null;
 
@@ -11030,73 +11056,45 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
     // No width cap — the queue is a work surface, so it fills the pane and the
     // reviewer gets every pixel the window offers.
     <div>
-      {/*
-        Lead text and status filter share one card so the segmented control reads
-        as a single control rather than four loose labels. On the bare pane the
-        track sits directly on the shell and its edges are hard to make out.
-      */}
+      {/* Match prototype main: pane-lead above a left-aligned `.seg` — no card
+          wrapping the subtitle beside the filter. */}
+      <p className="pane-lead">{t("adminMdrSub")}</p>
       <div
-        className="card"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          padding: "16px 20px",
-          marginBottom: 18,
-        }}
+        className="seg"
+        style={{ display: "inline-flex", flexWrap: "wrap", marginBottom: 18 }}
       >
-        <p className="pane-lead" style={{ margin: 0 }}>
-          {t("adminMdrSub")}
-        </p>
-        {/*
-          Segmented control, not a dropdown: every status stays visible and
-          switching costs one click — the most repeated action on this screen.
-          Each segment carries its count so the backlog size is readable without
-          clicking through the filters.
-          `flexWrap` so four segments wrap onto a second row on a narrow pane
-          instead of pushing horizontal overflow through the whole screen.
-        */}
-        <div
-          className="seg"
-          style={{ display: "inline-flex", flexWrap: "wrap" }}
-        >
-          {[
-            ["open", t("adminMdrFilterOpen")],
-            ["approved", t("adminMdrFilterApproved")],
-            ["rejected", t("adminMdrFilterRejected")],
-            ["all", t("adminMdrFilterAll")],
-          ].map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              className={filter === id ? "on" : ""}
-              aria-pressed={filter === id}
-              /* One coherent accessible name — the numeral is hidden below so a
-                 screen reader does not read a stray number after the label. */
-              aria-label={`${label} (${String(statusCounts[id])})`}
-              onClick={() => {
-                setFilter(id);
-                setPage(1);
-                setSelectedId("");
-              }}
+        {[
+          ["open", t("adminMdrFilterOpen")],
+          ["approved", t("adminMdrFilterApproved")],
+          ["rejected", t("adminMdrFilterRejected")],
+          ["all", t("adminMdrFilterAll")],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className={filter === id ? "on" : ""}
+            aria-pressed={filter === id}
+            aria-label={`${label} (${String(statusCounts[id])})`}
+            onClick={() => {
+              setFilter(id);
+              setPage(1);
+              setSelectedId("");
+            }}
+          >
+            {label}
+            <span
+              className="mono"
+              aria-hidden="true"
+              style={{ marginLeft: 7, opacity: 0.65 }}
             >
-              {label}
-              <span
-                className="mono"
-                aria-hidden="true"
-                style={{ marginLeft: 7, opacity: 0.65 }}
-              >
-                {statusCounts[id]}
-              </span>
-            </button>
-          ))}
-        </div>
+              {statusCounts[id]}
+            </span>
+          </button>
+        ))}
       </div>
       {/* Single column until a request is selected, and even then only from
-          1280px up — see `.mdr-split` for why the width gate is needed. */}
-      <div className={selected ? "mdr-split two" : "mdr-split"}>
+          1280px up — see `.queue-split` for why the width gate is needed. */}
+      <div className={selected ? "queue-split two" : "queue-split"}>
         <section className="card" style={{ padding: 0 }}>
           {rows.length === 0 ? (
             <div
@@ -11146,22 +11144,25 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                 <div className="label" style={{ fontSize: 10.5, marginTop: 6 }}>
                   {mdrChangeTypeLabel(row, t)}
                 </div>
-                <MasterDataChangeListChips row={row} t={t} />
-                <Pill
-                  status={
-                    row.status === "open"
-                      ? "assigned"
+                {/* Chips + status on one line — matches the admin FE list row. */}
+                <div className="queue-list-meta">
+                  <MasterDataChangeListChips row={row} t={t} />
+                  <Pill
+                    status={
+                      row.status === "open"
+                        ? "assigned"
+                        : row.status === "approved"
+                          ? "performed"
+                          : "cancelled"
+                    }
+                  >
+                    {row.status === "open"
+                      ? t("adminMdrStatusOpen")
                       : row.status === "approved"
-                        ? "performed"
-                        : "cancelled"
-                  }
-                >
-                  {row.status === "open"
-                    ? t("adminMdrStatusOpen")
-                    : row.status === "approved"
-                      ? t("adminMdrStatusApproved")
-                      : t("adminMdrStatusRejected")}
-                </Pill>
+                        ? t("adminMdrStatusApproved")
+                        : t("adminMdrStatusRejected")}
+                  </Pill>
+                </div>
               </button>
             ))
           )}
@@ -11186,13 +11187,14 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
         </section>
         {selected ? (
           <section className="card" style={{ padding: 22 }}>
-            <h2 className="dialog-title">{selected.driverName}</h2>
+            <h2 className="dialog-title" style={{ textAlign: "left" }}>
+              {selected.driverName}
+            </h2>
             <p
               className="mono"
-              style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}
+              style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 0" }}
             >
-              {t("driverCode")}: {selected.driverCode || "—"} ·{" "}
-              {selected.createdAt}
+              {selected.driverCode || "—"} · {selected.createdAt}
             </p>
             <div className="label" style={{ fontSize: 11, marginTop: 8 }}>
               {mdrChangeTypeLabel(selected, t)}
@@ -11259,7 +11261,7 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
               </>
             ) : null}
             {selected.status === "open" ? (
-              <div className="mdr-detail-actions">
+              <div className="queue-detail-actions">
                 <label className="field-label">{t("adminMdrAdminNote")}</label>
                 <textarea
                   className="input"
@@ -11317,7 +11319,12 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                   {t("adminMdrResolvedAt")}: {selected.resolvedAt || "—"}
                 </div>
                 {selected.adminNote ? (
-                  <div style={{ marginTop: 8 }}>{selected.adminNote}</div>
+                  <div style={{ marginTop: 8 }}>
+                    <div className="field-label">{t("adminMdrAdminNoteResolved")}</div>
+                    <div style={{ marginTop: 6, lineHeight: 1.5 }}>
+                      {selected.adminNote}
+                    </div>
+                  </div>
                 ) : null}
               </div>
             )}

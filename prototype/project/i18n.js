@@ -529,6 +529,7 @@ window.I18n = (() => {
       adminMdrNoFieldChanges: "No field changes",
       adminMdrSnapshot: "Data at time of request",
       adminMdrAdminNote: "Resolution note (optional)",
+      adminMdrAdminNoteResolved: "Resolution note",
       adminMdrAdminNotePh: "Note to the driver, e.g. why rejected…",
       adminMdrApproveHint:
         "Approve applies the proposed values and closes the request. Reject closes without saving.",
@@ -642,8 +643,10 @@ window.I18n = (() => {
         "{remaining} initial booking slot(s) remaining before you must complete Performed tours",
       driverProbationProfileAtLimit:
         "Initial booking allowance used — complete Performed tours to be released",
+      masterDataChangeType_company_name: "Company name change",
       masterDataChangeType_address: "Address change",
       masterDataChangeType_contact: "Contact change",
+      masterDataChangeType_other: "Mixed change",
       masterDataChangeType_daily_limit_override:
         "Daily job limit increase (legacy)",
       usersDesc: "Manage dispatcher accounts and driver profiles.",
@@ -2635,6 +2638,7 @@ window.I18n = (() => {
       adminMdrNoFieldChanges: "Keine Feldänderungen",
       adminMdrSnapshot: "Daten zum Zeitpunkt der Anfrage",
       adminMdrAdminNote: "Hinweis zur Entscheidung (optional)",
+      adminMdrAdminNoteResolved: "Hinweis zur Entscheidung",
       adminMdrAdminNotePh: "Hinweis an den Fahrer, z. B. Ablehnungsgrund…",
       adminMdrApproveHint:
         "Genehmigen übernimmt die vorgeschlagenen Werte und schließt die Anfrage. Ablehnen ohne Speichern.",
@@ -2751,8 +2755,10 @@ window.I18n = (() => {
         "Noch {remaining} initiale Buchungsplätze, danach müssen Touren durchgeführt sein",
       driverProbationProfileAtLimit:
         "Initiale Buchungsanzahl erreicht — schließen Sie Durchgeführt-Touren ab zur Freigabe",
+      masterDataChangeType_company_name: "Firmennamensänderung",
       masterDataChangeType_address: "Adressänderung",
       masterDataChangeType_contact: "Kontaktänderung",
+      masterDataChangeType_other: "Gemischte Änderung",
       masterDataChangeType_daily_limit_override: "Erhöhung Tageslimit (Alt)",
       usersDesc: "Verwalte Dispatcher-Konten und Fahrerprofile.",
       driversDesc:
