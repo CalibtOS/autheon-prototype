@@ -11150,6 +11150,7 @@ const NotificationFeedPane = ({
   onOpenJob,
   onOpenDocument,
   onOpenDriver,
+  onAdjustDriverOffer,
   onReviewMasterDataRequest,
 }) => {
   const { t } = useI18n();
@@ -11284,6 +11285,17 @@ const NotificationFeedPane = ({
                     {t("adminNotificationOpenDriver")}
                   </button>
                 ) : null}
+                {row.event === "order_not_accepted_cutoff" &&
+                row.jobId &&
+                onAdjustDriverOffer ? (
+                  <button
+                    type="button"
+                    className="btn xs"
+                    onClick={() => onAdjustDriverOffer(row.jobId)}
+                  >
+                    {t("adminNotificationAdjustDriverOffer")}
+                  </button>
+                ) : null}
                 {row.jobId &&
                 row.event !== "document_unreviewed_stale" ? (
                   <button
@@ -11351,6 +11363,12 @@ const isPolicyEurValid = (current) => {
   const parsed = Number(trimmed);
   return Number.isFinite(parsed) && parsed > 0;
 };
+
+// 24h HH:MM (order-acceptance cutoff time) — a third shape distinct from the
+// integer and EUR policy fields above. AuthStore.formatTimeInput already
+// clamps a typed value into this shape on blur; this is the Save gate.
+const isPolicyTimeValid = (current) =>
+  /^([01]\d|2[0-3]):[0-5]\d$/.test(String(current).trim());
 
 // Gated on the field being dirty so a freshly opened screen never nags — the
 // stored values always satisfy the rule. One message covers cleared, zero and
@@ -11559,6 +11577,9 @@ const OperationalPoliciesForm = ({ showToast }) => {
   const storedDriverOfferWarn = Number(
     policies.driverOfferHighWarningEur ?? 200.0,
   );
+  const storedCutoffTime = String(
+    policies.orderAcceptanceCutoffTime ?? "15:45",
+  );
   const storedAllowOverride =
     policies.allowPolicyOverrideWithAuditNote !== false;
   const storedRequiresReasonCode =
@@ -11580,6 +11601,7 @@ const OperationalPoliciesForm = ({ showToast }) => {
   const [driverOfferWarn, setDriverOfferWarn] = useStateA(
     String(storedDriverOfferWarn),
   );
+  const [cutoffTime, setCutoffTime] = useStateA(storedCutoffTime);
   const [allowOverride, setAllowOverride] = useStateA(storedAllowOverride);
   const [requiresReasonCode, setRequiresReasonCode] = useStateA(
     storedRequiresReasonCode,
@@ -11601,6 +11623,7 @@ const OperationalPoliciesForm = ({ showToast }) => {
     setRequiresDriverMessage(storedRequiresDriverMessage);
     setDriverOfferMax(String(storedDriverOfferMax));
     setDriverOfferWarn(String(storedDriverOfferWarn));
+    setCutoffTime(storedCutoffTime);
   };
 
   useEffectA(seedFromStore, [
@@ -11613,6 +11636,7 @@ const OperationalPoliciesForm = ({ showToast }) => {
     storedRequiresDriverMessage,
     storedDriverOfferMax,
     storedDriverOfferWarn,
+    storedCutoffTime,
   ]);
 
   // At least one field differs from the stored values. Drives both the Save
@@ -11624,6 +11648,7 @@ const OperationalPoliciesForm = ({ showToast }) => {
     isPolicyNumberDirty(defaultLimit, storedDefaultLimit) ||
     isPolicyNumberDirty(driverOfferMax, storedDriverOfferMax) ||
     isPolicyNumberDirty(driverOfferWarn, storedDriverOfferWarn) ||
+    cutoffTime !== storedCutoffTime ||
     allowOverride !== storedAllowOverride ||
     requiresReasonCode !== storedRequiresReasonCode ||
     requiresDriverMessage !== storedRequiresDriverMessage;
@@ -11639,7 +11664,8 @@ const OperationalPoliciesForm = ({ showToast }) => {
     isPolicyNumberValid(minDriverMsg) &&
     isPolicyNumberValid(defaultLimit) &&
     isPolicyEurValid(driverOfferMax) &&
-    isPolicyEurValid(driverOfferWarn);
+    isPolicyEurValid(driverOfferWarn) &&
+    isPolicyTimeValid(cutoffTime);
 
   const save = () => {
     if (!canSave) return;
@@ -11654,6 +11680,7 @@ const OperationalPoliciesForm = ({ showToast }) => {
         allowPolicyOverrideWithAuditNote: allowOverride,
         driverOfferMaxEur: Number(driverOfferMax),
         driverOfferHighWarningEur: Number(driverOfferWarn),
+        orderAcceptanceCutoffTime: cutoffTime,
       },
       cancellation: {
         adminCancelDriverMessageMinChars: Number(minDriverMsg),
@@ -11764,6 +11791,44 @@ const OperationalPoliciesForm = ({ showToast }) => {
               : undefined
           }
           onChange={(e) => setDriverOfferWarn(e.target.value)}
+        />
+      </div>
+      <div className="policy-field">
+        <label className="field-label" htmlFor="policy-cutoff-time">
+          {t("adminPolicyOrderAcceptanceCutoffLabel")}
+        </label>
+        <input
+          id="policy-cutoff-time"
+          className="input mono"
+          placeholder={t("newOrderTimePh")}
+          value={cutoffTime}
+          style={
+            cutoffTime !== storedCutoffTime && !isPolicyTimeValid(cutoffTime)
+              ? userInputErrStyle
+              : undefined
+          }
+          aria-invalid={
+            cutoffTime !== storedCutoffTime && !isPolicyTimeValid(cutoffTime)
+              ? true
+              : undefined
+          }
+          aria-describedby={
+            cutoffTime !== storedCutoffTime && !isPolicyTimeValid(cutoffTime)
+              ? "policy-cutoff-time-error"
+              : undefined
+          }
+          onChange={(e) => setCutoffTime(e.target.value)}
+          onBlur={(e) =>
+            setCutoffTime(AuthStore.formatTimeInput(e.target.value))
+          }
+        />
+        <UserFormError
+          id="policy-cutoff-time-error"
+          message={
+            cutoffTime !== storedCutoffTime && !isPolicyTimeValid(cutoffTime)
+              ? t("adminPolicyTimeFormatError")
+              : ""
+          }
         />
       </div>
       <PolicySwitchRow

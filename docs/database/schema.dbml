@@ -238,6 +238,20 @@ Enum message_delivery_status {
   cancelled
 }
 
+// PRD v2.32 / Task 33 — admin-feed-only. Meaningful only on user_notifications
+// rows delivered to an admin recipient; unused (default values) on
+// driver-recipient rows, same table.
+Enum notification_severity {
+  red
+  orange
+  gray
+}
+
+Enum notification_status {
+  open
+  processed
+}
+
 Table users {
   id uuid [pk]
   keycloak_id varchar(36) [unique] // nullable until Keycloak provisioning completes; partial unique index where not null
@@ -805,6 +819,12 @@ Table user_notifications {
   deep_link varchar(1024)
   created_at timestamptz [not null]
   read_at timestamptz
+  // PRD v2.32 / Task 33 — admin-feed-only (see notification_severity /
+  // notification_status above). Never meaningful on a driver-recipient row.
+  severity notification_severity [not null, default: 'gray']
+  status notification_status [not null, default: 'open']
+  processed_at timestamptz
+  processed_by_user_id uuid
 
   indexes {
     (user_id, created_at)
@@ -941,6 +961,7 @@ Ref: notification_preferences.user_id > users.id
 Ref: push_subscriptions.user_id > users.id
 Ref: user_notifications.user_id > users.id
 Ref: user_notifications.job_id > jobs.id
+Ref: user_notifications.processed_by_user_id > users.id
 Ref: notification_deliveries.user_notification_id > user_notifications.id
 Ref: feature_flags.updated_by_user_id > users.id
 Ref: app_settings.updated_by_user_id > users.id

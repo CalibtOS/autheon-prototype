@@ -2172,7 +2172,10 @@ window.AuthStore = (() => {
         event: "order_not_accepted_cutoff",
         jobId: "A-2026-00847",
         tour: "0847-26",
-        meta: "Published tour still has no driver past the acceptance cutoff",
+        // Task 33 S1: minimum required display fields are tour number (the
+        // row's own `tour`) and pickup date/time — kept here as plain display
+        // text rather than a live lookup, matching every other seed alert.
+        meta: "Pickup Wed, 23.04.2026 · 08:00–12:00",
         at: "22.04. 15:45",
         sent: true,
         status: "open",
@@ -2615,6 +2618,10 @@ window.AuthStore = (() => {
     driverOfferMinEur: 0.01,
     driverOfferMaxEur: 999.99,
     driverOfferHighWarningEur: 200.0,
+    // Dispatch Notification Feed Task 33 S1: admin-configurable cutoff (HH:MM,
+    // 24h) — a published order still unaccepted this late the day before its
+    // pickup date fires the order_not_accepted_cutoff alert.
+    orderAcceptanceCutoffTime: "15:45",
   };
 
   /** DD.MM.YYYY (the seed format for joinedAt) -> Date, or null. */

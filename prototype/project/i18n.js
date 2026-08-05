@@ -1883,8 +1883,10 @@ window.I18n = (() => {
       adminNotifJobReassigned: "Order reassigned",
       adminNotifJobCancelled: "Order cancelled",
       adminNotifCancelledByAutheon: "Order cancelled by dispatch",
-      adminNotifOrderNotAcceptedCutoff:
-        "Order not accepted by cutoff",
+      adminNotifOrderNotAcceptedCutoff: "Order for tomorrow not yet accepted",
+      adminNotificationAdjustDriverOffer: "Adjust driver offer",
+      adminPolicyOrderAcceptanceCutoffLabel: "Order acceptance cutoff time",
+      adminPolicyTimeFormatError: "Enter a time as HH:MM",
       adminNotifDocumentUnreviewedStale:
         "Document awaiting review 10+ days",
       adminNotifServicePartnerInactive: "Service partner inactive 90+ days",
@@ -3983,7 +3985,10 @@ window.I18n = (() => {
       adminNotifJobCancelled: "Auftrag storniert",
       adminNotifCancelledByAutheon: "Auftrag durch Disposition storniert",
       adminNotifOrderNotAcceptedCutoff:
-        "Auftrag bis zur Frist nicht angenommen",
+        "Auftrag für morgen noch nicht angenommen",
+      adminNotificationAdjustDriverOffer: "Fahrerangebot anpassen",
+      adminPolicyOrderAcceptanceCutoffLabel: "Annahmefrist für Aufträge",
+      adminPolicyTimeFormatError: "Uhrzeit im Format HH:MM eingeben",
       adminNotifDocumentUnreviewedStale:
         "Dokument seit 10+ Tagen ungeprüft",
       adminNotifServicePartnerInactive:
