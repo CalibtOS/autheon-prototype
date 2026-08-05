@@ -6053,8 +6053,18 @@ const ServicePartnerProfileModal = ({ driver, onClose, showToast }) => {
                   <div>{driver.joinedAt || "—"}</div>
                 </div>
                 <div>
-                  <div className="label">{t("adminSPProfileLastLogin")}</div>
-                  <div>{driver.lastLoginAt || "—"}</div>
+                  <div className="label">{t("adminUsersLastActivity")}</div>
+                  <div>
+                    {driver.lastActiveAt ? (
+                      window.AutheonFormatters.formatDate(
+                        new Date(driver.lastActiveAt),
+                      )
+                    ) : (
+                      <span className="label" style={{ fontStyle: "italic" }}>
+                        {t("adminUsersLastActivityNever")}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <div className="label">{t("adminMasterDataStatus")}</div>
