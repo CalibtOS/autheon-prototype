@@ -7718,7 +7718,7 @@ const ProfilePaneFull = ({
 
   // Basic data → existing read-only master data + "Request a change" flow.
   const masterDataCard = (
-    <div className="section-card mdr-card">
+    <div className="section-card">
       <div className="row-between">
         <h2 className="section-title">{t("profileMasterData")}</h2>
         {profileMode === "pending" ? (
@@ -7728,7 +7728,7 @@ const ProfilePaneFull = ({
         ) : null}
       </div>
       {profileMode === "pending" ? (
-        <div className="mdr-status-banner stack-12" role="status">
+        <div className="profile-status-banner stack-12" role="status">
           <strong>{t("masterDataChangePendingTitle")}</strong>
           <div className="stack-4">
             {t("masterDataChangePendingBody", { date: openMdr.createdAt })}
@@ -7741,7 +7741,7 @@ const ProfilePaneFull = ({
             : t("masterDataChangeNotice")}
         </p>
       )}
-      <div className="mdr-field-list stack-16">
+      <div className="profile-field-list stack-16">
         {PROFILE_MDR_FIELDS.map(({ key, required, type }) => {
           const label = t(key);
           const current = d?.[key] || "";
@@ -7754,13 +7754,13 @@ const ProfilePaneFull = ({
           return (
             <div
               key={key}
-              className={`mdr-field-row${changed ? " is-changed" : ""}`}
+              className={`profile-field-row${changed ? " is-changed" : ""}`}
             >
-              <label className="mdr-field-label" htmlFor={inputId}>
+              <label className="profile-field-label" htmlFor={inputId}>
                 {label}
                 {required && profileMode === "edit" ? " *" : ""}
               </label>
-              <div className="mdr-field-body">
+              <div className="profile-field-body">
                 {profileMode === "edit" ? (
                   <input
                     id={inputId}
@@ -7772,32 +7772,32 @@ const ProfilePaneFull = ({
                 ) : profileMode === "pending" ? (
                   <>
                     <div
-                      className={`mdr-field-value${changed ? " is-new" : ""}`}
+                      className={`profile-field-value${changed ? " is-new" : ""}`}
                     >
                       {pendingAfter || "—"}
                       {changed ? (
-                        <span className="mdr-field-badge stack-4">
+                        <span className="profile-field-badge stack-4">
                           {t("masterDataChangeUpdatedBadge")}
                         </span>
                       ) : null}
                     </div>
                     {changed ? (
-                      <div className="mdr-field-old">
+                      <div className="profile-field-old">
                         {pendingBefore || "—"}
                       </div>
                     ) : null}
                   </>
                 ) : (
-                  <div className="mdr-field-value">{current || "—"}</div>
+                  <div className="profile-field-value">{current || "—"}</div>
                 )}
               </div>
             </div>
           );
         })}
-        <div className="mdr-field-row">
-          <div className="mdr-field-label">{t("accountStatus")}</div>
-          <div className="mdr-field-body">
-            <div className="mdr-field-value">
+        <div className="profile-field-row">
+          <div className="profile-field-label">{t("accountStatus")}</div>
+          <div className="profile-field-body">
+            <div className="profile-field-value">
               {displayDriverStatus(d?.status, t)}
             </div>
           </div>
@@ -7822,10 +7822,7 @@ const ProfilePaneFull = ({
         </button>
       ) : null}
       {profileMode === "edit" ? (
-        <div
-          className="mdr-actions stack-16"
-          style={{ display: "flex", gap: 10 }}
-        >
+        <div className="profile-actions stack-16">
           <button
             type="button"
             className="btn ghost block"

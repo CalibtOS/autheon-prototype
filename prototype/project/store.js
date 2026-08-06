@@ -2073,6 +2073,115 @@ window.AuthStore = (() => {
   // Notification Center demonstrates all of them: a still-available Marketplace
   // order, a Marketplace order that has since been withdrawn, a booked-tour
   // update, an Infopoint message, a document outcome and an account event.
+  /**
+   * Demo queue for admin MDR review: one open, one approved, one rejected —
+   * each with real field diffs. Empty / note-only requests are not seeded:
+   * `requestMasterDataChange` rejects `no_changes` (matches BE + PRD).
+   */
+  function seedMasterDataChangeRequests() {
+    const blake = {
+      id: "DRV-0228",
+      name: DEMO_DRIVER,
+      company: "Blake Transport Services",
+      driverCode: "AU-41-0228",
+      address: "Landsberger Str. 22, 80339 Munchen",
+      phone: "+49 170 4400228",
+      email: "jordan.blake@example.com",
+    };
+    const neumann = {
+      id: "DRV-0301",
+      name: "Klaus Neumann",
+      company: "Neumann Logistik",
+      driverCode: "AU-41-0301",
+      address: "Hanauer Landstr. 12, 60314 Frankfurt",
+      phone: "+49 172 3300301",
+      email: "k.neumann@example.com",
+    };
+    return [
+      {
+        id: "MDR-demo-open-1",
+        driverId: blake.id,
+        driverName: blake.name,
+        driverCode: blake.driverCode,
+        changeType: "other",
+        note: "",
+        proposed: {
+          company: "Nordwind Logistik SE",
+          address: "Neue Strasse 5, 80331 Munich",
+          email: blake.email,
+          phone: "+49 333 3333333",
+        },
+        status: "open",
+        createdAt: "02.08. 08:00",
+        resolvedAt: null,
+        resolvedBy: null,
+        reviewedBy: null,
+        reviewedAt: null,
+        adminNote: "",
+        snapshot: {
+          company: blake.company,
+          address: blake.address,
+          email: blake.email,
+          phone: blake.phone,
+        },
+      },
+      {
+        id: "MDR-demo-approved-1",
+        driverId: blake.id,
+        driverName: blake.name,
+        driverCode: blake.driverCode,
+        changeType: "contact",
+        note: "",
+        proposed: {
+          company: blake.company,
+          address: blake.address,
+          email: blake.email,
+          phone: "+49 40 33334444",
+        },
+        status: "approved",
+        createdAt: "28.07. 09:00",
+        resolvedAt: "29.07. 11:15",
+        resolvedBy: DEMO_ADMIN,
+        reviewedBy: DEMO_ADMIN,
+        reviewedAt: "29.07. 11:15",
+        adminNote: "Confirmed by phone.",
+        snapshot: {
+          company: blake.company,
+          address: blake.address,
+          email: blake.email,
+          phone: "+49 40 11112222",
+        },
+      },
+      {
+        id: "MDR-demo-rejected-1",
+        driverId: neumann.id,
+        driverName: neumann.name,
+        driverCode: neumann.driverCode,
+        changeType: "address",
+        note: "",
+        proposed: {
+          company: neumann.company,
+          address: "Hafenstrasse 200, 20457 Hamburg",
+          email: neumann.email,
+          phone: neumann.phone,
+        },
+        status: "rejected",
+        createdAt: "25.07. 07:45",
+        resolvedAt: "26.07. 08:20",
+        resolvedBy: DEMO_ADMIN,
+        reviewedBy: DEMO_ADMIN,
+        reviewedAt: "26.07. 08:20",
+        adminNote: "Depot is not registered to this partner. Send the lease first.",
+        snapshot: {
+          company: neumann.company,
+          address: neumann.address,
+          email: neumann.email,
+          phone: neumann.phone,
+        },
+      },
+    ];
+  }
+
   function seedDriverNotifications() {
     return [
       {
@@ -2518,7 +2627,7 @@ window.AuthStore = (() => {
   }
   let driverNotifications = seedDriverNotifications();
   let adminEmailQueue = seedAdminEmailQueue();
-  let masterDataChangeRequests = [];
+  let masterDataChangeRequests = seedMasterDataChangeRequests();
   // Phase 7: service-partner onboarding documents — a separate system from
   // tourDocuments (which is tour-scoped), since these belong to the partner
   // itself (business registration, licence, ID), not to any one tour.
@@ -6768,10 +6877,15 @@ window.AuthStore = (() => {
       if (!changedFields.length) return { ok: false, reason: "no_changes" };
       const who = d.name || DEMO_DRIVER;
       const reqId = `MDR-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      // Derive changeType from which fields changed — matches master_data_change_type enum
-      const changeType = changedFields.includes("address")
-        ? "address"
-        : "contact";
+      // Derive changeType from which fields changed — matches BE
+      // MasterDataChangeRequestPolicy (multi-category → other).
+      const categories = new Set(
+        changedFields.map((k) =>
+          k === "company" ? "company_name" : k === "address" ? "address" : "contact",
+        ),
+      );
+      const changeType =
+        categories.size > 1 ? "other" : [...categories][0] || "other";
       const row = {
         id: reqId,
         driverId: d.id,
@@ -9389,7 +9503,7 @@ window.AuthStore = (() => {
       }
       driverNotifications = seedDriverNotifications();
       adminEmailQueue = seedAdminEmailQueue();
-      masterDataChangeRequests = [];
+      masterDataChangeRequests = seedMasterDataChangeRequests();
       transportOrderDocuments = [];
       for (const j of jobs) {
         j.paymentStatus = normalizePaymentStatus(j.paymentStatus);

@@ -4110,15 +4110,8 @@ select.input {
   font-size: 12.5px;
 }
 
-/* Master data change request — unified profile + admin compare */
-.mdr-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 4px;
-}
-.mdr-status-banner {
+/* Master-data / change-request surfaces (generic — not feature-prefixed) */
+.profile-status-banner {
   margin-top: 12px;
   padding: 12px 14px;
   border-radius: var(--r-2);
@@ -4128,19 +4121,19 @@ select.input {
   line-height: 1.5;
   color: var(--text);
 }
-.mdr-status-banner strong {
+.profile-status-banner strong {
   display: block;
   font-size: 13.5px;
   margin-bottom: 4px;
 }
-.mdr-field-list {
+.profile-field-list {
   margin-top: 12px;
   border: 1px solid var(--line);
   border-radius: var(--r-2);
   overflow: hidden;
   background: var(--paper);
 }
-.mdr-field-row {
+.profile-field-row {
   display: grid;
   grid-template-columns: 108px 1fr;
   gap: 12px;
@@ -4148,31 +4141,32 @@ select.input {
   border-bottom: 1px solid var(--line);
   align-items: start;
 }
-.mdr-field-row:last-child {
+.profile-field-row:last-child {
   border-bottom: none;
 }
-.mdr-field-row.is-changed {
+.profile-field-row.is-changed {
   background: color-mix(in srgb, var(--primary) 4%, transparent);
 }
-.mdr-field-label {
+.profile-field-label {
   font-size: 12px;
   color: var(--muted);
   padding-top: 3px;
   font-weight: 500;
+  margin-bottom: 0;
 }
-.mdr-field-body {
+.profile-field-body {
   min-width: 0;
 }
-.mdr-field-value {
+.profile-field-value {
   font-size: 13px;
   line-height: 1.45;
   word-break: break-word;
 }
-.mdr-field-value.is-new {
+.profile-field-value.is-new {
   font-weight: 600;
   color: var(--primary-ink);
 }
-.mdr-field-old {
+.profile-field-old {
   font-size: 12px;
   color: var(--muted);
   text-decoration: line-through;
@@ -4180,7 +4174,7 @@ select.input {
   line-height: 1.4;
   word-break: break-word;
 }
-.mdr-field-badge {
+.profile-field-badge {
   display: inline-flex;
   align-items: center;
   font-size: 11px;
@@ -4192,68 +4186,94 @@ select.input {
   margin-left: 8px;
   vertical-align: middle;
 }
-.mdr-actions {
+.profile-actions {
   display: flex;
   gap: 10px;
   margin-top: 14px;
   flex-wrap: wrap;
 }
-.mdr-actions .btn.primary {
+.profile-actions .btn.primary {
   flex: 1;
   min-width: 140px;
 }
-.mdr-compare {
+
+.compare-table {
   margin-top: 12px;
   border: 1px solid var(--line);
   border-radius: var(--r-2);
   overflow: hidden;
   background: var(--paper);
 }
-.mdr-compare-header,
-.mdr-compare-row {
+.compare-table-header,
+.compare-table-row {
   display: grid;
-  grid-template-columns: 110px 1fr 1fr;
+  grid-template-columns: minmax(0, 110px) minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
   padding: 10px 14px;
   align-items: start;
   border-bottom: 1px solid var(--line);
 }
-.mdr-compare-header {
+.compare-table-header {
   background: var(--paper-2);
   font-size: 12px;
   font-weight: 500;
   color: var(--muted);
 }
-.mdr-compare-row:last-child {
+.compare-table-row:last-child {
   border-bottom: none;
 }
-.mdr-compare-row.is-changed {
+.compare-table-row.is-changed {
   background: color-mix(in srgb, var(--primary) 5%, transparent);
 }
-.mdr-compare-cell {
+.compare-table-cell {
   font-size: 12.5px;
   line-height: 1.45;
   word-break: break-word;
+  min-width: 0;
 }
-.mdr-compare-cell.after {
+.compare-table-cell.after {
   font-weight: 600;
   color: var(--primary-ink);
 }
-.mdr-compare-cell.before {
+.compare-table-cell.before {
   color: var(--muted);
 }
-.mdr-detail-actions {
+
+.queue-detail-actions {
   margin-top: 18px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
 }
-.mdr-list-changes {
+/* Single column until a request is selected; two columns from 1280px (admin
+   shell + review form need room). min-width:0 so panes shrink instead of
+   widening the page. */
+.queue-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  align-items: start;
+}
+@media (min-width: 1280px) {
+  .queue-split.two {
+    grid-template-columns: minmax(20rem, 1fr) minmax(28rem, 1.1fr);
+  }
+}
+.queue-split > * {
+  min-width: 0;
+}
+.queue-list-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.queue-list-changes {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 8px;
 }
-.mdr-list-chip {
+.queue-list-chip {
   font-size: 10.5px;
   font-weight: 600;
   padding: 3px 8px;
@@ -4262,7 +4282,7 @@ select.input {
   border: 1px solid var(--line-2);
   color: var(--muted);
 }
-.mdr-list-chip.on {
+.queue-list-chip.on {
   background: color-mix(in srgb, var(--primary) 8%, transparent);
   border-color: color-mix(in srgb, var(--primary) 25%, transparent);
   color: var(--primary-ink);
@@ -5796,31 +5816,6 @@ select.input {
   transition: width 0.3s ease;
 }
 
-/* Master Data Diff highlight */
-.phone-shell .mdr-field-row.is-changed {
-  background: color-mix(in srgb, var(--st-accepted) 4%, transparent);
-  border-left: 3px solid var(--st-accepted) !important;
-  padding-left: 10px !important;
-}
-.phone-shell .mdr-field-value.is-new {
-  color: var(--st-accepted) !important;
-  font-weight: 600 !important;
-}
-.phone-shell .mdr-field-old {
-  text-decoration: line-through;
-  color: var(--muted-2);
-  font-size: 12px;
-  margin-top: 2px;
-}
-.phone-shell .mdr-field-badge {
-  background: var(--st-accepted-bg);
-  color: var(--st-accepted);
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-weight: 600;
-}
-
 /* Premium iOS Switch Toggle */
 .phone-shell .switch-toggle-wrap {
   position: relative;
@@ -6141,14 +6136,18 @@ select.input {
   color: var(--text);
 }
 
-/* Master data as stacked definition list (plan §7.7.3) —
-   kills the 108px two-column squeeze + uppercase micro labels */
-.phone-shell .mdr-field-row {
+/* Profile master-data list — stacked on phone (plan §7.7.3) */
+.phone-shell .profile-field-row {
   grid-template-columns: 1fr;
   gap: 3px;
   padding: 12px 16px;
 }
-.phone-shell .mdr-field-label {
+.phone-shell .profile-field-row.is-changed {
+  background: color-mix(in srgb, var(--st-accepted) 4%, transparent);
+  border-left: 3px solid var(--st-accepted);
+  padding-left: 13px;
+}
+.phone-shell .profile-field-label {
   font-size: var(--text-caption);
   text-transform: none;
   letter-spacing: 0;
@@ -6156,12 +6155,31 @@ select.input {
   color: var(--muted);
   padding-top: 0;
 }
-.phone-shell .mdr-field-value {
+.phone-shell .profile-field-value {
   font-size: var(--text-body-sm);
   font-weight: 500;
   color: var(--text);
   overflow-wrap: anywhere;
 }
+.phone-shell .profile-field-value.is-new {
+  color: var(--st-accepted);
+  font-weight: 600;
+}
+.phone-shell .profile-field-old {
+  text-decoration: line-through;
+  color: var(--muted-2);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.phone-shell .profile-field-badge {
+  background: var(--st-accepted-bg);
+  color: var(--st-accepted);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
 .phone-shell .profile-identity {
   display: flex;
   align-items: center;
