@@ -10846,7 +10846,7 @@ const MasterDataCompareTable = ({
           key={key}
           className={`compare-table-row${changed ? " is-changed" : ""}`}
         >
-          <div className="compare-table-cell">{t(labelKey)}</div>
+          <div className="compare-table-cell label">{t(labelKey)}</div>
           <div className="compare-table-cell before">{before || "—"}</div>
           <div className="compare-table-cell after">{after || "—"}</div>
         </div>
@@ -10933,9 +10933,9 @@ const ChangeRequestQueueFooter = ({
           value={rows}
           onChange={(e) => onRowsChange(Number(e.target.value))}
         >
-          <option>20</option>
-          <option>50</option>
-          <option>100</option>
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
         </select>
         <div style={{ display: "inline-flex", gap: 4 }}>
           <button
@@ -11034,7 +11034,12 @@ const MasterDataRequestsPane = ({
     statusCounts.open + statusCounts.approved + statusCounts.rejected;
   // The production queue is paginated server-side; page the mock list so the
   // footer, the result count and the reset-to-page-1 behaviour all match.
-  const rows = allRows.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+  const totalPages = Math.max(1, Math.ceil(allRows.length / Math.max(1, rowsPerPage)));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const rows = allRows.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage,
+  );
   // Only show a detail pane for requests visible under the active filter —
   // looking up by id alone caused empty Open + resolved detail side-by-side.
   const selected =
@@ -11070,41 +11075,36 @@ const MasterDataRequestsPane = ({
     // No width cap — the queue is a work surface, so it fills the pane and the
     // reviewer gets every pixel the window offers.
     <div>
-      {/* Match prototype main: pane-lead above a left-aligned `.seg` — no card
-          wrapping the subtitle beside the filter. */}
+      {/* Match prototype main: pane-lead above a plain status dropdown. */}
       <p className="pane-lead">{t("adminMdrSub")}</p>
-      <div
-        className="seg"
-        style={{ display: "inline-flex", flexWrap: "wrap", marginBottom: 18 }}
-      >
-        {[
-          ["open", t("adminMdrFilterOpen")],
-          ["approved", t("adminMdrFilterApproved")],
-          ["rejected", t("adminMdrFilterRejected")],
-          ["all", t("adminMdrFilterAll")],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            className={filter === id ? "on" : ""}
-            aria-pressed={filter === id}
-            aria-label={`${label} (${String(statusCounts[id])})`}
-            onClick={() => {
-              setFilter(id);
-              setPage(1);
-              setSelectedId("");
-            }}
-          >
-            {label}
-            <span
-              className="mono"
-              aria-hidden="true"
-              style={{ marginLeft: 7, opacity: 0.65 }}
-            >
-              {statusCounts[id]}
-            </span>
-          </button>
-        ))}
+      <div style={{ marginBottom: 18 }}>
+        <label className="field-label" htmlFor="mdr-status-filter">
+          {t("adminMdrFilterLabel")}
+        </label>
+        <select
+          id="mdr-status-filter"
+          className="input"
+          style={{ width: 260 }}
+          value={filter}
+          onChange={(e) => {
+            setFilter(e.target.value);
+            setPage(1);
+            setSelectedId("");
+          }}
+        >
+          <option value="open">
+            {t("adminMdrFilterOpen")} ({statusCounts.open})
+          </option>
+          <option value="approved">
+            {t("adminMdrFilterApproved")} ({statusCounts.approved})
+          </option>
+          <option value="rejected">
+            {t("adminMdrFilterRejected")} ({statusCounts.rejected})
+          </option>
+          <option value="all">
+            {t("adminMdrFilterAll")} ({statusCounts.all})
+          </option>
+        </select>
       </div>
       {/* Single column until a request is selected, and even then only from
           1280px up — see `.queue-split` for why the width gate is needed. */}
@@ -11180,12 +11180,11 @@ const MasterDataRequestsPane = ({
               </button>
             ))
           )}
-          {/* Reuses the overview footer so the queue counts and pager look and
-              behave exactly like every other admin list. */}
+          {/* Queue-specific footer with rows-per-page + windowed page links. */}
           {allRows.length > 0 ? (
             <ChangeRequestQueueFooter
               total={allRows.length}
-              page={page}
+              page={currentPage}
               rows={rowsPerPage}
               onPageChange={(next) => {
                 setPage(next);

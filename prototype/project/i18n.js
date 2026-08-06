@@ -527,9 +527,8 @@ window.I18n = (() => {
         "Submitted {date}. Operations will review your request before you can send another.",
       navMasterDataRequests: "Profile change requests",
       adminMdrTitle: "Profile change requests",
-      // Kept to one short line so the status filter sits beside it in the header
-      // card instead of being pushed onto its own row. What approving and
-      // rejecting do is stated on the review pane, where the action is taken.
+      // Keep this concise so the queue subtitle stays scannable above the status
+      // filter and action details remain in the review pane.
       adminMdrSub:
         "Review requested master-data updates across all service partners.",
       adminMdrFilterLabel: "Status",
