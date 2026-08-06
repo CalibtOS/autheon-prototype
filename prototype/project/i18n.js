@@ -303,6 +303,18 @@ window.I18n = (() => {
       stagedRemoveFile: "Remove {name}",
       stagedUpload: "Upload",
       stagedRetry: "Retry these files",
+      // The action itself changes with the phase, not merely its meaning:
+      // while bytes are moving it aborts, once they are gone it does not.
+      stagedCancelUpload: "Cancel upload",
+      stagedClose: "Close",
+      // The counter shows only when more than one file is staged — one file
+      // is the overwhelming case and must not read as batch chrome.
+      stagedProgressCounter: "File {current} of {total}",
+      stagedProgressSending: "Sending",
+      stagedProgressPercent: "{percent}%",
+      stagedProgressProcessing: "Checking and saving your document",
+      stagedProgressProcessingHint:
+        "Closing only stops this screen showing it. The document appears in your tour documents once it is done.",
       stagedBatchStopped:
         "Upload stopped — the remaining files were not sent. Check your connection and try again.",
       stagedFailureFileTooLarge:
@@ -313,6 +325,11 @@ window.I18n = (() => {
         "Rejected — this file type is not accepted. Remove it and upload a PDF or photo.",
       stagedFailureRejected:
         "Rejected — this file could not be read. Remove it or try again.",
+      // A slow link, never a missing one. The absence of offline wording here
+      // is as load-bearing as the presence of the right words.
+      stagedFailureTimeout:
+        "The connection was too slow for this file. Sending it again is safe.",
+      stagedFailureCancelled: "You stopped this one. Sending it again is safe.",
       documentsOfflineHint: "Reconnect to upload or open documents.",
       docKindPdf: "PDF document",
       docKindImage: "Image file",
@@ -2461,6 +2478,14 @@ window.I18n = (() => {
       stagedRemoveFile: "{name} entfernen",
       stagedUpload: "Hochladen",
       stagedRetry: "Diese Dateien erneut senden",
+      stagedCancelUpload: "Upload abbrechen",
+      stagedClose: "Schließen",
+      stagedProgressCounter: "Datei {current} von {total}",
+      stagedProgressSending: "Wird gesendet",
+      stagedProgressPercent: "{percent} %",
+      stagedProgressProcessing: "Dokument wird geprüft und gespeichert",
+      stagedProgressProcessingHint:
+        "Beim Schließen wird es hier nur nicht mehr angezeigt. Das Dokument erscheint in den Tourdokumenten, sobald es fertig ist.",
       stagedBatchStopped:
         "Upload gestoppt — die restlichen Dateien wurden nicht gesendet. Bitte Verbindung prüfen und erneut versuchen.",
       stagedFailureFileTooLarge:
@@ -2471,6 +2496,9 @@ window.I18n = (() => {
         "Abgelehnt — dieser Dateityp wird nicht akzeptiert. Entfernen und ein PDF oder Foto hochladen.",
       stagedFailureRejected:
         "Abgelehnt — diese Datei konnte nicht gelesen werden. Entfernen oder erneut versuchen.",
+      stagedFailureTimeout:
+        "Die Verbindung war für diese Datei zu langsam. Erneut senden ist sicher.",
+      stagedFailureCancelled: "Von dir gestoppt. Erneut senden ist sicher.",
       documentsOfflineHint:
         "Für Upload oder Öffnen von Dokumenten erneut verbinden.",
       docKindPdf: "PDF-Dokument",
