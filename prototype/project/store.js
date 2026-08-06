@@ -2073,6 +2073,116 @@ window.AuthStore = (() => {
   // Notification Center demonstrates all of them: a still-available Marketplace
   // order, a Marketplace order that has since been withdrawn, a booked-tour
   // update, an Infopoint message, a document outcome and an account event.
+  /**
+   * Demo queue for admin MDR review: one open, one approved, one rejected —
+   * each with real field diffs. Empty / note-only requests are not seeded:
+   * `requestMasterDataChange` rejects `no_changes` (matches BE + PRD).
+   */
+  function seedMasterDataChangeRequests() {
+    const blake = {
+      id: "DRV-0228",
+      name: DEMO_DRIVER,
+      company: "Blake Transport Services",
+      driverCode: "AU-41-0228",
+      address: "Landsberger Str. 22, 80339 Munchen",
+      phone: "+49 170 4400228",
+      email: "jordan.blake@example.com",
+    };
+    const neumann = {
+      id: "DRV-0301",
+      name: "Klaus Neumann",
+      company: "Neumann Logistik",
+      driverCode: "AU-41-0301",
+      address: "Hanauer Landstr. 12, 60314 Frankfurt",
+      phone: "+49 172 3300301",
+      email: "k.neumann@example.com",
+    };
+    return [
+      {
+        id: "MDR-demo-open-1",
+        driverId: blake.id,
+        driverName: blake.name,
+        driverCode: blake.driverCode,
+        changeType: "other",
+        note: "",
+        proposed: {
+          company: "Nordwind Logistik SE",
+          address: "Neue Strasse 5, 80331 Munich",
+          email: blake.email,
+          phone: "+49 333 3333333",
+        },
+        status: "open",
+        createdAt: "02.08. 08:00",
+        resolvedAt: null,
+        resolvedBy: null,
+        reviewedBy: null,
+        reviewedAt: null,
+        adminNote: "",
+        snapshot: {
+          company: blake.company,
+          address: blake.address,
+          email: blake.email,
+          phone: blake.phone,
+        },
+      },
+      {
+        id: "MDR-demo-approved-1",
+        driverId: blake.id,
+        driverName: blake.name,
+        driverCode: blake.driverCode,
+        changeType: "contact",
+        note: "",
+        proposed: {
+          company: blake.company,
+          address: blake.address,
+          email: blake.email,
+          phone: "+49 40 33334444",
+        },
+        status: "approved",
+        createdAt: "28.07. 09:00",
+        resolvedAt: "29.07. 11:15",
+        resolvedBy: DEMO_ADMIN,
+        reviewedBy: DEMO_ADMIN,
+        reviewedAt: "29.07. 11:15",
+        adminNote: "Confirmed by phone.",
+        snapshot: {
+          company: blake.company,
+          address: blake.address,
+          email: blake.email,
+          phone: "+49 40 11112222",
+        },
+      },
+      {
+        id: "MDR-demo-rejected-1",
+        driverId: neumann.id,
+        driverName: neumann.name,
+        driverCode: neumann.driverCode,
+        changeType: "address",
+        note: "",
+        proposed: {
+          company: neumann.company,
+          address: "Hafenstrasse 200, 20457 Hamburg",
+          email: neumann.email,
+          phone: neumann.phone,
+        },
+        status: "rejected",
+        createdAt: "25.07. 07:45",
+        resolvedAt: "26.07. 08:20",
+        resolvedBy: DEMO_ADMIN,
+        reviewedBy: DEMO_ADMIN,
+        reviewedAt: "26.07. 08:20",
+        adminNote:
+          "Depot is not registered to this partner. Send the lease first.",
+        snapshot: {
+          company: neumann.company,
+          address: neumann.address,
+          email: neumann.email,
+          phone: neumann.phone,
+        },
+      },
+    ];
+  }
+
   function seedDriverNotifications() {
     return [
       {
@@ -2748,7 +2858,7 @@ window.AuthStore = (() => {
   }
   let driverNotifications = seedDriverNotifications();
   let adminEmailQueue = seedAdminEmailQueue();
-  let masterDataChangeRequests = [];
+  let masterDataChangeRequests = seedMasterDataChangeRequests();
   // Phase 7: service-partner onboarding documents — a separate system from
   // tourDocuments (which is tour-scoped), since these belong to the partner
   // itself (business registration, licence, ID), not to any one tour.
@@ -3584,14 +3694,37 @@ window.AuthStore = (() => {
    */
   const PDF_RELEVANT_FIELDS = new Set([
     "customer",
-    "pickupCompany", "pickupAddress", "pickupPostal", "pickupCity",
-    "pickupCountry", "pickupContact", "pickupPhone", "pickupAltContact",
-    "pickupEmail", "pickupNotes", "pickupDate", "pickupWindow",
-    "deliveryCompany", "deliveryAddress", "deliveryPostal", "deliveryCity",
-    "deliveryCountry", "deliveryContact", "deliveryPhone", "deliveryAltContact",
-    "deliveryEmail", "deliveryNotes", "deliveryDate", "deliveryWindow",
-    "vehicleType", "manufacturer", "vehicleModel", "plate", "vin",
-    "transportType", "registrationStatus",
+    "pickupCompany",
+    "pickupAddress",
+    "pickupPostal",
+    "pickupCity",
+    "pickupCountry",
+    "pickupContact",
+    "pickupPhone",
+    "pickupAltContact",
+    "pickupEmail",
+    "pickupNotes",
+    "pickupDate",
+    "pickupWindow",
+    "deliveryCompany",
+    "deliveryAddress",
+    "deliveryPostal",
+    "deliveryCity",
+    "deliveryCountry",
+    "deliveryContact",
+    "deliveryPhone",
+    "deliveryAltContact",
+    "deliveryEmail",
+    "deliveryNotes",
+    "deliveryDate",
+    "deliveryWindow",
+    "vehicleType",
+    "manufacturer",
+    "vehicleModel",
+    "plate",
+    "vin",
+    "transportType",
+    "registrationStatus",
     "driverOffer",
     "notesDriver",
   ]);
@@ -3786,7 +3919,9 @@ window.AuthStore = (() => {
       doc.generatedBy,
       job.tour,
       `${doc.title} ${doc.fileName} · version v${version} · revision ${revision}` +
-        (doc.changedFields.length ? ` · changed: ${doc.changedFields.join(", ")}` : ""),
+        (doc.changedFields.length
+          ? ` · changed: ${doc.changedFields.join(", ")}`
+          : ""),
       {
         entityType: "transport_order_pdf",
         entityId: doc.id,
@@ -3814,7 +3949,9 @@ window.AuthStore = (() => {
           tour: job.tour,
           documentId: doc.id,
           title: t2("notifTransportOrderPdfUpdatedTitle", { tour: job.tour }),
-          body: t2("notifTransportOrderPdfUpdatedBody", { version: `v${version}` }),
+          body: t2("notifTransportOrderPdfUpdatedBody", {
+            version: `v${version}`,
+          }),
           driverId: dr.id,
         });
       }
@@ -3849,7 +3986,13 @@ window.AuthStore = (() => {
     // for no one in Europe/Berlin — but these stamps ARE Berlin wall-clock, so
     // they are anchored as such via the UTC offset the renderer applies.
     return new Date(
-      Date.UTC(2026, Number(m[2]) - 1, Number(m[1]), Number(m[3]) - 2, Number(m[4])),
+      Date.UTC(
+        2026,
+        Number(m[2]) - 1,
+        Number(m[1]),
+        Number(m[3]) - 2,
+        Number(m[4]),
+      ),
     ).toISOString();
   }
 
@@ -3864,7 +4007,10 @@ window.AuthStore = (() => {
       if (!job.bookedAt) job.bookedAt = seededBookingInstant(job);
       const before = auditLog.length;
       generateTransportOrderPdf(job.id, {
-        trigger: job.status === "accepted" ? "marketplace_acceptance" : "direct_assignment",
+        trigger:
+          job.status === "accepted"
+            ? "marketplace_acceptance"
+            : "direct_assignment",
         actor: "System (seed)",
       });
       // Seeding must not pollute the audit log the admin console shows.
@@ -3880,14 +4026,57 @@ window.AuthStore = (() => {
   }
 
   /**
-   * Returns a known distance for a pickup/delivery postal-code pair, or null
-   * when the pair isn't recognised. Never fabricates a placeholder number —
-   * callers must treat null as "not yet calculated", not fall back to a guess.
+   * Prototype-only postal-code approximation. The real system resolves the
+   * distance through the routing provider; the prototype has no network, so
+   * an unknown postal-code pair is approximated from the numeric distance
+   * between the two German PLZ instead of rendering an empty value. The
+   * result is deterministic (same pair -> same km) so demo screens stay
+   * stable, and it is always labelled as an approximation in the UI.
+   */
+  function approximateDistanceKm(a, b) {
+    const pa = Number(String(a).replace(/\D/g, ""));
+    const pb = Number(String(b).replace(/\D/g, ""));
+    if (!Number.isFinite(pa) || !Number.isFinite(pb)) return null;
+    if (pa === pb) return 12;
+    const km = Math.round(45 + Math.abs(pa - pb) * 0.0078);
+    return Math.min(900, Math.max(15, km));
+  }
+
+  /**
+   * Returns the distance for a pickup/delivery postal-code pair: the known
+   * route table first, otherwise the postal-code approximation above. Null is
+   * returned only when one of the postal codes is missing — that is the single
+   * "cannot be calculated" case the UI must communicate. Callers that need to
+   * tell an exact value from an approximation use `estimateDistanceDetail`.
    */
   function estimateDistanceKm(job) {
     if (!job) return null;
     const key = distanceKey(job);
-    return key && DISTANCE_TABLE[key] ? DISTANCE_TABLE[key] : null;
+    if (key && DISTANCE_TABLE[key]) return DISTANCE_TABLE[key];
+    if (!key) return null;
+    return approximateDistanceKm(
+      job.pickup?.postalCode,
+      job.delivery?.postalCode,
+    );
+  }
+
+  /**
+   * Same calculation as `estimateDistanceKm`, plus the provenance the UI needs
+   * to decide between "585 km" (exact) and "~ 232 km (estimated)".
+   * `source` is one of: "table" | "approximation" | "unavailable".
+   */
+  function estimateDistanceDetail(job) {
+    const key = job ? distanceKey(job) : "";
+    if (!key) return { km: null, source: "unavailable" };
+    if (DISTANCE_TABLE[key])
+      return { km: DISTANCE_TABLE[key], source: "table" };
+    const km = approximateDistanceKm(
+      job.pickup?.postalCode,
+      job.delivery?.postalCode,
+    );
+    return km == null
+      ? { km: null, source: "unavailable" }
+      : { km, source: "approximation" };
   }
 
   function hasValidAddressPair(job) {
@@ -6659,16 +6848,24 @@ window.AuthStore = (() => {
         typeof jobOrId === "object"
           ? jobOrId
           : jobs.find((x) => x.id === jobOrId);
-      if (!j) return { ok: false, km: 0 };
-      const km = estimateDistanceKm(j);
-      const key = distanceKey(j);
-      const source =
-        key && DISTANCE_TABLE[key]
-          ? "table"
-          : j?.pickup?.postalCode && j?.delivery?.postalCode
-            ? "heuristic"
-            : "unknown";
-      return { ok: true, km, source };
+      if (!j) return { ok: false, km: null, source: "unavailable" };
+      const { km, source } = estimateDistanceDetail(j);
+      return { ok: km != null, km, source };
+    },
+
+    /**
+     * Display helper: the distance to render for a job. Prefers the stored
+     * value, falls back to the postal-code approximation, and reports which
+     * one it used so the UI never has to render an empty distance.
+     */
+    resolveDisplayDistance(jobOrId) {
+      const j =
+        typeof jobOrId === "object"
+          ? jobOrId
+          : jobs.find((x) => x.id === jobOrId);
+      if (!j) return { km: null, source: "unavailable" };
+      if (j.distanceKm) return { km: j.distanceKm, source: "stored" };
+      return estimateDistanceDetail(j);
     },
 
     estimateDistanceFromForm(form) {
@@ -6678,9 +6875,8 @@ window.AuthStore = (() => {
       if (!pickup || !delivery) {
         return { ok: false, reason: "postal_codes_required" };
       }
-      const km = estimateDistanceKm(jobLike);
-      const key = distanceKey(jobLike);
-      const source = key && DISTANCE_TABLE[key] ? "table" : "heuristic";
+      const { km, source } = estimateDistanceDetail(jobLike);
+      if (km == null) return { ok: false, reason: "postal_codes_required" };
       return { ok: true, km, source };
     },
 
@@ -7056,10 +7252,19 @@ window.AuthStore = (() => {
       if (!changedFields.length) return { ok: false, reason: "no_changes" };
       const who = d.name || DEMO_DRIVER;
       const reqId = `MDR-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      // Derive changeType from which fields changed — matches master_data_change_type enum
-      const changeType = changedFields.includes("address")
-        ? "address"
-        : "contact";
+      // Derive changeType from which fields changed — matches BE
+      // MasterDataChangeRequestPolicy (multi-category → other).
+      const categories = new Set(
+        changedFields.map((k) =>
+          k === "company"
+            ? "company_name"
+            : k === "address"
+              ? "address"
+              : "contact",
+        ),
+      );
+      const changeType =
+        categories.size > 1 ? "other" : [...categories][0] || "other";
       const row = {
         id: reqId,
         driverId: d.id,
@@ -9677,7 +9882,7 @@ window.AuthStore = (() => {
       }
       driverNotifications = seedDriverNotifications();
       adminEmailQueue = seedAdminEmailQueue();
-      masterDataChangeRequests = [];
+      masterDataChangeRequests = seedMasterDataChangeRequests();
       transportOrderDocuments = [];
       for (const j of jobs) {
         j.paymentStatus = normalizePaymentStatus(j.paymentStatus);

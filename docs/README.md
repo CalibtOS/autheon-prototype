@@ -9,6 +9,7 @@
 - [`database/`](database/) contains the production database design draft and DBML schema.
 - [`requirements/prd-client-source-validation.md`](requirements/prd-client-source-validation.md) and [`requirements/prd-prototype-validation.md`](requirements/prd-prototype-validation.md) record validation evidence.
 - [`requirements/transport-order-pdf-traceability.md`](requirements/transport-order-pdf-traceability.md) maps the transport-order PDF requirements to code, tests and the open blockers (PRD v2.26, Task 17).
+- [`requirements/job-attachment-size-limits-sign-off.md`](requirements/job-attachment-size-limits-sign-off.md) records the client sign-off items for job attachment size limits (PRD v2.32) — two upload areas, label wording, and the prototype-only per-receipt amount walk.
 - [`research/client-feedback-comparison.md`](research/client-feedback-comparison.md) maps the client feedback to the PRD and prototype.
 
 ## Historical documents

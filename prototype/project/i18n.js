@@ -527,13 +527,20 @@ window.I18n = (() => {
         "Submitted {date}. Operations will review your request before you can send another.",
       navMasterDataRequests: "Profile change requests",
       adminMdrTitle: "Profile change requests",
+      // Keep this concise so the queue subtitle stays scannable above the status
+      // filter and action details remain in the review pane.
       adminMdrSub:
-        "Review proposed driver profile changes. Approving applies the submitted values automatically; rejecting closes the request without changes.",
+        "Review requested master-data updates across all service partners.",
+      adminMdrFilterLabel: "Status",
       adminMdrFilterOpen: "Open",
       adminMdrFilterApproved: "Approved",
       adminMdrFilterRejected: "Rejected",
       adminMdrFilterAll: "All",
       adminMdrEmpty: "No requests in this filter.",
+      adminMdrEmptyHint: "Try a different status filter to see other requests.",
+      adminMdrShowingRange: "Showing {from}-{to} of {total}",
+      adminMdrPagerPrev: "Previous",
+      adminMdrPagerNext: "Next",
       adminMdrStatusOpen: "Open",
       adminMdrStatusApproved: "Approved",
       adminMdrStatusRejected: "Rejected",
@@ -551,6 +558,7 @@ window.I18n = (() => {
       adminMdrNoFieldChanges: "No field changes",
       adminMdrSnapshot: "Data at time of request",
       adminMdrAdminNote: "Resolution note (optional)",
+      adminMdrAdminNoteResolved: "Resolution note",
       adminMdrAdminNotePh: "Note to the driver, e.g. why rejected…",
       adminMdrApproveHint:
         "Approve applies the proposed values and closes the request. Reject closes without saving.",
@@ -669,8 +677,10 @@ window.I18n = (() => {
         "{remaining} initial booking slot(s) remaining before you must complete Performed tours",
       driverProbationProfileAtLimit:
         "Initial booking allowance used — complete Performed tours to be released",
+      masterDataChangeType_company_name: "Company name change",
       masterDataChangeType_address: "Address change",
       masterDataChangeType_contact: "Contact change",
+      masterDataChangeType_other: "Mixed change",
       masterDataChangeType_daily_limit_override:
         "Daily job limit increase (legacy)",
       usersDesc: "Manage dispatcher accounts and driver profiles.",
@@ -1010,7 +1020,8 @@ window.I18n = (() => {
       adminInactivityTitle: "Automatic deactivation",
       adminInactivityBlurb:
         "Service partners who stop using the platform are set to Inactive automatically. They can no longer see the marketplace or accept tours, and any admin can reactivate them at any time. Partners with tours still running are always skipped.",
-      adminInactivityEnabled: "Deactivate inactive service partners automatically",
+      adminInactivityEnabled:
+        "Deactivate inactive service partners automatically",
       adminInactivityThreshold: "Deactivate after (days without activity)",
       adminInactivityWarning: "Warn this many days beforehand",
       adminInactivityWarningHelp:
@@ -1634,6 +1645,8 @@ window.I18n = (() => {
       route: "Route",
       distance: "Distance",
       distanceNotYetCalculated: "Distance not yet calculated",
+      distanceApprox: "~ {km} km (estimated)",
+      distanceEstimatedLabel: "Estimated from postal codes",
       schedule: "Schedule",
       type: "Type",
       details: "Details",
@@ -1670,7 +1683,7 @@ window.I18n = (() => {
       driverCode: "driver-id",
       driverStatusActive: "Active",
       profileMasterData: "Read-only master data",
-      company: "Company",
+      company: "Company name",
       address: "Address",
       email: "Email",
       phone: "Phone",
@@ -2731,12 +2744,18 @@ window.I18n = (() => {
       navMasterDataRequests: "Profiländerungen",
       adminMdrTitle: "Profiländerungs-Anfragen",
       adminMdrSub:
-        "Vorgeschlagene Driver-Profiländerungen prüfen. Genehmigen übernimmt die Werte automatisch; Ablehnen schließt die Anfrage ohne Änderung.",
+        "Prüfen Sie angeforderte Stammdatenänderungen aller Servicepartner.",
+      adminMdrFilterLabel: "Status",
       adminMdrFilterOpen: "Offen",
       adminMdrFilterApproved: "Genehmigt",
       adminMdrFilterRejected: "Abgelehnt",
       adminMdrFilterAll: "Alle",
       adminMdrEmpty: "Keine Anfragen in diesem Filter.",
+      adminMdrEmptyHint:
+        "Wählen Sie einen anderen Statusfilter, um weitere Anfragen zu sehen.",
+      adminMdrShowingRange: "Zeige {from}-{to} von {total}",
+      adminMdrPagerPrev: "Zurück",
+      adminMdrPagerNext: "Weiter",
       adminMdrStatusOpen: "Offen",
       adminMdrStatusApproved: "Genehmigt",
       adminMdrStatusRejected: "Abgelehnt",
@@ -2754,6 +2773,7 @@ window.I18n = (() => {
       adminMdrNoFieldChanges: "Keine Feldänderungen",
       adminMdrSnapshot: "Daten zum Zeitpunkt der Anfrage",
       adminMdrAdminNote: "Hinweis zur Entscheidung (optional)",
+      adminMdrAdminNoteResolved: "Hinweis zur Entscheidung",
       adminMdrAdminNotePh: "Hinweis an den Fahrer, z. B. Ablehnungsgrund…",
       adminMdrApproveHint:
         "Genehmigen übernimmt die vorgeschlagenen Werte und schließt die Anfrage. Ablehnen ohne Speichern.",
@@ -2875,8 +2895,10 @@ window.I18n = (() => {
         "Noch {remaining} initiale Buchungsplätze, danach müssen Touren durchgeführt sein",
       driverProbationProfileAtLimit:
         "Initiale Buchungsanzahl erreicht — schließen Sie Durchgeführt-Touren ab zur Freigabe",
+      masterDataChangeType_company_name: "Firmennamensänderung",
       masterDataChangeType_address: "Adressänderung",
       masterDataChangeType_contact: "Kontaktänderung",
+      masterDataChangeType_other: "Gemischte Änderung",
       masterDataChangeType_daily_limit_override: "Erhöhung Tageslimit (Alt)",
       usersDesc: "Verwalte Dispatcher-Konten und Fahrerprofile.",
       driversDesc:
@@ -3142,7 +3164,8 @@ window.I18n = (() => {
       // Formulierung wird in der Admin-Konsole wortgleich wiederverwendet.
       adminAuditRetentionAction:
         "Audit-Ereignisse älter als {days} Tage löschen",
-      adminAuditRetentionTitle: "Audit-Ereignisse älter als {days} Tage löschen",
+      adminAuditRetentionTitle:
+        "Audit-Ereignisse älter als {days} Tage löschen",
       adminAuditRetentionCount_one:
         "1 Audit-Ereignis wurde vor dem {cutoff} aufgezeichnet und wird endgültig gelöscht.",
       adminAuditRetentionCount_other:
@@ -3213,7 +3236,8 @@ window.I18n = (() => {
       adminInactivityTitle: "Automatische Deaktivierung",
       adminInactivityBlurb:
         "Servicepartner, die die Plattform nicht mehr nutzen, werden automatisch auf Inaktiv gesetzt. Sie sehen dann den Marktplatz nicht mehr und können keine Touren annehmen; jede Administratorin und jeder Administrator kann sie jederzeit wieder aktivieren. Partner mit laufenden Touren werden immer übersprungen.",
-      adminInactivityEnabled: "Inaktive Servicepartner automatisch deaktivieren",
+      adminInactivityEnabled:
+        "Inaktive Servicepartner automatisch deaktivieren",
       adminInactivityThreshold: "Deaktivieren nach (Tagen ohne Aktivität)",
       adminInactivityWarning: "So viele Tage vorher warnen",
       adminInactivityWarningHelp:
@@ -3825,6 +3849,8 @@ window.I18n = (() => {
       route: "Route",
       distance: "Distanz",
       distanceNotYetCalculated: "Distanz noch nicht berechnet",
+      distanceApprox: "~ {km} km (geschätzt)",
+      distanceEstimatedLabel: "Aus Postleitzahlen geschätzt",
       schedule: "Zeitplan",
       type: "Typ",
       details: "Details",
@@ -3863,7 +3889,7 @@ window.I18n = (() => {
       driverCode: "Fahrer-ID",
       driverStatusActive: "Aktiv",
       profileMasterData: "Stammdaten (nur lesbar)",
-      company: "Firma",
+      company: "Firmenname",
       address: "Adresse",
       email: "E-Mail",
       phone: "Telefon",

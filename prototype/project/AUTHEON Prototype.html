@@ -539,6 +539,10 @@
         }, [section]);
 
         const clearBillingNav = () => setBillingNav(null);
+        // Deep-link into the MDR queue from the notification feed. Cleared when
+        // leaving Service Partners and once the queue has consumed the id —
+        // otherwise sticky state re-opens the second tab and can show a
+        // resolved detail beside an empty Open filter.
         const openMasterDataRequest = (requestId) => {
           setSelectedMdrId(requestId || "");
           setSection("drivers");
@@ -547,6 +551,10 @@
           setSelectedDriverId(driverId || "");
           setSection("drivers");
         };
+        const clearMasterDataRequest = () => setSelectedMdrId(null);
+        useEffect(() => {
+          if (section !== "drivers") clearMasterDataRequest();
+        }, [section]);
         const closeAssignDialog = () => setAssignDialog(null);
 
         const runRevertToDraft = (jobId, overrideNote) => {
@@ -1224,6 +1232,7 @@
               showToast={showToast}
               initialRequestId={selectedMdrId}
               initialDriverId={selectedDriverId}
+              onClearInitialRequest={clearMasterDataRequest}
               onOpenJob={(j) => {
                 setActiveJob(j);
                 setSection("detail");

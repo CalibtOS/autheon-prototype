@@ -1,6 +1,8 @@
 # AUTHEON database logical model
 
-> **Status override:** Updated 2026-08-05 - PRD v2.32-feed-redesign / Task 33: Dispatch Notification
+> **Status override:** Updated 2026-08-05 - PRD v2.34-feed-redesign / Task 33 (renumbered from v2.32
+> — main independently claimed v2.32 for an unrelated job-attachment-size-limits change that landed
+> first): Dispatch Notification
 > Feed table redesign — renamed and extended the columns the entry directly below this one just added,
 > same day. **`user_notifications.status`'s `notification_status` enum values are renamed** `open` →
 > `unread`, `processed` → `read` (a naming change only — the underlying rule is unchanged: status flips
@@ -18,7 +20,8 @@
 > `notification_type` values, the severity enum, and the `app_settings` cutoff-time field from the entry
 > below are unaffected by this rename.
 
-> **Status override:** Updated 2026-08-05 - PRD v2.32 / Task 33: Dispatch Notification Feed — admin
+> **Status override:** Updated 2026-08-05 - PRD v2.34 / Task 33 (renumbered from v2.32, same reason as
+> the entry above): Dispatch Notification Feed — admin
 > severity, explicit open/processed lifecycle, and three new schedule-driven `notification_type` values.
 > **Added `user_notifications.severity`** (new `notification_severity` enum: `red` / `orange` / `gray`)
 > **and `.status`** (new `notification_status` enum: `open` / `processed`, default `open`) **plus

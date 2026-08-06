@@ -39,6 +39,23 @@ const ADMIN_TOUR_DOC_TYPES = [
 // per-customer or per-transport-type expected-document configuration.
 const EXPECTED_TOUR_DOC_TYPES = ["delivery_note", "invoice"];
 
+// A distance cell must never render an empty value. The stored distance wins;
+// otherwise the postal-code approximation is shown, explicitly marked as an
+// estimate. Only a missing postal-code pair yields "not yet calculated" — in
+// the real system that is also the state a failed routing-provider call falls
+// back to, see docs/requirements/distance-estimation-api-contract.md.
+const displayDistance = (job, t) => {
+  const r = AuthStore.resolveDisplayDistance(job);
+  if (r.km == null)
+    return { km: null, approx: false, text: t("distanceNotYetCalculated") };
+  const approx = r.source === "approximation";
+  return {
+    km: r.km,
+    approx,
+    text: approx ? t("distanceApprox", { km: r.km }) : `${r.km} km`,
+  };
+};
+
 const displayTourDocType = (type, t) => {
   const code = AuthStore.normalizeTourDocumentType(type);
   return (
@@ -2191,7 +2208,8 @@ const AdminDetail = ({
   // Transport-order PDF (Task 17): the active document drives the card, the
   // full immutable history drives the version list.
   const transportOrderDocs = store.getTransportOrderDocuments(job.id);
-  const activeTransportOrderDoc = transportOrderDocs.find((d) => d.isActive) || null;
+  const activeTransportOrderDoc =
+    transportOrderDocs.find((d) => d.isActive) || null;
   const [pdfPreview, setPdfPreview] = useStateA(null);
   return (
     <>
@@ -2268,10 +2286,7 @@ const AdminDetail = ({
             }}
           >
             {job.startPlz} {job.startCity} → {job.endPlz} {job.endCity} ·{" "}
-            {job.distanceKm
-              ? `${job.distanceKm} km`
-              : t("distanceNotYetCalculated")}{" "}
-            ·{" "}
+            {displayDistance(job, t).text} ·{" "}
             {AuthStore.schedulesOnDifferentDays(job)
               ? `${AuthStore.formatLocationSchedule(job.pickup, t("flexible"))} → ${AuthStore.formatLocationSchedule(job.delivery, t("flexible"))}`
               : AuthStore.formatLocationSchedule(job.pickup, t("flexible"))}
@@ -2418,30 +2433,48 @@ const AdminDetail = ({
                   }}
                   className="tnum"
                 >
-                  {job.distanceKm ? (
-                    <>
-                      {job.distanceKm}
-                      <span
-                        style={{
-                          fontSize: 14,
-                          color: "var(--muted)",
-                          marginLeft: 4,
-                        }}
-                      >
-                        km
-                      </span>
-                    </>
-                  ) : (
-                    <span
-                      style={{
-                        fontSize: 16,
-                        fontWeight: 400,
-                        color: "var(--muted)",
-                      }}
-                    >
-                      {t("distanceNotYetCalculated")}
-                    </span>
-                  )}
+                  {(() => {
+                    const d = displayDistance(job, t);
+                    if (d.km == null)
+                      return (
+                        <span
+                          style={{
+                            fontSize: 16,
+                            fontWeight: 400,
+                            color: "var(--muted)",
+                          }}
+                        >
+                          {d.text}
+                        </span>
+                      );
+                    return (
+                      <>
+                        {d.approx ? "~ " : ""}
+                        {d.km}
+                        <span
+                          style={{
+                            fontSize: 14,
+                            color: "var(--muted)",
+                            marginLeft: 4,
+                          }}
+                        >
+                          km
+                        </span>
+                        {d.approx ? (
+                          <div
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 400,
+                              color: "var(--muted)",
+                              marginTop: 2,
+                            }}
+                          >
+                            {t("distanceEstimatedLabel")}
+                          </div>
+                        ) : null}
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="label" style={{ marginTop: 24 }}>
                   {t("schedule")}
@@ -5380,6 +5413,7 @@ const ServicePartnersCenterPane = ({
   showToast,
   initialRequestId,
   initialDriverId,
+  onClearInitialRequest,
   onOpenJob,
 }) => {
   const { t } = useI18n();
@@ -5418,6 +5452,7 @@ const ServicePartnersCenterPane = ({
         <MasterDataRequestsPane
           showToast={showToast}
           initialRequestId={initialRequestId}
+          onClearInitialRequest={onClearInitialRequest}
           onOpenJob={onOpenJob}
         />
       )}
@@ -10626,7 +10661,9 @@ const AuditPane = ({ showToast }) => {
           <button
             type="button"
             className="btn danger"
-            onClick={() => setRetentionPreview(store.getAuditRetentionPreview())}
+            onClick={() =>
+              setRetentionPreview(store.getAuditRetentionPreview())
+            }
           >
             {t("adminAuditRetentionAction", { days: retentionDays })}
           </button>
@@ -10845,6 +10882,20 @@ const MASTER_DATA_CHANGE_FIELDS = [
   ["phone", "phone"],
 ];
 
+/** Queue/detail title — company like the admin FE partner label, not contact name. */
+const mdrPartnerLabel = (row, store) => {
+  const live = row?.driverId
+    ? store?.getDrivers?.()?.find((d) => d.id === row.driverId)?.company
+    : "";
+  return (
+    live ||
+    row?.snapshot?.company ||
+    row?.proposed?.company ||
+    row?.driverName ||
+    "—"
+  );
+};
+
 const mdrFieldsForRow = (row) =>
   row?.changeType === "daily_limit_override"
     ? [["dailyJobLimit", "adminUsersFieldProbationLimit"]]
@@ -10879,9 +10930,9 @@ const MasterDataChangeListChips = ({ row, t }) => {
     );
   }
   return (
-    <div className="mdr-list-changes">
+    <div className="queue-list-changes">
       {changed.map(([key, labelKey]) => (
-        <span key={key} className="mdr-list-chip on">
+        <span key={key} className="queue-list-chip on">
           {t(labelKey)}
         </span>
       ))}
@@ -10909,11 +10960,11 @@ const MasterDataCompareTable = ({
       return (
         <div
           key={key}
-          className={`mdr-compare-row${changed ? " is-changed" : ""}`}
+          className={`compare-table-row${changed ? " is-changed" : ""}`}
         >
-          <div className="mdr-compare-cell label">{t(labelKey)}</div>
-          <div className="mdr-compare-cell before">{before || "—"}</div>
-          <div className="mdr-compare-cell after">{after || "—"}</div>
+          <div className="compare-table-cell label">{t(labelKey)}</div>
+          <div className="compare-table-cell before">{before || "—"}</div>
+          <div className="compare-table-cell after">{after || "—"}</div>
         </div>
       );
     })
@@ -10922,8 +10973,8 @@ const MasterDataCompareTable = ({
     return <div style={{ color: "var(--muted)", fontSize: 13 }}>—</div>;
   }
   return (
-    <div className="mdr-compare">
-      <div className="mdr-compare-header">
+    <div className="compare-table">
+      <div className="compare-table-header">
         <span>{t("adminMdrCompareField")}</span>
         <span>{t("adminMdrCompareBefore")}</span>
         <span>{t("adminMdrCompareAfter")}</span>
@@ -10933,22 +10984,185 @@ const MasterDataCompareTable = ({
   );
 };
 
-const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
+/**
+ * Compact page list, mirroring the admin app's `getPaginationItems`:
+ * `1 … 4 5 6 … 20`. Up to 7 pages every number is shown.
+ */
+const queuePageItems = (page, totalPages) => {
+  const safeTotal = Math.max(1, totalPages);
+  const current = Math.min(Math.max(1, page), safeTotal);
+  if (safeTotal <= 7) {
+    return Array.from({ length: safeTotal }, (_, i) => i + 1);
+  }
+  const items = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(safeTotal - 1, current + 1);
+  if (start > 2) items.push("ellipsis");
+  for (let p = start; p <= end; p += 1) items.push(p);
+  if (end < safeTotal - 1) items.push("ellipsis");
+  items.push(safeTotal);
+  return items;
+};
+
+/**
+ * Queue footer for the change-request list.
+ *
+ * Deliberately not `OverviewFooter`: that one is built for the full-width
+ * overview table (it never wraps, and hardcodes page buttons 1/2/3) so it looked
+ * squeezed and behaved differently inside this narrower card. This mirrors the
+ * admin app's `Pagination` — summary on the left, rows-per-page plus a windowed
+ * pager on the right — using only existing prototype classes.
+ */
+const ChangeRequestQueueFooter = ({
+  total,
+  page,
+  rows,
+  onPageChange,
+  onRowsChange,
+}) => {
+  const { t } = useI18n();
+  const totalPages = Math.max(1, Math.ceil(total / Math.max(1, rows)));
+  const current = Math.min(Math.max(1, page), totalPages);
+  const from = total === 0 ? 0 : (current - 1) * rows + 1;
+  const to = Math.min(current * rows, total);
+
+  return (
+    <div
+      className="admin-foot"
+      style={{ flexWrap: "wrap", justifyContent: "space-between" }}
+    >
+      <span className="label">
+        {t("adminMdrShowingRange", { from, to, total })}
+      </span>
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 14,
+          flexWrap: "wrap",
+        }}
+      >
+        <span className="label">{t("rowsPerPage")}</span>
+        <select
+          className="input"
+          style={{ width: 74 }}
+          value={rows}
+          onChange={(e) => onRowsChange(Number(e.target.value))}
+        >
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
+        <div style={{ display: "inline-flex", gap: 4 }}>
+          <button
+            type="button"
+            className="btn icon sm"
+            disabled={current <= 1}
+            aria-label={t("adminMdrPagerPrev")}
+            onClick={() => onPageChange(current - 1)}
+          >
+            ‹
+          </button>
+          {queuePageItems(current, totalPages).map((item, index) =>
+            item === "ellipsis" ? (
+              <span
+                key={`gap-${index}`}
+                aria-hidden="true"
+                style={{ padding: "0 6px", color: "var(--muted)" }}
+              >
+                …
+              </span>
+            ) : (
+              <button
+                key={item}
+                type="button"
+                className={item === current ? "btn xs primary" : "btn xs"}
+                style={{ minWidth: 30 }}
+                aria-current={item === current ? "page" : undefined}
+                onClick={() => onPageChange(item)}
+              >
+                {item}
+              </button>
+            ),
+          )}
+          <button
+            type="button"
+            className="btn icon sm"
+            disabled={current >= totalPages}
+            aria-label={t("adminMdrPagerNext")}
+            onClick={() => onPageChange(current + 1)}
+          >
+            ›
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MasterDataRequestsPane = ({
+  showToast,
+  initialRequestId,
+  onClearInitialRequest,
+}) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [filter, setFilter] = useStateA("open");
   const [selectedId, setSelectedId] = useStateA(initialRequestId || "");
   const [adminNote, setAdminNote] = useStateA("");
+  const [page, setPage] = useStateA(1);
+  // 20 to match the admin app's queue page size, not the 25 the overview uses.
+  const [rowsPerPage, setRowsPerPage] = useStateA(20);
 
+  // Deep-link: select the request, jump the filter to its status (so an
+  // approved id never sits under Open), then clear the parent sticky id so
+  // remounts / later Service Partners visits do not reopen this tab.
   useEffectA(() => {
-    if (initialRequestId) setSelectedId(initialRequestId);
+    if (!initialRequestId) return;
+    const row = store.getMasterDataChangeRequest(initialRequestId);
+    if (row) {
+      setSelectedId(row.id);
+      if (
+        row.status === "open" ||
+        row.status === "approved" ||
+        row.status === "rejected"
+      ) {
+        setFilter(row.status);
+        setPage(1);
+      }
+    } else {
+      setSelectedId(initialRequestId);
+    }
+    onClearInitialRequest?.();
   }, [initialRequestId]);
 
-  const rows = store.listMasterDataChangeRequests(
+  const allRows = store.listMasterDataChangeRequests(
     filter === "all" ? {} : { status: filter },
   );
+  // Per-status counts so the reviewer can see the size of the backlog without
+  // clicking each filter to find out what is in it.
+  const statusCounts = {
+    open: store.listMasterDataChangeRequests({ status: "open" }).length,
+    approved: store.listMasterDataChangeRequests({ status: "approved" }).length,
+    rejected: store.listMasterDataChangeRequests({ status: "rejected" }).length,
+  };
+  statusCounts.all =
+    statusCounts.open + statusCounts.approved + statusCounts.rejected;
+  // The production queue is paginated server-side; page the mock list so the
+  // footer, the result count and the reset-to-page-1 behaviour all match.
+  const totalPages = Math.max(
+    1,
+    Math.ceil(allRows.length / Math.max(1, rowsPerPage)),
+  );
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const rows = allRows.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage,
+  );
+  // Only show a detail pane for requests visible under the active filter —
+  // looking up by id alone caused empty Open + resolved detail side-by-side.
   const selected =
-    store.getMasterDataChangeRequest(selectedId) ||
+    allRows.find((r) => r.id === selectedId) ||
     rows.find((r) => r.id === selectedId) ||
     null;
 
@@ -10977,37 +11191,43 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   };
 
   return (
-    <div style={{ maxWidth: 1040 }}>
+    // No width cap — the queue is a work surface, so it fills the pane and the
+    // reviewer gets every pixel the window offers.
+    <div>
+      {/* Match prototype main: pane-lead above a plain status dropdown. */}
       <p className="pane-lead">{t("adminMdrSub")}</p>
-      <div className="seg" style={{ display: "inline-flex", marginBottom: 18 }}>
-        {[
-          ["open", t("adminMdrFilterOpen")],
-          ["approved", t("adminMdrFilterApproved")],
-          ["rejected", t("adminMdrFilterRejected")],
-          ["all", t("adminMdrFilterAll")],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            className={filter === id ? "on" : ""}
-            onClick={() => {
-              setFilter(id);
-              setSelectedId("");
-            }}
-          >
-            {label}
-          </button>
-        ))}
+      <div style={{ marginBottom: 18 }}>
+        <label className="field-label" htmlFor="mdr-status-filter">
+          {t("adminMdrFilterLabel")}
+        </label>
+        <select
+          id="mdr-status-filter"
+          className="input"
+          style={{ width: 260 }}
+          value={filter}
+          onChange={(e) => {
+            setFilter(e.target.value);
+            setPage(1);
+            setSelectedId("");
+          }}
+        >
+          <option value="open">
+            {t("adminMdrFilterOpen")} ({statusCounts.open})
+          </option>
+          <option value="approved">
+            {t("adminMdrFilterApproved")} ({statusCounts.approved})
+          </option>
+          <option value="rejected">
+            {t("adminMdrFilterRejected")} ({statusCounts.rejected})
+          </option>
+          <option value="all">
+            {t("adminMdrFilterAll")} ({statusCounts.all})
+          </option>
+        </select>
       </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: selected ? "1fr 1.1fr" : "1fr",
-          gap: 18,
-          marginTop: 18,
-          alignItems: "start",
-        }}
-      >
+      {/* Single column until a request is selected, and even then only from
+          1280px up — see `.queue-split` for why the width gate is needed. */}
+      <div className={selected ? "queue-split two" : "queue-split"}>
         <section className="card" style={{ padding: 0 }}>
           {rows.length === 0 ? (
             <div
@@ -11017,7 +11237,10 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                 color: "var(--muted)",
               }}
             >
-              {t("adminMdrEmpty")}
+              <div>{t("adminMdrEmpty")}</div>
+              <div className="label" style={{ marginTop: 6 }}>
+                {t("adminMdrEmptyHint")}
+              </div>
             </div>
           ) : (
             rows.map((row) => (
@@ -11043,7 +11266,7 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                 }}
               >
                 <div style={{ fontWeight: 600, fontSize: 14 }}>
-                  {row.driverName}
+                  {mdrPartnerLabel(row, store)}
                 </div>
                 <div
                   className="mono"
@@ -11054,35 +11277,56 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                 <div className="label" style={{ fontSize: 10.5, marginTop: 6 }}>
                   {mdrChangeTypeLabel(row, t)}
                 </div>
-                <MasterDataChangeListChips row={row} t={t} />
-                <Pill
-                  status={
-                    row.status === "open"
-                      ? "assigned"
+                {/* Chips + status on one line — matches the admin FE list row. */}
+                <div className="queue-list-meta">
+                  <MasterDataChangeListChips row={row} t={t} />
+                  <Pill
+                    status={
+                      row.status === "open"
+                        ? "assigned"
+                        : row.status === "approved"
+                          ? "performed"
+                          : "cancelled"
+                    }
+                  >
+                    {row.status === "open"
+                      ? t("adminMdrStatusOpen")
                       : row.status === "approved"
-                        ? "performed"
-                        : "cancelled"
-                  }
-                >
-                  {row.status === "open"
-                    ? t("adminMdrStatusOpen")
-                    : row.status === "approved"
-                      ? t("adminMdrStatusApproved")
-                      : t("adminMdrStatusRejected")}
-                </Pill>
+                        ? t("adminMdrStatusApproved")
+                        : t("adminMdrStatusRejected")}
+                  </Pill>
+                </div>
               </button>
             ))
           )}
+          {/* Queue-specific footer with rows-per-page + windowed page links. */}
+          {allRows.length > 0 ? (
+            <ChangeRequestQueueFooter
+              total={allRows.length}
+              page={currentPage}
+              rows={rowsPerPage}
+              onPageChange={(next) => {
+                setPage(next);
+                setSelectedId("");
+              }}
+              onRowsChange={(next) => {
+                setRowsPerPage(next);
+                setPage(1);
+                setSelectedId("");
+              }}
+            />
+          ) : null}
         </section>
         {selected ? (
           <section className="card" style={{ padding: 22 }}>
-            <h2 className="dialog-title">{selected.driverName}</h2>
+            <h2 className="dialog-title" style={{ textAlign: "left" }}>
+              {mdrPartnerLabel(selected, store)}
+            </h2>
             <p
               className="mono"
-              style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}
+              style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 0" }}
             >
-              {t("driverCode")}: {selected.driverCode || "—"} ·{" "}
-              {selected.createdAt}
+              {selected.driverCode || "—"} · {selected.createdAt}
             </p>
             <div className="label" style={{ fontSize: 11, marginTop: 8 }}>
               {mdrChangeTypeLabel(selected, t)}
@@ -11149,7 +11393,7 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
               </>
             ) : null}
             {selected.status === "open" ? (
-              <div className="mdr-detail-actions">
+              <div className="queue-detail-actions">
                 <label className="field-label">{t("adminMdrAdminNote")}</label>
                 <textarea
                   className="input"
@@ -11207,7 +11451,14 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
                   {t("adminMdrResolvedAt")}: {selected.resolvedAt || "—"}
                 </div>
                 {selected.adminNote ? (
-                  <div style={{ marginTop: 8 }}>{selected.adminNote}</div>
+                  <div style={{ marginTop: 8 }}>
+                    <div className="field-label">
+                      {t("adminMdrAdminNoteResolved")}
+                    </div>
+                    <div style={{ marginTop: 6, lineHeight: 1.5 }}>
+                      {selected.adminNote}
+                    </div>
+                  </div>
                 ) : null}
               </div>
             )}
@@ -11878,9 +12129,7 @@ const isPolicyNumberValid = (current, max = Number.POSITIVE_INFINITY) => {
   if (trimmed === "") return false;
   const parsed = Number(trimmed);
   return (
-    Number.isInteger(parsed) &&
-    parsed >= MIN_POLICY_NUMBER &&
-    parsed <= max
+    Number.isInteger(parsed) && parsed >= MIN_POLICY_NUMBER && parsed <= max
   );
 };
 
@@ -12757,9 +13006,7 @@ const DriverUploadLimitsForm = ({ showToast }) => {
   // Cross-field rule: only meaningful once both fields are individually
   // valid — otherwise the field's own message is the actionable one.
   const isTotalBelowFile =
-    isMaxFileValid &&
-    isMaxTotalValid &&
-    Number(maxTotalMb) < Number(maxFileMb);
+    isMaxFileValid && isMaxTotalValid && Number(maxTotalMb) < Number(maxFileMb);
 
   const canSave =
     dirty && isMaxFileValid && isMaxTotalValid && !isTotalBelowFile;
@@ -12803,11 +13050,7 @@ const DriverUploadLimitsForm = ({ showToast }) => {
   };
 
   return (
-    <form
-      className="upload-limits-form"
-      onSubmit={save}
-      noValidate
-    >
+    <form className="upload-limits-form" onSubmit={save} noValidate>
       <div className="policy-grid">
         <div className="policy-field">
           <label className="field-label" htmlFor="upload-limits-max-file">

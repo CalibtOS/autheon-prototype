@@ -1,23 +1,23 @@
-# PRD changelog: 2026-08-04 / 2026-08-05 (v2.31 → v2.32)
+# PRD changelog: 2026-08-04 / 2026-08-05 (v2.31 -> v2.34, plus main's independently-numbered v2.33 job-attachment-limits entry)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
 **Canonical file:** `docs/requirements/prd.json`
 
-> **Scope of this file:** the **v2.32** entry, plus its same-release `[v2.32-cutoff-details]` and `[v2.32-feed-redesign]` addenda. Baseline is **v2.31** (Driver/User schema fix + several presentation addenda, 2026-08-01 — see [`../2026-07/prd-changelog-since-2026-07-30.md`](../2026-07/prd-changelog-since-2026-07-30.md)).
+> **Scope of this file:** the **v2.34** entry, plus its same-release `[v2.34-cutoff-details]` and `[v2.34-feed-redesign]` addenda. Baseline is **v2.31** (Driver/User schema fix + several presentation addenda, 2026-08-01 — see [`../2026-07/prd-changelog-since-2026-07-30.md`](../2026-07/prd-changelog-since-2026-07-30.md)).
 
 ---
 
-## v2.32 addendum — Notification feed table redesign, unread/read rename, soft delete (2026-08-05)
+## v2.34 addendum — Notification feed table redesign, unread/read rename, soft delete (2026-08-05)
 
-**Numbering note:** same release as the two entries below (`v2.32` and `[v2.32-cutoff-details]`); this is a same-day `[v2.32-feed-redesign]` addendum, not a new version.
+**Numbering note:** same release as the two entries below (`v2.34` and `[v2.34-cutoff-details]`); this is a same-day `[v2.34-feed-redesign]` addendum, not a new version.
 
-**Baseline:** PRD v2.32 + `[v2.32-cutoff-details]`
+**Baseline:** PRD v2.34 + `[v2.34-cutoff-details]`
 **Source:** an approved visual reference for the admin notification feed, provided directly to engineering 2026-08-05.
-**Type:** UI redesign of the feed introduced by the v2.32 entry below, plus a **data-model rename** (naming change only — the underlying rule is unchanged) and one genuinely new capability (soft delete).
+**Type:** UI redesign of the feed introduced by the v2.34 entry below, plus a **data-model rename** (naming change only — the underlying rule is unchanged) and one genuinely new capability (soft delete).
 **Data model / API:** prototype-only, same as the entry it refines. `docs/database/logical-model.md` and `docs/database/schema.dbml` were both updated for the rename and the new `deleted_at` column — see their own dated Status-override entries.
 
-### 1. Previous behaviour (v2.32, as implemented earlier the same day)
+### 1. Previous behaviour (v2.34, as implemented earlier the same day)
 
 The feed from the entry below already had severity, an explicit status action, and three new trigger types — but as a flat list of cards, not a table: text-chip severity badges ("Critical"/"Warning"/"Info"), no way to select more than one row, no bulk actions, no delete of any kind, and no pagination. `adminEmailQueue` rows used `status: 'open' | 'processed'` with `processedAt`/`processedBy`.
 
@@ -39,7 +39,7 @@ The backend column rename (`processed_at`/`processed_by_user_id` → the obvious
 
 ### 4. What deliberately did NOT change
 
-The three trigger types and their deep links from the v2.32 entry below, the cutoff-time setting from `[v2.32-cutoff-details]`, and every event's severity classification — this pass only changed how the feed is *presented and operated*, not which events fire or how urgent they are.
+The three trigger types and their deep links from the v2.34 entry below, the cutoff-time setting from `[v2.34-cutoff-details]`, and every event's severity classification — this pass only changed how the feed is *presented and operated*, not which events fire or how urgent they are.
 
 ### 5. Open questions carried into production
 
@@ -56,12 +56,12 @@ Multi-select, bulk mark-as-read/delete, and pagination are **not** literal asks 
 | `prototype/project/i18n.js` | ~25 renamed/new EN+DE keys (tabs, bulk-action labels, toasts, column headers, source labels, pagination) |
 | `docs/database/logical-model.md` | New dated Status-override block: enum value rename, column rename + collision note, new `deleted_at` |
 | `docs/database/schema.dbml` | `notification_status` enum values renamed; `user_notifications` columns renamed + `deleted_at` added |
-| `docs/requirements/prd.json` | `version` gains the `[v2.32-feed-redesign]` entry; Task 33 acceptance criteria updated for the rename + a new addendum item for the table redesign; `domain_model_summary.admin_notification_fields` updated |
+| `docs/requirements/prd.json` | `version` gains the `[v2.34-feed-redesign]` entry; Task 33 acceptance criteria updated for the rename + a new addendum item for the table redesign; `domain_model_summary.admin_notification_fields` updated |
 | `docs/archive/2026-08/prd-changelog-since-2026-08-04.md` | This entry |
 
 ---
 
-## PRD v2.32 — Dispatch Notification Feed: admin severity, open/processed lifecycle, three new alert types (2026-08-04/05)
+## PRD v2.34 — Dispatch Notification Feed: admin severity, open/processed lifecycle, three new alert types (2026-08-04/05)
 
 **Baseline:** PRD v2.31
 **Source:** client "Dispatch Notification Feed — Implementation Spec", provided directly to engineering 2026-08-04. Archived (reconstructed from that conversation, not a verbatim original — see open question below) at [`../../requirements/dispatch-notification-feed-spec.md`](../../requirements/dispatch-notification-feed-spec.md).
@@ -106,7 +106,7 @@ None of the three has a real clock to compute against in a client-side prototype
 
 The other three trigger types (SP cancellation, empty-run reported, profile/master-data change request) needed **no new triggering logic at all** — they already fired end-to-end pre-existing. This task added only the severity/status classification layer on top of them.
 
-#### 2.3 Order-not-accepted-cutoff refinement (2026-08-05, same release — `[v2.32-cutoff-details]`)
+#### 2.3 Order-not-accepted-cutoff refinement (2026-08-05, same release — `[v2.34-cutoff-details]`)
 
 Tightened §1 against the client's exact wording after an initial pass used a generic message:
 
@@ -159,7 +159,98 @@ Full detail: [`../../database/logical-model.md`](../../database/logical-model.md
 | `docs/database/schema.dbml` | New `notification_severity`/`notification_status` enums; four new `user_notifications` columns; new FK ref |
 | `docs/requirements/dispatch-notification-feed-spec.md` | New — archived client spec (reconstruction, see open question 1) |
 | `docs/requirements/admin-client-requirements-status.md` | New 2026-08-05 addendum |
-| `docs/requirements/prd.json` | `version` gains the `[PRD v2.32]` entry and the same-release `[v2.32-cutoff-details]` addendum; new **Task 33**; three new `notification_channels_matrix` rows + `severity` on 8 existing admin-feed rows; `admin_notification_feed_v1` and `operational_policies_v1` resolved defaults updated; four new `production_open_questions`; new `admin_notification_schedule_types_v1` prototype assumption; new `admin_notification_fields` domain-model entry |
+| `docs/requirements/prd.json` | `version` gains the `[PRD v2.34]` entry and the same-release `[v2.34-cutoff-details]` addendum; new **Task 33**; three new `notification_channels_matrix` rows + `severity` on 8 existing admin-feed rows; `admin_notification_feed_v1` and `operational_policies_v1` resolved defaults updated; four new `production_open_questions`; new `admin_notification_schedule_types_v1` prototype assumption; new `admin_notification_fields` domain-model entry |
 | `docs/archive/2026-08/prd-changelog-since-2026-08-04.md` | This file |
 
 **Backend (started, not complete — tracked as open production work, not client scope drift):** `@nestjs/schedule` dependency added and registered in `AppModule` (the cron-scheduling foundation for the three new trigger types); local `NotificationSeverity`/`NotificationStatus` domain value objects added under `src/modules/notifications/domain/value-objects/` (mirroring the existing `job-status.ts` pattern rather than importing the shared-package enums directly into the domain layer). The `UserNotification` domain entity, its ORM entity, its repository, the notification event registry, the outbox processor, and the mark-processed API surface are **not yet updated** — this is the next unit of backend work, independent of anything in the prototype.
+
+---
+
+> **Numbering note (merge of `main`):** `main` independently claimed **v2.32** in `prd.json`'s `version` field for its job-attachment-size-limits work, but its own standalone copy of *this* changelog file titled that same feature **"PRD v2.33"** below — an inconsistency inside `main`'s own commits, not something this merge introduces or corrects. To avoid colliding with either of `main`'s numbers, the Dispatch Notification Feed entry above was renumbered **v2.32 -> v2.34** (not v2.33, which `main` had already taken here). `main`'s entry below is kept exactly as `main` wrote it.
+
+> **Scope of this file:** **PRD v2.33** — job attachment size limits and staged multi-file upload, synced into the prototype and the PRD after the product behaviour shipped (autheon-be / autheon-fe) and the prototype pack landed (PR #46). Baseline is **v2.31**.
+
+---
+
+## PRD v2.33 — Job attachment size limits and staged multi-file upload (2026-08-04 / 2026-08-05)
+
+**Baseline:** PRD v2.31
+**Source:** product pack `.scratch/2026-08-02-job-attachment-size-limits/` (be #163 / fe #43) and prototype pack `.scratch/2026-08-04-prototype-job-attachment-size-limits/` (prototype PR #46).
+**Client sign-off note:** [`../../requirements/job-attachment-size-limits-sign-off.md`](../../requirements/job-attachment-size-limits-sign-off.md).
+**Type:** requirement refinement + prototype sync. Replaces the single compiled-in 25 MB per-file cap with configurable limits, multi-file staged upload, and a second independent upload area for Report Problem evidence.
+
+### 1. Previous behaviour (v2.31 / v2.10 upload rules)
+
+| Concern | Before | Problem |
+| --- | --- | --- |
+| Per-file limit | One compiled-in **25 MB** on every upload path | Ops could not tighten or relax without a redeploy |
+| Area total | None | A tour's documents could grow without bound |
+| Selection | One file at a time per category | Drivers combined receipts into one photo or dropped extras |
+| Feedback | Size errors after the upload attempt | Mobile data wasted; which file failed was unclear |
+| Evidence | Report Problem evidence not size-checked the same way | Oversized evidence only failed after the report existed |
+| Admin control | No Settings surface for upload limits | Limits lived in env / code constants |
+
+### 2. What changed
+
+#### 2.1 Two configured limits
+
+Administrators set, in megabytes, on System settings:
+
+- **Max. size per file** — default **25**
+- **Max. total per upload area** — default **50**
+
+Both take effect immediately for drivers in the same session. The total field **must not** be labelled "per tour" / "per job": one number drives two independent areas (see §2.3). Cross-field rule: total may not sit below the per-file limit.
+
+Setting key (production / catalog): `driver.uploads.limits` → `{ maxFileMb, maxTotalMb }`.
+
+#### 2.2 Platform ceiling
+
+A named **platform ceiling** of **50 MB** is the hard backstop no upload of any kind may exceed (dispatch off-channel attach, driver personal licence/ID documents, and as the upper bound on the configurable per-file setting). The configurable per-file limit governs **tour documents** and **Report Problem evidence** only.
+
+**Accepted consequence:** driver personal documents rise from 25 MB → 50 MB as a side effect of the ceiling split (same accepted product side effect).
+
+#### 2.3 Two independent upload areas
+
+| Upload area | What counts | Total |
+| --- | --- | --- |
+| Tour documents | Live driver uploads + admin **off-channel** attachments; **`replaced` history rows do not count**; generated transport orders never count (separate collection) | Own total against `maxTotalMb` |
+| Report Problem evidence | Evidence on that report only | Own total against the **same** `maxTotalMb`, independent of tour documents |
+
+Worst case per tour: **two full allowances**. The literal original "one combined total per tour" ask is deliberately not met — journey separation (see sign-off note).
+
+Dispatch off-channel attach **counts** toward the tour-documents area but is **never refused** by that total, so a tour can sit over allowance with remaining shown as **zero** (never negative).
+
+#### 2.4 Staged multi-select (driver)
+
+After choosing a document category once, the driver selects several files, reviews name/size, sees per-file oversize marks and clamped used/remaining, removes rows, and uploads only when the selection fits (and while online). Successful files leave the list; store refusals stay with distinct copy for **file too large** vs **allowance exhausted**. Replace of a single reviewed file stays an immediate single-file path (no staging).
+
+#### 2.5 Prototype-only: amounts per receipt in a batch
+
+Invoice / fuel / toll batches still walk an amount form **per file** in the prototype (`netAmount` etc.). The product frontend has no amount metadata on attachments; when it gains some it either adopts this walk or supersedes it. Recorded in the sign-off note so it is not rediscovered as a product defect.
+
+#### 2.6 Report Problem evidence precheck
+
+Evidence is checked against the same per-file limit and its own area total **before** submit. Oversized files are marked on their row; over-total shows a distinct removal message; submit stays locked. The five-file cap is unchanged. No running usage figure on the composing report (selection in hand is the whole picture).
+
+### 3. Supersedes
+
+| Resolved default | Status |
+| --- | --- |
+| `document_upload_max_file_size_v1` (fixed 25 MB everywhere) | **SUPERSEDED** by `driver_upload_limits_v1` |
+| Task 27 acceptance line that hard-codes "prototype: 25 MB" | Updated to configurable limits + platform ceiling |
+
+`document_upload_source_selection_v1` remains, extended: after category + source, multi-select is allowed for tour documents; the source sheet still precedes the picker.
+
+### 4. Prototype surfaces (after PR #46 + follow-ups)
+
+- Store: `driverUploadLimits`, `PLATFORM_UPLOAD_CEILING_BYTES`, usage/remaining, distinct refusal reasons
+- Admin: Driver upload limits card on System settings; audited `driver_upload_limits_changed`
+- Driver: staged flow via shared upload path (My documents tab + mark-performed success); evidence prechecks on Report Problem
+- Proof: `tests/regression/job-attachment-limits.unit.spec.ts` (+ integration where present)
+- Vocabulary: [`prototype/project/DOMAIN.md`](../../../prototype/project/DOMAIN.md) and workspace `CONTEXT.md`
+
+### 5. Explicit non-goals of this PRD bump
+
+- Does not reopen the product/backend schema beyond documenting the setting and counting rules already shipped
+- Does not claim the prototype amount-walk is production UI
+- Does not fix pre-existing audit i18n baseline findings unrelated to this feature
