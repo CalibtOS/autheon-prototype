@@ -3,8 +3,47 @@
 > **Source plan:** [`tasks/admin-prototype-client-change-plan.md`](../../../tasks/admin-prototype-client-change-plan.md)
 > (client requirements distilled from "Evaluation & Optimization Requirements for the Admin Backend", 21 pages).
 
-**Last synced:** 2026-07-31 (QA+judge audit pass, nav consolidation, redundant-UI cleanup, native-dialog sweep,
-Finance module retirement, and Consolidated Invoices connectivity work)
+**Last synced:** 2026-08-05 (Dispatch Notification Feed — Task 33: severity, open/processed lifecycle,
+and three new schedule-driven alert types)
+
+**2026-08-05 addendum — Dispatch Notification Feed (Task 33):** implements the client's "Dispatch
+Notification Feed — Implementation Spec" (`docs/requirements/dispatch-notification-feed-spec.md`),
+provided directly to engineering 2026-08-04. The existing admin notification feed (Phase 7's nav item;
+Task 20's "lightweight ... in-app event list") had no severity and no status distinct from a
+driver-notification-style read/unread flag — every alert rendered forever with, at most, a binary
+critical/non-critical background tint. It now has a red/orange/gray severity always paired with a text
+label (never color alone), an explicit open/processed status that changes only via a new checkmark
+action — never as a side effect of viewing — with processed alerts retained under a separate Processed
+tab for audit rather than deleted, and a nav badge that pulses only while there is at least one open
+alert. Two of the spec's six trigger types (service-partner cancellation, empty-run reported) plus the
+profile/master-data-change-request type were already fully wired pre-existing and needed only the new
+severity/status classification layer, not new triggering logic. The three genuinely new trigger types —
+order not accepted by cutoff, document unreviewed 10+ days, service partner inactive 90+ days — each got
+a new event key, EN/DE copy, and a severity assignment; since none has a real clock to compute against
+in a client-side prototype, they are seeded pre-fired against real seeded records (job `A-2026-00847` for
+the cutoff type, document `TD-SEED-001` on job `A-2026-00842` for the staleness type, driver
+`DRV-0001`/Dana Driver for the inactivity type) rather than computed live — the same end state a real
+cron tick would leave behind. The staleness type's action deep-links to the specific flagged *document*
+inside Tour Billing (new `filterDocumentId` prop on `TourBillingPane`, scrolling to and highlighting that
+exact row — previously job-level filtering only), and the inactivity type's action opens the flagged
+driver's existing Service Partner Profile modal (new `initialDriverId` prop threaded through
+`ServicePartnersCenterPane` → `DriversPane`, mirroring the `initialRequestId` pattern Phase 7 already
+established for master-data requests) — that modal's Overview tab already displayed a `lastLoginAt`
+field before this task touched anything, it was simply always `null`. A related note: `driver.lastLoginAt`
+is owned by a separate in-progress branch, so this task's seeded inactivity alert references driver
+`DRV-0001` without asserting or depending on any specific last-active date — confirmed it will not
+conflict when that branch merges. A pre-existing naming gap was found (not resolved) while adding
+severity: `notification_channels_matrix` and the actual code use different event names for some of the
+same events (e.g. `order_cancelled_by_driver` here vs. `order_cancelled_by_sp` in code) — reconcile to
+one canonical name per event in a future pass. Verified end-to-end in-browser via Playwright: nav badge
+shows the correct open count and pulses; all three new trigger types render with correct severity; both
+new deep links (document row highlight, driver profile) work; mark-processed moves a row to the
+Processed tab with a "Processed by {name} · {at}" stamp and keeps it there; zero console errors.
+**Not yet done (backend):** `UserNotification` has no severity/status/processedAt/processedBy fields, no
+mark-processed endpoint exists, and the three new trigger types have no query/use-case/scheduler business
+logic yet — only the `@nestjs/schedule` dependency and its one-line `AppModule` registration exist so
+far. Full traceability: `docs/requirements/prd.json` → Task 33, `notification_channels_matrix`,
+`production_open_questions`.
 
 **2026-07-31 addendum — Finance module retired, Consolidated Invoices connected:** the legacy
 feature-flagged "Finance module" (`FinancePane`, the `financeModule` flag, its nav item, its Settings

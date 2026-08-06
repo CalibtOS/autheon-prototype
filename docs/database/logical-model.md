@@ -1,5 +1,46 @@
 # AUTHEON database logical model
 
+> **Status override:** Updated 2026-08-05 - PRD v2.34-feed-redesign / Task 33 (renumbered from v2.32
+> — main independently claimed v2.32 for an unrelated job-attachment-size-limits change that landed
+> first): Dispatch Notification
+> Feed table redesign — renamed and extended the columns the entry directly below this one just added,
+> same day. **`user_notifications.status`'s `notification_status` enum values are renamed** `open` →
+> `unread`, `processed` → `read` (a naming change only — the underlying rule is unchanged: status flips
+> only via an explicit "mark as read" action, single-row or bulk, never as a side effect of viewing).
+> **`.processed_at`/`.processed_by_user_id` are renamed** `.admin_read_at`/`.admin_read_by_user_id` —
+> deliberately not the shorter `.read_at`/`.read_by_user_id`, since `user_notifications.read_at` already
+> exists as the driver-notification read receipt (PRD v2.20, set on **viewing**); reusing that name for
+> the admin column would collide technically and, worse, semantically — the admin equivalent must flip
+> only via an explicit action, never on view, so it needs a name of its own to keep the two rules from
+> merging. **Added `user_notifications.deleted_at`** (nullable timestamptz) — the redesign's "Delete" action (per-row,
+> "delete selected", "delete all") is a **soft** delete: a deleted row is hidden from every admin-facing
+> read but the row itself is never erased, so the original "retain for audit, never delete" requirement
+> survives underneath even though the UI reads as permanent removal. All five columns remain
+> **admin-feed-only**, same reasoning as the entry below. **No other structural change** — the three new
+> `notification_type` values, the severity enum, and the `app_settings` cutoff-time field from the entry
+> below are unaffected by this rename.
+
+> **Status override:** Updated 2026-08-05 - PRD v2.34 / Task 33 (renumbered from v2.32, same reason as
+> the entry above): Dispatch Notification Feed — admin
+> severity, explicit open/processed lifecycle, and three new schedule-driven `notification_type` values.
+> **Added `user_notifications.severity`** (new `notification_severity` enum: `red` / `orange` / `gray`)
+> **and `.status`** (new `notification_status` enum: `open` / `processed`, default `open`) **plus
+> `.processed_at` and `.processed_by_user_id`** (FK → `users.id`). These four columns are **admin-feed-only**
+> — exactly like `read_at` is the driver-notification-only record of acknowledgement, severity/status/
+> processed_at/processed_by are meaningful only on rows delivered to an admin recipient and are simply
+> unused (default values, never read) on driver-recipient rows; there is one `user_notifications` table for
+> both, not two. **Three new `notification_type` values** (still a free varchar, no enum change, same
+> reasoning as PRD v2.20): `order_not_accepted_cutoff`, `document_unreviewed_stale`,
+> `service_partner_inactive`. Targeting reuses the existing PRD v2.20 mechanism rather than adding
+> per-type columns — see "Notification targeting" below for the three new rows. **`app_settings`
+> (`key = 'operational.policies'`) gains a new jsonb field, `orderAcceptanceCutoffTime`** (`"HH:MM"`,
+> 24h, admin-configurable, default `"15:45"`) — the cutoff `order_not_accepted_cutoff` is computed
+> against; no new `app_settings` row/key, just a new field inside the existing canonical key's payload.
+> **No change** to `jobs`, `job_locations`, `job_documents`, or `drivers` — every trigger condition reads
+> existing columns (`job_locations.scheduled_date` + `window_start` for the cutoff type,
+> `job_documents.review_status` + `document_files.uploaded_at`/equivalent for the staleness type, driver
+> account-activity data — itself tracked by a separate workstream — for the inactivity type).
+
 > **Status override:** Updated 2026-07-31 - PRD v2.30: consolidated invoices (Admin Phase 12) added
 > retroactively — no production table existed for this before this pass. **New `consolidated_invoice_status`
 > enum** (`in_review` / `correction_required` / `rejected` / `completed`, kept separate from
@@ -137,7 +178,7 @@ Status transitions belong in a transaction/service layer, not an unconstrained c
 
 ### Notification targeting
 
-A driver notification has to open **the exact thing it is about**, so `user_notifications` carries the target as ids, never as text:
+A notification — driver or admin — has to open **the exact thing it is about**, so `user_notifications` carries the target as ids, never as text:
 
 | Notification family                                                                                                     | Target columns                                                       | Opens                                                                                                |
 | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
@@ -145,6 +186,9 @@ A driver notification has to open **the exact thing it is about**, so `user_noti
 | Infopoint message (`new_infopoint_message`)                                                                             | `target_entity_type = 'infopoint_news'`, `target_entity_id`          | that message                                                                                         |
 | Document outcome (`document_accepted`, `document_rejected`)                                                             | `job_id` + `target_entity_type = 'job_document'`, `target_entity_id` | that document's preview on that tour                                                                 |
 | Account (`master_data_change_*`, `email_changed`)                                                                       | —                                                                    | informational; no target                                                                             |
+| Admin: order not accepted by cutoff (`order_not_accepted_cutoff`)                                                       | `job_id`                                                             | the tour, opened directly into the edit form so dispatch can adjust the driver offer                |
+| Admin: document unreviewed 10+ days (`document_unreviewed_stale`)                                                       | `job_id` + `target_entity_type = 'job_document'`, `target_entity_id` | that document's row, highlighted, inside Tour Billing — same shape as the driver document-outcome row |
+| Admin: service partner inactive 90+ days (`service_partner_inactive`)                                                   | `target_entity_type = 'driver'`, `target_entity_id`                  | that service partner's profile                                                                       |
 
 **Ids, not display text.** A title, a body and a tour number are display strings — localized, editable, and reusable. Resolving navigation from them would break on a rename and could point at the wrong record. `deep_link` is still stored for the client route, but it is **derived from** these ids and is not authoritative.
 

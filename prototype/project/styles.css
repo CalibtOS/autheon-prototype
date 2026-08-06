@@ -598,6 +598,17 @@ hr.line {
 .btn.danger:hover {
   background: var(--st-cancelled-bg);
 }
+/* Solid destructive action (e.g. "Delete all") — same structural pattern as
+   .btn.primary, just on --destructive instead of --primary. .btn.danger
+   above stays the subtler outlined/text style for lower-stakes actions. */
+.btn.destructive {
+  background: var(--destructive);
+  color: var(--on-accent);
+  border-color: var(--destructive);
+}
+.btn.destructive:hover {
+  filter: brightness(1.08);
+}
 .btn[disabled] {
   opacity: 0.45;
   cursor: not-allowed;
@@ -625,6 +636,14 @@ hr.line {
   padding: 0;
   width: 44px;
   height: 44px;
+}
+/* Compact icon-only button for dense table rows (admin notification feed
+   row actions) — .btn.icon above is touch-target sized (44px) for the
+   driver-facing surfaces; this is the desktop-density equivalent. */
+.btn.icon-only {
+  padding: 0;
+  width: 28px;
+  height: 28px;
 }
 .btn.icon.sm {
   width: 40px;
@@ -3445,6 +3464,82 @@ select.input {
 }
 .nav-item.on .count {
   color: var(--muted);
+}
+/* Nav badge pulse — only ever applied to the notifications count while it
+   has open (unprocessed) alerts, so it stops on its own once the backlog is
+   cleared instead of needing a separate "seen" flag. */
+.nav-item .count.count-pulse {
+  color: var(--destructive);
+  font-weight: 700;
+  animation: navBadgePulse 1.6s ease-in-out infinite;
+}
+@keyframes navBadgePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Notification feed badge — a colored square carrying an icon (never color
+   alone: the row's own title text sits beside it, and the severity word is
+   still exposed to assistive tech via aria-label/title on the square).
+   Reuses the same semantic tokens as job/document status pills (already
+   theme-safe in light + dark). */
+.notif-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-2, 8px);
+}
+.notif-badge svg {
+  width: 20px;
+  height: 20px;
+}
+/* Every row reserves the same height whether or not its third (read-by)
+   line is present, so unread and read rows never visibly differ in size. */
+.notif-row-detail {
+  min-height: 54px;
+}
+.notif-badge.sev-red {
+  color: var(--destructive);
+  background: color-mix(in srgb, var(--destructive) 14%, transparent);
+}
+.notif-badge.sev-orange {
+  color: var(--st-warn);
+  background: var(--st-warn-bg);
+}
+.notif-badge.sev-gray {
+  color: var(--st-draft);
+  background: var(--st-draft-bg);
+}
+/* Source bubble — a neutral pill, deliberately not severity-colored (the
+   badge already owns color; this column is a category, not an urgency
+   signal, so giving it its own color would compete with the badge). */
+.notif-source-chip {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--paper-3);
+  border-radius: var(--r-pill);
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+/* Unread marker — a plain dot beside the title, distinct from the badge's
+   severity color so read state and urgency never get confused for the same
+   signal. */
+.notif-unread-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
 }
 .admin-nav .nav-foot {
   margin-top: auto;

@@ -112,7 +112,7 @@ const AdminNav = ({ section, setSection }) => {
   const store = useAuthStore();
   const total = store.getJobs().length;
   const invCount = store.getTourDocuments().length;
-  const alertCount = store.getAdminEmailQueue().length;
+  const alertCount = store.getUnreadAdminAlertCount();
   const mdrOpenCount = store.getOpenMasterDataChangeRequestCount();
   // Footer identity — the console's exact shape: the name, falling back to the
   // email only when the name is blank, with the role line beneath. An email
@@ -191,7 +191,18 @@ const AdminNav = ({ section, setSection }) => {
               </span>{" "}
               {it.label}
             </span>
-            {it.count != null && <span className="count">{it.count}</span>}
+            {it.count != null && (
+              <span
+                className={
+                  "count" +
+                  (it.id === "notifications" && it.count > 0
+                    ? " count-pulse"
+                    : "")
+                }
+              >
+                {it.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -5401,6 +5412,7 @@ const DRIVER_STATUS_TRANSITIONS = {
 const ServicePartnersCenterPane = ({
   showToast,
   initialRequestId,
+  initialDriverId,
   onClearInitialRequest,
   onOpenJob,
 }) => {
@@ -5411,6 +5423,9 @@ const ServicePartnersCenterPane = ({
   useEffectA(() => {
     if (initialRequestId) setView("changerequests");
   }, [initialRequestId]);
+  useEffectA(() => {
+    if (initialDriverId) setView("partners");
+  }, [initialDriverId]);
   return (
     <div id="servicepartnercenter">
       <div className="tabs">
@@ -5432,7 +5447,7 @@ const ServicePartnersCenterPane = ({
         ))}
       </div>
       {view === "partners" ? (
-        <DriversPane showToast={showToast} />
+        <DriversPane showToast={showToast} initialDriverId={initialDriverId} />
       ) : (
         <MasterDataRequestsPane
           showToast={showToast}
@@ -5445,13 +5460,18 @@ const ServicePartnersCenterPane = ({
   );
 };
 
-const DriversPane = ({ showToast }) => {
+const DriversPane = ({ showToast, initialDriverId }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [driverModal, setDriverModal] = useStateA(null);
   const [driverForm, setDriverForm] = useStateA(emptyDriverEditForm());
   const [driverErrors, setDriverErrors] = useStateA({});
-  const [profileDriverId, setProfileDriverId] = useStateA(null);
+  const [profileDriverId, setProfileDriverId] = useStateA(
+    initialDriverId || null,
+  );
+  useEffectA(() => {
+    if (initialDriverId) setProfileDriverId(initialDriverId);
+  }, [initialDriverId]);
   const setDF = (k, v) => {
     setDriverForm((p) => ({ ...p, [k]: v }));
     setDriverErrors((e) => ({ ...e, [k]: undefined }));
@@ -6068,8 +6088,18 @@ const ServicePartnerProfileModal = ({ driver, onClose, showToast }) => {
                   <div>{driver.joinedAt || "—"}</div>
                 </div>
                 <div>
-                  <div className="label">{t("adminSPProfileLastLogin")}</div>
-                  <div>{driver.lastLoginAt || "—"}</div>
+                  <div className="label">{t("adminUsersLastActivity")}</div>
+                  <div>
+                    {driver.lastActiveAt ? (
+                      window.AutheonFormatters.formatDate(
+                        new Date(driver.lastActiveAt),
+                      )
+                    ) : (
+                      <span className="label" style={{ fontStyle: "italic" }}>
+                        {t("adminUsersLastActivityNever")}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <div className="label">{t("adminMasterDataStatus")}</div>
@@ -9206,6 +9236,7 @@ const ConsolidatedInvoicesPane = ({ showToast, onOpenJob }) => {
 const TourBillingPane = ({
   showToast,
   filterJobId,
+  filterDocumentId,
   onClearFilter,
   onOpenJob,
 }) => {
@@ -9469,6 +9500,13 @@ const TourBillingPane = ({
     if (!f) return;
     setEditForm((p) => (p ? { ...p, replaceFile: f, fileName: f.name } : p));
   };
+
+  useEffectA(() => {
+    if (!filterDocumentId) return undefined;
+    document
+      .getElementById("doc-row-" + filterDocumentId)
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [filterDocumentId, visibleUploads]);
 
   useEffectA(() => {
     if (!viewId) return undefined;
@@ -9905,7 +9943,11 @@ const TourBillingPane = ({
                   return (
                     <tr
                       key={u.id}
-                      className={index < 4 ? "list-enter" : undefined}
+                      id={"doc-row-" + u.id}
+                      className={
+                        (u.id === filterDocumentId ? "row fresh " : "") +
+                        (index < 4 ? "list-enter" : "")
+                      }
                       style={
                         index < 4 ? { ["--list-enter-i"]: index } : undefined
                       }
@@ -10758,21 +10800,68 @@ const AuditPane = ({ showToast }) => {
 // list below renders one row per key here.
 const FLAG_I18N = {};
 
-const CRITICAL_ALERT_EVENTS = new Set([
-  "report_problem_cancel",
-  "empty_run_reported",
-  "job_cancelled",
-  "tour_document_reuploaded",
-]);
-
 const ADMIN_ALERT_EVENT_I18N = {
   master_data_change_requested: "adminNotifMasterDataChange",
   report_problem_cancel: "adminNotifReportProblemCancel",
+  order_cancelled_by_sp: "adminNotifOrderCancelledBySp",
   empty_run_reported: "adminNotifEmptyRunReported",
+  empty_run_recognised: "adminNotifEmptyRunRecognised",
+  empty_run_not_recognised: "adminNotifEmptyRunNotRecognised",
   job_accepted: "adminNotifJobAccepted",
   job_performed: "adminNotifJobPerformed",
+  job_assigned: "adminNotifJobAssigned",
+  job_reassigned: "adminNotifJobReassigned",
+  job_cancelled: "adminNotifJobCancelled",
+  cancelled_by_autheon: "adminNotifCancelledByAutheon",
   tour_document_uploaded: "adminNotifDocumentUploaded",
   tour_document_reuploaded: "adminNotifDocumentReuploaded",
+  tour_document_rejected: "adminNotifDocumentRejected",
+  order_not_accepted_cutoff: "adminNotifOrderNotAcceptedCutoff",
+  document_unreviewed_stale: "adminNotifDocumentUnreviewedStale",
+  service_partner_inactive: "adminNotifServicePartnerInactive",
+};
+
+// Notification spec: severity is always paired with text, never color alone,
+// and every event in the feed must resolve to exactly one tier. `red` =
+// urgent/blocking, needs immediate attention; `orange` = needs admin action
+// but isn't urgent; `gray` = informational, no action required. Unlisted
+// events fall back to gray in ADMIN_ALERT_SEVERITY_LABEL_KEY below rather
+// than rendering unstyled.
+const ADMIN_ALERT_SEVERITY = {
+  empty_run_reported: "red",
+  order_cancelled_by_sp: "red",
+  report_problem_cancel: "red",
+  job_cancelled: "red",
+  tour_document_reuploaded: "red",
+  tour_document_rejected: "red",
+  order_not_accepted_cutoff: "red",
+  master_data_change_requested: "orange",
+  empty_run_not_recognised: "orange",
+  document_unreviewed_stale: "orange",
+  service_partner_inactive: "orange",
+  job_accepted: "gray",
+  job_performed: "gray",
+  job_assigned: "gray",
+  job_reassigned: "gray",
+  cancelled_by_autheon: "gray",
+  tour_document_uploaded: "gray",
+  empty_run_recognised: "gray",
+};
+
+const ADMIN_ALERT_SEVERITY_LABEL_KEY = {
+  red: "adminNotifSeverityCritical",
+  orange: "adminNotifSeverityWarning",
+  gray: "adminNotifSeverityInfo",
+};
+
+const adminAlertSeverity = (event) => ADMIN_ALERT_SEVERITY[event] || "gray";
+
+// row.at is always "DD.MM. HH:MM" (nowStamp()'s own display format, no
+// year) — returns "MM-DD" so the date-range filter can compare it against
+// an <input type="date"> value's own "MM-DD" slice.
+const alertMonthDay = (at) => {
+  const m = /^(\d{2})\.(\d{2})\./.exec(at || "");
+  return m ? `${m[2]}-${m[1]}` : null;
 };
 
 const parseMasterDataRequestIdFromMeta = (meta) => {
@@ -11375,94 +11464,919 @@ const MasterDataRequestsPane = ({
   );
 };
 
+// One icon per event — reuses the shared Ic.N set. Distinct from severity:
+// the icon says WHAT happened, the badge color says HOW urgent it is.
+const ADMIN_ALERT_ICON = {
+  master_data_change_requested: Ic.N.Key,
+  report_problem_cancel: Ic.N.CircleX,
+  order_cancelled_by_sp: Ic.N.CircleX,
+  empty_run_reported: Ic.N.Warning,
+  empty_run_recognised: Ic.N.CheckCircle,
+  empty_run_not_recognised: Ic.N.CircleX,
+  job_accepted: Ic.N.CheckCircle,
+  job_performed: Ic.N.CheckCircle,
+  job_assigned: Ic.N.Bell,
+  job_reassigned: Ic.N.Bell,
+  job_cancelled: Ic.N.CircleX,
+  cancelled_by_autheon: Ic.N.CircleX,
+  tour_document_uploaded: Ic.N.Doc,
+  tour_document_reuploaded: Ic.N.Doc,
+  tour_document_rejected: Ic.N.CircleX,
+  order_not_accepted_cutoff: Ic.N.Warning,
+  document_unreviewed_stale: Ic.N.Doc,
+  service_partner_inactive: Ic.N.Bell,
+};
+
+// Coarse grouping for the feed's Source column — not the same axis as
+// severity (urgency) or the icon (what happened); this is "which subsystem".
+const ADMIN_ALERT_SOURCE = {
+  master_data_change_requested: "adminNotifSourceSystem",
+  report_problem_cancel: "adminNotifSourceTourSystem",
+  order_cancelled_by_sp: "adminNotifSourceTourSystem",
+  empty_run_reported: "adminNotifSourceTourSystem",
+  empty_run_recognised: "adminNotifSourceTourSystem",
+  empty_run_not_recognised: "adminNotifSourceTourSystem",
+  job_accepted: "adminNotifSourceTourSystem",
+  job_performed: "adminNotifSourceTourSystem",
+  job_assigned: "adminNotifSourceTourSystem",
+  job_reassigned: "adminNotifSourceTourSystem",
+  job_cancelled: "adminNotifSourceTourSystem",
+  cancelled_by_autheon: "adminNotifSourceTourSystem",
+  order_not_accepted_cutoff: "adminNotifSourceTourSystem",
+  tour_document_uploaded: "adminNotifSourceDocuments",
+  tour_document_reuploaded: "adminNotifSourceDocuments",
+  tour_document_rejected: "adminNotifSourceDocuments",
+  document_unreviewed_stale: "adminNotifSourceDocuments",
+  service_partner_inactive: "adminNotifSourceServicePartners",
+};
+
+// The badge: a colored square carrying an icon, never color alone — the
+// row's own title text sits right beside it, and the severity word is still
+// available to assistive tech via aria-label/title on the square itself.
+const AdminAlertBadge = ({ event, t }) => {
+  const severity = adminAlertSeverity(event);
+  const Icon = ADMIN_ALERT_ICON[event] || Ic.N.Bell;
+  const label = t(ADMIN_ALERT_SEVERITY_LABEL_KEY[severity]);
+  return (
+    <span
+      className={`notif-badge sev-${severity}`}
+      role="img"
+      aria-label={label}
+      title={label}
+    >
+      <Icon />
+    </span>
+  );
+};
+
+// Row-level actions: the type-specific deep link(s) plus the two generic
+// actions (mark read / delete) every row offers. Returned as a flat list so
+// the table cell can render whichever apply without a wall of ternaries.
+const adminAlertRowActions = (row, handlers, t) => {
+  const actions = [];
+  if (row.event === "master_data_change_requested" && handlers.onReviewMasterDataRequest) {
+    actions.push({
+      key: "review",
+      label: t("adminMdrReviewFromFeed"),
+      Icon: Ic.Chev,
+      onClick: () =>
+        handlers.onReviewMasterDataRequest(
+          parseMasterDataRequestIdFromMeta(row.meta),
+        ),
+    });
+  }
+  if (row.event === "document_unreviewed_stale" && row.documentId && handlers.onOpenDocument) {
+    actions.push({
+      key: "open-document",
+      label: t("adminNotificationOpenDocument"),
+      Icon: Ic.Chev,
+      onClick: () => handlers.onOpenDocument(row.jobId, row.documentId),
+    });
+  }
+  if (row.event === "service_partner_inactive" && row.driverId && handlers.onOpenDriver) {
+    actions.push({
+      key: "open-driver",
+      label: t("adminNotificationOpenDriver"),
+      Icon: Ic.Chev,
+      onClick: () => handlers.onOpenDriver(row.driverId),
+    });
+  }
+  if (row.event === "order_not_accepted_cutoff" && row.jobId && handlers.onAdjustDriverOffer) {
+    actions.push({
+      key: "adjust-offer",
+      label: t("adminNotificationAdjustDriverOffer"),
+      Icon: Ic.N.Key,
+      onClick: () => handlers.onAdjustDriverOffer(row.jobId),
+    });
+  }
+  if (row.jobId && row.event !== "document_unreviewed_stale") {
+    actions.push({
+      key: "open-job",
+      label: t("adminNotificationOpenJob"),
+      Icon: Ic.Chev,
+      onClick: () => {
+        const j = handlers.store.getJob(row.jobId);
+        if (j) handlers.onOpenJob?.(j);
+        else handlers.showToast?.(t("adminNotificationOpenJob"), row.tour);
+      },
+    });
+  }
+  if (row.status !== "read") {
+    actions.push({
+      key: "mark-read",
+      label: t("adminNotificationMarkRead"),
+      Icon: Ic.N.MailOpen,
+      onClick: () => handlers.markRead([row.id]),
+    });
+  }
+  actions.push({
+    key: "delete",
+    label: t("adminNotificationDeleteOne"),
+    Icon: Ic.N.Trash,
+    destructive: true,
+    onClick: () => handlers.deleteAlerts([row.id]),
+  });
+  return actions;
+};
+
+// A "⋮" trigger + portaled dropdown, same pattern the Jobs table's
+// RowActionsMenu already established: `.tbl`/`.table-wrap` clip overflow,
+// so the menu is portaled into document.body at viewport-fixed coordinates
+// computed from the trigger's own rect, escaping that clipping entirely.
+const AdminAlertRowMenu = ({ actions }) => {
+  const { t } = useI18n();
+  const [open, setOpen] = useStateA(false);
+  const [menuPos, setMenuPos] = useStateA(null);
+  const btnRef = useRefA(null);
+
+  useLayoutEffectA(() => {
+    if (!open) {
+      setMenuPos(null);
+      return;
+    }
+    const update = () => {
+      const rect = btnRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMenuPos({
+        top: rect.bottom + 2,
+        right: window.innerWidth - rect.right,
+      });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open]);
+
+  if (!actions.length) return null;
+
+  return (
+    <div
+      style={{ position: "relative", display: "inline-block" }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        ref={btnRef}
+        type="button"
+        className="btn icon sm"
+        aria-label={t("adminRowActionsLabel")}
+        onClick={() => setOpen((v) => !v)}
+      >
+        ⋮
+      </button>
+      {open && menuPos
+        ? ReactDOM.createPortal(
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 300 }}
+                onClick={() => setOpen(false)}
+              />
+              <ul
+                role="menu"
+                style={{
+                  position: "fixed",
+                  top: menuPos.top,
+                  right: menuPos.right,
+                  zIndex: 301,
+                  margin: 0,
+                  padding: 4,
+                  listStyle: "none",
+                  background: "var(--surface, #fff)",
+                  border: "1px solid var(--border, #ccc)",
+                  borderRadius: 8,
+                  minWidth: 190,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                }}
+              >
+                {actions.map((action) => (
+                  <li key={action.key}>
+                    <button
+                      type="button"
+                      className={
+                        "btn ghost xs" + (action.destructive ? " danger" : "")
+                      }
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                      onClick={() => {
+                        setOpen(false);
+                        action.onClick();
+                      }}
+                    >
+                      <action.Icon />
+                      {action.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>,
+            document.body,
+          )
+        : null}
+    </div>
+  );
+};
+
+// Same portaled-dropdown pattern as AdminAlertRowMenu, but left-aligned to
+// its trigger (it's the leftmost button in the toolbar's action group, so the
+// panel opens directly under it rather than hugging the right edge) and
+// holding checkbox groups instead of a list of actions.
+const NOTIF_FILTER_SEVERITIES = ["red", "orange", "gray"];
+const NOTIF_FILTER_SOURCES = [
+  "adminNotifSourceSystem",
+  "adminNotifSourceTourSystem",
+  "adminNotifSourceDocuments",
+  "adminNotifSourceServicePartners",
+];
+
+// The panel is a fixed light popover by design (matches the approved
+// reference), not a themed surface — every color below is hardcoded rather
+// than pulled from --paper/--text/--muted, which flip to dark-mode values
+// and would otherwise render invisible text on this deliberately-light card.
+const NOTIF_FILTER_PANEL_TEXT = "#1f2430";
+const NOTIF_FILTER_PANEL_MUTED = "#6b7280";
+const NOTIF_FILTER_PANEL_BORDER = "#e2e2e5";
+
+const NotificationFilterMenu = ({
+  severityFilter,
+  sourceFilter,
+  dateFrom,
+  dateTo,
+  onToggleSeverity,
+  onToggleSource,
+  onChangeDateFrom,
+  onChangeDateTo,
+  onClear,
+  t,
+}) => {
+  const [open, setOpen] = useStateA(false);
+  const [menuPos, setMenuPos] = useStateA(null);
+  const btnRef = useRefA(null);
+  const activeCount =
+    severityFilter.size + sourceFilter.size + (dateFrom || dateTo ? 1 : 0);
+
+  useLayoutEffectA(() => {
+    if (!open) {
+      setMenuPos(null);
+      return;
+    }
+    const update = () => {
+      const rect = btnRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMenuPos({ top: rect.bottom + 2, left: rect.left });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open]);
+
+  const sectionLabelStyle = {
+    margin: "0 0 6px",
+    fontSize: 12,
+    fontWeight: 600,
+    color: NOTIF_FILTER_PANEL_MUTED,
+  };
+  const rowLabelStyle = {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "4px 0",
+    cursor: "pointer",
+    color: NOTIF_FILTER_PANEL_TEXT,
+    fontSize: 13.5,
+  };
+
+  return (
+    <div
+      style={{ position: "relative", display: "inline-block" }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        ref={btnRef}
+        type="button"
+        className={"btn" + (activeCount > 0 ? " on" : "")}
+        style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <Ic.Filter />
+        {activeCount > 0
+          ? t("adminNotificationFilterCount", { count: activeCount })
+          : t("adminNotificationFilter")}
+        <span style={{ display: "inline-flex", transform: "rotate(90deg)" }}>
+          <Ic.Chev />
+        </span>
+      </button>
+      {open && menuPos
+        ? ReactDOM.createPortal(
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 300 }}
+                onClick={() => setOpen(false)}
+              />
+              <div
+                role="menu"
+                style={{
+                  position: "fixed",
+                  top: menuPos.top,
+                  left: menuPos.left,
+                  zIndex: 301,
+                  padding: 14,
+                  background: "#ffffff",
+                  border: `1px solid ${NOTIF_FILTER_PANEL_BORDER}`,
+                  borderRadius: 8,
+                  minWidth: 230,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 14,
+                  color: NOTIF_FILTER_PANEL_TEXT,
+                }}
+              >
+                <div>
+                  <p style={sectionLabelStyle}>
+                    {t("adminNotificationFilterBySeverity")}
+                  </p>
+                  {NOTIF_FILTER_SEVERITIES.map((sev) => (
+                    <label key={sev} style={rowLabelStyle}>
+                      <input
+                        type="checkbox"
+                        checked={severityFilter.has(sev)}
+                        onChange={() => onToggleSeverity(sev)}
+                      />
+                      {t(ADMIN_ALERT_SEVERITY_LABEL_KEY[sev])}
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  <p style={sectionLabelStyle}>
+                    {t("adminNotificationFilterBySource")}
+                  </p>
+                  {NOTIF_FILTER_SOURCES.map((src) => (
+                    <label key={src} style={rowLabelStyle}>
+                      <input
+                        type="checkbox"
+                        checked={sourceFilter.has(src)}
+                        onChange={() => onToggleSource(src)}
+                      />
+                      {t(src)}
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  <p style={sectionLabelStyle}>
+                    {t("adminNotificationFilterByDate")}
+                  </p>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <label style={{ flex: 1 }}>
+                      <span
+                        style={{
+                          display: "block",
+                          fontSize: 11,
+                          color: NOTIF_FILTER_PANEL_MUTED,
+                          marginBottom: 3,
+                        }}
+                      >
+                        {t("adminNotificationFilterDateFrom")}
+                      </span>
+                      <input
+                        type="date"
+                        className="input"
+                        style={{ width: "100%", colorScheme: "light", background: "#ffffff", color: "#1f2430", borderColor: "#c7c7cc" }}
+                        value={dateFrom}
+                        onChange={(e) => onChangeDateFrom(e.target.value)}
+                      />
+                    </label>
+                    <label style={{ flex: 1 }}>
+                      <span
+                        style={{
+                          display: "block",
+                          fontSize: 11,
+                          color: NOTIF_FILTER_PANEL_MUTED,
+                          marginBottom: 3,
+                        }}
+                      >
+                        {t("adminNotificationFilterDateTo")}
+                      </span>
+                      <input
+                        type="date"
+                        className="input"
+                        style={{ width: "100%", colorScheme: "light", background: "#ffffff", color: "#1f2430", borderColor: "#c7c7cc" }}
+                        value={dateTo}
+                        onChange={(e) => onChangeDateTo(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    padding: "4px 0",
+                    textAlign: "left",
+                    color: activeCount === 0 ? "#b5b5bb" : NOTIF_FILTER_PANEL_TEXT,
+                    cursor: activeCount === 0 ? "not-allowed" : "pointer",
+                    fontSize: 13,
+                    fontWeight: 500,
+                  }}
+                  disabled={activeCount === 0}
+                  onClick={() => {
+                    onClear();
+                  }}
+                >
+                  {t("adminNotificationFilterClear")}
+                </button>
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
+    </div>
+  );
+};
+
 const NotificationFeedPane = ({
   showToast,
   onOpenJob,
+  onOpenDocument,
+  onOpenDriver,
+  onAdjustDriverOffer,
   onReviewMasterDataRequest,
 }) => {
   const { t } = useI18n();
   const store = useAuthStore();
-  const rows = store.getAdminEmailQueue();
+  const [tab, setTab] = useStateA("all");
+  const [selected, setSelected] = useStateA(() => new Set());
+  const [rowsPerPage, setRowsPerPage] = useStateA(20);
+  const [page, setPage] = useStateA(1);
+  const [severityFilter, setSeverityFilter] = useStateA(() => new Set());
+  const [sourceFilter, setSourceFilter] = useStateA(() => new Set());
+  const [dateFrom, setDateFrom] = useStateA("");
+  const [dateTo, setDateTo] = useStateA("");
+  const toggleSeverityFilter = (sev) => {
+    setSeverityFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(sev)) next.delete(sev);
+      else next.add(sev);
+      return next;
+    });
+  };
+  const toggleSourceFilter = (src) => {
+    setSourceFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(src)) next.delete(src);
+      else next.add(src);
+      return next;
+    });
+  };
+  const clearFilters = () => {
+    setSeverityFilter(new Set());
+    setSourceFilter(new Set());
+    setDateFrom("");
+    setDateTo("");
+  };
+  const allRows = store.getAdminEmailQueue();
+  const unreadCount = allRows.filter((row) => row.status !== "read").length;
+  const filtersActive =
+    severityFilter.size > 0 ||
+    sourceFilter.size > 0 ||
+    Boolean(dateFrom) ||
+    Boolean(dateTo);
+  const rows = allRows.filter((row) => {
+    if (tab === "unread" && row.status === "read") return false;
+    if (tab === "read" && row.status !== "read") return false;
+    if (severityFilter.size > 0 && !severityFilter.has(adminAlertSeverity(row.event)))
+      return false;
+    if (
+      sourceFilter.size > 0 &&
+      !sourceFilter.has(ADMIN_ALERT_SOURCE[row.event] || "adminNotifSourceSystem")
+    )
+      return false;
+    if (dateFrom || dateTo) {
+      // row.at has no year (e.g. "23.04. 08:41" — matches nowStamp()'s own
+      // display format everywhere else in the feed), so the range compares
+      // month-day only against the picked date's month-day. Good enough for
+      // a same-year demo dataset; not a substitute for a real timestamp.
+      const monthDay = alertMonthDay(row.at);
+      if (!monthDay) return false;
+      if (dateFrom && monthDay < dateFrom.slice(5)) return false;
+      if (dateTo && monthDay > dateTo.slice(5)) return false;
+    }
+    return true;
+  });
+  const pageCount = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+  const safePage = Math.min(page, pageCount);
+  const pagedRows = rows.slice(
+    (safePage - 1) * rowsPerPage,
+    safePage * rowsPerPage,
+  );
+  const rangeStart = rows.length === 0 ? 0 : (safePage - 1) * rowsPerPage + 1;
+  const rangeEnd = Math.min(safePage * rowsPerPage, rows.length);
+
+  // Switching tabs, the page size, or the active filters can strand the page
+  // past the new end — land back on page 1 rather than showing an empty table.
+  useEffectA(() => {
+    setPage(1);
+  }, [tab, rowsPerPage, severityFilter, sourceFilter, dateFrom, dateTo]);
+
+  // The header checkbox selects the current PAGE only, matching the
+  // pagination footer's own "1-20 of N" scope — "Mark all"/"Delete all"
+  // (used when nothing is selected) still act on every row in the tab,
+  // not just the visible page.
+  const pagedIds = pagedRows.map((row) => row.id);
+  const allPagedSelected =
+    pagedIds.length > 0 && pagedIds.every((id) => selected.has(id));
+
+  const toggleSelectAll = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allPagedSelected) pagedIds.forEach((id) => next.delete(id));
+      else pagedIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+  const toggleSelectOne = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Selection is a set of ids, not row objects, and persists across pages/
+  // tabs — "Delete selected" can act on rows picked from more than one page.
+  // Filtered against allRows so a row a bulk action already removed can't
+  // leave a stale reference behind.
+  const allRowIds = allRows.map((row) => row.id);
+  const selectedIds = allRowIds.filter((id) => selected.has(id));
+  const selectedCount = selectedIds.length;
+
+  const markRead = (ids) => {
+    const result = store.markAdminAlertsRead(ids);
+    if (ids.length) {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      });
+    }
+    if (result.count > 0) {
+      showToast?.(
+        t("adminNotificationMarkedReadToast", { count: result.count }),
+      );
+    }
+  };
+  const deleteAlerts = (ids) => {
+    const result = store.deleteAdminAlerts(ids);
+    setSelected((prev) => {
+      if (!ids.length) return new Set();
+      const next = new Set(prev);
+      ids.forEach((id) => next.delete(id));
+      return next;
+    });
+    if (result.count > 0) {
+      showToast?.(t("adminNotificationDeletedToast", { count: result.count }));
+    }
+  };
+
+  const handlers = {
+    store,
+    showToast,
+    onOpenJob,
+    onOpenDocument,
+    onOpenDriver,
+    onAdjustDriverOffer,
+    onReviewMasterDataRequest,
+    markRead,
+    deleteAlerts,
+  };
+
+  const markButtonLabel =
+    selectedCount > 0
+      ? t("adminNotificationMarkSelectedRead", { count: selectedCount })
+      : t("adminNotificationMarkAllRead");
+
   return (
-    <div style={{ maxWidth: 900 }}>
-      <p className="pane-lead">{t("adminNotificationFeedSub")}</p>
+    <div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+          gap: 12,
+          marginBottom: 14,
+        }}
+      >
+        <p className="pane-lead" style={{ margin: 0 }}>
+          {t("adminNotificationFeedCountSub", {
+            unread: unreadCount,
+            total: allRows.length,
+          })}
+        </p>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <NotificationFilterMenu
+            severityFilter={severityFilter}
+            sourceFilter={sourceFilter}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onToggleSeverity={toggleSeverityFilter}
+            onToggleSource={toggleSourceFilter}
+            onChangeDateFrom={setDateFrom}
+            onChangeDateTo={setDateTo}
+            onClear={clearFilters}
+            t={t}
+          />
+          <button
+            type="button"
+            className="btn"
+            disabled={allRows.length === 0}
+            onClick={() => markRead(selectedCount > 0 ? selectedIds : [])}
+          >
+            {markButtonLabel}
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={selectedCount === 0}
+            onClick={() => deleteAlerts(selectedIds)}
+          >
+            {t("adminNotificationDeleteSelected", { count: selectedCount })}
+          </button>
+          <button
+            type="button"
+            className="btn destructive"
+            disabled={allRows.length === 0}
+            onClick={() => deleteAlerts([])}
+          >
+            {t("adminNotificationDeleteAll")}
+          </button>
+        </div>
+      </div>
+      <div className="tabs" style={{ marginBottom: 14 }}>
+        {[
+          ["all", t("adminNotificationTabAll"), allRows.length],
+          ["unread", t("adminNotificationTabUnread"), unreadCount],
+          ["read", t("adminNotificationTabRead"), null],
+        ].map(([id, lbl, count]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            className={tab === id ? "on" : ""}
+            style={{ cursor: "pointer" }}
+            onClick={() => setTab(id)}
+          >
+            {lbl}
+            {count != null ? ` (${count})` : ""}
+          </button>
+        ))}
+      </div>
       <section className="card" style={{ padding: 0 }}>
         {rows.length === 0 ? (
           <div
             style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}
           >
-            {t("adminNotificationEmpty")}
+            {filtersActive
+              ? t("adminNotificationFilterEmpty")
+              : tab === "read"
+                ? t("adminNotificationReadEmpty")
+                : tab === "unread"
+                  ? t("adminNotificationUnreadEmpty")
+                  : t("adminNotificationEmpty")}
           </div>
         ) : (
-          rows.map((row) => (
+          <div className="table-wrap">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th style={{ width: 36 }}>
+                    <input
+                      type="checkbox"
+                      checked={allPagedSelected}
+                      onChange={toggleSelectAll}
+                      aria-label={t("adminNotificationSelectAll")}
+                    />
+                  </th>
+                  <th>{t("adminNotificationColNotification")}</th>
+                  <th>{t("adminNotificationColSource")}</th>
+                  <th>{t("adminColDate")}</th>
+                  <th style={{ width: 120 }}>{t("adminColActions")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedRows.map((row, index) => {
+                  const actions = adminAlertRowActions(row, handlers, t);
+                  const sourceKey =
+                    ADMIN_ALERT_SOURCE[row.event] || "adminNotifSourceSystem";
+                  return (
+                    <tr
+                      key={row.id}
+                      className={index < 4 ? "list-enter" : undefined}
+                      style={
+                        index < 4 ? { ["--list-enter-i"]: index } : undefined
+                      }
+                    >
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selected.has(row.id)}
+                          onChange={() => toggleSelectOne(row.id)}
+                          aria-label={row.event}
+                        />
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: 10 }}>
+                          <AdminAlertBadge event={row.event} t={t} />
+                          <div className="notif-row-detail">
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                              }}
+                            >
+                              {row.status !== "read" && (
+                                <span className="notif-unread-dot" />
+                              )}
+                              <span style={{ fontWeight: 600, fontSize: 14 }}>
+                                {ADMIN_ALERT_EVENT_I18N[row.event]
+                                  ? t(ADMIN_ALERT_EVENT_I18N[row.event])
+                                  : row.event}
+                              </span>
+                            </div>
+                            <div
+                              style={{
+                                fontSize: 13,
+                                color: "var(--muted)",
+                                marginTop: 2,
+                              }}
+                            >
+                              {row.tour ? `${t("adminColTour")} ${row.tour}` : "—"}
+                              {row.meta ? ` · ${row.meta}` : ""}
+                            </div>
+                            {row.status === "read" ? (
+                              <div
+                                className="mono"
+                                style={{
+                                  fontSize: 11,
+                                  color: "var(--muted-2)",
+                                  marginTop: 2,
+                                }}
+                              >
+                                {t("adminNotificationReadBy", {
+                                  name: row.readBy || "—",
+                                  at: row.readAt || "—",
+                                })}
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="notif-source-chip">{t(sourceKey)}</span>
+                      </td>
+                      <td className="mono" style={{ fontSize: 12 }}>
+                        {row.at}
+                      </td>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <AdminAlertRowMenu actions={actions} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {rows.length > 0 ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 12,
+              padding: "12px 18px",
+              borderTop: "1px solid var(--line)",
+            }}
+          >
             <div
-              key={row.id}
               style={{
                 display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 16,
-                padding: "14px 18px",
-                borderBottom: "1px solid var(--line)",
-                background: CRITICAL_ALERT_EVENTS.has(row.event)
-                  ? "color-mix(in srgb, var(--destructive) 4%, transparent)"
-                  : "transparent",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 13,
+                color: "var(--muted)",
               }}
             >
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>
-                  {ADMIN_ALERT_EVENT_I18N[row.event]
-                    ? t(ADMIN_ALERT_EVENT_I18N[row.event])
-                    : row.event}
-                </div>
-                <div
-                  style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}
+              <label htmlFor="notif-rows-per-page">{t("rowsPerPage")}</label>
+              <select
+                id="notif-rows-per-page"
+                className="input"
+                style={{ width: "auto", padding: "4px 8px" }}
+                value={rowsPerPage}
+                onChange={(e) => setRowsPerPage(Number(e.target.value))}
+              >
+                {[10, 20, 50].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 13, color: "var(--muted)" }}>
+                {t("adminPaginationRange", {
+                  start: rangeStart,
+                  end: rangeEnd,
+                  total: rows.length,
+                })}
+              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <button
+                type="button"
+                className="btn xs ghost"
+                disabled={safePage <= 1}
+                onClick={() => setPage(1)}
+                aria-label={t("adminPaginationFirst")}
+              >
+                «
+              </button>
+              <button
+                type="button"
+                className="btn xs ghost"
+                disabled={safePage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                aria-label={t("adminPaginationPrev")}
+              >
+                ‹
+              </button>
+              {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className={"btn xs" + (n === safePage ? " primary" : " ghost")}
+                  onClick={() => setPage(n)}
                 >
-                  {row.tour ? `${t("adminColTour")} ${row.tour}` : "—"}
-                  {row.meta ? ` · ${row.meta}` : ""}
-                </div>
-                <div
-                  className="mono"
-                  style={{
-                    fontSize: 11,
-                    color: "var(--muted-2)",
-                    marginTop: 4,
-                  }}
-                >
-                  {row.at}
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {row.event === "master_data_change_requested" &&
-                onReviewMasterDataRequest ? (
-                  <button
-                    type="button"
-                    className="btn xs primary"
-                    onClick={() => {
-                      const reqId = parseMasterDataRequestIdFromMeta(row.meta);
-                      onReviewMasterDataRequest(reqId);
-                    }}
-                  >
-                    {t("adminMdrReviewFromFeed")}
-                  </button>
-                ) : null}
-                {row.jobId ? (
-                  <button
-                    type="button"
-                    className="btn xs"
-                    onClick={() => {
-                      const j = store.getJob(row.jobId);
-                      if (j) onOpenJob?.(j);
-                      else showToast?.(t("adminNotificationOpenJob"), row.tour);
-                    }}
-                  >
-                    {t("adminNotificationOpenJob")}
-                  </button>
-                ) : null}
+                  {n}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="btn xs ghost"
+                disabled={safePage >= pageCount}
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                aria-label={t("adminPaginationNext")}
+              >
+                ›
+              </button>
+              <button
+                type="button"
+                className="btn xs ghost"
+                disabled={safePage >= pageCount}
+                onClick={() => setPage(pageCount)}
+                aria-label={t("adminPaginationLast")}
+              >
+                »
+              </button>
               </div>
             </div>
-          ))
-        )}
+          </div>
+        ) : null}
       </section>
     </div>
   );
@@ -11507,6 +12421,12 @@ const isPolicyEurValid = (current) => {
   const parsed = Number(trimmed);
   return Number.isFinite(parsed) && parsed > 0;
 };
+
+// 24h HH:MM (order-acceptance cutoff time) — a third shape distinct from the
+// integer and EUR policy fields above. AuthStore.formatTimeInput already
+// clamps a typed value into this shape on blur; this is the Save gate.
+const isPolicyTimeValid = (current) =>
+  /^([01]\d|2[0-3]):[0-5]\d$/.test(String(current).trim());
 
 // Gated on the field being dirty so a freshly opened screen never nags — the
 // stored values always satisfy the rule. One message covers cleared, zero and
@@ -11726,6 +12646,9 @@ const OperationalPoliciesForm = ({ showToast }) => {
   const storedDriverOfferWarn = Number(
     policies.driverOfferHighWarningEur ?? 200.0,
   );
+  const storedCutoffTime = String(
+    policies.orderAcceptanceCutoffTime ?? "15:45",
+  );
   const storedAllowOverride =
     policies.allowPolicyOverrideWithAuditNote !== false;
   const storedRequiresReasonCode =
@@ -11747,6 +12670,7 @@ const OperationalPoliciesForm = ({ showToast }) => {
   const [driverOfferWarn, setDriverOfferWarn] = useStateA(
     String(storedDriverOfferWarn),
   );
+  const [cutoffTime, setCutoffTime] = useStateA(storedCutoffTime);
   const [allowOverride, setAllowOverride] = useStateA(storedAllowOverride);
   const [requiresReasonCode, setRequiresReasonCode] = useStateA(
     storedRequiresReasonCode,
@@ -11768,6 +12692,7 @@ const OperationalPoliciesForm = ({ showToast }) => {
     setRequiresDriverMessage(storedRequiresDriverMessage);
     setDriverOfferMax(String(storedDriverOfferMax));
     setDriverOfferWarn(String(storedDriverOfferWarn));
+    setCutoffTime(storedCutoffTime);
   };
 
   useEffectA(seedFromStore, [
@@ -11780,6 +12705,7 @@ const OperationalPoliciesForm = ({ showToast }) => {
     storedRequiresDriverMessage,
     storedDriverOfferMax,
     storedDriverOfferWarn,
+    storedCutoffTime,
   ]);
 
   // At least one field differs from the stored values. Drives both the Save
@@ -11791,6 +12717,7 @@ const OperationalPoliciesForm = ({ showToast }) => {
     isPolicyNumberDirty(defaultLimit, storedDefaultLimit) ||
     isPolicyNumberDirty(driverOfferMax, storedDriverOfferMax) ||
     isPolicyNumberDirty(driverOfferWarn, storedDriverOfferWarn) ||
+    cutoffTime !== storedCutoffTime ||
     allowOverride !== storedAllowOverride ||
     requiresReasonCode !== storedRequiresReasonCode ||
     requiresDriverMessage !== storedRequiresDriverMessage;
@@ -11806,7 +12733,8 @@ const OperationalPoliciesForm = ({ showToast }) => {
     isPolicyNumberValid(minDriverMsg) &&
     isPolicyNumberValid(defaultLimit) &&
     isPolicyEurValid(driverOfferMax) &&
-    isPolicyEurValid(driverOfferWarn);
+    isPolicyEurValid(driverOfferWarn) &&
+    isPolicyTimeValid(cutoffTime);
 
   const save = () => {
     if (!canSave) return;
@@ -11821,6 +12749,7 @@ const OperationalPoliciesForm = ({ showToast }) => {
         allowPolicyOverrideWithAuditNote: allowOverride,
         driverOfferMaxEur: Number(driverOfferMax),
         driverOfferHighWarningEur: Number(driverOfferWarn),
+        orderAcceptanceCutoffTime: cutoffTime,
       },
       cancellation: {
         adminCancelDriverMessageMinChars: Number(minDriverMsg),
@@ -11931,6 +12860,44 @@ const OperationalPoliciesForm = ({ showToast }) => {
               : undefined
           }
           onChange={(e) => setDriverOfferWarn(e.target.value)}
+        />
+      </div>
+      <div className="policy-field">
+        <label className="field-label" htmlFor="policy-cutoff-time">
+          {t("adminPolicyOrderAcceptanceCutoffLabel")}
+        </label>
+        <input
+          id="policy-cutoff-time"
+          className="input mono"
+          placeholder={t("newOrderTimePh")}
+          value={cutoffTime}
+          style={
+            cutoffTime !== storedCutoffTime && !isPolicyTimeValid(cutoffTime)
+              ? userInputErrStyle
+              : undefined
+          }
+          aria-invalid={
+            cutoffTime !== storedCutoffTime && !isPolicyTimeValid(cutoffTime)
+              ? true
+              : undefined
+          }
+          aria-describedby={
+            cutoffTime !== storedCutoffTime && !isPolicyTimeValid(cutoffTime)
+              ? "policy-cutoff-time-error"
+              : undefined
+          }
+          onChange={(e) => setCutoffTime(e.target.value)}
+          onBlur={(e) =>
+            setCutoffTime(AuthStore.formatTimeInput(e.target.value))
+          }
+        />
+        <UserFormError
+          id="policy-cutoff-time-error"
+          message={
+            cutoffTime !== storedCutoffTime && !isPolicyTimeValid(cutoffTime)
+              ? t("adminPolicyTimeFormatError")
+              : ""
+          }
         />
       </div>
       <PolicySwitchRow

@@ -1135,6 +1135,96 @@ const Ic = {
         />
       </svg>
     ),
+    // Admin notification feed severity badges (Dispatch Notification Feed
+    // redesign): one icon per event, colored by severity tier.
+    Key: () => (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <circle cx="7.5" cy="15.5" r="3.5" stroke="currentColor" strokeWidth="1.6" />
+        <path
+          d="M10.5 12.5 19 4m-3 3 2 2m-5.5-1.5 2 2"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+    Warning: () => (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M12 3.5 21.5 20h-19z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M12 9.5v4.5M12 17h.01"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+    CircleX: () => (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+        <path
+          d="M9.5 9.5l5 5m0-5-5 5"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+    CheckCircle: () => (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+        <path
+          d="M8 12.5l2.6 2.6L16.5 9"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+    Bell: () => (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M6 10a6 6 0 1 1 12 0c0 3 1 4.5 2 5.5H4c1-1 2-2.5 2-5.5Z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M10 19a2 2 0 0 0 4 0"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+    Trash: () => (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M10 11v6m4-6v6"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+    MailOpen: () => (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M3 8.5 12 14l9-5.5M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
   },
 };
 

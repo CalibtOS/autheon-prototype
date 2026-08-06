@@ -238,6 +238,23 @@ Enum message_delivery_status {
   cancelled
 }
 
+// PRD v2.34 / Task 33 (renumbered from v2.32 — main independently claimed
+// v2.32 for an unrelated job-attachment-size-limits change) — admin-feed-only. Meaningful only on user_notifications
+// rows delivered to an admin recipient; unused (default values) on
+// driver-recipient rows, same table.
+Enum notification_severity {
+  red
+  orange
+  gray
+}
+
+// Values renamed 2026-08-05 (open -> unread, processed -> read) — naming
+// change only, same admin-feed-only explicit-action-only rule as before.
+Enum notification_status {
+  unread
+  read
+}
+
 Table users {
   id uuid [pk]
   keycloak_id varchar(36) [unique] // nullable until Keycloak provisioning completes; partial unique index where not null
@@ -805,6 +822,24 @@ Table user_notifications {
   deep_link varchar(1024)
   created_at timestamptz [not null]
   read_at timestamptz
+  // PRD v2.34 / Task 33 (renumbered from v2.32 — main independently claimed
+// v2.32 for an unrelated job-attachment-size-limits change) — admin-feed-only (see notification_severity /
+  // notification_status above). Never meaningful on a driver-recipient row.
+  // Deliberately NOT named read_at/read_by_user_id: this table's existing
+  // read_at above is the driver-notification read receipt, set on VIEWING;
+  // the admin equivalent flips ONLY via an explicit "mark as read" action,
+  // never on view, so it needs its own name to keep the two rules from
+  // silently merging. Status enum values renamed 2026-08-05 (open -> unread,
+  // processed -> read); columns renamed the same day (processed_at/
+  // processed_by_user_id -> admin_read_at/admin_read_by_user_id).
+  severity notification_severity [not null, default: 'gray']
+  status notification_status [not null, default: 'unread']
+  admin_read_at timestamptz
+  admin_read_by_user_id uuid
+  // 2026-08-05: soft delete for the admin feed's "Delete" action (per-row,
+  // "delete selected", "delete all") — a deleted row is hidden from every
+  // admin-facing read but never erased, so it stays available for audit.
+  deleted_at timestamptz
 
   indexes {
     (user_id, created_at)
@@ -941,6 +976,7 @@ Ref: notification_preferences.user_id > users.id
 Ref: push_subscriptions.user_id > users.id
 Ref: user_notifications.user_id > users.id
 Ref: user_notifications.job_id > jobs.id
+Ref: user_notifications.admin_read_by_user_id > users.id
 Ref: notification_deliveries.user_notification_id > user_notifications.id
 Ref: feature_flags.updated_by_user_id > users.id
 Ref: app_settings.updated_by_user_id > users.id
