@@ -5798,76 +5798,26 @@ const DriversPane = ({ showToast }) => {
         />
       ) : null}
 
+      {/* Composed through the shared `Dialog` primitive rather than a
+          hand-rolled backdrop + panel. The hand-rolled version dropped the
+          22-field master-data form straight into `.dialog-panel`, which is
+          `overflow: hidden` by contract — scrolling belongs to
+          `.dialog-content`, which only the primitive supplies. Without it the
+          form clipped at ~646px of 1445px and pushed Close/Save ~700px below
+          the fold with no scrollbar. The primitive also brings Escape-to-close
+          and the aria-labelledby wiring this panel never had. */}
       {driverModal ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="dialog-backdrop"
-          onClick={() => setDriverModal(null)}
-        >
-          <div
-            className="dialog-panel dialog-panel--lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="dialog-title">
-              {driverModal === "new"
-                ? t("adminUsersNewDriverTitle")
-                : t("adminUsersEditDriverTitle")}
-            </h2>
-            {driverModal !== "new" ? (
-              <p
-                className="label"
-                style={{ margin: "0 0 16px", fontSize: 11.5 }}
-              >
-                {t("adminUsersServicePartnerId")} {driverModal}
-              </p>
-            ) : null}
-            {driverModal !== "new"
-              ? (() => {
-                  const summary =
-                    store.getServicePartnerProfileSummary(driverModal);
-                  return (
-                    <div
-                      className="card"
-                      style={{
-                        padding: 12,
-                        marginBottom: 16,
-                        display: "flex",
-                        gap: 18,
-                        flexWrap: "wrap",
-                        fontSize: 12.5,
-                      }}
-                    >
-                      <span>
-                        {t("adminUsersSummaryCompletedOrders")}:{" "}
-                        <strong>{summary.completedOrders}</strong>
-                      </span>
-                      <span>
-                        {t("adminUsersSummaryOpenDocReviews")}:{" "}
-                        <strong>{summary.openDocumentReviews}</strong>
-                      </span>
-                      <span>
-                        {t("adminUsersSummaryOpenChangeRequests")}:{" "}
-                        <strong>{summary.openProfileChangeRequests}</strong>
-                      </span>
-                    </div>
-                  );
-                })()
-              : null}
-            <DriverUserFormFields
-              form={driverForm}
-              setF={setDF}
-              errors={driverErrors}
-              t={t}
-              isNew={driverModal === "new"}
-              probationSummary={
-                driverModal !== "new"
-                  ? store.getDriverProbationSummary(driverModal)
-                  : null
-              }
-              onReleaseProbation={releaseDriverProbation}
-            />
-            <div className="dialog-actions">
+        <Dialog
+          open
+          size="lg"
+          onClose={() => setDriverModal(null)}
+          title={
+            driverModal === "new"
+              ? t("adminUsersNewDriverTitle")
+              : t("adminUsersEditDriverTitle")
+          }
+          actions={
+            <>
               <button
                 type="button"
                 className="btn"
@@ -5883,9 +5833,59 @@ const DriversPane = ({ showToast }) => {
               >
                 {t("adminUsersSave")}
               </button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        >
+          {driverModal !== "new" ? (
+            <p className="label" style={{ margin: 0, fontSize: 11.5 }}>
+              {t("adminUsersServicePartnerId")} {driverModal}
+            </p>
+          ) : null}
+          {driverModal !== "new"
+            ? (() => {
+                const summary =
+                  store.getServicePartnerProfileSummary(driverModal);
+                return (
+                  <div
+                    className="card"
+                    style={{
+                      padding: 12,
+                      display: "flex",
+                      gap: 18,
+                      flexWrap: "wrap",
+                      fontSize: 12.5,
+                    }}
+                  >
+                    <span>
+                      {t("adminUsersSummaryCompletedOrders")}:{" "}
+                      <strong>{summary.completedOrders}</strong>
+                    </span>
+                    <span>
+                      {t("adminUsersSummaryOpenDocReviews")}:{" "}
+                      <strong>{summary.openDocumentReviews}</strong>
+                    </span>
+                    <span>
+                      {t("adminUsersSummaryOpenChangeRequests")}:{" "}
+                      <strong>{summary.openProfileChangeRequests}</strong>
+                    </span>
+                  </div>
+                );
+              })()
+            : null}
+          <DriverUserFormFields
+            form={driverForm}
+            setF={setDF}
+            errors={driverErrors}
+            t={t}
+            isNew={driverModal === "new"}
+            probationSummary={
+              driverModal !== "new"
+                ? store.getDriverProbationSummary(driverModal)
+                : null
+            }
+            onReleaseProbation={releaseDriverProbation}
+          />
+        </Dialog>
       ) : null}
     </div>
   );
@@ -6634,12 +6634,14 @@ const StaffPane = ({ showToast }) => {
         >
           <div className="dialog-panel" onClick={(e) => e.stopPropagation()}>
             <h2 className="dialog-title">{t("adminUsersNewAdminTitle")}</h2>
-            <AdminUserFormFields
-              form={adminForm}
-              setF={setAF}
-              errors={adminErrors}
-              t={t}
-            />
+            <div className="dialog-body">
+              <AdminUserFormFields
+                form={adminForm}
+                setF={setAF}
+                errors={adminErrors}
+                t={t}
+              />
+            </div>
             <div className="dialog-actions">
               <button
                 type="button"
@@ -9659,7 +9661,7 @@ const TourBillingPane = ({
               {t("adminTourDocRegisterTitle")}
             </h2>
             <p className="dialog-desc">{t("adminTourDocRegisterHint")}</p>
-            <div style={{ display: "grid", gap: 12 }}>
+            <div className="dialog-body">
               <div>
                 <label className="field-label" htmlFor="reg-doctype">
                   {t("billingFilterType")}
@@ -9999,7 +10001,7 @@ const TourBillingPane = ({
         >
           <div className="dialog-panel" onClick={(e) => e.stopPropagation()}>
             <h2 className="dialog-title">{t("adminInvoiceEdit")}</h2>
-            <div style={{ display: "grid", gap: 12 }}>
+            <div className="dialog-body">
               <div>
                 <label className="field-label" htmlFor="ed-job">
                   {t("adminInvoiceSelectJob")}
@@ -10142,7 +10144,7 @@ const TourBillingPane = ({
           <div className="dialog-panel" onClick={(e) => e.stopPropagation()}>
             <h2 className="dialog-title">{t("adminAcceptInvoiceTitle")}</h2>
             <p className="dialog-desc">{accepting.fileName}</p>
-            <div style={{ display: "grid", gap: 12 }}>
+            <div className="dialog-body">
               <div>
                 <label className="field-label" htmlFor="accept-inv-num">
                   {t("adminSupplierInvoiceNumberLabel")}
@@ -10208,34 +10210,18 @@ const TourBillingPane = ({
         </div>
       )}
 
+      {/* Was a hand-rolled fixed overlay with `max-width: 480` and — uniquely
+          among the console's modals — NO height bound and `overflow: visible`,
+          so a long reason list could push its own actions past the bottom of
+          the viewport with nothing to scroll, not even a clip. The primitive
+          supplies the bounded panel and the scrolling content region. */}
       {actionDoc && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "color-mix(in srgb, var(--scrim-ink) 45%, transparent)",
-            zIndex: 102,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-          }}
-          onClick={closeActionDialog}
-        >
-          <div
-            className="card elev"
-            style={{ maxWidth: 480, width: "100%", padding: 22 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>
-              {t("adminDocActionDialogTitle")}
-            </h2>
-            <p
-              className="label"
-              style={{ margin: "0 0 16px", fontSize: 13, lineHeight: 1.5 }}
-            >
+        <Dialog
+          open
+          onClose={closeActionDialog}
+          title={t("adminDocActionDialogTitle")}
+          description={
+            <>
               {actionDoc.fileName} ·{" "}
               {displayTourDocType(actionDoc.documentType, t)}
               {actionDoc.jobId
@@ -10244,80 +10230,11 @@ const TourBillingPane = ({
                     return j ? ` · ${j.tour} · ${j.customer}` : "";
                   })()
                 : ""}
-            </p>
-            <div style={{ display: "grid", gap: 12 }}>
-              <div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <label className="field-label" htmlFor="doc-action-reason">
-                    {t("adminDocActionReasonLabel")} *
-                  </label>
-                  <select
-                    className="input xs"
-                    style={{ width: "auto", fontSize: 11.5 }}
-                    value=""
-                    onChange={(e) => {
-                      if (e.target.value) setActionReason(e.target.value);
-                    }}
-                  >
-                    <option value="">{t("adminRejectNotePlaceholder")}</option>
-                    <option value={t("rejectionPresetLegible")}>
-                      {t("rejectionPresetLegible")}
-                    </option>
-                    <option value={t("rejectionPresetRegistration")}>
-                      {t("rejectionPresetRegistration")}
-                    </option>
-                    <option value={t("rejectionPresetWaiting")}>
-                      {t("rejectionPresetWaiting")}
-                    </option>
-                  </select>
-                </div>
-                <textarea
-                  id="doc-action-reason"
-                  className="input"
-                  rows={2}
-                  autoFocus
-                  value={actionReason}
-                  onChange={(e) => setActionReason(e.target.value)}
-                  style={{ marginTop: 6, resize: "vertical", minHeight: 52 }}
-                />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="doc-action-note">
-                  {t("adminDocActionNoteLabel")}
-                </label>
-                <textarea
-                  id="doc-action-note"
-                  className="input"
-                  rows={2}
-                  value={actionNote}
-                  onChange={(e) => setActionNote(e.target.value)}
-                  style={{ marginTop: 6, resize: "vertical", minHeight: 44 }}
-                />
-              </div>
-              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={actionVisible}
-                  onChange={(e) => setActionVisible(e.target.checked)}
-                />
-                {t("adminDocActionVisibleLabel")}
-              </label>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginTop: 18,
-                justifyContent: "flex-end",
-                flexWrap: "wrap",
-              }}
-            >
+            </>
+          }
+          rowActions
+          actions={
+            <>
               <button type="button" className="btn" onClick={closeActionDialog}>
                 {t("adminInvoiceCancel")}
               </button>
@@ -10343,9 +10260,72 @@ const TourBillingPane = ({
                   {t("adminDocActionReject")}
                 </button>
               ) : null}
+            </>
+          }
+        >
+          <div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <label className="field-label" htmlFor="doc-action-reason">
+                {t("adminDocActionReasonLabel")} *
+              </label>
+              <select
+                className="input xs"
+                style={{ width: "auto", fontSize: 11.5 }}
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) setActionReason(e.target.value);
+                }}
+              >
+                <option value="">{t("adminRejectNotePlaceholder")}</option>
+                <option value={t("rejectionPresetLegible")}>
+                  {t("rejectionPresetLegible")}
+                </option>
+                <option value={t("rejectionPresetRegistration")}>
+                  {t("rejectionPresetRegistration")}
+                </option>
+                <option value={t("rejectionPresetWaiting")}>
+                  {t("rejectionPresetWaiting")}
+                </option>
+              </select>
             </div>
+            <textarea
+              id="doc-action-reason"
+              className="input"
+              rows={2}
+              autoFocus
+              value={actionReason}
+              onChange={(e) => setActionReason(e.target.value)}
+              style={{ marginTop: 6, resize: "vertical", minHeight: 52 }}
+            />
           </div>
-        </div>
+          <div>
+            <label className="field-label" htmlFor="doc-action-note">
+              {t("adminDocActionNoteLabel")}
+            </label>
+            <textarea
+              id="doc-action-note"
+              className="input"
+              rows={2}
+              value={actionNote}
+              onChange={(e) => setActionNote(e.target.value)}
+              style={{ marginTop: 6, resize: "vertical", minHeight: 44 }}
+            />
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={actionVisible}
+              onChange={(e) => setActionVisible(e.target.checked)}
+            />
+            {t("adminDocActionVisibleLabel")}
+          </label>
+        </Dialog>
       )}
 
       {viewing && (
@@ -10361,90 +10341,97 @@ const TourBillingPane = ({
           >
             <h2 className="dialog-title">{t("invoiceViewTitle")}</h2>
             <p className="dialog-desc">{t("invoiceViewDisclaimer")}</p>
-            <pre
-              style={{
-                margin: 0,
-                padding: 14,
-                borderRadius: 10,
-                background: "var(--paper-2)",
-                border: "1px solid var(--line)",
-                fontSize: 12,
-                lineHeight: 1.55,
-                overflow: "auto",
-                fontFamily: "var(--font-mono)",
-              }}
-            >
-              {[
-                `${t("adminInvoiceMetaFile")} ${viewing.fileName}`,
-                `${t("adminDocMetaType")} ${displayTourDocType(
-                  viewing.documentType,
-                  t,
-                )}`,
-                `Review: ${displayDocReviewStatus(viewing.reviewStatus)}`,
-                `${t("adminInvoiceMetaMime")} ${viewing.mimeType}`,
-                `${t("adminInvoiceMetaSource")} ${sourceLabel(viewing)}`,
-                `${t("adminInvoiceMetaDriver")} ${viewing.driverName}`,
-                `${t("adminInvoiceMetaJob")} ${
-                  viewing.jobId || t("adminInvoiceJobNone")
-                }`,
-                viewing.notes
-                  ? `${t("adminInvoiceMetaNotes")} ${viewing.notes}`
-                  : null,
-                `${t("adminInvoiceMetaUploaded")} ${viewing.uploadedAt}`,
-                viewing.rejectionReason
-                  ? `Rejection: ${viewing.rejectionReason}`
-                  : null,
-                AuthStore.isTourBillingInvoiceType(viewing.documentType) &&
-                (viewing.supplierInvoiceNumber || viewing.supplierInvoiceDate)
-                  ? [
-                      viewing.supplierInvoiceNumber
-                        ? `${t("adminInvoiceMetaSupplierNumber")} ${viewing.supplierInvoiceNumber}`
-                        : null,
-                      viewing.supplierInvoiceDate
-                        ? `${t("adminInvoiceMetaSupplierDate")} ${viewing.supplierInvoiceDate}`
-                        : null,
-                      viewing.servicePeriodFrom || viewing.servicePeriodTo
-                        ? `${t("tourDocServicePeriodFrom")}/${t("tourDocServicePeriodTo")}: ${viewing.servicePeriodFrom || "—"} – ${viewing.servicePeriodTo || "—"}`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join("\n")
-                  : null,
-                viewing.receiptDate
-                  ? `${t("tourDocReceiptDate")}: ${viewing.receiptDate}`
-                  : null,
-                viewing.netAmount != null ||
-                viewing.grossAmount != null ||
-                viewing.taxRatePercent != null
-                  ? [
-                      viewing.netAmount != null
-                        ? `${t("tourDocNetAmount")}: ${viewing.netAmount.toFixed(2)}`
-                        : null,
-                      viewing.taxRatePercent != null
-                        ? `${t("tourDocTaxRate")}: ${viewing.taxRatePercent}`
-                        : null,
-                      viewing.grossAmount != null
-                        ? `${t("tourDocGrossAmount")}: ${viewing.grossAmount.toFixed(2)}`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join("\n")
-                  : null,
-                `${t("adminInvoiceMetaSize")} ${viewing.sizeBytes ?? 0} ${t(
-                  "adminInvoiceBytesUnit",
-                )}`,
-              ]
-                .filter(Boolean)
-                .join("\n")}
-            </pre>
-            <button
-              type="button"
-              className="btn primary"
-              style={{ marginTop: 16 }}
-              onClick={() => setViewId(null)}
-            >
-              {t("close")}
-            </button>
+            {/* The `<pre>` carries `overflow: auto` but no `min-height: 0`, so
+                as a flex child it refuses to shrink below its content and
+                blows the panel out instead of scrolling. `.dialog-body` is the
+                contract's scroll container and supplies both. */}
+            <div className="dialog-body">
+              <pre
+                style={{
+                  margin: 0,
+                  padding: 14,
+                  borderRadius: 10,
+                  background: "var(--paper-2)",
+                  border: "1px solid var(--line)",
+                  fontSize: 12,
+                  lineHeight: 1.55,
+                  overflow: "auto",
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                {[
+                  `${t("adminInvoiceMetaFile")} ${viewing.fileName}`,
+                  `${t("adminDocMetaType")} ${displayTourDocType(
+                    viewing.documentType,
+                    t,
+                  )}`,
+                  `Review: ${displayDocReviewStatus(viewing.reviewStatus)}`,
+                  `${t("adminInvoiceMetaMime")} ${viewing.mimeType}`,
+                  `${t("adminInvoiceMetaSource")} ${sourceLabel(viewing)}`,
+                  `${t("adminInvoiceMetaDriver")} ${viewing.driverName}`,
+                  `${t("adminInvoiceMetaJob")} ${
+                    viewing.jobId || t("adminInvoiceJobNone")
+                  }`,
+                  viewing.notes
+                    ? `${t("adminInvoiceMetaNotes")} ${viewing.notes}`
+                    : null,
+                  `${t("adminInvoiceMetaUploaded")} ${viewing.uploadedAt}`,
+                  viewing.rejectionReason
+                    ? `Rejection: ${viewing.rejectionReason}`
+                    : null,
+                  AuthStore.isTourBillingInvoiceType(viewing.documentType) &&
+                  (viewing.supplierInvoiceNumber || viewing.supplierInvoiceDate)
+                    ? [
+                        viewing.supplierInvoiceNumber
+                          ? `${t("adminInvoiceMetaSupplierNumber")} ${viewing.supplierInvoiceNumber}`
+                          : null,
+                        viewing.supplierInvoiceDate
+                          ? `${t("adminInvoiceMetaSupplierDate")} ${viewing.supplierInvoiceDate}`
+                          : null,
+                        viewing.servicePeriodFrom || viewing.servicePeriodTo
+                          ? `${t("tourDocServicePeriodFrom")}/${t("tourDocServicePeriodTo")}: ${viewing.servicePeriodFrom || "—"} – ${viewing.servicePeriodTo || "—"}`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join("\n")
+                    : null,
+                  viewing.receiptDate
+                    ? `${t("tourDocReceiptDate")}: ${viewing.receiptDate}`
+                    : null,
+                  viewing.netAmount != null ||
+                  viewing.grossAmount != null ||
+                  viewing.taxRatePercent != null
+                    ? [
+                        viewing.netAmount != null
+                          ? `${t("tourDocNetAmount")}: ${viewing.netAmount.toFixed(2)}`
+                          : null,
+                        viewing.taxRatePercent != null
+                          ? `${t("tourDocTaxRate")}: ${viewing.taxRatePercent}`
+                          : null,
+                        viewing.grossAmount != null
+                          ? `${t("tourDocGrossAmount")}: ${viewing.grossAmount.toFixed(2)}`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join("\n")
+                    : null,
+                  `${t("adminInvoiceMetaSize")} ${viewing.sizeBytes ?? 0} ${t(
+                    "adminInvoiceBytesUnit",
+                  )}`,
+                ]
+                  .filter(Boolean)
+                  .join("\n")}
+              </pre>
+            </div>
+            <div className="dialog-actions">
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => setViewId(null)}
+              >
+                {t("close")}
+              </button>
+            </div>
           </div>
         </div>
       )}
