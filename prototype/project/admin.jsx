@@ -39,6 +39,23 @@ const ADMIN_TOUR_DOC_TYPES = [
 // per-customer or per-transport-type expected-document configuration.
 const EXPECTED_TOUR_DOC_TYPES = ["delivery_note", "invoice"];
 
+// A distance cell must never render an empty value. The stored distance wins;
+// otherwise the postal-code approximation is shown, explicitly marked as an
+// estimate. Only a missing postal-code pair yields "not yet calculated" — in
+// the real system that is also the state a failed routing-provider call falls
+// back to, see docs/requirements/distance-estimation-api-contract.md.
+const displayDistance = (job, t) => {
+  const r = AuthStore.resolveDisplayDistance(job);
+  if (r.km == null)
+    return { km: null, approx: false, text: t("distanceNotYetCalculated") };
+  const approx = r.source === "approximation";
+  return {
+    km: r.km,
+    approx,
+    text: approx ? t("distanceApprox", { km: r.km }) : `${r.km} km`,
+  };
+};
+
 const displayTourDocType = (type, t) => {
   const code = AuthStore.normalizeTourDocumentType(type);
   return (
@@ -2180,7 +2197,8 @@ const AdminDetail = ({
   // Transport-order PDF (Task 17): the active document drives the card, the
   // full immutable history drives the version list.
   const transportOrderDocs = store.getTransportOrderDocuments(job.id);
-  const activeTransportOrderDoc = transportOrderDocs.find((d) => d.isActive) || null;
+  const activeTransportOrderDoc =
+    transportOrderDocs.find((d) => d.isActive) || null;
   const [pdfPreview, setPdfPreview] = useStateA(null);
   return (
     <>
@@ -2257,10 +2275,7 @@ const AdminDetail = ({
             }}
           >
             {job.startPlz} {job.startCity} → {job.endPlz} {job.endCity} ·{" "}
-            {job.distanceKm
-              ? `${job.distanceKm} km`
-              : t("distanceNotYetCalculated")}{" "}
-            ·{" "}
+            {displayDistance(job, t).text} ·{" "}
             {AuthStore.schedulesOnDifferentDays(job)
               ? `${AuthStore.formatLocationSchedule(job.pickup, t("flexible"))} → ${AuthStore.formatLocationSchedule(job.delivery, t("flexible"))}`
               : AuthStore.formatLocationSchedule(job.pickup, t("flexible"))}
@@ -2407,30 +2422,48 @@ const AdminDetail = ({
                   }}
                   className="tnum"
                 >
-                  {job.distanceKm ? (
-                    <>
-                      {job.distanceKm}
-                      <span
-                        style={{
-                          fontSize: 14,
-                          color: "var(--muted)",
-                          marginLeft: 4,
-                        }}
-                      >
-                        km
-                      </span>
-                    </>
-                  ) : (
-                    <span
-                      style={{
-                        fontSize: 16,
-                        fontWeight: 400,
-                        color: "var(--muted)",
-                      }}
-                    >
-                      {t("distanceNotYetCalculated")}
-                    </span>
-                  )}
+                  {(() => {
+                    const d = displayDistance(job, t);
+                    if (d.km == null)
+                      return (
+                        <span
+                          style={{
+                            fontSize: 16,
+                            fontWeight: 400,
+                            color: "var(--muted)",
+                          }}
+                        >
+                          {d.text}
+                        </span>
+                      );
+                    return (
+                      <>
+                        {d.approx ? "~ " : ""}
+                        {d.km}
+                        <span
+                          style={{
+                            fontSize: 14,
+                            color: "var(--muted)",
+                            marginLeft: 4,
+                          }}
+                        >
+                          km
+                        </span>
+                        {d.approx ? (
+                          <div
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 400,
+                              color: "var(--muted)",
+                              marginTop: 2,
+                            }}
+                          >
+                            {t("distanceEstimatedLabel")}
+                          </div>
+                        ) : null}
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="label" style={{ marginTop: 24 }}>
                   {t("schedule")}
@@ -10586,7 +10619,9 @@ const AuditPane = ({ showToast }) => {
           <button
             type="button"
             className="btn danger"
-            onClick={() => setRetentionPreview(store.getAuditRetentionPreview())}
+            onClick={() =>
+              setRetentionPreview(store.getAuditRetentionPreview())
+            }
           >
             {t("adminAuditRetentionAction", { days: retentionDays })}
           </button>
@@ -11034,7 +11069,10 @@ const MasterDataRequestsPane = ({
     statusCounts.open + statusCounts.approved + statusCounts.rejected;
   // The production queue is paginated server-side; page the mock list so the
   // footer, the result count and the reset-to-page-1 behaviour all match.
-  const totalPages = Math.max(1, Math.ceil(allRows.length / Math.max(1, rowsPerPage)));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(allRows.length / Math.max(1, rowsPerPage)),
+  );
   const currentPage = Math.min(Math.max(1, page), totalPages);
   const rows = allRows.slice(
     (currentPage - 1) * rowsPerPage,
@@ -11333,7 +11371,9 @@ const MasterDataRequestsPane = ({
                 </div>
                 {selected.adminNote ? (
                   <div style={{ marginTop: 8 }}>
-                    <div className="field-label">{t("adminMdrAdminNoteResolved")}</div>
+                    <div className="field-label">
+                      {t("adminMdrAdminNoteResolved")}
+                    </div>
                     <div style={{ marginTop: 6, lineHeight: 1.5 }}>
                       {selected.adminNote}
                     </div>
@@ -11467,9 +11507,7 @@ const isPolicyNumberValid = (current, max = Number.POSITIVE_INFINITY) => {
   if (trimmed === "") return false;
   const parsed = Number(trimmed);
   return (
-    Number.isInteger(parsed) &&
-    parsed >= MIN_POLICY_NUMBER &&
-    parsed <= max
+    Number.isInteger(parsed) && parsed >= MIN_POLICY_NUMBER && parsed <= max
   );
 };
 
@@ -12293,9 +12331,7 @@ const DriverUploadLimitsForm = ({ showToast }) => {
   // Cross-field rule: only meaningful once both fields are individually
   // valid — otherwise the field's own message is the actionable one.
   const isTotalBelowFile =
-    isMaxFileValid &&
-    isMaxTotalValid &&
-    Number(maxTotalMb) < Number(maxFileMb);
+    isMaxFileValid && isMaxTotalValid && Number(maxTotalMb) < Number(maxFileMb);
 
   const canSave =
     dirty && isMaxFileValid && isMaxTotalValid && !isTotalBelowFile;
@@ -12339,11 +12375,7 @@ const DriverUploadLimitsForm = ({ showToast }) => {
   };
 
   return (
-    <form
-      className="upload-limits-form"
-      onSubmit={save}
-      noValidate
-    >
+    <form className="upload-limits-form" onSubmit={save} noValidate>
       <div className="policy-grid">
         <div className="policy-field">
           <label className="field-label" htmlFor="upload-limits-max-file">

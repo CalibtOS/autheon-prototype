@@ -1015,7 +1015,8 @@ window.I18n = (() => {
       adminInactivityTitle: "Automatic deactivation",
       adminInactivityBlurb:
         "Service partners who stop using the platform are set to Inactive automatically. They can no longer see the marketplace or accept tours, and any admin can reactivate them at any time. Partners with tours still running are always skipped.",
-      adminInactivityEnabled: "Deactivate inactive service partners automatically",
+      adminInactivityEnabled:
+        "Deactivate inactive service partners automatically",
       adminInactivityThreshold: "Deactivate after (days without activity)",
       adminInactivityWarning: "Warn this many days beforehand",
       adminInactivityWarningHelp:
@@ -1640,6 +1641,8 @@ window.I18n = (() => {
       route: "Route",
       distance: "Distance",
       distanceNotYetCalculated: "Distance not yet calculated",
+      distanceApprox: "~ {km} km (estimated)",
+      distanceEstimatedLabel: "Estimated from postal codes",
       schedule: "Schedule",
       type: "Type",
       details: "Details",
@@ -3109,7 +3112,8 @@ window.I18n = (() => {
       // Formulierung wird in der Admin-Konsole wortgleich wiederverwendet.
       adminAuditRetentionAction:
         "Audit-Ereignisse älter als {days} Tage löschen",
-      adminAuditRetentionTitle: "Audit-Ereignisse älter als {days} Tage löschen",
+      adminAuditRetentionTitle:
+        "Audit-Ereignisse älter als {days} Tage löschen",
       adminAuditRetentionCount_one:
         "1 Audit-Ereignis wurde vor dem {cutoff} aufgezeichnet und wird endgültig gelöscht.",
       adminAuditRetentionCount_other:
@@ -3180,7 +3184,8 @@ window.I18n = (() => {
       adminInactivityTitle: "Automatische Deaktivierung",
       adminInactivityBlurb:
         "Servicepartner, die die Plattform nicht mehr nutzen, werden automatisch auf Inaktiv gesetzt. Sie sehen dann den Marktplatz nicht mehr und können keine Touren annehmen; jede Administratorin und jeder Administrator kann sie jederzeit wieder aktivieren. Partner mit laufenden Touren werden immer übersprungen.",
-      adminInactivityEnabled: "Inaktive Servicepartner automatisch deaktivieren",
+      adminInactivityEnabled:
+        "Inaktive Servicepartner automatisch deaktivieren",
       adminInactivityThreshold: "Deaktivieren nach (Tagen ohne Aktivität)",
       adminInactivityWarning: "So viele Tage vorher warnen",
       adminInactivityWarningHelp:
@@ -3793,6 +3798,8 @@ window.I18n = (() => {
       route: "Route",
       distance: "Distanz",
       distanceNotYetCalculated: "Distanz noch nicht berechnet",
+      distanceApprox: "~ {km} km (geschätzt)",
+      distanceEstimatedLabel: "Aus Postleitzahlen geschätzt",
       schedule: "Zeitplan",
       type: "Typ",
       details: "Details",

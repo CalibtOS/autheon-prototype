@@ -343,8 +343,7 @@ const PolicyDisclosure = ({ introKey = "partnerTermsApply" }) => {
 const tourDocUploadErrorMessage = (reason, t) => {
   if (reason === "invalid_type") return t("invoiceUploadInvalidType");
   if (reason === "file_too_large") return t("stagedFailureFileTooLarge");
-  if (reason === "allowance_exhausted")
-    return t("stagedFailureQuotaExceeded");
+  if (reason === "allowance_exhausted") return t("stagedFailureQuotaExceeded");
   if (reason === "driver_restricted") return t("invoiceUploadRestricted");
   if (reason === "job_not_performed" || reason === "job_not_uploadable")
     return t("tourDocRequiresPerformed");
@@ -410,8 +409,7 @@ const classifyStoreUploadRefusal = (reason) => {
 
 const stagedFailureMessage = (failureReason, t) => {
   if (failureReason === "fileTooLarge") return t("stagedFailureFileTooLarge");
-  if (failureReason === "quotaExceeded")
-    return t("stagedFailureQuotaExceeded");
+  if (failureReason === "quotaExceeded") return t("stagedFailureQuotaExceeded");
   if (failureReason === "unsupportedType")
     return t("stagedFailureUnsupportedType");
   return t("stagedFailureRejected");
@@ -1166,7 +1164,7 @@ const RouteStack = ({ job, big = true }) => {
             {job.endCity}
           </div>
           <div className="meta">
-            {job.endPlz} · {t("destination")} · {job.distanceKm} km
+            {job.endPlz} · {t("destination")} · {jobDistanceText(job, t)}
           </div>
         </div>
       </div>
@@ -1329,6 +1327,18 @@ const estimateDriveTime = (km) => {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+};
+
+// The driver must never see "null km". The stored distance wins; otherwise the
+// postal-code approximation is used and marked with "~". Production keeps the
+// same contract against the routing provider — see
+// docs/requirements/distance-estimation-api-contract.md.
+const jobDistanceKm = (job) => AuthStore.resolveDisplayDistance(job).km;
+
+const jobDistanceText = (job, t) => {
+  const r = AuthStore.resolveDisplayDistance(job);
+  if (r.km == null) return t("distanceNotYetCalculated");
+  return r.source === "approximation" ? `~ ${r.km} km` : `${r.km} km`;
 };
 
 // Compact leg line for job cards: "23.04. · 08:00–12:00" (or "Flexible")
@@ -1576,7 +1586,7 @@ const JobCardBody = ({ job }) => {
           label: t("delivery"),
           when: legWhen(job.delivery, t),
         }}
-        distanceKm={job.distanceKm}
+        distanceKm={jobDistanceKm(job)}
       />
       <hr className="jobcard-divider" />
       <div className="jobcard-footer">
@@ -1746,9 +1756,9 @@ const Portal = ({
     } else if (sortBy === "price_desc") {
       return Number(b.driverOffer || 0) - Number(a.driverOffer || 0);
     } else if (sortBy === "dist_asc") {
-      return Number(a.distanceKm || 0) - Number(b.distanceKm || 0);
+      return Number(jobDistanceKm(a) || 0) - Number(jobDistanceKm(b) || 0);
     } else if (sortBy === "dist_desc") {
-      return Number(b.distanceKm || 0) - Number(a.distanceKm || 0);
+      return Number(jobDistanceKm(b) || 0) - Number(jobDistanceKm(a) || 0);
     }
     return 0;
   });
@@ -2480,8 +2490,8 @@ const JobLocked = ({ job, onBack, onBackToMarketplace, onAccept }) => {
               plz: job.endPlz ? `${t("postalCodeAbbr")}: ${job.endPlz}` : null,
               label: t("delivery"),
             }}
-            distanceKm={job.distanceKm}
-            distanceNote={estimateDriveTime(job.distanceKm) || null}
+            distanceKm={jobDistanceKm(job)}
+            distanceNote={estimateDriveTime(jobDistanceKm(job)) || null}
           />
           <hr className="detail-card-divider" />
           <div className="detail-route-times">
@@ -2699,7 +2709,7 @@ const AcceptanceModal = ({ job, onCancel, onConfirm }) => {
               Tour #{job.id}
             </div>
             <div className="mono mono-strong">
-              {job.startPlz} → {job.endPlz} · {job.distanceKm} km
+              {job.startPlz} → {job.endPlz} · {jobDistanceText(job, t)}
             </div>
             <div className="mono text-muted-sm" style={{ marginTop: 6 }}>
               {AuthStore.formatJobScheduleShort(job, t("flexible"))} ·{" "}
@@ -3406,10 +3416,7 @@ const TourDocAmountFormSheet = ({
               }}
             >
               <div>
-                <label
-                  className="field-label"
-                  htmlFor={`${idPrefix}-svc-from`}
-                >
+                <label className="field-label" htmlFor={`${idPrefix}-svc-from`}>
                   {t("tourDocServicePeriodFrom")}
                 </label>
                 <input
@@ -3436,10 +3443,7 @@ const TourDocAmountFormSheet = ({
           </>
         ) : (
           <div>
-            <label
-              className="field-label"
-              htmlFor={`${idPrefix}-receipt-date`}
-            >
+            <label className="field-label" htmlFor={`${idPrefix}-receipt-date`}>
               {t("tourDocReceiptDate")}
             </label>
             <input
@@ -4014,9 +4018,7 @@ const TourDocumentUploadFlow = ({
         onPick={onCategoryPick}
       />
       <DocumentUploadStagingSheet
-        open={
-          stagedType != null && stagedFiles.length > 0 && !amountFormOpen
-        }
+        open={stagedType != null && stagedFiles.length > 0 && !amountFormOpen}
         documentType={stagedType}
         files={stagedFiles}
         limits={limits}
@@ -4087,14 +4089,7 @@ const docKindLabel = (doc, t) => {
 // Driver document row — My documents tab (all statuses).
 // Parity with legacy JobTourDocuments rows: type, review status, rejection
 // reason, View / Download / Replace, plus Remove while still `uploaded`.
-const MyDocRow = ({
-  doc,
-  t,
-  onRemove,
-  onView,
-  onDownload,
-  onReplace,
-}) => {
+const MyDocRow = ({ doc, t, onRemove, onView, onDownload, onReplace }) => {
   const rejectionReason =
     (doc.reviewStatus === "rejected" ||
       doc.reviewStatus === "correction_required") &&
@@ -4641,7 +4636,11 @@ const JobUnlocked = ({
       </div>
 
       {/* Job details / My documents — same tab chrome for every status */}
-      <div className="detail-tabs-row" role="tablist" aria-label={t("jobDetailsTab")}>
+      <div
+        className="detail-tabs-row"
+        role="tablist"
+        aria-label={t("jobDetailsTab")}
+      >
         <button
           type="button"
           role="tab"
@@ -4775,8 +4774,8 @@ const JobUnlocked = ({
                     : null,
                   label: t("delivery"),
                 }}
-                distanceKm={job.distanceKm}
-                distanceNote={estimateDriveTime(job.distanceKm) || null}
+                distanceKm={jobDistanceKm(job)}
+                distanceNote={estimateDriveTime(jobDistanceKm(job)) || null}
               />
               <hr className="detail-card-divider" />
               <div className="detail-unlocked-stops">
@@ -5057,7 +5056,7 @@ const JobUnlocked = ({
                 <div>
                   <div className="price-label">{t("driverOffer")}</div>
                   <div className="price-meta">
-                    {job.distanceKm} km ·{" "}
+                    {jobDistanceText(job, t)} ·{" "}
                     {displayTransportType(job.transportType, t)}
                   </div>
                 </div>
@@ -5610,7 +5609,10 @@ const ReportProblemSheet = ({ job, onClose, onSubmit }) => {
               ? slideLabel
               : slideLockedLabel}
         </div>
-        <div className="slide-fill" style={{ width: slideReady ? slidePos : 0 }} />
+        <div
+          className="slide-fill"
+          style={{ width: slideReady ? slidePos : 0 }}
+        />
         <div
           className="track-text track-text-fill"
           style={{
@@ -6135,7 +6137,7 @@ const MarkPerformedSheet = ({ job, onClose }) => {
                 Tour #{job.id}
               </div>
               <div className="mono mono-strong">
-                {job.startPlz} → {job.endPlz} · {job.distanceKm} km
+                {job.startPlz} → {job.endPlz} · {jobDistanceText(job, t)}
               </div>
             </div>
             <p className="para-intro">{t("markPerformedConfirmBody")}</p>
@@ -7413,8 +7415,7 @@ function applyAppTheme(theme) {
   const resolved = getComputedStyle(document.documentElement)
     .getPropertyValue(token)
     .trim();
-  const chrome =
-    resolved && !resolved.startsWith("var(") ? resolved : fallback;
+  const chrome = resolved && !resolved.startsWith("var(") ? resolved : fallback;
   document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
     meta.setAttribute("content", chrome);
     meta.removeAttribute("media");

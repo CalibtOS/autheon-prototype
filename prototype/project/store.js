@@ -2171,7 +2171,8 @@ window.AuthStore = (() => {
         resolvedBy: DEMO_ADMIN,
         reviewedBy: DEMO_ADMIN,
         reviewedAt: "26.07. 08:20",
-        adminNote: "Depot is not registered to this partner. Send the lease first.",
+        adminNote:
+          "Depot is not registered to this partner. Send the lease first.",
         snapshot: {
           company: neumann.company,
           address: neumann.address,
@@ -3459,14 +3460,37 @@ window.AuthStore = (() => {
    */
   const PDF_RELEVANT_FIELDS = new Set([
     "customer",
-    "pickupCompany", "pickupAddress", "pickupPostal", "pickupCity",
-    "pickupCountry", "pickupContact", "pickupPhone", "pickupAltContact",
-    "pickupEmail", "pickupNotes", "pickupDate", "pickupWindow",
-    "deliveryCompany", "deliveryAddress", "deliveryPostal", "deliveryCity",
-    "deliveryCountry", "deliveryContact", "deliveryPhone", "deliveryAltContact",
-    "deliveryEmail", "deliveryNotes", "deliveryDate", "deliveryWindow",
-    "vehicleType", "manufacturer", "vehicleModel", "plate", "vin",
-    "transportType", "registrationStatus",
+    "pickupCompany",
+    "pickupAddress",
+    "pickupPostal",
+    "pickupCity",
+    "pickupCountry",
+    "pickupContact",
+    "pickupPhone",
+    "pickupAltContact",
+    "pickupEmail",
+    "pickupNotes",
+    "pickupDate",
+    "pickupWindow",
+    "deliveryCompany",
+    "deliveryAddress",
+    "deliveryPostal",
+    "deliveryCity",
+    "deliveryCountry",
+    "deliveryContact",
+    "deliveryPhone",
+    "deliveryAltContact",
+    "deliveryEmail",
+    "deliveryNotes",
+    "deliveryDate",
+    "deliveryWindow",
+    "vehicleType",
+    "manufacturer",
+    "vehicleModel",
+    "plate",
+    "vin",
+    "transportType",
+    "registrationStatus",
     "driverOffer",
     "notesDriver",
   ]);
@@ -3661,7 +3685,9 @@ window.AuthStore = (() => {
       doc.generatedBy,
       job.tour,
       `${doc.title} ${doc.fileName} · version v${version} · revision ${revision}` +
-        (doc.changedFields.length ? ` · changed: ${doc.changedFields.join(", ")}` : ""),
+        (doc.changedFields.length
+          ? ` · changed: ${doc.changedFields.join(", ")}`
+          : ""),
       {
         entityType: "transport_order_pdf",
         entityId: doc.id,
@@ -3689,7 +3715,9 @@ window.AuthStore = (() => {
           tour: job.tour,
           documentId: doc.id,
           title: t2("notifTransportOrderPdfUpdatedTitle", { tour: job.tour }),
-          body: t2("notifTransportOrderPdfUpdatedBody", { version: `v${version}` }),
+          body: t2("notifTransportOrderPdfUpdatedBody", {
+            version: `v${version}`,
+          }),
           driverId: dr.id,
         });
       }
@@ -3724,7 +3752,13 @@ window.AuthStore = (() => {
     // for no one in Europe/Berlin — but these stamps ARE Berlin wall-clock, so
     // they are anchored as such via the UTC offset the renderer applies.
     return new Date(
-      Date.UTC(2026, Number(m[2]) - 1, Number(m[1]), Number(m[3]) - 2, Number(m[4])),
+      Date.UTC(
+        2026,
+        Number(m[2]) - 1,
+        Number(m[1]),
+        Number(m[3]) - 2,
+        Number(m[4]),
+      ),
     ).toISOString();
   }
 
@@ -3739,7 +3773,10 @@ window.AuthStore = (() => {
       if (!job.bookedAt) job.bookedAt = seededBookingInstant(job);
       const before = auditLog.length;
       generateTransportOrderPdf(job.id, {
-        trigger: job.status === "accepted" ? "marketplace_acceptance" : "direct_assignment",
+        trigger:
+          job.status === "accepted"
+            ? "marketplace_acceptance"
+            : "direct_assignment",
         actor: "System (seed)",
       });
       // Seeding must not pollute the audit log the admin console shows.
@@ -3755,14 +3792,57 @@ window.AuthStore = (() => {
   }
 
   /**
-   * Returns a known distance for a pickup/delivery postal-code pair, or null
-   * when the pair isn't recognised. Never fabricates a placeholder number —
-   * callers must treat null as "not yet calculated", not fall back to a guess.
+   * Prototype-only postal-code approximation. The real system resolves the
+   * distance through the routing provider; the prototype has no network, so
+   * an unknown postal-code pair is approximated from the numeric distance
+   * between the two German PLZ instead of rendering an empty value. The
+   * result is deterministic (same pair -> same km) so demo screens stay
+   * stable, and it is always labelled as an approximation in the UI.
+   */
+  function approximateDistanceKm(a, b) {
+    const pa = Number(String(a).replace(/\D/g, ""));
+    const pb = Number(String(b).replace(/\D/g, ""));
+    if (!Number.isFinite(pa) || !Number.isFinite(pb)) return null;
+    if (pa === pb) return 12;
+    const km = Math.round(45 + Math.abs(pa - pb) * 0.0078);
+    return Math.min(900, Math.max(15, km));
+  }
+
+  /**
+   * Returns the distance for a pickup/delivery postal-code pair: the known
+   * route table first, otherwise the postal-code approximation above. Null is
+   * returned only when one of the postal codes is missing — that is the single
+   * "cannot be calculated" case the UI must communicate. Callers that need to
+   * tell an exact value from an approximation use `estimateDistanceDetail`.
    */
   function estimateDistanceKm(job) {
     if (!job) return null;
     const key = distanceKey(job);
-    return key && DISTANCE_TABLE[key] ? DISTANCE_TABLE[key] : null;
+    if (key && DISTANCE_TABLE[key]) return DISTANCE_TABLE[key];
+    if (!key) return null;
+    return approximateDistanceKm(
+      job.pickup?.postalCode,
+      job.delivery?.postalCode,
+    );
+  }
+
+  /**
+   * Same calculation as `estimateDistanceKm`, plus the provenance the UI needs
+   * to decide between "585 km" (exact) and "~ 232 km (estimated)".
+   * `source` is one of: "table" | "approximation" | "unavailable".
+   */
+  function estimateDistanceDetail(job) {
+    const key = job ? distanceKey(job) : "";
+    if (!key) return { km: null, source: "unavailable" };
+    if (DISTANCE_TABLE[key])
+      return { km: DISTANCE_TABLE[key], source: "table" };
+    const km = approximateDistanceKm(
+      job.pickup?.postalCode,
+      job.delivery?.postalCode,
+    );
+    return km == null
+      ? { km: null, source: "unavailable" }
+      : { km, source: "approximation" };
   }
 
   function hasValidAddressPair(job) {
@@ -6480,16 +6560,24 @@ window.AuthStore = (() => {
         typeof jobOrId === "object"
           ? jobOrId
           : jobs.find((x) => x.id === jobOrId);
-      if (!j) return { ok: false, km: 0 };
-      const km = estimateDistanceKm(j);
-      const key = distanceKey(j);
-      const source =
-        key && DISTANCE_TABLE[key]
-          ? "table"
-          : j?.pickup?.postalCode && j?.delivery?.postalCode
-            ? "heuristic"
-            : "unknown";
-      return { ok: true, km, source };
+      if (!j) return { ok: false, km: null, source: "unavailable" };
+      const { km, source } = estimateDistanceDetail(j);
+      return { ok: km != null, km, source };
+    },
+
+    /**
+     * Display helper: the distance to render for a job. Prefers the stored
+     * value, falls back to the postal-code approximation, and reports which
+     * one it used so the UI never has to render an empty distance.
+     */
+    resolveDisplayDistance(jobOrId) {
+      const j =
+        typeof jobOrId === "object"
+          ? jobOrId
+          : jobs.find((x) => x.id === jobOrId);
+      if (!j) return { km: null, source: "unavailable" };
+      if (j.distanceKm) return { km: j.distanceKm, source: "stored" };
+      return estimateDistanceDetail(j);
     },
 
     estimateDistanceFromForm(form) {
@@ -6499,9 +6587,8 @@ window.AuthStore = (() => {
       if (!pickup || !delivery) {
         return { ok: false, reason: "postal_codes_required" };
       }
-      const km = estimateDistanceKm(jobLike);
-      const key = distanceKey(jobLike);
-      const source = key && DISTANCE_TABLE[key] ? "table" : "heuristic";
+      const { km, source } = estimateDistanceDetail(jobLike);
+      if (km == null) return { ok: false, reason: "postal_codes_required" };
       return { ok: true, km, source };
     },
 
@@ -6881,7 +6968,11 @@ window.AuthStore = (() => {
       // MasterDataChangeRequestPolicy (multi-category → other).
       const categories = new Set(
         changedFields.map((k) =>
-          k === "company" ? "company_name" : k === "address" ? "address" : "contact",
+          k === "company"
+            ? "company_name"
+            : k === "address"
+              ? "address"
+              : "contact",
         ),
       );
       const changeType =
