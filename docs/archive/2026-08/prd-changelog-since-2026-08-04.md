@@ -1,10 +1,48 @@
-# PRD changelog: 2026-08-04 / 2026-08-05 (v2.31 -> v2.34, plus main's independently-numbered v2.33 job-attachment-limits entry)
+# PRD changelog: 2026-08-04 / 2026-08-06 (v2.31 -> v2.34, plus main's independently-numbered v2.33 job-attachment-limits entry)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
 **Canonical file:** `docs/requirements/prd.json`
 
-> **Scope of this file:** the **v2.34** entry, plus its same-release `[v2.34-cutoff-details]` and `[v2.34-feed-redesign]` addenda. Baseline is **v2.31** (Driver/User schema fix + several presentation addenda, 2026-08-01 — see [`../2026-07/prd-changelog-since-2026-07-30.md`](../2026-07/prd-changelog-since-2026-07-30.md)).
+> **Scope of this file:** the **v2.34** entry, plus its same-release `[v2.34-cutoff-details]`, `[v2.34-feed-redesign]`, and `[v2.34-filters]` addenda. Baseline is **v2.31** (Driver/User schema fix + several presentation addenda, 2026-08-01 — see [`../2026-07/prd-changelog-since-2026-07-30.md`](../2026-07/prd-changelog-since-2026-07-30.md)).
+
+---
+
+## v2.34 addendum — Notification feed Filter dropdown, full-size toolbar buttons (2026-08-06)
+
+**Numbering note:** same release as the three entries below; this is a same-day `[v2.34-filters]` addendum, not a new version.
+
+**Baseline:** PRD v2.34 + `[v2.34-cutoff-details]` + `[v2.34-feed-redesign]`
+**Source:** an approved visual reference for the filter control, provided directly to engineering 2026-08-06.
+**Type:** new UI capability (filtering) plus a sizing correction to the redesign below. No data-model impact.
+**Data model / API:** none. Every facet filters purely in-memory over fields the feed already exposes (`adminAlertSeverity()`, `ADMIN_ALERT_SOURCE`, `adminEmailQueue.at`) — no new stored field, so `docs/database/logical-model.md` and `docs/database/schema.dbml` are unchanged by this addendum.
+
+### 1. Previous behaviour (v2.34-feed-redesign, as implemented the day before)
+
+The table redesign below shipped tabs, multi-select, bulk actions and pagination, but no way to narrow the list by anything other than the All/Unread/Read tabs — a long feed with many gray/informational rows had no way to isolate just the red/urgent ones, or just Documents-sourced rows, or a specific day. The toolbar's four buttons (Filter's precursor didn't exist yet; Mark all as read / Delete selected / Delete all did) used the small `.btn.xs` size, smaller than the approved reference's buttons.
+
+### 2. New behaviour
+
+- **Filter control** — a new button (toolbar, left of "Mark all as read", funnel icon + chevron) opens a dropdown with three facets: **Severity** (checkboxes: Critical/Warning/Info, i.e. red/orange/gray), **Source** (checkboxes: System/Tour system/Documents/Service Partners), and **Date range** (From/To, native date inputs). Any combination narrows the table; the button's own label switches to "Filter (N)" with N = the number of active checkboxes plus 1 if either date bound is set, matching the "Mark selected as read (N)" labelling convention the feed already uses elsewhere.
+- **New `NotificationFilterMenu` component** (`admin.jsx`) — same portaled-dropdown mechanics as the existing `AdminAlertRowMenu`/`RowActionsMenu` (escapes `.tbl`/`.table-wrap` overflow clipping by portaling into `document.body` at viewport-fixed coordinates), but left-aligned to its trigger (it's the leftmost button in the group) and holding checkbox/date-input groups instead of a list of actions.
+- **Fixed-light popover, by design, not an oversight** — the panel uses hardcoded colors (`#ffffff` background, `#1f2430` text, `#6b7280` muted labels) rather than the app's `--paper`/`--text`/`--muted` theme tokens. An earlier pass reused those theme tokens (copying `AdminAlertRowMenu`'s own `var(--surface, #fff)`/`var(--border, #ccc)` pattern, which likewise never resolves to a real theme value since neither `--surface` nor `--border` is actually defined anywhere in `styles.css`) and the panel rendered dark-mode-colored text on a background that stayed white regardless of theme — invisible. The fix keeps the panel intentionally light in both themes, matching the approved reference image; the two native `<input type="date">` fields also get `colorScheme: "light"` plus the same explicit colors so their calendar affordance doesn't pick up the OS/app dark scheme against a light field.
+- **Date-range comparison is month-day only, a carried-over limitation, not a new one:** `adminEmailQueue.at` has always been `nowStamp()`'s display format, `"DD.MM. HH:MM"` — no year, on every seeded and dynamically-queued row alike. The filter's `<input type="date">` values (`"YYYY-MM-DD"`) are compared against a parsed `"MM-DD"` from `row.at` (new `alertMonthDay()` helper), so the range is accurate for a same-year dataset but would misbehave across a year boundary. Fixing that properly means giving `adminEmailQueue` rows a real stored timestamp — out of scope for this addendum, which filters over what the feed already records.
+- **Toolbar buttons resized** — Filter, "Mark all as read"/"Mark selected as read (N)", "Delete selected (N)", and "Delete all" all moved from `.btn.xs` to the full-size `.btn` (and `.btn.destructive` for Delete all), matching the approved reference more closely than the initial redesign pass.
+- **Filtered-empty state distinguished from tab-empty state:** a new `adminNotificationFilterEmpty` message ("No notifications match the selected filters.") shows whenever any filter is active and narrows the result to zero, instead of the pre-existing "No alerts in the feed." / "No unread alerts." / "No read alerts yet." messages, which now only show when no filter is active.
+
+### 3. What deliberately did NOT change
+
+No new `adminEmailQueue` field, no new `notification_type`/severity/source value, no change to the tabs' own All/Unread/Read semantics — filtering composes with the active tab (e.g. Unread tab + Documents source) rather than replacing it.
+
+### 4. Files changed
+
+| File | Change |
+| --- | --- |
+| `prototype/project/admin.jsx` | New `NotificationFilterMenu`, `NOTIF_FILTER_SEVERITIES`/`NOTIF_FILTER_SOURCES` constants, `alertMonthDay()` helper; `NotificationFeedPane` gains `severityFilter`/`sourceFilter`/`dateFrom`/`dateTo` state and filtering; toolbar buttons resized |
+| `prototype/project/i18n.js` | New EN+DE keys: `adminNotificationFilter`, `adminNotificationFilterCount`, `adminNotificationFilterBySeverity`, `adminNotificationFilterBySource`, `adminNotificationFilterByDate`, `adminNotificationFilterDateFrom`, `adminNotificationFilterDateTo`, `adminNotificationFilterClear`, `adminNotificationFilterEmpty` |
+| `prototype/project/AUTHEON Prototype.html` | Cache-bust version bump (`admin.jsx`, `i18n.js`) |
+| `docs/requirements/prd.json` | `version` gains the `[v2.34-filters]` entry |
+| `docs/archive/2026-08/prd-changelog-since-2026-08-04.md` | This entry |
 
 ---
 

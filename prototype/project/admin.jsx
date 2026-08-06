@@ -10856,6 +10856,14 @@ const ADMIN_ALERT_SEVERITY_LABEL_KEY = {
 
 const adminAlertSeverity = (event) => ADMIN_ALERT_SEVERITY[event] || "gray";
 
+// row.at is always "DD.MM. HH:MM" (nowStamp()'s own display format, no
+// year) — returns "MM-DD" so the date-range filter can compare it against
+// an <input type="date"> value's own "MM-DD" slice.
+const alertMonthDay = (at) => {
+  const m = /^(\d{2})\.(\d{2})\./.exec(at || "");
+  return m ? `${m[2]}-${m[1]}` : null;
+};
+
 const parseMasterDataRequestIdFromMeta = (meta) => {
   const m = String(meta || "").match(/(MDR-[A-Za-z0-9-]+)/);
   return m ? m[1] : "";
@@ -11696,6 +11704,228 @@ const AdminAlertRowMenu = ({ actions }) => {
   );
 };
 
+// Same portaled-dropdown pattern as AdminAlertRowMenu, but left-aligned to
+// its trigger (it's the leftmost button in the toolbar's action group, so the
+// panel opens directly under it rather than hugging the right edge) and
+// holding checkbox groups instead of a list of actions.
+const NOTIF_FILTER_SEVERITIES = ["red", "orange", "gray"];
+const NOTIF_FILTER_SOURCES = [
+  "adminNotifSourceSystem",
+  "adminNotifSourceTourSystem",
+  "adminNotifSourceDocuments",
+  "adminNotifSourceServicePartners",
+];
+
+// The panel is a fixed light popover by design (matches the approved
+// reference), not a themed surface — every color below is hardcoded rather
+// than pulled from --paper/--text/--muted, which flip to dark-mode values
+// and would otherwise render invisible text on this deliberately-light card.
+const NOTIF_FILTER_PANEL_TEXT = "#1f2430";
+const NOTIF_FILTER_PANEL_MUTED = "#6b7280";
+const NOTIF_FILTER_PANEL_BORDER = "#e2e2e5";
+
+const NotificationFilterMenu = ({
+  severityFilter,
+  sourceFilter,
+  dateFrom,
+  dateTo,
+  onToggleSeverity,
+  onToggleSource,
+  onChangeDateFrom,
+  onChangeDateTo,
+  onClear,
+  t,
+}) => {
+  const [open, setOpen] = useStateA(false);
+  const [menuPos, setMenuPos] = useStateA(null);
+  const btnRef = useRefA(null);
+  const activeCount =
+    severityFilter.size + sourceFilter.size + (dateFrom || dateTo ? 1 : 0);
+
+  useLayoutEffectA(() => {
+    if (!open) {
+      setMenuPos(null);
+      return;
+    }
+    const update = () => {
+      const rect = btnRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMenuPos({ top: rect.bottom + 2, left: rect.left });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open]);
+
+  const sectionLabelStyle = {
+    margin: "0 0 6px",
+    fontSize: 12,
+    fontWeight: 600,
+    color: NOTIF_FILTER_PANEL_MUTED,
+  };
+  const rowLabelStyle = {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "4px 0",
+    cursor: "pointer",
+    color: NOTIF_FILTER_PANEL_TEXT,
+    fontSize: 13.5,
+  };
+
+  return (
+    <div
+      style={{ position: "relative", display: "inline-block" }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        ref={btnRef}
+        type="button"
+        className={"btn" + (activeCount > 0 ? " on" : "")}
+        style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <Ic.Filter />
+        {activeCount > 0
+          ? t("adminNotificationFilterCount", { count: activeCount })
+          : t("adminNotificationFilter")}
+        <span style={{ display: "inline-flex", transform: "rotate(90deg)" }}>
+          <Ic.Chev />
+        </span>
+      </button>
+      {open && menuPos
+        ? ReactDOM.createPortal(
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 300 }}
+                onClick={() => setOpen(false)}
+              />
+              <div
+                role="menu"
+                style={{
+                  position: "fixed",
+                  top: menuPos.top,
+                  left: menuPos.left,
+                  zIndex: 301,
+                  padding: 14,
+                  background: "#ffffff",
+                  border: `1px solid ${NOTIF_FILTER_PANEL_BORDER}`,
+                  borderRadius: 8,
+                  minWidth: 230,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 14,
+                  color: NOTIF_FILTER_PANEL_TEXT,
+                }}
+              >
+                <div>
+                  <p style={sectionLabelStyle}>
+                    {t("adminNotificationFilterBySeverity")}
+                  </p>
+                  {NOTIF_FILTER_SEVERITIES.map((sev) => (
+                    <label key={sev} style={rowLabelStyle}>
+                      <input
+                        type="checkbox"
+                        checked={severityFilter.has(sev)}
+                        onChange={() => onToggleSeverity(sev)}
+                      />
+                      {t(ADMIN_ALERT_SEVERITY_LABEL_KEY[sev])}
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  <p style={sectionLabelStyle}>
+                    {t("adminNotificationFilterBySource")}
+                  </p>
+                  {NOTIF_FILTER_SOURCES.map((src) => (
+                    <label key={src} style={rowLabelStyle}>
+                      <input
+                        type="checkbox"
+                        checked={sourceFilter.has(src)}
+                        onChange={() => onToggleSource(src)}
+                      />
+                      {t(src)}
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  <p style={sectionLabelStyle}>
+                    {t("adminNotificationFilterByDate")}
+                  </p>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <label style={{ flex: 1 }}>
+                      <span
+                        style={{
+                          display: "block",
+                          fontSize: 11,
+                          color: NOTIF_FILTER_PANEL_MUTED,
+                          marginBottom: 3,
+                        }}
+                      >
+                        {t("adminNotificationFilterDateFrom")}
+                      </span>
+                      <input
+                        type="date"
+                        className="input"
+                        style={{ width: "100%", colorScheme: "light", background: "#ffffff", color: "#1f2430", borderColor: "#c7c7cc" }}
+                        value={dateFrom}
+                        onChange={(e) => onChangeDateFrom(e.target.value)}
+                      />
+                    </label>
+                    <label style={{ flex: 1 }}>
+                      <span
+                        style={{
+                          display: "block",
+                          fontSize: 11,
+                          color: NOTIF_FILTER_PANEL_MUTED,
+                          marginBottom: 3,
+                        }}
+                      >
+                        {t("adminNotificationFilterDateTo")}
+                      </span>
+                      <input
+                        type="date"
+                        className="input"
+                        style={{ width: "100%", colorScheme: "light", background: "#ffffff", color: "#1f2430", borderColor: "#c7c7cc" }}
+                        value={dateTo}
+                        onChange={(e) => onChangeDateTo(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    padding: "4px 0",
+                    textAlign: "left",
+                    color: activeCount === 0 ? "#b5b5bb" : NOTIF_FILTER_PANEL_TEXT,
+                    cursor: activeCount === 0 ? "not-allowed" : "pointer",
+                    fontSize: 13,
+                    fontWeight: 500,
+                  }}
+                  disabled={activeCount === 0}
+                  onClick={() => {
+                    onClear();
+                  }}
+                >
+                  {t("adminNotificationFilterClear")}
+                </button>
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
+    </div>
+  );
+};
+
 const NotificationFeedPane = ({
   showToast,
   onOpenJob,
@@ -11710,11 +11940,59 @@ const NotificationFeedPane = ({
   const [selected, setSelected] = useStateA(() => new Set());
   const [rowsPerPage, setRowsPerPage] = useStateA(20);
   const [page, setPage] = useStateA(1);
+  const [severityFilter, setSeverityFilter] = useStateA(() => new Set());
+  const [sourceFilter, setSourceFilter] = useStateA(() => new Set());
+  const [dateFrom, setDateFrom] = useStateA("");
+  const [dateTo, setDateTo] = useStateA("");
+  const toggleSeverityFilter = (sev) => {
+    setSeverityFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(sev)) next.delete(sev);
+      else next.add(sev);
+      return next;
+    });
+  };
+  const toggleSourceFilter = (src) => {
+    setSourceFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(src)) next.delete(src);
+      else next.add(src);
+      return next;
+    });
+  };
+  const clearFilters = () => {
+    setSeverityFilter(new Set());
+    setSourceFilter(new Set());
+    setDateFrom("");
+    setDateTo("");
+  };
   const allRows = store.getAdminEmailQueue();
   const unreadCount = allRows.filter((row) => row.status !== "read").length;
+  const filtersActive =
+    severityFilter.size > 0 ||
+    sourceFilter.size > 0 ||
+    Boolean(dateFrom) ||
+    Boolean(dateTo);
   const rows = allRows.filter((row) => {
-    if (tab === "unread") return row.status !== "read";
-    if (tab === "read") return row.status === "read";
+    if (tab === "unread" && row.status === "read") return false;
+    if (tab === "read" && row.status !== "read") return false;
+    if (severityFilter.size > 0 && !severityFilter.has(adminAlertSeverity(row.event)))
+      return false;
+    if (
+      sourceFilter.size > 0 &&
+      !sourceFilter.has(ADMIN_ALERT_SOURCE[row.event] || "adminNotifSourceSystem")
+    )
+      return false;
+    if (dateFrom || dateTo) {
+      // row.at has no year (e.g. "23.04. 08:41" — matches nowStamp()'s own
+      // display format everywhere else in the feed), so the range compares
+      // month-day only against the picked date's month-day. Good enough for
+      // a same-year demo dataset; not a substitute for a real timestamp.
+      const monthDay = alertMonthDay(row.at);
+      if (!monthDay) return false;
+      if (dateFrom && monthDay < dateFrom.slice(5)) return false;
+      if (dateTo && monthDay > dateTo.slice(5)) return false;
+    }
     return true;
   });
   const pageCount = Math.max(1, Math.ceil(rows.length / rowsPerPage));
@@ -11726,11 +12004,11 @@ const NotificationFeedPane = ({
   const rangeStart = rows.length === 0 ? 0 : (safePage - 1) * rowsPerPage + 1;
   const rangeEnd = Math.min(safePage * rowsPerPage, rows.length);
 
-  // Switching tabs or the page size can strand the page past the new end —
-  // land back on page 1 rather than showing an empty table.
+  // Switching tabs, the page size, or the active filters can strand the page
+  // past the new end — land back on page 1 rather than showing an empty table.
   useEffectA(() => {
     setPage(1);
-  }, [tab, rowsPerPage]);
+  }, [tab, rowsPerPage, severityFilter, sourceFilter, dateFrom, dateTo]);
 
   // The header checkbox selects the current PAGE only, matching the
   // pagination footer's own "1-20 of N" scope — "Mark all"/"Delete all"
@@ -11828,10 +12106,22 @@ const NotificationFeedPane = ({
             total: allRows.length,
           })}
         </p>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <NotificationFilterMenu
+            severityFilter={severityFilter}
+            sourceFilter={sourceFilter}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onToggleSeverity={toggleSeverityFilter}
+            onToggleSource={toggleSourceFilter}
+            onChangeDateFrom={setDateFrom}
+            onChangeDateTo={setDateTo}
+            onClear={clearFilters}
+            t={t}
+          />
           <button
             type="button"
-            className="btn xs"
+            className="btn"
             disabled={allRows.length === 0}
             onClick={() => markRead(selectedCount > 0 ? selectedIds : [])}
           >
@@ -11839,7 +12129,7 @@ const NotificationFeedPane = ({
           </button>
           <button
             type="button"
-            className="btn xs"
+            className="btn"
             disabled={selectedCount === 0}
             onClick={() => deleteAlerts(selectedIds)}
           >
@@ -11847,7 +12137,7 @@ const NotificationFeedPane = ({
           </button>
           <button
             type="button"
-            className="btn xs destructive"
+            className="btn destructive"
             disabled={allRows.length === 0}
             onClick={() => deleteAlerts([])}
           >
@@ -11880,11 +12170,13 @@ const NotificationFeedPane = ({
           <div
             style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}
           >
-            {tab === "read"
-              ? t("adminNotificationReadEmpty")
-              : tab === "unread"
-                ? t("adminNotificationUnreadEmpty")
-                : t("adminNotificationEmpty")}
+            {filtersActive
+              ? t("adminNotificationFilterEmpty")
+              : tab === "read"
+                ? t("adminNotificationReadEmpty")
+                : tab === "unread"
+                  ? t("adminNotificationUnreadEmpty")
+                  : t("adminNotificationEmpty")}
           </div>
         ) : (
           <div className="table-wrap">
