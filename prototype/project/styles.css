@@ -3040,7 +3040,6 @@ select.input {
   text-align: center;
   cursor: default;
 }
-.sheet.modal .confirm-sheet-message,
 .sheet.modal .sheet-body > p:first-child:last-child {
   text-align: center;
 }
@@ -4853,24 +4852,11 @@ select.input {
   justify-content: center;
 }
 
-.confirm-sheet h2 {
-  margin: 6px 0 10px;
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-}
-.confirm-sheet p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--muted);
-}
-.confirm-sheet-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 18px;
-  justify-content: flex-end;
-}
+/* `.confirm-sheet` / `.confirm-sheet-actions` / `.confirm-sheet-panel` are
+   gone: ConfirmSheet renders through the `Dialog` primitive now, so the title,
+   message and action row are governed by the DIALOG STANDARD above. The
+   overrides here fought that standard (a 20px title against `.dialog-title`'s
+   18px), and `-panel` / `-actions` had no markup applying them at all. */
 
 /* Operational policies — two columns, matching the console's
    `grid gap-4 sm:grid-cols-2`. Switches and the action row span both. */
@@ -7520,16 +7506,6 @@ button.notifications-dropdown-backdrop {
 .hidden {
   display: none !important;
 }
-.confirm-sheet-panel {
-  max-width: 420px;
-  width: 100%;
-  padding: 22px;
-  /* Full modal radius — never inherit bottom-sheet top-only corners */
-  border-radius: var(--r-4);
-  border: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-}
-
 /* DEMO ONLY — excluded from production design contract */
 .statusbar,
 .phone .notch,

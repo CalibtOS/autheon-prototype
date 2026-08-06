@@ -283,7 +283,9 @@ function Sheet({
 //   children    the dialog's own content: summaries, forms, warnings, legal.
 //               Left-aligned and internally scrollable by contract.
 //   actions     one or more buttons. One action spans the row; two use the
-//               canonical 1:1.6 Cancel | Primary grid.
+//               canonical 1:1.6 Cancel | Primary grid. For three, pick a
+//               documented treatment: `stackActions` (full width, stacked) or
+//               `rowActions` (right-aligned wrapping row, primary last).
 //   size        "sm" (default 480px) | "md" (560) | "lg" (720)
 //
 // Escape closes, the backdrop closes, and content clicks never bubble to it.
@@ -299,6 +301,10 @@ function Dialog({
   children,
   actions,
   stackActions = false,
+  // The standard documents TWO three-action treatments — `--stack` (full-width
+  // stacked) and `--row` (right-aligned wrapping row). The primitive only
+  // spoke `--stack`, so panels wanting a row had to stay hand-rolled.
+  rowActions = false,
   size = "sm",
   className = "",
   alertdialog = false,
@@ -350,7 +356,9 @@ function Dialog({
         {children ? <div className="dialog-content">{children}</div> : null}
         {actions ? (
           <div
-            className={`dialog-actions${stackActions ? " dialog-actions--stack" : ""}`}
+            className={`dialog-actions${stackActions ? " dialog-actions--stack" : ""}${
+              rowActions ? " dialog-actions--row" : ""
+            }`}
           >
             {actions}
           </div>
@@ -407,7 +415,39 @@ function SheetPullRegion({ onClose, className = "", children, ...rest }) {
 
 // ---------------------------------------------------------------------------
 // ConfirmSheet — destructive / binding confirmations
+//
+// Built on `Dialog`, NOT on `Sheet`. It has always passed `centered`, so it was
+// never a bottom sheet — it was a modal borrowing the phone's sheet primitive,
+// and `.sheet` carries no max-width because on the phone the DEVICE is the
+// width constraint. On the admin console there is no such constraint, so the
+// panel stretched the full backdrop: every admin confirmation rendered 1248px
+// wide on a 1280px viewport — a two-line "Delete account?" across 97% of the
+// screen, its confirm button alone ~900px. Routing through `Dialog` gives
+// it the documented panel width, the centered title/description hierarchy and
+// the canonical Cancel | Primary grid, on both surfaces — `.phone-shell`
+// already overrides `.dialog-panel` to the device width, so the driver keeps
+// its full-width treatment without a second implementation.
 // ---------------------------------------------------------------------------
+function ConfirmDangerIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 8v5" />
+      <path d="M12 16.5h.01" />
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+    </svg>
+  );
+}
+
 function ConfirmSheet({
   open,
   title,
@@ -424,20 +464,25 @@ function ConfirmSheet({
 }) {
   const { t } = useI18n();
   return (
-    <Sheet
+    <Dialog
       open={open}
       onClose={onCancel}
       title={title}
-      centered
-      className="confirm-sheet"
-      footer={
+      description={message}
+      icon={destructive ? <ConfirmDangerIcon /> : null}
+      className={destructive ? "dialog-icon-danger" : ""}
+      alertdialog={destructive}
+      // Three actions stack full width rather than squeezing three columns
+      // below the 44px touch-target floor — the documented `--stack` case.
+      stackActions={!!tertiaryLabel}
+      actions={
         <>
           {tertiaryLabel ? (
             <button type="button" className="btn ghost" onClick={onTertiary}>
               {tertiaryLabel}
             </button>
           ) : null}
-          <button type="button" className="btn ghost" onClick={onCancel}>
+          <button type="button" className="btn" onClick={onCancel}>
             {cancelLabel || t("cancel")}
           </button>
           <button
@@ -451,9 +496,8 @@ function ConfirmSheet({
         </>
       }
     >
-      <p>{message}</p>
       {children}
-    </Sheet>
+    </Dialog>
   );
 }
 
@@ -685,6 +729,10 @@ function AdminConfirmBridge() {
           title: opts.title,
           destructive: opts.destructive !== false,
           confirmLabel: opts.confirmLabel,
+          // Callers have always been able to pass a cancel label — the
+          // high-offer warning sends "Correct entry" — but it was dropped
+          // here, so every confirm rendered a generic "Cancel".
+          cancelLabel: opts.cancelLabel,
           resolve,
         });
       });
@@ -716,6 +764,7 @@ function AdminConfirmBridge() {
           title={pending.title || t("confirm")}
           message={pending.message}
           confirmLabel={pending.confirmLabel}
+          cancelLabel={pending.cancelLabel}
           destructive={pending.destructive}
           onConfirm={() => {
             pending.resolve(true);
