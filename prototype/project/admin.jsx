@@ -95,7 +95,7 @@ const AdminNav = ({ section, setSection }) => {
   const store = useAuthStore();
   const total = store.getJobs().length;
   const invCount = store.getTourDocuments().length;
-  const alertCount = store.getOpenAdminAlertCount();
+  const alertCount = store.getUnreadAdminAlertCount();
   const mdrOpenCount = store.getOpenMasterDataChangeRequestCount();
   // Footer identity — the console's exact shape: the name, falling back to the
   // email only when the name is blank, with the role line beneath. An email
@@ -11218,12 +11218,243 @@ const MasterDataRequestsPane = ({ showToast, initialRequestId }) => {
   );
 };
 
-const AdminAlertSeverityBadge = ({ event, t }) => {
+// One icon per event — reuses the shared Ic.N set. Distinct from severity:
+// the icon says WHAT happened, the badge color says HOW urgent it is.
+const ADMIN_ALERT_ICON = {
+  master_data_change_requested: Ic.N.Key,
+  report_problem_cancel: Ic.N.CircleX,
+  order_cancelled_by_sp: Ic.N.CircleX,
+  empty_run_reported: Ic.N.Warning,
+  empty_run_recognised: Ic.N.CheckCircle,
+  empty_run_not_recognised: Ic.N.CircleX,
+  job_accepted: Ic.N.CheckCircle,
+  job_performed: Ic.N.CheckCircle,
+  job_assigned: Ic.N.Bell,
+  job_reassigned: Ic.N.Bell,
+  job_cancelled: Ic.N.CircleX,
+  cancelled_by_autheon: Ic.N.CircleX,
+  tour_document_uploaded: Ic.N.Doc,
+  tour_document_reuploaded: Ic.N.Doc,
+  tour_document_rejected: Ic.N.CircleX,
+  order_not_accepted_cutoff: Ic.N.Warning,
+  document_unreviewed_stale: Ic.N.Doc,
+  service_partner_inactive: Ic.N.Bell,
+};
+
+// Coarse grouping for the feed's Source column — not the same axis as
+// severity (urgency) or the icon (what happened); this is "which subsystem".
+const ADMIN_ALERT_SOURCE = {
+  master_data_change_requested: "adminNotifSourceSystem",
+  report_problem_cancel: "adminNotifSourceTourSystem",
+  order_cancelled_by_sp: "adminNotifSourceTourSystem",
+  empty_run_reported: "adminNotifSourceTourSystem",
+  empty_run_recognised: "adminNotifSourceTourSystem",
+  empty_run_not_recognised: "adminNotifSourceTourSystem",
+  job_accepted: "adminNotifSourceTourSystem",
+  job_performed: "adminNotifSourceTourSystem",
+  job_assigned: "adminNotifSourceTourSystem",
+  job_reassigned: "adminNotifSourceTourSystem",
+  job_cancelled: "adminNotifSourceTourSystem",
+  cancelled_by_autheon: "adminNotifSourceTourSystem",
+  order_not_accepted_cutoff: "adminNotifSourceTourSystem",
+  tour_document_uploaded: "adminNotifSourceDocuments",
+  tour_document_reuploaded: "adminNotifSourceDocuments",
+  tour_document_rejected: "adminNotifSourceDocuments",
+  document_unreviewed_stale: "adminNotifSourceDocuments",
+  service_partner_inactive: "adminNotifSourceServicePartners",
+};
+
+// The badge: a colored square carrying an icon, never color alone — the
+// row's own title text sits right beside it, and the severity word is still
+// available to assistive tech via aria-label/title on the square itself.
+const AdminAlertBadge = ({ event, t }) => {
   const severity = adminAlertSeverity(event);
+  const Icon = ADMIN_ALERT_ICON[event] || Ic.N.Bell;
+  const label = t(ADMIN_ALERT_SEVERITY_LABEL_KEY[severity]);
   return (
-    <span className={`notif-severity sev-${severity}`}>
-      {t(ADMIN_ALERT_SEVERITY_LABEL_KEY[severity])}
+    <span
+      className={`notif-badge sev-${severity}`}
+      role="img"
+      aria-label={label}
+      title={label}
+    >
+      <Icon />
     </span>
+  );
+};
+
+// Row-level actions: the type-specific deep link(s) plus the two generic
+// actions (mark read / delete) every row offers. Returned as a flat list so
+// the table cell can render whichever apply without a wall of ternaries.
+const adminAlertRowActions = (row, handlers, t) => {
+  const actions = [];
+  if (row.event === "master_data_change_requested" && handlers.onReviewMasterDataRequest) {
+    actions.push({
+      key: "review",
+      label: t("adminMdrReviewFromFeed"),
+      Icon: Ic.Chev,
+      onClick: () =>
+        handlers.onReviewMasterDataRequest(
+          parseMasterDataRequestIdFromMeta(row.meta),
+        ),
+    });
+  }
+  if (row.event === "document_unreviewed_stale" && row.documentId && handlers.onOpenDocument) {
+    actions.push({
+      key: "open-document",
+      label: t("adminNotificationOpenDocument"),
+      Icon: Ic.Chev,
+      onClick: () => handlers.onOpenDocument(row.jobId, row.documentId),
+    });
+  }
+  if (row.event === "service_partner_inactive" && row.driverId && handlers.onOpenDriver) {
+    actions.push({
+      key: "open-driver",
+      label: t("adminNotificationOpenDriver"),
+      Icon: Ic.Chev,
+      onClick: () => handlers.onOpenDriver(row.driverId),
+    });
+  }
+  if (row.event === "order_not_accepted_cutoff" && row.jobId && handlers.onAdjustDriverOffer) {
+    actions.push({
+      key: "adjust-offer",
+      label: t("adminNotificationAdjustDriverOffer"),
+      Icon: Ic.N.Key,
+      onClick: () => handlers.onAdjustDriverOffer(row.jobId),
+    });
+  }
+  if (row.jobId && row.event !== "document_unreviewed_stale") {
+    actions.push({
+      key: "open-job",
+      label: t("adminNotificationOpenJob"),
+      Icon: Ic.Chev,
+      onClick: () => {
+        const j = handlers.store.getJob(row.jobId);
+        if (j) handlers.onOpenJob?.(j);
+        else handlers.showToast?.(t("adminNotificationOpenJob"), row.tour);
+      },
+    });
+  }
+  if (row.status !== "read") {
+    actions.push({
+      key: "mark-read",
+      label: t("adminNotificationMarkRead"),
+      Icon: Ic.N.MailOpen,
+      onClick: () => handlers.markRead([row.id]),
+    });
+  }
+  actions.push({
+    key: "delete",
+    label: t("adminNotificationDeleteOne"),
+    Icon: Ic.N.Trash,
+    destructive: true,
+    onClick: () => handlers.deleteAlerts([row.id]),
+  });
+  return actions;
+};
+
+// A "⋮" trigger + portaled dropdown, same pattern the Jobs table's
+// RowActionsMenu already established: `.tbl`/`.table-wrap` clip overflow,
+// so the menu is portaled into document.body at viewport-fixed coordinates
+// computed from the trigger's own rect, escaping that clipping entirely.
+const AdminAlertRowMenu = ({ actions }) => {
+  const { t } = useI18n();
+  const [open, setOpen] = useStateA(false);
+  const [menuPos, setMenuPos] = useStateA(null);
+  const btnRef = useRefA(null);
+
+  useLayoutEffectA(() => {
+    if (!open) {
+      setMenuPos(null);
+      return;
+    }
+    const update = () => {
+      const rect = btnRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMenuPos({
+        top: rect.bottom + 2,
+        right: window.innerWidth - rect.right,
+      });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open]);
+
+  if (!actions.length) return null;
+
+  return (
+    <div
+      style={{ position: "relative", display: "inline-block" }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        ref={btnRef}
+        type="button"
+        className="btn icon sm"
+        aria-label={t("adminRowActionsLabel")}
+        onClick={() => setOpen((v) => !v)}
+      >
+        ⋮
+      </button>
+      {open && menuPos
+        ? ReactDOM.createPortal(
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 300 }}
+                onClick={() => setOpen(false)}
+              />
+              <ul
+                role="menu"
+                style={{
+                  position: "fixed",
+                  top: menuPos.top,
+                  right: menuPos.right,
+                  zIndex: 301,
+                  margin: 0,
+                  padding: 4,
+                  listStyle: "none",
+                  background: "var(--surface, #fff)",
+                  border: "1px solid var(--border, #ccc)",
+                  borderRadius: 8,
+                  minWidth: 190,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                }}
+              >
+                {actions.map((action) => (
+                  <li key={action.key}>
+                    <button
+                      type="button"
+                      className={
+                        "btn ghost xs" + (action.destructive ? " danger" : "")
+                      }
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                      onClick={() => {
+                        setOpen(false);
+                        action.onClick();
+                      }}
+                    >
+                      <action.Icon />
+                      {action.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>,
+            document.body,
+          )
+        : null}
+    </div>
   );
 };
 
@@ -11237,24 +11468,160 @@ const NotificationFeedPane = ({
 }) => {
   const { t } = useI18n();
   const store = useAuthStore();
-  const [tab, setTab] = useStateA("open");
+  const [tab, setTab] = useStateA("all");
+  const [selected, setSelected] = useStateA(() => new Set());
+  const [rowsPerPage, setRowsPerPage] = useStateA(20);
+  const [page, setPage] = useStateA(1);
   const allRows = store.getAdminEmailQueue();
-  const rows = allRows.filter((row) =>
-    tab === "processed" ? row.status === "processed" : row.status !== "processed",
+  const unreadCount = allRows.filter((row) => row.status !== "read").length;
+  const rows = allRows.filter((row) => {
+    if (tab === "unread") return row.status !== "read";
+    if (tab === "read") return row.status === "read";
+    return true;
+  });
+  const pageCount = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+  const safePage = Math.min(page, pageCount);
+  const pagedRows = rows.slice(
+    (safePage - 1) * rowsPerPage,
+    safePage * rowsPerPage,
   );
-  const openCount = allRows.filter((row) => row.status !== "processed").length;
+  const rangeStart = rows.length === 0 ? 0 : (safePage - 1) * rowsPerPage + 1;
+  const rangeEnd = Math.min(safePage * rowsPerPage, rows.length);
 
-  const markProcessed = (id) => {
-    store.markAdminAlertProcessed(id);
+  // Switching tabs or the page size can strand the page past the new end —
+  // land back on page 1 rather than showing an empty table.
+  useEffectA(() => {
+    setPage(1);
+  }, [tab, rowsPerPage]);
+
+  // The header checkbox selects the current PAGE only, matching the
+  // pagination footer's own "1-20 of N" scope — "Mark all"/"Delete all"
+  // (used when nothing is selected) still act on every row in the tab,
+  // not just the visible page.
+  const pagedIds = pagedRows.map((row) => row.id);
+  const allPagedSelected =
+    pagedIds.length > 0 && pagedIds.every((id) => selected.has(id));
+
+  const toggleSelectAll = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allPagedSelected) pagedIds.forEach((id) => next.delete(id));
+      else pagedIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+  const toggleSelectOne = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
+  // Selection is a set of ids, not row objects, and persists across pages/
+  // tabs — "Delete selected" can act on rows picked from more than one page.
+  // Filtered against allRows so a row a bulk action already removed can't
+  // leave a stale reference behind.
+  const allRowIds = allRows.map((row) => row.id);
+  const selectedIds = allRowIds.filter((id) => selected.has(id));
+  const selectedCount = selectedIds.length;
+
+  const markRead = (ids) => {
+    const result = store.markAdminAlertsRead(ids);
+    if (ids.length) {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      });
+    }
+    if (result.count > 0) {
+      showToast?.(
+        t("adminNotificationMarkedReadToast", { count: result.count }),
+      );
+    }
+  };
+  const deleteAlerts = (ids) => {
+    const result = store.deleteAdminAlerts(ids);
+    setSelected((prev) => {
+      if (!ids.length) return new Set();
+      const next = new Set(prev);
+      ids.forEach((id) => next.delete(id));
+      return next;
+    });
+    if (result.count > 0) {
+      showToast?.(t("adminNotificationDeletedToast", { count: result.count }));
+    }
+  };
+
+  const handlers = {
+    store,
+    showToast,
+    onOpenJob,
+    onOpenDocument,
+    onOpenDriver,
+    onAdjustDriverOffer,
+    onReviewMasterDataRequest,
+    markRead,
+    deleteAlerts,
+  };
+
+  const markButtonLabel =
+    selectedCount > 0
+      ? t("adminNotificationMarkSelectedRead", { count: selectedCount })
+      : t("adminNotificationMarkAllRead");
+
   return (
-    <div style={{ maxWidth: 900 }}>
-      <p className="pane-lead">{t("adminNotificationFeedSub")}</p>
+    <div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+          gap: 12,
+          marginBottom: 14,
+        }}
+      >
+        <p className="pane-lead" style={{ margin: 0 }}>
+          {t("adminNotificationFeedCountSub", {
+            unread: unreadCount,
+            total: allRows.length,
+          })}
+        </p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="btn xs"
+            disabled={allRows.length === 0}
+            onClick={() => markRead(selectedCount > 0 ? selectedIds : [])}
+          >
+            {markButtonLabel}
+          </button>
+          <button
+            type="button"
+            className="btn xs"
+            disabled={selectedCount === 0}
+            onClick={() => deleteAlerts(selectedIds)}
+          >
+            {t("adminNotificationDeleteSelected", { count: selectedCount })}
+          </button>
+          <button
+            type="button"
+            className="btn xs destructive"
+            disabled={allRows.length === 0}
+            onClick={() => deleteAlerts([])}
+          >
+            {t("adminNotificationDeleteAll")}
+          </button>
+        </div>
+      </div>
       <div className="tabs" style={{ marginBottom: 14 }}>
         {[
-          ["open", t("adminNotificationTabOpen"), openCount],
-          ["processed", t("adminNotificationTabProcessed"), null],
+          ["all", t("adminNotificationTabAll"), allRows.length],
+          ["unread", t("adminNotificationTabUnread"), unreadCount],
+          ["read", t("adminNotificationTabRead"), null],
         ].map(([id, lbl, count]) => (
           <button
             key={id}
@@ -11266,7 +11633,7 @@ const NotificationFeedPane = ({
             onClick={() => setTab(id)}
           >
             {lbl}
-            {count != null && count > 0 ? ` (${count})` : ""}
+            {count != null ? ` (${count})` : ""}
           </button>
         ))}
       </div>
@@ -11275,137 +11642,211 @@ const NotificationFeedPane = ({
           <div
             style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}
           >
-            {tab === "processed"
-              ? t("adminNotificationProcessedEmpty")
-              : t("adminNotificationEmpty")}
+            {tab === "read"
+              ? t("adminNotificationReadEmpty")
+              : tab === "unread"
+                ? t("adminNotificationUnreadEmpty")
+                : t("adminNotificationEmpty")}
           </div>
         ) : (
-          rows.map((row) => (
+          <div className="table-wrap">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th style={{ width: 36 }}>
+                    <input
+                      type="checkbox"
+                      checked={allPagedSelected}
+                      onChange={toggleSelectAll}
+                      aria-label={t("adminNotificationSelectAll")}
+                    />
+                  </th>
+                  <th>{t("adminNotificationColNotification")}</th>
+                  <th>{t("adminNotificationColSource")}</th>
+                  <th>{t("adminColDate")}</th>
+                  <th style={{ width: 120 }}>{t("adminColActions")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedRows.map((row, index) => {
+                  const actions = adminAlertRowActions(row, handlers, t);
+                  const sourceKey =
+                    ADMIN_ALERT_SOURCE[row.event] || "adminNotifSourceSystem";
+                  return (
+                    <tr
+                      key={row.id}
+                      className={index < 4 ? "list-enter" : undefined}
+                      style={
+                        index < 4 ? { ["--list-enter-i"]: index } : undefined
+                      }
+                    >
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selected.has(row.id)}
+                          onChange={() => toggleSelectOne(row.id)}
+                          aria-label={row.event}
+                        />
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: 10 }}>
+                          <AdminAlertBadge event={row.event} t={t} />
+                          <div className="notif-row-detail">
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                              }}
+                            >
+                              {row.status !== "read" && (
+                                <span className="notif-unread-dot" />
+                              )}
+                              <span style={{ fontWeight: 600, fontSize: 14 }}>
+                                {ADMIN_ALERT_EVENT_I18N[row.event]
+                                  ? t(ADMIN_ALERT_EVENT_I18N[row.event])
+                                  : row.event}
+                              </span>
+                            </div>
+                            <div
+                              style={{
+                                fontSize: 13,
+                                color: "var(--muted)",
+                                marginTop: 2,
+                              }}
+                            >
+                              {row.tour ? `${t("adminColTour")} ${row.tour}` : "—"}
+                              {row.meta ? ` · ${row.meta}` : ""}
+                            </div>
+                            {row.status === "read" ? (
+                              <div
+                                className="mono"
+                                style={{
+                                  fontSize: 11,
+                                  color: "var(--muted-2)",
+                                  marginTop: 2,
+                                }}
+                              >
+                                {t("adminNotificationReadBy", {
+                                  name: row.readBy || "—",
+                                  at: row.readAt || "—",
+                                })}
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="notif-source-chip">{t(sourceKey)}</span>
+                      </td>
+                      <td className="mono" style={{ fontSize: 12 }}>
+                        {row.at}
+                      </td>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <AdminAlertRowMenu actions={actions} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {rows.length > 0 ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 12,
+              padding: "12px 18px",
+              borderTop: "1px solid var(--line)",
+            }}
+          >
             <div
-              key={row.id}
               style={{
                 display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 16,
-                padding: "14px 18px",
-                borderBottom: "1px solid var(--line)",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 13,
+                color: "var(--muted)",
               }}
             >
-              <div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    flexWrap: "wrap",
-                  }}
+              <label htmlFor="notif-rows-per-page">{t("rowsPerPage")}</label>
+              <select
+                id="notif-rows-per-page"
+                className="input"
+                style={{ width: "auto", padding: "4px 8px" }}
+                value={rowsPerPage}
+                onChange={(e) => setRowsPerPage(Number(e.target.value))}
+              >
+                {[10, 20, 50].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 13, color: "var(--muted)" }}>
+                {t("adminPaginationRange", {
+                  start: rangeStart,
+                  end: rangeEnd,
+                  total: rows.length,
+                })}
+              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <button
+                type="button"
+                className="btn xs ghost"
+                disabled={safePage <= 1}
+                onClick={() => setPage(1)}
+                aria-label={t("adminPaginationFirst")}
+              >
+                «
+              </button>
+              <button
+                type="button"
+                className="btn xs ghost"
+                disabled={safePage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                aria-label={t("adminPaginationPrev")}
+              >
+                ‹
+              </button>
+              {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className={"btn xs" + (n === safePage ? " primary" : " ghost")}
+                  onClick={() => setPage(n)}
                 >
-                  <span style={{ fontWeight: 600, fontSize: 14 }}>
-                    {ADMIN_ALERT_EVENT_I18N[row.event]
-                      ? t(ADMIN_ALERT_EVENT_I18N[row.event])
-                      : row.event}
-                  </span>
-                  <AdminAlertSeverityBadge event={row.event} t={t} />
-                </div>
-                <div
-                  style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}
-                >
-                  {row.tour ? `${t("adminColTour")} ${row.tour}` : "—"}
-                  {row.meta ? ` · ${row.meta}` : ""}
-                </div>
-                <div
-                  className="mono"
-                  style={{
-                    fontSize: 11,
-                    color: "var(--muted-2)",
-                    marginTop: 4,
-                  }}
-                >
-                  {row.at}
-                  {row.status === "processed"
-                    ? ` · ${t("adminNotificationProcessedBy", {
-                        name: row.processedBy || "—",
-                        at: row.processedAt || "—",
-                      })}`
-                    : ""}
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {row.event === "master_data_change_requested" &&
-                onReviewMasterDataRequest ? (
-                  <button
-                    type="button"
-                    className="btn xs primary"
-                    onClick={() => {
-                      const reqId = parseMasterDataRequestIdFromMeta(row.meta);
-                      onReviewMasterDataRequest(reqId);
-                    }}
-                  >
-                    {t("adminMdrReviewFromFeed")}
-                  </button>
-                ) : null}
-                {row.event === "document_unreviewed_stale" &&
-                row.documentId &&
-                onOpenDocument ? (
-                  <button
-                    type="button"
-                    className="btn xs"
-                    onClick={() => onOpenDocument(row.jobId, row.documentId)}
-                  >
-                    {t("adminNotificationOpenDocument")}
-                  </button>
-                ) : null}
-                {row.event === "service_partner_inactive" &&
-                row.driverId &&
-                onOpenDriver ? (
-                  <button
-                    type="button"
-                    className="btn xs"
-                    onClick={() => onOpenDriver(row.driverId)}
-                  >
-                    {t("adminNotificationOpenDriver")}
-                  </button>
-                ) : null}
-                {row.event === "order_not_accepted_cutoff" &&
-                row.jobId &&
-                onAdjustDriverOffer ? (
-                  <button
-                    type="button"
-                    className="btn xs"
-                    onClick={() => onAdjustDriverOffer(row.jobId)}
-                  >
-                    {t("adminNotificationAdjustDriverOffer")}
-                  </button>
-                ) : null}
-                {row.jobId &&
-                row.event !== "document_unreviewed_stale" ? (
-                  <button
-                    type="button"
-                    className="btn xs"
-                    onClick={() => {
-                      const j = store.getJob(row.jobId);
-                      if (j) onOpenJob?.(j);
-                      else showToast?.(t("adminNotificationOpenJob"), row.tour);
-                    }}
-                  >
-                    {t("adminNotificationOpenJob")}
-                  </button>
-                ) : null}
-                {row.status !== "processed" ? (
-                  <button
-                    type="button"
-                    className="btn xs ghost"
-                    title={t("adminNotificationMarkProcessed")}
-                    onClick={() => markProcessed(row.id)}
-                  >
-                    ✓ {t("adminNotificationMarkProcessed")}
-                  </button>
-                ) : null}
+                  {n}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="btn xs ghost"
+                disabled={safePage >= pageCount}
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                aria-label={t("adminPaginationNext")}
+              >
+                ›
+              </button>
+              <button
+                type="button"
+                className="btn xs ghost"
+                disabled={safePage >= pageCount}
+                onClick={() => setPage(pageCount)}
+                aria-label={t("adminPaginationLast")}
+              >
+                »
+              </button>
               </div>
             </div>
-          ))
-        )}
+          </div>
+        ) : null}
       </section>
     </div>
   );

@@ -247,9 +247,11 @@ Enum notification_severity {
   gray
 }
 
+// Values renamed 2026-08-05 (open -> unread, processed -> read) — naming
+// change only, same admin-feed-only explicit-action-only rule as before.
 Enum notification_status {
-  open
-  processed
+  unread
+  read
 }
 
 Table users {
@@ -821,10 +823,21 @@ Table user_notifications {
   read_at timestamptz
   // PRD v2.32 / Task 33 — admin-feed-only (see notification_severity /
   // notification_status above). Never meaningful on a driver-recipient row.
+  // Deliberately NOT named read_at/read_by_user_id: this table's existing
+  // read_at above is the driver-notification read receipt, set on VIEWING;
+  // the admin equivalent flips ONLY via an explicit "mark as read" action,
+  // never on view, so it needs its own name to keep the two rules from
+  // silently merging. Status enum values renamed 2026-08-05 (open -> unread,
+  // processed -> read); columns renamed the same day (processed_at/
+  // processed_by_user_id -> admin_read_at/admin_read_by_user_id).
   severity notification_severity [not null, default: 'gray']
-  status notification_status [not null, default: 'open']
-  processed_at timestamptz
-  processed_by_user_id uuid
+  status notification_status [not null, default: 'unread']
+  admin_read_at timestamptz
+  admin_read_by_user_id uuid
+  // 2026-08-05: soft delete for the admin feed's "Delete" action (per-row,
+  // "delete selected", "delete all") — a deleted row is hidden from every
+  // admin-facing read but never erased, so it stays available for audit.
+  deleted_at timestamptz
 
   indexes {
     (user_id, created_at)
@@ -961,7 +974,7 @@ Ref: notification_preferences.user_id > users.id
 Ref: push_subscriptions.user_id > users.id
 Ref: user_notifications.user_id > users.id
 Ref: user_notifications.job_id > jobs.id
-Ref: user_notifications.processed_by_user_id > users.id
+Ref: user_notifications.admin_read_by_user_id > users.id
 Ref: notification_deliveries.user_notification_id > user_notifications.id
 Ref: feature_flags.updated_by_user_id > users.id
 Ref: app_settings.updated_by_user_id > users.id

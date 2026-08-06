@@ -1,5 +1,23 @@
 # AUTHEON database logical model
 
+> **Status override:** Updated 2026-08-05 - PRD v2.32-feed-redesign / Task 33: Dispatch Notification
+> Feed table redesign — renamed and extended the columns the entry directly below this one just added,
+> same day. **`user_notifications.status`'s `notification_status` enum values are renamed** `open` →
+> `unread`, `processed` → `read` (a naming change only — the underlying rule is unchanged: status flips
+> only via an explicit "mark as read" action, single-row or bulk, never as a side effect of viewing).
+> **`.processed_at`/`.processed_by_user_id` are renamed** `.admin_read_at`/`.admin_read_by_user_id` —
+> deliberately not the shorter `.read_at`/`.read_by_user_id`, since `user_notifications.read_at` already
+> exists as the driver-notification read receipt (PRD v2.20, set on **viewing**); reusing that name for
+> the admin column would collide technically and, worse, semantically — the admin equivalent must flip
+> only via an explicit action, never on view, so it needs a name of its own to keep the two rules from
+> merging. **Added `user_notifications.deleted_at`** (nullable timestamptz) — the redesign's "Delete" action (per-row,
+> "delete selected", "delete all") is a **soft** delete: a deleted row is hidden from every admin-facing
+> read but the row itself is never erased, so the original "retain for audit, never delete" requirement
+> survives underneath even though the UI reads as permanent removal. All five columns remain
+> **admin-feed-only**, same reasoning as the entry below. **No other structural change** — the three new
+> `notification_type` values, the severity enum, and the `app_settings` cutoff-time field from the entry
+> below are unaffected by this rename.
+
 > **Status override:** Updated 2026-08-05 - PRD v2.32 / Task 33: Dispatch Notification Feed — admin
 > severity, explicit open/processed lifecycle, and three new schedule-driven `notification_type` values.
 > **Added `user_notifications.severity`** (new `notification_severity` enum: `red` / `orange` / `gray`)

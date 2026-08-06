@@ -2168,9 +2168,10 @@ window.AuthStore = (() => {
         meta: "Report Problem: empty run reported — yard closed · 1 file(s)",
         at: "23.04. 08:41",
         sent: true,
-        status: "open",
-        processedAt: "",
-        processedBy: "",
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
       },
       {
         id: "ALERT-SEED-002",
@@ -2180,9 +2181,10 @@ window.AuthStore = (() => {
         meta: "Driver cancellation — customer cancelled",
         at: "21.04. 22:01",
         sent: true,
-        status: "open",
-        processedAt: "",
-        processedBy: "",
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
       },
       // Schedule-driven types (cutoff / staleness / inactivity) have no real
       // clock in this prototype, so they are seeded pre-fired against real
@@ -2199,9 +2201,10 @@ window.AuthStore = (() => {
         meta: "Pickup Wed, 23.04.2026 · 08:00–12:00",
         at: "22.04. 15:45",
         sent: true,
-        status: "open",
-        processedAt: "",
-        processedBy: "",
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
       },
       {
         id: "ALERT-SEED-004",
@@ -2212,9 +2215,10 @@ window.AuthStore = (() => {
         meta: "driver-invoice-0842.pdf has been awaiting review for 10+ days",
         at: "01.05. 09:00",
         sent: true,
-        status: "open",
-        processedAt: "",
-        processedBy: "",
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
       },
       {
         id: "ALERT-SEED-005",
@@ -2224,9 +2228,185 @@ window.AuthStore = (() => {
         meta: "Dana Driver has not logged in for 90+ days",
         at: "15.07. 07:00",
         sent: true,
-        status: "open",
-        processedAt: "",
-        processedBy: "",
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
+      },
+      // Additional variety across the remaining event types, each against a
+      // real seeded tour/document/driver — gives the feed enough volume to
+      // exercise pagination and shows every severity/icon combination.
+      {
+        id: "ALERT-SEED-006",
+        event: "job_accepted",
+        jobId: "A-2026-00843",
+        tour: "0843-26",
+        meta: `Driver ${DEMO_DRIVER}`,
+        at: "26.04. 07:15",
+        sent: true,
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
+      },
+      {
+        id: "ALERT-SEED-007",
+        event: "job_performed",
+        jobId: "A-2026-00845",
+        tour: "0845-26",
+        meta: "0845-26",
+        at: "24.04. 18:40",
+        sent: true,
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
+      },
+      {
+        id: "ALERT-SEED-008",
+        event: "job_assigned",
+        jobId: "A-2026-00848",
+        tour: "0848-26",
+        meta: `Driver ${DEMO_DRIVER}`,
+        at: "08.05. 09:00",
+        sent: true,
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
+      },
+      {
+        id: "ALERT-SEED-009",
+        event: "job_reassigned",
+        jobId: "A-2026-00844",
+        tour: "0844-26",
+        meta: "Klaus Neumann → Jordan Blake",
+        at: "22.04. 11:20",
+        sent: true,
+        status: "read",
+        readAt: "23.04. 08:00",
+        readBy: DEMO_ADMIN,
+        deletedAt: null,
+      },
+      {
+        id: "ALERT-SEED-010",
+        event: "cancelled_by_autheon",
+        jobId: "A-2026-00839",
+        tour: "0839-26",
+        meta: "Cancelled by dispatch — customer request",
+        at: "18.04. 16:05",
+        sent: true,
+        status: "read",
+        readAt: "19.04. 09:00",
+        readBy: DEMO_ADMIN,
+        deletedAt: null,
+      },
+      {
+        id: "ALERT-SEED-011",
+        event: "empty_run_recognised",
+        jobId: "A-2026-00846",
+        tour: "0846-26",
+        meta: "Empty run recognised — yard closed",
+        at: "23.04. 10:15",
+        sent: true,
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
+      },
+      {
+        id: "ALERT-SEED-012",
+        event: "empty_run_not_recognised",
+        jobId: "A-2026-00840",
+        tour: "0840-26",
+        meta: "Empty run not recognised — vehicle was operational",
+        at: "20.04. 13:30",
+        sent: true,
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
+      },
+      {
+        id: "ALERT-SEED-013",
+        event: "tour_document_uploaded",
+        jobId: "A-2026-00845",
+        documentId: "TD-SEED-ACTIVE-001",
+        tour: "0845-26",
+        meta: "other_proof",
+        at: "23.04. 07:16",
+        sent: true,
+        status: "read",
+        readAt: "23.04. 09:00",
+        readBy: DEMO_ADMIN,
+        deletedAt: null,
+      },
+      {
+        id: "ALERT-SEED-014",
+        event: "tour_document_reuploaded",
+        jobId: "A-2026-00842",
+        documentId: "TD-SEED-002",
+        tour: "0842-26",
+        meta: "delivery_note",
+        at: "21.04. 13:10",
+        sent: true,
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
+      },
+      {
+        id: "ALERT-SEED-015",
+        event: "tour_document_rejected",
+        jobId: "A-2026-00842",
+        documentId: "TD-SEED-001",
+        tour: "0842-26",
+        meta: "Invoice rejected — amount mismatch",
+        at: "22.04. 09:45",
+        sent: true,
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
+      },
+      {
+        id: "ALERT-SEED-016",
+        event: "order_cancelled_by_sp",
+        jobId: "A-2026-00843",
+        tour: "0843-26",
+        meta: "Vehicle not roadworthy",
+        at: "27.04. 06:50",
+        sent: true,
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
+      },
+      {
+        id: "ALERT-SEED-017",
+        event: "empty_run_reported",
+        jobId: "A-2026-00848",
+        tour: "0848-26",
+        meta: "Report Problem: empty run reported — key missing · 2 file(s)",
+        at: "09.05. 08:05",
+        sent: true,
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
+      },
+      {
+        id: "ALERT-SEED-018",
+        event: "job_performed",
+        jobId: "A-2026-00844",
+        tour: "0844-26",
+        meta: "0844-26",
+        at: "22.04. 17:00",
+        sent: true,
+        status: "read",
+        readAt: "23.04. 08:30",
+        readBy: DEMO_ADMIN,
+        deletedAt: null,
       },
     ];
   }
@@ -4226,12 +4406,13 @@ window.AuthStore = (() => {
       meta: meta || "",
       at: nowStamp(),
       sent: false,
-      // Open/processed is a distinct lifecycle from `sent` (email delivery) —
-      // viewing the feed must never flip this; only the explicit checkmark
-      // action in markAdminAlertProcessed() may.
-      status: "open",
-      processedAt: "",
-      processedBy: "",
+      // Read/unread is a distinct lifecycle from `sent` (email delivery) —
+      // viewing the feed must never flip this; only the explicit bulk/row
+      // "mark as read" action in markAdminAlertsRead() may.
+      status: "unread",
+      readAt: "",
+      readBy: "",
+      deletedAt: null,
       ...(extra || {}),
     };
     adminEmailQueue.unshift(row);
@@ -5929,25 +6110,49 @@ window.AuthStore = (() => {
     AUDIT_PURGE_EXEMPT_ACTIONS,
     auditRetentionCutoff,
     isAuditEventPurgeable,
-    getAdminEmailQueue: () => adminEmailQueue.slice(),
-    // Nav badge count — open only, so a processed backlog never keeps the
-    // badge (and its pulse) lit. Mirrors getOpenMasterDataChangeRequestCount.
-    getOpenAdminAlertCount: () =>
-      adminEmailQueue.filter((r) => r.status !== "processed").length,
-    // The only path that may ever flip an alert to "processed" — viewing the
-    // feed must never do this, per the notification spec's explicit-action
-    // requirement. Processed rows are kept, never deleted, for audit.
-    markAdminAlertProcessed: (ids) => {
-      const set = new Set(Array.isArray(ids) ? ids : [ids]);
+    // Soft-deleted rows never leave adminEmailQueue itself — they are hidden
+    // from every reader here, mirroring getDrivers()'s !d.deletedAt filter,
+    // so the underlying record survives for audit even though "Delete" reads
+    // as permanent removal in the UI.
+    getAdminEmailQueue: () =>
+      adminEmailQueue.filter((r) => !r.deletedAt).slice(),
+    // Nav badge count — unread only, so a read backlog never keeps the badge
+    // (and its pulse) lit. Mirrors getOpenMasterDataChangeRequestCount.
+    getUnreadAdminAlertCount: () =>
+      adminEmailQueue.filter((r) => !r.deletedAt && r.status !== "read")
+        .length,
+    // The only path that may ever flip an alert to "read" — viewing the feed
+    // must never do this, per the notification spec's explicit-action
+    // requirement. ids=[] (the default) means "every visible alert", the
+    // same convention deleteAdminAlerts() below uses for "delete all".
+    markAdminAlertsRead: (ids = []) => {
+      const set = new Set(ids);
       let n = 0;
       for (const row of adminEmailQueue) {
+        if (row.deletedAt) continue;
         if (set.size && !set.has(row.id)) continue;
-        if (row.status !== "processed") {
-          row.status = "processed";
-          row.processedAt = nowStamp();
-          row.processedBy = api.getCurrentAdmin()?.name || "";
+        if (row.status !== "read") {
+          row.status = "read";
+          row.readAt = nowStamp();
+          row.readBy = api.getCurrentAdmin()?.name || "";
           n++;
         }
+      }
+      if (n) emit();
+      return { ok: true, count: n };
+    },
+    // Soft delete: the row is hidden from getAdminEmailQueue() but never
+    // erased, so "Delete all" cannot destroy the audit trail the notification
+    // spec requires. ids=[] means "every currently visible alert".
+    deleteAdminAlerts: (ids = []) => {
+      const set = new Set(ids);
+      let n = 0;
+      const deletedAt = nowStamp();
+      for (const row of adminEmailQueue) {
+        if (row.deletedAt) continue;
+        if (set.size && !set.has(row.id)) continue;
+        row.deletedAt = deletedAt;
+        n++;
       }
       if (n) emit();
       return { ok: true, count: n };

@@ -4,7 +4,60 @@
 
 **Canonical file:** `docs/requirements/prd.json`
 
-> **Scope of this file:** the **v2.32** entry, plus its same-release `[v2.32-cutoff-details]` addendum. Baseline is **v2.31** (Driver/User schema fix + several presentation addenda, 2026-08-01 — see [`../2026-07/prd-changelog-since-2026-07-30.md`](../2026-07/prd-changelog-since-2026-07-30.md)).
+> **Scope of this file:** the **v2.32** entry, plus its same-release `[v2.32-cutoff-details]` and `[v2.32-feed-redesign]` addenda. Baseline is **v2.31** (Driver/User schema fix + several presentation addenda, 2026-08-01 — see [`../2026-07/prd-changelog-since-2026-07-30.md`](../2026-07/prd-changelog-since-2026-07-30.md)).
+
+---
+
+## v2.32 addendum — Notification feed table redesign, unread/read rename, soft delete (2026-08-05)
+
+**Numbering note:** same release as the two entries below (`v2.32` and `[v2.32-cutoff-details]`); this is a same-day `[v2.32-feed-redesign]` addendum, not a new version.
+
+**Baseline:** PRD v2.32 + `[v2.32-cutoff-details]`
+**Source:** an approved visual reference for the admin notification feed, provided directly to engineering 2026-08-05.
+**Type:** UI redesign of the feed introduced by the v2.32 entry below, plus a **data-model rename** (naming change only — the underlying rule is unchanged) and one genuinely new capability (soft delete).
+**Data model / API:** prototype-only, same as the entry it refines. `docs/database/logical-model.md` and `docs/database/schema.dbml` were both updated for the rename and the new `deleted_at` column — see their own dated Status-override entries.
+
+### 1. Previous behaviour (v2.32, as implemented earlier the same day)
+
+The feed from the entry below already had severity, an explicit status action, and three new trigger types — but as a flat list of cards, not a table: text-chip severity badges ("Critical"/"Warning"/"Info"), no way to select more than one row, no bulk actions, no delete of any kind, and no pagination. `adminEmailQueue` rows used `status: 'open' | 'processed'` with `processedAt`/`processedBy`.
+
+### 2. New behaviour
+
+- **Table layout matching the approved reference**: header row with a select-all checkbox (scoped to the current page), per-row checkboxes, a Notification column (icon+color badge, title, detail line, unread dot), a Source column, a Date column, and a row-level "..." menu.
+- **Icon+color severity badges** replace the text chip: a 44×44 colored square carrying an event-specific icon (key / warning triangle / circle-x / check-circle / bell / document — new `Ic.N.Key`/`Warning`/`CircleX`/`CheckCircle`/`Bell`/`Trash`/`MailOpen` icons, `prototype/project/driver.jsx`, reused globally). Still never color alone: the row's own title text sits beside it, and the icon's `aria-label`/`title` carries the severity word for assistive tech. Every row reserves the same height (`.notif-row-detail { min-height: 54px }`) whether or not its "read by" line is present, so unread and read rows are visually identical in size.
+- **Source column** is a neutral gray pill (`.notif-source-chip`) grouping events into System / Tour system / Documents / Service Partners — deliberately not severity-colored, so it never competes with the badge's color for attention.
+- **Terminology rename: `open`/`processed` → `unread`/`read`.** `adminEmailQueue.status` values renamed; `processedAt`/`processedBy` renamed to `readAt`/`readBy`. Naming only — the rule the client's original spec required (status changes only via an explicit action, never by viewing) is unchanged, just relabelled to match the approved reference's own "Unread"/"Read" tab names. `getOpenAdminAlertCount`/`markAdminAlertProcessed` renamed to `getUnreadAdminAlertCount`/`markAdminAlertsRead` (now array-based: `ids=[]` means "every visible alert", the same convention the new delete function uses).
+- **Three tabs — All / Unread / Read** — replacing the previous Open/Processed pair. Only All and Unread show a count badge, matching the reference (Read intentionally doesn't).
+- **New capability, not in the original client spec — flagged rather than presented as a client requirement:** multi-select checkboxes, "Mark selected as read (N)" / "Mark all as read" (one button that relabels itself based on selection), "Delete selected (N)", and "Delete all". **Delete is a soft delete** — a new `adminEmailQueue.deletedAt` flag, filtered out of `getAdminEmailQueue()` the same way `getDrivers()` already filters `!d.deletedAt`. This was a deliberate design decision, not an oversight: the client's original spec required processed notifications to stay visible for audit, never deleted, and a real hard delete would have broken that. The row is hidden from the admin, the audit record survives underneath.
+- **Row-level "..." menu**: a portaled dropdown, reusing the exact pattern the Jobs table's existing `RowActionsMenu` already established (`.tbl`/`.table-wrap` clip overflow, so the menu is portaled into `document.body` at viewport-fixed coordinates computed from the trigger button's own rect). New generic `AdminAlertRowMenu` component, parameterized by an `actions` array rather than hardcoded to job-specific actions like the original.
+- **Rows-per-page + pagination**: a footer with a rows-per-page `<select>` (10/20/50, reusing the existing generic `rowsPerPage` i18n key rather than inventing a duplicate) and first/prev/page-number/next/last controls. The range text ("1–20 of 24") sits with the pagination buttons on the right, not beside the rows-per-page control on the left. Switching tabs or the page size resets to page 1 so a stale page number can never show an empty table. The header select-all checkbox is scoped to the current page; "Delete selected"/"Mark selected as read" act on the full `selected` set regardless of which page a row was picked from.
+- **Seed data expanded from 5 to 18 rows**, all against real seeded jobs/documents/drivers, covering every event type at least once (job accepted/performed/assigned/reassigned, dispatch cancellation, empty-run recognised/not-recognised, document uploaded/reuploaded/rejected, SP cancellation) — enough volume for pagination to have something real to page through, with a few rows pre-seeded as already-read so the Read tab isn't empty by default.
+
+### 3. A naming collision found and avoided
+
+The backend column rename (`processed_at`/`processed_by_user_id` → the obvious `read_at`/`read_by_user_id`) was **not used**: `user_notifications` already has a `read_at` column from PRD v2.20 — the **driver**-notification read receipt, set on *viewing*. Reusing that name for the admin column would have collided technically and, worse, semantically: the admin equivalent must flip only via an explicit action, never on view. The backend columns are named `admin_read_at`/`admin_read_by_user_id` instead — see `logical-model.md` and `schema.dbml`. The prototype itself has no such collision (`adminEmailQueue` and `driverNotifications` are separate arrays, not a shared object shape), so `store.js` legitimately uses the shorter `readAt`/`readBy`.
+
+### 4. What deliberately did NOT change
+
+The three trigger types and their deep links from the v2.32 entry below, the cutoff-time setting from `[v2.32-cutoff-details]`, and every event's severity classification — this pass only changed how the feed is *presented and operated*, not which events fire or how urgent they are.
+
+### 5. Open questions carried into production
+
+Multi-select, bulk mark-as-read/delete, and pagination are **not** literal asks in the client's "Dispatch Notification Feed — Implementation Spec" — they match an approved design reference but should be confirmed with the client as committed scope before backend work builds against them, same as the other open items already tracked in `production_open_questions`.
+
+### 6. Files changed
+
+| File | Change |
+| --- | --- |
+| `prototype/project/store.js` | `adminEmailQueue` status values renamed unread/read; `processedAt`/`processedBy` renamed `readAt`/`readBy`; new `deletedAt` (soft delete); `getUnreadAdminAlertCount`/`markAdminAlertsRead`/`deleteAdminAlerts` replace the old open/processed API; seed data expanded 5 → 18 rows |
+| `prototype/project/admin.jsx` | `NotificationFeedPane` rebuilt as a table; new `AdminAlertBadge` (icon+color), `AdminAlertRowMenu` (portaled dropdown), `ADMIN_ALERT_ICON`/`ADMIN_ALERT_SOURCE` maps; multi-select, bulk actions, pagination |
+| `prototype/project/driver.jsx` | New `Ic.N.Key`/`Warning`/`CircleX`/`CheckCircle`/`Bell`/`Trash`/`MailOpen` icons |
+| `prototype/project/styles.css` | `.notif-badge` (icon square, replacing the old text-chip `.notif-severity`), `.notif-source-chip`, `.notif-row-detail` (uniform row height), `.btn.destructive`, `.btn.icon-only` |
+| `prototype/project/i18n.js` | ~25 renamed/new EN+DE keys (tabs, bulk-action labels, toasts, column headers, source labels, pagination) |
+| `docs/database/logical-model.md` | New dated Status-override block: enum value rename, column rename + collision note, new `deleted_at` |
+| `docs/database/schema.dbml` | `notification_status` enum values renamed; `user_notifications` columns renamed + `deleted_at` added |
+| `docs/requirements/prd.json` | `version` gains the `[v2.32-feed-redesign]` entry; Task 33 acceptance criteria updated for the rename + a new addendum item for the table redesign; `domain_model_summary.admin_notification_fields` updated |
+| `docs/archive/2026-08/prd-changelog-since-2026-08-04.md` | This entry |
 
 ---
 
