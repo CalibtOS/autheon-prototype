@@ -1,6 +1,41 @@
 # AUTHEON prototype — domain glossary
 
-Canonical spec: [`../../docs/requirements/prd.json`](../../docs/requirements/prd.json) (currently PRD v2.32). This file explains terms used in the static prototype (`store.js`, admin, driver).
+Canonical spec: [`../../docs/requirements/prd.json`](../../docs/requirements/prd.json) (currently PRD v2.35). This file explains terms used in the static prototype (`store.js`, admin, driver).
+
+Partner/staff access axes are governed by
+[`../../../tasks/status-consolidation-decision-brief.md`](../../../tasks/status-consolidation-decision-brief.md)
+(status consolidation). DB draft:
+[`../../docs/database/schema.dbml`](../../docs/database/schema.dbml).
+
+## Partner / staff access (status consolidation)
+
+Two binary axes + invite lifecycle — **not** the old TitleCase `status` /
+`accountStatus` enum:
+
+| Field (prototype `store.js`) | Values | Meaning |
+| ---------------------------- | ------ | ------- |
+| `operationalAccess` | `enabled` \| `disabled` | Marketplace / assignment eligibility (drivers only) |
+| `accountAccess` | `enabled` \| `disabled` | Login access (drivers and admins) — the **user** axis |
+| `inviteState` | `pending` \| `failed` \| `accepted` | Onboarding lifecycle; orthogonal to `accountAccess` |
+| `lastActiveAt` | ISO timestamp | Dormancy clock in the prototype (mirrors BE `users.last_activity_at`) |
+| `accessRemovalDeferredAt` | ISO \| `null` | Sweep branch B: account lockout deferred while open tours remain |
+| `deactivationReason` | `null` \| `"inactivity"` | Provenance when the platform closed access via the sweep |
+
+**D6 automatic access removal.** Settings → System → inactivity policy. When
+the sweep runs:
+
+- **Branch A** (no open tours): disables **both** `accountAccess` (login / user)
+  and `operationalAccess` (marketplace).
+- **Branch B** (open tours): disables only `operationalAccess`, keeps
+  `accountAccess` enabled so the partner can finish work, sets
+  `accessRemovalDeferredAt`, and retries account removal on later runs.
+
+**Seed note.** All demo partners/admins start `enabled` / `enabled` /
+`accepted`. A stale `lastActiveAt` (via `daysAgoIso(N)`) only makes them sweep
+candidates — it does **not** revoke access at seed time. Backend seed JSON uses
+`dormantDaysAgo` for the same idea: a relative authoring helper that writes the
+activity clock; the stored field is always `last_activity_at` /
+`lastActiveAt`.
 
 ## Operational tour status (stored on `job.status`)
 

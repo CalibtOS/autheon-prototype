@@ -152,10 +152,49 @@ window.I18n = (() => {
       appAppearanceHint: "Language and display preferences for this device.",
       appLanguage: "Language",
       appTheme: "Theme",
-      blockedDriverTitle: "Marketplace unavailable",
-      blockedDriverStatusFallback: "Restricted",
-      blockedDriverBody:
-        "Marketplace access and new tour acceptance are restricted for blocked drivers. Use My Jobs to correct documents on existing tours. Profile, Info, and historical jobs remain visible in this prototype.",
+      confirm: "Confirm",
+      accessEnabled: "Enabled",
+      accessDisabled: "Disabled",
+      operationalAccess: "Operational access",
+      accountAccess: "Account access",
+      filterAll: "All",
+      inviteState: "Invite status",
+      inviteStatePending: "Pending",
+      inviteStateFailed: "Failed",
+      inviteStateAccepted: "Accepted",
+      driverAccessDisabledTitle: "Marketplace unavailable",
+      driverAccessDisabledBody:
+        "You cannot browse the marketplace or take on new tours right now. Tours already assigned to you are not affected — you can complete them and upload their documents as usual. Contact your dispatcher to have access restored.",
+      driverAccessDeferredTitle:
+        "Marketplace paused — your open tours are not affected",
+      driverAccessDeferredBody:
+        "Your account has been unused for a long time, so marketplace access has been paused and you cannot take on new tours. You can still sign in, and the tours already assigned to you continue as normal — you can complete them and upload their documents as usual.",
+      driverAccessDeferredRestore:
+        "Contact your dispatcher to have marketplace access restored — they can switch it back on right away.",
+      driverAccessDeferredOpenTours: "{count} open tours",
+      driverInactivityWarningTitle:
+        "Your account will be deactivated in {days} days",
+      driverInactivityWarningBody:
+        "Your account has been unused for {inactive} days. If it stays unused, you will no longer be able to sign in and you will lose access to the marketplace. Signing in and working on a tour is enough to keep it active.",
+      driverNotifOperationalDisabledTitle: "Marketplace access paused",
+      driverNotifOperationalDisabledBody:
+        "You can still complete and upload documents for tours already assigned to you.",
+      driverNotifOperationalEnabledTitle: "Marketplace access restored",
+      driverNotifOperationalEnabledBody:
+        "You can browse the marketplace and accept new tours again.",
+      driverNotifAccountDisabledTitle: "Sign-in disabled",
+      driverNotifAccountDisabledBody:
+        "Your account can no longer be used to sign in. Contact your dispatcher.",
+      driverNotifAccountEnabledTitle: "Sign-in restored",
+      driverNotifAccountEnabledBody: "You can sign in to your account again.",
+      driverNotifAccountAutoDisabledTitle:
+        "Account deactivated after inactivity",
+      driverNotifAccountAutoDisabledBody:
+        "Your account has not been used for {days} days, so sign-in and marketplace access have been switched off. Contact your dispatcher to have them restored.",
+      driverNotifDeferredTitle:
+        "Marketplace paused — your open tours continue",
+      driverNotifDeferredBody:
+        "Marketplace access has been paused because your account has been unused. You can still sign in and complete the tours already assigned to you. Contact your dispatcher to have marketplace access restored.",
       backToMarketplace: "Marketplace",
       tourInExecutionBanner:
         "Tour in execution — complete pickup, delivery, and documents from this screen.",
@@ -1011,43 +1050,29 @@ window.I18n = (() => {
       adminUsersColName: "Name",
       adminUsersColDriverCode: "Service Partner ID",
       adminUsersColActions: "Actions",
-      adminUsersBlock: "Block",
-      adminUsersActivate: "Activate",
       adminUsersLastActivity: "Last activity",
       adminUsersLastActivityNever: "Never",
-      adminUsersAutoBadge: "Auto",
-      adminUsersAutoBadgeTitle: "Automatically deactivated for inactivity",
-      adminInactivityTitle: "Automatic deactivation",
+      adminInactivityTitle: "Automatic access removal",
       adminInactivityBlurb:
-        "Service partners who stop using the platform are set to Inactive automatically. They can no longer see the marketplace or accept tours, and any admin can reactivate them at any time. Partners with tours still running are always skipped.",
+        "Service partners who have not used their account for the configured period lose both sign-in and marketplace access. Partners who still have open tours keep their sign-in so they can finish them, and lose marketplace access instead — the account removal is retried automatically once their tours are closed.",
       adminInactivityEnabled:
-        "Deactivate inactive service partners automatically",
-      adminInactivityThreshold: "Deactivate after (days without activity)",
+        "Automatically remove access from inactive service partners",
+      adminInactivityThreshold: "Remove access after (days without activity)",
       adminInactivityWarning: "Warn this many days beforehand",
       adminInactivityWarningHelp:
-        "Any sign-in or action in the app counts as activity. Set the warning to 0 to deactivate without notice.",
+        "Warns service partners before their sign-in access is removed. Any sign-in or action in the app counts as activity. Set the warning to 0 to remove access without notice.",
       adminInactivityWarningTooLate:
-        "The warning must come before the deactivation — enter fewer days than the threshold.",
+        "The warning must come before access removal — enter fewer days than the threshold.",
       adminInactivityRunNow: "Run check now",
       adminInactivityRunResult:
-        "Inactivity check complete: {deactivated} deactivated, {warned} warned, {skipped} skipped.",
-      adminInactivitySave: "Save deactivation policy",
-      driverInactiveByInactivityTitle: "Account deactivated for inactivity",
-      driverInactiveByInactivityBody:
-        "Your account was set to inactive because it had not been used for a long time. Contact your dispatcher and they can reactivate it right away.",
-      adminUsersDeactivate: "Deactivate",
-      adminUsersStatus_Active: "Active",
-      adminUsersStatus_Blocked: "Blocked",
-      adminUsersStatus_Inactive: "Inactive",
-      adminUsersAccountStatus_PendingVerification: "Pending verification",
-      adminUsersAccountStatus_Active: "Active",
-      adminUsersAccountStatus_Suspended: "Suspended",
-      adminUsersAccountStatus_Inactive: "Inactive",
-      adminUsersAccountStatus_InviteFailed: "Invite failed",
-      adminUsersSuspendAccount: "Suspend account",
-      adminUsersReactivateAccount: "Reactivate account",
+        "Inactivity check complete: {removed} account access removed, {deferred} deferred (operational access removed instead), {warned} warned.",
+      adminInactivitySave: "Save access removal policy",
+      adminUsersEnableAccess: "Enable",
+      adminUsersDisableAccess: "Disable",
+      adminUsersFilterOperational: "Operational access",
+      adminUsersFilterAccount: "Account access",
       adminUsersResendInvite: "Resend invite",
-      adminUsersToastDriverChanged: "Service partner status changed",
+      adminUsersToastDriverChanged: "Operational access updated",
       adminUsersToastDriverOff: "Service partner deactivated",
       adminUsersToastDriverActiveJobs:
         "Cannot deactivate — service partner has {count} active tour(s). Reassign or complete them first.",
@@ -1074,15 +1099,16 @@ window.I18n = (() => {
       adminUsersDeleted: "Account deleted",
       adminOwnAccountRowHint:
         "This is your account — you can't change your own status",
-      adminDriverBlockConfirmTitle: "Block {name}?",
-      adminDriverBlockConfirmBody:
-        "{name} won't be able to accept new jobs while blocked. This can be reversed by activating them again later.",
-      adminDriverBlockConfirmAction: "Block",
-      adminDriverDeactivateConfirmTitle: "Deactivate {name}?",
-      adminDriverDeactivateConfirmBody:
-        "{name} will be marked inactive and won't be considered for new jobs. This can be reversed by activating them again later.",
-      adminDriverDeactivateConfirmAction: "Deactivate",
-      adminUsersToastAccountStatusChanged: "Account status changed",
+      adminDisableOperationalConfirmTitle:
+        "Disable operational access for {name}?",
+      adminDisableOperationalConfirmBody:
+        "{name} will no longer see the marketplace and cannot be assigned or accept new tours. Tours already assigned to them continue and can still be completed. You can re-enable access at any time.",
+      adminDisableOperationalConfirmAction: "Disable access",
+      adminDisableAccountConfirmTitle: "Disable account access for {name}?",
+      adminDisableAccountConfirmBody:
+        "{name} will be signed out and cannot sign in again until account access is re-enabled. This does not change their operational access.",
+      adminDisableAccountConfirmAction: "Disable account",
+      adminUsersToastAccountStatusChanged: "Account access updated",
       adminCustomersCreated: "Customer created",
       adminCustomersCreatedSub: "Available for job prefill",
       adminDocumentsReplaced: "Document replaced",
@@ -1128,7 +1154,7 @@ window.I18n = (() => {
       adminDocumentsPaneDesc:
         "Publish general documents and short messages for drivers. Drivers see them under Infopoint — not in tour notifications or the marketplace alert bell.",
       adminUsersDriversTitle: "Users & service partners",
-      adminUsersColStatus: "Operational status",
+      adminUsersColStatus: "Operational access",
       adminUsersColAccess: "Account access",
       adminUsersEdit: "Edit",
       adminServicePartnerProfileButton: "Profile",
@@ -1681,7 +1707,6 @@ window.I18n = (() => {
       dispatchWillFollowUp: "Dispatch will follow up.",
       ok: "OK",
       driverCode: "driver-id",
-      driverStatusActive: "Active",
       profileMasterData: "Read-only master data",
       company: "Company name",
       address: "Address",
@@ -1986,6 +2011,20 @@ window.I18n = (() => {
       adminNotifDocumentUnreviewedStale:
         "Document awaiting review 10+ days",
       adminNotifServicePartnerInactive: "Service partner inactive 90+ days",
+      adminNotifOperationalAccessDisabled: "Operational access disabled",
+      adminNotifOperationalAccessEnabled: "Operational access enabled",
+      adminNotifAccountAccessDisabled: "Account access disabled",
+      adminNotifAccountAccessEnabled: "Account access enabled",
+      adminNotifAccessRemovedAuto:
+        "Access removed automatically (inactivity)",
+      adminNotifAccessRemovalDeferred:
+        "Access removal deferred — partner has open tours",
+      adminNotifAutoRemovedMeta:
+        "{name} · inactive {days} days · sign-in and marketplace both disabled",
+      adminNotifDeferredMeta:
+        "{name} · inactive {days} days · {count} open tours · marketplace removed, sign-in kept",
+      adminNotifReasonInactivity: "Reason: inactivity",
+      adminNotifActorSystem: "System",
       adminNotifSeverityCritical: "Critical",
       adminNotifSeverityWarning: "Warning",
       adminNotifSeverityInfo: "Info",
@@ -2370,10 +2409,50 @@ window.I18n = (() => {
       appAppearanceHint: "Sprache und Anzeigeeinstellungen für dieses Gerät.",
       appLanguage: "Sprache",
       appTheme: "Design",
-      blockedDriverTitle: "Marktplatz nicht verfügbar",
-      blockedDriverStatusFallback: "Eingeschränkt",
-      blockedDriverBody:
-        "Marktplatzzugriff und neue Tour-Annahmen sind für blockierte Fahrer eingeschränkt. Nutzen Sie Meine Aufträge, um Dokumente bestehender Touren zu korrigieren. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar.",
+      confirm: "Bestätigen",
+      accessEnabled: "Aktiviert",
+      accessDisabled: "Deaktiviert",
+      operationalAccess: "Betriebszugang",
+      accountAccess: "Kontozugang",
+      filterAll: "Alle",
+      inviteState: "Einladungsstatus",
+      inviteStatePending: "Ausstehend",
+      inviteStateFailed: "Fehlgeschlagen",
+      inviteStateAccepted: "Angenommen",
+      driverAccessDisabledTitle: "Marktplatz nicht verfügbar",
+      driverAccessDisabledBody:
+        "Sie können derzeit den Marktplatz nicht nutzen und keine neuen Touren übernehmen. Bereits zugewiesene Touren sind davon nicht betroffen — Sie können sie wie gewohnt abschließen und die zugehörigen Dokumente hochladen. Wenden Sie sich an Ihre Disposition, um den Zugang wiederherstellen zu lassen.",
+      driverAccessDeferredTitle:
+        "Marktplatz pausiert — Ihre offenen Touren sind nicht betroffen",
+      driverAccessDeferredBody:
+        "Ihr Konto wurde lange nicht genutzt, daher wurde der Marktplatzzugang pausiert und Sie können keine neuen Touren übernehmen. Sie können sich weiterhin anmelden, und Ihre bereits zugewiesenen Touren laufen normal weiter — Sie können sie abschließen und die zugehörigen Dokumente wie gewohnt hochladen.",
+      driverAccessDeferredRestore:
+        "Wenden Sie sich an Ihre Disposition, um den Marktplatzzugang wiederherstellen zu lassen — sie kann ihn sofort wieder aktivieren.",
+      driverAccessDeferredOpenTours: "{count} offene Touren",
+      driverInactivityWarningTitle:
+        "Ihr Konto wird in {days} Tagen deaktiviert",
+      driverInactivityWarningBody:
+        "Ihr Konto wurde seit {inactive} Tagen nicht genutzt. Bleibt es ungenutzt, können Sie sich nicht mehr anmelden und verlieren den Zugang zum Marktplatz. Es genügt, sich anzumelden und an einer Tour zu arbeiten, um es aktiv zu halten.",
+      driverNotifOperationalDisabledTitle: "Marktplatzzugang pausiert",
+      driverNotifOperationalDisabledBody:
+        "Bereits zugewiesene Touren können Sie weiterhin abschließen und deren Dokumente hochladen.",
+      driverNotifOperationalEnabledTitle: "Marktplatzzugang wiederhergestellt",
+      driverNotifOperationalEnabledBody:
+        "Sie können den Marktplatz wieder nutzen und neue Touren annehmen.",
+      driverNotifAccountDisabledTitle: "Anmeldung deaktiviert",
+      driverNotifAccountDisabledBody:
+        "Ihr Konto kann nicht mehr für die Anmeldung verwendet werden. Wenden Sie sich an Ihre Disposition.",
+      driverNotifAccountEnabledTitle: "Anmeldung wiederhergestellt",
+      driverNotifAccountEnabledBody:
+        "Sie können sich wieder in Ihrem Konto anmelden.",
+      driverNotifAccountAutoDisabledTitle:
+        "Konto nach Inaktivität deaktiviert",
+      driverNotifAccountAutoDisabledBody:
+        "Ihr Konto wurde seit {days} Tagen nicht genutzt — Anmeldung und Marktplatzzugang wurden deaktiviert. Wenden Sie sich an Ihre Disposition, um sie wiederherstellen zu lassen.",
+      driverNotifDeferredTitle:
+        "Marktplatz pausiert — Ihre offenen Touren laufen weiter",
+      driverNotifDeferredBody:
+        "Der Marktplatzzugang wurde pausiert, da Ihr Konto nicht genutzt wurde. Sie können sich weiterhin anmelden und Ihre bereits zugewiesenen Touren abschließen. Wenden Sie sich an Ihre Disposition, um den Marktplatzzugang wiederherstellen zu lassen.",
       backToMarketplace: "Marktplatz",
       tourInExecutionBanner:
         "Tour in Ausführung — Abholung, Zustellung und Dokumente hier abschließen.",
@@ -3236,46 +3315,36 @@ window.I18n = (() => {
       adminUsersColName: "Name",
       adminUsersColDriverCode: "Servicepartner-ID",
       adminUsersColActions: "Aktionen",
-      adminUsersBlock: "Sperren",
-      adminUsersActivate: "Aktivieren",
       adminUsersLastActivity: "Letzte Aktivität",
       adminUsersLastActivityNever: "Nie",
-      adminUsersAutoBadge: "Auto",
-      adminUsersAutoBadgeTitle: "Automatisch wegen Inaktivität deaktiviert",
-      adminInactivityTitle: "Automatische Deaktivierung",
+      adminInactivityTitle: "Automatischer Zugangsentzug",
       adminInactivityBlurb:
-        "Servicepartner, die die Plattform nicht mehr nutzen, werden automatisch auf Inaktiv gesetzt. Sie sehen dann den Marktplatz nicht mehr und können keine Touren annehmen; jede Administratorin und jeder Administrator kann sie jederzeit wieder aktivieren. Partner mit laufenden Touren werden immer übersprungen.",
+        "Servicepartner, die ihr Konto über den eingestellten Zeitraum nicht genutzt haben, verlieren sowohl die Anmeldung als auch den Marktplatzzugang. Partner mit noch offenen Touren behalten ihre Anmeldung, um diese abschließen zu können, und verlieren stattdessen den Marktplatzzugang — der Kontoentzug wird automatisch wiederholt, sobald die Touren abgeschlossen sind.",
       adminInactivityEnabled:
-        "Inaktive Servicepartner automatisch deaktivieren",
-      adminInactivityThreshold: "Deaktivieren nach (Tagen ohne Aktivität)",
+        "Inaktiven Servicepartnern automatisch den Zugang entziehen",
+      adminInactivityThreshold: "Zugang entziehen nach (Tagen ohne Aktivität)",
       adminInactivityWarning: "So viele Tage vorher warnen",
       adminInactivityWarningHelp:
-        "Jede Anmeldung oder Aktion in der App zählt als Aktivität. Setzen Sie die Warnung auf 0, um ohne Vorankündigung zu deaktivieren.",
+        "Warnt Servicepartner, bevor ihr Anmeldezugang entzogen wird. Jede Anmeldung oder Aktion in der App zählt als Aktivität. Setzen Sie die Warnung auf 0, um den Zugang ohne Vorankündigung zu entziehen.",
       adminInactivityWarningTooLate:
-        "Die Warnung muss vor der Deaktivierung liegen — geben Sie weniger Tage als den Schwellenwert ein.",
+        "Die Warnung muss vor dem Zugangsentzug liegen — geben Sie weniger Tage als den Schwellenwert ein.",
       adminInactivityRunNow: "Prüfung jetzt ausführen",
       adminInactivityRunResult:
-        "Inaktivitätsprüfung abgeschlossen: {deactivated} deaktiviert, {warned} gewarnt, {skipped} übersprungen.",
-      adminInactivitySave: "Deaktivierungsregel speichern",
-      driverInactiveByInactivityTitle: "Konto wegen Inaktivität deaktiviert",
-      driverInactiveByInactivityBody:
-        "Ihr Konto wurde auf inaktiv gesetzt, weil es längere Zeit nicht genutzt wurde. Wenden Sie sich an Ihren Disponenten, er kann es sofort wieder freischalten.",
-      adminUsersDeactivate: "Deaktivieren",
-      adminUsersStatus_Active: "Aktiv",
-      adminUsersStatus_Blocked: "Gesperrt",
-      adminUsersStatus_Inactive: "Inaktiv",
-      adminUsersAccountStatus_PendingVerification: "Verifizierung ausstehend",
-      adminUsersAccountStatus_Active: "Aktiv",
-      adminUsersAccountStatus_Suspended: "Gesperrt",
-      adminUsersAccountStatus_Inactive: "Inaktiv",
-      adminUsersAccountStatus_InviteFailed: "Einladung fehlgeschlagen",
-      adminUsersSuspendAccount: "Konto sperren",
-      adminUsersReactivateAccount: "Konto reaktivieren",
+        "Inaktivitätsprüfung abgeschlossen: {removed} Kontozugänge entzogen, {deferred} zurückgestellt (stattdessen Betriebszugang entzogen), {warned} gewarnt.",
+      adminInactivitySave: "Regel für Zugangsentzug speichern",
+      adminUsersEnableAccess: "Aktivieren",
+      adminUsersDisableAccess: "Deaktivieren",
+      adminUsersFilterOperational: "Betriebszugang",
+      adminUsersFilterAccount: "Kontozugang",
       adminUsersResendInvite: "Einladung erneut senden",
-      adminUsersToastDriverChanged: "Servicepartnerstatus geändert",
+      adminUsersToastDriverChanged: "Betriebszugang aktualisiert",
       adminUsersToastDriverOff: "Servicepartner deaktiviert",
       adminUsersToastDriverActiveJobs:
         "Deaktivierung nicht möglich — Servicepartner hat {count} aktive Tour(en). Bitte zuerst neu zuweisen oder abschließen.",
+      adminUsersDriverDeleted: "Servicepartner gelöscht",
+      adminDeleteDriverConfirmTitle: "{name} löschen?",
+      adminDeleteDriverConfirmBody: "Das Konto von {name} wird dauerhaft entfernt. Dies kann nicht rückgängig gemacht werden.",
+      adminDeleteDriverConfirmAction: "Konto löschen",
       adminUsersToastInviteDriver: "Servicepartner-Einladung gesendet",
       adminUsersToastInviteAdmin: "Admin-Einladung gesendet",
       adminUsersToastAdminChanged: "Admin-Kontostatus geändert",
@@ -3295,15 +3364,16 @@ window.I18n = (() => {
       adminUsersDeleted: "Konto gelöscht",
       adminOwnAccountRowHint:
         "Dies ist Ihr Konto — Sie können Ihren eigenen Status nicht ändern",
-      adminDriverBlockConfirmTitle: "{name} sperren?",
-      adminDriverBlockConfirmBody:
-        "{name} kann während der Sperre keine neuen Touren annehmen. Dies kann durch spätere Aktivierung rückgängig gemacht werden.",
-      adminDriverBlockConfirmAction: "Sperren",
-      adminDriverDeactivateConfirmTitle: "{name} deaktivieren?",
-      adminDriverDeactivateConfirmBody:
-        "{name} wird als inaktiv markiert und nicht mehr für neue Touren berücksichtigt. Dies kann durch spätere Aktivierung rückgängig gemacht werden.",
-      adminDriverDeactivateConfirmAction: "Deaktivieren",
-      adminUsersToastAccountStatusChanged: "Kontostatus geändert",
+      adminDisableOperationalConfirmTitle:
+        "Betriebszugang für {name} deaktivieren?",
+      adminDisableOperationalConfirmBody:
+        "{name} sieht den Marktplatz nicht mehr und kann keine neuen Touren zugewiesen bekommen oder annehmen. Bereits zugewiesene Touren laufen weiter und können abgeschlossen werden. Sie können den Zugang jederzeit wieder aktivieren.",
+      adminDisableOperationalConfirmAction: "Zugang deaktivieren",
+      adminDisableAccountConfirmTitle: "Kontozugang für {name} deaktivieren?",
+      adminDisableAccountConfirmBody:
+        "{name} wird abgemeldet und kann sich erst wieder anmelden, wenn der Kontozugang reaktiviert wird. Der Betriebszugang bleibt davon unberührt.",
+      adminDisableAccountConfirmAction: "Konto deaktivieren",
+      adminUsersToastAccountStatusChanged: "Kontozugang aktualisiert",
       adminCustomersCreated: "Kunde angelegt",
       adminCustomersCreatedSub: "Für Auftragsvorbefüllung verfügbar",
       adminDocumentsReplaced: "Dokument ersetzt",
@@ -3350,7 +3420,7 @@ window.I18n = (() => {
       adminDocumentsPaneDesc:
         "Allgemeine Dokumente und kurze Nachrichten für Fahrer veröffentlichen. Fahrer sehen sie unter Infopoint — nicht in Tour-Benachrichtigungen oder der Marktplatz-Glocke.",
       adminUsersDriversTitle: "Benutzer & Servicepartner",
-      adminUsersColStatus: "Betriebsstatus",
+      adminUsersColStatus: "Betriebszugang",
       adminUsersColAccess: "Kontozugang",
       adminUsersEdit: "Bearbeiten",
       adminServicePartnerProfileButton: "Profil",
@@ -3896,7 +3966,6 @@ window.I18n = (() => {
       dispatchWillFollowUp: "Die Disposition meldet sich.",
       ok: "OK",
       driverCode: "Fahrer-ID",
-      driverStatusActive: "Aktiv",
       profileMasterData: "Stammdaten (nur lesbar)",
       company: "Firmenname",
       address: "Adresse",
@@ -4202,6 +4271,20 @@ window.I18n = (() => {
         "Dokument seit 10+ Tagen ungeprüft",
       adminNotifServicePartnerInactive:
         "Dienstleister seit 90+ Tagen inaktiv",
+      adminNotifOperationalAccessDisabled: "Betriebszugang deaktiviert",
+      adminNotifOperationalAccessEnabled: "Betriebszugang aktiviert",
+      adminNotifAccountAccessDisabled: "Kontozugang deaktiviert",
+      adminNotifAccountAccessEnabled: "Kontozugang aktiviert",
+      adminNotifAccessRemovedAuto:
+        "Zugang automatisch entzogen (Inaktivität)",
+      adminNotifAccessRemovalDeferred:
+        "Zugangsentzug zurückgestellt — Partner hat offene Touren",
+      adminNotifAutoRemovedMeta:
+        "{name} · {days} Tage inaktiv · Anmeldung und Marktplatz deaktiviert",
+      adminNotifDeferredMeta:
+        "{name} · {days} Tage inaktiv · {count} offene Touren · Marktplatz entzogen, Anmeldung bleibt",
+      adminNotifReasonInactivity: "Grund: Inaktivität",
+      adminNotifActorSystem: "System",
       adminNotifSeverityCritical: "Kritisch",
       adminNotifSeverityWarning: "Warnung",
       adminNotifSeverityInfo: "Info",

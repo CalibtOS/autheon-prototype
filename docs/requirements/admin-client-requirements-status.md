@@ -130,6 +130,14 @@ backend (separate from tour-scoped documents, with its own upload/accept/reject/
 profile-change-requests queue now also reachable inline from the profile's own "Change requests" tab.
 **Phase 8: DONE (prototype)** — all 9 requirements implemented and verified in-browser, including the
 technical (not just UI) self-deactivation and last-active-admin guards.
+> **Superseded 2026-08-07 (status consolidation).** The five-value staff
+> `status` vocabulary (`Pending verification` / `Active` / …) is replaced by
+> binary `accountAccess` (`enabled`\|`disabled`) + `inviteState`
+> (`pending`\|`failed`\|`accepted`). Binding decision:
+> [`tasks/status-consolidation-decision-brief.md`](../../../tasks/status-consolidation-decision-brief.md).
+> Prototype store/UI work tracks
+> [`tasks/status-consolidation-prototype-plan.md`](../../../tasks/status-consolidation-prototype-plan.md).
+> DB draft updated in `docs/database/schema.dbml` + `logical-model.md`.
 **Phase 9: DONE (prototype)** — Customers and Addresses are merged into one "Customer Center" nav
 entry with switchable tabs; the customer model gained legal form, a structured address, `joinedAt`, and a
 recorded `changeHistory`; each customer is now openable to a real (if single-modal, not multi-page) detail
@@ -343,17 +351,23 @@ was judged out of proportion to this bullet's intent. Flag if the client specifi
 
 ## Phase 8 — Staff Management
 
+> **Superseded 2026-08-07.** Rows 7–9 below described the old TitleCase
+> `status` enum. Canonical model is now `accountAccess` + `inviteState` (see
+> decision brief). Guards (self / last-active admin) still apply on
+> `setAccountAccess`. Evidence paths that still name `setAccountStatus` are
+> thin aliases during the prototype Wave 1 cutover.
+
 | #   | Requirement                                                | Status                         | Evidence                                                                                                                                                                                                                                                                              |
 | --- | ---------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Single first-version `ADMIN` role                          | Done                           | `role: "ADMIN"` stored on every admin record (`addAdmin` and all 3 seed admins), `store.js`                                                                                                                                                                                           |
-| 2   | Prevent self-deactivation                                  | Done                           | `setAccountStatus` rejects `id === currentAdmin.id` with `cannot_change_own_status`, `store.js` — verified by calling the store method directly (bypassing the UI) and confirming rejection; status control also hidden on the signed-in admin's own row in `AdminsPane`, `admin.jsx` |
-| 3   | Prevent deactivating the last active admin                 | Done                           | Same function blocks when `activeCount <= 1` for the admin being changed                                                                                                                                                                                                              |
+| 1   | Single first-version `ADMIN` role                          | Done                           | `role: "ADMIN"` stored on every admin record (`addAdmin` and all seed admins), `store.js`                                                                                                                                                                                             |
+| 2   | Prevent self-deactivation                                  | Done                           | `setAccountAccess` (alias `setAccountStatus`) rejects `id === currentAdmin.id` with `cannot_change_own_status`, `store.js`; control hidden on own row in `AdminsPane`                                                                                                                 |
+| 3   | Prevent deactivating the last active admin                 | Done                           | Same function blocks when the last `accountAccess === enabled` admin would be disabled                                                                                                                                                                                                |
 | 4   | Confirmation dialog before deactivating another admin      | Done                           | `window.requestAdminConfirm`, skipped for reactivation (not destructive); verified in-browser                                                                                                                                                                                         |
 | 5   | Dialog shows name + consequences                           | Done                           | "Deactivate {name}?" / "{name} will immediately lose access... reversible"                                                                                                                                                                                                            |
 | 6   | Password changes/resets through central user management    | Done (pre-existing)            | `resendAccess("admin", id)` → `simulateAccountInvite`, same function as account creation                                                                                                                                                                                              |
-| 7   | New admin accounts don't start `Active`                    | Done (pre-existing, confirmed) | `addAdmin`'s placeholder `status: "Active"` is immediately overwritten by `simulateAccountInvite` to `"Pending verification"` before the record is stored                                                                                                                             |
-| 8   | Support invitation-pending / active / deactivated statuses | Done                           | Existing 5-state enum (`Pending verification`, `Active`, `Suspended`, `Inactive`, `Invite failed`) covers the 3 requested plus 2 finer states kept because they're meaningful elsewhere; not collapsed                                                                                |
-| 9   | `Active` set only after activation/first login             | Done (pre-existing)            | No code path auto-sets `Active`; this prototype has no real login system so "activation" is an explicit admin action                                                                                                                                                                  |
+| 7   | New admin accounts don't start with login enabled          | Done (retargeted 2026-08-07)   | Create path: `accountAccess: disabled`, `inviteState: pending` until invite accept / verify                                                                                                                                                                                           |
+| 8   | Invitation pending / active / deactivated                  | Done (retargeted 2026-08-07)   | `inviteState` (`pending`\|`failed`\|`accepted`) + `accountAccess` (`enabled`\|`disabled`) — not a 5-value `status` enum                                                                                                                                                               |
+| 9   | Login enabled only after activation                        | Done (retargeted 2026-08-07)   | `accountAccess` flips to `enabled` and `inviteState` to `accepted` on activate/verify; demo seeds intentionally start fully enabled for walkthroughs                                                                                                                                  |
 
 ---
 

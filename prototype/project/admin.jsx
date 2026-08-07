@@ -5365,46 +5365,47 @@ const userSaveErr = (r, kind, t) => {
   return t("adminInvoiceErrGeneric");
 };
 
-// Account/access status (User.status axis) — 5 values, shared by the
-// StaffPane's single status control and DriversPane's separate "Account
-// access" column. Distinct from Driver.status (operational/marketplace axis).
-const accountStatusLabel = (state, t) => {
-  const key = {
-    "Pending verification": "adminUsersAccountStatus_PendingVerification",
-    Active: "adminUsersAccountStatus_Active",
-    Suspended: "adminUsersAccountStatus_Suspended",
-    Inactive: "adminUsersAccountStatus_Inactive",
-    "Invite failed": "adminUsersAccountStatus_InviteFailed",
-  }[state];
-  return key ? t(key) : state || "—";
+// Binary access axes (status consolidation). Shared by DriversPane and StaffPane.
+const accessLabel = (access, t) => {
+  if (access == null || access === "") return "—";
+  const normalized =
+    typeof AuthStore.normalizeAccountAccess === "function"
+      ? AuthStore.normalizeAccountAccess(access)
+      : String(access).toLowerCase() === "enabled" ||
+          String(access).toLowerCase() === "active"
+        ? "enabled"
+        : "disabled";
+  return normalized === "enabled" ? t("accessEnabled") : t("accessDisabled");
 };
 
-const accountStatusPillVariant = (state) =>
-  state === "Active"
-    ? "accepted"
-    : state === "Suspended" || state === "Invite failed"
-      ? "cancelled"
-      : "published";
-
-// Operational/marketplace axis (Driver.status) — matches the real
-// DriverStatus enum (Active/Blocked/Inactive). Maps each current status to
-// its valid next transitions only, so the UI never offers a no-op or an
-// invalid change. `confirm` flags transitions that need a confirm step
-// before firing (anything that removes the driver from job matching).
-const DRIVER_STATUS_TRANSITIONS = {
-  Active: [
-    { to: "Blocked", labelKey: "adminUsersBlock", confirm: "block" },
-    { to: "Inactive", labelKey: "adminUsersDeactivate", confirm: "deactivate" },
-  ],
-  Blocked: [
-    { to: "Active", labelKey: "adminUsersActivate", confirm: null },
-    { to: "Inactive", labelKey: "adminUsersDeactivate", confirm: "deactivate" },
-  ],
-  Inactive: [
-    { to: "Active", labelKey: "adminUsersActivate", confirm: null },
-    { to: "Blocked", labelKey: "adminUsersBlock", confirm: "block" },
-  ],
+const accessPillVariant = (access) => {
+  const normalized =
+    typeof AuthStore.normalizeAccountAccess === "function"
+      ? AuthStore.normalizeAccountAccess(access)
+      : String(access).toLowerCase() === "enabled" ||
+          String(access).toLowerCase() === "active"
+        ? "enabled"
+        : "disabled";
+  return normalized === "enabled" ? "accepted" : "cancelled";
 };
+
+const isAccessEnabled = (access) => accessPillVariant(access) === "accepted";
+
+/** Binary access toggle. Controlled by store state — confirm-cancel leaves it unchanged. */
+const AccessSwitch = ({ id, checked, onCheckedChange, ariaLabel }) => (
+  <label className="access-switch" title={ariaLabel}>
+    <input
+      id={id}
+      type="checkbox"
+      role="switch"
+      className="access-switch-input"
+      checked={checked}
+      aria-label={ariaLabel}
+      onChange={(e) => onCheckedChange(e.target.checked)}
+    />
+    <span className="access-switch-slider" aria-hidden="true" />
+  </label>
+);
 
 // Client requirement (Phase 7 #1): merge "Drivers" and "Profile Changes" into
 // one "Service Partners" nav entry with switchable views — same pattern as
@@ -5466,6 +5467,8 @@ const DriversPane = ({ showToast, initialDriverId }) => {
   const [driverModal, setDriverModal] = useStateA(null);
   const [driverForm, setDriverForm] = useStateA(emptyDriverEditForm());
   const [driverErrors, setDriverErrors] = useStateA({});
+  const [operationalFilter, setOperationalFilter] = useStateA("all");
+  const [accessFilter, setAccessFilter] = useStateA("all");
   const [profileDriverId, setProfileDriverId] = useStateA(
     initialDriverId || null,
   );
@@ -5476,6 +5479,24 @@ const DriversPane = ({ showToast, initialDriverId }) => {
     setDriverForm((p) => ({ ...p, [k]: v }));
     setDriverErrors((e) => ({ ...e, [k]: undefined }));
   };
+
+  const filteredDrivers = store.getDrivers().filter((d) => {
+    if (
+      operationalFilter !== "all" &&
+      (isAccessEnabled(d.operationalAccess) ? "enabled" : "disabled") !==
+        operationalFilter
+    ) {
+      return false;
+    }
+    if (
+      accessFilter !== "all" &&
+      (isAccessEnabled(d.accountAccess) ? "enabled" : "disabled") !==
+        accessFilter
+    ) {
+      return false;
+    }
+    return true;
+  });
 
   const openNewDriver = () => {
     setDriverForm(emptyDriverEditForm());
@@ -5520,31 +5541,71 @@ const DriversPane = ({ showToast, initialDriverId }) => {
       }),
     ).length === 0;
 
-  const applyDriverStatus = (driver, status) => {
-    const result = store.setDriverStatus(driver.id, status);
-    if (!result.ok && result.reason === "active_jobs") {
-      showToast?.(
-        t("adminUsersToastDriverActiveJobs", { count: result.count }),
-        driver.name,
-      );
-      return;
-    }
-    if (!result.ok) return;
-    showToast?.(t("adminUsersToastDriverChanged"), driver.name);
-  };
-
-  const applyAccountStatus = (record, kind, status) => {
-    const result = store.setAccountStatus(kind, record.id, status);
-    if (!result.ok) {
-      if (result.reason === "active_jobs") {
+  const applyOperationalAccess = (driver, access) => {
+    const run = () => {
+      const result = store.setDriverOperationalAccess(driver.id, access);
+      if (result?.noop) return;
+      if (!result.ok && result.reason === "active_jobs") {
         showToast?.(
           t("adminUsersToastDriverActiveJobs", { count: result.count }),
-          record.name,
+          driver.name,
         );
+        return;
       }
+      if (!result.ok) return;
+      showToast?.(t("adminUsersToastDriverChanged"), driver.name);
+    };
+    if (access === "enabled") {
+      run();
       return;
     }
-    showToast?.(t("adminUsersToastAccountStatusChanged"), record.name);
+    void window
+      .requestAdminConfirm(
+        t("adminDisableOperationalConfirmBody", { name: driver.name }),
+        {
+          title: t("adminDisableOperationalConfirmTitle", {
+            name: driver.name,
+          }),
+          destructive: true,
+          confirmLabel: t("adminDisableOperationalConfirmAction"),
+        },
+      )
+      .then((ok) => {
+        if (ok) run();
+      });
+  };
+
+  const applyAccountAccess = (record, kind, access) => {
+    const run = () => {
+      const result = store.setAccountAccess(kind, record.id, access);
+      if (result?.noop) return;
+      if (!result.ok) {
+        if (result.reason === "active_jobs") {
+          showToast?.(
+            t("adminUsersToastDriverActiveJobs", { count: result.count }),
+            record.name,
+          );
+        }
+        return;
+      }
+      showToast?.(t("adminUsersToastAccountStatusChanged"), record.name);
+    };
+    if (access === "enabled") {
+      run();
+      return;
+    }
+    void window
+      .requestAdminConfirm(
+        t("adminDisableAccountConfirmBody", { name: record.name }),
+        {
+          title: t("adminDisableAccountConfirmTitle", { name: record.name }),
+          destructive: true,
+          confirmLabel: t("adminDisableAccountConfirmAction"),
+        },
+      )
+      .then((ok) => {
+        if (ok) run();
+      });
   };
 
   const handleDeleteDriver = (driver) => {
@@ -5572,43 +5633,6 @@ const DriversPane = ({ showToast, initialDriverId }) => {
           return;
         }
         showToast?.(t("adminUsersDeleted"), driver.name);
-      });
-  };
-
-  // Activating isn't destructive — fires immediately, same precedent as
-  // StaffPane's applyAdminStatus. Block/Deactivate remove the driver from
-  // job matching, so they get a confirm step first.
-  const applyDriverStatusTransition = (driver, transition) => {
-    if (!transition.confirm) {
-      applyDriverStatus(driver, transition.to);
-      return;
-    }
-    const isBlock = transition.confirm === "block";
-    void window
-      .requestAdminConfirm(
-        t(
-          isBlock
-            ? "adminDriverBlockConfirmBody"
-            : "adminDriverDeactivateConfirmBody",
-          { name: driver.name },
-        ),
-        {
-          title: t(
-            isBlock
-              ? "adminDriverBlockConfirmTitle"
-              : "adminDriverDeactivateConfirmTitle",
-            { name: driver.name },
-          ),
-          destructive: true,
-          confirmLabel: t(
-            isBlock
-              ? "adminDriverBlockConfirmAction"
-              : "adminDriverDeactivateConfirmAction",
-          ),
-        },
-      )
-      .then((ok) => {
-        if (ok) applyDriverStatus(driver, transition.to);
       });
   };
 
@@ -5671,6 +5695,41 @@ const DriversPane = ({ showToast, initialDriverId }) => {
             <Ic.Plus /> {t("adminUsersNewDriver")}
           </button>
         </div>
+        <div
+          className="filter-row"
+          style={{
+            display: "flex",
+            gap: 12,
+            flexWrap: "wrap",
+            marginTop: 12,
+            alignItems: "end",
+          }}
+        >
+          <label style={{ display: "grid", gap: 4, fontSize: 12 }}>
+            <span>{t("adminUsersFilterOperational")}</span>
+            <select
+              value={operationalFilter}
+              onChange={(e) => setOperationalFilter(e.target.value)}
+              aria-label={t("adminUsersFilterOperational")}
+            >
+              <option value="all">{t("filterAll")}</option>
+              <option value="enabled">{t("accessEnabled")}</option>
+              <option value="disabled">{t("accessDisabled")}</option>
+            </select>
+          </label>
+          <label style={{ display: "grid", gap: 4, fontSize: 12 }}>
+            <span>{t("adminUsersFilterAccount")}</span>
+            <select
+              value={accessFilter}
+              onChange={(e) => setAccessFilter(e.target.value)}
+              aria-label={t("adminUsersFilterAccount")}
+            >
+              <option value="all">{t("filterAll")}</option>
+              <option value="enabled">{t("accessEnabled")}</option>
+              <option value="disabled">{t("accessDisabled")}</option>
+            </select>
+          </label>
+        </div>
         <table className="tbl" style={{ marginTop: 12 }}>
           <thead>
             <tr>
@@ -5683,7 +5742,7 @@ const DriversPane = ({ showToast, initialDriverId }) => {
             </tr>
           </thead>
           <tbody>
-            {store.getDrivers().map((d, index) => (
+            {filteredDrivers.map((d, index) => (
               <tr
                 key={d.id}
                 className={index < 4 ? "list-enter" : undefined}
@@ -5700,59 +5759,25 @@ const DriversPane = ({ showToast, initialDriverId }) => {
                 </td>
                 <td className="mono">{d.driverCode}</td>
                 <td>
-                  <Pill
-                    status={
-                      d.status === "Active"
-                        ? "accepted"
-                        : d.status === "Blocked"
-                          ? "cancelled"
-                          : "published"
-                    }
-                  >
-                    {t(`adminUsersStatus_${d.status}`)}
-                  </Pill>
-                  {/* An admin reading "Inactive" cannot otherwise tell a
-                      moderator's decision from the nightly sweep's. */}
-                  {d.deactivationReason === "inactivity" && (
-                    <span
-                      className="label"
-                      title={t("adminUsersAutoBadgeTitle")}
-                      style={{
-                        marginLeft: 6,
-                        padding: "1px 6px",
-                        border: "1px solid var(--border)",
-                        borderRadius: 999,
-                        fontSize: 9.5,
-                      }}
-                    >
-                      {t("adminUsersAutoBadge")}
-                    </span>
-                  )}
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 6,
-                      flexWrap: "wrap",
-                      marginTop: 6,
-                    }}
-                  >
-                    {(DRIVER_STATUS_TRANSITIONS[d.status] || []).map(
-                      (transition) => (
-                        <button
-                          key={transition.to}
-                          type="button"
-                          className="btn xs"
-                          onClick={() =>
-                            applyDriverStatusTransition(d, transition)
-                          }
-                        >
-                          {t(transition.labelKey)}
-                        </button>
-                      ),
-                    )}
+                  <div className="access-control">
+                    <Pill status={accessPillVariant(d.operationalAccess)}>
+                      {accessLabel(d.operationalAccess, t)}
+                    </Pill>
+                    <AccessSwitch
+                      id={`op-access-${d.id}`}
+                      checked={isAccessEnabled(d.operationalAccess)}
+                      ariaLabel={
+                        isAccessEnabled(d.operationalAccess)
+                          ? t("adminUsersDisableAccess")
+                          : t("adminUsersEnableAccess")
+                      }
+                      onCheckedChange={(on) =>
+                        applyOperationalAccess(d, on ? "enabled" : "disabled")
+                      }
+                    />
                   </div>
                 </td>
-                {/* Last activity drives the automatic-deactivation clock. */}
+                {/* Last activity drives the automatic access-removal clock. */}
                 <td>
                   {d.lastActiveAt ? (
                     window.AutheonFormatters.formatDate(
@@ -5768,48 +5793,33 @@ const DriversPane = ({ showToast, initialDriverId }) => {
                   )}
                 </td>
                 <td>
-                  <Pill status={accountStatusPillVariant(d.accountStatus)}>
-                    {accountStatusLabel(d.accountStatus, t)}
-                  </Pill>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 6,
-                      flexWrap: "wrap",
-                      marginTop: 6,
-                    }}
-                  >
-                    {d.accountStatus === "Invite failed" ||
-                    d.accountStatus === "Pending verification" ? (
+                  <div className="access-control">
+                    <Pill status={accessPillVariant(d.accountAccess)}>
+                      {accessLabel(d.accountAccess, t)}
+                    </Pill>
+                    <AccessSwitch
+                      id={`acct-access-${d.id}`}
+                      checked={isAccessEnabled(d.accountAccess)}
+                      ariaLabel={
+                        isAccessEnabled(d.accountAccess)
+                          ? t("adminUsersDisableAccess")
+                          : t("adminUsersEnableAccess")
+                      }
+                      onCheckedChange={(on) =>
+                        applyAccountAccess(
+                          d,
+                          "driver",
+                          on ? "enabled" : "disabled",
+                        )
+                      }
+                    />
+                    {d.inviteState && d.inviteState !== "accepted" ? (
                       <button
                         type="button"
                         className="btn xs"
                         onClick={() => triggerResendAccess(d)}
                       >
                         {t("adminUsersResendInvite")}
-                      </button>
-                    ) : null}
-                    {d.accountStatus === "Active" ? (
-                      <button
-                        type="button"
-                        className="btn xs"
-                        onClick={() =>
-                          applyAccountStatus(d, "driver", "Suspended")
-                        }
-                      >
-                        {t("adminUsersSuspendAccount")}
-                      </button>
-                    ) : null}
-                    {d.accountStatus === "Suspended" ||
-                    d.accountStatus === "Inactive" ? (
-                      <button
-                        type="button"
-                        className="btn xs"
-                        onClick={() =>
-                          applyAccountStatus(d, "driver", "Active")
-                        }
-                      >
-                        {t("adminUsersReactivateAccount")}
                       </button>
                     ) : null}
                   </div>
@@ -6006,6 +6016,72 @@ const ServicePartnerProfileModal = ({ driver, onClose, showToast }) => {
     else showToast?.(t("adminMasterDataSaveFailed"), r.reason || "");
   };
 
+  const applyProfileOperationalAccess = (access) => {
+    const run = () => {
+      const result = store.setDriverOperationalAccess(driver.id, access);
+      if (result?.noop) return;
+      if (!result.ok && result.reason === "active_jobs") {
+        showToast?.(
+          t("adminUsersToastDriverActiveJobs", { count: result.count }),
+          driver.name,
+        );
+        return;
+      }
+      if (!result.ok) return;
+      showToast?.(t("adminUsersToastDriverChanged"), driver.name);
+    };
+    if (access === "enabled") {
+      run();
+      return;
+    }
+    void window
+      .requestAdminConfirm(
+        t("adminDisableOperationalConfirmBody", { name: driver.name }),
+        {
+          title: t("adminDisableOperationalConfirmTitle", {
+            name: driver.name,
+          }),
+          destructive: true,
+          confirmLabel: t("adminDisableOperationalConfirmAction"),
+        },
+      )
+      .then((ok) => {
+        if (ok) run();
+      });
+  };
+
+  const applyProfileAccountAccess = (access) => {
+    const run = () => {
+      const result = store.setAccountAccess("driver", driver.id, access);
+      if (result?.noop) return;
+      if (!result.ok && result.reason === "active_jobs") {
+        showToast?.(
+          t("adminUsersToastDriverActiveJobs", { count: result.count }),
+          driver.name,
+        );
+        return;
+      }
+      if (!result.ok) return;
+      showToast?.(t("adminUsersToastAccountStatusChanged"), driver.name);
+    };
+    if (access === "enabled") {
+      run();
+      return;
+    }
+    void window
+      .requestAdminConfirm(
+        t("adminDisableAccountConfirmBody", { name: driver.name }),
+        {
+          title: t("adminDisableAccountConfirmTitle", { name: driver.name }),
+          destructive: true,
+          confirmLabel: t("adminDisableAccountConfirmAction"),
+        },
+      )
+      .then((ok) => {
+        if (ok) run();
+      });
+  };
+
   return (
     <div
       role="dialog"
@@ -6102,14 +6178,69 @@ const ServicePartnerProfileModal = ({ driver, onClose, showToast }) => {
                   </div>
                 </div>
                 <div>
-                  <div className="label">{t("adminMasterDataStatus")}</div>
-                  <Pill
-                    status={
-                      driver.status === "Active" ? "accepted" : "cancelled"
-                    }
-                  >
-                    {driver.status}
-                  </Pill>
+                  <div className="label">{t("operationalAccess")}</div>
+                  <div className="access-control">
+                    <Pill status={accessPillVariant(driver.operationalAccess)}>
+                      {accessLabel(driver.operationalAccess, t)}
+                    </Pill>
+                    <AccessSwitch
+                      id={`profile-op-access-${driver.id}`}
+                      checked={isAccessEnabled(driver.operationalAccess)}
+                      ariaLabel={
+                        isAccessEnabled(driver.operationalAccess)
+                          ? t("adminUsersDisableAccess")
+                          : t("adminUsersEnableAccess")
+                      }
+                      onCheckedChange={(on) =>
+                        applyProfileOperationalAccess(
+                          on ? "enabled" : "disabled",
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="label">{t("accountAccess")}</div>
+                  <div className="access-control">
+                    <Pill status={accessPillVariant(driver.accountAccess)}>
+                      {accessLabel(driver.accountAccess, t)}
+                    </Pill>
+                    <AccessSwitch
+                      id={`profile-acct-access-${driver.id}`}
+                      checked={isAccessEnabled(driver.accountAccess)}
+                      ariaLabel={
+                        isAccessEnabled(driver.accountAccess)
+                          ? t("adminUsersDisableAccess")
+                          : t("adminUsersEnableAccess")
+                      }
+                      onCheckedChange={(on) =>
+                        applyProfileAccountAccess(on ? "enabled" : "disabled")
+                      }
+                    />
+                    {driver.inviteState &&
+                    driver.inviteState !== "accepted" ? (
+                      <button
+                        type="button"
+                        className="btn xs"
+                        onClick={() => {
+                          const r = store.resendAccess("driver", driver.id);
+                          if (!r.ok) {
+                            showToast?.(
+                              t("adminUsersSaveFailed"),
+                              t("adminInvoiceErrGeneric"),
+                            );
+                            return;
+                          }
+                          showToast?.(
+                            t("adminUsersToastInviteDriver"),
+                            driver.name,
+                          );
+                        }}
+                      >
+                        {t("adminUsersResendInvite")}
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
                 <div>
                   <div className="label">
@@ -6516,12 +6647,11 @@ const StaffPane = ({ showToast }) => {
     showToast?.(t("adminUsersToastInviteAdmin"), user.name);
   };
 
-  // Client change plan Phase 8: self-deactivation and last-active-admin are
-  // blocked by store.setAccountStatus itself (technical guard, not just a UI
-  // check) — this wrapper turns those rejections into readable toasts and
-  // adds the required confirmation step before deactivating someone else.
-  const runAdminStatusChange = (admin, status) => {
-    const result = store.setAccountStatus("admin", admin.id, status);
+  // Self-deactivation and last-active-admin are blocked by setAccountAccess
+  // (technical guard). Confirm only on disable.
+  const runAdminAccessChange = (admin, access) => {
+    const result = store.setAccountAccess("admin", admin.id, access);
+    if (result?.noop) return;
     if (!result.ok) {
       if (result.reason === "cannot_change_own_status") {
         showToast?.(t("adminCannotChangeOwnStatus"), admin.name);
@@ -6535,33 +6665,28 @@ const StaffPane = ({ showToast }) => {
     showToast?.(t("adminUsersToastAdminChanged"), admin.name);
   };
 
-  const applyAdminStatus = (admin, status) => {
+  const applyAdminAccess = (admin, access) => {
     const currentAdmin = store.getCurrentAdmin();
     const isSelf = currentAdmin && admin.id === currentAdmin.id;
     if (isSelf) {
-      // store.setAccountStatus rejects this outright — surface the same
-      // message without a confirm round-trip for something that can't
-      // succeed either way.
-      runAdminStatusChange(admin, status);
+      runAdminAccessChange(admin, access);
       return;
     }
-    if (status === "Active") {
-      // Reactivating someone isn't a destructive action — no confirmation
-      // needed, matches "confirm before deactivating" (not every change).
-      runAdminStatusChange(admin, status);
+    if (access === "enabled") {
+      runAdminAccessChange(admin, access);
       return;
     }
     void window
       .requestAdminConfirm(
-        t("adminDeactivateAdminConfirmBody", { name: admin.name }),
+        t("adminDisableAccountConfirmBody", { name: admin.name }),
         {
-          title: t("adminDeactivateAdminConfirmTitle", { name: admin.name }),
+          title: t("adminDisableAccountConfirmTitle", { name: admin.name }),
           destructive: true,
-          confirmLabel: t("adminDeactivateAdminConfirmAction"),
+          confirmLabel: t("adminDisableAccountConfirmAction"),
         },
       )
       .then((ok) => {
-        if (ok) runAdminStatusChange(admin, status);
+        if (ok) runAdminAccessChange(admin, access);
       });
   };
 
@@ -6625,9 +6750,25 @@ const StaffPane = ({ showToast }) => {
                   {a.email}
                 </div>
               </div>
-              <Pill status={accountStatusPillVariant(a.status)}>
-                {accountStatusLabel(a.status, t)}
-              </Pill>
+              <div className="access-control">
+                <Pill status={accessPillVariant(a.accountAccess)}>
+                  {accessLabel(a.accountAccess, t)}
+                </Pill>
+                {store.getCurrentAdmin()?.id === a.id ? null : (
+                  <AccessSwitch
+                    id={`admin-acct-access-${a.id}`}
+                    checked={isAccessEnabled(a.accountAccess)}
+                    ariaLabel={
+                      isAccessEnabled(a.accountAccess)
+                        ? t("adminUsersDisableAccess")
+                        : t("adminUsersEnableAccess")
+                    }
+                    onCheckedChange={(on) =>
+                      applyAdminAccess(a, on ? "enabled" : "disabled")
+                    }
+                  />
+                )}
+              </div>
             </div>
             <div
               style={{
@@ -6638,42 +6779,20 @@ const StaffPane = ({ showToast }) => {
                 alignItems: "center",
               }}
             >
-              {/* Client change plan Phase 8: hide the status controls on the
-                  signed-in admin's own row rather than let them pick a
-                  status and then show a blocked-toast — "hide unavailable
-                  actions" applies here the same as the Phase 4 row menu. */}
+              {/* Hide access controls on the signed-in admin's own row. */}
               {store.getCurrentAdmin()?.id === a.id ? (
                 <span className="label" style={{ fontSize: 11.5 }}>
                   {t("adminOwnAccountRowHint")}
                 </span>
               ) : (
                 <>
-                  {a.status === "Invite failed" ||
-                  a.status === "Pending verification" ? (
+                  {a.inviteState && a.inviteState !== "accepted" ? (
                     <button
                       type="button"
                       className="btn xs"
                       onClick={() => triggerResendAccess(a)}
                     >
                       {t("adminUsersResendInvite")}
-                    </button>
-                  ) : null}
-                  {a.status === "Active" ? (
-                    <button
-                      type="button"
-                      className="btn xs"
-                      onClick={() => applyAdminStatus(a, "Suspended")}
-                    >
-                      {t("adminUsersSuspendAccount")}
-                    </button>
-                  ) : null}
-                  {a.status === "Suspended" || a.status === "Inactive" ? (
-                    <button
-                      type="button"
-                      className="btn xs"
-                      onClick={() => applyAdminStatus(a, "Active")}
-                    >
-                      {t("adminUsersReactivateAccount")}
                     </button>
                   ) : null}
                   <button
@@ -10819,6 +10938,13 @@ const ADMIN_ALERT_EVENT_I18N = {
   order_not_accepted_cutoff: "adminNotifOrderNotAcceptedCutoff",
   document_unreviewed_stale: "adminNotifDocumentUnreviewedStale",
   service_partner_inactive: "adminNotifServicePartnerInactive",
+  driver_operational_access_disabled: "adminNotifOperationalAccessDisabled",
+  driver_operational_access_enabled: "adminNotifOperationalAccessEnabled",
+  account_access_disabled: "adminNotifAccountAccessDisabled",
+  account_access_enabled: "adminNotifAccountAccessEnabled",
+  driver_auto_deactivated: "adminNotifAccessRemovedAuto",
+  driver_access_removed_auto: "adminNotifAccessRemovedAuto",
+  driver_access_removal_deferred: "adminNotifAccessRemovalDeferred",
 };
 
 // Notification spec: severity is always paired with text, never color alone,
@@ -10835,10 +10961,15 @@ const ADMIN_ALERT_SEVERITY = {
   tour_document_reuploaded: "red",
   tour_document_rejected: "red",
   order_not_accepted_cutoff: "red",
+  driver_operational_access_disabled: "red",
+  account_access_disabled: "red",
+  driver_auto_deactivated: "red",
+  driver_access_removed_auto: "red",
   master_data_change_requested: "orange",
   empty_run_not_recognised: "orange",
   document_unreviewed_stale: "orange",
   service_partner_inactive: "orange",
+  driver_access_removal_deferred: "red",
   job_accepted: "gray",
   job_performed: "gray",
   job_assigned: "gray",
@@ -10846,6 +10977,8 @@ const ADMIN_ALERT_SEVERITY = {
   cancelled_by_autheon: "gray",
   tour_document_uploaded: "gray",
   empty_run_recognised: "gray",
+  driver_operational_access_enabled: "gray",
+  account_access_enabled: "gray",
 };
 
 const ADMIN_ALERT_SEVERITY_LABEL_KEY = {
@@ -12468,12 +12601,14 @@ const PolicySwitchRow = ({ id, label, checked, onChange }) => (
 );
 
 /**
- * Automatic deactivation of dormant service partners (PRD OQ-15).
+ * Automatic access removal for dormant service partners (D6 / PRD OQ-15).
+ * Branch A removes accountAccess + operationalAccess; Branch B removes
+ * operational only and defers account removal while tours are open.
  *
  * Mirrors OperationalPoliciesForm: local string state seeded from the store,
  * dirty/valid gating, Save + Discard. The one departure is the warning lead
- * time, whose floor is 0 rather than 1 — "0" is the configured way to
- * deactivate with no notice, which isPolicyNumberValid would reject.
+ * time, whose floor is 0 rather than 1 — "0" removes access with no notice,
+ * which isPolicyNumberValid would reject.
  */
 const DriverInactivityForm = ({ showToast }) => {
   const { t } = useI18n();
@@ -12541,11 +12676,14 @@ const DriverInactivityForm = ({ showToast }) => {
 
   const onRunNow = () => {
     const result = store.runInactivitySweep();
+    const removed = (result.accessRemovedIds || []).length;
+    const deferred = (result.deferredIds || []).length;
+    const warned = (result.warned || result.warnedDriverIds || []).length;
     showToast(
       t("adminInactivityRunResult")
-        .replace("{deactivated}", result.deactivated.length)
-        .replace("{warned}", result.warned.length)
-        .replace("{skipped}", result.skippedWithActiveJobs.length),
+        .replace("{removed}", String(removed))
+        .replace("{deferred}", String(deferred))
+        .replace("{warned}", String(warned)),
     );
   };
 

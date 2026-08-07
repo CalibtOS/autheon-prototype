@@ -173,10 +173,27 @@ const vehicleTypeIcon = (vehicleType) => {
   }
 };
 
-const displayDriverStatus = (value, t) =>
+/** Binary access axis label — enabled/disabled only; never raw English fallthrough. */
+const displayDriverStatus = (value, t) => {
+  if (value === "enabled") return t("accessEnabled");
+  if (value === "disabled") return t("accessDisabled");
+  return "—";
+};
+
+const displayInviteState = (value, t) =>
   ({
-    Active: t("driverStatusActive"),
-  })[value] || value;
+    pending: t("inviteStatePending"),
+    failed: t("inviteStateFailed"),
+    accepted: t("inviteStateAccepted"),
+  })[value] || "—";
+
+const inactivityWarningVars = (store, driver) => {
+  const policy = store.getDriverInactivityPolicy?.() || {};
+  const inactive = Number(store.driverInactiveDays?.(driver)) || 0;
+  const threshold = Number(policy.thresholdDays) || 0;
+  const days = Math.max(0, threshold - inactive);
+  return { days, inactive };
+};
 
 const displayDocTitle = (doc, t) =>
   ({
@@ -215,12 +232,38 @@ const displayNewsBody = (item, t) =>
  * stores a copy of the message text, so without this a seeded message would
  * read localized in the Infopoint and English in the Notification Center.
  */
-const displayNotificationTitle = (row, t) =>
-  row?.newsId
-    ? displayNewsTitle({ id: row.newsId, title: row.title }, t)
-    : row?.title || "";
+const isInactivityWarningNotification = (row) =>
+  row?.type === "account_access_changed" &&
+  /account access warning/i.test(String(row?.title || ""));
+
+const displayNotificationTitle = (row, t) => {
+  if (row?.newsId) {
+    return displayNewsTitle({ id: row.newsId, title: row.title }, t);
+  }
+  if (isInactivityWarningNotification(row) && typeof AuthStore !== "undefined") {
+    const driver =
+      (row.driverId &&
+        AuthStore.getDrivers?.()?.find((d) => d.id === row.driverId)) ||
+      AuthStore.getCurrentDriver?.();
+    return t(
+      "driverInactivityWarningTitle",
+      inactivityWarningVars(AuthStore, driver),
+    );
+  }
+  return row?.title || "";
+};
 
 const displayNotificationBody = (row, t) => {
+  if (isInactivityWarningNotification(row) && typeof AuthStore !== "undefined") {
+    const driver =
+      (row.driverId &&
+        AuthStore.getDrivers?.()?.find((d) => d.id === row.driverId)) ||
+      AuthStore.getCurrentDriver?.();
+    return t(
+      "driverInactivityWarningBody",
+      inactivityWarningVars(AuthStore, driver),
+    );
+  }
   if (!row?.newsId) return row?.body || "";
   const full = displayNewsBody({ id: row.newsId, body: row.body }, t);
   // Notification bodies are a preview, truncated the same way addNewsItem does.
@@ -1790,14 +1833,19 @@ const Portal = ({
     return new Date(2026, Number(m[2]) - 1, Number(m[1]));
   };
 
-  if (!store.isCurrentDriverMarketplaceActive()) {
+  // Marketplace exclusion: operationalAccess === disabled (via store predicate).
+  // Branch A (account access removed) never reaches this screen — login wall.
+  // Branch B (accessRemovalDeferredAt set) gets deferred copy; otherwise standard.
+  if (!store.canDriverAccessMarketplace()) {
     const d = store.getCurrentDriver();
+    const deferred = Boolean(d?.accessRemovalDeferredAt);
+    const openTours = d ? store.countActiveJobsForDriver(d.id) : 0;
     return (
       <div className="scroll profile-header-block">
         <h1 className="profile-header-title">
-          {d?.deactivationReason === "inactivity"
-            ? t("driverInactiveByInactivityTitle")
-            : t("blockedDriverTitle")}
+          {deferred
+            ? t("driverAccessDeferredTitle")
+            : t("driverAccessDisabledTitle")}
         </h1>
         <div
           className="card"
@@ -1807,9 +1855,20 @@ const Portal = ({
             borderColor: "var(--st-cancelled)",
           }}
         >
-          <Pill status="cancelled">
-            {d?.status || t("blockedDriverStatusFallback")}
-          </Pill>
+          <Pill status="cancelled">{t("accessDisabled")}</Pill>
+          {deferred ? (
+            <p
+              style={{
+                margin: "12px 0 0",
+                fontSize: 13.5,
+                lineHeight: 1.55,
+                color: "var(--ink)",
+                fontWeight: 600,
+              }}
+            >
+              {t("driverAccessDeferredOpenTours", { count: openTours })}
+            </p>
+          ) : null}
           <p
             style={{
               margin: "12px 0 0",
@@ -1818,13 +1877,22 @@ const Portal = ({
               color: "var(--muted)",
             }}
           >
-            {/* Naming the cause matters: without it, losing marketplace
-                access reads as an outage rather than a policy the partner can
-                reverse with one phone call. */}
-            {d?.deactivationReason === "inactivity"
-              ? t("driverInactiveByInactivityBody")
-              : t("blockedDriverBody")}
+            {deferred
+              ? t("driverAccessDeferredBody")
+              : t("driverAccessDisabledBody")}
           </p>
+          {deferred ? (
+            <p
+              style={{
+                margin: "12px 0 0",
+                fontSize: 13.5,
+                lineHeight: 1.55,
+                color: "var(--muted)",
+              }}
+            >
+              {t("driverAccessDeferredRestore")}
+            </p>
+          ) : null}
         </div>
       </div>
     );
@@ -1863,6 +1931,13 @@ const Portal = ({
   // nothing on the marketplace — never "your filters hid it".
   const hasActiveFilters = getAppliedMarketplaceFilterCount(filters) > 0;
 
+  // §7.1b — pre-deactivation warning about ACCOUNT access (partner still signed in).
+  const currentDriver = store.getCurrentDriver();
+  const showInactivityWarning = Boolean(currentDriver?.inactivityWarningSentAt);
+  const warningVars = showInactivityWarning
+    ? inactivityWarningVars(store, currentDriver)
+    : null;
+
   return (
     <>
       {/* Client decision 2026-07-26: title/subtitle + bell only — the sort and
@@ -1882,6 +1957,17 @@ const Portal = ({
         onTouchMove={onScrollTouchMove}
         onTouchEnd={onScrollTouchEnd}
       >
+        {showInactivityWarning && warningVars ? (
+          <div className="stack-12" style={{ marginTop: 12 }}>
+            <InlineAlert
+              tone="warn"
+              message={`${t("driverInactivityWarningTitle", warningVars)} ${t(
+                "driverInactivityWarningBody",
+                warningVars,
+              )}`}
+            />
+          </div>
+        ) : null}
         {refreshing ? (
           <div className="label portal-refresh-hint">
             <Ic.Refresh /> {t("refreshDemo")}
@@ -6383,7 +6469,7 @@ const ProfilePane = () => {
         <div>
           <div className="text-strong-lg">{AuthStore.DEMO_DRIVER}</div>
           <div className="mono text-muted-sm">
-            {t("driverCode")}: AU-41-0228 · {t("driverStatusActive")}
+            {t("driverCode")}: AU-41-0228 · {t("accessEnabled")}
           </div>
         </div>
       </div>
@@ -7802,7 +7888,7 @@ const ProfilePaneFull = ({
         .map((n) => n[0])
         .join("")
     : "JB";
-  const statusActive = String(d?.status || "").toLowerCase() === "active";
+  const statusActive = d?.operationalAccess === "enabled";
   const onProbation = !!store.getDriverProbationSummary()?.onProbation;
 
   // ---- Moved content (reused verbatim inside their drill-down subpages) ----
@@ -7886,10 +7972,26 @@ const ProfilePaneFull = ({
           );
         })}
         <div className="profile-field-row">
-          <div className="profile-field-label">{t("accountStatus")}</div>
+          <div className="profile-field-label">{t("operationalAccess")}</div>
           <div className="profile-field-body">
             <div className="profile-field-value">
-              {displayDriverStatus(d?.status, t)}
+              {displayDriverStatus(d?.operationalAccess, t)}
+            </div>
+          </div>
+        </div>
+        <div className="profile-field-row">
+          <div className="profile-field-label">{t("accountAccess")}</div>
+          <div className="profile-field-body">
+            <div className="profile-field-value">
+              {displayDriverStatus(d?.accountAccess, t)}
+            </div>
+          </div>
+        </div>
+        <div className="profile-field-row">
+          <div className="profile-field-label">{t("inviteState")}</div>
+          <div className="profile-field-body">
+            <div className="profile-field-value">
+              {displayInviteState(d?.inviteState, t)}
             </div>
           </div>
         </div>
@@ -8211,12 +8313,38 @@ const ProfilePaneFull = ({
                 </span>
                 <span className="profile-summary-text">
                   <span className="profile-summary-label">
-                    {t("accountStatus")}
+                    {t("operationalAccess")}
                   </span>
                   <span
                     className={`profile-summary-value${statusActive ? " is-active" : ""}`}
                   >
-                    {displayDriverStatus(d?.status, t)}
+                    {displayDriverStatus(d?.operationalAccess, t)}
+                  </span>
+                </span>
+              </div>
+              <div className="profile-summary-row">
+                <span className="profile-summary-icon" aria-hidden="true">
+                  <Ic.CheckCircle />
+                </span>
+                <span className="profile-summary-text">
+                  <span className="profile-summary-label">
+                    {t("accountAccess")}
+                  </span>
+                  <span className="profile-summary-value">
+                    {displayDriverStatus(d?.accountAccess, t)}
+                  </span>
+                </span>
+              </div>
+              <div className="profile-summary-row">
+                <span className="profile-summary-icon" aria-hidden="true">
+                  <Ic.CheckCircle />
+                </span>
+                <span className="profile-summary-text">
+                  <span className="profile-summary-label">
+                    {t("inviteState")}
+                  </span>
+                  <span className="profile-summary-value">
+                    {displayInviteState(d?.inviteState, t)}
                   </span>
                 </span>
               </div>

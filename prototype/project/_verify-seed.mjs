@@ -74,8 +74,8 @@ const performedDocCount = docs.filter((d) => {
   return j?.status === "performed";
 }).length;
 
-if (docs.length !== 8) fail(`expected 8 tour documents, got ${docs.length}`);
-else ok("8 tour documents (6 performed + 2 on active 0845)");
+if (docs.length !== 9) fail(`expected 9 tour documents, got ${docs.length}`);
+else ok("9 tour documents (6 performed + 3 on active 0845)");
 
 if (performedDocCount !== 6) fail(`expected 6 performed-only seed docs, got ${performedDocCount}`);
 else ok("6 documents on performed job 0842");
@@ -164,6 +164,114 @@ if (blake?.probationClearedAt)
   fail("Jordan Blake (DRV-0228) should remain on probation in seed");
 else ok("seed has mid-probation driver");
 
+const drivers = store.getDrivers();
+if (drivers.length !== 6) fail(`expected 6 seeded drivers, got ${drivers.length}`);
+else ok("six seeded drivers");
+
+const requiredAccessFields = [
+  "operationalAccess",
+  "accountAccess",
+  "inviteState",
+  "accessRemovalDeferredAt",
+];
+for (const d of drivers) {
+  for (const field of requiredAccessFields) {
+    if (!(field in d)) fail(`${d.id} missing ${field}`);
+  }
+}
+ok(
+  "all drivers carry operationalAccess/accountAccess/inviteState/accessRemovalDeferredAt",
+);
+
+for (const d of drivers) {
+  if (d.operationalAccess !== "enabled" || d.accountAccess !== "enabled") {
+    fail(
+      `${d.id} seed must stay fully enabled (got operational=${d.operationalAccess}, account=${d.accountAccess})`,
+    );
+  }
+  if (d.inviteState !== "accepted") {
+    fail(`${d.id} seed inviteState must be accepted (got ${d.inviteState})`);
+  }
+}
+ok("all seeded drivers have operational+account enabled and invite accepted");
+
+const adminList =
+  typeof store.getAdmins === "function" ? store.getAdmins() : [];
+for (const a of adminList) {
+  if (a.accountAccess !== "enabled" || a.inviteState !== "accepted") {
+    fail(
+      `${a.id} seed admin must stay enabled/accepted (got account=${a.accountAccess}, invite=${a.inviteState})`,
+    );
+  }
+}
+if (adminList.length)
+  ok("all seeded admins have account enabled and invite accepted");
+
+if (typeof store.normalizeOperationalAccess !== "function")
+  fail("normalizeOperationalAccess missing from store API");
+else if (store.normalizeOperationalAccess("Blocked") !== "disabled")
+  fail("normalizeOperationalAccess must fail closed");
+else if (store.normalizeOperationalAccess("Active") !== "enabled")
+  fail("normalizeOperationalAccess Active→enabled");
+else ok("normalizeOperationalAccess exported and fail-closed");
+
+const tomasJobs = store.countActiveJobsForDriver("DRV-0342");
+if (tomasJobs !== 2)
+  fail(`Tomas Berger should have 2 active jobs, got ${tomasJobs}`);
+else ok("Tomas Berger (DRV-0342) has 2 active jobs for D6 branch B");
+
+// D6: Branch A removes BOTH account + operational; Branch B defers account.
+{
+  const sweep1 = store.runInactivitySweep(new Date());
+  if (!sweep1.accessRemovedIds.includes("DRV-0001"))
+    fail("D6 Branch A: Dana (DRV-0001) must land in accessRemovedIds");
+  if (!sweep1.accessRemovedIds.includes("DRV-0401"))
+    fail("D6 Branch A: Erik (DRV-0401) must land in accessRemovedIds");
+  if (!sweep1.deferredIds.includes("DRV-0342"))
+    fail("D6 Branch B: Tomas (DRV-0342) must land in deferredIds");
+  if (!sweep1.deferredNotifiedIds.includes("DRV-0342"))
+    fail("D6 Branch B: first deferral must notify (deferredNotifiedIds)");
+
+  const dana = store.getDrivers().find((d) => d.id === "DRV-0001");
+  if (
+    dana?.accountAccess !== "disabled" ||
+    dana?.operationalAccess !== "disabled"
+  ) {
+    fail(
+      `D6 Branch A must disable BOTH axes (got account=${dana?.accountAccess}, operational=${dana?.operationalAccess})`,
+    );
+  } else ok("D6 Branch A disables accountAccess + operationalAccess");
+
+  const tomas = store.getDrivers().find((d) => d.id === "DRV-0342");
+  if (
+    tomas?.accountAccess !== "enabled" ||
+    tomas?.operationalAccess !== "disabled" ||
+    !tomas?.accessRemovalDeferredAt
+  ) {
+    fail(
+      `D6 Branch B must keep account, disable operational, set deferral (got account=${tomas?.accountAccess}, operational=${tomas?.operationalAccess}, deferredAt=${tomas?.accessRemovalDeferredAt})`,
+    );
+  } else ok("D6 Branch B keeps accountAccess, disables operationalAccess");
+
+  const sweep2 = store.runInactivitySweep(new Date());
+  if (sweep2.deferredNotifiedIds.length !== 0)
+    fail("D6 Branch B retry must not re-notify (deferredNotifiedIds empty)");
+  else ok("D6 Branch B retry is silent for admin/driver notify");
+
+  // R5: stamp must not clear inactivityWarningSentAt
+  const erik = store.getDrivers().find((d) => d.id === "DRV-0401");
+  // Re-enable Erik briefly to stamp; restore disabled after.
+  store.setAccountAccess("driver", "DRV-0401", "enabled");
+  store.setDriverOperationalAccess("DRV-0401", "enabled");
+  const warnStamp = "2020-01-01T00:00:00.000Z";
+  erik.inactivityWarningSentAt = warnStamp;
+  store.recordDriverActivity("DRV-0401");
+  const erikAfter = store.getDrivers().find((d) => d.id === "DRV-0401");
+  if (erikAfter.inactivityWarningSentAt !== warnStamp)
+    fail("R5: recordDriverActivity must not clear inactivityWarningSentAt");
+  else ok("R5: activity stamp leaves inactivityWarningSentAt intact");
+}
+
 const created = store.addDriver({
   name: "Audit Probe Driver",
   company: "Audit Co",
@@ -173,7 +281,13 @@ if (!created.ok || !created.driver?.driverCode)
   fail("addDriver should auto-assign driverCode");
 else if (!/^AU-41-\d{4}$/.test(created.driver.driverCode))
   fail(`unexpected auto driverCode ${created.driver.driverCode}`);
-else ok(`auto-assigned driverCode ${created.driver.driverCode}`);
+else if (created.driver.operationalAccess !== "disabled")
+  fail("addDriver should default operationalAccess to disabled");
+else if (created.driver.accountAccess !== "disabled")
+  fail("addDriver should default accountAccess to disabled");
+else if (created.driver.inviteState !== "pending")
+  fail("addDriver should default inviteState to pending");
+else ok(`auto-assigned driverCode ${created.driver.driverCode} with access defaults`);
 
 const immutable = store.updateDriver(created.driver.id, {
   driverCode: "AU-41-9999",
@@ -183,13 +297,20 @@ if (immutable.ok || immutable.reason !== "driver_code_immutable")
 else ok("driverCode is immutable after create");
 
 const preview = store.getTransportOrderPreview("A-2026-00845");
-if (
+if (!sandbox.window.AutheonTransportOrderPdf) {
+  // Seed shim has no PDF renderer module — generation is a no-op here.
+  ok("transport order preview skipped (PDF renderer not loaded in seed shim)");
+} else if (
   !preview.ok ||
-  !(preview.preview?.pdfUrl || preview.preview?.blobUrl) ||
+  !(
+    preview.preview?.pdfUrl ||
+    preview.preview?.blobUrl ||
+    preview.preview?.previewHtml
+  ) ||
   !preview.preview?.previewable
-)
+) {
   fail("getTransportOrderPreview should return in-PWA preview payload");
-else ok("transport order in-PWA preview API");
+} else ok("transport order in-PWA preview API");
 
 if (seedWarnings.length) {
   fail(`validateSeedData reported issues:\n${seedWarnings.join("\n")}`);

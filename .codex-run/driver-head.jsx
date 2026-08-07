@@ -1168,14 +1168,18 @@ const Portal = ({
     return new Date(2026, Number(m[2]) - 1, Number(m[1]));
   };
 
-  if (!store.isCurrentDriverMarketplaceActive()) {
+  if (!store.canDriverAccessMarketplace()) {
     const d = store.getCurrentDriver();
+    const deferred = Boolean(d?.accessRemovalDeferredAt);
+    const openTours = d ? store.countActiveJobsForDriver(d.id) : 0;
     return (
       <div
         className="scroll profile-header-block"
       >
         <h1 className="profile-header-title">
-          {t("blockedDriverTitle")}
+          {deferred
+            ? t("driverAccessDeferredTitle")
+            : t("driverAccessDisabledTitle")}
         </h1>
         <div
           className="card"
@@ -1185,9 +1189,20 @@ const Portal = ({
             borderColor: "var(--st-cancelled)",
           }}
         >
-          <Pill status="cancelled">
-            {d?.status || t("blockedDriverStatusFallback")}
-          </Pill>
+          <Pill status="cancelled">{t("accessDisabled")}</Pill>
+          {deferred ? (
+            <p
+              style={{
+                margin: "12px 0 0",
+                fontSize: 13.5,
+                lineHeight: 1.55,
+                color: "var(--ink)",
+                fontWeight: 600,
+              }}
+            >
+              {t("driverAccessDeferredOpenTours", { count: openTours })}
+            </p>
+          ) : null}
           <p
             style={{
               margin: "12px 0 0",
@@ -1196,8 +1211,22 @@ const Portal = ({
               color: "var(--muted)",
             }}
           >
-            {t("blockedDriverBody")}
+            {deferred
+              ? t("driverAccessDeferredBody")
+              : t("driverAccessDisabledBody")}
           </p>
+          {deferred ? (
+            <p
+              style={{
+                margin: "12px 0 0",
+                fontSize: 13.5,
+                lineHeight: 1.55,
+                color: "var(--muted)",
+              }}
+            >
+              {t("driverAccessDeferredRestore")}
+            </p>
+          ) : null}
         </div>
       </div>
     );

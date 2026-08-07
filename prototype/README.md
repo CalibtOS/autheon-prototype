@@ -69,7 +69,9 @@ node project/_export-driver-i18n.mjs      # writes docs/design/driver-i18n-index
 ## Authority
 
 - **Behavior:** [`../docs/requirements/prd.json`](../docs/requirements/prd.json)
+- **Partner/staff access (status consolidation):** [`../../tasks/status-consolidation-decision-brief.md`](../../tasks/status-consolidation-decision-brief.md) — binding; overrides Phase 8 status vocabulary in the admin requirements doc
 - **Design:** [`../docs/design/brand-tokens.md`](../docs/design/brand-tokens.md), [`../docs/design/ui-ux-production-plan.md`](../docs/design/ui-ux-production-plan.md)
 - **Terminology:** `project/DOMAIN.md`
+- **DB draft:** [`../docs/database/schema.dbml`](../docs/database/schema.dbml), [`../docs/database/logical-model.md`](../docs/database/logical-model.md)
 
-When the prototype and PRD differ, the PRD wins for behavior; the prototype wins for UI/UX presentation.
+When the prototype and PRD differ, the PRD wins for behavior; the prototype wins for UI/UX presentation. For access axes (`operationalAccess` / `accountAccess` / `inviteState`), the decision brief wins over older Phase 8 wording.

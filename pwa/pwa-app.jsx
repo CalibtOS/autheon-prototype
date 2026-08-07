@@ -351,7 +351,10 @@ function PwaDriverApp() {
                     }
                     setAcceptModal(null);
                     if (r.reason === "driver_restricted") {
-                      setBanner({ tone: "warn", text: t("blockedDriverBody") });
+                      setBanner({
+                        tone: "warn",
+                        text: t("driverAccessDisabledBody"),
+                      });
                     } else if (r.reason === "probation_limit_reached") {
                       setProbationLimitModal({
                         limit: r.limit,
@@ -433,7 +436,10 @@ function PwaDriverApp() {
                       performedCount: r.performedCount,
                     });
                   } else if (r.reason === "driver_restricted") {
-                    setBanner({ tone: "warn", text: t("blockedDriverBody") });
+                    setBanner({
+                      tone: "warn",
+                      text: t("driverAccessDisabledBody"),
+                    });
                   } else {
                     setBanner({ tone: "warn", text: t("toastAssignedElsewhere") });
                   }

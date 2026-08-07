@@ -1,10 +1,56 @@
-# PRD changelog: 2026-08-04 / 2026-08-06 (v2.31 -> v2.34, plus main's independently-numbered v2.33 job-attachment-limits entry)
+# PRD changelog: 2026-08-04 / 2026-08-06 (v2.31 -> v2.35, plus main's independently-numbered v2.33 job-attachment-limits entry)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
 **Canonical file:** `docs/requirements/prd.json`
 
 > **Scope of this file:** the **v2.34** entry, plus its same-release `[v2.34-cutoff-details]`, `[v2.34-feed-redesign]`, and `[v2.34-filters]` addenda. Baseline is **v2.31** (Driver/User schema fix + several presentation addenda, 2026-08-01 — see [`../2026-07/prd-changelog-since-2026-07-30.md`](../2026-07/prd-changelog-since-2026-07-30.md)).
+
+---
+
+# PRD changelog addendum: 2026-08-07 (v2.35 — status consolidation)
+
+> Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
+
+**Canonical file:** `docs/requirements/prd.json`
+
+---
+
+## v2.35 — Status consolidation: binary access axes + D6 inactivity sweep (2026-08-07)
+
+**Baseline:** PRD v2.34 (+ filters / feed-redesign / cutoff-details addenda)
+**Source:** `tasks/status-consolidation-decision-brief.md` (APPROVED, binding) and the prototype/BE/FE implementation plans under `tasks/status-consolidation-*.md`.
+**Type:** domain-model + UX + sweep behaviour change. Retires Active/Blocked/Inactive and the five-value account status enum.
+
+### 1. Previous behaviour
+
+- Driver operational status was a three-value enum: Active / Blocked / Inactive.
+- Linked account/access used Pending verification / Active / Suspended / Inactive / Invite failed.
+- Inactivity sweep (resolved_defaults.driver_inactivity_auto_deactivation_v1) set operational status to Inactive only and left login enabled.
+- Admin UI used status dropdowns / Enable-Disable text buttons and an Auto badge for inactivity provenance.
+
+### 2. New behaviour
+
+- **Axes:** `operationalAccess` and `accountAccess` are each `enabled|disabled`. `inviteState` is `pending|failed|accepted` and orthogonal to login.
+- **D1:** disabling operational access is lenient — marketplace/assignment stop; assigned tours continue.
+- **D6 sweep:** Branch A removes both axes; Branch B removes marketplace only, defers account removal while tours are open (`accessRemovalDeferredAt`).
+- **Activity clock:** `users.last_activity_at` (brief E5).
+- **Admin UI:** Enabled/Disabled pill + toggle switch per axis; confirm on disable; filters All/Enabled/Disabled; no Auto badge on overview (D4).
+- **Audit:** keep historical action keys (R11/C5); new diffs use `operationalAccess`/`accountAccess`.
+- **Notifications:** `driver_operational_access_*`, `account_access_*`, `driver_access_removed_auto`, `driver_access_removal_deferred`.
+
+### 3. Files / docs
+
+| File | Change |
+| --- | --- |
+| `docs/requirements/prd.json` | v2.35 version prefix; domain_model_summary; Task 2/3/7 acceptance; resolved_defaults; prototype_assumptions; open question resolved |
+| `prototype/project/admin.jsx` | AccessSwitch toggles |
+| `prototype/project/styles.css` | `.access-switch` styles |
+| `tasks/status-consolidation-decision-brief.md` | Binding source |
+
+### 4. What deliberately did NOT change
+
+Tour operational statuses, document-review statuses, soft-delete via `deletedAt`, Keycloak as IdP, and the rule that admins never see generated passwords.
 
 ---
 
