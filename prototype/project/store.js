@@ -1685,6 +1685,86 @@ window.AuthStore = (() => {
         createdAt: "20.04. 17:00",
         history: [{ st: "draft", at: "20.04. 17:00", by: "A. Bauer" }],
       }),
+      // D6 branch-B blocking jobs for Tomas Berger (DRV-0342).
+      mk({
+        id: "A-2026-00931",
+        tour: "0931-26",
+        customerId: "OP-001",
+        customerName: "Muller Automobile GmbH",
+        pickup: loc("ADDR-001", {
+          date: "28.04.",
+          dateLong: "Tue, 28.04.2026",
+          windowFrom: "08:00",
+          windowTo: "12:00",
+        }),
+        delivery: loc("ADDR-002", {
+          date: "28.04.",
+          dateLong: "Tue, 28.04.2026",
+          windowFrom: "14:00",
+          windowTo: "18:00",
+        }),
+        distanceKm: 120,
+        vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
+        manufacturer: "BMW",
+        vehicleModel: "320d",
+        plate: "F-TB 931",
+        vin: "WBA8E1100K5J09311",
+        transportType: TRANSPORT_TYPE_OWN_AXLE,
+        registrationStatus: REGISTRATION_REGISTERED,
+        readyToDrive: true,
+        revenue: 180,
+        driverOffer: 145,
+        notes: "Branch-B fixture — assigned open tour for Tomas Berger.",
+        status: "assigned",
+        driver: "Tomas Berger",
+        driverId: "DRV-0342",
+        pdfVersion: 1,
+        history: [
+          { st: "draft", at: "27.04. 09:00", by: "A. Bauer" },
+          { st: "assigned", at: "27.04. 10:00", by: "A. Bauer" },
+        ],
+        createdAt: "27.04. 09:00",
+      }),
+      mk({
+        id: "A-2026-00932",
+        tour: "0932-26",
+        customerId: "OP-002",
+        customerName: "Classic Cars AG",
+        pickup: loc("ADDR-003", {
+          date: "29.04.",
+          dateLong: "Wed, 29.04.2026",
+          windowFrom: "07:00",
+          windowTo: "11:00",
+        }),
+        delivery: loc("ADDR-004", {
+          date: "29.04.",
+          dateLong: "Wed, 29.04.2026",
+          windowFrom: "13:00",
+          windowTo: "17:00",
+        }),
+        distanceKm: 210,
+        vehicleType: VEHICLE_TYPE_TRUCK_UP_TO_7_5_T,
+        manufacturer: "Mercedes-Benz",
+        vehicleModel: "Sprinter",
+        plate: "F-TB 932",
+        vin: "WDB9067321V093221",
+        transportType: TRANSPORT_TYPE_THIRD_PARTY_AXLE,
+        registrationStatus: REGISTRATION_REGISTERED,
+        readyToDrive: true,
+        revenue: 240,
+        driverOffer: 190,
+        notes: "Branch-B fixture — accepted open tour for Tomas Berger.",
+        status: "accepted",
+        driver: "Tomas Berger",
+        driverId: "DRV-0342",
+        pdfVersion: 1,
+        history: [
+          { st: "draft", at: "27.04. 11:00", by: "A. Bauer" },
+          { st: "published", at: "27.04. 11:30", by: "A. Bauer" },
+          { st: "accepted", at: "27.04. 12:00", by: "Tomas Berger" },
+        ],
+        createdAt: "27.04. 11:00",
+      }),
     ];
   }
 
@@ -1725,12 +1805,14 @@ window.AuthStore = (() => {
         pendingEmailChange: null,
         phone: "+49 170 4400228",
         notes: "",
-        status: "Active",
-        accountStatus: "Active",
+        operationalAccess: "enabled",
+        accountAccess: "enabled",
+        inviteState: "accepted",
         probationJobLimit: 3,
         probationClearedAt: null,
         lastActiveAt: daysAgoIso(2),
         inactivityWarningSentAt: null,
+        accessRemovalDeferredAt: null,
         deactivationReason: null,
         prefs: {
           postalAreas: ["80"],
@@ -1753,17 +1835,20 @@ window.AuthStore = (() => {
         city: "Frankfurt am Main",
         country: "Deutschland",
         email: "k.neumann@example.com",
+        emailVerified: true,
+        pendingEmailChange: null,
         phone: "+49 172 3300301",
         notes: "",
-        status: "Active",
-        accountStatus: "Invite failed",
+        operationalAccess: "enabled",
+        accountAccess: "enabled",
+        inviteState: "accepted",
         probationJobLimit: 3,
         probationClearedAt: "01.04.2026 10:00",
-        // Active and inside the warning window (75-89 days idle under the
-        // default 90/15 policy): the first sweep warns this partner
-        // rather than deactivating them.
+        // Inside the warning window under default 90/15 — still fully enabled
+        // until a sweep (or admin) changes access.
         lastActiveAt: daysAgoIso(80),
         inactivityWarningSentAt: null,
+        accessRemovalDeferredAt: null,
         deactivationReason: null,
         prefs: {
           postalAreas: ["60"],
@@ -1788,17 +1873,18 @@ window.AuthStore = (() => {
         city: "Berlin",
         country: "Deutschland",
         email: "mira.vogt@example.com",
+        emailVerified: true,
+        pendingEmailChange: null,
         phone: "+49 171 991177",
         notes: "",
-        status: "Blocked",
-        accountStatus: "Pending verification",
+        operationalAccess: "enabled",
+        accountAccess: "enabled",
+        inviteState: "accepted",
         probationJobLimit: 3,
         probationClearedAt: null,
-        // Inside the warning window (75-89 days idle at the default 90/15
-        // policy), so the first sweep warns this partner rather than
-        // deactivating them.
         lastActiveAt: daysAgoIso(80),
         inactivityWarningSentAt: null,
+        accessRemovalDeferredAt: null,
         deactivationReason: null,
         prefs: {
           postalAreas: ["10"],
@@ -1809,8 +1895,8 @@ window.AuthStore = (() => {
         },
       },
       // Mirrors the backend's seeds/profiles/development.json fixture driver
-      // (driver.one@demo.local / Dana Driver) so the two projects can be
-      // demoed side by side with the same login credentials.
+      // (driver.one@demo.local / Dana Driver). D6 branch A: dormant, no active
+      // jobs → first sweep removes both account and operational access.
       {
         id: "DRV-0001",
         name: "Dana Driver",
@@ -1828,17 +1914,94 @@ window.AuthStore = (() => {
         pendingEmailChange: null,
         phone: "+49 30 5550199",
         notes: "Default seeded driver",
-        status: "Active",
-        accountStatus: "Active",
+        operationalAccess: "enabled",
+        accountAccess: "enabled",
+        inviteState: "accepted",
         probationJobLimit: 3,
         probationClearedAt: null,
         lastActiveAt: daysAgoIso(120),
         inactivityWarningSentAt: null,
+        accessRemovalDeferredAt: null,
         deactivationReason: null,
         prefs: {
           postalAreas: ["10"],
           vehicleType: "All",
           transportType: "All",
+          pushEnabled: true,
+          notifyNewPublished: true,
+        },
+      },
+      // Stale activity clock for sweep demos (D4/D6). Access stays enabled at
+      // seed time — dormancy alone does not revoke login/marketplace access.
+      {
+        id: "DRV-0401",
+        name: "Erik Stahl",
+        company: "Stahl Transporte",
+        driverCode: "AU-41-0401",
+        joinedAt: "15.06.2023",
+        address: "Industriestr. 9, 44147 Dortmund",
+        street: "Industriestr.",
+        houseNumber: "9",
+        postalCode: "44147",
+        city: "Dortmund",
+        country: "Deutschland",
+        email: "erik.stahl@example.com",
+        emailVerified: true,
+        pendingEmailChange: null,
+        phone: "+49 231 4400401",
+        notes: "Seeded fully enabled; older activity clock for sweep demos",
+        // Seed accounts stay login- and marketplace-enabled. A stale
+        // lastActiveAt only makes them sweep candidates — it does not revoke
+        // access at seed time.
+        operationalAccess: "enabled",
+        accountAccess: "enabled",
+        inviteState: "accepted",
+        probationJobLimit: 3,
+        probationClearedAt: "01.02.2025 10:00",
+        lastActiveAt: daysAgoIso(140),
+        inactivityWarningSentAt: null,
+        accessRemovalDeferredAt: null,
+        deactivationReason: null,
+        prefs: {
+          postalAreas: ["44"],
+          vehicleType: VEHICLE_TYPE_PASSENGER_CAR,
+          transportType: "All",
+          pushEnabled: true,
+          notifyNewPublished: true,
+        },
+      },
+      // Dormant WITH live work — sweep must defer account-access removal and
+      // take operational access instead (D6 branch B).
+      {
+        id: "DRV-0342",
+        name: "Tomas Berger",
+        company: "Berger Fahrdienst",
+        driverCode: "AU-41-0342",
+        joinedAt: "02.09.2023",
+        address: "Hanauer Landstr. 40, 60314 Frankfurt",
+        street: "Hanauer Landstr.",
+        houseNumber: "40",
+        postalCode: "60314",
+        city: "Frankfurt am Main",
+        country: "Deutschland",
+        email: "tomas.berger@example.com",
+        emailVerified: true,
+        pendingEmailChange: null,
+        phone: "+49 172 3300342",
+        notes: "D6 branch-B demonstrator",
+        operationalAccess: "enabled",
+        accountAccess: "enabled",
+        inviteState: "accepted",
+        probationJobLimit: 3,
+        probationClearedAt: "01.04.2026 10:00",
+        lastActiveAt: daysAgoIso(150),
+        inactivityWarningSentAt: null,
+        accessRemovalDeferredAt: null,
+        deactivationReason: null,
+        prefs: {
+          postalAreas: ["60"],
+          vehicleType: VEHICLE_TYPE_TRUCK_UP_TO_7_5_T,
+          transportType: TRANSPORT_TYPE_THIRD_PARTY_AXLE,
           pushEnabled: true,
           notifyNewPublished: true,
         },
@@ -1855,7 +2018,8 @@ window.AuthStore = (() => {
         email: "anna.bauer@autheon.example",
         role: "ADMIN",
         phone: "+49 2173 265 1112",
-        status: "Active",
+        accountAccess: "enabled",
+        inviteState: "accepted",
       },
       {
         id: "ADM-002",
@@ -1864,7 +2028,8 @@ window.AuthStore = (() => {
         email: "lukas.reimann@autheon.example",
         role: "ADMIN",
         phone: "+49 2173 265 1113",
-        status: "Active",
+        accountAccess: "enabled",
+        inviteState: "accepted",
       },
       // Mirrors the backend's seeds/profiles/development.json fixture admin
       // (demo.admin@demo.local / Demo Admin) — same reasoning as the
@@ -1876,7 +2041,18 @@ window.AuthStore = (() => {
         email: "demo.admin@demo.local",
         role: "ADMIN",
         phone: "+49 2173 265 1114",
-        status: "Active",
+        accountAccess: "enabled",
+        inviteState: "accepted",
+      },
+      {
+        id: "ADM-004",
+        name: "Sofia Keller",
+        initials: "S. Keller",
+        email: "sofia.keller@autheon.example",
+        role: "ADMIN",
+        phone: "+49 2173 265 1115",
+        accountAccess: "enabled",
+        inviteState: "accepted",
       },
     ];
   }
@@ -2518,6 +2694,27 @@ window.AuthStore = (() => {
         readBy: DEMO_ADMIN,
         deletedAt: null,
       },
+      {
+        // Historical Branch A auto-removal row (both axes). Live seeds stay
+        // enabled until Run check now — this only demos the feed event shape.
+        id: "ALERT-SEED-019",
+        event: "driver_access_removed_auto",
+        jobId: "",
+        tour: "",
+        driverId: "DRV-0401",
+        driverName: "Erik Stahl",
+        axis: "account+operational",
+        newValue: "disabled",
+        actor: "System",
+        deactivationReason: "inactivity",
+        meta: "Erik Stahl · inactive 140 days · sign-in and marketplace both disabled",
+        at: "02.08. 09:15",
+        sent: true,
+        status: "unread",
+        readAt: "",
+        readBy: "",
+        deletedAt: null,
+      },
     ];
   }
 
@@ -2567,6 +2764,15 @@ window.AuthStore = (() => {
         entity: "driver-invoice-0842.pdf",
         ...seedAuditStamp(172, 12, 52, 19), // outside the window
         meta: "A-2026-00842 · invoice",
+      },
+      {
+        action: "driver_status_changed",
+        actor: DEMO_ADMIN,
+        entity: "Erik Stahl",
+        ...seedAuditStamp(5, 9, 15, 0),
+        meta: "operationalAccess → disabled · reason inactivity",
+        driverId: "DRV-0401",
+        changes: "operationalAccess=disabled",
       },
     ];
   }
@@ -2671,15 +2877,89 @@ window.AuthStore = (() => {
     );
   }
 
-  // Account/access status is now a single field per user: `status` for staff
-  // (admins), `accountStatus` for drivers (whose `status` field is the
-  // separate operational/marketplace axis) — collapsed from the old
-  // ACCESS_STATE concept, which used to live alongside those fields.
+  // D2 split: accountAccess is binary (enabled|disabled); invite lifecycle is
+  // orthogonal inviteState (pending|failed|accepted). Do not merge them.
+  //
+  // Fail-closed normalisation (D5 risk #1): unknown/legacy values map to the
+  // restrictive side. Production's driver.repository historically failed OPEN
+  // to ACTIVE — the prototype must demonstrate the safe behaviour.
+  const ACCESS_ENABLED = "enabled";
+  const ACCESS_DISABLED = "disabled";
+  const INVITE_PENDING = "pending";
+  const INVITE_FAILED = "failed";
+  const INVITE_ACCEPTED = "accepted";
+
+  function normalizeOperationalAccess(v) {
+    const raw = String(v ?? "")
+      .trim()
+      .toLowerCase();
+    if (raw === ACCESS_ENABLED || raw === "active") return ACCESS_ENABLED;
+    return ACCESS_DISABLED;
+  }
+
+  function normalizeAccountAccess(v) {
+    const raw = String(v ?? "")
+      .trim()
+      .toLowerCase();
+    if (raw === ACCESS_ENABLED || raw === "active") return ACCESS_ENABLED;
+    return ACCESS_DISABLED;
+  }
+
+  function deriveInviteState(legacyAccountStatus) {
+    const value = String(legacyAccountStatus ?? "").trim();
+    const lower = value.toLowerCase();
+    if (value === "Pending verification" || lower === INVITE_PENDING)
+      return INVITE_PENDING;
+    if (value === "Invite failed" || lower === INVITE_FAILED) return INVITE_FAILED;
+    return INVITE_ACCEPTED;
+  }
+
+  /** Resolve copy via window.I18n when available (browser); EN fallback for shims. */
+  function tt(key, vars) {
+    try {
+      if (typeof window !== "undefined" && window.I18n?.t) {
+        const resolved = window.I18n.t(key, vars);
+        if (resolved && resolved !== key) return resolved;
+      }
+    } catch (_) {
+      /* ignore */
+    }
+    const FALLBACK = {
+      driverNotifAccountAutoDisabledTitle:
+        "Account deactivated after inactivity",
+      driverNotifAccountAutoDisabledBody:
+        "Your account has not been used for {days} days, so sign-in and marketplace access have been switched off. Contact your dispatcher to have them restored.",
+      driverNotifDeferredTitle:
+        "Marketplace paused — your open tours continue",
+      driverNotifDeferredBody:
+        "Marketplace access has been paused because your account has been unused. You can still sign in and complete the tours already assigned to you. Contact your dispatcher to have marketplace access restored.",
+      driverInactivityWarningTitle:
+        "Your account will be deactivated in {days} days",
+      driverInactivityWarningBody:
+        "Your account has been unused for {inactive} days. If it stays unused, you will no longer be able to sign in and you will lose access to the marketplace. Signing in and working on a tour is enough to keep it active.",
+      adminNotifAutoRemovedMeta:
+        "{name} · inactive {days} days · sign-in and marketplace both disabled",
+      adminNotifDeferredMeta:
+        "{name} · inactive {days} days · {count} open tours · marketplace removed, sign-in kept",
+    };
+    let value = FALLBACK[key] || key;
+    if (vars) {
+      value = value.replace(/\{(\w+)\}/g, (_, token) =>
+        vars[token] == null ? "" : String(vars[token]),
+      );
+    }
+    return value;
+  }
+
   function simulateAccountInvite(user, kind) {
+    user.accountAccess = ACCESS_DISABLED;
+    user.inviteState = INVITE_PENDING;
+    // Admins no longer use a separate `status` axis — accountAccess is the
+    // staff field. Drop retired keys so stale TitleCase values cannot linger.
     if (kind === "admin") {
-      user.status = "Pending verification";
+      delete user.status;
     } else {
-      user.accountStatus = "Pending verification";
+      delete user.accountStatus;
     }
     user.lastInviteAt = nowStamp();
     user.identityProvisioned = true;
@@ -2689,6 +2969,8 @@ window.AuthStore = (() => {
     return {
       identityProvisioned: true,
       inviteEmailSent: true,
+      accountAccess: user.accountAccess,
+      inviteState: user.inviteState,
     };
   }
 
@@ -4255,6 +4537,14 @@ window.AuthStore = (() => {
       category: NOTIF_CATEGORY_ACCOUNT,
       kind: NOTIF_KIND_PLAIN,
     },
+    operational_access_changed: {
+      category: NOTIF_CATEGORY_ACCOUNT,
+      kind: NOTIF_KIND_PLAIN,
+    },
+    account_access_changed: {
+      category: NOTIF_CATEGORY_ACCOUNT,
+      kind: NOTIF_KIND_PLAIN,
+    },
   };
 
   const NOTIF_TYPE_FALLBACK = {
@@ -4285,7 +4575,9 @@ window.AuthStore = (() => {
     if (!job || job.status !== "published") return;
     const notified = [];
     for (const d of drivers) {
-      if (d.status !== "Active") continue;
+      if (normalizeOperationalAccess(d.operationalAccess) !== ACCESS_ENABLED)
+        continue;
+      if (d.deletedAt) continue;
       const prefs = normalizeDriverPrefs(d.prefs);
       if (!prefs.pushEnabled || !prefs.notifyNewPublished) continue;
       if (
@@ -5770,9 +6062,9 @@ window.AuthStore = (() => {
     jobWasEverCommitted,
 
     // ---- Auth session (client-preview + /pwa login gate) ----
-    // Demo credential check only: any seeded, Active driver/admin email +
-    // any non-empty password. Production auth is Keycloak — see the PRD
-    // auth/account-linking rules — this only gates which screen renders.
+    // Demo credential check only: any seeded driver/admin with
+    // accountAccess=enabled + any non-empty password. Production auth is
+    // Keycloak — this only gates which screen renders.
     isDriverAuthenticated: () => !!session.driver,
     isAdminAuthenticated: () => !!session.admin,
     getAuthenticatedDriver: () => session.driver,
@@ -5785,7 +6077,9 @@ window.AuthStore = (() => {
         return { ok: false, reason: "password_required" };
       const driver = findDriverByEmail(value);
       if (!driver) return { ok: false, reason: "invalid_credentials" };
-      if (driver.status !== "Active")
+      // Login uses the account axis only (status consolidation). Missing or
+      // legacy TitleCase `status` must not fail closed as "blocked".
+      if (normalizeAccountAccess(driver.accountAccess) !== ACCESS_ENABLED)
         return { ok: false, reason: "account_restricted" };
       session.driver = driver;
       log("driver_signed_in", driver.name, driver.email, "");
@@ -5806,7 +6100,7 @@ window.AuthStore = (() => {
         return { ok: false, reason: "password_required" };
       const admin = findAdminByEmail(value);
       if (!admin) return { ok: false, reason: "invalid_credentials" };
-      if (admin.status !== "Active")
+      if (normalizeAccountAccess(admin.accountAccess) !== ACCESS_ENABLED)
         return { ok: false, reason: "account_restricted" };
       session.admin = admin;
       log("admin_signed_in", admin.name, admin.email, "");
@@ -5950,10 +6244,12 @@ window.AuthStore = (() => {
         return { ok: false, reason: "confirm_required" };
       if (password !== confirmNewPassword)
         return { ok: false, reason: "password_mismatch" };
+      account.accountAccess = ACCESS_ENABLED;
+      account.inviteState = INVITE_ACCEPTED;
       if (kind === "admin") {
-        account.status = "Active";
+        delete account.status;
       } else {
-        account.accountStatus = "Active";
+        delete account.accountStatus;
       }
       log(
         kind === "admin" ? "admin_invite_accepted" : "driver_invite_accepted",
@@ -6085,67 +6381,213 @@ window.AuthStore = (() => {
       const driver = drivers.find((d) => d.id === driverId);
       if (!driver) return { ok: false, reason: "not_found" };
       driver.lastActiveAt = at.toISOString();
-      // Coming back cancels a pending warning — the next dormancy earns a fresh
-      // one rather than being deactivated silently on last year's notice.
-      driver.inactivityWarningSentAt = null;
+      // Brief R5: do NOT clear inactivityWarningSentAt here. Staleness is
+      // marker < lastActiveAt at warn-time, so a fresh dormancy can re-warn
+      // without the stamp path mutating the marker.
+      // Activity clears a deferred access-removal pending state (D6 §3.6.5).
+      driver.accessRemovalDeferredAt = null;
       emit();
       return { ok: true };
     },
 
     /**
-     * One pass of the inactivity policy: warn those approaching the threshold,
-     * deactivate those past it.
-     *
-     * Deactivation runs first and the warning pass only considers partners still
-     * Active, so nobody is warned about a deactivation that just happened.
-     * Partners holding live tours are skipped rather than deactivated — the same
-     * guard that stops an admin doing it — and are picked up on a later run.
+     * One pass of the inactivity policy under D6:
+     * - Branch A (no active jobs): remove account + operational access.
+     * - Branch B (has active jobs): disable operational only, defer account
+     *   removal, notify once via accessRemovalDeferredAt.
      */
     runInactivitySweep(now = new Date()) {
       const result = {
         enabled: driverInactivityPolicy.enabled,
         thresholdDays: driverInactivityPolicy.thresholdDays,
         warningDays: driverInactivityPolicy.warningDays,
-        deactivated: [],
+        accessRemovedIds: [],
+        deferredIds: [],
+        deferredNotifiedIds: [],
         warned: [],
-        skippedWithActiveJobs: [],
       };
       if (!driverInactivityPolicy.enabled) return result;
 
       const threshold = driverInactivityPolicy.thresholdDays;
       const warnAt = threshold - driverInactivityPolicy.warningDays;
 
+      function findActiveJobIdsForDriver(driverId, limit = 20) {
+        const driver = drivers.find((x) => x.id === driverId);
+        if (!driver) return [];
+        const ids = [];
+        for (const j of jobs) {
+          if (!ACTIVE_JOB_STATUSES.includes(j.status)) continue;
+          const match =
+            j.driverId === driverId ||
+            (!j.driverId && j.driver === driver.name);
+          if (!match) continue;
+          ids.push(j.id);
+          if (ids.length >= limit) break;
+        }
+        return ids;
+      }
+
+      function removeDriverAccessForInactivity(driver, { idle, thresholdDays }) {
+        // Branch A: take BOTH axes — login (user/accountAccess) and marketplace.
+        driver.operationalAccess = ACCESS_DISABLED;
+        driver.accountAccess = ACCESS_DISABLED;
+        driver.deactivationReason = "inactivity";
+        driver.accessRemovalDeferredAt = null;
+        driver.inactivityWarningSentAt = null;
+        const meta = `Automatic access removal · inactive ${idle} days · threshold ${thresholdDays} days · account and operational access disabled`;
+        log("driver_auto_deactivated", "System", driver.name, meta, {
+          driverId: driver.id,
+          reason: "inactivity",
+          thresholdDays,
+          inactiveDays: idle,
+          axes: "account+operational",
+        });
+        // Audit keeps driver_auto_deactivated (R11/C5). Feed uses the plan
+        // notification event name driver_access_removed_auto (§8.3).
+        queueAdminEmailAlert(
+          "driver_access_removed_auto",
+          "",
+          tt("adminNotifAutoRemovedMeta", {
+            name: driver.name,
+            days: idle,
+          }),
+          {
+            driverId: driver.id,
+            driverName: driver.name,
+            axis: "account+operational",
+            newValue: ACCESS_DISABLED,
+            actor: "System",
+            deactivationReason: "inactivity",
+          },
+        );
+        // Driver cannot sign in after this; still required as a durable record
+        // (production delivers the same content by email).
+        pushDriverNotification({
+          type: "account_access_changed",
+          title: tt("driverNotifAccountAutoDisabledTitle"),
+          body: tt("driverNotifAccountAutoDisabledBody", { days: idle }),
+          driverId: driver.id,
+        });
+      }
+
+      function deferDriverAccessRemoval(driver, { idle, thresholdDays, now }) {
+        const blockingJobIds = findActiveJobIdsForDriver(driver.id);
+        const blockingJobCount = blockingJobIds.length;
+        driver.operationalAccess = ACCESS_DISABLED;
+        // accountAccess deliberately left enabled so they can finish tours.
+        driver.deactivationReason = "inactivity";
+        const firstDeferral = !driver.accessRemovalDeferredAt;
+        if (firstDeferral) {
+          driver.accessRemovalDeferredAt = now.toISOString();
+        }
+        // Audit every attempt (incl. silent retries). Notify only on first
+        // deferral — different cadences by design (D6 (f)).
+        const meta = `Account access removal failed — ${blockingJobCount} open tours · inactive ${idle} days · threshold ${thresholdDays} days · operational access removed as fallback, account access deliberately preserved`;
+        log("driver_access_removal_deferred", "System", driver.name, meta, {
+          driverId: driver.id,
+          reason: "inactivity",
+          thresholdDays,
+          inactiveDays: idle,
+          blockingJobCount,
+          blockingJobIds: blockingJobIds.join(","),
+          fallbackAxis: "operational",
+          preservedAxis: "account",
+          firstDeferredAt: driver.accessRemovalDeferredAt,
+          adminNotified: firstDeferral ? "true" : "false",
+        });
+        result.deferredIds.push(driver.id);
+        if (firstDeferral) {
+          result.deferredNotifiedIds.push(driver.id);
+          queueAdminEmailAlert(
+            "driver_access_removal_deferred",
+            "",
+            tt("adminNotifDeferredMeta", {
+              name: driver.name,
+              days: idle,
+              count: blockingJobCount,
+            }),
+            {
+              driverId: driver.id,
+              driverName: driver.name,
+              axis: "account",
+              newValue: ACCESS_ENABLED,
+              actor: "System",
+              deactivationReason: "inactivity",
+              blockingJobCount,
+              blockingJobIds: blockingJobIds.join(","),
+            },
+          );
+          // Restore path = contact dispatcher for marketplace — never "finish
+          // tours to get access back" (that would complete Branch A next).
+          pushDriverNotification({
+            type: "operational_access_changed",
+            title: tt("driverNotifDeferredTitle"),
+            body: tt("driverNotifDeferredBody"),
+            driverId: driver.id,
+          });
+        }
+      }
+
       drivers.forEach((driver) => {
-        if (driver.deletedAt || driver.status !== "Active") return;
+        if (driver.deletedAt) return;
+        // Primary target is account access. Do NOT gate on operationalAccess —
+        // a deferred driver is operationally disabled but still owes an
+        // account-access removal and must be re-examined every run.
+        if (normalizeAccountAccess(driver.accountAccess) !== ACCESS_ENABLED)
+          return;
         const idle = inactiveDaysFor(driver, now);
 
         if (idle >= threshold) {
           if (api.countActiveJobsForDriver(driver.id) > 0) {
-            result.skippedWithActiveJobs.push(driver.id);
+            deferDriverAccessRemoval(driver, {
+              idle,
+              thresholdDays: threshold,
+              now,
+            });
             return;
           }
-          driver.status = "Inactive";
-          driver.deactivationReason = "inactivity";
-          result.deactivated.push(driver.id);
-          log("driver_auto_deactivated", "System", driver.name, {
-            reason: "Automatic inactivity suspension",
+          removeDriverAccessForInactivity(driver, {
+            idle,
             thresholdDays: threshold,
-            inactiveDays: idle,
           });
+          result.accessRemovedIds.push(driver.id);
           return;
         }
 
+        // R5: warn when idle past warnAt AND marker is absent or stale
+        // relative to lastActiveAt (stamp path does not clear the marker).
+        const warningStale =
+          !driver.inactivityWarningSentAt ||
+          (driver.lastActiveAt &&
+            new Date(driver.inactivityWarningSentAt).getTime() <
+              new Date(driver.lastActiveAt).getTime());
         if (
           driverInactivityPolicy.warningDays > 0 &&
           idle >= warnAt &&
-          !driver.inactivityWarningSentAt
+          warningStale
         ) {
           driver.inactivityWarningSentAt = now.toISOString();
           result.warned.push(driver.id);
-          log("driver_inactivity_warning_sent", "System", driver.name, {
-            thresholdDays: threshold,
-            inactiveDays: idle,
-            daysUntilDeactivation: threshold - idle,
+          const daysLeft = threshold - idle;
+          log(
+            "driver_inactivity_warning_sent",
+            "System",
+            driver.name,
+            `Account access at risk · inactive ${idle} days · ${daysLeft} days until removal`,
+            {
+              thresholdDays: threshold,
+              inactiveDays: idle,
+              daysUntilDeactivation: daysLeft,
+            },
+          );
+          pushDriverNotification({
+            type: "account_access_changed",
+            title: tt("driverInactivityWarningTitle", { days: daysLeft }),
+            body: tt("driverInactivityWarningBody", {
+              days: daysLeft,
+              inactive: idle,
+            }),
+            driverId: driver.id,
           });
         }
       });
@@ -6371,6 +6813,14 @@ window.AuthStore = (() => {
       return { ok: true, count: n };
     },
     pushDriverNotification,
+    ACCESS_ENABLED,
+    ACCESS_DISABLED,
+    INVITE_PENDING,
+    INVITE_FAILED,
+    INVITE_ACCEPTED,
+    normalizeOperationalAccess,
+    normalizeAccountAccess,
+    deriveInviteState,
     // Notification taxonomy + navigation. Categories and the interaction model
     // are DERIVED from `type`, never stored, and every deep link resolves
     // through `resolveDriverNotificationTarget` so the list and a push tap can
@@ -6395,30 +6845,40 @@ window.AuthStore = (() => {
     getCurrentDriver: () =>
       drivers.find((d) => d.name === DEMO_DRIVER) || drivers[0],
 
-    isDriverBlocked() {
+    isCurrentDriverOperationallyEnabled() {
       const d = api.getCurrentDriver();
-      return Boolean(d && d.status === "Blocked");
+      // Fail-open when no current driver (demo shell with no session driver).
+      return (
+        !d ||
+        (normalizeOperationalAccess(d.operationalAccess) === ACCESS_ENABLED &&
+          !d.deletedAt)
+      );
     },
 
+    // TEMP aliases — UI Wave 2 retargets call sites; keep store loadable.
     isCurrentDriverActive() {
-      const d = api.getCurrentDriver();
-      return !d || d.status === "Active";
+      return api.isCurrentDriverOperationallyEnabled();
     },
-
     isCurrentDriverMarketplaceActive() {
-      const d = api.getCurrentDriver();
-      return !d || d.status === "Active";
+      return api.canDriverAccessMarketplace();
     },
 
     canDriverAccessMarketplace() {
-      return api.isCurrentDriverMarketplaceActive();
+      const d = api.getCurrentDriver();
+      if (!d) return true;
+      return (
+        normalizeOperationalAccess(d.operationalAccess) === ACCESS_ENABLED &&
+        !d.deletedAt
+      );
     },
 
-    canDriverUploadOnAssignedTour(jobId) {
-      const d = api.getCurrentDriver();
-      if (!d) return false;
-      if (d.status === "Active" || d.status === "Blocked") return true;
-      return false;
+    // D1: disabling must never strand an in-flight tour.
+    canDriverPerformAssignedTours() {
+      return Boolean(api.getCurrentDriver());
+    },
+
+    canDriverUploadOnAssignedTour(_jobId) {
+      return Boolean(api.getCurrentDriver());
     },
 
     todayCalendarKey() {
@@ -6523,7 +6983,11 @@ window.AuthStore = (() => {
     },
 
     getAssignableDrivers() {
-      return drivers.filter((d) => d.status === "Active");
+      return drivers.filter(
+        (d) =>
+          normalizeOperationalAccess(d.operationalAccess) === ACCESS_ENABLED &&
+          !d.deletedAt,
+      );
     },
 
     resolveAssignableDriver(ref) {
@@ -6546,7 +7010,11 @@ window.AuthStore = (() => {
           null;
       }
       if (!driver) return { ok: false, reason: "driver_not_found" };
-      if (driver.status !== "Active")
+      if (
+        normalizeOperationalAccess(driver.operationalAccess) !==
+          ACCESS_ENABLED ||
+        driver.deletedAt
+      )
         return { ok: false, reason: "driver_not_active" };
       return { ok: true, driver };
     },
@@ -6784,7 +7252,11 @@ window.AuthStore = (() => {
       newsItems.unshift(item);
       log("news_item_created", DEMO_ADMIN, item.title, item.id);
       if (notifyInApp) {
-        for (const dr of drivers.filter((x) => x.status === "Active")) {
+        for (const dr of drivers.filter(
+            (x) =>
+              normalizeOperationalAccess(x.operationalAccess) ===
+                ACCESS_ENABLED && !x.deletedAt,
+          )) {
           pushDriverNotification({
             type: "infopoint_news",
             // Stable reference so the notification deep-links to THIS message
@@ -6797,7 +7269,11 @@ window.AuthStore = (() => {
         }
       }
       if (notifyPush) {
-        for (const dr of drivers.filter((x) => x.status === "Active")) {
+        for (const dr of drivers.filter(
+            (x) =>
+              normalizeOperationalAccess(x.operationalAccess) ===
+                ACCESS_ENABLED && !x.deletedAt,
+          )) {
           const prefs = normalizeDriverPrefs(dr.prefs);
           if (prefs.pushEnabled) {
             log(
@@ -6948,6 +7424,7 @@ window.AuthStore = (() => {
         actor: dr.name,
       });
       queueAdminEmailAlert("job_accepted", id, `Driver ${dr.name}`);
+      api.recordDriverActivity(dr.id);
       emit();
       return { ok: true };
     },
@@ -6975,7 +7452,10 @@ window.AuthStore = (() => {
       );
       queueAdminEmailAlert("job_performed", id, j.tour);
       const dr = jobDriverRecord(j);
-      if (dr) maybeAutoReleaseProbation(dr);
+      if (dr) {
+        maybeAutoReleaseProbation(dr);
+        api.recordDriverActivity(dr.id);
+      }
       emit();
       return { ok: true };
     },
@@ -7025,6 +7505,9 @@ window.AuthStore = (() => {
       );
       // Inform the admin backend immediately.
       queueAdminEmailAlert("order_cancelled_by_sp", id, explanation);
+      const cancelDriver =
+        api.getCurrentDriver() || jobDriverRecord(j) || null;
+      if (cancelDriver) api.recordDriverActivity(cancelDriver.id);
       emit();
       return { ok: true };
     },
@@ -7121,6 +7604,9 @@ window.AuthStore = (() => {
           ? `${description} · ${evidence.length} file(s)`.trim()
           : description;
       queueAdminEmailAlert("empty_run_reported", id, alertMeta);
+      const emptyRunDriver =
+        api.getCurrentDriver() || jobDriverRecord(j) || null;
+      if (emptyRunDriver) api.recordDriverActivity(emptyRunDriver.id);
       emit();
       return { ok: true };
     },
@@ -8272,21 +8758,23 @@ window.AuthStore = (() => {
       return newJob;
     },
 
-    setDriverStatus(id, status) {
-      // Operational/marketplace axis (Driver.status) — matches the real
-      // DriverStatus enum (ACTIVE/BLOCKED/INACTIVE). Separate from
-      // accountStatus (User.status axis), set via setAccountStatus instead.
-      const allowed = ["Active", "Blocked", "Inactive"];
+    setDriverOperationalAccess(id, access, opts = {}) {
+      const target = normalizeOperationalAccess(access);
+      const allowed = [ACCESS_ENABLED, ACCESS_DISABLED];
       const d = drivers.find((x) => x.id === id);
-      if (!d || !allowed.includes(status)) return { ok: false };
-      if (status !== "Active") {
+      if (!d || !allowed.includes(target)) return { ok: false };
+      if (normalizeOperationalAccess(d.operationalAccess) === target) {
+        return { ok: true, noop: true };
+      }
+      if (target === ACCESS_DISABLED) {
         const activeJobs = api.countActiveJobsForDriver(id);
         if (activeJobs > 0) {
           return { ok: false, reason: "active_jobs", count: activeJobs };
         }
       }
-      d.status = status;
-      if (status === "Active") {
+      const actor = opts.actor || DEMO_ADMIN;
+      d.operationalAccess = target;
+      if (target === ACCESS_ENABLED) {
         /*
          * Reactivation clears the automatic cause and re-arms the clock. A
          * partner reinstated while lastActiveAt is still months old would be
@@ -8295,20 +8783,71 @@ window.AuthStore = (() => {
         d.deactivationReason = null;
         d.lastActiveAt = new Date().toISOString();
         d.inactivityWarningSentAt = null;
+        d.accessRemovalDeferredAt = null;
       } else {
-        // A moderator's decision is not an automatic one.
-        d.deactivationReason = null;
+        // Moderator decision clears auto reason unless sweep passes one.
+        d.deactivationReason = opts.reason ?? null;
       }
-      log("driver_status_changed", DEMO_ADMIN, d.name, status);
+      // R11: keep action key driver_status_changed; diff key is operationalAccess.
+      const reasonSuffix = opts.reason ? ` · reason ${opts.reason}` : "";
+      log(
+        "driver_status_changed",
+        actor,
+        d.name,
+        `operationalAccess → ${target}${reasonSuffix}`,
+        {
+          driverId: d.id,
+          changes: `operationalAccess=${target}`,
+          reason: opts.reason || undefined,
+        },
+      );
+      if (actor !== "System") {
+        queueAdminEmailAlert(
+          target === ACCESS_DISABLED
+            ? "driver_operational_access_disabled"
+            : "driver_operational_access_enabled",
+          "",
+          `${d.name} · operationalAccess ${target} · ${actor}${
+            opts.reason ? ` · ${opts.reason}` : ""
+          }`,
+          {
+            driverId: d.id,
+            driverName: d.name,
+            axis: "operational",
+            newValue: target,
+            actor,
+            deactivationReason: opts.reason || undefined,
+          },
+        );
+      }
+      pushDriverNotification({
+        type: "operational_access_changed",
+        title:
+          target === ACCESS_DISABLED
+            ? "Marketplace access disabled"
+            : "Marketplace access enabled",
+        body:
+          target === ACCESS_DISABLED
+            ? "You can no longer see or take new marketplace jobs. Assigned tours can still be completed."
+            : "Marketplace access has been restored.",
+        driverId: d.id,
+      });
       emit();
       return { ok: true };
     },
 
-    // Permanent offboarding — distinct from setDriverStatus (operational,
-    // reversible). Same active-jobs guard: delete means "fully wound down,"
-    // not "pull off a job mid-tour." The driver record itself is kept (not
-    // spliced out) so historical tours/invoices still resolve — mirrors the
-    // real backend's soft-delete (deletedAt set, row retained).
+    // TEMP alias — admin.jsx still calls setDriverStatus until UI Wave 2.
+    setDriverStatus(id, status) {
+      const access =
+        status === "Active" || status === ACCESS_ENABLED
+          ? ACCESS_ENABLED
+          : ACCESS_DISABLED;
+      return api.setDriverOperationalAccess(id, access);
+    },
+
+    // Permanent offboarding — distinct from setDriverOperationalAccess
+    // (operational, reversible). Same active-jobs guard: delete means
+    // "fully wound down," not "pull off a job mid-tour."
     deleteDriver(id) {
       const d = drivers.find((x) => x.id === id);
       if (!d) return { ok: false, reason: "not_found" };
@@ -8317,11 +8856,24 @@ window.AuthStore = (() => {
         return { ok: false, reason: "active_jobs", count: activeJobs };
       }
       d.deletedAt = nowStamp();
-      d.status = "Inactive";
+      d.operationalAccess = ACCESS_DISABLED;
       // Deleting a driver is one action, not two — the linked login account
       // is offboarded with it, same as the real backend's cascading soft-delete.
-      d.accountStatus = "Inactive";
+      d.accountAccess = ACCESS_DISABLED;
+      // inviteState left untouched.
       log("driver_deleted", DEMO_ADMIN, d.name, d.id);
+      queueAdminEmailAlert(
+        "account_access_disabled",
+        "",
+        `${d.name} · offboarded · both axes disabled · ${DEMO_ADMIN}`,
+        {
+          driverId: d.id,
+          driverName: d.name,
+          axis: "account+operational",
+          newValue: ACCESS_DISABLED,
+          actor: DEMO_ADMIN,
+        },
+      );
       emit();
       return { ok: true };
     },
@@ -8462,7 +9014,15 @@ window.AuthStore = (() => {
         notes: String(data.notes || "").trim(),
         probationJobLimit,
         probationClearedAt: null,
-        status: "Active",
+        // Invited-not-yet-accepted: operational starts disabled until the
+        // invite path / admin enable (Wave 1 store defaults).
+        operationalAccess: ACCESS_DISABLED,
+        accountAccess: ACCESS_DISABLED,
+        inviteState: INVITE_PENDING,
+        deactivationReason: null,
+        inactivityWarningSentAt: null,
+        accessRemovalDeferredAt: null,
+        lastActiveAt: new Date().toISOString(),
         joinedAt: nowStamp(),
         lastLoginAt: null,
         taxStatus: normalizeTaxStatus(data.taxStatus),
@@ -8508,7 +9068,8 @@ window.AuthStore = (() => {
         // explicitly (not just implied) so the data model already has the
         // field a future multi-role version would branch on.
         role: "ADMIN",
-        status: "Active",
+        accountAccess: ACCESS_DISABLED,
+        inviteState: INVITE_PENDING,
       };
       const access = simulateAccountInvite(admin, "admin");
       admins.unshift(admin);
@@ -8527,8 +9088,10 @@ window.AuthStore = (() => {
       }
       // Same last-active-admin guard as setAccountStatus: deleting the org's
       // only remaining active admin would lock everyone out.
-      if (a.status === "Active") {
-        const activeCount = admins.filter((x) => x.status === "Active").length;
+      if (normalizeAccountAccess(a.accountAccess) === ACCESS_ENABLED) {
+        const activeCount = admins.filter(
+          (x) => normalizeAccountAccess(x.accountAccess) === ACCESS_ENABLED,
+        ).length;
         if (activeCount <= 1) {
           return { ok: false, reason: "last_active_admin" };
         }
@@ -8543,80 +9106,139 @@ window.AuthStore = (() => {
       const pool = kind === "admin" ? admins : drivers;
       const u = pool.find((x) => x.id === id);
       if (!u) return { ok: false };
+      // Resend only when invite lifecycle is pending/failed (not accepted).
+      if (
+        u.inviteState !== INVITE_PENDING &&
+        u.inviteState !== INVITE_FAILED
+      ) {
+        return { ok: false, reason: "invite_not_resendable" };
+      }
       const access = simulateAccountInvite(u, kind);
+      // D3 row 6: resend stays audit-only — no admin notification.
       log("user_access_invite_resent", DEMO_ADMIN, u.name || u.email, kind);
       emit();
       return { ok: true, access, user: u };
     },
 
-    setAdminStatus(id, status) {
-      const allowed = [
-        "Pending verification",
-        "Active",
-        "Suspended",
-        "Inactive",
-        "Invite failed",
-      ];
-      const a = admins.find((x) => x.id === id);
-      if (!a || !allowed.includes(status)) return { ok: false };
-      a.status = status;
-      log("admin_status_changed", DEMO_ADMIN, a.name, status);
-      emit();
-      return { ok: true };
-    },
-
-    // Sets the account/access status (User.status axis) for a driver's linked
-    // account or a staff account. Separate from setDriverStatus, which is the
-    // operational/marketplace axis on the driver record itself.
-    setAccountStatus(kind, id, status) {
-      const allowed = [
-        "Pending verification",
-        "Active",
-        "Suspended",
-        "Inactive",
-        "Invite failed",
-      ];
-      if (!allowed.includes(status)) return { ok: false };
+    // Sets accountAccess (User.status axis) for a driver's linked account or
+    // a staff account. Separate from setDriverOperationalAccess. inviteState
+    // is never written here — D2 axes are orthogonal.
+    setAccountAccess(kind, id, access) {
+      const target = normalizeAccountAccess(access);
+      const allowed = [ACCESS_ENABLED, ACCESS_DISABLED];
+      if (!allowed.includes(target)) return { ok: false };
       if (kind === "admin") {
         const a = admins.find((x) => x.id === id);
         if (!a) return { ok: false };
-        // Client change plan Phase 8: an admin can never change their own
-        // account status (self-deactivation guard) — technical, not just UI,
-        // since a client-only check is trivially bypassed.
-        if (a.name === DEMO_ADMIN && status !== "Active") {
+        if (normalizeAccountAccess(a.accountAccess) === target) {
+          return { ok: true, noop: true };
+        }
+        if (
+          a.name === DEMO_ADMIN &&
+          target === ACCESS_DISABLED
+        ) {
           return { ok: false, reason: "cannot_change_own_status" };
         }
-        // Phase 8: the last remaining Active admin can't be deactivated —
-        // otherwise no one could sign in to fix it.
-        if (a.status === "Active" && status !== "Active") {
+        if (
+          normalizeAccountAccess(a.accountAccess) === ACCESS_ENABLED &&
+          target === ACCESS_DISABLED
+        ) {
           const activeCount = admins.filter(
-            (x) => x.status === "Active",
+            (x) => normalizeAccountAccess(x.accountAccess) === ACCESS_ENABLED,
           ).length;
           if (activeCount <= 1) {
             return { ok: false, reason: "last_active_admin" };
           }
         }
-        a.status = status;
-        log("admin_account_status_changed", DEMO_ADMIN, a.name, status);
+        a.accountAccess = target;
+        // R11: keep admin_account_status_changed; diff key is accountAccess.
+        log(
+          "admin_account_status_changed",
+          DEMO_ADMIN,
+          a.name,
+          `accountAccess → ${target}`,
+          { changes: `accountAccess=${target}` },
+        );
+        queueAdminEmailAlert(
+          target === ACCESS_DISABLED
+            ? "account_access_disabled"
+            : "account_access_enabled",
+          "",
+          `${a.name} · accountAccess ${target} · ${DEMO_ADMIN}`,
+          {
+            driverId: a.id,
+            driverName: a.name,
+            axis: "account",
+            newValue: target,
+            actor: DEMO_ADMIN,
+          },
+        );
         emit();
         return { ok: true };
       }
       const d = drivers.find((x) => x.id === id);
       if (!d) return { ok: false };
-      // Same active-jobs guard as setDriverStatus/deleteDriver — suspending a
-      // driver's login is blocked while they have an active job, matching the
-      // real backend's assertUserCanBeDeactivated check. Reactivating (back to
-      // Active) is always allowed.
-      if (status !== "Active") {
+      if (normalizeAccountAccess(d.accountAccess) === target) {
+        return { ok: true, noop: true };
+      }
+      if (target === ACCESS_DISABLED) {
         const activeJobs = api.countActiveJobsForDriver(id);
         if (activeJobs > 0) {
           return { ok: false, reason: "active_jobs", count: activeJobs };
         }
       }
-      d.accountStatus = status;
-      log("driver_account_status_changed", DEMO_ADMIN, d.name, status);
+      d.accountAccess = target;
+      if (target === ACCESS_ENABLED) {
+        d.accessRemovalDeferredAt = null;
+      }
+      // R11: keep driver_account_status_changed; diff key is accountAccess.
+      log(
+        "driver_account_status_changed",
+        DEMO_ADMIN,
+        d.name,
+        `accountAccess → ${target}`,
+        {
+          driverId: d.id,
+          changes: `accountAccess=${target}`,
+        },
+      );
+      queueAdminEmailAlert(
+        target === ACCESS_DISABLED
+          ? "account_access_disabled"
+          : "account_access_enabled",
+        "",
+        `${d.name} · accountAccess ${target} · ${DEMO_ADMIN}`,
+        {
+          driverId: d.id,
+          driverName: d.name,
+          axis: "account",
+          newValue: target,
+          actor: DEMO_ADMIN,
+        },
+      );
+      pushDriverNotification({
+        type: "account_access_changed",
+        title:
+          target === ACCESS_DISABLED
+            ? "Account access disabled"
+            : "Account access enabled",
+        body:
+          target === ACCESS_DISABLED
+            ? "Your sign-in access has been disabled."
+            : "Your sign-in access has been restored.",
+        driverId: d.id,
+      });
       emit();
       return { ok: true };
+    },
+
+    // TEMP alias — admin.jsx still calls setAccountStatus until UI Wave 2.
+    setAccountStatus(kind, id, status) {
+      const access =
+        status === "Active" || status === ACCESS_ENABLED
+          ? ACCESS_ENABLED
+          : ACCESS_DISABLED;
+      return api.setAccountAccess(kind, id, access);
     },
 
     toggleDocument(id) {
@@ -8798,6 +9420,7 @@ window.AuthStore = (() => {
         `${jobId} · ${row.documentType}`,
       );
       queueAdminEmailAlert(alertEvent, jobId, row.documentType);
+      if (d?.id) api.recordDriverActivity(d.id);
       emit();
       return { ok: true, id: row.id };
     },
@@ -9112,6 +9735,10 @@ window.AuthStore = (() => {
         jobId,
         "replacement upload",
       );
+      if (actor === "driver") {
+        const replaceDriver = api.getCurrentDriver();
+        if (replaceDriver?.id) api.recordDriverActivity(replaceDriver.id);
+      }
       emit();
       return { ok: true, id: nextRow.id };
     },

@@ -318,9 +318,8 @@ for phone widths). The shared *component* is `LoginForm`; the copy is injected, 
 | `authSwitchToLightTheme` | Switch to light theme | Zu hellem Design wechseln |
 | `back` | Back | Zurück |
 | `bindingAcceptance` | Binding acceptance | Verbindliche Annahme |
-| `blockedDriverBody` | Marketplace access and new tour acceptance are restricted for blocked drivers. Use My Jobs to correct documents on existing tours. Profile, Info, and historical jobs remain visible in this prototype. | Marktplatzzugriff und neue Tour-Annahmen sind für blockierte Fahrer eingeschränkt. Nutzen Sie Meine Aufträge, um Dokumente bestehender Touren zu korrigieren. Profil, Info und historische Touren bleiben in diesem Prototyp sichtbar. |
-| `blockedDriverStatusFallback` | Restricted | Eingeschränkt |
-| `blockedDriverTitle` | Marketplace unavailable | Marktplatz nicht verfügbar |
+| `driverAccessDisabledBody` | You cannot browse the marketplace or take on new tours right now. Tours already assigned to you are not affected — you can complete them and upload their documents as usual. Contact your dispatcher to have access restored. | Sie können derzeit den Marktplatz nicht nutzen und keine neuen Touren übernehmen. Bereits zugewiesene Touren sind davon nicht betroffen — Sie können sie wie gewohnt abschließen und die zugehörigen Dokumente hochladen. Wenden Sie sich an Ihre Disposition, um den Zugang wiederherstellen zu lassen. |
+| `driverAccessDisabledTitle` | Marketplace unavailable | Marktplatz nicht verfügbar |
 | `cancel` | Cancel | Abbrechen |
 | `cancelled` | Cancelled | Storniert |
 | `cancelledSub` | Removed from marketplace and active lists. | Aus Marktplatz und aktiven Listen entfernt. |

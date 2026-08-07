@@ -4944,6 +4944,59 @@ select.input {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+
+/* Compact binary access toggles (operationalAccess / accountAccess). Same
+   switch grammar as .policy-switch; sized for table cells and profile rows. */
+.access-control {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.access-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.access-switch-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.access-switch-slider {
+  position: absolute;
+  inset: 0;
+  background-color: var(--line-2);
+  border-radius: 22px;
+  transition: background-color 0.2s ease;
+}
+.access-switch-slider::before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--shadow-ink) 15%, transparent);
+}
+.access-switch-input:checked + .access-switch-slider {
+  background-color: var(--primary);
+}
+.access-switch-input:checked + .access-switch-slider::before {
+  transform: translateX(18px);
+}
+.access-switch-input:focus-visible + .access-switch-slider {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 /* Save + Discard, side by side across the full grid width. */
 .policy-actions {
   display: flex;

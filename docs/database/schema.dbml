@@ -16,7 +16,29 @@
 // Last updated: 2026-07-10 (PRD v2.0) — no structural change. Annotated drivers.driver_code semantics (F-03: system-assigned, immutable, never reused) and documented same-day per-leg time-window rule (F-04) in logical-model.md. Probation UI, Infopoint View/Download, branding/domain/Report-Problem-timing are UI/open items with no schema impact.
 // 2026-07-09 (PRD v1.9, F-01) — replaced drivers.daily_job_limit with the one-time probation model (probation_job_limit + probation_cleared_at); removed master_data_change_type.daily_limit_override; renamed app_settings key driver.acceptance.defaultDailyJobLimit -> driver.acceptance.probationJobCount.
 // 2026-07-03 — aligned upload-core asset model, document versioning, infopoint/problem upload links, and explicit job location windows with autheon-be TypeORM sync target.
+//
+// 2026-08-07 — STATUS CONSOLIDATION (binding: tasks/status-consolidation-decision-brief.md).
+// Replaces the overloaded user_status / drivers.status vocabularies with two binary access
+// axes plus an invite lifecycle. Pre-launch: wipe + synchronize + reseed (no migration).
 
+Enum account_access {
+  enabled
+  disabled
+}
+
+Enum invite_state {
+  pending
+  failed
+  accepted
+}
+
+Enum operational_access {
+  enabled
+  disabled
+}
+
+// SUPERSEDED 2026-08-07 — kept only so historical docs that mention the old
+// single-axis vocabulary still compile. Do not use for new columns.
 Enum user_status {
   pending_verification
   active
@@ -261,12 +283,22 @@ Table users {
   email varchar(255) [not null, unique]
   first_name varchar(100) [not null]
   last_name varchar(100) [not null]
-  status user_status [not null, default: 'pending_verification']
+  // Two-axis access model (status consolidation, 2026-08-07). Replaces user_status.
+  account_access account_access [not null, default: 'disabled']  // login / Keycloak enabled
+  invite_state invite_state [not null, default: 'pending']       // onboarding lifecycle; orthogonal to account_access
+  // Dormancy clock (brief E5). Moved here from drivers — activity is a fact about
+  // the person, not the partner row. Sweep reads COALESCE(last_activity_at, created_at).
+  last_activity_at timestamptz
   roles text [not null, default: 'user'] // TypeORM simple-array of user_role values
   email_verified boolean [not null, default: false]
+  language varchar(8) [not null, default: 'de']
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
   deleted_at timestamptz
+
+  Indexes {
+    last_activity_at [name: 'idx_users_last_activity_at']  // inactivity sweep range scan (joined from drivers)
+  }
 }
 
 Table drivers {
@@ -285,24 +317,18 @@ Table drivers {
   // One-time probation model (F-01, replaces former per-day daily_job_limit).
   probation_job_limit smallint [not null, default: 3]  // Per-driver SNAPSHOT of the probation allowance AND Performed-count release threshold. Seeded at driver creation from app_settings 'driver.acceptance.probationJobCount' by the application layer (see logical-model.md); the literal default here is only a safety fallback when the setting is unavailable. Snapshot semantics: later changes to the app_settings value do NOT retroactively affect existing drivers. Remaining allowance is derived (probation_job_limit minus count of Performed jobs from job_status_history), not stored.
   probation_cleared_at timestamptz  // set when driver is released from probation (auto after probation_job_limit Performed jobs, or manual admin release); null = still on probation
-  // Automatic deactivation of inactive service partners (resolves OQ-15; see
-  // prd.json resolved_defaults.driver_inactivity_auto_deactivation_v1).
-  last_activity_at timestamptz  // Last authenticated request by this partner, stamped by a global interceptor and write-throttled to once per hour per driver. NULL = has never signed in, which is NOT the same as "idle forever": dormancy then falls back to created_at, so a newly onboarded partner is never swept on day one. Indexed — the sweep's only predicate is a range scan over this column.
-  inactivity_warning_sent_at timestamptz  // Set when the pre-deactivation warning is sent, so it is sent once rather than on every daily sweep across the whole lead-time window. Cleared whenever last_activity_at is stamped: a partner who returns and later goes dormant again earns a fresh warning.
-  deactivation_reason varchar(32)  // Why the partner left ACTIVE when the PLATFORM decided it rather than a person. Currently only 'inactivity'. NULL = a human made the call (their reasoning lives in the audit log). Deliberately a separate axis from status rather than a fourth status value: suspension for inactivity has exactly the access consequences of 'inactive', so a new status would duplicate every guard/filter/badge to express a distinction about cause, not effect.
+  // Marketplace eligibility (status consolidation). Replaces drivers.status
+  // active|blocked|inactive. Binary: enabled | disabled.
+  operational_access operational_access [not null, default: 'disabled']
+  // Automatic access removal of inactive service partners (D6). Markers stay on
+  // the driver row; the dormancy CLOCK lives on users.last_activity_at (E5).
+  inactivity_warning_sent_at timestamptz  // Set when the pre-lockout warning is sent. Stale when marker < users.last_activity_at (brief R5) — not cleared by the stamp path.
+  access_removal_deferred_at timestamptz  // Branch B: account lockout deferred because of open tours; operational access already removed. Once-per-dormancy notify.
+  deactivation_reason varchar(32)  // 'inactivity' when the platform closed access via the sweep (both axes on Branch A; operational on Branch B); NULL when a human did. Provenance only — not a third axis.
+  deleted_at timestamptz
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
-
-  Indexes {
-    last_activity_at [name: 'idx_drivers_last_activity_at']  // inactivity sweep range scan
-  }
 }
-
-// NOTE (pre-existing model gap, not introduced by the inactivity feature):
-// `drivers` also has `status varchar` (active | blocked | inactive, the
-// operational/marketplace axis) and `deleted_at timestamptz` (soft delete) in
-// the running schema, neither of which is modelled above. Worth closing the
-// next time this file is revised.
 
 Table customers {
   id uuid [pk]
