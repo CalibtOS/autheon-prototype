@@ -1283,7 +1283,7 @@ window.I18n = (() => {
       adminAssignDriverRequired: "Select a driver.",
       adminAssignDriverNotFound: "Driver not found.",
       adminAssignDriverInactive:
-        "This driver is not active. Choose an active driver.",
+        "This service partner's operational access is disabled and they cannot be assigned new tours.",
       adminReassignSameDriver: "This driver is already assigned to the tour.",
       reassignBlocked: "Reassignment blocked",
       reassignBlockedSub:
@@ -3551,7 +3551,7 @@ window.I18n = (() => {
       adminAssignDriverRequired: "Bitte Fahrer wählen.",
       adminAssignDriverNotFound: "Fahrer nicht gefunden.",
       adminAssignDriverInactive:
-        "Dieser Fahrer ist nicht aktiv. Bitte aktiven Fahrer wählen.",
+        "Der Betriebszugang dieses Servicepartners ist deaktiviert — es können keine neuen Touren zugewiesen werden.",
       adminReassignSameDriver: "Dieser Fahrer ist der Tour bereits zugewiesen.",
       reassignBlocked: "Neuzuweisung blockiert",
       reassignBlockedSub:

@@ -5391,6 +5391,42 @@ const accessPillVariant = (access) => {
 
 const isAccessEnabled = (access) => accessPillVariant(access) === "accepted";
 
+// R11: audit action keys stay stable; diff keys inside meta/changes migrated
+// from status/accountStatus → operationalAccess/accountAccess. Label both so
+// old and new rows render side by side without looking broken.
+const formatAuditAccessMeta = (entry, t) => {
+  const labelField = (field) => {
+    if (field === "status" || field === "operationalAccess") {
+      return t("operationalAccess");
+    }
+    if (field === "accountStatus" || field === "accountAccess") {
+      return t("accountAccess");
+    }
+    return field;
+  };
+  const rewrite = (text) =>
+    String(text || "")
+      .replace(/\boperationalAccess\b/g, () => labelField("operationalAccess"))
+      .replace(/\baccountAccess\b/g, () => labelField("accountAccess"))
+      .replace(/\baccountStatus\b/g, () => labelField("accountStatus"))
+      // bare `status` only as a diff key (prefix before → or =)
+      .replace(/\bstatus(?=\s*[→=])/g, () => labelField("status"));
+
+  const meta = rewrite(entry.meta);
+  const changes =
+    typeof entry.changes === "string" && entry.changes
+      ? rewrite(
+          entry.changes.replace(/^([A-Za-z]+)=(.+)$/, (_, field, value) => {
+            return `${labelField(field)} → ${value}`;
+          }),
+        )
+      : "";
+  if (meta && changes && !meta.includes("→") && changes) {
+    return `${meta} · ${changes}`;
+  }
+  return meta || changes || "-";
+};
+
 /** Binary access toggle. Controlled by store state — confirm-cancel leaves it unchanged. */
 const AccessSwitch = ({ id, checked, onCheckedChange, ariaLabel }) => (
   <label className="access-switch" title={ariaLabel}>
@@ -6572,7 +6608,7 @@ const ServicePartnerProfileModal = ({ driver, onClose, showToast }) => {
                         <td className="mono">{a.at}</td>
                         <td>{a.action}</td>
                         <td>{a.entity}</td>
-                        <td>{a.meta || "-"}</td>
+                        <td>{formatAuditAccessMeta(a, t)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -10703,18 +10739,27 @@ const AuditPane = ({ showToast }) => {
       });
     }
     if (filterDriver) {
-      list = list.filter((a) => a.actor === filterDriver);
+      // Service-partner filter matches entity (driver name on access rows),
+      // extra.driverId, or actor when the driver themselves acted.
+      const selected = drivers.find((d) => d.name === filterDriver);
+      list = list.filter((a) => {
+        if (a.entity === filterDriver || a.actor === filterDriver) return true;
+        if (selected && a.driverId && a.driverId === selected.id) return true;
+        return false;
+      });
     }
     if (filterTour.trim()) {
       const q = filterTour.trim().toLowerCase();
       list = list.filter(
         (a) =>
           a.entity?.toLowerCase().includes(q) ||
-          a.meta?.toLowerCase().includes(q),
+          a.meta?.toLowerCase().includes(q) ||
+          (typeof a.changes === "string" &&
+            a.changes.toLowerCase().includes(q)),
       );
     }
     return list;
-  }, [allEntries, filterDate, filterDriver, filterTour]);
+  }, [allEntries, filterDate, filterDriver, filterTour, drivers]);
 
   const filtersActive = !!(filterDate || filterDriver || filterTour.trim());
   const resetFilters = () => {
@@ -10905,7 +10950,7 @@ const AuditPane = ({ showToast }) => {
                 </td>
                 <td>{a.actor}</td>
                 <td>{a.entity}</td>
-                <td>{a.meta || "-"}</td>
+                <td>{formatAuditAccessMeta(a, t)}</td>
               </tr>
             ))
           )}
@@ -11641,6 +11686,13 @@ const ADMIN_ALERT_SOURCE = {
   tour_document_rejected: "adminNotifSourceDocuments",
   document_unreviewed_stale: "adminNotifSourceDocuments",
   service_partner_inactive: "adminNotifSourceServicePartners",
+  driver_operational_access_disabled: "adminNotifSourceServicePartners",
+  driver_operational_access_enabled: "adminNotifSourceServicePartners",
+  account_access_disabled: "adminNotifSourceServicePartners",
+  account_access_enabled: "adminNotifSourceServicePartners",
+  driver_access_removed_auto: "adminNotifSourceServicePartners",
+  driver_auto_deactivated: "adminNotifSourceServicePartners",
+  driver_access_removal_deferred: "adminNotifSourceServicePartners",
 };
 
 // The badge: a colored square carrying an icon, never color alone — the
