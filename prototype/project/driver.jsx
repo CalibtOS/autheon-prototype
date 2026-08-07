@@ -455,8 +455,64 @@ const stagedFailureMessage = (failureReason, t) => {
   if (failureReason === "quotaExceeded") return t("stagedFailureQuotaExceeded");
   if (failureReason === "unsupportedType")
     return t("stagedFailureUnsupportedType");
+  // The two transport-shaped outcomes. Both say resending is safe, and the
+  // timeout one names a slow connection — never a missing one.
+  if (failureReason === "timeout") return t("stagedFailureTimeout");
+  if (failureReason === "cancelled") return t("stagedFailureCancelled");
   return t("stagedFailureRejected");
 };
+
+// =========================================================================
+// UPLOAD PHASE SIMULATION — PROTOTYPE ONLY
+// -------------------------------------------------------------------------
+// The store writes synchronously. These timers exist for one reason: so the
+// six states the client signs off on are visible in the running prototype —
+// progress while sending, the transition to processing, success, timeout,
+// cancel during sending, and close during processing.
+//
+// This is NOT a transport layer and must not grow into one. There is no
+// request, no bytes, no progress event, no retry budget, no stall detector.
+// Real transport behaviour is proven by the frontend's real-browser tests
+// (see the pack's testing decisions); this prototype validates the user
+// experience and nothing else.
+//
+// Deliberately NOT modelled here, so nobody "completes" the simulation later:
+//
+//   Idempotency — invisible by design. A de-duplicated success looks exactly
+//     like an ordinary one, so there is nothing on screen for the client to
+//     approve. Adding a key here would show the driver nothing.
+//   Persistence across reload and reconciliation — undemonstrable without
+//     simulating a tab eviction, which this prototype cannot do honestly.
+//     This is also why the shipped `awaitingServer` copy has no key here: it
+//     belongs to reconciliation, not to any of the six states.
+//   HEIC — undecided and out of scope. The accept lists above stay exactly as
+//     they are; adding HEIC/HEIF would break the flows that work today.
+//
+// The bar advances in fixed steps rather than modelling bandwidth, and the
+// processing phase is a flat delay rather than a modelled server. Both are
+// deliberate: the point is the shape of the experience, not its duration.
+const UPLOAD_PHASE_TICK_MS = 120;
+/** 20 ticks ≈ 2.4 s to fill — slow enough to read, long enough to cancel. */
+const UPLOAD_PHASE_SENDING_STEP = 5;
+const UPLOAD_PHASE_PROCESSING_MS = 1600;
+/** A slow link stops moving part-way; the driver watches it stall. */
+const UPLOAD_PHASE_STALL_AT_PERCENT = 35;
+const UPLOAD_PHASE_STALL_BUDGET_MS = 2400;
+
+/**
+ * How a reviewer reaches the timeout state on demand.
+ *
+ * A demo needs a deterministic trigger, and it must not be a control drivers
+ * will never have — a switch inside the driver's own sheet would be the one
+ * thing on this screen the client could not trust. So the trigger is the file
+ * name: any staged file whose name contains "slow" stalls part-way and times
+ * out. Everything else succeeds.
+ */
+const UPLOAD_PHASE_SLOW_LINK_MARKER = /slow/i;
+
+const simulatesSlowLink = (file) =>
+  UPLOAD_PHASE_SLOW_LINK_MARKER.test(String((file && file.name) || ""));
+// =========================================================================
 
 /** navigator.onLine plus online/offline events — same gate every action uses. */
 const useDriverOnline = () => {
@@ -3731,12 +3787,17 @@ const DocumentUploadStagingSheet = ({
   isUploading,
   isOffline,
   errorMessage,
+  uploadRun,
   onRemoveFile,
   onCancel,
+  onCancelUpload,
+  onCloseWhileProcessing,
   onUpload,
 }) => {
   const { t } = useI18n();
   if (!open) return null;
+
+  const processing = uploadRun != null && uploadRun.phase === "processing";
 
   const summary = summariseUploadSelection(
     usedBytes,
@@ -3752,30 +3813,56 @@ const DocumentUploadStagingSheet = ({
     <Sheet
       open={open}
       onClose={() => {
+        // Escape and the backdrop follow whatever the footer offers: inert
+        // while bytes are moving, a plain close once they are gone.
+        if (processing) {
+          onCloseWhileProcessing?.();
+          return;
+        }
         if (!isUploading) onCancel?.();
       }}
       title={t("stagedTitle")}
       centered
       className="staged-upload-sheet"
       footer={
-        <>
-          <button
-            type="button"
-            className="btn"
-            disabled={isUploading}
-            onClick={onCancel}
-          >
-            {t("cancel")}
-          </button>
-          <button
-            type="button"
-            className="btn primary"
-            disabled={uploadDisabled}
-            onClick={onUpload}
-          >
-            {hasFailures ? t("stagedRetry") : t("stagedUpload")}
-          </button>
-        </>
+        /* The action itself changes, it is not one control that changes
+           meaning. Sending: it aborts. Processing: the last byte has gone,
+           the server finishes regardless, and closing only stops this screen
+           watching — so there is nothing left to cancel. */
+        uploadRun ? (
+          processing ? (
+            <button
+              type="button"
+              className="btn primary"
+              onClick={onCloseWhileProcessing}
+            >
+              {t("stagedClose")}
+            </button>
+          ) : (
+            <button type="button" className="btn" onClick={onCancelUpload}>
+              {t("stagedCancelUpload")}
+            </button>
+          )
+        ) : (
+          <>
+            <button
+              type="button"
+              className="btn"
+              disabled={isUploading}
+              onClick={onCancel}
+            >
+              {t("cancel")}
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              disabled={uploadDisabled}
+              onClick={onUpload}
+            >
+              {hasFailures ? t("stagedRetry") : t("stagedUpload")}
+            </button>
+          </>
+        )
       }
     >
       {documentType ? (
@@ -3823,6 +3910,66 @@ const DocumentUploadStagingSheet = ({
                   <p className="staged-upload-fail">
                     {stagedFailureMessage(failure, t)}
                   </p>
+                ) : null}
+                {uploadRun && uploadRun.file === file ? (
+                  <div className="staged-upload-progress">
+                    {uploadRun.total > 1 ? (
+                      <p className="staged-upload-progress-counter">
+                        {t("stagedProgressCounter", {
+                          current: uploadRun.index + 1,
+                          total: uploadRun.total,
+                        })}
+                      </p>
+                    ) : null}
+                    {uploadRun.phase === "sending" ? (
+                      <>
+                        <div
+                          className="staged-upload-progress-track"
+                          role="progressbar"
+                          aria-label={t("stagedProgressSending")}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={uploadRun.percent}
+                          aria-valuetext={t("stagedProgressPercent", {
+                            percent: uploadRun.percent,
+                          })}
+                        >
+                          <div
+                            className="staged-upload-progress-bar"
+                            style={{ width: `${String(uploadRun.percent)}%` }}
+                          />
+                        </div>
+                        <p className="staged-upload-progress-meta">
+                          <span>{t("stagedProgressSending")}</span>
+                          <span>
+                            {t("stagedProgressPercent", {
+                              percent: uploadRun.percent,
+                            })}
+                          </span>
+                        </p>
+                      </>
+                    ) : (
+                      /* 100% is a phase transition, not a dead end: the
+                         determinate bar is REPLACED here, never parked full.
+                         An indeterminate indicator is the honest display for
+                         a phase with no progress signal at all. */
+                      <>
+                        <div
+                          className="staged-upload-progress-track is-indeterminate"
+                          role="progressbar"
+                          aria-label={t("stagedProgressProcessing")}
+                        >
+                          <div className="staged-upload-progress-bar" />
+                        </div>
+                        <p className="staged-upload-processing">
+                          {t("stagedProgressProcessing")}
+                        </p>
+                        <p className="staged-upload-processing-hint">
+                          {t("stagedProgressProcessingHint")}
+                        </p>
+                      </>
+                    )}
+                  </div>
                 ) : null}
               </div>
               <button
@@ -3906,6 +4053,13 @@ const TourDocumentUploadFlow = ({
   const [stagedFiles, setStagedFiles] = useState([]);
   const [stagedError, setStagedError] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  // uploadRun: what the sheet renders for the file currently in flight —
+  // { file, index, total, phase, percent } — or null when nothing is moving.
+  const [uploadRun, setUploadRun] = useState(null);
+  // The run itself lives outside React: the driver may close the sheet during
+  // the processing phase and the write must still land.
+  const runRef = useRef(null);
+  const runTimerRef = useRef(null);
   // amountWalk: { current, total } while the per-file amount form is open.
   // current is 1-based within this walk session (remaining files at start).
   const [amountWalk, setAmountWalk] = useState(null);
@@ -4017,42 +4171,210 @@ const TourDocumentUploadFlow = ({
     closeAmountWalk();
   };
 
-  /**
-   * Categories that need no amounts: one write per file, in sequence. A
-   * refusal that names the file marks it and the run continues; a failure
-   * that would repeat for every remaining file stops the run and leaves the
-   * rest staged and unmarked. Files that land leave the list, so running
-   * again is the retry.
-   */
-  const runStraightUpload = (queue, category) => {
-    setIsUploading(true);
-    const failed = [];
-
-    for (let index = 0; index < queue.length; index += 1) {
-      const staged = queue[index];
-      const r = store.addTourDocument(staged.file, {
-        jobId,
-        documentType: category,
-      });
-      if (!r.ok) {
-        const failure = classifyStoreUploadRefusal(r.reason);
-        if (failure.scope === "batch") {
-          setStagedFiles([...failed, ...queue.slice(index)]);
-          setStagedError(t("stagedBatchStopped"));
-          setIsUploading(false);
-          return;
-        }
-        failed.push({ file: staged.file, failure: failure.reason });
-      }
-      setStagedFiles([...failed, ...queue.slice(index + 1)]);
+  const clearRunTimer = () => {
+    if (runTimerRef.current != null) {
+      window.clearTimeout(runTimerRef.current);
+      runTimerRef.current = null;
     }
+  };
 
+  // Timers are the only asynchrony in the simulation and none of it outlives
+  // the flow. Leaving the tour is beyond what the prototype represents.
+  useEffect(() => clearRunTimer, []);
+
+  /** Mirror the run into render state. A detached run shows nothing. */
+  const publishRun = () => {
+    const run = runRef.current;
+    if (!run || run.detached) {
+      setUploadRun(null);
+      return;
+    }
+    setUploadRun({
+      file: run.queue[run.index].file,
+      index: run.index,
+      total: run.total,
+      phase: run.phase,
+      percent: run.percent,
+    });
+  };
+
+  /** Marked files bubble to the front; everything after the head is untouched. */
+  const stagedListAfter = (run) => [
+    ...run.failed,
+    ...run.queue.slice(run.index + 1),
+  ];
+
+  const endRun = ({ stagedList, error } = {}) => {
+    const run = runRef.current;
+    clearRunTimer();
+    runRef.current = null;
+    setUploadRun(null);
     setIsUploading(false);
-    if (failed.length === 0) {
+    if (stagedList) setStagedFiles(stagedList);
+    if (error) setStagedError(error);
+    // Everything landed: the list empties and the documents card says so.
+    if (run && !error && run.failed.length === 0) {
       setStagedType(null);
-      setStagedFiles([]);
       onFeedback?.({ tone: "success", message: t("tourDocUploadSuccess") });
     }
+  };
+
+  const scheduleRunStep = (step, delayMs) => {
+    clearRunTimer();
+    runTimerRef.current = window.setTimeout(step, delayMs);
+  };
+
+  /**
+   * The file is not attached. Per the pack's run-loop policy a timeout still
+   * has a chance for the next file, so the run continues; a cancel is the
+   * driver's own decision to stop, so it does not.
+   */
+  const failActiveFile = (failure) => {
+    const run = runRef.current;
+    if (!run) return;
+    run.failed.push({ file: run.queue[run.index].file, failure });
+    if (failure === "cancelled") {
+      endRun({ stagedList: stagedListAfter(run) });
+      return;
+    }
+    setStagedFiles(stagedListAfter(run));
+    advanceRun();
+  };
+
+  const advanceRun = () => {
+    const run = runRef.current;
+    if (!run) return;
+    // Closing during processing stops this screen watching. It never becomes
+    // a background upload — there is no such capability — so nothing further
+    // is sent once the driver has closed.
+    if (run.detached) {
+      endRun();
+      return;
+    }
+    startRunFile(run.index + 1);
+  };
+
+  /**
+   * End of the processing phase: the store write, which is what the server
+   * doing its checking-and-saving stands for here. A refusal that names the
+   * file marks it and the run continues; one that would repeat for every
+   * remaining file stops the run and leaves the rest staged and unmarked.
+   */
+  const commitActiveFile = () => {
+    const run = runRef.current;
+    if (!run) return;
+    const staged = run.queue[run.index];
+    const r = store.addTourDocument(staged.file, {
+      jobId,
+      documentType: run.category,
+    });
+    if (!r.ok) {
+      const failure = classifyStoreUploadRefusal(r.reason);
+      if (failure.scope === "batch") {
+        endRun({
+          stagedList: [...run.failed, ...run.queue.slice(run.index)],
+          error: t("stagedBatchStopped"),
+        });
+        return;
+      }
+      failActiveFile(failure.reason);
+      return;
+    }
+    // Success — the file leaves the list.
+    setStagedFiles(stagedListAfter(run));
+    advanceRun();
+  };
+
+  const beginProcessingPhase = () => {
+    const run = runRef.current;
+    if (!run) return;
+    run.phase = "processing";
+    publishRun();
+    scheduleRunStep(commitActiveFile, UPLOAD_PHASE_PROCESSING_MS);
+  };
+
+  const stepSendingPhase = () => {
+    const run = runRef.current;
+    if (!run) return;
+    if (run.slowLink && run.percent >= UPLOAD_PHASE_STALL_AT_PERCENT) {
+      run.stalledMs += UPLOAD_PHASE_TICK_MS;
+      if (run.stalledMs >= UPLOAD_PHASE_STALL_BUDGET_MS) {
+        failActiveFile("timeout");
+        return;
+      }
+      scheduleRunStep(stepSendingPhase, UPLOAD_PHASE_TICK_MS);
+      return;
+    }
+    run.percent = Math.min(100, run.percent + UPLOAD_PHASE_SENDING_STEP);
+    publishRun();
+    if (run.percent >= 100) {
+      beginProcessingPhase();
+      return;
+    }
+    scheduleRunStep(stepSendingPhase, UPLOAD_PHASE_TICK_MS);
+  };
+
+  const startRunFile = (index) => {
+    const run = runRef.current;
+    if (!run) return;
+    if (index >= run.queue.length) {
+      endRun({ stagedList: run.failed });
+      return;
+    }
+    run.index = index;
+    run.phase = "sending";
+    run.percent = 0;
+    run.stalledMs = 0;
+    run.slowLink = simulatesSlowLink(run.queue[index].file);
+    publishRun();
+    scheduleRunStep(stepSendingPhase, UPLOAD_PHASE_TICK_MS);
+  };
+
+  /** Sending phase only — this is the phase that has something to abort. */
+  const cancelActiveUpload = () => {
+    const run = runRef.current;
+    if (!run || run.phase !== "sending") return;
+    clearRunTimer();
+    failActiveFile("cancelled");
+  };
+
+  /**
+   * Processing phase only. Closing does NOT abort: the last byte has gone and
+   * the server finishes whatever happens. The write below still lands — only
+   * this screen stops watching, which is exactly what the copy promises.
+   */
+  const closeWhileProcessing = () => {
+    const run = runRef.current;
+    if (!run || run.phase !== "processing") return;
+    run.detached = true;
+    setUploadRun(null);
+    setIsUploading(false);
+    setStagedType(null);
+    setStagedFiles([]);
+    setStagedError(null);
+  };
+
+  /**
+   * Categories that need no amounts: one write per file, in sequence, each
+   * one walked through the sending and processing phases first. Files that
+   * land leave the list, so running again is the retry.
+   */
+  const runStraightUpload = (queue, category) => {
+    clearRunTimer();
+    runRef.current = {
+      category,
+      queue,
+      total: queue.length,
+      failed: [],
+      index: 0,
+      phase: "sending",
+      percent: 0,
+      stalledMs: 0,
+      slowLink: false,
+      detached: false,
+    };
+    setIsUploading(true);
+    startRunFile(0);
   };
 
   /**
@@ -4088,6 +4410,11 @@ const TourDocumentUploadFlow = ({
    * Write the current receipt with the amounts on the form, then advance.
    * amount_math_invalid stays on the form — it must never mark the file as
    * refused (that vocabulary is for limit/type refusals only).
+   *
+   * Deliberately still synchronous. The amount walk covers the staged sheet
+   * with a form while it runs, so the phases would have nowhere to render,
+   * and it shows no state the straight path does not already show. Use a
+   * no-amounts category (Other proof, Delivery note) to review the phases.
    */
   const submitAmountUpload = () => {
     if (!amountWalk || !amountForm || !stagedType || stagedFiles.length === 0)
@@ -4202,6 +4529,7 @@ const TourDocumentUploadFlow = ({
         isUploading={isUploading}
         isOffline={!isOnline}
         errorMessage={stagedError}
+        uploadRun={uploadRun}
         onRemoveFile={(index) => {
           // Derive from the rendered list rather than setting sibling state
           // inside an updater callback — updaters must stay pure, React is
@@ -4214,6 +4542,8 @@ const TourDocumentUploadFlow = ({
           }
         }}
         onCancel={cancelStagedBatch}
+        onCancelUpload={cancelActiveUpload}
+        onCloseWhileProcessing={closeWhileProcessing}
         onUpload={runStagedUpload}
       />
       {amountFormOpen ? (

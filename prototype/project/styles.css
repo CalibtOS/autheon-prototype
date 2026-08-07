@@ -5289,6 +5289,85 @@ select.input {
   line-height: 1.35;
   color: var(--destructive);
 }
+/* Upload phases. Two displays, never one bar that changes label: the
+   determinate track is REPLACED by an indeterminate one at 100%, because a
+   bar parked full is the exact thing this work removes. Tokens only, as
+   above — they are re-toned for dark mode and a hardcoded hex would not be. */
+.phone-shell .staged-upload-progress {
+  margin: 8px 0 0;
+}
+.phone-shell .staged-upload-progress-counter {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.phone-shell .staged-upload-progress-track {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+}
+.phone-shell .staged-upload-progress-bar {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--primary);
+  transition: width 0.12s linear;
+}
+.phone-shell
+  .staged-upload-progress-track.is-indeterminate
+  .staged-upload-progress-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  transition: none;
+  animation: staged-upload-indeterminate 1.1s ease-in-out infinite;
+}
+@keyframes staged-upload-indeterminate {
+  from {
+    left: -40%;
+  }
+  to {
+    left: 100%;
+  }
+}
+.phone-shell .staged-upload-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.phone-shell .staged-upload-processing {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.phone-shell .staged-upload-processing-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+/* Reduced motion still needs "something is happening"; a static half-tone
+   fill says that without the sweep. */
+@media (prefers-reduced-motion: reduce) {
+  .phone-shell
+    .staged-upload-progress-track.is-indeterminate
+    .staged-upload-progress-bar {
+    position: static;
+    width: 100%;
+    opacity: 0.5;
+    animation: none;
+  }
+}
 .phone-shell .staged-upload-remove {
   flex: 0 0 auto;
   display: inline-flex;
