@@ -1,10 +1,68 @@
-# PRD changelog: 2026-08-04 / 2026-08-06 (v2.31 -> v2.35, plus main's independently-numbered v2.33 job-attachment-limits entry)
+# PRD changelog: 2026-08-04 / 2026-08-09 (v2.31 -> v2.36, plus main's independently-numbered v2.33 job-attachment-limits entry)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
 **Canonical file:** `docs/requirements/prd.json`
 
-> **Scope of this file:** the **v2.34** entry, plus its same-release `[v2.34-cutoff-details]`, `[v2.34-feed-redesign]`, and `[v2.34-filters]` addenda. Baseline is **v2.31** (Driver/User schema fix + several presentation addenda, 2026-08-01 — see [`../2026-07/prd-changelog-since-2026-07-30.md`](../2026-07/prd-changelog-since-2026-07-30.md)).
+> **Scope of this file:** the **v2.36** and **v2.35** entries, and the **v2.34** entry plus its same-release `[v2.34-cutoff-details]`, `[v2.34-feed-redesign]`, and `[v2.34-filters]` addenda. Baseline is **v2.31** (Driver/User schema fix + several presentation addenda, 2026-08-01 — see [`../2026-07/prd-changelog-since-2026-07-30.md`](../2026-07/prd-changelog-since-2026-07-30.md)).
+
+---
+
+# PRD changelog addendum: 2026-08-09 (v2.36 — service-partner document upload)
+
+> Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
+
+**Canonical file:** `docs/requirements/prd.json`
+
+---
+
+## v2.36 — Service-partner (onboarding) document upload (2026-08-09)
+
+**Baseline:** PRD v2.35 (status consolidation)
+**Source:** client requirements #8 ("Service-partner document management — type/review/upload/validity/version") and #9 (document categories), tracked as **Done** in [`../../requirements/admin-client-requirements-status.md`](../../requirements/admin-client-requirements-status.md); prototype implementation `prototype/project/store.js` (`driverDocuments`, `DRIVER_DOC_CATEGORIES`, Phase 7) surfaced in `ServicePartnerProfileModal`'s "Documents" tab.
+**Type:** new task + domain-model + schema change. **Documented retroactively** — the capability was already built and client-signed-off in the prototype, but had no PRD task and no row in `schema.dbml`.
+
+### 1. Previous behaviour
+
+Every document concept in the PRD and schema was **job-scoped**. Task 27 (`Tour Documents, Driver Invoices & Billing Reconciliation`) opens with "All uploads are linked to a specific valid job/tour; API requires job id on create", and `job_documents` / `document_files` / `generated_job_documents` all hang off `jobs`. `document_type` covered only tour artefacts (invoice, fuel receipt, toll receipt, delivery note, waiting-time evidence, proofs, transport order).
+
+A service partner's **onboarding** paperwork — business registration, driving licence, identity document — had nowhere to live. The prototype had implemented it anyway (`driverDocuments`, deliberately separate from `tourDocuments`), so the prototype and the specification had drifted: a reviewer reading `prd.json` or `schema.dbml` would have concluded the feature did not exist.
+
+### 2. New behaviour
+
+- **New Task 34**, epic _Service Partner Documents & Onboarding Compliance_ (20 acceptance criteria).
+- **Partner-scoped, never tour-scoped.** An upload links to a service partner id and never to a job id; the API rejects a create carrying a job id. These documents stay out of the tour-document lists, the tour review queue, and settlement/invoice reconciliation.
+- **Six categories:** business registration (Gewerbeanmeldung), licence front, licence reverse, ID front, ID reverse, other.
+- **One active document per category** — active means `Uploaded` or `Accepted`. A second upload into an occupied category is refused rather than silently replacing. **Rejecting or replacing frees the slot**, so a partner re-submits without an admin deleting anything. **`other` is exempt** and may repeat.
+- **Own status vocabulary:** `Uploaded` / `Accepted` / `Rejected` / `Replaced`.
+- **Versioning:** a replacement **inserts** a new row (`version + 1`, status `Uploaded`) and marks the prior row `Replaced`, linked both directions. Nothing is overwritten; nothing is hard-deleted.
+- **Validity:** optional `validUntil`. **Expiry is derived at read time** — an expired document keeps its `Accepted` status.
+- **Audit:** upload / accept / reject / replace / remove, plus view / download **for both actors** (partner and reviewing admin), distinguished by acting user.
+- File types, size ceilings, private storage, and the Take photo / Choose file source picker are reused unchanged from tour documents.
+
+### 3. Why a separate vocabulary and a separate table
+
+The tour statuses `Missing`, `Under Review` and `Correction Required` **cannot occur** for an onboarding document, and the tour vocabulary has no `Replaced`. Reusing `document_type` / `document_review_status` would have forced four unreachable states onto every partner document and blocked the one state it genuinely needs.
+
+Likewise, `driver_documents` is a separate table rather than a nullable `job_id` on `job_documents`. The two families share only "a reviewed file"; they differ in scope, lifecycle (onboarding/compliance vs per-tour settlement), review vocabulary, retention driver, and constraints — only the partner document has an expiry date and a one-active-row-per-category rule. A nullable-FK merge would make every existing tour-document query filter `job_id IS NOT NULL` permanently.
+
+### 4. Files / docs
+
+| File | Change |
+| --- | --- |
+| `docs/requirements/prd.json` | v2.36 version prefix; new Task 34; `domain_model_summary` gains `service_partner_document_categories`, `_statuses`, `_fields`, `_rejection_reason_examples` |
+| `docs/database/schema.dbml` | New `driver_document_category` + `driver_document_status` enums; new `driver_documents` table; six new `Ref:` lines; header note |
+| `docs/database/logical-model.md` | v2.36 status override; "Service-partner onboarding documents" section; entity map; constraints/indexes; content-access audit rows |
+
+### 5. What deliberately did NOT change
+
+`job_documents`, `document_files`, `generated_job_documents`, `document_type`, `document_review_status` and Task 27 are **untouched** — tour documents keep their model exactly as it was. `drivers` gains no column (the link is `driver_documents.driver_id`). No new storage mechanism: files reuse `upload_assets` with `access = 'private'`, the same path `infopoint_documents` uses.
+
+### 6. Open points
+
+- Which categories are **mandatory** before a partner may be released from probation or granted operational access is not yet specified — today no acceptance criterion blocks access on missing documents.
+- Whether an **expiring** document should raise a notification-feed alert (the feed already has a `document_unreviewed_stale` type for tour documents) is unresolved; no notification type is added by this version.
+- Retention period for `Replaced` versions after a partner leaves the platform is not defined.
 
 ---
 
