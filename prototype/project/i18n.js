@@ -195,7 +195,7 @@ window.I18n = (() => {
         "Marketplace paused — your open tours continue",
       driverNotifDeferredBody:
         "Marketplace access has been paused because your account has been unused. You can still sign in and complete the tours already assigned to you. Contact your dispatcher to have marketplace access restored.",
-      backToMarketplace: "Marketplace",
+      backToMarketplace: "Back to Marketplace",
       tourInExecutionBanner:
         "Tour in execution — complete pickup, delivery, and documents from this screen.",
       date: "Date",
@@ -310,6 +310,14 @@ window.I18n = (() => {
         "This confirms the vehicle was handed over at the destination. Slide to confirm — or cancel if this was tapped by mistake.",
       slidePerformed: "Marked as performed",
       performedSuccessTitle: "Tour performed successfully.",
+      // Already-booked conflict dialog. The DESCRIPTION deliberately reuses
+      // `notifUnavailableTaken` — same fact, so it must not be worded twice.
+      alreadyBookedTitle: "Order already booked",
+      // PROTOTYPE/DEMO-ONLY control (feature-flags.js -> prototypeDemoControls).
+      // Not product copy; remove with the flag.
+      demoBadge: "Demo",
+      demoAlreadyBookedAction: "Already booked",
+      demoAlreadyBookedLabel: "Demo: Already booked",
       tourBookedSuccessTitle: "Tour booked successfully.",
       tourBookedSuccessBody:
         "The tour is now active — you'll find it under My jobs.",
@@ -2489,7 +2497,7 @@ window.I18n = (() => {
         "Marktplatz pausiert — Ihre offenen Touren laufen weiter",
       driverNotifDeferredBody:
         "Der Marktplatzzugang wurde pausiert, da Ihr Konto nicht genutzt wurde. Sie können sich weiterhin anmelden und Ihre bereits zugewiesenen Touren abschließen. Wenden Sie sich an Ihre Disposition, um den Marktplatzzugang wiederherstellen zu lassen.",
-      backToMarketplace: "Marktplatz",
+      backToMarketplace: "Zum Marktplatz",
       tourInExecutionBanner:
         "Tour in Ausführung — Abholung, Zustellung und Dokumente hier abschließen.",
       date: "Datum",
@@ -2601,6 +2609,14 @@ window.I18n = (() => {
         "Damit wird bestätigt, dass das Fahrzeug am Ziel übergeben wurde. Zum Bestätigen schieben – oder abbrechen, falls versehentlich getippt.",
       slidePerformed: "Als durchgeführt markiert",
       performedSuccessTitle: "Tour erfolgreich durchgeführt.",
+      // Already-booked-Dialog. Die BESCHREIBUNG nutzt bewusst
+      // `notifUnavailableTaken` — derselbe Sachverhalt, also nicht zweimal formuliert.
+      alreadyBookedTitle: "Auftrag bereits gebucht",
+      // NUR PROTOTYP/DEMO (feature-flags.js -> prototypeDemoControls).
+      // Keine Produkttexte; wird mit dem Flag entfernt.
+      demoBadge: "Demo",
+      demoAlreadyBookedAction: "Bereits gebucht",
+      demoAlreadyBookedLabel: "Demo: Bereits gebucht",
       tourBookedSuccessTitle: "Tour erfolgreich gebucht.",
       tourBookedSuccessBody:
         "Die Tour ist jetzt aktiv — du findest sie unter Meine Aufträge.",

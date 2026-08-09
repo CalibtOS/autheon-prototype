@@ -2927,6 +2927,78 @@ select.input {
 .dialog-panel--narrow {
   max-width: 360px;
 }
+/* =========================================================================
+   DIALOG ASIDE — a control rendered beside the panel, outside it.
+   Only prototype/demo controls use this today (see `.demo-control-btn`).
+
+   It stacks BELOW the panel rather than to its right, and that is a
+   consequence of the driver surface, not a preference: inside `.phone-shell`
+   the backdrop is scoped to `.phone-screen` and `.dialog-panel` is
+   `max-width: 100%` behind a 16px gutter, so the panel already spans the whole
+   device width and there is no horizontal room beside it at any viewport.
+   Stacking keeps the control clear of the panel's content and action row, and
+   cannot introduce horizontal overflow. The console never renders these
+   dialogs, so there is no wide layout to special-case.
+   ========================================================================= */
+.dialog-backdrop--with-aside {
+  flex-direction: column;
+  gap: 12px;
+}
+.dialog-aside {
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+  /* Never wider than the panel it belongs to, and never past the safe area. */
+  max-width: 100%;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+/* Prototype/demo control. Deliberately quieter than any real dialog action:
+   dashed border, muted ink, no fill — it must not compete with the success
+   dialog's primary. Sized to the 44px touch-target floor all the same. */
+.demo-control-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: var(--r-2);
+  /* `--line` and `--sh-1` are both redefined under dark, so the control follows
+     the appearance without a dark-specific rule. Deliberately not an undefined
+     token with a fallback (cf. the `--st-ok` / `--st-rejected-fg` audit findings). */
+  border: 1px dashed var(--line);
+  background: var(--paper);
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  box-shadow: var(--sh-1);
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.demo-control-btn:hover {
+  color: var(--text);
+  border-color: var(--muted-2);
+}
+.demo-control-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+/* The "this is not a real feature" signal. Text, not colour alone. */
+.demo-control-badge {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  color: var(--muted-2);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 /* The `Dialog` primitive renders one status disc; the tone modifier is applied
    on the panel so a caller does not have to reach inside. Success is the one
    tone that is NOT a disc — see "SUCCESS MARK" below. */

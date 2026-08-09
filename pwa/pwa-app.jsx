@@ -1,4 +1,4 @@
-/* global React, AuthStore, useAuthStore, useI18n, TabBar, Portal, MyJobs, Infopoint, ProfilePaneFull, JobLocked, JobUnlocked, AcceptanceModal, ReportProblemSheet, PendingNotice, TourBookedSuccessSheet, MarkPerformedSheet, ProbationLimitSheet, SameDayOverlapSheet, FilterSheet, DriverNotificationsPane, DriverLoginScreen, useNotificationDeepLink */
+/* global React, AuthStore, useAuthStore, useI18n, TabBar, Portal, MyJobs, Infopoint, ProfilePaneFull, JobLocked, JobUnlocked, AcceptanceModal, ReportProblemSheet, PendingNotice, TourBookedSuccessSheet, MarkPerformedSheet, ProbationLimitSheet, SameDayOverlapSheet, FilterSheet, DriverNotificationsPane, DriverLoginScreen, useNotificationDeepLink, AlreadyBookedDialog */
 /**
  * PwaDriverApp — real-viewport driver PWA shell for /pwa.
  *
@@ -56,6 +56,10 @@ function PwaDriverApp() {
   const [overlapConfirm, setOverlapConfirm] = useState(null);
   const [banner, setBanner] = useState(null);
   const [bookedSuccess, setBookedSuccess] = useState(false);
+  // PROTOTYPE/DEMO ONLY — previews the already-booked conflict dialog. Pure view
+  // state: it touches no job, calls no store method and is not persisted, so a
+  // reload clears it.
+  const [demoAlreadyBooked, setDemoAlreadyBooked] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [expandNotificationId, setExpandNotificationId] = useState(null);
   const [deepLinkNewsId, setDeepLinkNewsId] = useState(null);
@@ -162,6 +166,22 @@ function PwaDriverApp() {
     setActiveJob(null);
     setNotifOrigin(null);
     setTab("portal");
+  };
+
+  // --- PROTOTYPE/DEMO ONLY: already-booked dialog preview -------------------
+  // Swaps the success dialog for the conflict dialog. It deliberately does NOT
+  // re-accept, mutate the job, audit, notify or regenerate a PDF — the real
+  // booking that just happened stays exactly as it is.
+  const showDemoAlreadyBooked = () => {
+    setBookedSuccess(false);
+    setDemoAlreadyBooked(true);
+  };
+  // Reuses the existing Marketplace navigation helper rather than setting the
+  // tab by hand, so the preview exits the way every other screen does.
+  const closeDemoAlreadyBooked = () => {
+    setDemoAlreadyBooked(false);
+    setBookedSuccess(false);
+    backToMarketplace();
   };
 
   const job = activeJob ? store.getJob(activeJob.id) : null;
@@ -531,8 +551,16 @@ function PwaDriverApp() {
               }}
             />
           )}
-          {bookedSuccess && (
-            <TourBookedSuccessSheet onClose={() => setBookedSuccess(false)} />
+          {/* Success and conflict are mutually exclusive, so only one modal can
+              ever be mounted. */}
+          {bookedSuccess && !demoAlreadyBooked && (
+            <TourBookedSuccessSheet
+              onClose={() => setBookedSuccess(false)}
+              onDemoAlreadyBooked={showDemoAlreadyBooked}
+            />
+          )}
+          {demoAlreadyBooked && (
+            <AlreadyBookedDialog onBackToMarketplace={closeDemoAlreadyBooked} />
           )}
         </div>
         {!activeJob && !documentFocused ? (
