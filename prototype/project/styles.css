@@ -5221,6 +5221,51 @@ select.input {
   line-height: 1.4;
 }
 
+/* Document-details amount walk — invoice / fuel / toll receipts after the
+   staged review. Uses the shared bottom Sheet chrome; these rules only set
+   the form rhythm so three amount fields stay usable on a 320–390px column. */
+.phone-shell .tour-doc-amount-sheet .sheet-body {
+  text-align: left;
+}
+.phone-shell .tour-doc-amount-walk-progress {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.phone-shell .tour-doc-amount-field .field-label {
+  margin-top: 14px;
+  margin-bottom: 6px;
+}
+.phone-shell .tour-doc-amount-sheet .sheet-body > .tour-doc-amount-field:first-child .field-label,
+.phone-shell
+  .tour-doc-amount-sheet
+  .sheet-body
+  > .tour-doc-amount-walk-progress
+  + .tour-doc-amount-field
+  .field-label {
+  margin-top: 0;
+}
+.phone-shell .tour-doc-amount-period,
+.phone-shell .tour-doc-amount-figures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.phone-shell .tour-doc-amount-figures .tour-doc-amount-gross {
+  grid-column: 1 / -1;
+}
+.phone-shell .tour-doc-amount-period .field-label,
+.phone-shell .tour-doc-amount-figures .field-label {
+  margin-top: 14px;
+}
+.phone-shell .tour-doc-amount-err {
+  margin: 12px 0 0;
+  color: var(--destructive);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
 /* Staged multi-select review — between the file picker and the upload.
    Allowance figure lives here only; row marks name the oversize file. */
 .phone-shell .staged-upload-sheet .sheet-body {

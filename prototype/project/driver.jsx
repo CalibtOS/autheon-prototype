@@ -3569,6 +3569,8 @@ const emptyTourDocAmountForm = (documentType) => ({
 // three attach-a-tour-document entry points; only the input-id prefix differs.
 // When walkCurrent/walkTotal are set, the sheet names the position in the
 // confirmed batch so the driver does not lose their place mid-walk.
+// Uses the shared bottom Sheet (grabber / head / body / foot) — never a
+// bare padding-less panel, which clipped the title into the corner radius.
 const TourDocAmountFormSheet = ({
   amountForm,
   amountErr,
@@ -3588,190 +3590,155 @@ const TourDocAmountFormSheet = ({
     walkTotal != null &&
     walkTotal > 0 &&
     walkCurrent >= 1;
+  const canSubmit = Boolean(
+    amountForm.netAmount &&
+      amountForm.grossAmount &&
+      amountForm.taxRatePercent,
+  );
+
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="sheet-backdrop"
-      onClick={onCancel}
-    >
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>
-          {t("tourDocAmountFormTitle")}
-        </h2>
-        {showWalk ? (
-          <p
-            className="tour-doc-amount-walk-progress"
-            style={{
-              margin: "0 0 12px",
-              fontSize: 13,
-              color: "var(--muted, #666)",
-            }}
-            role="status"
-          >
-            {t("tourDocAmountWalkProgress", {
-              current: walkCurrent,
-              total: walkTotal,
-            })}
-          </p>
-        ) : null}
-        {isInvoice ? (
-          <>
-            <div>
-              <label className="field-label" htmlFor={`${idPrefix}-inv-num`}>
-                {t("adminSupplierInvoiceNumberLabel")}
-              </label>
-              <input
-                id={`${idPrefix}-inv-num`}
-                className="input"
-                value={amountForm.supplierInvoiceNumber}
-                onChange={(e) => set({ supplierInvoiceNumber: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="field-label" htmlFor={`${idPrefix}-inv-date`}>
-                {t("tourDocInvoiceDate")}
-              </label>
-              <input
-                id={`${idPrefix}-inv-date`}
-                className="input"
-                placeholder="DD.MM.YYYY"
-                value={amountForm.supplierInvoiceDate}
-                onChange={(e) => set({ supplierInvoiceDate: e.target.value })}
-              />
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 10,
-              }}
-            >
-              <div>
-                <label className="field-label" htmlFor={`${idPrefix}-svc-from`}>
-                  {t("tourDocServicePeriodFrom")}
-                </label>
-                <input
-                  id={`${idPrefix}-svc-from`}
-                  className="input"
-                  placeholder="DD.MM.YYYY"
-                  value={amountForm.servicePeriodFrom}
-                  onChange={(e) => set({ servicePeriodFrom: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="field-label" htmlFor={`${idPrefix}-svc-to`}>
-                  {t("tourDocServicePeriodTo")}
-                </label>
-                <input
-                  id={`${idPrefix}-svc-to`}
-                  className="input"
-                  placeholder="DD.MM.YYYY"
-                  value={amountForm.servicePeriodTo}
-                  onChange={(e) => set({ servicePeriodTo: e.target.value })}
-                />
-              </div>
-            </div>
-          </>
-        ) : (
-          <div>
-            <label className="field-label" htmlFor={`${idPrefix}-receipt-date`}>
-              {t("tourDocReceiptDate")}
-            </label>
-            <input
-              id={`${idPrefix}-receipt-date`}
-              className="input"
-              placeholder="DD.MM.YYYY"
-              value={amountForm.receiptDate}
-              onChange={(e) => set({ receiptDate: e.target.value })}
-            />
-          </div>
-        )}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: 10,
-            marginTop: 10,
-          }}
-        >
-          <div>
-            <label className="field-label" htmlFor={`${idPrefix}-net`}>
-              {t("tourDocNetAmount")}
-            </label>
-            <input
-              id={`${idPrefix}-net`}
-              className="input mono"
-              inputMode="decimal"
-              value={amountForm.netAmount}
-              onChange={(e) => set({ netAmount: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="field-label" htmlFor={`${idPrefix}-tax`}>
-              {t("tourDocTaxRate")}
-            </label>
-            <input
-              id={`${idPrefix}-tax`}
-              className="input mono"
-              inputMode="decimal"
-              value={amountForm.taxRatePercent}
-              onChange={(e) => set({ taxRatePercent: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="field-label" htmlFor={`${idPrefix}-gross`}>
-              {t("tourDocGrossAmount")}
-            </label>
-            <input
-              id={`${idPrefix}-gross`}
-              className="input mono"
-              inputMode="decimal"
-              value={amountForm.grossAmount}
-              onChange={(e) => set({ grossAmount: e.target.value })}
-            />
-          </div>
-        </div>
-        {amountErr ? (
-          <p
-            style={{
-              // `--danger` is not a token this repo defines; the three copies
-              // of this form carried the literal fallback. Now that there is
-              // one copy, it uses the real one.
-              color: "var(--destructive)",
-              fontSize: 12.5,
-              marginTop: 8,
-            }}
-          >
-            {amountErr}
-          </p>
-        ) : null}
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginTop: 16,
-            justifyContent: "flex-end",
-          }}
-        >
-          <button type="button" className="btn" onClick={onCancel}>
+    <Sheet
+      open
+      onClose={onCancel}
+      title={t("tourDocAmountFormTitle")}
+      className="tour-doc-amount-sheet"
+      footer={
+        <>
+          <button type="button" className="btn touch-target" onClick={onCancel}>
             {t("cancel")}
           </button>
           <button
             type="button"
-            className="btn primary"
-            disabled={
-              !amountForm.netAmount ||
-              !amountForm.grossAmount ||
-              !amountForm.taxRatePercent
-            }
+            className="btn primary touch-target"
+            disabled={!canSubmit}
             onClick={onSubmit}
           >
             {t("tourDocAmountFormSubmit")}
           </button>
+        </>
+      }
+    >
+      {showWalk ? (
+        <p className="tour-doc-amount-walk-progress" role="status">
+          {t("tourDocAmountWalkProgress", {
+            current: walkCurrent,
+            total: walkTotal,
+          })}
+        </p>
+      ) : null}
+
+      {isInvoice ? (
+        <>
+          <div className="tour-doc-amount-field">
+            <label className="field-label" htmlFor={`${idPrefix}-inv-num`}>
+              {t("adminSupplierInvoiceNumberLabel")}
+            </label>
+            <input
+              id={`${idPrefix}-inv-num`}
+              className="input"
+              value={amountForm.supplierInvoiceNumber}
+              onChange={(e) => set({ supplierInvoiceNumber: e.target.value })}
+            />
+          </div>
+          <div className="tour-doc-amount-field">
+            <label className="field-label" htmlFor={`${idPrefix}-inv-date`}>
+              {t("tourDocInvoiceDate")}
+            </label>
+            <input
+              id={`${idPrefix}-inv-date`}
+              className="input"
+              placeholder="DD.MM.YYYY"
+              value={amountForm.supplierInvoiceDate}
+              onChange={(e) => set({ supplierInvoiceDate: e.target.value })}
+            />
+          </div>
+          <div className="tour-doc-amount-period">
+            <div className="tour-doc-amount-field">
+              <label className="field-label" htmlFor={`${idPrefix}-svc-from`}>
+                {t("tourDocServicePeriodFrom")}
+              </label>
+              <input
+                id={`${idPrefix}-svc-from`}
+                className="input"
+                placeholder="DD.MM.YYYY"
+                value={amountForm.servicePeriodFrom}
+                onChange={(e) => set({ servicePeriodFrom: e.target.value })}
+              />
+            </div>
+            <div className="tour-doc-amount-field">
+              <label className="field-label" htmlFor={`${idPrefix}-svc-to`}>
+                {t("tourDocServicePeriodTo")}
+              </label>
+              <input
+                id={`${idPrefix}-svc-to`}
+                className="input"
+                placeholder="DD.MM.YYYY"
+                value={amountForm.servicePeriodTo}
+                onChange={(e) => set({ servicePeriodTo: e.target.value })}
+              />
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="tour-doc-amount-field">
+          <label className="field-label" htmlFor={`${idPrefix}-receipt-date`}>
+            {t("tourDocReceiptDate")}
+          </label>
+          <input
+            id={`${idPrefix}-receipt-date`}
+            className="input"
+            placeholder="DD.MM.YYYY"
+            value={amountForm.receiptDate}
+            onChange={(e) => set({ receiptDate: e.target.value })}
+          />
+        </div>
+      )}
+
+      <div className="tour-doc-amount-figures">
+        <div className="tour-doc-amount-field">
+          <label className="field-label" htmlFor={`${idPrefix}-net`}>
+            {t("tourDocNetAmount")}
+          </label>
+          <input
+            id={`${idPrefix}-net`}
+            className="input mono"
+            inputMode="decimal"
+            value={amountForm.netAmount}
+            onChange={(e) => set({ netAmount: e.target.value })}
+          />
+        </div>
+        <div className="tour-doc-amount-field">
+          <label className="field-label" htmlFor={`${idPrefix}-tax`}>
+            {t("tourDocTaxRate")}
+          </label>
+          <input
+            id={`${idPrefix}-tax`}
+            className="input mono"
+            inputMode="decimal"
+            value={amountForm.taxRatePercent}
+            onChange={(e) => set({ taxRatePercent: e.target.value })}
+          />
+        </div>
+        <div className="tour-doc-amount-field tour-doc-amount-gross">
+          <label className="field-label" htmlFor={`${idPrefix}-gross`}>
+            {t("tourDocGrossAmount")}
+          </label>
+          <input
+            id={`${idPrefix}-gross`}
+            className="input mono"
+            inputMode="decimal"
+            value={amountForm.grossAmount}
+            onChange={(e) => set({ grossAmount: e.target.value })}
+          />
         </div>
       </div>
-    </div>
+
+      {amountErr ? (
+        <p className="tour-doc-amount-err" role="alert">
+          {amountErr}
+        </p>
+      ) : null}
+    </Sheet>
   );
 };
 
