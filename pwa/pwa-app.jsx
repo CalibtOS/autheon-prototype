@@ -236,7 +236,11 @@ function PwaDriverApp() {
   return (
     <div className="phone-shell pwa-viewport">
       {!pwa.isStandalone ? (
-        <div className="pwa-mode-bar" role="region" aria-label={t("pwaInstallRegion")}>
+        <div
+          className="pwa-mode-bar"
+          role="region"
+          aria-label={t("pwaInstallRegion")}
+        >
           <div className="pwa-mode-bar-brand">
             <span>{t("pwaInstallTitle")}</span>
           </div>
@@ -429,7 +433,10 @@ function PwaDriverApp() {
                         performedCount: r.performedCount,
                       });
                     } else {
-                      setBanner({ tone: "warn", text: t("toastAssignedElsewhere") });
+                      setBanner({
+                        tone: "warn",
+                        text: t("toastAssignedElsewhere"),
+                      });
                     }
                     setActiveJob({ id, mode: "locked" });
                     return;
@@ -509,7 +516,10 @@ function PwaDriverApp() {
                       text: t("driverAccessDisabledBody"),
                     });
                   } else {
-                    setBanner({ tone: "warn", text: t("toastAssignedElsewhere") });
+                    setBanner({
+                      tone: "warn",
+                      text: t("toastAssignedElsewhere"),
+                    });
                   }
                   setActiveJob({ id, mode: "locked" });
                   return;
@@ -525,7 +535,7 @@ function PwaDriverApp() {
         </div>
         {!activeJob ? (
           <div className="pwa-tabbar-slot">
-            <TabBar tab={tab} setTab={navigateTab} />
+            <TabBar tab={tab} setTab={setTab} />
           </div>
         ) : null}
       </div>
