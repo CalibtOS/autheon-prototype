@@ -58,6 +58,27 @@ To enable install on the hosted site: in Cloudflare, bypass or disable Basic Aut
 | `theme-editor.js` | Floating Theme Editor — movable overlay to edit theme colours (CSS vars) live; loaded by the prototype page and `/pwa/`, overrides persist in localStorage |
 | `_export-driver-i18n.mjs` | Generates `docs/design/driver-i18n-index.md` |
 
+## Reviewing the tour-document upload states
+
+Uploading a tour document runs through two phases so the client can see what a
+driver sees. Go to **My Jobs → a tour → My documents → Upload document → Other
+proof** (any category that asks for no amounts), pick files, press Upload:
+
+| To reach | Do this |
+|---|---|
+| Sending | Press Upload — a determinate bar fills and the action is **Cancel upload** |
+| Processing | Wait for 100% — the bar is *replaced* by an indeterminate one and the action becomes **Close** |
+| Success | Wait — the file leaves the list and the documents card confirms it |
+| Cancel during sending | Press **Cancel upload** while the bar is still moving |
+| Close during processing | Press **Close** during the processing phase — the document still lands |
+| Timeout | Pick a file whose **name contains `slow`** (e.g. `slow-receipt.pdf`) — it stalls part-way, then reports a slow connection with a safe retry |
+
+The `slow` file name is the only simulation lever, and deliberately not a control
+in the driver's sheet — nothing on that screen should be something a driver will
+never have. The phases are timers, not a transport layer. Idempotency,
+persistence across reload and HEIC are **not** modelled; `driver.jsx` records why
+next to the simulation.
+
 ## Validation
 
 ```bash
