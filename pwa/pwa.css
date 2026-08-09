@@ -13,45 +13,43 @@
      ≥ 1536px   large desktop   — centered 720px phone-column preview
    =============================================================== */
 
-/* Match FE DriverShell exactly:
-   - Ground = canvas / surface-muted (#F5F5F7 light, #1C1C1E dark)
-   - One top safe-area owner: .phone-screen (FE content column)
-   - Paper headers sit BELOW that muted band (no negative-margin pull-up)
-   - theme-color tracks canvas, not paper (see applyAppTheme / index.html)
-   - Full-bleed height via fixed inset (not 100dvh alone — iOS leaves a
-     bottom gap under dvh with black-translucent; FE fills via in-flow 100dvh
-     on a normal document; we stretch with top/bottom:0 instead). */
-html.pwa-page,
-body.pwa-page {
-  margin: 0;
-  min-height: 100%;
-  min-height: 100dvh;
-  min-height: -webkit-fill-available;
-  height: 100%;
-  background: var(--canvas);
-  overscroll-behavior-y: none;
-}
+/* Match FE DriverShell height model (the bit that fills the phone edge-to-edge):
+   FE: body min-h-dvh → stage h-[100dvh] in normal flow (NOT position:fixed)
+       → frame h-full flex-col → content column flex-1 + pt safe-area.
+   Proto used to keep a desktop phone-mock (.phone height:min(800px,…)) inside
+   a position:fixed shell — that is what capped the UI above the home indicator.
+   This file now mirrors FE: in-flow 100dvh flex column, framed phone geometry
+   fully neutralized. */
 html.pwa-page {
-  background: var(--canvas);
+  margin: 0;
   height: 100%;
   height: 100dvh;
-  height: -webkit-fill-available;
+  background: var(--canvas);
+}
+body.pwa-page {
+  margin: 0;
+  height: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  background: var(--canvas);
+  overflow: hidden; /* override styles.css body{overflow:auto} — FE shell owns scroll */
+  overscroll-behavior-y: none;
 }
 body.pwa-page #root {
-  min-height: 100%;
-  min-height: 100dvh;
-  min-height: -webkit-fill-available;
   height: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   background: var(--canvas);
 }
 
-/* Install / preview chrome — hidden when launched as installed app */
+/* Install / preview chrome — in-flow (not fixed) so the phone column can
+   flex:1 into the remaining viewport. Hidden when launched as installed app. */
 .pwa-mode-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   z-index: 200;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -147,70 +145,58 @@ html.pwa-standalone .pwa-ios-sheet {
   display: none !important;
 }
 
-/* ---- Frame neutralization -------------------------------------- */
+/* ---- Frame neutralization (FE in-flow 100dvh column) -------------- */
 .phone-shell.pwa-viewport {
-  --pwa-chrome-offset: 52px;
-  /* Fixed inset (not height:100dvh): stretches to the real visual edges.
-     Browser preview keeps a top offset for the install mode bar. */
-  position: fixed;
-  top: var(--pwa-chrome-offset);
-  top: max(
-    var(--pwa-chrome-offset),
-    calc(42px + env(safe-area-inset-top, 0px))
-  );
-  right: 0;
-  bottom: 0;
-  left: 0;
+  /* Same role as FE stage+frame: fill #root, flex column, no fixed inset. */
+  position: relative;
+  flex: 1 1 auto;
   width: 100%;
-  height: auto;
+  height: 100%;
+  min-height: 0;
   max-height: none;
-  display: grid;
-  place-items: stretch;
+  display: flex;
+  flex-direction: column;
   padding: 0;
+  margin: 0;
   overflow: hidden;
   background: var(--canvas);
   box-sizing: border-box;
 }
 
-/* Installed PWA: pin to all four edges. Do NOT set height:100dvh here —
-   on iOS that often ends short of the home-indicator, showing body canvas
-   as a clipped strip under the tab bar (FE has no such gap). */
-html.pwa-standalone .phone-shell.pwa-viewport,
-body.pwa-standalone .phone-shell.pwa-viewport {
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: auto;
-  max-height: none;
-}
 .phone-shell.pwa-viewport .phone {
-  /* Kill framed-prototype sizing from styles.css:
-     width:min(392px…), height:min(800px, 100vh-120px), max-height:100vh-80px
-     — those leave a bottom gap on real phones. */
-  width: 100%;
-  max-width: none;
-  height: 100%;
-  min-height: 100%;
-  max-height: none;
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+  /* Kill framed-prototype sizing from styles.css — these caps are why the
+     UI stopped above the home indicator while FE reached the screen edge:
+       width: min(392px, 100vw - 32px)
+       height: min(800px, 100vh - 120px)
+       max-height: calc(100vh - 80px)
+       border-radius / bezel shadow */
+  position: relative;
+  flex: 1 1 auto;
+  width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   background: var(--canvas);
+  overflow: hidden;
 }
 .phone-shell.pwa-viewport .phone-screen {
-  /* Sole top safe-area owner — same role as FE DriverShell content column
-     `pt-[env(safe-area-inset-top)]`. Muted canvas paints under the Island;
-     `.pwa-screen-header` / detail headers keep their normal paper padding
-     from styles.css and must NOT re-add or pull into this inset. */
+  /* Sole top safe-area owner — FE DriverShell content column
+     `pt-[env(safe-area-inset-top)]`. Paper headers stay below this band. */
   --phone-chrome-top: env(safe-area-inset-top, 0px);
+  position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
-  min-height: 100%;
+  min-height: 0;
   padding-top: env(safe-area-inset-top, 0px);
   background: var(--canvas);
+  overflow: hidden;
 }
 
 /*
@@ -335,8 +321,12 @@ body.pwa-standalone .phone-shell.pwa-viewport {
 
 /* ---- Large desktop (≥1536px / Tailwind 2xl): phone-column preview ---- */
 @media (min-width: 1536px) {
+  .phone-shell.pwa-viewport {
+    align-items: center;
+  }
   .phone-shell.pwa-viewport .phone {
-    max-width: 720px;
+    max-width: 720px !important;
+    width: 100% !important;
     border-inline: 1px solid var(--line);
   }
 }
