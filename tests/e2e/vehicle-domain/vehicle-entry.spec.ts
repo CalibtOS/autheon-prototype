@@ -76,23 +76,77 @@ test.describe('Vehicle type — exactly one, three approved values', () => {
 });
 
 test.describe('Vehicle data — separate fields', () => {
-  test('manufacturer is chosen from a dropdown, not typed freely', async ({ page }) => {
+  test('manufacturer opens as a dropdown and stays catalogue-controlled', async ({
+    page,
+  }) => {
     const frame = await openNewOrderVehicleSection(page);
     const manufacturer = frame.locator('#new-order-manufacturer');
 
     await expect(manufacturer).toBeVisible();
-    // A real <select>, so the catalogue is controlled rather than advisory.
-    expect(await manufacturer.evaluate((el) => el.tagName)).toBe('SELECT');
-    const options = await manufacturer.locator('option').count();
-    expect(options).toBeGreaterThan(5);
+    // A searchable combobox rather than a native <select>, but the catalogue is
+    // still controlled: the list must be openable without typing anything.
+    await expect(manufacturer).toHaveAttribute('role', 'combobox');
+    await manufacturer.click();
+    const options = frame.getByRole('option');
+    expect(await options.count()).toBeGreaterThan(5);
 
-    await manufacturer.selectOption('Volkswagen');
+    await options.filter({ hasText: 'Volkswagen' }).first().click();
     await expect(manufacturer).toHaveValue('Volkswagen');
   });
 
-  test('model is a separate field from the manufacturer', async ({ page }) => {
+  test('arrow keys walk the suggestions and Enter fills the highlighted one', async ({
+    page,
+  }) => {
     const frame = await openNewOrderVehicleSection(page);
-    await frame.locator('#new-order-manufacturer').selectOption('Audi');
+    const manufacturer = frame.locator('#new-order-manufacturer');
+
+    // Typing a letter narrows the catalogue; the client then navigates the
+    // recommendations with the keyboard alone.
+    await manufacturer.click();
+    await manufacturer.fill('A');
+    const options = frame.getByRole('option');
+    await expect(options.first()).toBeVisible();
+    const first = await options.first().textContent();
+    const second = await options.nth(1).textContent();
+
+    await manufacturer.press('ArrowDown');
+    await expect(options.first()).toHaveAttribute('aria-selected', 'true');
+    await expect(manufacturer).toHaveValue('A'); // highlight only, not committed
+
+    await manufacturer.press('ArrowDown');
+    await expect(options.nth(1)).toHaveAttribute('aria-selected', 'true');
+    await manufacturer.press('ArrowUp');
+    await expect(options.first()).toHaveAttribute('aria-selected', 'true');
+    expect(first).not.toBe(second);
+
+    await manufacturer.press('Enter');
+    await expect(manufacturer).toHaveValue(String(first));
+    await expect(frame.getByRole('option')).toHaveCount(0);
+  });
+
+  test('Escape closes the suggestions without changing the manufacturer', async ({
+    page,
+  }) => {
+    const frame = await openNewOrderVehicleSection(page);
+    const manufacturer = frame.locator('#new-order-manufacturer');
+
+    await manufacturer.click();
+    await manufacturer.fill('Audi');
+    await manufacturer.press('ArrowDown');
+    await manufacturer.press('Escape');
+
+    await expect(frame.getByRole('option')).toHaveCount(0);
+    await expect(manufacturer).toHaveValue('Audi');
+  });
+
+  test('model is a separate field from the manufacturer', async ({ page }) => {
+    const manufacturerValue = 'Audi';
+    const frame = await openNewOrderVehicleSection(page);
+    const manufacturer = frame.locator('#new-order-manufacturer');
+    await manufacturer.click();
+    await manufacturer.fill(manufacturerValue);
+    await manufacturer.press('ArrowDown');
+    await manufacturer.press('Enter');
     await frame.locator('#new-order-model').fill('A4 Avant');
 
     // Neither field absorbed the other.

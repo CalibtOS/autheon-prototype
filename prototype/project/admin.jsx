@@ -3235,18 +3235,102 @@ const AdminRedPlatesNotice = ({
  * ranked exact/starts-with/contains matches via AuthStore.searchManufacturers,
  * so typing "G" surfaces manufacturers starting with G before "Volkswagen".
  * Free text is allowed but a value is only committed via onChange when it
- * exactly matches a catalogue entry or a suggestion is clicked — this keeps
+ * exactly matches a catalogue entry or a suggestion is picked — this keeps
  * `form.manufacturer` restricted to the approved catalogue as before, while
  * adding search instead of a long alphabetical dropdown.
+ *
+ * Keyboard support (client feedback): the field must still behave like a
+ * dropdown, not a type-ahead-only box. Focusing or clicking it opens the full
+ * catalogue with an empty query, ArrowDown/ArrowUp move through the
+ * suggestions, Enter commits the highlighted one, and Escape closes without
+ * changing the value. Highlight state is exposed via aria-activedescendant so
+ * screen readers follow the same cursor as the visual one.
  */
+const MANUFACTURER_RESULT_LIMIT = 8;
+
 const ManufacturerSearchField = ({ id, value, onChange, placeholder }) => {
   const [query, setQuery] = useStateA(value || "");
   const [open, setOpen] = useStateA(false);
+  // Index into `results`; -1 means "nothing highlighted yet", so a bare Enter
+  // submits the form as it always did instead of picking result 0 by surprise.
+  const [activeIndex, setActiveIndex] = useStateA(-1);
   useEffectA(() => setQuery(value || ""), [value]);
   const results = AuthStore.searchManufacturers(
     query,
     AuthStore.MANUFACTURER_SUGGESTIONS,
-  ).slice(0, 8);
+  ).slice(0, MANUFACTURER_RESULT_LIMIT);
+  const listId = `${id}-listbox`;
+  // A stale highlight (e.g. index 5 after typing narrowed the list to 2) must
+  // not survive into the keyboard handlers.
+  const activeIdx = activeIndex < results.length ? activeIndex : -1;
+  const showList = open && results.length > 0;
+
+  const commit = (name) => {
+    setQuery(name);
+    onChange(name);
+    setOpen(false);
+    setActiveIndex(-1);
+  };
+
+  const openWithList = () => {
+    setOpen(true);
+    setActiveIndex(-1);
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      // Opening on the first ArrowDown mirrors a native <select>: the client
+      // can reach the list from the keyboard without typing anything.
+      if (!open) {
+        openWithList();
+        e.preventDefault();
+        return;
+      }
+      if (!results.length) return;
+      e.preventDefault();
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      const next = activeIdx + step;
+      // Wrap around so holding one arrow key cycles the whole list.
+      setActiveIndex(
+        next < 0 ? results.length - 1 : next >= results.length ? 0 : next,
+      );
+      return;
+    }
+    if (e.key === "Home" && open && results.length) {
+      e.preventDefault();
+      setActiveIndex(0);
+      return;
+    }
+    if (e.key === "End" && open && results.length) {
+      e.preventDefault();
+      setActiveIndex(results.length - 1);
+      return;
+    }
+    if (e.key === "Enter") {
+      if (open && activeIdx >= 0) {
+        // Only swallow Enter when it actually resolves a highlighted
+        // suggestion; otherwise it stays a normal form submit.
+        e.preventDefault();
+        commit(results[activeIdx]);
+      }
+      return;
+    }
+    if (e.key === "Escape") {
+      if (open) {
+        e.preventDefault();
+        setOpen(false);
+        setActiveIndex(-1);
+      }
+      return;
+    }
+    if (e.key === "Tab" && open) {
+      // Leaving the field by Tab confirms the highlighted entry rather than
+      // discarding it in onBlur.
+      if (activeIdx >= 0) commit(results[activeIdx]);
+      else setOpen(false);
+    }
+  };
+
   return (
     <div style={{ position: "relative" }}>
       <input
@@ -3254,16 +3338,30 @@ const ManufacturerSearchField = ({ id, value, onChange, placeholder }) => {
         className="input"
         placeholder={placeholder}
         value={query}
+        role="combobox"
+        aria-expanded={showList}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={
+          showList && activeIdx >= 0 ? `${listId}-opt-${activeIdx}` : undefined
+        }
+        autoComplete="off"
         onChange={(e) => {
           setQuery(e.target.value);
           setOpen(true);
+          setActiveIndex(-1);
           if (AuthStore.MANUFACTURER_SUGGESTIONS.includes(e.target.value)) {
             onChange(e.target.value);
           }
         }}
-        onFocus={() => setOpen(true)}
+        onKeyDown={onKeyDown}
+        onFocus={openWithList}
+        onClick={openWithList}
         onBlur={() => {
-          setTimeout(() => setOpen(false), 120);
+          setTimeout(() => {
+            setOpen(false);
+            setActiveIndex(-1);
+          }, 120);
           if (!AuthStore.MANUFACTURER_SUGGESTIONS.includes(query)) {
             // Revert to the last committed value — manufacturer stays
             // restricted to the approved catalogue (unlike model, which is
@@ -3272,9 +3370,10 @@ const ManufacturerSearchField = ({ id, value, onChange, placeholder }) => {
           }
         }}
       />
-      {open && query && results.length ? (
+      {showList ? (
         <ul
           role="listbox"
+          id={listId}
           style={{
             position: "absolute",
             zIndex: 20,
@@ -3291,17 +3390,34 @@ const ManufacturerSearchField = ({ id, value, onChange, placeholder }) => {
             overflowY: "auto",
           }}
         >
-          {results.map((name) => (
-            <li key={name}>
+          {results.map((name, i) => (
+            <li key={name} role="presentation">
               <button
                 type="button"
+                id={`${listId}-opt-${i}`}
+                role="option"
+                aria-selected={i === activeIdx}
                 className="btn ghost xs"
-                style={{ width: "100%", textAlign: "left" }}
+                // Keep the keyboard highlight visible while scrolling a long
+                // list: the option nearest the viewport edge is pulled in.
+                ref={(el) => {
+                  if (el && i === activeIdx && el.scrollIntoView) {
+                    el.scrollIntoView({ block: "nearest" });
+                  }
+                }}
+                style={{
+                  width: "100%",
+                  textAlign: "left",
+                  ...(i === activeIdx
+                    ? { background: "var(--accent-soft, #e8effc)" }
+                    : null),
+                }}
+                // Hovering moves the highlight so mouse and keyboard never
+                // disagree about which entry Enter would pick.
+                onMouseEnter={() => setActiveIndex(i)}
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  setQuery(name);
-                  onChange(name);
-                  setOpen(false);
+                  commit(name);
                 }}
               >
                 {name}
@@ -5484,7 +5600,11 @@ const ServicePartnersCenterPane = ({
         ))}
       </div>
       {view === "partners" ? (
-        <DriversPane showToast={showToast} initialDriverId={initialDriverId} />
+        <DriversPane
+          showToast={showToast}
+          initialDriverId={initialDriverId}
+          onOpenJob={onOpenJob}
+        />
       ) : (
         <MasterDataRequestsPane
           showToast={showToast}
@@ -5497,7 +5617,7 @@ const ServicePartnersCenterPane = ({
   );
 };
 
-const DriversPane = ({ showToast, initialDriverId }) => {
+const DriversPane = ({ showToast, initialDriverId, onOpenJob }) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [driverModal, setDriverModal] = useStateA(null);
@@ -5534,9 +5654,61 @@ const DriversPane = ({ showToast, initialDriverId }) => {
     return true;
   });
 
+  // Documents picked while creating a partner (client feedback: onboarding
+  // documents must be attachable in the create dialog, not only afterwards on
+  // the profile). The store keys documents by driver id, which does not exist
+  // until addDriver() returns, so files are staged here and flushed on save.
+  // One document per category, matching addDriverOnboardingDocument's
+  // `category_taken` rule — the picker only ever offers free categories.
+  const [newDriverDocs, setNewDriverDocs] = useStateA([]);
+  const newDocInputRef = useRefA(null);
+  const pendingNewDocCategoryRef = useRefA(null);
+
+  const takenNewDocCategories = newDriverDocs.map((d) => d.category);
+  const availableNewDocCategories = AuthStore.DRIVER_DOC_CATEGORIES.filter(
+    (c) => !takenNewDocCategories.includes(c),
+  );
+  const [newDocCategory, setNewDocCategory] = useStateA("");
+
+  const triggerNewDocPick = () => {
+    const category = newDocCategory || availableNewDocCategories[0];
+    if (!category) return;
+    pendingNewDocCategoryRef.current = category;
+    newDocInputRef.current?.click();
+  };
+
+  const onNewDocPicked = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const category = pendingNewDocCategoryRef.current;
+    // Validate with the same rules the store applies, so a bad file is
+    // rejected while picking instead of silently failing after the partner
+    // has already been created.
+    if (!store.isAllowedTourDocumentFile(file)) {
+      showToast?.(t("adminUsersSaveFailed"), t("invoiceUploadInvalidType"));
+      return;
+    }
+    if (store.exceedsPlatformUploadCeiling(file)) {
+      showToast?.(t("adminUsersSaveFailed"), t("stagedFailureFileTooLarge"));
+      return;
+    }
+    setNewDriverDocs((prev) =>
+      prev.some((d) => d.category === category)
+        ? prev
+        : [...prev, { category, file }],
+    );
+    setNewDocCategory("");
+  };
+
+  const removeNewDriverDoc = (category) =>
+    setNewDriverDocs((prev) => prev.filter((d) => d.category !== category));
+
   const openNewDriver = () => {
     setDriverForm(emptyDriverEditForm());
     setDriverErrors({});
+    setNewDriverDocs([]);
+    setNewDocCategory("");
     setDriverModal("new");
   };
 
@@ -5690,12 +5862,33 @@ const DriversPane = ({ showToast, initialDriverId }) => {
       showToast?.(t("adminUsersSaveFailed"), userSaveErr(r, "driver", t));
       return;
     }
+    // The partner now has an id, so the documents staged in the create dialog
+    // can be attached. Failures here must not undo a successful creation —
+    // report them and leave the partner in place, since the documents can
+    // still be uploaded from the profile.
+    let failedDocs = 0;
+    if (driverModal === "new" && r.driver?.id && newDriverDocs.length) {
+      for (const staged of newDriverDocs) {
+        const up = store.addDriverOnboardingDocument(r.driver.id, staged.file, {
+          category: staged.category,
+        });
+        if (!up.ok) failedDocs++;
+      }
+    }
     setDriverModal(null);
     setDriverErrors({});
+    setNewDriverDocs([]);
+    setNewDocCategory("");
     if (driverModal === "new" && r.access) {
       showToast?.(t("adminUsersDriverCreated"), driverForm.name);
     } else {
       showToast?.(t("adminUsersSaved"), driverForm.name);
+    }
+    if (failedDocs) {
+      showToast?.(
+        t("adminUsersSaveFailed"),
+        t("adminSPDocUploadFailedCount", { count: failedDocs }),
+      );
     }
   };
 
@@ -5896,6 +6089,16 @@ const DriversPane = ({ showToast, initialDriverId }) => {
           driver={store.getDrivers().find((d) => d.id === profileDriverId)}
           onClose={() => setProfileDriverId(null)}
           showToast={showToast}
+          // Opening a tour navigates to the job detail section, so the profile
+          // modal has to close first — otherwise the detail renders behind it.
+          onOpenJob={
+            onOpenJob
+              ? (job) => {
+                  setProfileDriverId(null);
+                  onOpenJob(job);
+                }
+              : undefined
+          }
         />
       ) : null}
 
@@ -5986,6 +6189,105 @@ const DriversPane = ({ showToast, initialDriverId }) => {
             }
             onReleaseProbation={releaseDriverProbation}
           />
+          {/* Onboarding documents at create time. Only for new partners: an
+              existing one is served by the profile's Documents tab, which also
+              carries the review actions that make no sense before creation. */}
+          {driverModal === "new" ? (
+            <div
+              className="card"
+              style={{ padding: 14, display: "grid", gap: 10 }}
+            >
+              <div style={{ fontWeight: 600, fontSize: 13 }}>
+                {t("adminSPDocUploadTitle")}
+              </div>
+              <input
+                ref={(el) => {
+                  newDocInputRef.current = el;
+                }}
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
+                style={{ display: "none" }}
+                onChange={onNewDocPicked}
+              />
+              {availableNewDocCategories.length ? (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-end",
+                    gap: 10,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ display: "grid", gap: 4 }}>
+                    <label
+                      className="field-label"
+                      htmlFor="new-driver-doc-category"
+                    >
+                      {t("adminSPDocCategory_")}
+                    </label>
+                    <select
+                      id="new-driver-doc-category"
+                      className="input"
+                      value={newDocCategory || availableNewDocCategories[0]}
+                      onChange={(e) => setNewDocCategory(e.target.value)}
+                    >
+                      {availableNewDocCategories.map((c) => (
+                        <option key={c} value={c}>
+                          {t("adminSPDocCategory_" + c)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={triggerNewDocPick}
+                  >
+                    {t("adminSPDocUpload")}
+                  </button>
+                </div>
+              ) : (
+                <div className="label" style={{ fontSize: 12 }}>
+                  {t("adminSPDocAllCategoriesUsed")}
+                </div>
+              )}
+              {newDriverDocs.length ? (
+                <div style={{ display: "grid", gap: 6 }}>
+                  {newDriverDocs.map((d) => (
+                    <div
+                      key={d.category}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        flexWrap: "wrap",
+                        fontSize: 12.5,
+                      }}
+                    >
+                      <span>
+                        <strong>{t("adminSPDocCategory_" + d.category)}</strong>
+                        {" · "}
+                        <span className="label">{d.file.name}</span>
+                      </span>
+                      <button
+                        type="button"
+                        className="btn xs"
+                        onClick={() => removeNewDriverDoc(d.category)}
+                      >
+                        {t("adminSPDocRemove")}
+                      </button>
+                    </div>
+                  ))}
+                  {/* Nothing is written to the store until Save — say so, so
+                      the empty Documents tab before saving is not a surprise. */}
+                  <div className="label" style={{ fontSize: 11.5 }}>
+                    {t("adminSPDocPendingOnSave")}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </Dialog>
       ) : null}
     </div>
@@ -6005,14 +6307,21 @@ const SP_PROFILE_TABS = [
   "audit",
 ];
 
-const ServicePartnerProfileModal = ({ driver, onClose, showToast }) => {
+const ServicePartnerProfileModal = ({
+  driver,
+  onClose,
+  showToast,
+  onOpenJob,
+}) => {
   const { t } = useI18n();
   const store = useAuthStore();
   const [tab, setTab] = useStateA("overview");
   const [notesDraft, setNotesDraft] = useStateA(driver?.notes || "");
   const [rejectDocId, setRejectDocId] = useStateA(null);
   const [rejectReason, setRejectReason] = useStateA("");
-  const fileInputRefs = useRefA({});
+  const [uploadCategory, setUploadCategory] = useStateA("");
+  const uploadInputRef = useRefA(null);
+  const pendingCategoryRef = useRefA(null);
 
   if (!driver) return null;
 
@@ -6029,20 +6338,41 @@ const ServicePartnerProfileModal = ({ driver, onClose, showToast }) => {
     .filter((a) => a.actor === driver.name)
     .slice(0, 50);
 
-  const docFor = (category) =>
-    docs.find((d) => d.category === category && d.reviewStatus !== "replaced");
+  // Documents surface: pick a category from a dropdown, then upload one file.
+  // A category is "occupied" by any non-rejected, non-replaced doc, so it can
+  // only ever hold a single active document (uploads into a taken category are
+  // blocked by the store). Rejecting or removing a doc frees the category.
+  const activeDocs = docs.filter((d) => d.reviewStatus !== "replaced");
+  const isCategoryOccupied = (category) =>
+    docs.some(
+      (d) =>
+        d.category === category &&
+        d.reviewStatus !== "replaced" &&
+        d.reviewStatus !== "rejected",
+    );
+  const availableCategories = AuthStore.DRIVER_DOC_CATEGORIES.filter(
+    (c) => !isCategoryOccupied(c),
+  );
 
-  const triggerUpload = (category) => {
-    const input = fileInputRefs.current[category];
-    input?.click();
+  const triggerUpload = () => {
+    const category = uploadCategory || availableCategories[0];
+    if (!category) return;
+    pendingCategoryRef.current = category;
+    uploadInputRef.current?.click();
   };
 
-  const onFilePicked = (category) => (e) => {
+  const onFilePicked = (e) => {
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f) return;
+    const category = pendingCategoryRef.current;
     const r = store.addDriverOnboardingDocument(driver.id, f, { category });
     if (r.ok) showToast?.(t("adminSPDocUpload"), f.name);
+    else if (r.reason === "category_taken")
+      showToast?.(
+        t("adminSPDocCategoryTaken"),
+        t("adminSPDocCategory_" + category),
+      );
     else showToast?.(t("adminMasterDataSaveFailed"), r.reason || "");
   };
 
@@ -6343,11 +6673,66 @@ const ServicePartnerProfileModal = ({ driver, onClose, showToast }) => {
 
           {tab === "documents" ? (
             <div style={{ display: "grid", gap: 14 }}>
-              {AuthStore.DRIVER_DOC_CATEGORIES.map((category) => {
-                const doc = docFor(category);
-                return (
+              <div
+                className="card"
+                style={{ padding: 14, display: "grid", gap: 10 }}
+              >
+                <div style={{ fontWeight: 600, fontSize: 13 }}>
+                  {t("adminSPDocUploadTitle")}
+                </div>
+                <input
+                  ref={(el) => {
+                    uploadInputRef.current = el;
+                  }}
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
+                  style={{ display: "none" }}
+                  onChange={onFilePicked}
+                />
+                {availableCategories.length ? (
                   <div
-                    key={category}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-end",
+                      gap: 10,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div style={{ display: "grid", gap: 4 }}>
+                      <label className="field-label">
+                        {t("adminSPDocCategory_")}
+                      </label>
+                      <select
+                        className="input"
+                        value={uploadCategory || availableCategories[0]}
+                        onChange={(e) => setUploadCategory(e.target.value)}
+                      >
+                        {availableCategories.map((c) => (
+                          <option key={c} value={c}>
+                            {t("adminSPDocCategory_" + c)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={triggerUpload}
+                    >
+                      {t("adminSPDocUpload")}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="label" style={{ fontSize: 12 }}>
+                    {t("adminSPDocAllCategoriesUsed")}
+                  </div>
+                )}
+              </div>
+
+              {activeDocs.length ? (
+                activeDocs.map((doc) => (
+                  <div
+                    key={doc.id}
                     className="card"
                     style={{
                       padding: 14,
@@ -6360,35 +6745,39 @@ const ServicePartnerProfileModal = ({ driver, onClose, showToast }) => {
                   >
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 13 }}>
-                        {t("adminSPDocCategory_" + category)}
+                        {t("adminSPDocCategory_" + doc.category)}
                       </div>
-                      {doc ? (
-                        <div className="label" style={{ fontSize: 11.5 }}>
-                          {doc.fileName} · v{doc.version}
+                      <div className="label" style={{ fontSize: 11.5 }}>
+                        {doc.fileName} · v{doc.version}
+                      </div>
+                      {doc.reviewStatus === "rejected" &&
+                      doc.rejectionReason ? (
+                        <div
+                          className="label"
+                          style={{
+                            fontSize: 11.5,
+                            color: "var(--danger, #c0392b)",
+                          }}
+                        >
+                          {doc.rejectionReason}
                         </div>
-                      ) : (
-                        <div className="label" style={{ fontSize: 11.5 }}>
-                          {t("adminSPDocNoneYet")}
-                        </div>
-                      )}
+                      ) : null}
                     </div>
                     <div
                       style={{ display: "flex", alignItems: "center", gap: 8 }}
                     >
-                      {doc ? (
-                        <Pill
-                          status={
-                            doc.reviewStatus === "accepted"
-                              ? "accepted"
-                              : doc.reviewStatus === "rejected"
-                                ? "cancelled"
-                                : "warn"
-                          }
-                        >
-                          {doc.reviewStatus}
-                        </Pill>
-                      ) : null}
-                      {doc && doc.reviewStatus === "uploaded" ? (
+                      <Pill
+                        status={
+                          doc.reviewStatus === "accepted"
+                            ? "accepted"
+                            : doc.reviewStatus === "rejected"
+                              ? "cancelled"
+                              : "warn"
+                        }
+                      >
+                        {doc.reviewStatus}
+                      </Pill>
+                      {doc.reviewStatus === "uploaded" ? (
                         <>
                           <button
                             type="button"
@@ -6416,26 +6805,25 @@ const ServicePartnerProfileModal = ({ driver, onClose, showToast }) => {
                           </button>
                         </>
                       ) : null}
-                      <input
-                        ref={(el) => {
-                          fileInputRefs.current[category] = el;
-                        }}
-                        type="file"
-                        accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
-                        style={{ display: "none" }}
-                        onChange={onFilePicked(category)}
-                      />
                       <button
                         type="button"
                         className="btn xs"
-                        onClick={() => triggerUpload(category)}
+                        onClick={() => {
+                          const r = store.removeDriverDocument(doc.id);
+                          if (r.ok)
+                            showToast?.(t("adminSPDocRemoved"), doc.fileName);
+                        }}
                       >
-                        {doc ? t("adminSPDocReplace") : t("adminSPDocUpload")}
+                        {t("adminSPDocRemove")}
                       </button>
                     </div>
                   </div>
-                );
-              })}
+                ))
+              ) : (
+                <div className="label" style={{ fontSize: 12 }}>
+                  {t("adminSPDocNoneYet")}
+                </div>
+              )}
               {rejectDocId ? (
                 <div
                   className="card"
@@ -6497,7 +6885,34 @@ const ServicePartnerProfileModal = ({ driver, onClose, showToast }) => {
                   </thead>
                   <tbody>
                     {orders.map((j) => (
-                      <tr key={j.id}>
+                      // Rows open the tour's job detail (client feedback: the
+                      // orders listed on a partner must be reachable from
+                      // here). Kept keyboard-operable — the row is the control,
+                      // so it carries the role, tabIndex and Enter/Space
+                      // handling a <button> would otherwise provide.
+                      <tr
+                        key={j.id}
+                        className={onOpenJob ? "row" : undefined}
+                        role={onOpenJob ? "button" : undefined}
+                        tabIndex={onOpenJob ? 0 : undefined}
+                        aria-label={
+                          onOpenJob
+                            ? `${t("adminColTour")} ${j.tour} — ${j.customer}`
+                            : undefined
+                        }
+                        style={onOpenJob ? { cursor: "pointer" } : undefined}
+                        onClick={onOpenJob ? () => onOpenJob(j) : undefined}
+                        onKeyDown={
+                          onOpenJob
+                            ? (e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  onOpenJob(j);
+                                }
+                              }
+                            : undefined
+                        }
+                      >
                         <td className="mono">{j.tour}</td>
                         <td>{j.customer}</td>
                         <td>{j.status}</td>
@@ -9400,10 +9815,8 @@ const TourBillingPane = ({
   const [viewId, setViewId] = useStateA(null);
   const [editId, setEditId] = useStateA(null);
   const [editForm, setEditForm] = useStateA(null);
-  const [regJobId, setRegJobId] = useStateA(() => store.getJobs()[0]?.id ?? "");
-  const [regDriverId, setRegDriverId] = useStateA(
-    () => store.getDrivers()[0]?.id ?? "",
-  );
+  const [regJobIds, setRegJobIds] = useStateA(() => new Set());
+  const [regJobSearch, setRegJobSearch] = useStateA("");
   const [regDocType, setRegDocType] = useStateA("invoice");
   const [regFile, setRegFile] = useStateA(null);
   const regFileRef = useRefA(null);
@@ -9556,6 +9969,7 @@ const TourBillingPane = ({
     if (r && r.ok) return "";
     const reason = r && r.reason;
     if (reason === "bad_job") return t("adminInvoiceErrBadJob");
+    if (reason === "no_jobs") return t("adminInvoiceErrNoJobs");
     if (reason === "bad_driver") return t("adminInvoiceErrBadDriver");
     if (reason === "no_file" || reason === "no_filename")
       return t("adminInvoiceErrNoFile");
@@ -9642,8 +10056,28 @@ const TourBillingPane = ({
   const closeRegister = () => {
     setRegisterOpen(false);
     setRegFile(null);
+    setRegJobIds(new Set());
+    setRegJobSearch("");
     if (regFileRef.current) regFileRef.current.value = "";
   };
+  const toggleRegJob = (id) =>
+    setRegJobIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  // Filter tours by tour code, customer, or assigned driver name so the client
+  // can find the right tours quickly instead of scrolling a long list.
+  const regJobMatches = (() => {
+    const q = regJobSearch.trim().toLowerCase();
+    if (!q) return jobs;
+    return jobs.filter((j) =>
+      [j.tour, j.customer, j.driver, j.id]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(q)),
+    );
+  })();
   const onRegFilePick = (e) => {
     const f = e.target.files?.[0];
     e.target.value = "";
@@ -9908,38 +10342,104 @@ const TourBillingPane = ({
                 </select>
               </div>
               <div>
-                <label className="field-label" htmlFor="reg-job">
-                  {t("adminInvoiceSelectJob")}
+                <label className="field-label" htmlFor="reg-job-search">
+                  {t("adminInvoiceSelectTours")}
                 </label>
-                <select
-                  id="reg-job"
+                <input
+                  id="reg-job-search"
                   className="input"
-                  value={regJobId}
-                  onChange={(e) => setRegJobId(e.target.value)}
+                  type="search"
+                  placeholder={t("adminInvoiceSearchTours")}
+                  value={regJobSearch}
+                  onChange={(e) => setRegJobSearch(e.target.value)}
+                  autoComplete="off"
+                />
+                <div
+                  role="listbox"
+                  aria-multiselectable="true"
+                  style={{
+                    marginTop: 8,
+                    maxHeight: 200,
+                    overflowY: "auto",
+                    overflowX: "hidden",
+                    border: "1px solid var(--line)",
+                    borderRadius: 8,
+                  }}
                 >
-                  {jobs.map((j) => (
-                    <option key={j.id} value={j.id}>
-                      {j.tour} · {j.customer}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="field-label" htmlFor="reg-drv">
-                  {t("adminInvoiceSelectDriver")}
-                </label>
-                <select
-                  id="reg-drv"
-                  className="input"
-                  value={regDriverId}
-                  onChange={(e) => setRegDriverId(e.target.value)}
+                  {regJobMatches.length ? (
+                    regJobMatches.map((j) => {
+                      const on = regJobIds.has(j.id);
+                      return (
+                        <label
+                          key={j.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "flex-start",
+                            gap: 10,
+                            padding: "8px 10px",
+                            cursor: "pointer",
+                            borderBottom: "1px solid var(--line)",
+                            background: on ? "var(--paper-2)" : "transparent",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={() => toggleRegJob(j.id)}
+                            style={{ flexShrink: 0 }}
+                          />
+                          <span
+                            style={{
+                              display: "grid",
+                              gap: 2,
+                              minWidth: 0,
+                              flex: 1,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: 13,
+                                fontWeight: on ? 600 : 500,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {j.tour} · {j.customer}
+                            </span>
+                            <span
+                              className="label"
+                              style={{
+                                fontSize: 11.5,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {j.driver
+                                ? j.driver
+                                : t("adminInvoiceTourNoDriver")}
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })
+                  ) : (
+                    <div
+                      className="label"
+                      style={{ padding: "10px 12px", fontSize: 12 }}
+                    >
+                      {t("adminInvoiceNoToursMatch")}
+                    </div>
+                  )}
+                </div>
+                <p
+                  className="label"
+                  style={{ margin: "6px 0 0", fontSize: 12 }}
                 >
-                  {drivers.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name} ({d.id})
-                    </option>
-                  ))}
-                </select>
+                  {t("adminInvoiceToursSelected", { count: regJobIds.size })}
+                </p>
               </div>
               <div>
                 <label className="field-label" htmlFor="reg-file">
@@ -9994,17 +10494,19 @@ const TourBillingPane = ({
               <button
                 type="button"
                 className="btn primary"
-                disabled={!jobs.length || !drivers.length || !regFile}
+                disabled={!jobs.length || regJobIds.size === 0 || !regFile}
                 onClick={() => {
-                  const r = store.registerTourDocumentAdmin({
-                    jobId: regJobId,
-                    driverId: regDriverId,
+                  const r = store.registerTourDocumentAdminMulti({
+                    jobIds: Array.from(regJobIds),
                     file: regFile,
                     notes: regNotes.trim(),
                     documentType: regDocType,
                   });
                   if (r.ok) {
-                    showToast?.(t("adminInvoiceRegistered"), r.id);
+                    showToast?.(
+                      t("adminInvoiceRegisteredMulti", { count: r.count }),
+                      regFile?.name || "",
+                    );
                     setRegNotes("");
                     closeRegister();
                   } else showToast?.(invoiceActionErr(r));
