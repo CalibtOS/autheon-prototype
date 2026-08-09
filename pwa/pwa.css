@@ -13,92 +13,121 @@
      ≥ 1536px   large desktop   — centered 720px phone-column preview
    =============================================================== */
 
-/* Match FE DriverShell height model (the bit that fills the phone edge-to-edge):
-   FE: body min-h-dvh → stage h-[100dvh] in normal flow (NOT position:fixed)
-       → frame h-full flex-col → content column flex-1 + pt safe-area.
-   Proto used to keep a desktop phone-mock (.phone height:min(800px,…)) inside
-   a position:fixed shell — that is what capped the UI above the home indicator.
-   This file now mirrors FE: in-flow 100dvh flex column, framed phone geometry
-   fully neutralized. */
+/* FE DriverShell height contract (apps/web DriverShell.tsx):
+   body min-h-dvh → stage h-[100dvh] max-h-[100dvh] → frame h-full flex-col
+   → content flex-1 + pt safe-area → tabbar absolute on FRAME (not content).
+   Desktop mock .phone { height:min(800px,100vh-120px) } MUST NOT apply. */
 html.pwa-page {
   margin: 0;
   height: 100%;
-  height: 100dvh;
   background: var(--canvas);
 }
 body.pwa-page {
   margin: 0;
-  height: 100%;
-  height: 100dvh;
   min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
   background: var(--canvas);
-  overflow: hidden; /* override styles.css body{overflow:auto} — FE shell owns scroll */
+  overflow: hidden; /* override styles.css body{overflow:auto} */
   overscroll-behavior-y: none;
 }
 body.pwa-page #root {
-  height: 100%;
-  height: 100dvh;
   min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--canvas);
 }
 
-/* Install / preview chrome — in-flow (not fixed) so the phone column can
-   flex:1 into the remaining viewport. Hidden when launched as installed app. */
+/* Install / preview chrome — same language as the framed prototype's
+   `.app-header` (dark chrome strip). In-flow so the phone column can flex:1
+   into the remaining viewport. Always full-bleed of the shell — desktop
+   `align-items: center` must not shrink this into a floating chip.
+   Hidden when launched as an installed app. */
 .pwa-mode-bar {
   position: relative;
   z-index: 200;
   flex-shrink: 0;
+  align-self: stretch;
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  min-height: 52px;
-  padding: 10px 16px;
+  gap: 16px;
+  min-height: 48px;
+  padding: 10px 18px;
   padding-top: max(10px, env(safe-area-inset-top, 0px));
-  box-sizing: border-box;
-  background: var(--paper);
-  background: color-mix(in srgb, var(--paper) 92%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.35;
+  background: var(--chrome-header-bg);
+  color: var(--chrome-header-fg);
+  border-bottom: 1px solid var(--chrome-header-border);
 }
-.pwa-mode-bar-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.pwa-mode-bar-copy strong {
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-.pwa-mode-bar-copy span {
-  font-size: 12px;
-  color: var(--muted);
-}
-.pwa-mode-bar-actions {
+.pwa-mode-bar-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--chrome-header-fg);
+  white-space: nowrap;
+}
+.pwa-mode-bar-brand span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pwa-mode-bar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   flex-shrink: 0;
 }
-.pwa-mode-bar-link {
-  color: var(--text);
+.pwa-mode-bar-install {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  border: 0;
+  background: var(--primary);
+  color: var(--chrome-header-fg);
   font-size: 12px;
   font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow-ink) 8%, transparent);
+}
+.pwa-mode-bar-install:hover {
+  filter: brightness(1.06);
+}
+.pwa-mode-bar-install:focus-visible {
+  outline: 2px solid var(--chrome-header-fg);
+  outline-offset: 2px;
+}
+.pwa-mode-bar-link {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--chrome-header-ring);
+  color: var(--chrome-header-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   text-decoration: none;
-  padding: 8px 10px;
-  border-radius: 8px;
+  white-space: nowrap;
+  background: var(--chrome-header-wash);
 }
 .pwa-mode-bar-link:hover {
-  background: var(--canvas);
+  background: var(--chrome-header-wash-strong);
+  border-color: var(--chrome-header-ring-strong);
+  color: var(--chrome-header-fg);
 }
 
 .pwa-ios-sheet {
@@ -145,33 +174,36 @@ html.pwa-standalone .pwa-ios-sheet {
   display: none !important;
 }
 
-/* ---- Frame neutralization (FE in-flow 100dvh column) -------------- */
+/* ---- FE stage + frame (DriverShell.tsx) ---------------------------- */
 .phone-shell.pwa-viewport {
-  /* Same role as FE stage+frame: fill #root, flex column, no fixed inset. */
+  /* FE stage: h-[100dvh] max-h-[100dvh] bg-surface-muted flex column */
   position: relative;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   width: 100%;
-  height: 100%;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
   min-height: 0;
-  max-height: none;
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
   padding: 0;
   margin: 0;
   overflow: hidden;
   background: var(--canvas);
   box-sizing: border-box;
+  overscroll-behavior: none;
 }
 
+/* FE frame (data-driver-shell): relative flex-col h-full overflow-hidden.
+   Class stays `.phone` so shared selectors keep working; geometry is wiped. */
 .phone-shell.pwa-viewport .phone {
-  /* Kill framed-prototype sizing from styles.css — these caps are why the
-     UI stopped above the home indicator while FE reached the screen edge:
-       width: min(392px, 100vw - 32px)
-       height: min(800px, 100vh - 120px)
-       max-height: calc(100vh - 80px)
-       border-radius / bezel shadow */
   position: relative;
-  flex: 1 1 auto;
+  /* flex-basis 0: take remaining shell height after optional mode-bar.
+     height:auto !important kills styles.css min(800px, 100vh-120px). */
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
   width: 100% !important;
   max-width: none !important;
   height: auto !important;
@@ -184,19 +216,42 @@ html.pwa-standalone .pwa-ios-sheet {
   background: var(--canvas);
   overflow: hidden;
 }
+
+/* FE content column: flex-1 min-h-0 flex-col overflow-hidden + pt safe-area.
+   Tab bar is NOT a child of this node (see .pwa-tabbar-slot). */
 .phone-shell.pwa-viewport .phone-screen {
-  /* Sole top safe-area owner — FE DriverShell content column
-     `pt-[env(safe-area-inset-top)]`. Paper headers stay below this band. */
   --phone-chrome-top: env(safe-area-inset-top, 0px);
   position: relative;
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
   min-height: 0;
+  height: auto;
+  max-height: none;
   padding-top: env(safe-area-inset-top, 0px);
   background: var(--canvas);
   overflow: hidden;
+}
+
+/* FE: absolute inset-x-0 bottom-0 wrapper around BottomTabBar */
+.phone-shell.pwa-viewport .pwa-tabbar-slot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+.phone-shell.pwa-viewport .pwa-tabbar-slot .tabbar-container {
+  /* styles.css pins .tabbar-container absolute; FE TabBar itself is relative
+     inside the absolute slot — match that so bottom:0 is the frame edge. */
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  width: 100%;
+  pointer-events: none;
 }
 
 /*

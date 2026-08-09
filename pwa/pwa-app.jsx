@@ -177,13 +177,13 @@ function PwaDriverApp() {
     <div className="phone-shell pwa-viewport">
       {!pwa.isStandalone ? (
         <div className="pwa-mode-bar" role="region" aria-label={t("pwaInstallRegion")}>
-          <div className="pwa-mode-bar-copy">
-            <strong>{t("pwaInstallTitle")}</strong>
+          <div className="pwa-mode-bar-brand">
+            <span>{t("pwaInstallTitle")}</span>
           </div>
           <div className="pwa-mode-bar-actions">
             <button
               type="button"
-              className="btn primary xs"
+              className="pwa-mode-bar-install"
               onClick={() => {
                 void (async () => {
                   if (pwa.canInstall) {
@@ -255,6 +255,11 @@ function PwaDriverApp() {
         </div>
       ) : null}
 
+      {/* FE DriverShell parity:
+          stage/shell → frame (.phone) → content column (.phone-screen) +
+          absolute tab slot. Tab bar is a SIBLING of the content column
+          (not inside the safe-area-padded screen), matching
+          DriverShell.tsx frame > [content, absolute tabbar]. */}
       <div className="phone">
         <div className="phone-screen">
           <div
@@ -287,9 +292,6 @@ function PwaDriverApp() {
             )}
             {body}
           </div>
-          {!activeJob && (
-            <TabBar tab={tab} setTab={setTab} />
-          )}
           {showNotifications && (
             <DriverNotificationsPane
               onClose={() => {
@@ -455,6 +457,11 @@ function PwaDriverApp() {
             <TourBookedSuccessSheet onClose={() => setBookedSuccess(false)} />
           )}
         </div>
+        {!activeJob ? (
+          <div className="pwa-tabbar-slot">
+            <TabBar tab={tab} setTab={setTab} />
+          </div>
+        ) : null}
       </div>
     </div>
   );
