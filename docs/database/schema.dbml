@@ -1,5 +1,6 @@
 ﻿// AUTHEON Version 1 database draft — PostgreSQL target.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
+// 2026-08-09 (PRD v2.36) — SERVICE-PARTNER (ONBOARDING) DOCUMENT UPLOAD, documented retroactively: the prototype's driverDocuments entity (store.js, Phase 7, surfaced in ServicePartnerProfileModal's "Documents" tab) had no backend counterpart in this file until now. This is the first PARTNER-scoped document model — every pre-existing document table (job_documents, document_files, generated_job_documents) is JOB-scoped and stays untouched. New driver_document_category enum (business_registration | licence_front | licence_back | id_front | id_back | other) and driver_document_status enum (uploaded | accepted | rejected | replaced) — deliberately SEPARATE from document_type and document_review_status: an onboarding document is never reviewed against a tour, never carries the missing/under_review/correction_required states, and its lifecycle adds 'replaced' for versioning. New driver_documents table (driver_id, category, upload_asset_id, valid_until, version, review_status, rejection_reason, supersedes_document_id/replaced_by_document_id, uploaded/reviewed audit columns). ONE ACTIVE DOCUMENT PER CATEGORY is a partial unique index on (driver_id, category) WHERE review_status IN ('uploaded','accepted') — a rejected or replaced row frees the slot so the partner can re-submit; see logical-model.md. Files reuse upload_assets (private access) exactly as infopoint_documents do; no second storage path. NO change to drivers (the link is driver_documents.driver_id), and NO change to job_documents. New audit_events.action_key values: driver_document_uploaded, driver_document_accepted, driver_document_rejected, driver_document_replaced, driver_document_removed, plus driver_document_viewed / driver_document_downloaded for the content-access trail (entity_type 'driver_document').
 // 2026-07-31 (PRD v2.30) — CONSOLIDATED INVOICES (Admin Phase 12) schema added retroactively: the prototype's consolidatedInvoices entity had no backend counterpart in this file until now. New consolidated_invoice_status enum (in_review | correction_required | rejected | completed, deliberately separate from document_review_status and invoice_payment_status). New consolidated_invoices table (supplier_invoice_number, upload_asset_id, amount, driver_offer_sum snapshot, amount_mismatch, status, rejection_reason, internal_note, created_at/by) and consolidated_invoice_jobs join table — the first many-to-many relationship in this schema, since one consolidated invoice can span multiple completed jobs. Accepting an invoice only flips the linked jobs' existing job_financials.payment_status to 'paid'; it does not replace or duplicate that field. App-level guard (a job may not be linked to more than one non-rejected consolidated invoice at once) must be re-implemented server-side, e.g. a partial unique index or transactional check — see logical-model.md.
 // 2026-07-29 (PRD v2.24) — AUTH DEMO (PR #32), documented retroactively. NO structural change, and none is needed: Task 2 already makes Keycloak the identity provider and states AUTHEON stores no passwords, so sessions and password-reset codes are Keycloak-side — there is deliberately NO session table and NO password_resets table, and adding one would contradict the PRD. The prototype's in-memory session/reset-code state is prototype-only scaffolding. users.email_verified and email_change_requests already existed and are untouched. New audit_events.action_key values: driver_signed_in / admin_signed_in, driver_signed_out / admin_signed_out, driver_password_reset_requested / admin_password_reset_requested, driver_password_reset / admin_password_reset, driver_invite_accepted / admin_invite_accepted.
 // 2026-07-29 (PRD v2.20) — TYPE-AWARE DRIVER NOTIFICATIONS. Added user_notifications.target_entity_type + target_entity_id (both nullable) so a notification carries a STABLE reference to the non-tour thing it opens — an infopoint_news row for an Infopoint message, a job_documents row for a document outcome. job_id already covered tour notifications; deep_link remains the client route DERIVED from these ids and is no longer treated as the navigation source of truth (an id survives renames and localization; a title or tour number does not). Also added the (user_id, created_at) and (target_entity_type, target_entity_id) indexes the notification list and the deep-link lookup need. No enum change: notification_type stays a free varchar and gains new_published_job for the in-app "newly published matching order" row (notification_channels_matrix driver_in_app false -> true for that event; the driver_push column and the push ELIGIBILITY rules are unchanged — the same enabled + newly-published-toggle + postal-area match gate decides who is notified). Notification CATEGORY (order | account | system | general_information) and the card's interaction model are DERIVED from notification_type in the application layer and deliberately NOT stored, so the taxonomy can change without a migration or stale rows.
@@ -122,6 +123,28 @@ Enum document_review_status {
   accepted
   rejected
   correction_required
+}
+
+// PRD v2.36 — SERVICE-PARTNER onboarding documents. Separate vocabularies from
+// document_type / document_review_status above, which describe TOUR documents.
+// Reusing those would force partner documents to carry states that cannot occur
+// for them (missing / under_review / correction_required are tour-review states)
+// and would block adding 'replaced', which tour documents express through the
+// job_documents.current_file_id + document_files.supersedes_file_id pair instead.
+Enum driver_document_category {
+  business_registration  // Gewerbeanmeldung
+  licence_front          // driving licence, front
+  licence_back           // driving licence, reverse
+  id_front               // identity document, front
+  id_back                // identity document, reverse
+  other                  // catch-all; the ONLY category that may legitimately repeat
+}
+
+Enum driver_document_status {
+  uploaded   // submitted, awaiting admin review — occupies the category slot
+  accepted   // admin accepted — occupies the category slot
+  rejected   // admin rejected with a reason — FREES the slot for re-submission
+  replaced   // superseded by a newer version; retained, never deleted
 }
 
 Enum settlement_status {
@@ -633,6 +656,42 @@ Table job_document_reviews {
   occurred_at timestamptz [not null]
 }
 
+// 2026-08-09 (PRD v2.36) — SERVICE-PARTNER ONBOARDING DOCUMENTS. The first
+// PARTNER-scoped document table: it hangs off drivers, NOT off jobs, and is what
+// the admin Service Partner profile "Documents" tab reads. Deliberately a separate
+// table rather than a nullable job_id on job_documents — the two have different
+// lifecycles (onboarding/compliance vs per-tour settlement), different review
+// vocabularies, different retention drivers, and only this one has an expiry date
+// and a one-active-row-per-category rule. A nullable-FK merge would make every
+// tour-document query filter on "job_id IS NOT NULL" forever.
+//
+// VERSIONING mirrors document_files.supersedes_file_id: a replacement INSERTS a new
+// row (version + 1, review_status 'uploaded', supersedes_document_id -> the prior
+// row) and marks the prior row 'replaced' with replaced_by_document_id pointing
+// forward. The previous binary is never overwritten and the row is never deleted,
+// so document history stays reviewable.
+Table driver_documents {
+  id uuid [pk]
+  driver_id uuid [not null]
+  category driver_document_category [not null]
+  upload_asset_id uuid [not null]         // file lives in upload_assets (access 'private'), same path as infopoint_documents
+  original_filename varchar(500) [not null]
+  mime_type varchar(255) [not null]       // PDF + image types only, same allowlist as tour documents
+  file_size_bytes bigint [not null]       // subject to the same configured per-file ceiling as tour documents (app_settings, default 25 MB / 50 MB platform cap)
+  valid_until date                        // optional expiry (client req. #8 "validity"); NULL = no expiry tracked. Expiry is DERIVED for display, never a stored status
+  version smallint [not null, default: 1] // 1 for a first upload; incremented by each replacement
+  review_status driver_document_status [not null, default: 'uploaded']
+  rejection_reason text                   // required by the application when review_status = 'rejected'
+  supersedes_document_id uuid             // -> driver_documents.id, the version this row replaced
+  replaced_by_document_id uuid            // -> driver_documents.id, set on the OLD row when replaced
+  uploaded_by_user_id uuid [not null]     // the partner's own user, or an admin uploading on their behalf
+  uploaded_at timestamptz [not null]
+  reviewed_by_user_id uuid                // admin who accepted/rejected
+  reviewed_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
 // 2026-07-30 (PRD v2.26) — TRANSPORT-ORDER PDF. Extended so every generated
 // document carries the full audit set the client technical specification
 // requires. A row is IMMUTABLE after insert; the only column ever updated is
@@ -977,6 +1036,13 @@ Ref: document_files.supersedes_file_id > document_files.id
 Ref: job_documents.current_file_id > document_files.id
 Ref: job_document_reviews.job_document_id > job_documents.id
 Ref: job_document_reviews.reviewer_user_id > users.id
+// PRD v2.36 — service-partner onboarding documents (partner-scoped, not job-scoped)
+Ref: driver_documents.driver_id > drivers.id
+Ref: driver_documents.upload_asset_id > upload_assets.id
+Ref: driver_documents.uploaded_by_user_id > users.id
+Ref: driver_documents.reviewed_by_user_id > users.id
+Ref: driver_documents.supersedes_document_id > driver_documents.id
+Ref: driver_documents.replaced_by_document_id > driver_documents.id
 Ref: generated_job_documents.job_id > jobs.id
 Ref: generated_job_documents.document_file_id > document_files.id
 

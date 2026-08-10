@@ -1,5 +1,24 @@
 # AUTHEON database logical model
 
+> **Status override:** Updated 2026-08-09 - PRD v2.36 / Task 34: **service-partner (onboarding) document
+> upload**, documented retroactively — the prototype's `driverDocuments` entity (`store.js` Phase 7, admin
+> Service Partner profile → "Documents" tab) had no backend counterpart. **New `driver_documents` table**,
+> the first **partner-scoped** document table in this model: it hangs off `drivers`, not off `jobs`. **New
+> `driver_document_category` enum** (`business_registration` / `licence_front` / `licence_back` / `id_front` /
+> `id_back` / `other`) **and `driver_document_status` enum** (`uploaded` / `accepted` / `rejected` / `replaced`),
+> both deliberately **separate** from `document_type` / `document_review_status`, which describe tour
+> documents and carry states (`missing`, `under_review`, `correction_required`) that cannot occur for an
+> onboarding document. **One active document per category** is a partial unique index over
+> `review_status in ('uploaded','accepted')`, excluding `other` — a rejected or replaced row frees the slot,
+> which is the database expression of the prototype's `category_taken` guard. Versioning reuses the existing
+> `supersedes`/`replaced_by` pattern (insert a new row, mark the old one `replaced`; nothing is overwritten or
+> deleted). `valid_until` is optional metadata and **expiry is derived at read time, never a stored status**.
+> Files reuse `upload_assets` (`access = 'private'`), the same path as `infopoint_documents` — no second
+> storage mechanism. **No change** to `drivers`, `job_documents`, `document_files` or `generated_job_documents`.
+> New `audit_events.action_key` values: `driver_document_uploaded` / `_accepted` / `_rejected` / `_replaced` /
+> `_removed`, plus `driver_document_viewed` / `_downloaded` (`entity_type = 'driver_document'`). See
+> "Service-partner onboarding documents" below.
+
 > **Status override:** Updated 2026-08-05 - PRD v2.34-feed-redesign / Task 33 (renumbered from v2.32
 > — main independently claimed v2.32 for an unrelated job-attachment-size-limits change that landed
 > first): Dispatch Notification
@@ -82,11 +101,14 @@ The production model separates master data, transactional tour data, immutable h
 
 ```text
 users (Keycloak-linked) ──1:0..1── drivers ──< job_assignments >── jobs
-    │                                                    │
-    ├──< audit_events                                  ├──< job_locations
-    ├──< user_notifications                             ├──< job_status_history
-    └──< notification_preferences                       ├──< job_problem_reports
-                                                        ├──< job_documents ──< document_files
+    │                                       │            │
+    ├──< audit_events                       │          ├──< job_locations
+    ├──< user_notifications                 │          ├──< job_status_history
+    ├──< notification_preferences            │          ├──< job_problem_reports
+    └                                       │          ├──< job_documents ──< document_files
+                                            │
+                                            └──< driver_documents (partner-scoped onboarding
+                                                 documents — NOT linked to a job; PRD v2.36)
 customers ───────────────────────────────────────┤
 locations (optional master-data reference) ──────────────┘
 
@@ -204,17 +226,19 @@ Driver **reads** of driver-accessible content are audited alongside writes (PRD 
 
 | Column          | Content-access meaning                                                                                                                                                                                     |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `action_key`    | `document_viewed` / `document_downloaded` (Infopoint general documents) · `tour_document_viewed` / `tour_document_downloaded` · `pdf_viewed` / `pdf_downloaded` (transport-order PDF) · `news_item_viewed` |
+| `action_key`    | `document_viewed` / `document_downloaded` (Infopoint general documents) · `tour_document_viewed` / `tour_document_downloaded` · `pdf_viewed` / `pdf_downloaded` (transport-order PDF) · `news_item_viewed` · `driver_document_viewed` / `driver_document_downloaded` (service-partner onboarding documents, PRD v2.36) |
 | `actor_user_id` | the driver who performed the read — **not** the dispatcher, even where the same service call also serves the admin console                                                                                 |
-| `entity_type`   | `infopoint_document` · `tour_document` · `transport_order_pdf` · `infopoint_news`                                                                                                                          |
-| `entity_id`     | the affected `infopoint_documents` / `job_documents` / `generated_job_documents` / `user_notifications` / `infopoint_news` row                                                                             |
+| `entity_type`   | `infopoint_document` · `tour_document` · `transport_order_pdf` · `infopoint_news` · `driver_document`                                                                                                      |
+| `entity_id`     | the affected `infopoint_documents` / `job_documents` / `generated_job_documents` / `user_notifications` / `infopoint_news` / `driver_documents` row                                                        |
 | `job_id`        | the tour, where the content belongs to one (tour documents, transport-order PDF, tour-linked notifications)                                                                                                |
 | `occurred_at`   | timestamp of the read                                                                                                                                                                                      |
 | `metadata`      | `actionType` (`viewed` \| `downloaded` — keeps the distinction queryable independently of the action key), the document version where the entity has one, and the document/notification subtype            |
 
 **Append-only, never merged.** Each interaction inserts its own row; repeated views and repeated downloads produce distinct rows. There is no upsert, no counter and no "last viewed at" column — a read count is a query over `audit_events`, not stored state. The existing `(entity_type, entity_id, occurred_at)` index serves "who has read this document" and the `(job_id, occurred_at desc)` index serves the per-tour trail.
 
-**No version column is added.** `infopoint_documents.version_label` and the generated-PDF document-file version already supply "the document version where applicable". `job_documents` has no version concept (a replacement overwrites in place and is separately audited as `tour_document_replaced`), so tour-document access entries simply carry none.
+**No version column is added.** `infopoint_documents.version_label` and the generated-PDF document-file version already supply "the document version where applicable". `job_documents` has no version concept (a replacement overwrites in place and is separately audited as `tour_document_replaced`), so tour-document access entries simply carry none. Service-partner documents **do** have one — `driver_documents.version` — and access entries carry it in `metadata`, together with the `category`.
+
+**Service-partner document access is admin-side too.** Unlike the rest of this table, `driver_document_viewed` / `driver_document_downloaded` are written for **both** actors: the partner reading back their own submission, and the admin opening it during review. `actor_user_id` distinguishes them; the "not the dispatcher" rule above is specific to Driver-PWA reads of tour content and does not apply here.
 
 **Marking read is not a read.** `user_notifications.read_at` and `infopoint_news_reads` remain the read-state model and are unchanged; they answer "has this been acknowledged", while `audit_events` answers "who opened it, and when, how many times".
 
@@ -250,6 +274,18 @@ Files are not stored in PostgreSQL blobs. `upload_assets` is the core binary met
 `job_documents` represents the business document type on the tour. Its `current_file_id` points to the active immutable file version; older files remain linked through `document_files.supersedes_file_id`. `document_files.upload_asset_id` points to immutable binary metadata in `upload_assets`. Denormalized fields such as `storage_key`, `mime_type`, and `file_size_bytes` may be retained on `document_files` as audit snapshots, but the upload asset remains the binary source of truth.
 
 Generated transport-order PDFs are represented as generated job documents linked to a `document_files` row (`generated_job_documents.document_file_id`), not as standalone raw storage keys. This keeps generated documents inside the same versioning, download authorization, and audit model as driver/admin tour documents.
+
+### Service-partner onboarding documents (PRD v2.36, 2026-08-09)
+
+`driver_documents` is the first **partner-scoped** document table. Every other document table in this model hangs off a job; this one hangs off `drivers` and is what the admin Service Partner profile's "Documents" tab reads. It covers the client's onboarding/compliance pack — business registration, driving licence (front/back), identity document (front/back), and a catch-all `other`.
+
+**Why a separate table rather than a nullable `job_id` on `job_documents`.** The two document families share only the notion "a reviewed file". They differ in scope (partner vs tour), lifecycle (onboarding/compliance vs per-tour settlement), review vocabulary (`driver_document_status` has no `missing`/`under_review`/`correction_required`, and adds `replaced`), retention driver, and constraints — only the partner document has an expiry date and a one-active-row-per-category rule. Merging them behind a nullable FK would force every existing tour-document query to filter `job_id is not null` permanently, and would push four states onto rows that can never enter them.
+
+**Category slots.** At most one *active* document per `(driver_id, category)`, where active means `review_status in ('uploaded','accepted')`. Rejecting or replacing a document frees the slot so the partner can re-submit without an admin having to delete anything. `other` is exempt from the rule — see "Required constraints and indexes".
+
+**Versioning** mirrors `document_files.supersedes_file_id` rather than inventing a second pattern: a replacement **inserts** a new row (`version + 1`, `review_status = 'uploaded'`, `supersedes_document_id` pointing back) and marks the prior row `replaced` with `replaced_by_document_id` pointing forward. The previous binary is never overwritten and no row is ever deleted, so the review history stays reconstructable. Binaries live in `upload_assets` with `access = 'private'`, the same path `infopoint_documents` uses — there is no second storage mechanism.
+
+**Expiry** (`valid_until`) is optional metadata, not a status. An expired document keeps `review_status = 'accepted'`; "expired" is derived at read time by comparing `valid_until` to the current date. Storing it as a status would require a sweep job to mutate review rows and would conflate an admin decision with the passage of time.
 
 ### Transport-order PDF versioning (PRD v2.26, 2026-07-30)
 
@@ -297,6 +333,9 @@ The SQL implementation must include at least these controls:
 - Audit and status-history indexes: `(job_id, occurred_at desc)`.
 - Unique `(consolidated_invoice_id, job_id)` on `consolidated_invoice_jobs`. A job may not be linked to more than one _non-rejected_ `consolidated_invoices` row at a time (the prototype guard `countActiveInvoicesForJob`/`getActiveInvoiceForJob`) — enforce server-side with a service-level check inside the same transaction that inserts the join rows, since a partial unique index cannot express "unique except when the referenced parent's status is rejected" across two tables.
 - Document queue index: `(job_id, review_status, created_at desc)`.
+- One active service-partner document per category (PRD v2.36): partial unique index on `driver_documents(driver_id, category) where review_status in ('uploaded','accepted')`. A `rejected` or `replaced` row deliberately falls outside the index so the slot is freed and the partner can re-submit — this is the database expression of the prototype's `category_taken` guard. The `other` category is the one exception and must be **excluded** from the index (`and category <> 'other'`), since a partner may legitimately hold several miscellaneous documents at once.
+- Service-partner document tab index: `(driver_id, category, uploaded_at desc)`; expiry sweep index on `driver_documents(valid_until) where valid_until is not null and review_status = 'accepted'`.
+- `driver_documents.rejection_reason` must be non-empty when `review_status = 'rejected'` (check constraint or service-level guard), mirroring the tour-document rejection rule.
 - Outbox delivery index: `(status, available_at)`.
 
 ## Access model and data exposure

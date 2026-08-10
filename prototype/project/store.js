@@ -5933,12 +5933,17 @@ window.AuthStore = (() => {
       if (exceedsPlatformUploadCeiling(file))
         return { ok: false, reason: "file_too_large" };
       const category = normalizeDriverDocCategory(opts.category);
-      const prior = driverDocuments.find(
+      // One document per category: block a second upload while the category is
+      // still occupied. Only uploaded/accepted docs occupy the slot — a rejected
+      // (or removed/replaced) doc frees it so the partner can re-submit.
+      const occupying = driverDocuments.find(
         (d) =>
           d.driverId === driverId &&
           d.category === category &&
-          d.reviewStatus !== "replaced",
+          d.reviewStatus !== "replaced" &&
+          d.reviewStatus !== "rejected",
       );
+      if (occupying) return { ok: false, reason: "category_taken" };
       const row = {
         id: `DD-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         driverId,
@@ -5950,15 +5955,10 @@ window.AuthStore = (() => {
         sizeBytes: typeof file.size === "number" ? file.size : 0,
         uploadedAt: nowStamp(),
         validUntil: String(opts.validUntil || "").trim(),
-        version: prior ? (prior.version || 1) + 1 : 1,
+        version: 1,
         reviewStatus: "uploaded",
         rejectionReason: "",
       };
-      if (prior) {
-        prior.reviewStatus = "replaced";
-        row.supersedes = prior.id;
-        prior.replacedBy = row.id;
-      }
       driverDocuments.unshift(row);
       const d = drivers.find((x) => x.id === driverId);
       log(
@@ -5993,6 +5993,19 @@ window.AuthStore = (() => {
         DEMO_ADMIN,
         doc.driverId,
         `${doc.category}: ${doc.rejectionReason}`,
+      );
+      emit();
+      return { ok: true };
+    },
+    removeDriverDocument(id) {
+      const idx = driverDocuments.findIndex((x) => x.id === id);
+      if (idx === -1) return { ok: false, reason: "not_found" };
+      const [doc] = driverDocuments.splice(idx, 1);
+      log(
+        "driver_document_removed",
+        DEMO_ADMIN,
+        doc.driverId,
+        doc.category,
       );
       emit();
       return { ok: true };
@@ -10012,6 +10025,81 @@ window.AuthStore = (() => {
       queueAdminEmailAlert("tour_document_uploaded", jobRaw, row.documentType);
       emit();
       return { ok: true, id: row.id };
+    },
+
+    // Attach the SAME uploaded file to several tours at once (e.g. one invoice
+    // that references multiple tours). Each tour gets its own document row with
+    // the driver derived from that tour's assignment — no standalone driver
+    // pick, because different tours can have different drivers.
+    registerTourDocumentAdminMulti(opts = {}) {
+      const jobIds = Array.from(
+        new Set(
+          (Array.isArray(opts.jobIds) ? opts.jobIds : [])
+            .map((id) => String(id || "").trim())
+            .filter(Boolean),
+        ),
+      );
+      if (!jobIds.length) return { ok: false, reason: "no_jobs" };
+      const file = opts.file;
+      if (!file) return { ok: false, reason: "no_file" };
+      if (!isAllowedTourDocumentFile(file))
+        return { ok: false, reason: "invalid_type" };
+      if (exceedsPlatformUploadCeiling(file))
+        return { ok: false, reason: "file_too_large" };
+      // Validate every tour up front so nothing partially attaches.
+      const validJobs = [];
+      for (const jobId of jobIds) {
+        const job = api.getJob(jobId);
+        if (!job) return { ok: false, reason: "bad_job", jobId };
+        validJobs.push(job);
+      }
+      const mime =
+        (file.type || guessMimeFromName(file.name) || "").trim() ||
+        "application/octet-stream";
+      const documentType = normalizeTourDocumentType(opts.documentType);
+      const notes = String(opts.notes || "").trim();
+      const ids = [];
+      for (const job of validJobs) {
+        const driverId = job.driverId || "";
+        const driverName =
+          job.driver || drivers.find((x) => x.id === driverId)?.name || "";
+        const row = {
+          id: `TD-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          jobId: job.id,
+          driverId,
+          driverName,
+          fileName: file.name,
+          mimeType: mime,
+          sizeBytes: typeof file.size === "number" ? file.size : 0,
+          uploadedAt: new Date().toISOString(),
+          documentType,
+          reviewStatus: "uploaded",
+          rejectionReason: "",
+          processed: false,
+          source: "admin_off_channel",
+          notes,
+          supplierInvoiceNumber: "",
+          supplierInvoiceDate: "",
+        };
+        ensureTourDocumentShape(row);
+        tourDocuments.unshift(row);
+        reconcileDocumentReviewSummary(job.id);
+        reconcileJobInvoiceFromTourDocuments(job.id);
+        log(
+          "tour_document_admin_registered",
+          DEMO_ADMIN,
+          row.fileName,
+          `${job.id} · ${row.documentType}`,
+        );
+        queueAdminEmailAlert(
+          "tour_document_uploaded",
+          job.id,
+          row.documentType,
+        );
+        ids.push(row.id);
+      }
+      emit();
+      return { ok: true, ids, count: ids.length };
     },
 
     downloadTourDocumentPlaceholder(id, opts = {}) {
