@@ -10,7 +10,7 @@
 //   - Extended customers for Customer Center prototype: legal_form, structured address
 //     (street/house_number/postal_code/city/country_code), joined_at, change_history jsonb
 //     (UI trail; audit_events remains system of record — decision 3A).
-//   - Annotated users.keycloak_id ↔ BE physical column identity_id (same meaning).
+//   - users.identity_id is the binding column name (Keycloak subject link) — not keycloak_id.
 //   - Annotated BE synchronize lag: account_access / operational_access properties still map to
 //     physical column name `status` until a wipe+reseed; target names in this file stay binding.
 //   - Decision 1A: hybrid auth challenge state on users — password_reset_otp_*, password_reset_token_*,
@@ -373,8 +373,8 @@ Table organizations {
 
 Table users {
   id uuid [pk]
-  // Logical name. BE TypeORM column is currently `identity_id` (same meaning).
-  keycloak_id varchar(36) [unique] // nullable until Keycloak provisioning completes; partial unique index where not null
+  // Keycloak subject link. Binding name is identity_id (matches BE TypeORM).
+  identity_id varchar(36) [unique] // nullable until Keycloak provisioning completes; partial unique index where not null
   email varchar(255) [not null, unique]
   first_name varchar(100) [not null]
   last_name varchar(100) [not null]
