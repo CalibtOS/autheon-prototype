@@ -1,8 +1,53 @@
 ﻿// AUTHEON Version 1 database draft — PostgreSQL target.
+// SOURCE OF TRUTH (binding): this file + logical-model.md (partial uniques, RLS, transition rules).
+// Final audit 2026-08-10: 38 tables, 32 enums, 75 Refs; BE has 32 entity tables (0 BE-only);
+// 6 DBML-only tables are intentional BE catch-up; binary meta only on upload_assets.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
+// 2026-08-10 — SCHEMA SYNC REVIEW (BE + prototype/PRD gap pass) + decided follow-ups:
+//   - Added organizations (+ organization_status) — present in autheon-be TypeORM, previously absent here.
+//   - Added drivers.second_phone (BE DriverEntity).
+//   - Added notification_preferences.email_enabled (BE NotificationPreferenceEntity).
+//   - Extended customers for Customer Center prototype: legal_form, structured address
+//     (street/house_number/postal_code/city/country_code), joined_at, change_history jsonb
+//     (UI trail; audit_events remains system of record — decision 3A).
+//   - Annotated users.keycloak_id ↔ BE physical column identity_id (same meaning).
+//   - Annotated BE synchronize lag: account_access / operational_access properties still map to
+//     physical column name `status` until a wipe+reseed; target names in this file stay binding.
+//   - Decision 1A: hybrid auth challenge state on users — password_reset_otp_*, password_reset_token_*,
+//     account_setup_token_* (hashes + rate-limit counters only; passwords stay in Keycloak).
+//     Amends the v2.24 "no reset state in AUTHEON" reading: still no session table and no
+//     password_resets table; short-lived challenge hashes on users are allowed.
+//   - Decision 2A: email_change_requests aligned to BE names (otp_hash, send_count,
+//     window_started_at, last_sent_at, updated_at).
+//   - Already present here but not yet in BE entities: consolidated_invoices(+jobs),
+//     driver_documents, sp_cancellations, empty_run_reports/evidence — keep as target; BE catch-up.
+//   - BE audit_events / job_assignments / user_notifications shapes remain BE-behind-DBML.
+// 2026-08-10 — BE-BEHIND TARGET HARDENING (prototype/PRD as contract for unimplemented BE):
+//   - empty_run_reason enum codes aligned to prototype machine ids (not_operational,
+//     not_roadworthy, not_present, not_released, key_docs_missing, other) — was verbose
+//     vehicle_* / key_or_documents_missing prefixes that matched neither UI nor seed data.
+//   - File binaries (binding, no legacy copies): upload_assets is the ONLY home for
+//     storage_key / original_name / filename / mime_type / extension / size / checksum.
+//     Domain link rows carry upload_asset_id (+ business fields). Removed denormalized
+//     copies from document_files, driver_documents, problem_report_evidence (aligned with
+//     consolidated_invoices / empty_run_evidence / infopoint_documents). Clients still
+//     get filename/MIME/size via join. generated_job_documents.file_name stays as the
+//     client-required Fahrauftrag identity label; stored-binary checksum is
+//     upload_assets.checksum via document_file_id (checksum_sha256 removed here).
+//   - job_assignments documented as the BE catch-up contract (started_at/ended_at/assignment_type;
+//     active row = ended_at IS NULL — replaces BE is_active / assigned_at / accepted_at / revoked_*).
+//   - driver_documents / user_notifications / audit_events / sp_cancellations confirmed complete
+//     vs PRD domain_model_summary; indexes annotated where DBML cannot express partial uniques.
 // 2026-08-09 (PRD v2.36) — SERVICE-PARTNER (ONBOARDING) DOCUMENT UPLOAD, documented retroactively: the prototype's driverDocuments entity (store.js, Phase 7, surfaced in ServicePartnerProfileModal's "Documents" tab) had no backend counterpart in this file until now. This is the first PARTNER-scoped document model — every pre-existing document table (job_documents, document_files, generated_job_documents) is JOB-scoped and stays untouched. New driver_document_category enum (business_registration | licence_front | licence_back | id_front | id_back | other) and driver_document_status enum (uploaded | accepted | rejected | replaced) — deliberately SEPARATE from document_type and document_review_status: an onboarding document is never reviewed against a tour, never carries the missing/under_review/correction_required states, and its lifecycle adds 'replaced' for versioning. New driver_documents table (driver_id, category, upload_asset_id, valid_until, version, review_status, rejection_reason, supersedes_document_id/replaced_by_document_id, uploaded/reviewed audit columns). ONE ACTIVE DOCUMENT PER CATEGORY is a partial unique index on (driver_id, category) WHERE review_status IN ('uploaded','accepted') — a rejected or replaced row frees the slot so the partner can re-submit; see logical-model.md. Files reuse upload_assets (private access) exactly as infopoint_documents do; no second storage path. NO change to drivers (the link is driver_documents.driver_id), and NO change to job_documents. New audit_events.action_key values: driver_document_uploaded, driver_document_accepted, driver_document_rejected, driver_document_replaced, driver_document_removed, plus driver_document_viewed / driver_document_downloaded for the content-access trail (entity_type 'driver_document').
 // 2026-07-31 (PRD v2.30) — CONSOLIDATED INVOICES (Admin Phase 12) schema added retroactively: the prototype's consolidatedInvoices entity had no backend counterpart in this file until now. New consolidated_invoice_status enum (in_review | correction_required | rejected | completed, deliberately separate from document_review_status and invoice_payment_status). New consolidated_invoices table (supplier_invoice_number, upload_asset_id, amount, driver_offer_sum snapshot, amount_mismatch, status, rejection_reason, internal_note, created_at/by) and consolidated_invoice_jobs join table — the first many-to-many relationship in this schema, since one consolidated invoice can span multiple completed jobs. Accepting an invoice only flips the linked jobs' existing job_financials.payment_status to 'paid'; it does not replace or duplicate that field. App-level guard (a job may not be linked to more than one non-rejected consolidated invoice at once) must be re-implemented server-side, e.g. a partial unique index or transactional check — see logical-model.md.
-// 2026-07-29 (PRD v2.24) — AUTH DEMO (PR #32), documented retroactively. NO structural change, and none is needed: Task 2 already makes Keycloak the identity provider and states AUTHEON stores no passwords, so sessions and password-reset codes are Keycloak-side — there is deliberately NO session table and NO password_resets table, and adding one would contradict the PRD. The prototype's in-memory session/reset-code state is prototype-only scaffolding. users.email_verified and email_change_requests already existed and are untouched. New audit_events.action_key values: driver_signed_in / admin_signed_in, driver_signed_out / admin_signed_out, driver_password_reset_requested / admin_password_reset_requested, driver_password_reset / admin_password_reset, driver_invite_accepted / admin_invite_accepted.
+// 2026-07-29 (PRD v2.24) — AUTH DEMO (PR #32), documented retroactively. Keycloak remains the identity
+// provider and AUTHEON stores no passwords / no session table / no password_resets table. AMENDED
+// 2026-08-10 (decision 1A): AUTHEON MAY store short-lived hashed OTP / invite / post-OTP reset-token
+// challenge state on users (see users.password_reset_* / account_setup_token_*), then call Keycloak
+// to set the password. Prototype in-memory session scaffolding stays prototype-only. New
+// audit_events.action_key values: driver_signed_in / admin_signed_in, driver_signed_out /
+// admin_signed_out, driver_password_reset_requested / admin_password_reset_requested,
+// driver_password_reset / admin_password_reset, driver_invite_accepted / admin_invite_accepted.
 // 2026-07-29 (PRD v2.20) — TYPE-AWARE DRIVER NOTIFICATIONS. Added user_notifications.target_entity_type + target_entity_id (both nullable) so a notification carries a STABLE reference to the non-tour thing it opens — an infopoint_news row for an Infopoint message, a job_documents row for a document outcome. job_id already covered tour notifications; deep_link remains the client route DERIVED from these ids and is no longer treated as the navigation source of truth (an id survives renames and localization; a title or tour number does not). Also added the (user_id, created_at) and (target_entity_type, target_entity_id) indexes the notification list and the deep-link lookup need. No enum change: notification_type stays a free varchar and gains new_published_job for the in-app "newly published matching order" row (notification_channels_matrix driver_in_app false -> true for that event; the driver_push column and the push ELIGIBILITY rules are unchanged — the same enabled + newly-published-toggle + postal-area match gate decides who is notified). Notification CATEGORY (order | account | system | general_information) and the card's interaction model are DERIVED from notification_type in the application layer and deliberately NOT stored, so the taxonomy can change without a migration or stale rows.
 // 2026-07-29 (PRD v2.25) — SCOPE REDUCTION on the content-access audit below: opening a driver NOTIFICATION is no longer audited (confirmed work-order revision). The notification_viewed action_key and the driver_notification entity_type are REMOVED; a notification points at content, and that content is already audited when the driver opens it, so the pointer entry duplicated the trail and arrived before the actual disclosure. user_notifications.read_at remains the notification-level record of what the driver has seen. Document and Infopoint-message auditing is unchanged. No structural change: audit_events simply stops receiving one action_key, and this trail never wrote to user_notifications.
 // 2026-07-30 (PRD v2.26) — TRANSPORT-ORDER PDF GENERATION. generated_job_documents gains template_key, document_title, file_name, booked_at, source_data_revision, generation_trigger, service_partner_snapshot jsonb, gtc_document_id, gtc_version, checksum_sha256, source_checksum_sha256, changed_fields jsonb, generation_status and generation_error, plus a (job_id, document_kind, source_data_revision) unique index for generation idempotency and a partial unique index on is_current so exactly one active document per job is enforced by the database. Rows are immutable except is_current. NO change to drivers (street / house_number / postal_code / city / country_code already exist and are what the recipient snapshot is built from) and NO change to audit_events (action_key gains pdf_generation_failed; pdf_generated / pdf_regenerated / pdf_viewed / pdf_downloaded are unchanged keys). admins/users need the order creator's initials and telephone for the document's Auftragserstellung field — see logical-model.md.
@@ -36,6 +81,12 @@ Enum invite_state {
 Enum operational_access {
   enabled
   disabled
+}
+
+Enum organization_status {
+  active
+  inactive
+  suspended
 }
 
 // SUPERSEDED 2026-08-07 — kept only so historical docs that mention the old
@@ -182,11 +233,13 @@ Enum cancellation_actor {
 }
 
 Enum empty_run_reason {
-  vehicle_not_operational      // Fahrzeug ist technisch nicht fahrbereit
-  vehicle_not_roadworthy       // Fahrzeug ist nicht verkehrssicher
-  vehicle_not_present          // am angegebenen Standort nicht vorhanden/auffindbar
-  vehicle_not_released         // Fahrzeug wird nicht herausgegeben
-  key_or_documents_missing     // Fahrzeugschlüssel oder Unterlagen fehlen
+  // Machine codes match the Driver PWA / admin review maps (prototype driver.jsx /
+  // admin.jsx). Labels are i18n-only — never store localized text.
+  not_operational              // Fahrzeug ist technisch nicht fahrbereit
+  not_roadworthy               // Fahrzeug ist nicht verkehrssicher
+  not_present                  // am angegebenen Standort nicht vorhanden/auffindbar
+  not_released                 // Fahrzeug wird nicht herausgegeben
+  key_docs_missing             // Fahrzeugschlüssel oder Unterlagen fehlen
   other                        // Sonstiges
 }
 
@@ -241,12 +294,13 @@ Enum master_data_change_type {
 }
 
 // Driver self-service email change (T1, "verify, don't approve"). The driver
-// owns their sign-in email (users.email). A change is proved by a 6-digit code
-// sent to the NEW address; the OLD address stays active until the code is
+// owns their sign-in email (users.email). A change is proved by a 6-digit OTP
+// sent to the NEW address; the OLD address stays active until the OTP is
 // confirmed. No operations/admin approval is involved. Store a HASH of the
-// code, never the plaintext. Enforce: at most one pending request per user
-// (partial unique index on user_id where status = 'pending'); expiry, attempt
-// cap, and resend throttle live in the application/logical-model layer.
+// OTP (`otp_hash`), never the plaintext. Enforce: at most one pending request
+// per user (partial unique index on user_id where status = 'pending'); expiry,
+// attempt cap, and send throttle (send_count / window_started_at / last_sent_at)
+// live in the application/logical-model layer.
 Enum email_change_status {
   pending
   confirmed
@@ -259,12 +313,16 @@ Table email_change_requests {
   user_id uuid [not null]  // FK users.id — the account whose sign-in email changes
   current_email varchar(255) [not null]  // snapshot of the old address at request time
   new_email varchar(255) [not null]
-  code_hash varchar(255) [not null]  // hash of the 6-digit code; plaintext is only sent to new_email
+  // Aligned to BE EmailChangeRequestEntity (decision 2A, 2026-08-10).
+  otp_hash varchar(255) [not null]  // hash of the 6-digit OTP; plaintext is only sent to new_email
   status email_change_status [not null, default: 'pending']
   attempts smallint [not null, default: 0]
-  resend_count smallint [not null, default: 0]
+  send_count smallint [not null, default: 1]  // includes the initial send; rate-limit window uses this
+  window_started_at timestamptz [not null]    // start of the current send-rate-limit window
+  last_sent_at timestamptz [not null]
   expires_at timestamptz [not null]
   created_at timestamptz [not null]
+  updated_at timestamptz [not null]
   confirmed_at timestamptz  // set on success; users.email + users.email_verified updated in the same transaction
   cancelled_at timestamptz
 }
@@ -300,13 +358,29 @@ Enum notification_status {
   read
 }
 
+// Tenant / Keycloak org mirror — autheon-be OrganizationEntity (platform bootstrap).
+// No FK from users/jobs yet: org context is request middleware + Keycloak today.
+Table organizations {
+  id uuid [pk]
+  alias varchar(100) [not null, unique]
+  name varchar(255) [not null]
+  status organization_status [not null, default: 'active']
+  keycloak_org_id varchar(36) // nullable until realm org provisioning completes
+  settings jsonb [not null, default: '{}']
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
 Table users {
   id uuid [pk]
+  // Logical name. BE TypeORM column is currently `identity_id` (same meaning).
   keycloak_id varchar(36) [unique] // nullable until Keycloak provisioning completes; partial unique index where not null
   email varchar(255) [not null, unique]
   first_name varchar(100) [not null]
   last_name varchar(100) [not null]
   // Two-axis access model (status consolidation, 2026-08-07). Replaces user_status.
+  // BE note: property `accountAccess` still maps to physical column name `status`
+  // while synchronize:true is in use — target name here is binding after wipe+reseed.
   account_access account_access [not null, default: 'disabled']  // login / Keycloak enabled
   invite_state invite_state [not null, default: 'pending']       // onboarding lifecycle; orthogonal to account_access
   // Dormancy clock (brief E5). Moved here from drivers — activity is a fact about
@@ -315,6 +389,19 @@ Table users {
   roles text [not null, default: 'user'] // TypeORM simple-array of user_role values
   email_verified boolean [not null, default: false]
   language varchar(8) [not null, default: 'de']
+  // Hybrid auth challenge state (decision 1A, 2026-08-10). Passwords live in Keycloak only.
+  // These columns hold short-lived HASHES + rate-limit counters so Autheon can email/verify
+  // invite + password-reset OTPs, then call Keycloak to set the password. Never store plaintext.
+  password_reset_otp_hash varchar(255)
+  password_reset_otp_expires_at timestamptz
+  password_reset_otp_attempts int [not null, default: 0]
+  password_reset_otp_last_sent_at timestamptz
+  password_reset_otp_send_count int [not null, default: 0]
+  password_reset_otp_window_started_at timestamptz
+  password_reset_token_hash varchar(255)  // issued after OTP verify; single-use; clears on confirm
+  password_reset_token_expires_at timestamptz
+  account_setup_token_hash varchar(255)   // invite / first-password setup link
+  account_setup_token_expires_at timestamptz
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
   deleted_at timestamptz
@@ -336,12 +423,15 @@ Table drivers {
   city varchar(128)
   country_code char(2) [not null, default: 'DE']
   phone varchar(64)
+  second_phone varchar(64) // optional alternate contact — present on BE DriverEntity
   notes text
   // One-time probation model (F-01, replaces former per-day daily_job_limit).
   probation_job_limit smallint [not null, default: 3]  // Per-driver SNAPSHOT of the probation allowance AND Performed-count release threshold. Seeded at driver creation from app_settings 'driver.acceptance.probationJobCount' by the application layer (see logical-model.md); the literal default here is only a safety fallback when the setting is unavailable. Snapshot semantics: later changes to the app_settings value do NOT retroactively affect existing drivers. Remaining allowance is derived (probation_job_limit minus count of Performed jobs from job_status_history), not stored.
   probation_cleared_at timestamptz  // set when driver is released from probation (auto after probation_job_limit Performed jobs, or manual admin release); null = still on probation
   // Marketplace eligibility (status consolidation). Replaces drivers.status
   // active|blocked|inactive. Binary: enabled | disabled.
+  // BE note: property `operationalAccess` still maps to physical column name `status`
+  // while synchronize:true is in use — target name here is binding after wipe+reseed.
   operational_access operational_access [not null, default: 'disabled']
   // Automatic access removal of inactive service partners (D6). Markers stay on
   // the driver row; the dormancy CLOCK lives on users.last_activity_at (E5).
@@ -356,14 +446,30 @@ Table drivers {
 Table customers {
   id uuid [pk]
   name varchar(255) [not null]
+  // Customer Center (prototype): legal form separate from free-text customer_type.
+  legal_form varchar(100)
   customer_type varchar(100)
   billing_reference varchar(255)
   contact_name varchar(255)
   contact_email citext
   contact_phone varchar(64)
+  // Structured customer address (prototype Customer Center) — distinct from
+  // locations master data used as pickup/delivery address book.
+  street varchar(255)
+  house_number varchar(32)
+  postal_code varchar(32)
+  city varchar(128)
+  country_code char(2) [default: 'DE']
   billing_notes text
   operational_instructions text
   notes text
+  // Business-relationship start (prototype joinedAt). Set once on create.
+  joined_at timestamptz
+  // Decision 3A (2026-08-10): Customer Center UI trail — array of
+  // { at, by, fields[] } matching the prototype. NOT the compliance export trail:
+  // every customer field change MUST ALSO append audit_events (entity_type='customer').
+  // audit_events is the system of record; change_history is the product UI convenience.
+  change_history jsonb [not null, default: '[]']
   is_active boolean [not null, default: true]
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
@@ -489,16 +595,35 @@ Table job_locations {
   }
 }
 
+// Assignment history (BE catch-up contract). Prototype keeps assignee on the job
+// object; production stores every direct assignment, marketplace acceptance, and
+// reassignment here. Exactly one OPEN row per job:
+//   partial unique index on (job_id) WHERE ended_at IS NULL
+// (see logical-model.md — DBML cannot express partial uniques).
+//
+// BE today uses is_active / assigned_at / accepted_at / revoked_at / revoked_by_user_id.
+// Target mapping for catch-up:
+//   started_at  = when this assignment became current (assign or marketplace accept)
+//   ended_at    = when superseded / revoked / completed away (NULL = active = BE is_active)
+//   end_reason  = reassignment | revocation | job_terminal | …
+//   assignment_type discriminates direct_assignment | marketplace_acceptance | reassignment
+// Driver "accepted" timestamp for SLA stays on jobs.accepted_at (from job_status_history),
+// not duplicated here.
 Table job_assignments {
   id uuid [pk]
   job_id uuid [not null]
   driver_id uuid [not null]
   assignment_type assignment_type [not null]
-  assigned_by_user_id uuid
+  assigned_by_user_id uuid                 // null on marketplace_acceptance (system/driver self)
   started_at timestamptz [not null]
-  ended_at timestamptz
+  ended_at timestamptz                     // NULL = currently active assignment
   end_reason varchar(100)
   notes text
+
+  indexes {
+    (job_id, started_at)
+    (driver_id, started_at)
+  }
 }
 
 Table job_status_history {
@@ -565,12 +690,13 @@ Table job_financials {
 Table consolidated_invoices {
   id uuid [pk]
   supplier_invoice_number varchar(100) [not null]
-  upload_asset_id uuid [not null, note: 'The uploaded invoice file itself']
+  // Binary + filename/MIME/size live on upload_assets — do not duplicate here.
+  upload_asset_id uuid [not null]
   amount numeric(12,2) [not null]
   driver_offer_sum numeric(12,2) [not null, note: 'Snapshot of linked jobs driver_offer_amount at creation time, for the mismatch comparison']
   amount_mismatch boolean [not null, default: false]
   status consolidated_invoice_status [not null, default: 'in_review']
-  rejection_reason text
+  rejection_reason text                    // also used for correction_required copy
   internal_note text
   created_at timestamptz [not null]
   created_by_user_id uuid [not null]
@@ -607,8 +733,8 @@ Table job_problem_reports {
 Table problem_report_evidence {
   id uuid [pk]
   problem_report_id uuid [not null]
+  // Binary + filename/MIME/size live on upload_assets — do not duplicate here.
   upload_asset_id uuid [not null]
-  original_filename_snapshot varchar(500)
   created_at timestamptz [not null]
 }
 
@@ -630,16 +756,14 @@ Table job_documents {
   updated_at timestamptz [not null]
 }
 
+// Immutable file VERSION for a job_document. Binary metadata is NOT copied here —
+// join upload_assets via upload_asset_id for original_name / mime_type / size /
+// checksum / storage_key (BE catch-up: drop legacy denormalized columns).
 Table document_files {
   id uuid [pk]
   job_document_id uuid
   upload_asset_id uuid [not null]
-  original_filename varchar(500) [not null]
-  mime_type varchar(255) [not null]
-  file_size_bytes bigint [not null]
-  sha256 char(64)
-  storage_key varchar(1024) [not null, unique]
-  scan_status varchar(32) [not null, default: 'pending']
+  scan_status varchar(32) [not null, default: 'pending'] // document-pipeline state, not binary meta
   scanned_at timestamptz
   uploaded_by_user_id uuid [not null]
   uploaded_at timestamptz [not null]
@@ -674,10 +798,10 @@ Table driver_documents {
   id uuid [pk]
   driver_id uuid [not null]
   category driver_document_category [not null]
-  upload_asset_id uuid [not null]         // file lives in upload_assets (access 'private'), same path as infopoint_documents
-  original_filename varchar(500) [not null]
-  mime_type varchar(255) [not null]       // PDF + image types only, same allowlist as tour documents
-  file_size_bytes bigint [not null]       // subject to the same configured per-file ceiling as tour documents (app_settings, default 25 MB / 50 MB platform cap)
+  // Binary + filename/MIME/size on upload_assets (access 'private'). App enforces PDF+image
+  // allowlist and the same per-file size ceiling as tour documents (app_settings, default
+  // 25 MB / 50 MB platform cap) against upload_assets at write time — not duplicated here.
+  upload_asset_id uuid [not null]
   valid_until date                        // optional expiry (client req. #8 "validity"); NULL = no expiry tracked. Expiry is DERIVED for display, never a stored status
   version smallint [not null, default: 1] // 1 for a first upload; incremented by each replacement
   review_status driver_document_status [not null, default: 'uploaded']
@@ -690,6 +814,12 @@ Table driver_documents {
   reviewed_at timestamptz
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
+
+  indexes {
+    (driver_id, category, uploaded_at)
+    // Partial unique (logical-model.md): one active doc per (driver_id, category)
+    // WHERE review_status IN ('uploaded','accepted') AND category <> 'other'
+  }
 }
 
 // 2026-07-30 (PRD v2.26) — TRANSPORT-ORDER PDF. Extended so every generated
@@ -712,15 +842,18 @@ Table generated_job_documents {
   // --- v2.26 additions ---
   template_key varchar(16) [not null]      // pkw | lkw — resolved from jobs.vehicle_type, never from display text
   document_title varchar(64) [not null]    // FAHRAUFTRAG PKW | FAHRAUFTRAG LKW
-  file_name varchar(255) [not null]        // Fahrauftrag-<tour_number>.pdf — same identifier as the metadata title and the audit entry
+  // Client-required Fahrauftrag download/audit identity (Fahrauftrag-<tour_number>.pdf).
+  // On successful generation, write the same value to upload_assets.original_name via
+  // document_files; do NOT add a second stored-binary checksum column here —
+  // upload_assets.checksum is the binary hash.
+  file_name varchar(255) [not null]
   booked_at timestamptz [not null]         // the binding-booking instant the document renders in Europe/Berlin
   source_data_revision int [not null]      // deterministic revision marker; generation is idempotent per (job_id, revision)
   generation_trigger varchar(32) [not null] // marketplace_acceptance | direct_assignment | relevant_change | admin_manual
   service_partner_snapshot jsonb [not null] // company, person, street, house number, postal code, city, country FROZEN at v1 and carried forward; later profile edits never alter any version
   gtc_document_id varchar(64) [not null]    // applicable AGB/GTC at booking time
   gtc_version varchar(32) [not null]
-  checksum_sha256 char(64) [not null]       // SHA-256 of the stored binary
-  source_checksum_sha256 char(64) [not null] // SHA-256 of the canonical render source (payload + markup) — the revision fingerprint
+  source_checksum_sha256 char(64) [not null] // SHA-256 of the canonical render source (payload + markup) — the revision fingerprint (NOT the stored binary)
   changed_fields jsonb                      // relevant-change field keys, when generation_trigger = relevant_change
   generation_status varchar(32) [not null, default: 'generated'] // generated | failed
   generation_error text                     // missing mandatory fields or renderer error, when generation_status = failed
@@ -774,9 +907,9 @@ Table empty_run_reports {
   id uuid [pk]
   job_id uuid [not null, unique]
   driver_id uuid [not null]              // reporting service partner
-  reason empty_run_reason [not null]
+  reason empty_run_reason [not null]     // prototype machine codes (see enum)
   description text [not null]            // min 30 chars (app-enforced)
-  status_before varchar(32) [not null]   // assigned | accepted
+  status_before varchar(32) [not null]   // assigned | accepted only (pre-report job status)
   reported_at timestamptz [not null]
   // Admin review (§4): exactly two outcomes, no intermediate state.
   decision empty_run_decision            // null while pending review
@@ -791,8 +924,8 @@ Table empty_run_reports {
 Table empty_run_evidence {
   id uuid [pk]
   empty_run_report_id uuid [not null]
+  // Binary + filename/MIME/size live on upload_assets — do not duplicate here.
   upload_asset_id uuid [not null]
-  original_filename_snapshot varchar(500)
   created_at timestamptz [not null]
 }
 
@@ -866,6 +999,7 @@ Table infopoint_news_reads {
 Table notification_preferences {
   user_id uuid [pk]
   push_enabled boolean [not null, default: false]
+  email_enabled boolean [not null, default: false] // BE NotificationPreferenceEntity; channel master toggle
   notify_published_jobs boolean [not null, default: false]
   notify_postal_area boolean [not null, default: false]
   // Array of postal area codes — replaces single pickup_postal_prefix to support multi-area subscriptions
@@ -890,6 +1024,14 @@ Table push_subscriptions {
   is_active boolean [not null, default: true]
 }
 
+// Shared in-app notification store for drivers AND admins (BE catch-up contract).
+// BE today is a thinner shape (event_type / data jsonb / is_read). Target columns
+// below are binding for catch-up — do not regress this table to the thin BE shape.
+// Driver rows: notification_type + job_id/target_* + read_at; severity/status/
+// admin_read_*/deleted_at stay at defaults and are unused.
+// Admin feed rows (Task 33): severity, status, admin_read_*, deleted_at are live;
+// prototype adminEmailQueue is the client stand-in (flatter jobId/documentId/
+// driverId fields — production uses target_entity_type/id instead).
 Table user_notifications {
   id uuid [pk]
   user_id uuid [not null]
@@ -900,13 +1042,14 @@ Table user_notifications {
   // document notification must open exactly (infopoint_news / job_documents).
   // Navigation resolves through these ids, never through title/body/tour text.
   // `deep_link` stays the client route derived FROM them, not the source of truth.
+  // Admin feed also uses target_entity_type='driver' for service_partner_inactive.
   target_entity_type varchar(64)
   target_entity_id uuid
   title varchar(255) [not null]
   body text
   deep_link varchar(1024)
   created_at timestamptz [not null]
-  read_at timestamptz
+  read_at timestamptz                      // driver-notification read receipt (set on VIEWING)
   // PRD v2.34 / Task 33 (renumbered from v2.32 — main independently claimed
 // v2.32 for an unrelated job-attachment-size-limits change) — admin-feed-only (see notification_severity /
   // notification_status above). Never meaningful on a driver-recipient row.
@@ -970,11 +1113,17 @@ Table app_settings {
   updated_by_user_id uuid
 }
 
+// Append-only audit (BE catch-up contract). BE today uses a forensics-oriented
+// shape (action / actor_id / target_type / target_id / changes / request_id /
+// trace_id / ip). Target columns below are binding for product audit + content-
+// access trails (PRD v2.19 / v2.36): action_key, actor_user_id, entity_type,
+// entity_id, job_id, occurred_at, metadata jsonb. Extra BE forensics fields may
+// be added later as optional columns; they must not replace action_key/entity_*.
 Table audit_events {
   id uuid [pk]
   occurred_at timestamptz [not null]
-  actor_user_id uuid
-  action_key varchar(100) [not null]
+  actor_user_id uuid                       // null for System
+  action_key varchar(100) [not null]       // stable English key, never localized
   entity_type varchar(100) [not null]
   entity_id uuid
   job_id uuid
@@ -983,6 +1132,7 @@ Table audit_events {
   indexes {
     (job_id, occurred_at)
     (entity_type, entity_id, occurred_at)
+    (action_key, occurred_at)
   }
 }
 
@@ -1032,6 +1182,7 @@ Ref: job_documents.uploaded_by_user_id > users.id
 Ref: job_documents.processed_by_user_id > users.id
 Ref: document_files.job_document_id > job_documents.id
 Ref: document_files.upload_asset_id > upload_assets.id
+Ref: document_files.uploaded_by_user_id > users.id
 Ref: document_files.supersedes_file_id > document_files.id
 Ref: job_documents.current_file_id > document_files.id
 Ref: job_document_reviews.job_document_id > job_documents.id
@@ -1045,6 +1196,7 @@ Ref: driver_documents.supersedes_document_id > driver_documents.id
 Ref: driver_documents.replaced_by_document_id > driver_documents.id
 Ref: generated_job_documents.job_id > jobs.id
 Ref: generated_job_documents.document_file_id > document_files.id
+Ref: generated_job_documents.generated_by_user_id > users.id
 
 Ref: job_financials.settlement_initiated_by > users.id
 
