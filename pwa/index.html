@@ -7,14 +7,28 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <!-- theme-color = FE DriverShell surface-muted / canvas under Island -->
-    <meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)" />
-    <meta name="description" content="AUTHEON Driver — vehicle transport jobs, documents, and tour status." />
+    <meta
+      name="theme-color"
+      content="#F5F5F7"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#1C1C1E"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta
+      name="description"
+      content="AUTHEON Driver — vehicle transport jobs, documents, and tour status."
+    />
     <meta name="application-name" content="AUTHEON" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="AUTHEON" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
     <!--
       iOS Add to Home Screen ignores the web manifest and uses apple-touch-icon.
       Declare these BEFORE <base> — WebKit has historically resolved touch-icon
@@ -23,8 +37,15 @@
     -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="apple-touch-icon" sizes="192x192" href="/pwa/icons/icon-192.png" />
-    <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon-precomposed.png" />
+    <link
+      rel="apple-touch-icon"
+      sizes="192x192"
+      href="/pwa/icons/icon-192.png"
+    />
+    <link
+      rel="apple-touch-icon-precomposed"
+      href="/apple-touch-icon-precomposed.png"
+    />
     <link rel="icon" href="/pwa/favicon.svg" type="image/svg+xml" />
     <!--
       Base = the prototype app directory. The shared driver code fetches
@@ -44,7 +65,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=44" />
-    <link rel="stylesheet" href="../../pwa/pwa.css?v=16" />
+    <link rel="stylesheet" href="../../pwa/pwa.css?v=17" />
     <script>
       // Apply theme before first paint: persisted prototype choice first,
       // then the device preference. Same key as the client-preview page.
@@ -57,14 +78,17 @@
         document.documentElement.setAttribute("data-theme", t);
         // First-paint system chrome: match FE ThemeSync (canvas / surface-muted).
         var surface = t === "dark" ? "#1C1C1E" : "#F5F5F7";
-        document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) {
-          meta.setAttribute("content", surface);
-          meta.removeAttribute("media");
-        });
+        document
+          .querySelectorAll('meta[name="theme-color"]')
+          .forEach(function (meta) {
+            meta.setAttribute("content", surface);
+            meta.removeAttribute("media");
+          });
         var appleStatus = document.querySelector(
           'meta[name="apple-mobile-web-app-status-bar-style"]',
         );
-        if (appleStatus) appleStatus.setAttribute("content", "black-translucent");
+        if (appleStatus)
+          appleStatus.setAttribute("content", "black-translucent");
         document.documentElement.style.backgroundColor = surface;
         if (document.body) document.body.style.backgroundColor = surface;
         if (
@@ -236,7 +260,7 @@
               return fetchText(src).then(function (code) {
                 return { src: src, code: code };
               });
-            })
+            }),
           );
 
           return loadSequential(REACT)
@@ -265,7 +289,7 @@
                 .then(function () {
                   compileAndRun(
                     "ReactDOM.createRoot(document.getElementById('root')).render(<PwaDriverRoot />);",
-                    "pwa-boot.jsx"
+                    "pwa-boot.jsx",
                   );
                 });
             })

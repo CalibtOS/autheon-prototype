@@ -16,7 +16,11 @@
 /* FE DriverShell height contract (apps/web DriverShell.tsx):
    body min-h-dvh → stage h-[100dvh] max-h-[100dvh] → frame h-full flex-col
    → content flex-1 + pt safe-area → tabbar absolute on FRAME (not content).
-   Desktop mock .phone { height:min(800px,100vh-120px) } MUST NOT apply. */
+   Desktop mock .phone { height:min(800px,100vh-120px) } MUST NOT apply.
+
+   Height flows through --driver-shell-height exactly as FE DriverLayout sets it
+   (offline banner shrinks the stage). /pwa never sets the var, so the 100dvh
+   fallback applies — but the contract stays identical to FE. */
 html.pwa-page {
   margin: 0;
   height: 100%;
@@ -176,12 +180,13 @@ html.pwa-standalone .pwa-ios-sheet {
 
 /* ---- FE stage + frame (DriverShell.tsx) ---------------------------- */
 .phone-shell.pwa-viewport {
-  /* FE stage: h-[100dvh] max-h-[100dvh] bg-surface-muted flex column */
+  /* FE stage: h-[var(--driver-shell-height,100dvh)] max-h-[same]
+     bg-surface-muted flex justify-center overscroll-none */
   position: relative;
   flex: 1 1 0;
   width: 100%;
-  height: 100dvh !important;
-  max-height: 100dvh !important;
+  height: var(--driver-shell-height, 100dvh) !important;
+  max-height: var(--driver-shell-height, 100dvh) !important;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -215,6 +220,10 @@ html.pwa-standalone .pwa-ios-sheet {
   box-shadow: none !important;
   background: var(--canvas);
   overflow: hidden;
+  /* FE frame: pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]
+     — notch / home-indicator on landscape tablets & foldables. */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 /* FE content column: flex-1 min-h-0 flex-col overflow-hidden + pt safe-area.
@@ -232,6 +241,12 @@ html.pwa-standalone .pwa-ios-sheet {
   padding-top: env(safe-area-inset-top, 0px);
   background: var(--canvas);
   overflow: hidden;
+}
+/* FE content column: short landscape keeps a minimum 0.25rem top pad. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .phone-shell.pwa-viewport .phone-screen {
+    padding-top: max(0.25rem, env(safe-area-inset-top, 0px));
+  }
 }
 
 /* FE: absolute inset-x-0 bottom-0 wrapper around BottomTabBar */
@@ -279,9 +294,20 @@ html.pwa-standalone .pwa-ios-sheet {
   padding-bottom: max(12px, calc(12px + env(safe-area-inset-bottom, 0px)));
 }
 
-/* ---- Bottom navigation & sheets vs. home indicator ------------- */
+/* ---- Scroll body + bottom navigation (FE DriverScrollBody / TabBar) ----
+   styles.css tunes these for the 392px framed mock; /pwa is real-viewport, so
+   it mirrors the FE responsive ladder verbatim. Units stay rem like FE (the
+   Tailwind scale) so browser font scaling behaves identically.
+
+   FE DriverScrollBody: px-3.5 pt-3 + pb-[calc(5.75rem+sab)]
+   FE TabBar:           px-3    + pb-[max(1.25rem,calc(0.5rem+sab))]         */
+.phone-shell.pwa-viewport .scroll-body {
+  padding: 0.75rem 0.875rem calc(5.75rem + env(safe-area-inset-bottom, 0px));
+}
 .phone-shell.pwa-viewport .tabbar-container {
-  padding-bottom: max(16px, calc(8px + env(safe-area-inset-bottom, 0px)));
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  padding-bottom: max(1.25rem, calc(0.5rem + env(safe-area-inset-bottom, 0px)));
 }
 .phone-shell.pwa-viewport .sheet-foot {
   padding-bottom: max(22px, calc(14px + env(safe-area-inset-bottom, 0px)));
@@ -313,12 +339,17 @@ html.pwa-standalone .pwa-ios-sheet {
   .phone-shell.pwa-viewport .pwa-screen-header .screen-header-row {
     gap: 8px;
   }
+  /* FE: DriverScrollBody max-[360px]:px-3 pt-2.5 pb-[calc(5.25rem+sab)] */
+  .phone-shell.pwa-viewport .scroll-body {
+    padding: 0.625rem 0.75rem calc(5.25rem + env(safe-area-inset-bottom, 0px));
+  }
+  /* FE: TabBar max-[360px]:px-2.5 / capsule max-[360px]:px-1 py-1 */
   .phone-shell.pwa-viewport .tabbar-container {
-    padding-left: 10px;
-    padding-right: 10px;
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
   }
   .phone-shell.pwa-viewport .tabbar-capsule {
-    padding: 4px 4px;
+    padding: 0.25rem 0.25rem;
   }
   .phone-shell.pwa-viewport .sheet-head,
   .phone-shell.pwa-viewport .sheet-body,
@@ -355,6 +386,56 @@ html.pwa-standalone .pwa-ios-sheet {
   min-width: 0;
 }
 
+/* ---- Phones ≥400px (FE min-[400px] tier) ----------------------------- */
+@media (min-width: 400px) {
+  /* FE: DriverScrollBody min-[400px]:px-[18px] pt-4 */
+  .phone-shell.pwa-viewport .scroll-body {
+    padding-top: 1rem;
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  /* FE: TabBar min-[400px]:px-4 */
+  .phone-shell.pwa-viewport .tabbar-container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* ---- Wide tablet ≥768px (FE min-[768px] tier) ------------------------ */
+@media (min-width: 768px) {
+  /* FE: DriverScrollBody min-[768px]:px-5 pt-5 pb-[calc(6.25rem+sab)] */
+  .phone-shell.pwa-viewport .scroll-body {
+    padding: 1.25rem 1.25rem calc(6.25rem + env(safe-area-inset-bottom, 0px));
+  }
+  /* FE: TabBar min-[768px]:px-5 pb-[max(1.35rem,calc(0.65rem+sab))] */
+  .phone-shell.pwa-viewport .tabbar-container {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    padding-bottom: max(
+      1.35rem,
+      calc(0.65rem + env(safe-area-inset-bottom, 0px))
+    );
+  }
+  /* FE: capsule min-[768px]:px-2.5 py-2 */
+  .phone-shell.pwa-viewport .tabbar-capsule {
+    padding: 0.5rem 0.625rem;
+  }
+}
+
+/* ---- Short landscape (FE landscape/max-h-500 tier) -------------------
+   Declared after the ≥768 block so it wins on landscape tablets, matching the
+   FE class order in DriverScrollBody / TabBar. */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* FE: DriverScrollBody landscape:pt-2 */
+  .phone-shell.pwa-viewport .scroll-body {
+    padding-top: 0.5rem;
+  }
+  /* FE: TabBar landscape:pb-[max(0.5rem,sab)] */
+  .phone-shell.pwa-viewport .tabbar-container {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  }
+}
+
 /* ---- Tablet+ (≥720px): keep dialogs sized; shell stays full-bleed ---- */
 @media (min-width: 720px) {
   /* Dialogs sized like dialogs, not full-column strips */
@@ -383,5 +464,7 @@ html.pwa-standalone .pwa-ios-sheet {
     max-width: 720px !important;
     width: 100% !important;
     border-inline: 1px solid var(--line);
+    /* FE: 2xl:shadow-[0_0_0_1px_rgba(15,23,42,0.02)] */
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.02) !important;
   }
 }

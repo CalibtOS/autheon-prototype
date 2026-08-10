@@ -8,7 +8,7 @@ const PRECACHE_URLS = [
   "/pwa/index.html",
   "/pwa/manifest.webmanifest",
   "/pwa/manifest.json",
-  "/pwa/pwa.css?v=16",
+  "/pwa/pwa.css?v=17",
   "/pwa/pwa-app.jsx?v=14",
   "/pwa/pwa-install.js?v=5",
   "/pwa/splash.js?v=2",
@@ -42,7 +42,10 @@ self.addEventListener("install", (event) => {
       await Promise.all(
         PRECACHE_URLS.map(async (url) => {
           try {
-            const response = await fetch(url, { credentials: "omit", mode: "cors" });
+            const response = await fetch(url, {
+              credentials: "omit",
+              mode: "cors",
+            });
             if (response && (response.ok || response.type === "opaque")) {
               await cache.put(url, response);
             }
