@@ -9,6 +9,10 @@
   "use strict";
 
   var RELOAD_FLAG = "autheon-pwa-sw-reloaded";
+  // Counts mid-session reloads triggered by a NEW worker taking over, so a
+  // flapping deploy can never spin the tab. Distinct from RELOAD_FLAG, which is
+  // the one-time first-visit reload that unlocks Chrome installability.
+  var UPDATE_RELOAD_FLAG = "autheon-pwa-sw-update-reloads";
 
   function isStandalone() {
     try {
@@ -164,13 +168,31 @@
       return;
     }
 
+    // A controller already present means any later controllerchange is an
+    // UPDATE (not first activation) — the page is then running assets the new
+    // worker has already superseded. Captured before register() so the check
+    // cannot race activation.
+    var hadController = !!navigator.serviceWorker.controller;
+
     navigator.serviceWorker
-      .register("/pwa/sw.js", { scope: "/pwa/" })
+      // updateViaCache:"none" — never let the HTTP cache answer for sw.js or
+      // anything it imports, so a new worker is always discovered.
+      .register("/pwa/sw.js", { scope: "/pwa/", updateViaCache: "none" })
       .then(function (reg) {
         state.swReady = true;
         if (reg.waiting) {
           reg.waiting.postMessage({ type: "SKIP_WAITING" });
         }
+
+        // Long-lived installed sessions otherwise only check for a new worker
+        // on a cold start. Re-check whenever the app regains focus.
+        document.addEventListener("visibilitychange", function () {
+          if (!document.hidden) {
+            reg.update().catch(function () {
+              /* offline — retry on the next foreground */
+            });
+          }
+        });
         if (reg.installing) {
           reg.installing.addEventListener("statechange", function () {
             if (
@@ -210,6 +232,22 @@
     navigator.serviceWorker.addEventListener("controllerchange", function () {
       state.swControlling = true;
       notify();
+
+      // sw.js skipWaiting()s + claims on activate, so a new worker takes over
+      // mid-session while this document still holds the superseded HTML/CSS/JSX
+      // it booted with. Reload once so the page matches the worker serving it.
+      // Guarded by hadController: on a first visit there is nothing stale yet
+      // (that path is handled by RELOAD_FLAG above), so no reload loop.
+      if (!hadController) return;
+      try {
+        // Belt-and-braces cap in case a pathological deploy flaps sw.js bytes.
+        var n = parseInt(sessionStorage.getItem(UPDATE_RELOAD_FLAG) || "0", 10);
+        if (n >= 3) return;
+        sessionStorage.setItem(UPDATE_RELOAD_FLAG, String(n + 1));
+      } catch (_) {
+        /* private mode — a single reload is still safe */
+      }
+      window.location.reload();
     });
 
     // If SW is fine but Chrome never offers install on a hosted HTTPS origin,

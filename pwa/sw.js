@@ -42,9 +42,12 @@ self.addEventListener("install", (event) => {
       await Promise.all(
         PRECACHE_URLS.map(async (url) => {
           try {
+            // no-store: precache from the origin, never from the HTTP cache —
+            // otherwise a fresh SHELL_CACHE can be seeded with stale bytes.
             const response = await fetch(url, {
               credentials: "omit",
               mode: "cors",
+              cache: "no-store",
             });
             if (response && (response.ok || response.type === "opaque")) {
               await cache.put(url, response);
@@ -104,10 +107,25 @@ function isCacheableGet(request) {
   );
 }
 
+/*
+  Revalidation MUST bypass the browser HTTP cache. A bare `fetch(request)` uses
+  cache mode "default", so a still-fresh HTTP cache entry satisfies it without
+  reaching the origin — the runtime cache would then never converge on the
+  deployed asset. `no-store` makes every revalidation a true origin hit.
+*/
+function fetchFromOrigin(request) {
+  // Cross-origin no-cors (unpkg / fonts) stays opaque; no-store is still valid.
+  return fetch(request, { cache: "no-store" }).catch(() =>
+    // Some engines reject no-store on opaque requests — fall back to a plain hit
+    // rather than losing the asset entirely.
+    fetch(request),
+  );
+}
+
 async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
-  const networkPromise = fetch(request)
+  const networkPromise = fetchFromOrigin(request)
     .then((response) => {
       if (response && (response.ok || response.type === "opaque")) {
         cache.put(request, response.clone());
@@ -129,10 +147,15 @@ async function staleWhileRevalidate(request, cacheName) {
   );
 }
 
+/*
+  The HTML is the version manifest: it names every `?v=` asset URL. If it is
+  stale, every asset resolves to a stale URL and the whole app regresses —
+  so this must be a genuine origin hit, never an HTTP-cache hit.
+*/
 async function networkFirstNavigation(request) {
   const cache = await caches.open(SHELL_CACHE);
   try {
-    const response = await fetch(request);
+    const response = await fetch(request, { cache: "no-store" });
     if (response && response.ok) {
       cache.put("/pwa/", response.clone());
       cache.put("/pwa/index.html", response.clone());
