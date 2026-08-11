@@ -1626,8 +1626,14 @@ const EmptyRunReviewPanel = ({ job, showToast }) => {
     }
   };
   const evidence = report.evidence || [];
+  // Border reuses the EXISTING --st-empty-run semantic token (same purple as
+  // the status pill rendered below) instead of an isolated hardcoded hex —
+  // ties the accent to the state it represents and keeps it theme-aware.
   return (
-    <section className="card" style={{ padding: 22, borderColor: "#c4b5fd" }}>
+    <section
+      className="card"
+      style={{ padding: 22, borderColor: "var(--st-empty-run)" }}
+    >
       <div className="sec-head">
         <h3>
           <span className="num">07</span>
