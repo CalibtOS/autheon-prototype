@@ -60,6 +60,7 @@ function PwaDriverApp() {
   const [expandNotificationId, setExpandNotificationId] = useState(null);
   const [deepLinkNewsId, setDeepLinkNewsId] = useState(null);
   const [deepLinkProfileSubpage, setDeepLinkProfileSubpage] = useState(null);
+  const [documentFocused, setDocumentFocused] = useState(false);
   // The menu page the Notification Center was opened FROM. Transient navigation
   // state only — never persisted and never written to the notification row.
   // Consumed by the first Back out of the notification target, then cleared.
@@ -216,6 +217,7 @@ function PwaDriverApp() {
         notificationsOpen={showNotifications}
         deepLinkNewsId={deepLinkNewsId}
         onDeepLinkConsumed={() => setDeepLinkNewsId(null)}
+        onDocumentPreviewOpenChange={setDocumentFocused}
         // Only pass an origin return when there is an origin: without it the
         // message detail keeps its ordinary Infopoint-list parent.
         onReturnToOrigin={notifOrigin ? returnToNotifOrigin : undefined}
@@ -533,7 +535,7 @@ function PwaDriverApp() {
             <TourBookedSuccessSheet onClose={() => setBookedSuccess(false)} />
           )}
         </div>
-        {!activeJob ? (
+        {!activeJob && !documentFocused ? (
           <div className="pwa-tabbar-slot">
             <TabBar tab={tab} setTab={setTab} />
           </div>

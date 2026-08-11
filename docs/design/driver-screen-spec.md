@@ -32,7 +32,8 @@ Rules (Design Direction Board §H):
 - Bottom navigation; all tabs show **icon + label**; badge uses the unified `Badge` component.
 - **Active state = contrast, not purple**: darker text, filled/heavier icon, and a subtle neutral marker (light-gray capsule). **A dominant purple active capsule is prohibited**; purple may appear only as a restrained marker that does not dominate the bar.
 - Bar surface: white (`--paper`), fine `--line` border, subtle shadow — not a dark or purple slab.
-- **Fixed vs floating is an unresolved client decision.** The prototype currently floats the bar above the content; do not lock either option without client sign-off.
+- In normal installed Driver PWA screens, the bottom safe-area/page surface reaches the physical bottom of the viewport, while the visible navigation remains a **floating rounded capsule** inside that surface. The `.pwa-tabbar-slot` wrapper is transparent and positional only; `.tabbar-capsule` owns the white surface, border, radius, shadow, and neutral active state.
+- In document-focused mode (Infopoint opened document/PDF), the global Marketplace / My jobs / Infopoint / Profile navigation is not rendered and no bottom-nav height is reserved.
 - Search, filters, notifications, and settings live in the **upper** screen area; filter + sorting controls sit at the **top of the Marketplace**.
 - No additional navigation levels.
 
@@ -101,7 +102,7 @@ It survives refetch, reload and the booking transition because it is derived on 
 
 Text label always present — icons support, never replace, the label.
 
-**In-app document viewer:** `DocumentPreviewSheet` is a full-height in-phone page rendering the seeded real 2-page PDF (`prototype/project/assets/transport-order-sample.pdf`) via pdf.js canvases (iframe fallback), with functional Download/Share/Print. All transport-order, tour-document, and Infopoint views/downloads serve this PDF — production streams the real file to the same surface.
+**In-app document viewer:** `DocumentPreviewSheet` is a focused full-screen driver view rendering the seeded real 2-page PDF (`prototype/project/assets/transport-order-sample.pdf`) via pdf.js canvases (iframe fallback), with functional Download/Share/Print. In the installed `/pwa` shell, opening an Infopoint document hides the global Marketplace / My jobs / Infopoint / Profile navigation and removes its reserved bottom region; closing the document restores the Infopoint tab and normal navigation. The document header surface owns the top safe area (surface extends edge-to-edge, title/subtitle/close remain inset), the PDF region is the only flexible scroller, and the full-width document action bar owns the bottom safe area so the three equal actions (Herunterladen / Teilen / Drucken) remain above the home indicator with no blank strip below. The action bar is application UI outside the PDF renderer; the PDF scroller must be able to scroll its final content fully above it. All transport-order, tour-document, and Infopoint views/downloads serve this PDF — production streams the real file to the same surface.
 
 Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline and/or very subtle shadow, calm spacing with useful density; small supporting icons only where they aid comprehension; cards (not a desktop table) are the marketplace idiom.
 
@@ -147,8 +148,9 @@ future screen action cannot reintroduce a bespoke header.
 
 ### Alignment rules
 
-- **Titles start at the same visual height on all four screens.** Guaranteed by the single
-  `padding: 16px 20px 14px` on `.pwa-screen-header` — verified by test, not by inspection.
+- **Titles start at the same visual height on all four screens.** Guaranteed by the single base
+  `padding: 16px 20px 14px` on `.pwa-screen-header`; in the installed `/pwa` shell the top safe-area
+  inset is added through `--driver-content-safe-top`. Verified by test, not by inspection.
 - **The header's grey divider ends at the same height on all four screens** (client review
   2026-07-28). The header renders title + subtitle + `actions` only; anything a screen adds
   underneath — My orders' search row and tab pills, Infopoint's sub-tab pills — is a **sibling after
@@ -157,8 +159,11 @@ future screen action cannot reintroduce a bespoke header.
 - Screen-specific bands under the header (`.myjobs-tabs-slider`, `.infopoint-tabs-slider`) are
   full-bleed white with their own `border-bottom`, and repeat the header's 20px side padding (14px at
   ≤360px) so their first item lines up with the title above.
-- Status bar / safe-area / notch offset is owned by `.phone-screen` (`pwa.css`: `padding-top:
-  env(safe-area-inset-top)`), i.e. *above* the header. The header adds no device-chrome compensation.
+- Top safe-area ownership in the installed `/pwa` shell: `.phone-screen` exposes
+  `--driver-content-safe-top`, and `.pwa-screen-header` pulls its surface to the physical top of the
+  phone while adding the inset to its own padding. The status/Dynamic-Island region is therefore
+  filled by the header surface, while title, subtitle, and controls remain below the system UI. Do
+  not move the whole app below the safe area or introduce hardcoded top offsets.
 - `.screen-header-row` uses `align-items: flex-start`, and `.screen-header-titles` has `min-width: 0`
   + `flex: 1`. Consequence: **screen actions never shift the title baseline**, and a long title wraps
   inside its own column instead of colliding with the bell.
@@ -902,7 +907,7 @@ Driver-owned sign-in email lives under the Profile **Account** group as a `Profi
 | 7-step type scale | `text-display` … `text-overline` | aligned; weights re-mapped to 400/500/600 |
 | 4pt spacing | `spacing` 1–9 | aligned |
 | Light + dark `[data-theme]` | `ThemeProvider` + shared CSS | aligned (web + admin) |
-| Bottom tab IA | `(driver)` route group + `BottomTabBar` | `BottomTabBar` + `DriverShell` shipped (neutral active, no purple capsule); floating default, `variant` flag — fixed-vs-floating still an open client decision |
+| Bottom tab IA | `(driver)` route group + `BottomTabBar` | `BottomTabBar` + `DriverShell` shipped (neutral active, no purple capsule); normal Driver PWA uses a floating rounded capsule inside the edge-to-edge bottom safe-area/page surface; document-focused views hide the global tab bar |
 
 Implementation of autheon-fe driver routes is a **separate plan**; this spec is the visual/UX contract.
 

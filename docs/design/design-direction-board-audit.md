@@ -9,7 +9,7 @@
 
 ## Audit matrix
 
-Statuses: `COVERED` · `PARTIAL` · `MISSING` · `CONFLICT` · `NOT VERIFIABLE` · `NOT APPLICABLE`
+Statuses: `COVERED` · `PARTIAL` · `MISSING` · `CONFLICT` · `NOT VERIFIABLE` · `NOT APPLICABLE` · `SUPERSEDED`
 
 | ID | Requirement | Surface | Status | Evidence | Gap / conflict | Recommended action | Documentation target |
 |----|-------------|---------|--------|----------|----------------|--------------------|----------------------|
@@ -37,7 +37,7 @@ Statuses: `COVERED` · `PARTIAL` · `MISSING` · `CONFLICT` · `NOT VERIFIABLE` 
 | 22 | Restrained header KPIs (available / booked / open docs) | Driver | **PARTIAL** | Header = avatar, greeting, bell, title, sort/filter (`driver.jsx:988-1081`); results count only (`:1100-1104`). No KPI row — DDB marks KPIs as *may contain* | Header is restrained (not excessive); the optional KPI row is simply absent | No change without client ask; record as optional enhancement | driver-screen-spec.md |
 | 23 | Filter and sorting controls at top of Marketplace | Driver | **COVERED** | `SortSelect` + filter button in header (`driver.jsx:1034-1059`); applied-filter chips row under header (`:1063-1080`) | — | Keep | driver-screen-spec.md |
 | 24 | Bottom-nav IA: Marketplace / My Jobs / Infopoint / Profile | Driver | **COVERED** | `TabBar` items (`driver.jsx:717-722`) | — | Keep | driver-screen-spec.md |
-| 25 | Fixed vs floating bottom navigation | Driver | **NOT VERIFIABLE** | Current implementation is a floating capsule (`styles.css:863-869`); DDB explicitly leaves fixed-vs-floating unresolved | Client decision outstanding; docs do not flag it | Keep current floating geometry; mark unresolved in all specs | driver-screen-spec.md, ui-ux-production-plan.md, screenshots README |
+| 25 | Fixed vs floating bottom navigation | Driver | **SUPERSEDED 2026-08-11** | Current implementation is a floating capsule (`styles.css:863-869`); DDB explicitly leaves fixed-vs-floating unresolved | Resolved after this audit by commits `7a79808` and `dceed6d` for installed `/pwa` | Normal Driver screens keep the floating rounded capsule inside the edge-to-edge bottom safe-area/page surface; document-focused views hide the global tab bar. See remediation F15. | driver-screen-spec.md, ui-ux-production-plan.md, screenshots README |
 | 26 | Button variants clear, premium, functional | Both | **COVERED** | `.btn` + `primary/cta/ghost/danger/icon/sm/xs` (`styles.css:322-403`); 44px icon targets | — | Keep | driver-screen-spec.md |
 | 27 | Secondary buttons: white + fine gray outline or restrained text button | Both | **PARTIAL** | `.btn` is white ✓ but outlined with `--line-3` = `#111111` **black** (`styles.css:329` + `:30`); primary CTAs are 9999px pills (`:1355`) | Black outline is heavier than the DDB's fine gray; pill radius immoderate | Border → `--line-2` gray; radius → moderate | driver-screen-spec.md, brand-tokens.md |
 | 28 | Slide-to-confirm deliberate, clear, performant | Driver | **COVERED** | Full-width drag with threshold (`driver.jsx:1512-1547`), locked state until 10-char reason for cancellation (`:2758-2808`), transform-only animation, reduced-motion off-switch (`styles.css:2309-2315`); `before/driver-slide-confirm-light.png` | Track copy is uppercase (see #4) | Keep mechanism; fix copy casing | driver-screen-spec.md |
@@ -77,11 +77,10 @@ The audit distinguishes: requirements truly covered in implementation (table abo
 
 Do **not** treat these as confirmed requirements (list updated in v1.1):
 
-1. **Fixed vs floating bottom navigation.** The PDF (§6) confirms this is to be decided together "in den ersten Looks". The prototype currently floats a capsule above the content; it stays that way (restyled to neutral) until the client decides.
-2. **Exact permitted uppercase meta labels.** PDF §3: uppercase "kann … sehr zurückhaltend … geprüft werden". Proposed retained set: admin sidebar eyebrow/section markers and the demo `MOCK DATA` chrome tag. Client to confirm.
-3. **Primary button color — dark vs purple** *(new in v1.1)*. The PDF button board (p.6) shows the Primär button filled near-black, while §2 allows `#6F29FF` for "primäre CTAs". The prototype keeps purple primaries; confirm whether primaries should switch to the dark treatment from the button board.
-4. **Orange `--cta` binding-action treatment.** Prototype-internal functional semantic, inconsistently applied ("Mark performed"/"Accept tour" are purple primaries; only the overlap-confirm uses orange). Client must approve orange as the binding-CTA color — or the `--cta` rule is retired.
-5. **Animated Autheon mark in the active nav tab.** Deliberate recent addition (`cae3a8a`); infinite decorative motion sits outside DDB "minimal micro-animations". Kept pending client review.
+1. **Exact permitted uppercase meta labels.** PDF §3: uppercase "kann … sehr zurückhaltend … geprüft werden". Proposed retained set: admin sidebar eyebrow/section markers and the demo `MOCK DATA` chrome tag. Client to confirm.
+2. **Primary button color — dark vs purple** *(new in v1.1)*. The PDF button board (p.6) shows the Primär button filled near-black, while §2 allows `#6F29FF` for "primäre CTAs". The prototype keeps purple primaries; confirm whether primaries should switch to the dark treatment from the button board.
+3. **Orange `--cta` binding-action treatment.** Prototype-internal functional semantic, inconsistently applied ("Mark performed"/"Accept tour" are purple primaries; only the overlap-confirm uses orange). Client must approve orange as the binding-CTA color — or the `--cta` rule is retired.
+4. **Animated Autheon mark in the active nav tab.** Deliberate recent addition (`cae3a8a`); infinite decorative motion sits outside DDB "minimal micro-animations". Kept pending client review.
 
 **Resolved 2026-07-14** (moved out of this list): registered/deregistered + electric-vehicle + red-plates are V1 optional job fields (`prd.json` `vehicle_important_info_v1`); header KPIs implemented per PDF §4.
 

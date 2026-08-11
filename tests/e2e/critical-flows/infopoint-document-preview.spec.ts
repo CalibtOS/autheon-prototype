@@ -1,73 +1,236 @@
+import type { Page } from '@playwright/test';
 import { test, expect } from '../../regression/support/fixtures/prototype-test.ts';
-import {
-  switchLanguage,
-  switchTheme,
-  switchToDriverPWA,
-} from '../../regression/support/helpers/header-controls.ts';
-import { prototypeFrame } from '../../regression/support/helpers/selectors.ts';
-import { gotoPrototype } from '../../regression/support/helpers/stable-page.ts';
-import { openDriverTab, waitForOpenDialog } from '../../regression/support/helpers/visual.ts';
+
+async function openAuthenticatedPwa(page: Page, locale: 'en' | 'de' = 'en') {
+  await page.addInitScript((nextLocale) => {
+    localStorage.setItem('autheon-locale', nextLocale);
+    localStorage.setItem('autheon-theme', 'light');
+  }, locale);
+
+  await page.goto('/pwa/', { waitUntil: 'domcontentloaded' });
+  await page
+    .getByRole('button', {
+      name: /Fill demo credentials|Demo-Zugangsdaten/i,
+    })
+    .click();
+  await page.getByRole('button', { name: /^Login$|^Anmelden$/i }).click();
+  await expect(
+    page.getByRole('heading', { name: /Marketplace|Marktplatz/i }),
+  ).toBeVisible();
+}
+
+async function openInfopointDocumentPreview(page: Page) {
+  await page
+    .locator('.tabbar-capsule')
+    .getByRole('button', { name: /Infopoint/i })
+    .click();
+  await page
+    .getByRole('button', {
+      name: /^(View|Ansehen): General work instructions$/i,
+    })
+    .click();
+  await expect(page.locator('.docview-panel')).toBeVisible();
+}
 
 /**
- * The document preview is a full-frame overlay, but the bottom tab bar is a
- * later sibling inside .phone-screen and ties it on z-index. When the preview
- * rendered inline in the Infopoint pane, the nav painted over the
- * Download/Share/Print row and swallowed its taps — the actions were visible
- * in screenshots but completely unusable.
- *
- * Job detail unmounts the tab bar, so it never showed the bug; Infopoint is
- * the regression surface. These assertions pin the functional symptom (can the
- * user actually reach Download?) rather than pixels.
+ * The installed Driver PWA has two shell modes:
+ * normal primary screens keep the global tab bar, while an opened Infopoint
+ * document becomes a focused full-screen view. These checks assert the shell
+ * structure and reachable actions; real iOS safe-area rendering still needs
+ * manual device validation.
  */
-test.describe('Infopoint document preview actions @critical', () => {
-  test('Download stays reachable and is not covered by the bottom tab bar', async ({
+test.describe('Infopoint document preview focused PWA mode @critical', () => {
+  test('hides global navigation and lets the document action bar own the bottom edge', async ({
     page,
   }) => {
-    await gotoPrototype(page);
-    await switchLanguage(page, 'EN');
-    await switchTheme(page, 'light');
-    await switchToDriverPWA(page);
+    await openAuthenticatedPwa(page, 'en');
 
-    const frame = prototypeFrame(page);
+    await test.step('normal Infopoint keeps the global navigation', async () => {
+      await page
+        .locator('.tabbar-capsule')
+        .getByRole('button', { name: /Infopoint/i })
+        .click();
+      await expect(page.locator('.pwa-tabbar-slot')).toBeVisible();
+      await expect(
+        page.locator('.tabbar-item.active', { hasText: /Infopoint/i }),
+      ).toBeVisible();
 
-    await test.step('open a document preview from the Infopoint documents tab', async () => {
-      await openDriverTab(page, /Infopoint/i);
-      await frame
+      const navGeometry = await page.evaluate(() => {
+        const screen = document
+          .querySelector('.phone-screen')
+          ?.getBoundingClientRect();
+        const slot = document.querySelector('.pwa-tabbar-slot');
+        const capsuleEl = document.querySelector('.tabbar-capsule');
+        const capsule = capsuleEl?.getBoundingClientRect();
+        const slotStyle = slot ? getComputedStyle(slot) : null;
+        const capsuleStyle = capsuleEl ? getComputedStyle(capsuleEl) : null;
+
+        return {
+          leftInset: screen && capsule ? capsule.left - screen.left : null,
+          rightInset: screen && capsule ? screen.right - capsule.right : null,
+          slotBorderTopWidth: slotStyle?.borderTopWidth ?? null,
+          slotBackground: slotStyle?.backgroundColor ?? null,
+          capsuleRadius: capsuleStyle
+            ? Number.parseFloat(capsuleStyle.borderTopLeftRadius)
+            : null,
+          capsuleShadow: capsuleStyle?.boxShadow ?? null,
+        };
+      });
+
+      expect(navGeometry.leftInset).toBeGreaterThan(8);
+      expect(navGeometry.rightInset).toBeGreaterThan(8);
+      expect(navGeometry.slotBorderTopWidth).toBe('0px');
+      expect(navGeometry.slotBackground).toBe('rgba(0, 0, 0, 0)');
+      expect(navGeometry.capsuleRadius).toBeGreaterThan(12);
+      expect(navGeometry.capsuleShadow).not.toBe('none');
+    });
+
+    await test.step('opened document enters focused mode', async () => {
+      await page
         .getByRole('button', { name: /^View: General work instructions$/i })
         .click();
-      await waitForOpenDialog(page);
-      await expect(frame.locator('.docview-panel')).toBeVisible();
+      await expect(page.locator('.docview-panel')).toBeVisible();
+      await expect(page.locator('.pwa-tabbar-slot')).toHaveCount(0);
     });
 
-    const download = frame.locator('.docview-actions').getByRole('button', {
-      name: /Download/i,
-    });
+    const actions = page.locator('.docview-actions');
+    const download = actions.getByRole('button', { name: /Download/i });
 
-    await test.step('the tab bar does not sit on top of the actions row', async () => {
+    await test.step('all three document actions remain visible and reachable', async () => {
       await expect(download).toBeVisible();
+      await expect(actions.getByRole('button', { name: /Share/i })).toBeVisible();
+      await expect(actions.getByRole('button', { name: /Print/i })).toBeVisible();
+      await expect(actions.getByRole('button')).toHaveCount(3);
+      await expect(actions.locator('.docview-action-icon svg')).toHaveCount(3);
 
-      // Playwright's own actionability check catches interception, but assert
-      // the hit-test explicitly so a failure names the culprit instead of
-      // timing out on an opaque "element intercepts pointer events".
-      const topmost = await download.evaluate((el) => {
+      const hit = await download.evaluate((el) => {
         const box = el.getBoundingClientRect();
-        const hit = el.ownerDocument.elementFromPoint(
+        const top = el.ownerDocument.elementFromPoint(
           box.left + box.width / 2,
           box.top + box.height / 2,
         );
         return {
-          insideDownload: el.contains(hit),
-          hitClass: (hit as HTMLElement | null)?.className?.toString() ?? null,
+          insideDownload: el.contains(top),
+          hitClass: (top as HTMLElement | null)?.className?.toString() ?? null,
         };
       });
 
-      expect(topmost.hitClass).not.toContain('tabbar');
-      expect(topmost.insideDownload).toBe(true);
-    });
-
-    await test.step('Download is actually clickable', async () => {
-      // Fails on pointer interception rather than silently passing.
+      expect(hit.hitClass).not.toContain('tabbar');
+      expect(hit.insideDownload).toBe(true);
       await download.click({ trial: true, timeout: 5_000 });
     });
+
+    await test.step('viewer reclaims the tabbar slot with no bottom ghost region', async () => {
+      const geometry = await page.evaluate(() => {
+        const phone = document.querySelector('.phone')?.getBoundingClientRect();
+        const panel = document
+          .querySelector('.docview-panel')
+          ?.getBoundingClientRect();
+        const body = document
+          .querySelector('.docview-body')
+          ?.getBoundingClientRect();
+        const bar = document
+          .querySelector('.docview-actions')
+          ?.getBoundingClientRect();
+        return {
+          phoneBottom: phone?.bottom ?? null,
+          panelBottom: panel?.bottom ?? null,
+          bodyBottom: body?.bottom ?? null,
+          barTop: bar?.top ?? null,
+          barBottom: bar?.bottom ?? null,
+        };
+      });
+
+      expect(geometry.panelBottom).toBeCloseTo(geometry.phoneBottom!, 0);
+      expect(geometry.barBottom).toBeCloseTo(geometry.panelBottom!, 0);
+      expect(geometry.bodyBottom).toBeLessThanOrEqual(geometry.barTop! + 1);
+    });
+
+    await test.step('document scrolls to the end above the action bar', async () => {
+      await page.locator('.docview-page').last().waitFor({
+        state: 'visible',
+        timeout: 20_000,
+      });
+
+      const scrollState = await page.evaluate(() => {
+        const scroller = document.querySelector('.docview-pages');
+        const pages = Array.from(document.querySelectorAll('.docview-page'));
+        const lastPage = pages.at(-1);
+        const actions = document
+          .querySelector('.docview-actions')
+          ?.getBoundingClientRect();
+        if (!scroller || !lastPage || !actions) return null;
+
+        scroller.scrollTop = scroller.scrollHeight;
+
+        const lastRect = lastPage.getBoundingClientRect();
+        return {
+          atEnd:
+            Math.ceil(scroller.scrollTop + scroller.clientHeight) >=
+            scroller.scrollHeight - 1,
+          lastPageBottom: lastRect.bottom,
+          actionsTop: actions.top,
+        };
+      });
+
+      expect(scrollState).not.toBeNull();
+      expect(scrollState!.atEnd).toBe(true);
+      expect(scrollState!.lastPageBottom).toBeLessThanOrEqual(
+        scrollState!.actionsTop + 1,
+      );
+    });
+
+    await test.step('close restores Infopoint and the global navigation', async () => {
+      await page.locator('.docview-head').getByRole('button').click();
+      await expect(page.locator('.docview-panel')).toHaveCount(0);
+      await expect(page.locator('.pwa-tabbar-slot')).toBeVisible();
+      await expect(
+        page.locator('.tabbar-item.active', { hasText: /Infopoint/i }),
+      ).toBeVisible();
+    });
+  });
+
+  test('normal primary headers start at the PWA frame top', async ({ page }) => {
+    await openAuthenticatedPwa(page, 'en');
+
+    for (const tabName of [/Marketplace/i, /My jobs/i, /Infopoint/i, /Profile/i]) {
+      await page.locator('.tabbar-capsule').getByRole('button', { name: tabName }).click();
+      const geometry = await page.evaluate(() => {
+        const screen = document
+          .querySelector('.phone-screen')
+          ?.getBoundingClientRect();
+        const header = document
+          .querySelector('.pwa-screen-header')
+          ?.getBoundingClientRect();
+        return {
+          screenTop: screen?.top ?? null,
+          headerTop: header?.top ?? null,
+        };
+      });
+
+      expect(geometry.headerTop).toBeCloseTo(geometry.screenTop!, 0);
+    }
+  });
+
+  test('German document action labels fit the full-width action bar', async ({
+    page,
+  }) => {
+    await openAuthenticatedPwa(page, 'de');
+    await openInfopointDocumentPreview(page);
+
+    const actions = page.locator('.docview-actions');
+    await expect(actions.getByRole('button', { name: /Herunterladen/i })).toBeVisible();
+    await expect(actions.getByRole('button', { name: /Teilen/i })).toBeVisible();
+    await expect(actions.getByRole('button', { name: /Drucken/i })).toBeVisible();
+
+    const overflows = await actions.evaluate((el) => {
+      const barOverflows = el.scrollWidth > el.clientWidth + 1;
+      const labelOverflows = Array.from(
+        el.querySelectorAll('.docview-action-label'),
+      ).some((label) => label.scrollWidth > label.clientWidth + 1);
+      return barOverflows || labelOverflows;
+    });
+
+    expect(overflows).toBe(false);
   });
 });

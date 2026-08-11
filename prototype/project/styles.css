@@ -6037,15 +6037,70 @@ select.input {
   background: var(--paper);
 }
 .phone-shell .docview-actions {
-  display: flex;
-  gap: 8px;
-  padding: 10px 14px calc(12px + var(--phone-chrome-bottom));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  padding: 8px 0 calc(8px + var(--phone-chrome-bottom));
   background: var(--paper);
   border-top: 1px solid var(--line);
   flex-shrink: 0;
 }
-.phone-shell .docview-actions .btn {
-  flex: 1;
+.phone-shell .docview-action {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 58px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background 0.14s ease,
+    transform 0.04s ease;
+}
+.phone-shell .docview-action:hover {
+  background: var(--paper-3);
+}
+.phone-shell .docview-action:active {
+  transform: translateY(1px);
+}
+.phone-shell .docview-action + .docview-action::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: var(--line);
+}
+.phone-shell .docview-action-icon {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+}
+.phone-shell .docview-action-icon svg {
+  width: 22px;
+  height: 22px;
+}
+.phone-shell .docview-action-label {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.15;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Profile Redesign & Switch Toggles */

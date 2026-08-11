@@ -64,8 +64,8 @@
       href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=45" />
-    <link rel="stylesheet" href="../../pwa/pwa.css?v=17" />
+    <link rel="stylesheet" href="styles.css?v=46" />
+    <link rel="stylesheet" href="../../pwa/pwa.css?v=21" />
     <script>
       // Apply theme before first paint: persisted prototype choice first,
       // then the device preference. Same key as the client-preview page.
@@ -102,6 +102,14 @@
       }
     </script>
     <!--
+      --app-height: the shell height to lay out against. An iOS standalone cold
+      launch can report a layout viewport shorter than the surface the web view
+      actually paints (iPhone 13: innerHeight 797 at screenY 0 on an 844px
+      screen), leaving the bottom strip unpainted. Must run before the first
+      paint so the shell is never laid out short.
+    -->
+    <script src="/pwa/app-height.js?v=1"></script>
+    <!--
       Floating Theme Editor — shared with the prototype page. Same-origin, so it
       reads the same locally stored colour overrides. Loaded synchronously after
       the data-theme bootstrap so overrides apply before the first paint.
@@ -116,7 +124,7 @@
       dispatches `autheon-splash-complete` on window, then removes itself.
       Must load before the CDN bundles so the animation starts immediately.
     -->
-    <script src="../../pwa/splash.js?v=2"></script>
+    <script src="../../pwa/splash.js?v=3"></script>
     <script src="/pwa/pwa-install.js?v=5"></script>
 
     <script>
@@ -156,8 +164,8 @@
 
         var JSX = [
           "/prototype/project/driver-ui.jsx?v=2",
-          "/prototype/project/driver.jsx?v=35",
-          "/pwa/pwa-app.jsx?v=15",
+          "/prototype/project/driver.jsx?v=36",
+          "/pwa/pwa-app.jsx?v=16",
         ];
 
         // Keep draw + flip phases free of Babel compile jank (~0–1.8s of splash).

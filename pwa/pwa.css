@@ -19,8 +19,20 @@
    Desktop mock .phone { height:min(800px,100vh-120px) } MUST NOT apply.
 
    Height flows through --driver-shell-height exactly as FE DriverLayout sets it
-   (offline banner shrinks the stage). /pwa never sets the var, so the 100dvh
-   fallback applies — but the contract stays identical to FE. */
+   (offline banner shrinks the stage). /pwa never sets the var, so the
+   --app-height fallback applies — but the contract stays identical to FE.
+
+   --app-height is the TRUE painted height of the web view, published by
+   pwa/app-height.js. It exists because an iOS standalone cold launch can give a
+   layout viewport shorter than the surface it paints (measured on iPhone 13:
+   innerHeight 797 at screenY 0 on an 844px screen), so `100dvh` lays out 797px
+   of content across 844px and the bottom 47px is never painted — the floating
+   nav capsule then sits ~81px above the physical bottom edge.
+
+   The script leaves the property UNSET whenever the shortfall is not
+   safe-area-attributable (browser preview, keyboard, Split View, post-rotation),
+   so the 100dvh fallback below is the no-JS and no-override behaviour. Keep the
+   fallback on every declaration. */
 html.pwa-page {
   margin: 0;
   height: 100%;
@@ -28,17 +40,17 @@ html.pwa-page {
 }
 body.pwa-page {
   margin: 0;
-  min-height: 100dvh;
-  height: 100dvh;
-  max-height: 100dvh;
+  min-height: var(--app-height, 100dvh);
+  height: var(--app-height, 100dvh);
+  max-height: var(--app-height, 100dvh);
   background: var(--canvas);
   overflow: hidden; /* override styles.css body{overflow:auto} */
   overscroll-behavior-y: none;
 }
 body.pwa-page #root {
-  min-height: 100dvh;
-  height: 100dvh;
-  max-height: 100dvh;
+  min-height: var(--app-height, 100dvh);
+  height: var(--app-height, 100dvh);
+  max-height: var(--app-height, 100dvh);
   display: flex;
   flex-direction: column;
   background: var(--canvas);
@@ -185,8 +197,8 @@ html.pwa-standalone .pwa-ios-sheet {
   position: relative;
   flex: 1 1 0;
   width: 100%;
-  height: var(--driver-shell-height, 100dvh) !important;
-  max-height: var(--driver-shell-height, 100dvh) !important;
+  height: var(--driver-shell-height, var(--app-height, 100dvh)) !important;
+  max-height: var(--driver-shell-height, var(--app-height, 100dvh)) !important;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -230,6 +242,7 @@ html.pwa-standalone .pwa-ios-sheet {
    Tab bar is NOT a child of this node (see .pwa-tabbar-slot). */
 .phone-shell.pwa-viewport .phone-screen {
   --phone-chrome-top: env(safe-area-inset-top, 0px);
+  --driver-content-safe-top: env(safe-area-inset-top, 0px);
   position: relative;
   flex: 1 1 0;
   display: flex;
@@ -238,18 +251,20 @@ html.pwa-standalone .pwa-ios-sheet {
   min-height: 0;
   height: auto;
   max-height: none;
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--driver-content-safe-top);
   background: var(--canvas);
   overflow: hidden;
 }
 /* FE content column: short landscape keeps a minimum 0.25rem top pad. */
 @media (orientation: landscape) and (max-height: 500px) {
   .phone-shell.pwa-viewport .phone-screen {
-    padding-top: max(0.25rem, env(safe-area-inset-top, 0px));
+    --driver-content-safe-top: max(0.25rem, env(safe-area-inset-top, 0px));
   }
 }
 
-/* FE: absolute inset-x-0 bottom-0 wrapper around BottomTabBar */
+/* FE: absolute inset-x-0 bottom-0 wrapper around BottomTabBar.
+   Keep this wrapper visually transparent: the floating capsule below owns
+   the nav chrome; .phone-screen/current page surface owns the safe-area fill. */
 .phone-shell.pwa-viewport .pwa-tabbar-slot {
   position: absolute;
   left: 0;
@@ -257,6 +272,7 @@ html.pwa-standalone .pwa-ios-sheet {
   bottom: 0;
   z-index: 40;
   pointer-events: none;
+  background: transparent;
 }
 .phone-shell.pwa-viewport .pwa-tabbar-slot .tabbar-container {
   /* styles.css pins .tabbar-container absolute; FE TabBar itself is relative
@@ -289,9 +305,16 @@ html.pwa-standalone .pwa-ios-sheet {
 .phone-shell.pwa-viewport .notifications-dropdown-header {
   padding-top: calc(16px + env(safe-area-inset-top, 0px));
 }
-/* Panel is already bottom:0; keep a single home-indicator pad on the toolbar. */
+/* Panel is already bottom:0; the document action bar owns the home indicator. */
 .phone-shell.pwa-viewport .docview-actions {
-  padding-bottom: max(12px, calc(12px + env(safe-area-inset-bottom, 0px)));
+  padding-bottom: max(12px, calc(8px + env(safe-area-inset-bottom, 0px)));
+}
+
+/* Primary screens own the top safe-area surface: the header starts at the
+   physical top of .phone-screen, while its content remains safely inset. */
+.phone-shell.pwa-viewport .pwa-screen-header {
+  margin-top: calc(-1 * var(--driver-content-safe-top, 0px));
+  padding-top: calc(16px + var(--driver-content-safe-top, 0px));
 }
 
 /* ---- Scroll body + bottom navigation (FE DriverScrollBody / TabBar) ----
