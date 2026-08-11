@@ -11,8 +11,8 @@
 //     (street/house_number/postal_code/city/country_code), joined_at, change_history jsonb
 //     (UI trail; audit_events remains system of record — decision 3A).
 //   - users.identity_id is the binding column name (Keycloak subject link) — not keycloak_id.
-//   - Annotated BE synchronize lag: account_access / operational_access properties still map to
-//     physical column name `status` until a wipe+reseed; target names in this file stay binding.
+//   - users.account_access / drivers.operational_access are the binding physical column names
+//     (enabled|disabled string enums — not booleans). Wipe+reseed under synchronize:true.
 //   - Decision 1A: hybrid auth challenge state on users — password_reset_otp_*, password_reset_token_*,
 //     account_setup_token_* (hashes + rate-limit counters only; passwords stay in Keycloak).
 //     Amends the v2.24 "no reset state in AUTHEON" reading: still no session table and no
