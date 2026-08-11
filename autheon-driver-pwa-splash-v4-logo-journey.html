@@ -7,15 +7,15 @@
 <style>
   :root {
     color-scheme: dark;
-    --bg: #0e0a17;
-    --bg-soft: #140d24;
-    --brand: #6F29FF;
-    --brand-soft: #9b6bff;
+    --bg: #000000;
+    --bg-soft: #000000;
+    --brand: #ffffff;
+    --brand-soft: #ffffff;
     --ink: #ece7f7;
     --white: #ffffff;
-    --muted: rgba(236, 231, 247, .58);
-    --panel: rgba(20, 13, 36, .76);
-    --line: rgba(155, 107, 255, .26);
+    --muted: rgba(248, 248, 248, 0.58);
+    --panel: rgba(0, 0, 0, 0.76);
+    --line: rgba(255, 255, 255, 0.26);
   }
 
   * { box-sizing: border-box; }
@@ -41,7 +41,7 @@
     overflow: hidden;
     isolation: isolate;
     background:
-      radial-gradient(circle at 50% 45%, rgba(111, 41, 255, .09), transparent 31%),
+      radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.09), transparent 31%),
       var(--bg);
   }
 
@@ -66,8 +66,6 @@
   .tile,
   #brandLockup { transform-origin: center; }
 
-  /* Both faces of the flip share one pivot; roadBack's fill-box is wider
-     (it contains the outgoing road), so "center" would put its pivot elsewhere. */
   #logoFront,
   #roadBack { transform-origin: 23.81px 16px; }
 
@@ -85,8 +83,6 @@
     stroke-dashoffset: 1;
   }
 
-  /* Road body drawn as a stroke along the route path — the bg-colored cut on top
-     leaves two thin white edges, matching the outgoing road's edge style. */
   .road-body {
     fill: none;
     stroke: #fff;
@@ -124,9 +120,6 @@
     stroke-width: 12;
     stroke-linecap: round;
     stroke-linejoin: round;
-    /* Long gap so retract offsets can overshoot past the endpoint (clearing the
-       round cap, which extends stroke-width/2 beyond the dash) without the
-       next dash of the pattern wrapping back onto the path. */
     stroke-dasharray: 1 3;
     stroke-dashoffset: 0;
   }
@@ -171,9 +164,9 @@
     left: 50%;
     transform: translateX(-50%);
     padding: 7px 11px;
-    border: 1px solid rgba(155, 107, 255, .17);
+    border: 1px solid rgba(248, 248, 248, 0.17);
     border-radius: 999px;
-    background: rgba(14, 10, 23, .52);
+    background: rgba(0, 0, 0, 0.52);
     color: var(--muted);
     font: 600 10px/1 system-ui, sans-serif;
     letter-spacing: .075em;
@@ -204,10 +197,9 @@
 
     <defs>
       <filter id="softLogoShadow" x="-40%" y="-40%" width="180%" height="180%">
-        <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#6F29FF" flood-opacity=".15"/>
+        <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity=".15"/>
       </filter>
 
-      <!-- These masks are used only to retract the road state. The visible geometry remains the exact official logo. -->
       <mask id="roadMask1" maskUnits="userSpaceOnUse" x="-8" y="-8" width="118" height="55">
         <rect x="-8" y="-8" width="118" height="55" fill="black"/>
         <path id="routeMask1" class="route-mask" pathLength="1" d="M38.7 4.8 C27.6 3.2 21.5 3.9 16.5 10.5 C10 19.5 5 29 0 31.95"/>
@@ -224,7 +216,6 @@
         <rect x="-8" y="-8" width="64" height="55" fill="black"/>
         <path id="routeMask4" class="route-mask" pathLength="1" d="M45.8 31.5 C44.1 27 42.4 22.8 41 18.8"/>
       </mask>
-      <!-- Erases the outgoing road left-to-right behind the car, so nothing dark is painted over the glow. -->
       <mask id="outgoingMask" maskUnits="userSpaceOnUse" x="-12" y="16" width="130" height="32">
         <rect x="-12" y="16" width="130" height="32" fill="black"/>
         <path id="outgoingMaskLine" class="route-mask" pathLength="1" d="M-3 31.95 H108"/>
@@ -232,12 +223,10 @@
     </defs>
 
     <g id="brandLockup" filter="url(#softLogoShadow)">
-      <!-- Exact Figma-like centered brand position. The icon is the official scratchpad geometry. -->
       <g id="logoAssembly" transform="translate(123 290) scale(3)">
-        <rect id="logoTile" class="tile" width="48" height="48" rx="10" fill="#6F29FF" opacity="0"/>
+        <rect id="logoTile" class="tile" width="48" height="48" rx="10" fill="#000000" opacity="0"/>
 
         <g transform="translate(0 8)">
-          <!-- FRONT FACE: exact official logo, drawn exactly with the scratchpad stroke/fill technique. -->
           <g id="logoFront">
             <path class="draw-ribbon" pathLength="1" d="M28.7452 0.0499943C29.3687 -0.0214756 30.9431 0.0174098 31.6381 0.0180174C33.6279 0.0329038 35.6176 0.0269789 37.6073 0.000244141C37.9458 1.15288 38.4111 2.45984 38.7891 3.62569L41.1318 10.8437C38.7802 10.9527 36.152 10.7687 33.7703 10.8188C32.0193 10.8557 30.1961 10.7226 28.4612 11.2014C22.0467 12.9713 19.8914 18.3673 16.7499 23.549C15.1759 26.1455 13.6026 28.6479 12.0805 31.2103L11.6666 31.9194C10.5996 31.9722 9.42407 31.9176 8.34659 31.9306C5.58855 31.964 2.75097 31.8662 0 31.9517C0.997865 30.5292 2.50586 27.8959 3.46749 26.3335L10.5896 14.7129C12.8592 10.9904 14.5347 7.73199 17.8721 4.82268C21.2443 1.883 24.3891 0.573297 28.7452 0.0499943Z"/>
             <path class="draw-ribbon" pathLength="1" d="M38.3618 17.8626C38.3839 18.3225 39.4974 21.737 39.7447 22.4479C40.7885 25.4482 41.7117 29.0015 42.8468 31.9303C41.7937 31.9141 40.7088 31.9275 39.653 31.9275C38.8473 29.1833 37.9224 26.436 37.0768 23.7013C36.7626 22.685 35.9017 21.6732 34.9229 21.2676C33.7384 20.7767 32.2683 20.8416 31.0836 21.3173C30.3712 21.6337 29.7327 22.0982 29.2099 22.6805C28.5719 23.4055 27.1835 25.8009 26.6472 26.7238C25.6773 28.3928 24.4654 30.2545 23.5761 31.9292C22.505 31.9238 20.7214 31.8709 19.7114 31.9733C20.4259 30.5267 21.7266 28.4617 22.6104 27.09C25.1161 23.2008 26.6843 18.2008 31.9865 17.9032C32.4559 17.8373 33.7521 17.8563 34.2521 17.8566L38.3618 17.8626Z"/>
@@ -245,7 +234,6 @@
             <path class="draw-ribbon" pathLength="1" d="M39.459 17.9398C40.5644 17.9793 41.8666 17.9475 42.9877 17.9492C43.1074 18.7702 43.924 21.0614 44.235 22.0024L47.622 31.9301L43.9359 31.9237C42.5317 27.2651 40.8029 22.6291 39.459 17.9398Z"/>
           </g>
 
-          <!-- BACK FACE: the exact same white logo geometry reinterpreted as roads. -->
           <g id="roadBack" opacity="0">
             <g id="roadRoute1" mask="url(#roadMask1)">
               <path class="road-body" d="M38.7 4.8 C27.6 3.2 21.5 3.9 16.5 10.5 C10 19.5 5 29 0 31.95"/>
@@ -271,7 +259,6 @@
               <path class="route-dash secondary" d="M45.8 31.5 C44.1 27 42.4 22.8 41 18.8"/>
             </g>
 
-            <!-- Horizontal road boundaries begin at the exact lower-left endpoint of the official main ribbon. -->
             <g id="outgoingRoad" opacity="0" mask="url(#outgoingMask)">
               <path id="roadEdgeTop" class="road-edge" pathLength="1" d="M0 29.1 H105"/>
               <path id="roadEdgeBottom" class="road-edge" pathLength="1" d="M0 34.8 H105"/>
@@ -286,15 +273,14 @@
       </g>
     </g>
 
-    <!-- Intentionally simple car. It appears only after the logo has already become the journey. -->
     <g id="carMove" opacity="0" transform="translate(124 384.5)">
       <g id="carBodyGroup">
-        <path d="M-22 4 H-17 L-11 -5 Q-9 -8 -6 -8 H8 Q11 -8 13 -5 L19 4 H23 Q26 4 26 8 V12 H-26 V8 Q-26 4 -22 4Z" fill="#ece7f7"/>
-        <path d="M-9 -4 H0 V3 H-14Z" fill="#0e0a17"/>
-        <path d="M2 -4 H8 Q10 -4 11 -2 L15 3 H2Z" fill="#0e0a17"/>
-        <circle cx="-15" cy="12" r="4.2" fill="#0e0a17" stroke="#ece7f7" stroke-width="1.8"/>
-        <circle cx="16" cy="12" r="4.2" fill="#0e0a17" stroke="#ece7f7" stroke-width="1.8"/>
-        <circle cx="22" cy="7" r="1.4" fill="#9b6bff"/>
+        <path d="M-22 4 H-17 L-11 -5 Q-9 -8 -6 -8 H8 Q11 -8 13 -5 L19 4 H23 Q26 4 26 8 V12 H-26 V8 Q-26 4 -22 4Z" fill="#ffffff"/>
+        <path d="M-9 -4 H0 V3 H-14Z" fill="#000000"/>
+        <path d="M2 -4 H8 Q10 -4 11 -2 L15 3 H2Z" fill="#000000"/>
+        <circle cx="-15" cy="12" r="4.2" fill="#000000" stroke="#ffffff" stroke-width="1.8"/>
+        <circle cx="16" cy="12" r="4.2" fill="#000000" stroke="#ffffff" stroke-width="1.8"/>
+        <circle cx="22" cy="7" r="1.4" fill="#ffffff"/>
       </g>
     </g>
   </svg>
@@ -417,7 +403,7 @@
 
     setStyles(heroDashLogo, { opacity: '1', strokeDashoffset: '0' });
 
-    // Continue the purple dash rhythm across the exact connection point instead of restarting it.
+    // Continue the dash rhythm across the exact connection point instead of restarting it.
     const dashPeriod = 5.6;
     const heroRemainder = heroDashLogo.getTotalLength() % dashPeriod;
     setStyles(outgoingDash, { opacity: '1', strokeDashoffset: String(-heroRemainder) });
@@ -455,9 +441,6 @@
       return;
     }
 
-    /* -------------------------------------------------------
-       PHASE 1 — DRAW THE EXACT OFFICIAL LOGO (scratchpad logic)
-       ------------------------------------------------------- */
     labelAt(0, 'Drawing Autheon');
 
     animate(tile, [
@@ -481,16 +464,11 @@
       ], start + 310, 300, 'ease-out');
     });
 
-    // The wordmark stays up for the whole journey and only leaves with the road at the end.
     animate(wordmark, [
       { opacity: 0, transform: 'translateY(7px)', letterSpacing: '5px' },
       { opacity: 1, transform: 'translateY(0px)', letterSpacing: '3.2px' }
     ], 1020, 380, EASE.settle);
 
-    /* -------------------------------------------------------
-       PHASE 2 — THE ACTUAL WHITE LOGO FLIPS INTO ITS ROAD FACE
-       No road layer is drawn over the logo while it is facing us.
-       ------------------------------------------------------- */
     labelAt(1450, 'Logo flips into the journey');
 
     animate(tile, [
@@ -498,13 +476,11 @@
       { opacity: 0, transform: 'scale(.94)' }
     ], 1450, 280, EASE.soft);
 
-    // Front half of the flip: the finished white logo turns edge-on.
     animate(front, [
       { opacity: 1, transform: 'scaleY(1) skewX(0deg)' },
       { opacity: .92, transform: 'scaleY(.045) skewX(-7deg)' }
     ], 1480, 210, EASE.flipOut);
 
-    // Back half: the exact same geometry returns as a road network.
     animate(roadBack, [
       { opacity: 0, transform: 'scaleY(.045) skewX(7deg)' },
       { opacity: 1, transform: 'scaleY(1) skewX(0deg)' }
@@ -512,11 +488,6 @@
 
     animate(front, [{ opacity: .92 }, { opacity: 0 }], 1670, 80, 'linear');
 
-    /* -------------------------------------------------------
-       PHASE 3 — ONE CONTINUOUS ROAD LEAVES THE LOGO
-       The main purple dash keeps one shared rhythm across the exact
-       connection point, so the Autheon road and outgoing road read as one route.
-       ------------------------------------------------------- */
     labelAt(1870, 'One continuous route');
 
     animate(outgoingRoad, [{ opacity: 0 }, { opacity: 1 }], 1845, 120, 'linear');
@@ -527,9 +498,6 @@
       ], 1860, 450, EASE.draw);
     });
 
-    // Secondary Autheon roads drain downward into the road baseline, leaving one hero route.
-    // The dashoffset sign controls which end of the path disappears first.
-    // ±1.5 overshoots the endpoint far enough that the round cap fully clears the path.
     [
       { mask: routeMasks[3], to: 1.5, start: 2030 },
       { mask: routeMasks[2], to: 1.5, start: 2110 },
@@ -548,19 +516,13 @@
       ], 2010 + index * 60, 240, 'ease-out');
     });
 
-    /* -------------------------------------------------------
-       PHASE 4 — THE HERO ROAD HANDS THE MOTION TO THE CAR
-       ------------------------------------------------------- */
     labelAt(2330, 'The route becomes movement');
 
-    // The hero curved road retracts INTO the connection point (negative offset
-    // hides the path from its far end first), so the motion drains toward the car.
     animate(routeMasks[0], [
       { strokeDashoffset: 0 },
       { strokeDashoffset: -1.5 }
     ], 2260, 470, EASE.draw);
 
-    // Car appears exactly where the official lower-left logo road meets the outgoing road.
     animate(car, [
       { opacity: 0, transform: 'translate(124px, 384.5px)' },
       { opacity: 1, transform: 'translate(136px, 384.5px)' }
@@ -572,11 +534,6 @@
       { transform: 'translateY(0px)' }
     ], 2560, 230, EASE.settle);
 
-    /* -------------------------------------------------------
-       PHASE 5 — CAR + ROAD EXIT AS ONE CONNECTED GESTURE
-       The road is erased through its own mask slightly behind the vehicle,
-       so nothing is ever painted over the background glow.
-       ------------------------------------------------------- */
     labelAt(2690, 'Journey continues');
 
     animate(car, [
@@ -586,14 +543,11 @@
       { opacity: 0, transform: 'translate(446px, 384.5px)' }
     ], 2670, 1300, EASE.move);
 
-    // Erase the road left-to-right behind the car, tethered to the same easing.
-    // -1.15 (not -1) so the round cap of the mask stroke clears the road's right end.
     animate(outgoingMaskLine, [
       { strokeDashoffset: 0 },
       { strokeDashoffset: -1.15 }
     ], 2870, 1300, EASE.move);
 
-    // The brand name is the last element to leave.
     animate(wordmark, [
       { opacity: 1, transform: 'translateY(0px)' },
       { opacity: 0, transform: 'translateY(4px)' }

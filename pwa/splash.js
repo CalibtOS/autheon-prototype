@@ -8,7 +8,7 @@
  * timeline finishes the overlay dispatches `autheon-splash-complete` on
  * window, fades out and removes itself.
  *
- * The splash is intentionally dark in both app themes — it is a branded
+ * The splash is intentionally black/white in both app themes — it is a branded
  * moment, not a themed surface. All selectors are scoped under
  * #autheonSplash so nothing leaks into styles.css / pwa.css.
  */
@@ -17,6 +17,10 @@
 
   const CSS = `
   #autheonSplash {
+    --splash-black: #000000;
+    --splash-ink: #111111;
+    --splash-white: #ffffff;
+    --splash-line: #c7c7cc;
     position: fixed;
     inset: 0;
     z-index: 9999;
@@ -25,8 +29,8 @@
     contain: strict;
     touch-action: none;
     background:
-      radial-gradient(circle at 50% 42%, rgba(111, 41, 255, .11), transparent 36%),
-      #0e0a17;
+      radial-gradient(circle at 50% 42%, rgba(255, 255, 255, .10), transparent 36%),
+      linear-gradient(180deg, var(--splash-ink) 0%, var(--splash-black) 58%, #0b0b0c 100%);
     opacity: 1;
     transition: opacity .45s ease;
   }
@@ -96,8 +100,8 @@
   #autheonSplash #roadBack { opacity: 0; transform: scaleY(.035) skewX(7deg); }
 
   #autheonSplash .draw-ribbon {
-    fill: #fff;
-    stroke: #fff;
+    fill: var(--splash-white);
+    stroke: var(--splash-white);
     stroke-width: .55;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -110,7 +114,7 @@
      leaves two thin white edges, matching the outgoing road's edge style. */
   #autheonSplash .road-body {
     fill: none;
-    stroke: #fff;
+    stroke: var(--splash-white);
     stroke-width: 6.7;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -118,7 +122,7 @@
 
   #autheonSplash .road-cut {
     fill: none;
-    stroke: #0e0a17;
+    stroke: var(--splash-black);
     stroke-width: 5.15;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -126,7 +130,7 @@
 
   #autheonSplash .route-dash {
     fill: none;
-    stroke: #9b6bff;
+    stroke: var(--splash-line);
     stroke-width: .72;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -141,7 +145,7 @@
 
   #autheonSplash .route-mask {
     fill: none;
-    stroke: #fff;
+    stroke: var(--splash-white);
     stroke-width: 12;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -154,7 +158,7 @@
 
   #autheonSplash .road-edge {
     fill: none;
-    stroke: #fff;
+    stroke: var(--splash-white);
     stroke-width: 1.02;
     stroke-linecap: round;
     stroke-dasharray: 1;
@@ -191,7 +195,7 @@
 
     <g id="brandLockup">
       <g id="logoAssembly" transform="translate(123 290) scale(3)">
-        <rect id="logoTile" width="48" height="48" rx="10" fill="#6F29FF" opacity="0"/>
+        <rect id="logoTile" width="48" height="48" rx="10" fill="#111111" opacity="0"/>
 
         <g transform="translate(0 8)">
           <g id="logoFront">
@@ -242,12 +246,12 @@
 
     <g id="carMove" opacity="0" transform="translate(124 384.5)">
       <g id="carBodyGroup">
-        <path d="M-22 4 H-17 L-11 -5 Q-9 -8 -6 -8 H8 Q11 -8 13 -5 L19 4 H23 Q26 4 26 8 V12 H-26 V8 Q-26 4 -22 4Z" fill="#ece7f7"/>
-        <path d="M-9 -4 H0 V3 H-14Z" fill="#0e0a17"/>
-        <path d="M2 -4 H8 Q10 -4 11 -2 L15 3 H2Z" fill="#0e0a17"/>
-        <circle cx="-15" cy="12" r="4.2" fill="#0e0a17" stroke="#ece7f7" stroke-width="1.8"/>
-        <circle cx="16" cy="12" r="4.2" fill="#0e0a17" stroke="#ece7f7" stroke-width="1.8"/>
-        <circle cx="22" cy="7" r="1.4" fill="#9b6bff"/>
+        <path d="M-22 4 H-17 L-11 -5 Q-9 -8 -6 -8 H8 Q11 -8 13 -5 L19 4 H23 Q26 4 26 8 V12 H-26 V8 Q-26 4 -22 4Z" fill="#F5F5F7"/>
+        <path d="M-9 -4 H0 V3 H-14Z" fill="#000000"/>
+        <path d="M2 -4 H8 Q10 -4 11 -2 L15 3 H2Z" fill="#000000"/>
+        <circle cx="-15" cy="12" r="4.2" fill="#000000" stroke="#F5F5F7" stroke-width="1.8"/>
+        <circle cx="16" cy="12" r="4.2" fill="#000000" stroke="#F5F5F7" stroke-width="1.8"/>
+        <circle cx="22" cy="7" r="1.4" fill="#C7C7CC"/>
       </g>
     </g>
   </svg>
@@ -340,7 +344,7 @@
     return;
   }
 
-  // Continue the purple dash rhythm across the exact connection point instead of restarting it.
+  // Continue the dash rhythm across the exact connection point instead of restarting it.
   const dashPeriod = 5.6;
   const heroRemainder = heroDashLogo.getTotalLength() % dashPeriod;
   outgoingDash.style.strokeDashoffset = String(-heroRemainder);
