@@ -81,7 +81,7 @@
 
 > **Status override:** Updated 2026-07-29 - PRD v2.25: **scope reduction** on the v2.19 content-access audit — opening a driver **notification** is no longer audited. The `notification_viewed` `action_key` and the `driver_notification` `entity_type` are **removed**; a notification points at content that is already audited when the driver opens it, so the pointer entry duplicated the trail and arrived before the actual disclosure. `user_notifications.read_at` remains the notification-level record. Document and Infopoint-message auditing is unchanged. **No structural change.**
 
-> **Status override:** Updated 2026-08-10 — **Final DBML SOT audit:** `schema.dbml` + this file are the binding V1 relational source of truth (38 tables; all 32 BE entity tables covered; 6 DBML-only BE catch-up tables kept). Binary metadata only on `upload_assets`. Prefer DBML over thinner TypeORM shapes when they disagree.
+> **Status override:** Updated 2026-08-12 — **Backend sync pass:** `schema.dbml` + this file remain the binding V1 relational source of truth. Verified column-by-column against autheon-be `main` 824b1eea plus the open two-phase-upload PR #178. 38 tables here, 38 BE entity tables, and they are now the same 38 — the six DBML-only "BE catch-up" tables carried on 2026-08-10 have all landed, as have the `job_assignments` / `audit_events` / `user_notifications` shapes. `locations.alternate_contact_name` is the one DBML-only **column** left. Binary metadata only on `upload_assets`. Prefer DBML over thinner TypeORM shapes when they disagree — the 51 BE columns typed `timestamp without time zone` against this file's `timestamptz` are exactly that case.
 
 > **Status override:** Updated 2026-08-10 — schema sync decisions (see `schema.dbml` header):
 > (1A) hybrid auth challenge state on `users` (OTP / invite / post-OTP reset-token **hashes** only; passwords stay in Keycloak; still no session table / no `password_resets` table);
@@ -195,7 +195,7 @@ When `assignment_mode = 'marketplace'`, the columns `required_vehicle_type`, `re
 
 `job_assignments` records every direct assignment, reassignment, and marketplace acceptance. Only one open assignment may exist per job (`ended_at IS NULL`). The current assignee is duplicated in `jobs.current_driver_id` for fast authorization and list queries, but the assignment table is the history.
 
-**BE catch-up:** the live TypeORM entity still uses `is_active` / `assigned_at` / `accepted_at` / `revoked_*`. The schema contract is `started_at` / `ended_at` / `end_reason` / `assignment_type` — map `is_active = (ended_at IS NULL)` and do not keep a parallel active flag. Driver acceptance for SLA stays on `jobs.accepted_at` (from `job_status_history`), not on the assignment row.
+**BE caught up (2026-08-12):** the live TypeORM entity is now `started_at` / `ended_at` / `end_reason` / `assignment_type` / `assigned_by_user_id`. The former `is_active` / `assigned_at` / `accepted_at` / `revoked_*` shape is gone — "active" is `ended_at IS NULL`, with no parallel flag to keep in step. Driver acceptance for SLA stays on `jobs.accepted_at` (from `job_status_history`), not on the assignment row.
 
 `jobs.accepted_at` and `jobs.performed_at` are denormalized from `job_status_history` for fast SLA and settlement queries. The service layer sets them during the corresponding status transition; they are never written directly by a client.
 

@@ -1,8 +1,34 @@
-﻿// AUTHEON Version 1 database draft — PostgreSQL target.
+// AUTHEON Version 1 database draft — PostgreSQL target.
 // SOURCE OF TRUTH (binding): this file + logical-model.md (partial uniques, RLS, transition rules).
-// Final audit 2026-08-10: 38 tables, 32 enums, 75 Refs; BE has 32 entity tables (0 BE-only);
-// 6 DBML-only tables are intentional BE catch-up; binary meta only on upload_assets.
+// Final audit 2026-08-12: 38 tables, 32 enums, 75 Refs; BE now has 38 entity tables and every
+// one is modelled here — 0 BE-only tables AND 0 DBML-only tables, because the six tables carried
+// as "BE catch-up" on 2026-08-10 have all landed. Binary meta only on upload_assets.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
+// 2026-08-12 — BACKEND SYNC PASS. Verified column-by-column against autheon-be main 824b1eea
+//   plus the open two-phase-upload PR #178 (branch feat/driver-upload-ux); each item below was
+//   read off the entity AND off a synchronize:true database, not inferred.
+//   Landed in BE, now recorded here:
+//     - consolidated_invoices(+_jobs), driver_documents, sp_cancellations, empty_run_reports,
+//       empty_run_evidence — the 2026-08-10 "keep as target; BE catch-up" list is CLOSED.
+//     - job_assignments / audit_events / user_notifications are no longer BE-behind-DBML;
+//       job_assignments really is started_at / ended_at / end_reason / assignment_type now.
+//     - jobs.payment_status / invoice_received / invoice_number — a denormalized settlement
+//       mirror the BE keeps in lockstep with job_financials (see the jobs table).
+//     - upload_assets.idempotency_key + the unique (owner_id, idempotency_key), and the
+//       unique upload_asset_id on document_files / problem_report_evidence /
+//       empty_run_evidence — the retry contract of the two-phase attach route (BE PR #178).
+//     - Types/nullability corrected to what the BE actually creates: audit_events.entity_id
+//       (varchar(64), not null), audit_events.metadata, outbox_events.aggregate_id,
+//       jobs.document_review_summary (jsonb), customers.country_code, user_notifications.body,
+//       job_financials.admin_invoice_override / updated_by_user_id.
+//   KNOWN remaining differences, deliberately NOT changed here — this file stays the design target:
+//     - locations.alternate_contact_name is the ONE DBML-only column left. BE has it on
+//       job_locations but not on the master row the leg is snapshotted from. BE catch-up.
+//     - master_data_change_requests.requester_note and user_notifications.severity are NOT NULL
+//       here and nullable in BE. The stricter reading is intended; BE should tighten.
+//     - 51 BE columns are `timestamp without time zone` where this file says timestamptz —
+//       a TypeORM column-default artifact, not a design decision. Tracked as a BE fix, not a
+//       schema change; do not weaken timestamptz here to match it.
 // 2026-08-10 — SCHEMA SYNC REVIEW (BE + prototype/PRD gap pass) + decided follow-ups:
 //   - Added organizations (+ organization_status) — present in autheon-be TypeORM, previously absent here.
 //   - Added drivers.second_phone (BE DriverEntity).
@@ -460,7 +486,7 @@ Table customers {
   house_number varchar(32)
   postal_code varchar(32)
   city varchar(128)
-  country_code char(2) [default: 'DE']
+  country_code char(2) [not null, default: 'DE']
   billing_notes text
   operational_instructions text
   notes text
@@ -486,6 +512,10 @@ Table locations {
   city varchar(128) [not null]
   country_code char(2) [not null, default: 'DE']
   contact_name varchar(255)
+  // The only DBML-only column left as of the 2026-08-12 sync. BE carries
+  // alternate_contact_name on job_locations (the snapshot) but not on the master row
+  // the snapshot is taken FROM, so the prototype's "Weitere Kontaktperson" cannot be
+  // stored on an address-book entry today. BE catch-up, not an open design question.
   alternate_contact_name varchar(255)
   phone varchar(64)
   second_phone varchar(64)
@@ -551,8 +581,18 @@ Table jobs {
   required_vehicle_type vehicle_type
   required_transport_type transport_type
   pickup_postal_area varchar(16)
-  document_review_summary document_review_status [not null, default: 'missing']
+  // BE stores the aggregate as jsonb — { status: <document_review_status> } — rather than a
+  // bare enum column, so the summary can later carry counts or a per-type breakdown without
+  // a migration. The `status` member is still exactly the document_review_status vocabulary.
+  document_review_summary jsonb [not null, default: '{}']
   settlement_state settlement_status [not null, default: 'not_started']
+  // Denormalized settlement mirror on the job row. job_financials stays authoritative;
+  // DocumentBillingReconciliationService derives these from the job's documents and writes
+  // BOTH places in one pass, so the Jobs board never has to join to colour a row. Never
+  // update one side alone — a job whose mirror disagrees with its financials is a bug.
+  payment_status invoice_payment_status
+  invoice_received boolean [not null, default: false]
+  invoice_number varchar(255)
   created_at timestamptz [not null]
   created_by_user_id uuid [not null]
   updated_at timestamptz [not null]
@@ -596,20 +636,17 @@ Table job_locations {
   }
 }
 
-// Assignment history (BE catch-up contract). Prototype keeps assignee on the job
-// object; production stores every direct assignment, marketplace acceptance, and
-// reassignment here. Exactly one OPEN row per job:
+// Assignment history. Prototype keeps assignee on the job object; production stores
+// every direct assignment, marketplace acceptance, and reassignment here. Exactly one
+// OPEN row per job:
 //   partial unique index on (job_id) WHERE ended_at IS NULL
 // (see logical-model.md — DBML cannot express partial uniques).
 //
-// BE today uses is_active / assigned_at / accepted_at / revoked_at / revoked_by_user_id.
-// Target mapping for catch-up:
-//   started_at  = when this assignment became current (assign or marketplace accept)
-//   ended_at    = when superseded / revoked / completed away (NULL = active = BE is_active)
-//   end_reason  = reassignment | revocation | job_terminal | …
-//   assignment_type discriminates direct_assignment | marketplace_acceptance | reassignment
-// Driver "accepted" timestamp for SLA stays on jobs.accepted_at (from job_status_history),
-// not duplicated here.
+// BE CAUGHT UP 2026-08-12: the entity now has exactly these columns. The former
+// is_active / assigned_at / accepted_at / revoked_at / revoked_by_user_id shape is gone —
+// "active" is ended_at IS NULL and there is no parallel flag to keep in step. Driver
+// "accepted" timestamp for SLA stays on jobs.accepted_at (from job_status_history), not
+// duplicated here.
 Table job_assignments {
   id uuid [pk]
   job_id uuid [not null]
@@ -671,11 +708,11 @@ Table job_financials {
   // BE property `vatRate` / column vat_rate
   tax_rate numeric(5,2) [note: 'BE column: vat_rate']
   invoice_received boolean [not null, default: false]
-  admin_invoice_override boolean
+  admin_invoice_override boolean [not null, default: false]
   payment_status invoice_payment_status [not null, default: 'invoice_missing']
   notes text
   updated_at timestamptz [not null]
-  updated_by_user_id uuid
+  updated_by_user_id uuid [not null]
   settlement_initiated_by uuid
   settlement_initiated_at timestamptz
 }
@@ -737,6 +774,13 @@ Table problem_report_evidence {
   // Binary + filename/MIME/size live on upload_assets — do not duplicate here.
   upload_asset_id uuid [not null]
   created_at timestamptz [not null]
+
+  indexes {
+    // An upload asset backs exactly one piece of evidence — the same photo is not two
+    // proofs. It is also what makes the two-phase attach retry-safe: a driver whose
+    // answer was lost gets the evidence the first call created, not a second copy.
+    (upload_asset_id) [unique]
+  }
 }
 
 Table job_documents {
@@ -759,7 +803,8 @@ Table job_documents {
 
 // Immutable file VERSION for a job_document. Binary metadata is NOT copied here —
 // join upload_assets via upload_asset_id for original_name / mime_type / size /
-// checksum / storage_key (BE catch-up: drop legacy denormalized columns).
+// checksum / storage_key. BE caught up 2026-08-12: the legacy denormalized columns,
+// including document_files.storage_key, are gone from the entity.
 Table document_files {
   id uuid [pk]
   job_document_id uuid
@@ -770,6 +815,14 @@ Table document_files {
   uploaded_at timestamptz [not null]
   supersedes_file_id uuid
   superseded_at timestamptz
+
+  indexes {
+    // One asset backs exactly one file version — the retry protection the two-phase
+    // attach rests on. This sat on storage_key until binary metadata moved to
+    // upload_assets; the key was derived one-to-one from the asset, so it is the same
+    // constraint stated against the column that remains.
+    (upload_asset_id) [unique]
+  }
 }
 
 Table job_document_reviews {
@@ -937,6 +990,14 @@ Table empty_run_evidence {
   // Binary + filename/MIME/size live on upload_assets — do not duplicate here.
   upload_asset_id uuid [not null]
   created_at timestamptz [not null]
+
+  indexes {
+    // Same rule as problem_report_evidence, written where empty-run evidence lives.
+    // Both tables are reachable from the one two-phase attach route, so a retry has to
+    // be answered the same way on either — otherwise which table the report happens to
+    // live in would decide whether a lost answer costs the driver a duplicate.
+    (upload_asset_id) [unique]
+  }
 }
 
 // Task 2 §6 — internal admin notes. Admin-only; NEVER exposed in the
@@ -976,12 +1037,25 @@ Table upload_assets {
   access varchar(32) [not null] // public | private
   purpose varchar(64) [not null] // generic @autheon/shared UploadPurpose value, e.g. private-document-or-image
   owner_id uuid [not null]
+  // Client-supplied retry key for the two-phase upload route (autheon-be PR #178).
+  // NULL for server-initiated uploads — Postgres treats NULLs as distinct in a unique
+  // index, so any number of keyless assets may exist per owner, while two client requests
+  // carrying the SAME key race to insert and the DATABASE, not a prior read, decides which
+  // one owns the asset. A spent key is refused, never handed back for reuse.
+  idempotency_key varchar(64)
   status varchar(32) [not null, default: 'active']
   url varchar(1024)
   relative_path varchar(1024)
   variants jsonb [not null, default: '[]']
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
+
+  indexes {
+    (owner_id, idempotency_key) [unique]
+    // Serves the rolling per-owner byte budget. Replaces the former standalone owner
+    // index, whose every use is a prefix of this one.
+    (owner_id, created_at)
+  }
 }
 
 Table infopoint_news {
@@ -1056,7 +1130,7 @@ Table user_notifications {
   target_entity_type varchar(64)
   target_entity_id uuid
   title varchar(255) [not null]
-  body text
+  body text [not null]
   deep_link varchar(1024)
   created_at timestamptz [not null]
   read_at timestamptz                      // driver-notification read receipt (set on VIEWING)
@@ -1089,7 +1163,7 @@ Table outbox_events {
   id uuid [pk]
   event_type varchar(100) [not null]
   aggregate_type varchar(100) [not null]
-  aggregate_id uuid [not null]
+  aggregate_id varchar [not null] // not uuid: the aggregate key is whatever the emitting module uses
   payload jsonb [not null]
   occurred_at timestamptz [not null]
   available_at timestamptz [not null]
@@ -1135,9 +1209,12 @@ Table audit_events {
   actor_user_id uuid                       // null for System
   action_key varchar(100) [not null]       // stable English key, never localized
   entity_type varchar(100) [not null]
-  entity_id uuid
+  // varchar, not uuid, and required: every audited action names its subject, and the
+  // column is deliberately wide enough for an entity that is not uuid-keyed. Every row
+  // written so far does hold a uuid — tighten only if that is decided to be permanent.
+  entity_id varchar(64) [not null]
   job_id uuid
-  metadata jsonb
+  metadata jsonb [not null, default: '{}']
 
   indexes {
     (job_id, occurred_at)
