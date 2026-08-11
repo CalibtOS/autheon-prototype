@@ -65,7 +65,10 @@ Dark captures are required wherever a screen has dark-specific styling; otherwis
 
 ## Open design decisions affecting baselines
 
-- Fixed vs floating bottom navigation (currently floating) — re-baseline `bottomnav-*` when decided.
 - Primary button color (dark per PDF button board vs purple per §2) — re-baseline detail/footer CTAs when decided.
+
+## Resolved baseline decisions
+
+- Bottom navigation geometry is resolved for the installed Driver PWA as of 2026-08-11: normal screens keep the floating rounded capsule inside the edge-to-edge bottom safe-area/page surface; document-focused views hide the global tab bar. Re-baseline `bottomnav-*` only when this committed geometry changes.
 
 Admin captures also include `admin-new-order-vehicle-light-1440.png` (job-creation Vehicle section with the important-vehicle-info controls).
