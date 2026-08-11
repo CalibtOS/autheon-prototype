@@ -250,7 +250,9 @@ html.pwa-standalone .pwa-ios-sheet {
   }
 }
 
-/* FE: absolute inset-x-0 bottom-0 wrapper around BottomTabBar */
+/* FE: absolute inset-x-0 bottom-0 wrapper around BottomTabBar.
+   Keep this wrapper visually transparent: the floating capsule below owns
+   the nav chrome; .phone-screen/current page surface owns the safe-area fill. */
 .phone-shell.pwa-viewport .pwa-tabbar-slot {
   position: absolute;
   left: 0;
@@ -258,10 +260,7 @@ html.pwa-standalone .pwa-ios-sheet {
   bottom: 0;
   z-index: 40;
   pointer-events: none;
-  background: color-mix(in srgb, var(--paper) 92%, transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid var(--line);
+  background: transparent;
 }
 .phone-shell.pwa-viewport .pwa-tabbar-slot .tabbar-container {
   /* styles.css pins .tabbar-container absolute; FE TabBar itself is relative

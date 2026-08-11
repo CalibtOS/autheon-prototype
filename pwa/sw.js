@@ -1,5 +1,5 @@
 /* Autheon /pwa service worker — installable shell + stale-while-revalidate assets */
-const CACHE_VERSION = "autheon-pwa-v41";
+const CACHE_VERSION = "autheon-pwa-v42";
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -8,7 +8,7 @@ const PRECACHE_URLS = [
   "/pwa/index.html",
   "/pwa/manifest.webmanifest",
   "/pwa/manifest.json",
-  "/pwa/pwa.css?v=18",
+  "/pwa/pwa.css?v=19",
   "/pwa/pwa-app.jsx?v=16",
   "/pwa/pwa-install.js?v=5",
   "/pwa/splash.js?v=2",

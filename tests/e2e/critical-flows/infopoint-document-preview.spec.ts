@@ -54,6 +54,35 @@ test.describe('Infopoint document preview focused PWA mode @critical', () => {
       await expect(
         page.locator('.tabbar-item.active', { hasText: /Infopoint/i }),
       ).toBeVisible();
+
+      const navGeometry = await page.evaluate(() => {
+        const screen = document
+          .querySelector('.phone-screen')
+          ?.getBoundingClientRect();
+        const slot = document.querySelector('.pwa-tabbar-slot');
+        const capsuleEl = document.querySelector('.tabbar-capsule');
+        const capsule = capsuleEl?.getBoundingClientRect();
+        const slotStyle = slot ? getComputedStyle(slot) : null;
+        const capsuleStyle = capsuleEl ? getComputedStyle(capsuleEl) : null;
+
+        return {
+          leftInset: screen && capsule ? capsule.left - screen.left : null,
+          rightInset: screen && capsule ? screen.right - capsule.right : null,
+          slotBorderTopWidth: slotStyle?.borderTopWidth ?? null,
+          slotBackground: slotStyle?.backgroundColor ?? null,
+          capsuleRadius: capsuleStyle
+            ? Number.parseFloat(capsuleStyle.borderTopLeftRadius)
+            : null,
+          capsuleShadow: capsuleStyle?.boxShadow ?? null,
+        };
+      });
+
+      expect(navGeometry.leftInset).toBeGreaterThan(8);
+      expect(navGeometry.rightInset).toBeGreaterThan(8);
+      expect(navGeometry.slotBorderTopWidth).toBe('0px');
+      expect(navGeometry.slotBackground).toBe('rgba(0, 0, 0, 0)');
+      expect(navGeometry.capsuleRadius).toBeGreaterThan(12);
+      expect(navGeometry.capsuleShadow).not.toBe('none');
     });
 
     await test.step('opened document enters focused mode', async () => {
