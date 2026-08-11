@@ -360,8 +360,8 @@ const RowActionsMenu = ({
                   margin: 0,
                   padding: 4,
                   listStyle: "none",
-                  background: "var(--surface, #fff)",
-                  border: "1px solid var(--border, #ccc)",
+                  background: "var(--paper)",
+                  border: "1px solid var(--line)",
                   borderRadius: 8,
                   minWidth: 160,
                   boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
@@ -1332,7 +1332,7 @@ const JobFinancePanel = ({
                       <td
                         colSpan={3}
                         style={{
-                          background: "var(--surface-2, #f7f7f9)",
+                          background: "var(--paper-2)",
                           padding: 14,
                         }}
                         onClick={(e) => e.stopPropagation()}
@@ -1626,8 +1626,14 @@ const EmptyRunReviewPanel = ({ job, showToast }) => {
     }
   };
   const evidence = report.evidence || [];
+  // Border reuses the EXISTING --st-empty-run semantic token (same purple as
+  // the status pill rendered below) instead of an isolated hardcoded hex —
+  // ties the accent to the state it represents and keeps it theme-aware.
   return (
-    <section className="card" style={{ padding: 22, borderColor: "#c4b5fd" }}>
+    <section
+      className="card"
+      style={{ padding: 22, borderColor: "var(--st-empty-run)" }}
+    >
       <div className="sec-head">
         <h3>
           <span className="num">07</span>
@@ -1680,7 +1686,7 @@ const EmptyRunReviewPanel = ({ job, showToast }) => {
                     borderRadius: 8,
                     overflow: "hidden",
                     border: "1px solid var(--line)",
-                    background: "var(--surface-2, #f4f4f5)",
+                    background: "var(--paper-2)",
                   }}
                 >
                   <img
@@ -3383,8 +3389,8 @@ const ManufacturerSearchField = ({ id, value, onChange, placeholder }) => {
             margin: "2px 0 0",
             padding: 4,
             listStyle: "none",
-            background: "var(--surface, #fff)",
-            border: "1px solid var(--border, #ccc)",
+            background: "var(--paper)",
+            border: "1px solid var(--line)",
             borderRadius: 8,
             maxHeight: 220,
             overflowY: "auto",
@@ -3409,7 +3415,7 @@ const ManufacturerSearchField = ({ id, value, onChange, placeholder }) => {
                   width: "100%",
                   textAlign: "left",
                   ...(i === activeIdx
-                    ? { background: "var(--accent-soft, #e8effc)" }
+                    ? { background: "var(--paper-3)" }
                     : null),
                 }}
                 // Hovering moves the highlight so mouse and keyboard never
@@ -3918,7 +3924,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
           style={{
             padding: "14px 16px",
             marginBottom: 18,
-            border: "1px solid var(--danger, #c0392b)",
+            border: "1px solid var(--danger-ink)",
           }}
         >
           <div style={{ fontWeight: 600, marginBottom: 8 }}>
@@ -3936,7 +3942,7 @@ const NewOrder = ({ onCancel, onFormChange, editJobId }) => {
                     background: "none",
                     border: "none",
                     padding: 0,
-                    color: "var(--danger, #c0392b)",
+                    color: "var(--danger-ink)",
                     textDecoration: "underline",
                     cursor: "pointer",
                     font: "inherit",
@@ -5937,6 +5943,7 @@ const DriversPane = ({ showToast, initialDriverId, onOpenJob }) => {
           <label style={{ display: "grid", gap: 4, fontSize: 12 }}>
             <span>{t("adminUsersFilterOperational")}</span>
             <select
+              className="input"
               value={operationalFilter}
               onChange={(e) => setOperationalFilter(e.target.value)}
               aria-label={t("adminUsersFilterOperational")}
@@ -5949,6 +5956,7 @@ const DriversPane = ({ showToast, initialDriverId, onOpenJob }) => {
           <label style={{ display: "grid", gap: 4, fontSize: 12 }}>
             <span>{t("adminUsersFilterAccount")}</span>
             <select
+              className="input"
               value={accessFilter}
               onChange={(e) => setAccessFilter(e.target.value)}
               aria-label={t("adminUsersFilterAccount")}
@@ -6361,8 +6369,7 @@ const ServicePartnerProfileModal = ({
       } else showToast?.(t("adminMasterDataSaveFailed"), r.reason || f.name);
     }
     if (uploaded === 1) showToast?.(t("adminSPDocUpload"), lastName);
-    else if (uploaded > 1)
-      showToast?.(t("adminSPDocUpload"), String(uploaded));
+    else if (uploaded > 1) showToast?.(t("adminSPDocUpload"), String(uploaded));
   };
 
   const saveNotes = () => {
@@ -6572,8 +6579,7 @@ const ServicePartnerProfileModal = ({
                         applyProfileAccountAccess(on ? "enabled" : "disabled")
                       }
                     />
-                    {driver.inviteState &&
-                    driver.inviteState !== "accepted" ? (
+                    {driver.inviteState && driver.inviteState !== "accepted" ? (
                       <button
                         type="button"
                         className="btn xs"
@@ -6740,7 +6746,7 @@ const ServicePartnerProfileModal = ({
                           className="label"
                           style={{
                             fontSize: 11.5,
-                            color: "var(--danger, #c0392b)",
+                            color: "var(--danger-ink)",
                           }}
                         >
                           {doc.rejectionReason}
@@ -6813,7 +6819,7 @@ const ServicePartnerProfileModal = ({
                   className="card"
                   style={{
                     padding: 14,
-                    border: "1px solid var(--danger, #c0392b)",
+                    border: "1px solid var(--danger-ink)",
                   }}
                 >
                   <label className="field-label">
@@ -9583,7 +9589,7 @@ const ConsolidatedInvoicesPane = ({ showToast, onOpenJob }) => {
             style={{
               marginTop: 12,
               fontSize: 12.5,
-              color: amountMismatch ? "var(--danger, #c0392b)" : undefined,
+              color: amountMismatch ? "var(--danger-ink)" : undefined,
             }}
           >
             {t("ciDriverOfferSum")}: {driverOfferSum.toFixed(2)}
@@ -9653,7 +9659,7 @@ const ConsolidatedInvoicesPane = ({ showToast, onOpenJob }) => {
                           className="label"
                           style={{
                             fontSize: 10.5,
-                            color: "var(--danger, #c0392b)",
+                            color: "var(--danger-ink)",
                           }}
                         >
                           {t("ciAmountMismatch")} (
@@ -12210,7 +12216,10 @@ const AdminAlertBadge = ({ event, t }) => {
 // the table cell can render whichever apply without a wall of ternaries.
 const adminAlertRowActions = (row, handlers, t) => {
   const actions = [];
-  if (row.event === "master_data_change_requested" && handlers.onReviewMasterDataRequest) {
+  if (
+    row.event === "master_data_change_requested" &&
+    handlers.onReviewMasterDataRequest
+  ) {
     actions.push({
       key: "review",
       label: t("adminMdrReviewFromFeed"),
@@ -12221,7 +12230,11 @@ const adminAlertRowActions = (row, handlers, t) => {
         ),
     });
   }
-  if (row.event === "document_unreviewed_stale" && row.documentId && handlers.onOpenDocument) {
+  if (
+    row.event === "document_unreviewed_stale" &&
+    row.documentId &&
+    handlers.onOpenDocument
+  ) {
     actions.push({
       key: "open-document",
       label: t("adminNotificationOpenDocument"),
@@ -12229,7 +12242,11 @@ const adminAlertRowActions = (row, handlers, t) => {
       onClick: () => handlers.onOpenDocument(row.jobId, row.documentId),
     });
   }
-  if (row.event === "service_partner_inactive" && row.driverId && handlers.onOpenDriver) {
+  if (
+    row.event === "service_partner_inactive" &&
+    row.driverId &&
+    handlers.onOpenDriver
+  ) {
     actions.push({
       key: "open-driver",
       label: t("adminNotificationOpenDriver"),
@@ -12237,7 +12254,11 @@ const adminAlertRowActions = (row, handlers, t) => {
       onClick: () => handlers.onOpenDriver(row.driverId),
     });
   }
-  if (row.event === "order_not_accepted_cutoff" && row.jobId && handlers.onAdjustDriverOffer) {
+  if (
+    row.event === "order_not_accepted_cutoff" &&
+    row.jobId &&
+    handlers.onAdjustDriverOffer
+  ) {
     actions.push({
       key: "adjust-offer",
       label: t("adminNotificationAdjustDriverOffer"),
@@ -12340,8 +12361,8 @@ const AdminAlertRowMenu = ({ actions }) => {
                   margin: 0,
                   padding: 4,
                   listStyle: "none",
-                  background: "var(--surface, #fff)",
-                  border: "1px solid var(--border, #ccc)",
+                  background: "var(--paper)",
+                  border: "1px solid var(--line)",
                   borderRadius: 8,
                   minWidth: 190,
                   boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
@@ -12548,7 +12569,13 @@ const NotificationFilterMenu = ({
                       <input
                         type="date"
                         className="input"
-                        style={{ width: "100%", colorScheme: "light", background: "#ffffff", color: "#1f2430", borderColor: "#c7c7cc" }}
+                        style={{
+                          width: "100%",
+                          colorScheme: "light",
+                          background: "#ffffff",
+                          color: "#1f2430",
+                          borderColor: "#c7c7cc",
+                        }}
                         value={dateFrom}
                         onChange={(e) => onChangeDateFrom(e.target.value)}
                       />
@@ -12567,7 +12594,13 @@ const NotificationFilterMenu = ({
                       <input
                         type="date"
                         className="input"
-                        style={{ width: "100%", colorScheme: "light", background: "#ffffff", color: "#1f2430", borderColor: "#c7c7cc" }}
+                        style={{
+                          width: "100%",
+                          colorScheme: "light",
+                          background: "#ffffff",
+                          color: "#1f2430",
+                          borderColor: "#c7c7cc",
+                        }}
                         value={dateTo}
                         onChange={(e) => onChangeDateTo(e.target.value)}
                       />
@@ -12581,7 +12614,8 @@ const NotificationFilterMenu = ({
                     border: "none",
                     padding: "4px 0",
                     textAlign: "left",
-                    color: activeCount === 0 ? "#b5b5bb" : NOTIF_FILTER_PANEL_TEXT,
+                    color:
+                      activeCount === 0 ? "#b5b5bb" : NOTIF_FILTER_PANEL_TEXT,
                     cursor: activeCount === 0 ? "not-allowed" : "pointer",
                     fontSize: 13,
                     fontWeight: 500,
@@ -12652,11 +12686,16 @@ const NotificationFeedPane = ({
   const rows = allRows.filter((row) => {
     if (tab === "unread" && row.status === "read") return false;
     if (tab === "read" && row.status !== "read") return false;
-    if (severityFilter.size > 0 && !severityFilter.has(adminAlertSeverity(row.event)))
+    if (
+      severityFilter.size > 0 &&
+      !severityFilter.has(adminAlertSeverity(row.event))
+    )
       return false;
     if (
       sourceFilter.size > 0 &&
-      !sourceFilter.has(ADMIN_ALERT_SOURCE[row.event] || "adminNotifSourceSystem")
+      !sourceFilter.has(
+        ADMIN_ALERT_SOURCE[row.event] || "adminNotifSourceSystem",
+      )
     )
       return false;
     if (dateFrom || dateTo) {
@@ -12921,7 +12960,9 @@ const NotificationFeedPane = ({
                                 marginTop: 2,
                               }}
                             >
-                              {row.tour ? `${t("adminColTour")} ${row.tour}` : "—"}
+                              {row.tour
+                                ? `${t("adminColTour")} ${row.tour}`
+                                : "—"}
                               {row.meta ? ` · ${row.meta}` : ""}
                             </div>
                             {row.status === "read" ? (
@@ -12943,7 +12984,9 @@ const NotificationFeedPane = ({
                         </div>
                       </td>
                       <td>
-                        <span className="notif-source-chip">{t(sourceKey)}</span>
+                        <span className="notif-source-chip">
+                          {t(sourceKey)}
+                        </span>
                       </td>
                       <td className="mono" style={{ fontSize: 12 }}>
                         {row.at}
@@ -13003,52 +13046,54 @@ const NotificationFeedPane = ({
                 })}
               </span>
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <button
-                type="button"
-                className="btn xs ghost"
-                disabled={safePage <= 1}
-                onClick={() => setPage(1)}
-                aria-label={t("adminPaginationFirst")}
-              >
-                «
-              </button>
-              <button
-                type="button"
-                className="btn xs ghost"
-                disabled={safePage <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                aria-label={t("adminPaginationPrev")}
-              >
-                ‹
-              </button>
-              {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
                 <button
-                  key={n}
                   type="button"
-                  className={"btn xs" + (n === safePage ? " primary" : " ghost")}
-                  onClick={() => setPage(n)}
+                  className="btn xs ghost"
+                  disabled={safePage <= 1}
+                  onClick={() => setPage(1)}
+                  aria-label={t("adminPaginationFirst")}
                 >
-                  {n}
+                  «
                 </button>
-              ))}
-              <button
-                type="button"
-                className="btn xs ghost"
-                disabled={safePage >= pageCount}
-                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                aria-label={t("adminPaginationNext")}
-              >
-                ›
-              </button>
-              <button
-                type="button"
-                className="btn xs ghost"
-                disabled={safePage >= pageCount}
-                onClick={() => setPage(pageCount)}
-                aria-label={t("adminPaginationLast")}
-              >
-                »
-              </button>
+                <button
+                  type="button"
+                  className="btn xs ghost"
+                  disabled={safePage <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  aria-label={t("adminPaginationPrev")}
+                >
+                  ‹
+                </button>
+                {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={
+                      "btn xs" + (n === safePage ? " primary" : " ghost")
+                    }
+                    onClick={() => setPage(n)}
+                  >
+                    {n}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="btn xs ghost"
+                  disabled={safePage >= pageCount}
+                  onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                  aria-label={t("adminPaginationNext")}
+                >
+                  ›
+                </button>
+                <button
+                  type="button"
+                  className="btn xs ghost"
+                  disabled={safePage >= pageCount}
+                  onClick={() => setPage(pageCount)}
+                  aria-label={t("adminPaginationLast")}
+                >
+                  »
+                </button>
               </div>
             </div>
           </div>
@@ -13242,6 +13287,7 @@ const DriverInactivityForm = ({ showToast }) => {
         <span className="label">{t("adminInactivityThreshold")}</span>
         <input
           id="inactivity-threshold-days"
+          className="input"
           type="number"
           min={MIN_POLICY_NUMBER}
           step={1}
@@ -13256,6 +13302,7 @@ const DriverInactivityForm = ({ showToast }) => {
         <span className="label">{t("adminInactivityWarning")}</span>
         <input
           id="inactivity-warning-days"
+          className="input"
           type="number"
           min={0}
           step={1}

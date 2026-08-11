@@ -19,18 +19,18 @@
      __test                          — pure helpers, exercised by unit specs
    ========================================================================== */
 (function () {
-  'use strict';
+  "use strict";
 
   if (window.AutheonThemeEditor && window.AutheonThemeEditor.__mounted) return;
 
   // ---------------------------------------------------------------------------
   // Constants
   // ---------------------------------------------------------------------------
-  const NS = 'autheon.themeEditor';
+  const NS = "autheon.themeEditor";
   const STORAGE = {
-    overrides: NS + '.overrides.v1',
-    launcher: NS + '.launcher.v1',
-    ui: NS + '.ui.v1',
+    overrides: NS + ".overrides.v1",
+    launcher: NS + ".launcher.v1",
+    ui: NS + ".ui.v1",
   };
   const SCHEMA_VERSION = 1;
   const LAUNCHER_SIZE = 48;
@@ -38,106 +38,106 @@
   const DRAG_THRESHOLD = 6; // px of movement before a press becomes a drag
   const AA_CONTRAST = 4.5;
 
-  const MODES = ['light', 'dark'];
+  const MODES = ["light", "dark"];
 
   // Editable colour registry — solid hex tokens, grouped for scanning. Default
   // values are NOT hardcoded: they are read from the authored stylesheet at
   // runtime so this stays correct if the design tokens change.
   const REGISTRY = [
     {
-      group: 'Brand',
+      group: "Brand",
       items: [
-        { cssVar: '--brand-accent', name: 'Accent' },
-        { cssVar: '--primary-ink', name: 'Accent (pressed)' },
-        { cssVar: '--cta', name: 'Call to action' },
-        { cssVar: '--destructive', name: 'Destructive' },
-        { cssVar: '--danger-ink', name: 'Danger (strong)' },
-        { cssVar: '--on-accent', name: 'Text on accent' },
-        { cssVar: '--on-cta', name: 'Text on CTA' },
-        { cssVar: '--on-destructive', name: 'Text on destructive' },
+        { cssVar: "--brand-accent", name: "Accent" },
+        { cssVar: "--primary-ink", name: "Accent (pressed)" },
+        { cssVar: "--cta", name: "Call to action" },
+        { cssVar: "--destructive", name: "Destructive" },
+        { cssVar: "--danger-ink", name: "Danger (strong)" },
+        { cssVar: "--on-accent", name: "Text on accent" },
+        { cssVar: "--on-cta", name: "Text on CTA" },
+        { cssVar: "--on-destructive", name: "Text on destructive" },
       ],
     },
     {
-      group: 'Backgrounds',
+      group: "Backgrounds",
       items: [
-        { cssVar: '--brand-canvas', name: 'Canvas' },
-        { cssVar: '--brand-surface', name: 'Surface' },
-        { cssVar: '--paper-2', name: 'Surface (subtle)' },
-        { cssVar: '--paper-3', name: 'Surface (hover)' },
+        { cssVar: "--brand-canvas", name: "Canvas" },
+        { cssVar: "--brand-surface", name: "Surface" },
+        { cssVar: "--paper-2", name: "Surface (subtle)" },
+        { cssVar: "--paper-3", name: "Surface (hover)" },
       ],
     },
     {
-      group: 'Text',
+      group: "Text",
       items: [
-        { cssVar: '--brand-text', name: 'Text (primary)' },
-        { cssVar: '--brand-text-secondary', name: 'Text (secondary)' },
-        { cssVar: '--ink-3', name: 'Text (tertiary)' },
-        { cssVar: '--muted-2', name: 'Text (muted)' },
+        { cssVar: "--brand-text", name: "Text (primary)" },
+        { cssVar: "--brand-text-secondary", name: "Text (secondary)" },
+        { cssVar: "--ink-3", name: "Text (tertiary)" },
+        { cssVar: "--muted-2", name: "Text (muted)" },
       ],
     },
     {
-      group: 'Borders',
+      group: "Borders",
       items: [
-        { cssVar: '--brand-border', name: 'Border' },
-        { cssVar: '--line-2', name: 'Border (strong)' },
-        { cssVar: '--line-dash', name: 'Border (dashed)' },
+        { cssVar: "--brand-border", name: "Border" },
+        { cssVar: "--line-2", name: "Border (strong)" },
+        { cssVar: "--line-dash", name: "Border (dashed)" },
       ],
     },
     {
-      group: 'Status',
+      group: "Status",
       items: [
-        { cssVar: '--st-draft', name: 'Draft' },
-        { cssVar: '--st-published', name: 'Published' },
-        { cssVar: '--st-assigned', name: 'Assigned' },
-        { cssVar: '--st-accepted', name: 'Accepted' },
-        { cssVar: '--st-empty-run', name: 'Empty run' },
-        { cssVar: '--st-performed', name: 'Performed' },
-        { cssVar: '--st-cancelled', name: 'Cancelled' },
-        { cssVar: '--st-warn', name: 'Warning' },
-        { cssVar: '--st-draft-bg', name: 'Draft · surface' },
-        { cssVar: '--st-published-bg', name: 'Published · surface' },
-        { cssVar: '--st-assigned-bg', name: 'Assigned · surface' },
-        { cssVar: '--st-accepted-bg', name: 'Accepted · surface' },
-        { cssVar: '--st-empty-run-bg', name: 'Empty run · surface' },
-        { cssVar: '--st-cancelled-bg', name: 'Cancelled · surface' },
-        { cssVar: '--st-warn-bg', name: 'Warning · surface' },
+        { cssVar: "--st-draft", name: "Draft" },
+        { cssVar: "--st-published", name: "Published" },
+        { cssVar: "--st-assigned", name: "Assigned" },
+        { cssVar: "--st-accepted", name: "Accepted" },
+        { cssVar: "--st-empty-run", name: "Empty run" },
+        { cssVar: "--st-performed", name: "Performed" },
+        { cssVar: "--st-cancelled", name: "Cancelled" },
+        { cssVar: "--st-warn", name: "Warning" },
+        { cssVar: "--st-draft-bg", name: "Draft · surface" },
+        { cssVar: "--st-published-bg", name: "Published · surface" },
+        { cssVar: "--st-assigned-bg", name: "Assigned · surface" },
+        { cssVar: "--st-accepted-bg", name: "Accepted · surface" },
+        { cssVar: "--st-empty-run-bg", name: "Empty run · surface" },
+        { cssVar: "--st-cancelled-bg", name: "Cancelled · surface" },
+        { cssVar: "--st-warn-bg", name: "Warning · surface" },
       ],
     },
     {
-      group: 'Diff & compare',
+      group: "Diff & compare",
       items: [
-        { cssVar: '--diff-added', name: 'Diff added' },
-        { cssVar: '--diff-added-bright', name: 'Diff added (bright)' },
-        { cssVar: '--diff-removed-bright', name: 'Diff removed (bright)' },
+        { cssVar: "--diff-added", name: "Diff added" },
+        { cssVar: "--diff-added-bright", name: "Diff added (bright)" },
+        { cssVar: "--diff-removed-bright", name: "Diff removed (bright)" },
       ],
     },
     {
-      group: 'Components',
+      group: "Components",
       items: [
-        { cssVar: '--doc-icon-bg', name: 'Document icon background' },
-        { cssVar: '--doc-icon-fg', name: 'Document icon text' },
-        { cssVar: '--slide-thumb-bg', name: 'Slide thumb background' },
-        { cssVar: '--slide-thumb-fg', name: 'Slide thumb icon' },
-        { cssVar: '--slide-thumb-fg-active', name: 'Slide thumb (active)' },
-        { cssVar: '--highlight', name: 'Attention highlight' },
-        { cssVar: '--highlight-soft', name: 'Attention highlight (soft)' },
-        { cssVar: '--neutral-fill', name: 'Neutral fill' },
+        { cssVar: "--doc-icon-bg", name: "Document icon background" },
+        { cssVar: "--doc-icon-fg", name: "Document icon text" },
+        { cssVar: "--slide-thumb-bg", name: "Slide thumb background" },
+        { cssVar: "--slide-thumb-fg", name: "Slide thumb icon" },
+        { cssVar: "--slide-thumb-fg-active", name: "Slide thumb (active)" },
+        { cssVar: "--highlight", name: "Attention highlight" },
+        { cssVar: "--highlight-soft", name: "Attention highlight (soft)" },
+        { cssVar: "--neutral-fill", name: "Neutral fill" },
       ],
     },
     {
-      group: 'Overlays & device',
+      group: "Overlays & device",
       items: [
-        { cssVar: '--scrim-ink', name: 'Scrim / overlay ink' },
-        { cssVar: '--shadow-ink', name: 'Shadow ink' },
-        { cssVar: '--phone-bezel', name: 'Phone bezel' },
-        { cssVar: '--phone-notch', name: 'Phone notch' },
+        { cssVar: "--scrim-ink", name: "Scrim / overlay ink" },
+        { cssVar: "--shadow-ink", name: "Shadow ink" },
+        { cssVar: "--phone-bezel", name: "Phone bezel" },
+        { cssVar: "--phone-notch", name: "Phone notch" },
       ],
     },
     {
-      group: 'Navigation & chrome',
+      group: "Navigation & chrome",
       items: [
-        { cssVar: '--chrome-header-bg', name: 'Header background' },
-        { cssVar: '--chrome-header-fg', name: 'Header text' },
+        { cssVar: "--chrome-header-bg", name: "Header background" },
+        { cssVar: "--chrome-header-fg", name: "Header text" },
       ],
     },
   ];
@@ -146,29 +146,41 @@
   // that are computed from an editable source. Prevents inconsistent themes
   // from editing both a source and its derived result.
   const DERIVED = [
-    { cssVar: '--primary', name: 'Primary', follows: '--brand-accent' },
-    { cssVar: '--canvas', name: 'Canvas (applied)', follows: '--brand-canvas' },
-    { cssVar: '--paper', name: 'Surface (applied)', follows: '--brand-surface' },
-    { cssVar: '--text', name: 'Text (applied)', follows: '--brand-text' },
-    { cssVar: '--line', name: 'Border (applied)', follows: '--brand-border' },
+    { cssVar: "--primary", name: "Primary", follows: "--brand-accent" },
+    { cssVar: "--canvas", name: "Canvas (applied)", follows: "--brand-canvas" },
     {
-      cssVar: '--chrome-header-muted',
-      name: 'Header muted text',
-      follows: '--chrome-header-fg',
+      cssVar: "--paper",
+      name: "Surface (applied)",
+      follows: "--brand-surface",
+    },
+    { cssVar: "--text", name: "Text (applied)", follows: "--brand-text" },
+    { cssVar: "--line", name: "Border (applied)", follows: "--brand-border" },
+    {
+      cssVar: "--chrome-header-muted",
+      name: "Header muted text",
+      follows: "--chrome-header-fg",
     },
     {
-      cssVar: '--chrome-header-border',
-      name: 'Header border',
-      follows: '--chrome-header-fg',
+      cssVar: "--chrome-header-border",
+      name: "Header border",
+      follows: "--chrome-header-fg",
     },
   ];
 
   // Known text-on-background relationships for non-blocking contrast warnings.
   const CONTRAST_PAIRS = [
-    { fg: '--brand-text', bg: '--brand-surface', label: 'Text on surface' },
-    { fg: '--brand-text', bg: '--brand-canvas', label: 'Text on canvas' },
-    { fg: '--brand-text-secondary', bg: '--brand-surface', label: 'Secondary text on surface' },
-    { fg: '--chrome-header-fg', bg: '--chrome-header-bg', label: 'Header text on header' },
+    { fg: "--brand-text", bg: "--brand-surface", label: "Text on surface" },
+    { fg: "--brand-text", bg: "--brand-canvas", label: "Text on canvas" },
+    {
+      fg: "--brand-text-secondary",
+      bg: "--brand-surface",
+      label: "Secondary text on surface",
+    },
+    {
+      fg: "--chrome-header-fg",
+      bg: "--chrome-header-bg",
+      label: "Header text on header",
+    },
   ];
 
   const ALL_EDITABLE = REGISTRY.flatMap((g) => g.items.map((i) => i.cssVar));
@@ -187,13 +199,16 @@
 
   /** Normalize user hex input to `#RRGGBB` uppercase, or null if invalid. */
   function normalizeHex(input) {
-    if (typeof input !== 'string') return null;
-    let s = input.trim().replace(/^#/, '').toLowerCase();
+    if (typeof input !== "string") return null;
+    let s = input.trim().replace(/^#/, "").toLowerCase();
     if (/^[0-9a-f]{3}$/.test(s)) {
-      s = s.split('').map((c) => c + c).join('');
+      s = s
+        .split("")
+        .map((c) => c + c)
+        .join("");
     }
     if (!/^[0-9a-f]{6}$/.test(s)) return null;
-    return '#' + s.toUpperCase();
+    return "#" + s.toUpperCase();
   }
 
   function isValidHex(input) {
@@ -212,14 +227,18 @@
 
   function rgbToHex(r, g, b) {
     const to2 = (v) => {
-      const h = Math.max(0, Math.min(255, Math.round(v))).toString(16).toUpperCase();
-      return h.length === 1 ? '0' + h : h;
+      const h = Math.max(0, Math.min(255, Math.round(v)))
+        .toString(16)
+        .toUpperCase();
+      return h.length === 1 ? "0" + h : h;
     };
-    return '#' + to2(r) + to2(g) + to2(b);
+    return "#" + to2(r) + to2(g) + to2(b);
   }
 
   function rgbToHsv(r, g, b) {
-    r /= 255; g /= 255; b /= 255;
+    r /= 255;
+    g /= 255;
+    b /= 255;
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     const d = max - min;
@@ -239,13 +258,28 @@
     const c = v * s;
     const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
     const m = v - c;
-    let r = 0, g = 0, b = 0;
-    if (h < 60) { r = c; g = x; }
-    else if (h < 120) { r = x; g = c; }
-    else if (h < 180) { g = c; b = x; }
-    else if (h < 240) { g = x; b = c; }
-    else if (h < 300) { r = x; b = c; }
-    else { r = c; b = x; }
+    let r = 0,
+      g = 0,
+      b = 0;
+    if (h < 60) {
+      r = c;
+      g = x;
+    } else if (h < 120) {
+      r = x;
+      g = c;
+    } else if (h < 180) {
+      g = c;
+      b = x;
+    } else if (h < 240) {
+      g = x;
+      b = c;
+    } else if (h < 300) {
+      r = x;
+      b = c;
+    } else {
+      r = c;
+      b = x;
+    }
     return { r: (r + m) * 255, g: (g + m) * 255, b: (b + m) * 255 };
   }
 
@@ -290,25 +324,25 @@
    */
   function buildOverrideCss(overrides) {
     const RGB_FOLLOWERS = [
-      { from: '--brand-accent', to: '--primary-rgb' },
-      { from: '--cta', to: '--cta-rgb' },
-      { from: '--destructive', to: '--destructive-rgb' },
-      { from: '--st-accepted', to: '--st-accepted-rgb' },
-      { from: '--shadow-ink', to: '--shadow-ink-rgb' },
+      { from: "--brand-accent", to: "--primary-rgb" },
+      { from: "--cta", to: "--cta-rgb" },
+      { from: "--destructive", to: "--destructive-rgb" },
+      { from: "--st-accepted", to: "--st-accepted-rgb" },
+      { from: "--shadow-ink", to: "--shadow-ink-rgb" },
     ];
-    let out = '';
+    let out = "";
     for (const mode of MODES) {
       const map = (overrides && overrides[mode]) || {};
       const entries = Object.keys(map)
         .filter((k) => map[k])
-        .map((k) => k + ': ' + map[k]);
+        .map((k) => k + ": " + map[k]);
       for (const { from, to } of RGB_FOLLOWERS) {
         if (!map[from]) continue;
         const rgb = hexToRgb(map[from]);
-        if (rgb) entries.push(to + ': ' + rgb.r + ', ' + rgb.g + ', ' + rgb.b);
+        if (rgb) entries.push(to + ": " + rgb.r + ", " + rgb.g + ", " + rgb.b);
       }
       if (!entries.length) continue;
-      out += ':root[data-theme="' + mode + '"]{' + entries.join(';') + '}\n';
+      out += ':root[data-theme="' + mode + '"]{' + entries.join(";") + "}\n";
     }
     return out;
   }
@@ -327,11 +361,13 @@
       for (const cssVar of ALL_EDITABLE) {
         const norm = normalizeHex(map[cssVar]);
         if (!norm) continue;
-        entries.push(cssVar.replace(/^--/, '') + '=' + norm.slice(1).toLowerCase());
+        entries.push(
+          cssVar.replace(/^--/, "") + "=" + norm.slice(1).toLowerCase(),
+        );
       }
-      if (entries.length) blocks.push(mode + ':' + entries.join(','));
+      if (entries.length) blocks.push(mode + ":" + entries.join(","));
     }
-    return blocks.join('|');
+    return blocks.join("|");
   }
 
   /**
@@ -342,20 +378,20 @@
    */
   function parseThemeParam(str) {
     const result = { light: {}, dark: {} };
-    if (typeof str !== 'string' || !str) return result;
-    str.split('|').forEach(function (block) {
-      const sep = block.indexOf(':');
+    if (typeof str !== "string" || !str) return result;
+    str.split("|").forEach(function (block) {
+      const sep = block.indexOf(":");
       if (sep === -1) return;
       const mode = block.slice(0, sep).trim();
-      if (mode !== 'light' && mode !== 'dark') return;
-      const modeMap = mode === 'light' ? result.light : result.dark;
+      if (mode !== "light" && mode !== "dark") return;
+      const modeMap = mode === "light" ? result.light : result.dark;
       block
         .slice(sep + 1)
-        .split(',')
+        .split(",")
         .forEach(function (pair) {
-          const eq = pair.indexOf('=');
+          const eq = pair.indexOf("=");
           if (eq === -1) return;
-          const cssVar = '--' + pair.slice(0, eq).trim();
+          const cssVar = "--" + pair.slice(0, eq).trim();
           if (!ALL_EDITABLE.includes(cssVar)) return;
           const hex = normalizeHex(pair.slice(eq + 1).trim());
           if (!hex) return;
@@ -367,7 +403,7 @@
 
   /** Escape a value for a Markdown table cell (pipe would break the row). */
   function escapeMarkdownCell(value) {
-    return String(value).replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
+    return String(value).replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
   }
 
   /**
@@ -383,13 +419,14 @@
       if (valueMap && Object.prototype.hasOwnProperty.call(valueMap, cssVar)) {
         variables[cssVar] = valueMap[cssVar];
       }
-      if (modified && modified.indexOf(cssVar) !== -1) modifiedList.push(cssVar);
+      if (modified && modified.indexOf(cssVar) !== -1)
+        modifiedList.push(cssVar);
     });
     return JSON.stringify(
       {
-        name: 'Autheon prototype theme (' + mode + ')',
+        name: "Autheon prototype theme (" + mode + ")",
         mode: mode,
-        generatedBy: 'floating-theme-editor',
+        generatedBy: "floating-theme-editor",
         modified: modifiedList,
         variables: variables,
       },
@@ -403,31 +440,32 @@
   function buildThemeMarkdown(mode, valueMap, modified) {
     const mods = modified || [];
     const lines = [
-      '# Autheon prototype theme — ' + mode,
-      '',
-      '| Category | Variable | Value | Modified |',
-      '| --- | --- | --- | --- |',
+      "# Autheon prototype theme — " + mode,
+      "",
+      "| Category | Variable | Value | Modified |",
+      "| --- | --- | --- | --- |",
     ];
     ALL_EDITABLE.forEach(function (cssVar) {
-      if (!valueMap || !Object.prototype.hasOwnProperty.call(valueMap, cssVar)) return;
+      if (!valueMap || !Object.prototype.hasOwnProperty.call(valueMap, cssVar))
+        return;
       lines.push(
-        '| ' +
-          escapeMarkdownCell(CATEGORY_BY_VAR[cssVar] || '') +
-          ' | `' +
+        "| " +
+          escapeMarkdownCell(CATEGORY_BY_VAR[cssVar] || "") +
+          " | `" +
           cssVar +
-          '` | `' +
+          "` | `" +
           escapeMarkdownCell(valueMap[cssVar]) +
-          '` | ' +
-          (mods.indexOf(cssVar) !== -1 ? 'yes' : '') +
-          ' |',
+          "` | " +
+          (mods.indexOf(cssVar) !== -1 ? "yes" : "") +
+          " |",
       );
     });
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   // Visibility gate: hidden on first visit; `?themecolorchanger=1|0` overrides and
   // persists; otherwise the last choice in localStorage wins (prototype + PWA).
-  const VISIBILITY_PARAM = 'themecolorchanger';
+  const VISIBILITY_PARAM = "themecolorchanger";
 
   /** True only when the visibility gate param is exactly "1". */
   function wantsVisible(search) {
@@ -437,9 +475,9 @@
   /** URL override: true (=1), false (=0), or null (absent / invalid → use storage). */
   function parseVisibilityParam(search) {
     try {
-      const v = new URLSearchParams(search || '').get(VISIBILITY_PARAM);
-      if (v === '1') return true;
-      if (v === '0') return false;
+      const v = new URLSearchParams(search || "").get(VISIBILITY_PARAM);
+      if (v === "1") return true;
+      if (v === "0") return false;
       return null;
     } catch (_) {
       return null;
@@ -450,7 +488,7 @@
   function resolveInitialVisibility(search, storedVisible) {
     const param = parseVisibilityParam(search);
     if (param !== null) return param;
-    if (typeof storedVisible === 'boolean') return storedVisible;
+    if (typeof storedVisible === "boolean") return storedVisible;
     return false;
   }
 
@@ -463,18 +501,18 @@
       e.shiftKey &&
       e.altKey &&
       (e.ctrlKey || e.metaKey) &&
-      e.code === 'KeyT'
+      e.code === "KeyT"
     );
   }
 
   /** Platform-aware keycaps for the shortcut (single source of truth). */
   function shortcutKeys(isMac) {
-    return isMac ? ['⌘', '⌥', 'Shift', 'T'] : ['Ctrl', 'Alt', 'Shift', 'T'];
+    return isMac ? ["⌘", "⌥", "Shift", "T"] : ["Ctrl", "Alt", "Shift", "T"];
   }
 
   /** Platform-aware label for the shortcut hint. */
   function shortcutLabel(isMac) {
-    return shortcutKeys(isMac).join(' + ');
+    return shortcutKeys(isMac).join(" + ");
   }
 
   const __test = {
@@ -531,8 +569,8 @@
   /** Actively probe whether writes work (private mode / full disk fail here). */
   function probeStorage() {
     try {
-      const k = NS + '.__probe';
-      window.localStorage.setItem(k, '1');
+      const k = NS + ".__probe";
+      window.localStorage.setItem(k, "1");
       window.localStorage.removeItem(k);
       storageOk = true;
     } catch (_) {
@@ -546,7 +584,7 @@
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed.visible === 'boolean') return parsed.visible;
+      if (parsed && typeof parsed.visible === "boolean") return parsed.visible;
     } catch (_) {
       /* corrupt payload → treat as unset */
     }
@@ -609,7 +647,7 @@
     launcherPos: null, // {x,y} or null (=default bottom-right)
     visible: false, // whether the feature (launcher) is currently shown
     open: false,
-    filter: '',
+    filter: "",
     picker: null, // active picker session
     lastCategory: null,
   };
@@ -630,7 +668,7 @@
   //   user change: state → DOM → localStorage → URL (replaceState) [write only]
   // We never listen for URL changes, so writes can't feed back into reads.
   // ===========================================================================
-  const URL_PARAM = 'theme';
+  const URL_PARAM = "theme";
   const hostWindow = (function () {
     try {
       const top = window.top;
@@ -647,7 +685,7 @@
   function readUrlOverrides() {
     try {
       const params = new URLSearchParams(hostWindow.location.search);
-      return parseThemeParam(params.get(URL_PARAM) || '');
+      return parseThemeParam(params.get(URL_PARAM) || "");
     } catch (_) {
       return { light: {}, dark: {} };
     }
@@ -666,15 +704,15 @@
   function syncUrl() {
     try {
       const url = currentUrlWithTheme();
-      hostWindow.history.replaceState(hostWindow.history.state, '', url.href);
+      hostWindow.history.replaceState(hostWindow.history.state, "", url.href);
     } catch (_) {
       /* history unavailable — non-fatal, the theme still applies */
     }
   }
 
   function currentMode() {
-    const m = document.documentElement.getAttribute('data-theme');
-    return m === 'dark' ? 'dark' : 'light';
+    const m = document.documentElement.getAttribute("data-theme");
+    return m === "dark" ? "dark" : "light";
   }
 
   // ===========================================================================
@@ -698,8 +736,12 @@
         if (!rule || rule.type !== 1 || !rule.selectorText) continue;
         const sel = rule.selectorText.trim();
         let target = null;
-        if (sel === ':root') target = light;
-        else if (sel === '[data-theme="dark"]' || sel === ":root[data-theme=\"dark\"]") target = dark;
+        if (sel === ":root") target = light;
+        else if (
+          sel === '[data-theme="dark"]' ||
+          sel === ':root[data-theme="dark"]'
+        )
+          target = dark;
         else continue;
         for (const cssVar of ALL_EDITABLE) {
           const val = rule.style.getPropertyValue(cssVar).trim();
@@ -733,13 +775,13 @@
   /** Resolve any CSS var (incl. derived) to a concrete #RRGGBB via a probe. */
   function resolveVarColor(cssVar) {
     if (!probeEl) {
-      probeEl = document.createElement('span');
-      probeEl.setAttribute('aria-hidden', 'true');
+      probeEl = document.createElement("span");
+      probeEl.setAttribute("aria-hidden", "true");
       probeEl.style.cssText =
-        'position:absolute;left:-9999px;top:-9999px;width:0;height:0;';
+        "position:absolute;left:-9999px;top:-9999px;width:0;height:0;";
       document.body.appendChild(probeEl);
     }
-    probeEl.style.color = 'var(' + cssVar + ')';
+    probeEl.style.color = "var(" + cssVar + ")";
     const rgb = getComputedStyle(probeEl).color; // rgb(r, g, b)
     const m = rgb.match(/(\d+(?:\.\d+)?)/g);
     if (!m || m.length < 3) return null;
@@ -750,10 +792,10 @@
   // Apply overrides to the document
   // ===========================================================================
   function ensureOverrideStyle() {
-    let el = document.getElementById('autheon-theme-editor-overrides');
+    let el = document.getElementById("autheon-theme-editor-overrides");
     if (!el) {
-      el = document.createElement('style');
-      el.id = 'autheon-theme-editor-overrides';
+      el = document.createElement("style");
+      el.id = "autheon-theme-editor-overrides";
       (document.head || document.documentElement).appendChild(el);
     }
     return el;
@@ -772,24 +814,27 @@
       for (const k of Object.keys(attrs)) {
         const v = attrs[k];
         if (v == null || v === false) continue;
-        if (k === 'class') el.className = v;
-        else if (k === 'text') el.textContent = v;
-        else if (k === 'html') el.innerHTML = v;
-        else if (k.slice(0, 2) === 'on' && typeof v === 'function') {
+        if (k === "class") el.className = v;
+        else if (k === "text") el.textContent = v;
+        else if (k === "html") el.innerHTML = v;
+        else if (k.slice(0, 2) === "on" && typeof v === "function") {
           el.addEventListener(k.slice(2).toLowerCase(), v);
-        } else if (k === 'style') {
+        } else if (k === "style") {
           el.style.cssText = v;
         } else {
-          el.setAttribute(k, v === true ? '' : String(v));
+          el.setAttribute(k, v === true ? "" : String(v));
         }
       }
     }
-    (Array.isArray(children) ? children : children != null ? [children] : []).forEach(
-      (c) => {
-        if (c == null) return;
-        el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
-      },
-    );
+    (Array.isArray(children)
+      ? children
+      : children != null
+        ? [children]
+        : []
+    ).forEach((c) => {
+      if (c == null) return;
+      el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    });
     return el;
   }
 
@@ -798,10 +843,8 @@
       '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r="1.2"/><circle cx="17.5" cy="10.5" r="1.2"/><circle cx="8.5" cy="7.5" r="1.2"/><circle cx="6.5" cy="12.5" r="1.2"/><path d="M12 2a10 10 0 1 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.2 0-.9.8-1.7 1.7-1.7H16a6 6 0 0 0 6-6c0-5-4.5-8-10-8Z"/></svg>',
     close:
       '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-    lock:
-      '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
-    warn:
-      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>',
+    lock: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+    warn: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>',
   };
 
   // ===========================================================================
@@ -812,7 +855,7 @@
     if (!raw) return null;
     try {
       const p = JSON.parse(raw);
-      if (p && typeof p.x === 'number' && typeof p.y === 'number') return p;
+      if (p && typeof p.x === "number" && typeof p.y === "number") return p;
     } catch (_) {
       /* ignore */
     }
@@ -831,7 +874,7 @@
   function isMacPlatform() {
     try {
       return /Mac|iPhone|iPad|iPod/i.test(
-        navigator.platform || navigator.userAgent || '',
+        navigator.platform || navigator.userAgent || "",
       );
     } catch (_) {
       return false;
@@ -846,50 +889,55 @@
     if (state.launcherPos) {
       const clamped = clampPosition(state.launcherPos, viewportBox());
       state.launcherPos = clamped;
-      el.classList.remove('ate-launcher-wrap--default');
-      el.style.left = clamped.x + 'px';
-      el.style.top = clamped.y + 'px';
-      el.style.right = 'auto';
-      el.style.bottom = 'auto';
+      el.classList.remove("ate-launcher-wrap--default");
+      el.style.left = clamped.x + "px";
+      el.style.top = clamped.y + "px";
+      el.style.right = "auto";
+      el.style.bottom = "auto";
     } else {
       // Default bottom-right, respecting mobile safe areas.
-      el.classList.add('ate-launcher-wrap--default');
-      el.style.left = 'auto';
-      el.style.top = 'auto';
-      el.style.removeProperty('right');
-      el.style.removeProperty('bottom');
+      el.classList.add("ate-launcher-wrap--default");
+      el.style.left = "auto";
+      el.style.top = "auto";
+      el.style.removeProperty("right");
+      el.style.removeProperty("bottom");
     }
   }
 
   function buildLauncher() {
     if (els.launcherWrap) return; // build once
 
-    const wrap = h('div', {
-      class: 'ate-launcher-wrap ate-launcher-wrap--default',
+    const wrap = h("div", {
+      class: "ate-launcher-wrap ate-launcher-wrap--default",
     });
-    const btn = h('button', {
-      type: 'button',
-      class: 'ate-launcher',
-      'aria-label': 'Open Theme Editor',
-      'aria-haspopup': 'dialog',
-      title: 'Theme Editor',
+    const btn = h("button", {
+      type: "button",
+      class: "ate-launcher",
+      "aria-label": "Open Theme Editor",
+      "aria-haspopup": "dialog",
+      title: "Theme Editor",
       html: ICONS.palette,
     });
-    const badge = h('button', {
-      type: 'button',
-      class: 'ate-hide-badge',
-      'aria-label': 'Hide Theme Color Changer',
-      title: 'Hide Theme Color Changer (restore with ' + shortcutLabel(isMacPlatform()) + ')',
+    const badge = h("button", {
+      type: "button",
+      class: "ate-hide-badge",
+      "aria-label": "Hide Theme Color Changer",
+      title:
+        "Hide Theme Color Changer (restore with " +
+        shortcutLabel(isMacPlatform()) +
+        ")",
       html: ICONS.close,
     });
     // The badge hides the WHOLE feature. Keep its pointer/click events off the
     // launcher so it can never start a drag or open the editor.
-    ['pointerdown', 'pointerup', 'mousedown', 'touchstart'].forEach(function (t) {
-      badge.addEventListener(t, function (e) {
-        e.stopPropagation();
-      });
-    });
-    badge.addEventListener('click', function (e) {
+    ["pointerdown", "pointerup", "mousedown", "touchstart"].forEach(
+      function (t) {
+        badge.addEventListener(t, function (e) {
+          e.stopPropagation();
+        });
+      },
+    );
+    badge.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
       hideFeature();
@@ -899,7 +947,7 @@
     els.launcher = btn;
     els.badge = badge;
     attachDrag(btn);
-    btn.addEventListener('click', function () {
+    btn.addEventListener("click", function () {
       if (drag.justDragged) {
         drag.justDragged = false;
         return; // a drag just ended — do not open
@@ -913,9 +961,17 @@
   }
 
   // Click-vs-drag via Pointer Events (mouse / touch / stylus unified).
-  const drag = { active: false, moved: false, justDragged: false, sx: 0, sy: 0, ox: 0, oy: 0 };
+  const drag = {
+    active: false,
+    moved: false,
+    justDragged: false,
+    sx: 0,
+    sy: 0,
+    ox: 0,
+    oy: 0,
+  };
   function attachDrag(btn) {
-    btn.addEventListener('pointerdown', function (e) {
+    btn.addEventListener("pointerdown", function (e) {
       if (e.button != null && e.button !== 0) return;
       drag.active = true;
       drag.moved = false;
@@ -933,13 +989,13 @@
         /* ignore */
       }
     });
-    btn.addEventListener('pointermove', function (e) {
+    btn.addEventListener("pointermove", function (e) {
       if (!drag.active) return;
       const dx = e.clientX - drag.sx;
       const dy = e.clientY - drag.sy;
       if (!drag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
       drag.moved = true;
-      btn.classList.add('ate-launcher--dragging');
+      btn.classList.add("ate-launcher--dragging");
       state.launcherPos = clampPosition(
         { x: drag.ox + dx, y: drag.oy + dy },
         viewportBox(),
@@ -949,7 +1005,7 @@
     function end(e) {
       if (!drag.active) return;
       drag.active = false;
-      btn.classList.remove('ate-launcher--dragging');
+      btn.classList.remove("ate-launcher--dragging");
       try {
         btn.releasePointerCapture(e.pointerId);
       } catch (_) {
@@ -966,8 +1022,8 @@
         safeSet(STORAGE.launcher, JSON.stringify(state.launcherPos));
       }
     }
-    btn.addEventListener('pointerup', end);
-    btn.addEventListener('pointercancel', end);
+    btn.addEventListener("pointerup", end);
+    btn.addEventListener("pointercancel", end);
   }
 
   function resetLauncherPosition() {
@@ -988,12 +1044,12 @@
     state.open = true;
     lastFocusBeforeOpen = document.activeElement;
     buildPanel();
-    document.addEventListener('keydown', onGlobalKeydown, true);
+    document.addEventListener("keydown", onGlobalKeydown, true);
     // Focus the first control for keyboard users.
     requestAnimationFrame(function () {
       if (els.search) els.search.focus();
     });
-    if (els.launcher) els.launcher.setAttribute('aria-expanded', 'true');
+    if (els.launcher) els.launcher.setAttribute("aria-expanded", "true");
   }
 
   function closePanel() {
@@ -1002,17 +1058,17 @@
     state.open = false;
     const focusRestore = lastFocusBeforeOpen;
     lastFocusBeforeOpen = null;
-    document.removeEventListener('keydown', onGlobalKeydown, true);
+    document.removeEventListener("keydown", onGlobalKeydown, true);
     if (els.root) {
       els.root.remove();
       els.root = null;
     }
     if (els.launcher) {
-      els.launcher.setAttribute('aria-expanded', 'false');
+      els.launcher.setAttribute("aria-expanded", "false");
     }
     if (
       focusRestore &&
-      typeof focusRestore.focus === 'function' &&
+      typeof focusRestore.focus === "function" &&
       document.contains(focusRestore)
     ) {
       focusRestore.focus();
@@ -1022,7 +1078,7 @@
   }
 
   function onGlobalKeydown(e) {
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       e.stopPropagation();
       if (state.picker) cancelPicker();
       else closePanel();
@@ -1032,42 +1088,42 @@
   function statusText(msg, tone) {
     if (!els.status) return;
     els.status.textContent = msg;
-    els.status.className = 'ate-status' + (tone ? ' ate-status--' + tone : '');
+    els.status.className = "ate-status" + (tone ? " ate-status--" + tone : "");
   }
 
   function buildPanel() {
     probeStorage(); // refresh availability so the storage warning is accurate
-    const backdrop = h('div', {
-      class: 'ate-backdrop',
+    const backdrop = h("div", {
+      class: "ate-backdrop",
       onclick: function (e) {
         if (e.target === backdrop) closePanel();
       },
     });
 
-    const closeBtn = h('button', {
-      type: 'button',
-      class: 'ate-iconbtn ate-close',
-      'aria-label': 'Close Theme Editor',
+    const closeBtn = h("button", {
+      type: "button",
+      class: "ate-iconbtn ate-close",
+      "aria-label": "Close Theme Editor",
       html: ICONS.close,
       onclick: closePanel,
     });
 
-    els.status = h('div', { class: 'ate-status', 'aria-live': 'polite' });
-    els.status.textContent = 'Changes save automatically';
+    els.status = h("div", { class: "ate-status", "aria-live": "polite" });
+    els.status.textContent = "Changes save automatically";
 
-    const header = h('div', { class: 'ate-header' }, [
-      h('div', { class: 'ate-header-main' }, [
-        h('h2', { class: 'ate-title', id: 'ate-title', text: 'Theme Editor' }),
+    const header = h("div", { class: "ate-header" }, [
+      h("div", { class: "ate-header-main" }, [
+        h("h2", { class: "ate-title", id: "ate-title", text: "Theme Editor" }),
         els.status,
       ]),
       closeBtn,
     ]);
 
-    els.search = h('input', {
-      type: 'search',
-      class: 'ate-search',
-      placeholder: 'Filter colours…',
-      'aria-label': 'Filter colours',
+    els.search = h("input", {
+      type: "search",
+      class: "ate-search",
+      placeholder: "Filter colours…",
+      "aria-label": "Filter colours",
       value: state.filter,
       oninput: function (e) {
         state.filter = e.target.value;
@@ -1075,57 +1131,57 @@
       },
     });
 
-    const modeTag = h('span', {
-      class: 'ate-modetag',
+    const modeTag = h("span", {
+      class: "ate-modetag",
       text: modeLabel(currentMode()),
     });
     els.modeTag = modeTag;
 
-    const intro = h('div', { class: 'ate-intro' }, [
-      modeTag,
-      els.search,
-    ]);
+    const intro = h("div", { class: "ate-intro" }, [modeTag, els.search]);
 
-    els.rows = h('div', { class: 'ate-rows' });
+    els.rows = h("div", { class: "ate-rows" });
 
     if (!storageOk) {
       els.rows.appendChild(
-        h('div', { class: 'ate-alert', role: 'status' }, [
-          h('span', { html: ICONS.warn }),
-          h('span', {
-            text:
-              'Local storage is unavailable — changes apply now but will not persist after reload.',
+        h("div", { class: "ate-alert", role: "status" }, [
+          h("span", { html: ICONS.warn }),
+          h("span", {
+            text: "Local storage is unavailable — changes apply now but will not persist after reload.",
           }),
         ]),
       );
     }
 
-    const resetTheme = h('button', {
-      type: 'button',
-      class: 'ate-btn ate-btn--danger',
-      text: 'Reset to defaults',
+    const resetTheme = h("button", {
+      type: "button",
+      class: "ate-btn ate-btn--danger",
+      text: "Reset to defaults",
       onclick: confirmResetTheme,
     });
-    const resetPos = h('button', {
-      type: 'button',
-      class: 'ate-btn ate-btn--ghost',
-      text: 'Reset launcher position',
+    const resetPos = h("button", {
+      type: "button",
+      class: "ate-btn ate-btn--ghost",
+      text: "Reset launcher position",
       onclick: function () {
         resetLauncherPosition();
-        statusText('Launcher moved to default position', 'ok');
+        statusText("Launcher moved to default position", "ok");
       },
     });
-    const footer = h('div', { class: 'ate-footer' }, [resetTheme, resetPos]);
+    const footer = h("div", { class: "ate-footer" }, [resetTheme, resetPos]);
 
-    const panel = h('div', {
-      class: 'ate-panel',
-      role: 'dialog',
-      'aria-modal': 'true',
-      'aria-labelledby': 'ate-title',
-    }, [header, intro, els.rows, buildExportSection(), buildHelpRow(), footer]);
+    const panel = h(
+      "div",
+      {
+        class: "ate-panel",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-labelledby": "ate-title",
+      },
+      [header, intro, els.rows, buildExportSection(), buildHelpRow(), footer],
+    );
     els.panel = panel;
 
-    const root = h('div', { class: 'ate-root' }, [backdrop, panel]);
+    const root = h("div", { class: "ate-root" }, [backdrop, panel]);
     els.root = root;
     document.body.appendChild(root);
 
@@ -1140,18 +1196,24 @@
     const panel = els.panel;
     if (!panel) return;
     if (window.innerWidth <= 560) {
-      panel.classList.add('ate-panel--sheet');
+      panel.classList.add("ate-panel--sheet");
       return;
     }
-    panel.classList.remove('ate-panel--sheet');
+    panel.classList.remove("ate-panel--sheet");
     // Anchor near the launcher, clamped fully inside the viewport.
     const rect = els.launcher
       ? els.launcher.getBoundingClientRect()
-      : { left: window.innerWidth - 64, top: window.innerHeight - 64, right: window.innerWidth - 16, bottom: window.innerHeight - 16 };
+      : {
+          left: window.innerWidth - 64,
+          top: window.innerHeight - 64,
+          right: window.innerWidth - 16,
+          bottom: window.innerHeight - 16,
+        };
     const pw = panel.offsetWidth || 360;
     const ph = panel.offsetHeight || 480;
     let left = rect.right - pw;
-    if (left + pw + EDGE_MARGIN > window.innerWidth) left = window.innerWidth - pw - EDGE_MARGIN;
+    if (left + pw + EDGE_MARGIN > window.innerWidth)
+      left = window.innerWidth - pw - EDGE_MARGIN;
     if (left < EDGE_MARGIN) left = EDGE_MARGIN;
     // Prefer above the launcher; fall back to below if there is no room.
     let top = rect.top - ph - 12;
@@ -1159,13 +1221,13 @@
     // Final clamp so the whole panel (incl. its footer) stays on-screen.
     top = Math.min(top, window.innerHeight - ph - EDGE_MARGIN);
     top = Math.max(top, EDGE_MARGIN);
-    panel.style.left = left + 'px';
-    panel.style.top = top + 'px';
+    panel.style.left = left + "px";
+    panel.style.top = top + "px";
   }
 
   function setupFocusTrap(panel) {
     focusTrapHandler = function (e) {
-      if (e.key !== 'Tab') return;
+      if (e.key !== "Tab") return;
       const focusables = panel.querySelectorAll(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
       );
@@ -1183,7 +1245,7 @@
         first.focus();
       }
     };
-    panel.addEventListener('keydown', focusTrapHandler);
+    panel.addEventListener("keydown", focusTrapHandler);
   }
 
   // ===========================================================================
@@ -1202,7 +1264,7 @@
   }
 
   function modeLabel(mode) {
-    return mode === 'dark' ? 'Editing dark theme' : 'Editing light theme';
+    return mode === "dark" ? "Editing dark theme" : "Editing light theme";
   }
 
   function renderRows() {
@@ -1210,7 +1272,7 @@
     if (!container) return;
     // Preserve the storage alert if present.
     Array.prototype.slice
-      .call(container.querySelectorAll('.ate-group, .ate-empty'))
+      .call(container.querySelectorAll(".ate-group, .ate-empty"))
       .forEach((n) => n.remove());
 
     const mode = currentMode();
@@ -1225,8 +1287,8 @@
       if (!matching.length) return;
       anyShown = true;
 
-      const groupEl = h('section', { class: 'ate-group' }, [
-        h('h3', { class: 'ate-group-title', text: group.group }),
+      const groupEl = h("section", { class: "ate-group" }, [
+        h("h3", { class: "ate-group-title", text: group.group }),
       ]);
       matching.forEach(function (item) {
         groupEl.appendChild(buildRow(item, mode));
@@ -1240,8 +1302,8 @@
     });
     if (derivedMatching.length) {
       anyShown = true;
-      const g = h('section', { class: 'ate-group' }, [
-        h('h3', { class: 'ate-group-title', text: 'Derived · read-only' }),
+      const g = h("section", { class: "ate-group" }, [
+        h("h3", { class: "ate-group-title", text: "Derived · read-only" }),
       ]);
       derivedMatching.forEach(function (item) {
         g.appendChild(buildDerivedRow(item));
@@ -1251,7 +1313,10 @@
 
     if (!anyShown) {
       container.appendChild(
-        h('div', { class: 'ate-empty', text: 'No colours match “' + state.filter + '”.' }),
+        h("div", {
+          class: "ate-empty",
+          text: "No colours match “" + state.filter + "”.",
+        }),
       );
     }
 
@@ -1259,84 +1324,87 @@
   }
 
   function buildRow(item, mode) {
-    const value = effectiveHex(item.cssVar, mode) || '#000000';
+    const value = effectiveHex(item.cssVar, mode) || "#000000";
     const modified = isModified(item.cssVar, mode);
 
-    const swatch = h('button', {
-      type: 'button',
-      class: 'ate-swatch',
-      'aria-label': 'Pick colour for ' + item.name + ' (currently ' + value + ')',
-      style: 'background:' + value,
+    const swatch = h("button", {
+      type: "button",
+      class: "ate-swatch",
+      "aria-label":
+        "Pick colour for " + item.name + " (currently " + value + ")",
+      style: "background:" + value,
     });
-    swatch.addEventListener('click', function () {
+    swatch.addEventListener("click", function () {
       openPicker(item, mode, swatch);
     });
 
-    const input = h('input', {
-      type: 'text',
-      class: 'ate-hex',
-      spellcheck: 'false',
-      autocomplete: 'off',
-      'aria-label': 'Hex value for ' + item.name,
+    const input = h("input", {
+      type: "text",
+      class: "ate-hex",
+      spellcheck: "false",
+      autocomplete: "off",
+      "aria-label": "Hex value for " + item.name,
       value: value,
     });
-    const hint = h('div', { class: 'ate-hex-hint', 'aria-live': 'polite' });
+    const hint = h("div", { class: "ate-hex-hint", "aria-live": "polite" });
 
     function commit() {
       const hex = normalizeHex(input.value);
       if (!hex) {
-        input.setAttribute('aria-invalid', 'true');
-        input.classList.add('ate-hex--invalid');
-        hint.textContent = 'Use a hex colour like #1A2B3C';
+        input.setAttribute("aria-invalid", "true");
+        input.classList.add("ate-hex--invalid");
+        hint.textContent = "Use a hex colour like #1A2B3C";
         // Keep the previous valid value intact (do not apply / save).
         return;
       }
-      input.removeAttribute('aria-invalid');
-      input.classList.remove('ate-hex--invalid');
-      hint.textContent = '';
+      input.removeAttribute("aria-invalid");
+      input.classList.remove("ate-hex--invalid");
+      hint.textContent = "";
       setColor(item.cssVar, mode, hex);
       input.value = hex;
       swatch.style.background = hex;
       swatch.setAttribute(
-        'aria-label',
-        'Pick colour for ' + item.name + ' (currently ' + hex + ')',
+        "aria-label",
+        "Pick colour for " + item.name + " (currently " + hex + ")",
       );
       refreshRowMeta(row, item, mode);
       renderContrastWarnings();
     }
-    input.addEventListener('change', commit);
-    input.addEventListener('blur', function () {
+    input.addEventListener("change", commit);
+    input.addEventListener("blur", function () {
       if (normalizeHex(input.value)) commit();
       else {
         // Restore last valid value on blur so nothing is corrupted.
         input.value = effectiveHex(item.cssVar, mode) || value;
-        input.removeAttribute('aria-invalid');
-        input.classList.remove('ate-hex--invalid');
-        hint.textContent = '';
+        input.removeAttribute("aria-invalid");
+        input.classList.remove("ate-hex--invalid");
+        hint.textContent = "";
       }
     });
-    input.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') {
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
         e.preventDefault();
         commit();
       }
     });
 
-    const nameEl = h('div', { class: 'ate-row-name' }, [
-      h('span', { class: 'ate-row-label', text: item.name }),
-      h('code', { class: 'ate-row-var', text: item.cssVar }),
+    const nameEl = h("div", { class: "ate-row-name" }, [
+      h("span", { class: "ate-row-label", text: item.name }),
+      h("code", { class: "ate-row-var", text: item.cssVar }),
     ]);
 
-    const dot = h('span', {
-      class: 'ate-mod-dot' + (modified ? ' is-on' : ''),
-      title: modified ? 'Modified — default ' + (defaultHex(item.cssVar, mode) || '—') : '',
-      'aria-hidden': 'true',
+    const dot = h("span", {
+      class: "ate-mod-dot" + (modified ? " is-on" : ""),
+      title: modified
+        ? "Modified — default " + (defaultHex(item.cssVar, mode) || "—")
+        : "",
+      "aria-hidden": "true",
     });
 
-    const row = h('div', { class: 'ate-row', 'data-var': item.cssVar }, [
+    const row = h("div", { class: "ate-row", "data-var": item.cssVar }, [
       dot,
       nameEl,
-      h('div', { class: 'ate-controls' }, [swatch, input]),
+      h("div", { class: "ate-controls" }, [swatch, input]),
     ]);
     row.appendChild(hint);
     row._els = { swatch, input, dot, hint };
@@ -1346,50 +1414,54 @@
   function refreshRowMeta(row, item, mode) {
     const modified = isModified(item.cssVar, mode);
     const dot = row._els.dot;
-    dot.className = 'ate-mod-dot' + (modified ? ' is-on' : '');
+    dot.className = "ate-mod-dot" + (modified ? " is-on" : "");
     dot.title = modified
-      ? 'Modified — default ' + (defaultHex(item.cssVar, mode) || '—')
-      : '';
+      ? "Modified — default " + (defaultHex(item.cssVar, mode) || "—")
+      : "";
   }
 
   function buildDerivedRow(item) {
-    const resolved = resolveVarColor(item.cssVar) || '#000000';
-    const swatch = h('span', {
-      class: 'ate-swatch ate-swatch--ro',
-      style: 'background:' + resolved,
-      'aria-hidden': 'true',
+    const resolved = resolveVarColor(item.cssVar) || "#000000";
+    const swatch = h("span", {
+      class: "ate-swatch ate-swatch--ro",
+      style: "background:" + resolved,
+      "aria-hidden": "true",
     });
-    const nameEl = h('div', { class: 'ate-row-name' }, [
-      h('span', { class: 'ate-row-label', text: item.name }),
-      h('code', { class: 'ate-row-var', text: item.cssVar }),
+    const nameEl = h("div", { class: "ate-row-name" }, [
+      h("span", { class: "ate-row-label", text: item.name }),
+      h("code", { class: "ate-row-var", text: item.cssVar }),
     ]);
-    const meta = h('div', { class: 'ate-derived-meta' }, [
-      h('span', { class: 'ate-lock', html: ICONS.lock, 'aria-hidden': 'true' }),
-      h('span', {
-        class: 'ate-follows',
-        text: 'follows ' + (NAME_BY_VAR[item.follows] || item.follows),
+    const meta = h("div", { class: "ate-derived-meta" }, [
+      h("span", { class: "ate-lock", html: ICONS.lock, "aria-hidden": "true" }),
+      h("span", {
+        class: "ate-follows",
+        text: "follows " + (NAME_BY_VAR[item.follows] || item.follows),
       }),
     ]);
-    return h('div', { class: 'ate-row ate-row--derived', 'data-var': item.cssVar }, [
-      h('span', { class: 'ate-mod-dot', 'aria-hidden': 'true' }),
-      nameEl,
-      h('div', { class: 'ate-controls' }, [
-        swatch,
-        h('code', { class: 'ate-ro-value', text: resolved }),
-      ]),
-      meta,
-    ]);
+    return h(
+      "div",
+      { class: "ate-row ate-row--derived", "data-var": item.cssVar },
+      [
+        h("span", { class: "ate-mod-dot", "aria-hidden": "true" }),
+        nameEl,
+        h("div", { class: "ate-controls" }, [
+          swatch,
+          h("code", { class: "ate-ro-value", text: resolved }),
+        ]),
+        meta,
+      ],
+    );
   }
 
   /** Re-resolve the read-only derived rows so they track edits to their source. */
   function refreshDerivedRows() {
     if (!els.rows) return;
-    els.rows.querySelectorAll('.ate-row--derived').forEach(function (row) {
-      const cssVar = row.getAttribute('data-var');
+    els.rows.querySelectorAll(".ate-row--derived").forEach(function (row) {
+      const cssVar = row.getAttribute("data-var");
       if (!cssVar) return;
-      const resolved = resolveVarColor(cssVar) || '#000000';
-      const sw = row.querySelector('.ate-swatch');
-      const val = row.querySelector('.ate-ro-value');
+      const resolved = resolveVarColor(cssVar) || "#000000";
+      const sw = row.querySelector(".ate-swatch");
+      const val = row.querySelector(".ate-ro-value");
       if (sw) sw.style.background = resolved;
       if (val) val.textContent = resolved;
     });
@@ -1397,7 +1469,7 @@
 
   function renderContrastWarnings() {
     if (!els.rows) return;
-    let box = els.rows.querySelector('.ate-contrast');
+    let box = els.rows.querySelector(".ate-contrast");
     if (box) box.remove();
     const mode = currentMode();
     const issues = [];
@@ -1407,16 +1479,23 @@
       if (!fg || !bg) return;
       if (meetsContrast(fg, bg, AA_CONTRAST)) return;
       const ratio = contrastRatio(fg, bg);
-      issues.push(pair.label + ' — ' + ratio.toFixed(1) + ':1');
+      issues.push(pair.label + " — " + ratio.toFixed(1) + ":1");
     });
     if (!issues.length) return;
-    box = h('div', { class: 'ate-contrast', role: 'status' }, [
-      h('div', { class: 'ate-contrast-head' }, [
-        h('span', { html: ICONS.warn }),
-        h('span', { text: 'Low contrast (below AA 4.5:1)' }),
+    box = h("div", { class: "ate-contrast", role: "status" }, [
+      h("div", { class: "ate-contrast-head" }, [
+        h("span", { html: ICONS.warn }),
+        h("span", { text: "Low contrast (below AA 4.5:1)" }),
       ]),
-      h('ul', {}, issues.map((t) => h('li', { text: t }))),
-      h('div', { class: 'ate-contrast-note', text: 'You can still save these — experimentation is allowed.' }),
+      h(
+        "ul",
+        {},
+        issues.map((t) => h("li", { text: t })),
+      ),
+      h("div", {
+        class: "ate-contrast-note",
+        text: "You can still save these — experimentation is allowed.",
+      }),
     ]);
     els.rows.appendChild(box);
   }
@@ -1430,7 +1509,7 @@
     refreshDerivedRows(); // keep read-only derived rows in step with their source
     if (!opts || !opts.transient) {
       persistOverrides();
-      statusText('Saved locally', 'ok');
+      statusText("Saved locally", "ok");
     }
   }
 
@@ -1441,47 +1520,50 @@
   }
 
   function confirmResetTheme() {
-    const overlay = h('div', { class: 'ate-confirm-backdrop' });
-    const dialog = h('div', {
-      class: 'ate-confirm',
-      role: 'alertdialog',
-      'aria-modal': 'true',
-      'aria-labelledby': 'ate-confirm-title',
-    }, [
-      h('h3', { id: 'ate-confirm-title', text: 'Reset all theme colours?' }),
-      h('p', {
-        text:
-          'This removes every custom colour (light and dark) and restores the application defaults. Prototype data is not affected.',
-      }),
-      h('div', { class: 'ate-confirm-actions' }, [
-        h('button', {
-          type: 'button',
-          class: 'ate-btn ate-btn--ghost',
-          text: 'Cancel',
-          onclick: function () {
-            overlay.remove();
-            if (els.search && state.open) els.search.focus();
-            else if (els.launcher) els.launcher.focus();
-          },
+    const overlay = h("div", { class: "ate-confirm-backdrop" });
+    const dialog = h(
+      "div",
+      {
+        class: "ate-confirm",
+        role: "alertdialog",
+        "aria-modal": "true",
+        "aria-labelledby": "ate-confirm-title",
+      },
+      [
+        h("h3", { id: "ate-confirm-title", text: "Reset all theme colours?" }),
+        h("p", {
+          text: "This removes every custom colour (light and dark) and restores the application defaults. Prototype data is not affected.",
         }),
-        h('button', {
-          type: 'button',
-          class: 'ate-btn ate-btn--danger',
-          text: 'Reset colours',
-          onclick: function () {
-            doResetTheme();
-            overlay.remove();
-          },
-        }),
-      ]),
-    ]);
+        h("div", { class: "ate-confirm-actions" }, [
+          h("button", {
+            type: "button",
+            class: "ate-btn ate-btn--ghost",
+            text: "Cancel",
+            onclick: function () {
+              overlay.remove();
+              if (els.search && state.open) els.search.focus();
+              else if (els.launcher) els.launcher.focus();
+            },
+          }),
+          h("button", {
+            type: "button",
+            class: "ate-btn ate-btn--danger",
+            text: "Reset colours",
+            onclick: function () {
+              doResetTheme();
+              overlay.remove();
+            },
+          }),
+        ]),
+      ],
+    );
     overlay.appendChild(dialog);
-    overlay.addEventListener('click', function (e) {
+    overlay.addEventListener("click", function (e) {
       if (e.target === overlay) overlay.remove();
     });
     (els.root || document.body).appendChild(overlay);
     requestAnimationFrame(function () {
-      dialog.querySelector('.ate-btn--danger').focus();
+      dialog.querySelector(".ate-btn--danger").focus();
     });
   }
 
@@ -1490,7 +1572,7 @@
     applyOverrides();
     persistOverrides(); // empty → clears both localStorage and the URL param
     renderRows();
-    statusText('Restored default theme', 'ok');
+    statusText("Restored default theme", "ok");
   }
 
   function resetTheme() {
@@ -1522,23 +1604,23 @@
 
   function copyText(text, okMsg) {
     const ok = function () {
-      statusText(okMsg, 'ok');
+      statusText(okMsg, "ok");
     };
     const manual = function () {
       // Fallback when the async Clipboard API is unavailable or denied.
       try {
-        const ta = document.createElement('textarea');
+        const ta = document.createElement("textarea");
         ta.value = text;
-        ta.setAttribute('readonly', '');
-        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
+        ta.setAttribute("readonly", "");
+        ta.style.cssText = "position:fixed;top:-9999px;left:-9999px;";
         (els.panel || document.body).appendChild(ta);
         ta.select();
-        const copied = document.execCommand && document.execCommand('copy');
+        const copied = document.execCommand && document.execCommand("copy");
         ta.remove();
         if (copied) ok();
-        else statusText('Copy failed — select the text manually', 'warn');
+        else statusText("Copy failed — select the text manually", "warn");
       } catch (_) {
-        statusText('Copy failed — select the text manually', 'warn');
+        statusText("Copy failed — select the text manually", "warn");
       }
     };
     try {
@@ -1554,9 +1636,11 @@
 
   function downloadFile(filename, text, mime) {
     try {
-      const blob = new Blob([text], { type: mime || 'text/plain;charset=utf-8' });
+      const blob = new Blob([text], {
+        type: mime || "text/plain;charset=utf-8",
+      });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = filename;
       (els.panel || document.body).appendChild(a);
@@ -1565,70 +1649,70 @@
       setTimeout(function () {
         URL.revokeObjectURL(url);
       }, 0);
-      statusText('Downloaded ' + filename, 'ok');
+      statusText("Downloaded " + filename, "ok");
     } catch (_) {
-      statusText('Download failed', 'warn');
+      statusText("Download failed", "warn");
     }
   }
 
   function exportFilename(ext) {
-    return 'autheon-theme-' + currentMode() + '.' + ext;
+    return "autheon-theme-" + currentMode() + "." + ext;
   }
 
   // Compact, always-visible hint explaining how to hide/restore the whole tool
   // (platform-aware; rendered as keycaps so it reads without technical jargon).
   function buildHelpRow() {
     const parts = shortcutKeys(isMacPlatform());
-    const row = h('div', { class: 'ate-help' }, [
-      h('span', { class: 'ate-help-label', text: 'Show / hide tool:' }),
+    const row = h("div", { class: "ate-help" }, [
+      h("span", { class: "ate-help-label", text: "Show / hide tool:" }),
     ]);
     parts.forEach(function (key, i) {
-      if (i) row.appendChild(h('span', { class: 'ate-help-plus', text: '+' }));
-      row.appendChild(h('kbd', { class: 'ate-kbd', text: key }));
+      if (i) row.appendChild(h("span", { class: "ate-help-plus", text: "+" }));
+      row.appendChild(h("kbd", { class: "ate-kbd", text: key }));
     });
     return row;
   }
 
   function buildExportSection() {
     function actionBtn(label, onClick) {
-      return h('button', {
-        type: 'button',
-        class: 'ate-btn ate-btn--ghost ate-btn--sm',
+      return h("button", {
+        type: "button",
+        class: "ate-btn ate-btn--ghost ate-btn--sm",
         text: label,
         onclick: onClick,
       });
     }
-    return h('details', { class: 'ate-export' }, [
-      h('summary', { class: 'ate-export-summary', text: 'Export & share' }),
-      h('div', { class: 'ate-export-grid' }, [
-        actionBtn('Copy JSON', function () {
+    return h("details", { class: "ate-export" }, [
+      h("summary", { class: "ate-export-summary", text: "Export & share" }),
+      h("div", { class: "ate-export-grid" }, [
+        actionBtn("Copy JSON", function () {
           copyText(
             buildThemeJson(currentMode(), activeValueMap(), modifiedVars()),
-            'Copied JSON',
+            "Copied JSON",
           );
         }),
-        actionBtn('Download JSON', function () {
+        actionBtn("Download JSON", function () {
           downloadFile(
-            exportFilename('json'),
+            exportFilename("json"),
             buildThemeJson(currentMode(), activeValueMap(), modifiedVars()),
-            'application/json;charset=utf-8',
+            "application/json;charset=utf-8",
           );
         }),
-        actionBtn('Copy Markdown', function () {
+        actionBtn("Copy Markdown", function () {
           copyText(
             buildThemeMarkdown(currentMode(), activeValueMap(), modifiedVars()),
-            'Copied Markdown',
+            "Copied Markdown",
           );
         }),
-        actionBtn('Download Markdown', function () {
+        actionBtn("Download Markdown", function () {
           downloadFile(
-            exportFilename('md'),
+            exportFilename("md"),
             buildThemeMarkdown(currentMode(), activeValueMap(), modifiedVars()),
-            'text/markdown;charset=utf-8',
+            "text/markdown;charset=utf-8",
           );
         }),
-        actionBtn('Copy shareable link', function () {
-          copyText(currentUrlWithTheme().href, 'Copied shareable link');
+        actionBtn("Copy shareable link", function () {
+          copyText(currentUrlWithTheme().href, "Copied shareable link");
         }),
       ]),
     ]);
@@ -1639,7 +1723,7 @@
   // ===========================================================================
   function openPicker(item, mode, anchorSwatch) {
     cancelPicker();
-    const startHex = effectiveHex(item.cssVar, mode) || '#000000';
+    const startHex = effectiveHex(item.cssVar, mode) || "#000000";
     const hadOverride = isModified(item.cssVar, mode);
     const rgb = hexToRgb(startHex) || { r: 0, g: 0, b: 0 };
     const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
@@ -1657,61 +1741,70 @@
 
     // Full-screen catcher: clicking outside the picker = Cancel (spec §7.4),
     // and it must NOT close the editor behind it.
-    const outside = h('div', { class: 'ate-picker-catcher' });
-    outside.addEventListener('pointerdown', function (e) {
+    const outside = h("div", { class: "ate-picker-catcher" });
+    outside.addEventListener("pointerdown", function (e) {
       if (e.target === outside) cancelPicker();
     });
 
-    const area = h('div', { class: 'ate-sv', tabindex: '0', role: 'group', 'aria-label': 'Saturation and brightness' });
-    const areaThumb = h('div', { class: 'ate-sv-thumb' });
+    const area = h("div", {
+      class: "ate-sv",
+      tabindex: "0",
+      role: "group",
+      "aria-label": "Saturation and brightness",
+    });
+    const areaThumb = h("div", { class: "ate-sv-thumb" });
     area.appendChild(areaThumb);
 
-    const hue = h('input', {
-      type: 'range',
-      class: 'ate-hue',
-      min: '0',
-      max: '360',
-      step: '1',
-      'aria-label': 'Hue',
+    const hue = h("input", {
+      type: "range",
+      class: "ate-hue",
+      min: "0",
+      max: "360",
+      step: "1",
+      "aria-label": "Hue",
       value: String(Math.round(hsv.h)),
     });
 
-    const preview = h('span', { class: 'ate-preview', 'aria-hidden': 'true' });
-    const hexOut = h('input', {
-      type: 'text',
-      class: 'ate-hex ate-picker-hex',
-      spellcheck: 'false',
-      autocomplete: 'off',
-      'aria-label': 'Hex value',
+    const preview = h("span", { class: "ate-preview", "aria-hidden": "true" });
+    const hexOut = h("input", {
+      type: "text",
+      class: "ate-hex ate-picker-hex",
+      spellcheck: "false",
+      autocomplete: "off",
+      "aria-label": "Hex value",
       value: startHex,
     });
 
-    const okBtn = h('button', {
-      type: 'button',
-      class: 'ate-btn ate-btn--primary',
-      text: 'OK',
+    const okBtn = h("button", {
+      type: "button",
+      class: "ate-btn ate-btn--primary",
+      text: "OK",
       onclick: confirmPicker,
     });
-    const cancelBtn = h('button', {
-      type: 'button',
-      class: 'ate-btn ate-btn--ghost',
-      text: 'Cancel',
+    const cancelBtn = h("button", {
+      type: "button",
+      class: "ate-btn ate-btn--ghost",
+      text: "Cancel",
       onclick: cancelPicker,
     });
 
-    const picker = h('div', {
-      class: 'ate-picker',
-      role: 'dialog',
-      'aria-label': 'Colour picker for ' + item.name,
-    }, [
-      area,
-      hue,
-      h('div', { class: 'ate-picker-foot' }, [
-        preview,
-        hexOut,
-        h('div', { class: 'ate-picker-actions' }, [cancelBtn, okBtn]),
-      ]),
-    ]);
+    const picker = h(
+      "div",
+      {
+        class: "ate-picker",
+        role: "dialog",
+        "aria-label": "Colour picker for " + item.name,
+      },
+      [
+        area,
+        hue,
+        h("div", { class: "ate-picker-foot" }, [
+          preview,
+          hexOut,
+          h("div", { class: "ate-picker-actions" }, [cancelBtn, okBtn]),
+        ]),
+      ],
+    );
 
     session.els = { picker, area, areaThumb, hue, preview, hexOut, outside };
 
@@ -1719,15 +1812,15 @@
       const c = hsvToRgb(session.hsv.h, session.hsv.s, session.hsv.v);
       const hex = rgbToHex(c.r, c.g, c.b);
       area.style.background =
-        'linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(' +
+        "linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(" +
         session.hsv.h +
-        ',100%,50%))';
-      areaThumb.style.left = session.hsv.s * 100 + '%';
-      areaThumb.style.top = (1 - session.hsv.v) * 100 + '%';
+        ",100%,50%))";
+      areaThumb.style.left = session.hsv.s * 100 + "%";
+      areaThumb.style.top = (1 - session.hsv.v) * 100 + "%";
       areaThumb.style.background = hex;
       preview.style.background = hex;
       hexOut.value = hex;
-      hexOut.removeAttribute('aria-invalid');
+      hexOut.removeAttribute("aria-invalid");
       if (applyLive) setColor(item.cssVar, mode, hex, { transient: true });
     }
 
@@ -1741,22 +1834,30 @@
     }
 
     let svDragging = false;
-    area.addEventListener('pointerdown', function (e) {
+    area.addEventListener("pointerdown", function (e) {
       svDragging = true;
-      try { area.setPointerCapture(e.pointerId); } catch (_) {}
+      try {
+        area.setPointerCapture(e.pointerId);
+      } catch (_) {}
       setFromPointer(e);
     });
-    area.addEventListener('pointermove', function (e) {
+    area.addEventListener("pointermove", function (e) {
       if (svDragging) setFromPointer(e);
     });
-    area.addEventListener('pointerup', function () { svDragging = false; });
-    area.addEventListener('keydown', function (e) {
+    area.addEventListener("pointerup", function () {
+      svDragging = false;
+    });
+    area.addEventListener("keydown", function (e) {
       const step = e.shiftKey ? 0.1 : 0.02;
       let handled = true;
-      if (e.key === 'ArrowRight') session.hsv.s = Math.min(1, session.hsv.s + step);
-      else if (e.key === 'ArrowLeft') session.hsv.s = Math.max(0, session.hsv.s - step);
-      else if (e.key === 'ArrowUp') session.hsv.v = Math.min(1, session.hsv.v + step);
-      else if (e.key === 'ArrowDown') session.hsv.v = Math.max(0, session.hsv.v - step);
+      if (e.key === "ArrowRight")
+        session.hsv.s = Math.min(1, session.hsv.s + step);
+      else if (e.key === "ArrowLeft")
+        session.hsv.s = Math.max(0, session.hsv.s - step);
+      else if (e.key === "ArrowUp")
+        session.hsv.v = Math.min(1, session.hsv.v + step);
+      else if (e.key === "ArrowDown")
+        session.hsv.v = Math.max(0, session.hsv.v - step);
       else handled = false;
       if (handled) {
         e.preventDefault();
@@ -1764,15 +1865,15 @@
       }
     });
 
-    hue.addEventListener('input', function () {
+    hue.addEventListener("input", function () {
       session.hsv.h = +hue.value;
       renderPicker(true);
     });
 
-    hexOut.addEventListener('change', function () {
+    hexOut.addEventListener("change", function () {
       const hex = normalizeHex(hexOut.value);
       if (!hex) {
-        hexOut.setAttribute('aria-invalid', 'true');
+        hexOut.setAttribute("aria-invalid", "true");
         return;
       }
       const rr = hexToRgb(hex);
@@ -1786,35 +1887,43 @@
     outside.appendChild(picker);
     positionPicker(session, anchorSwatch);
     renderPicker(false);
-    requestAnimationFrame(function () { area.focus(); });
+    requestAnimationFrame(function () {
+      area.focus();
+    });
   }
 
   function positionPicker(session, anchor) {
     const picker = session.els.picker;
     if (window.innerWidth <= 560) {
-      picker.classList.add('ate-picker--sheet');
+      picker.classList.add("ate-picker--sheet");
       return;
     }
     const rect = anchor.getBoundingClientRect();
     const pw = picker.offsetWidth || 240;
     const ph = picker.offsetHeight || 260;
     let left = rect.left;
-    if (left + pw + EDGE_MARGIN > window.innerWidth) left = window.innerWidth - pw - EDGE_MARGIN;
+    if (left + pw + EDGE_MARGIN > window.innerWidth)
+      left = window.innerWidth - pw - EDGE_MARGIN;
     if (left < EDGE_MARGIN) left = EDGE_MARGIN;
     let top = rect.top - ph - 10; // above the swatch (spec §7)
-    if (top < EDGE_MARGIN) top = Math.min(rect.bottom + 10, window.innerHeight - ph - EDGE_MARGIN);
-    picker.style.left = left + 'px';
-    picker.style.top = top + 'px';
+    if (top < EDGE_MARGIN)
+      top = Math.min(rect.bottom + 10, window.innerHeight - ph - EDGE_MARGIN);
+    picker.style.left = left + "px";
+    picker.style.top = top + "px";
   }
 
   function confirmPicker() {
     const s = state.picker;
     if (!s) return;
-    const hex = normalizeHex(s.els.hexOut.value) ||
-      rgbToHex.apply(null, (function () {
-        const c = hsvToRgb(s.hsv.h, s.hsv.s, s.hsv.v);
-        return [c.r, c.g, c.b];
-      })());
+    const hex =
+      normalizeHex(s.els.hexOut.value) ||
+      rgbToHex.apply(
+        null,
+        (function () {
+          const c = hsvToRgb(s.hsv.h, s.hsv.s, s.hsv.v);
+          return [c.r, c.g, c.b];
+        })(),
+      );
     s.committed = true;
     setColor(s.item.cssVar, s.mode, hex); // saves + status
     teardownPicker();
@@ -1845,9 +1954,11 @@
 
   function syncRowFromState(item, mode) {
     if (!els.rows) return;
-    const row = els.rows.querySelector('.ate-row[data-var="' + item.cssVar + '"]');
+    const row = els.rows.querySelector(
+      '.ate-row[data-var="' + item.cssVar + '"]',
+    );
     if (!row || !row._els) return;
-    const val = effectiveHex(item.cssVar, mode) || '#000000';
+    const val = effectiveHex(item.cssVar, mode) || "#000000";
     row._els.input.value = val;
     row._els.swatch.style.background = val;
     refreshRowMeta(row, item, mode);
@@ -1858,10 +1969,10 @@
   // Injected stylesheet for the editor's own UI
   // ===========================================================================
   function injectStyles() {
-    if (document.getElementById('autheon-theme-editor-styles')) return;
+    if (document.getElementById("autheon-theme-editor-styles")) return;
     const css = EDITOR_CSS;
-    const el = document.createElement('style');
-    el.id = 'autheon-theme-editor-styles';
+    const el = document.createElement("style");
+    el.id = "autheon-theme-editor-styles";
     el.textContent = css;
     (document.head || document.documentElement).appendChild(el);
   }
@@ -1891,7 +2002,7 @@
   function notifyVisibility() {
     try {
       document.dispatchEvent(
-        new CustomEvent('autheon-theme-editor:visibility', {
+        new CustomEvent("autheon-theme-editor:visibility", {
           detail: { visible: !!state.visible },
         }),
       );
@@ -1903,12 +2014,12 @@
   function applyVisibility(visible, persist) {
     if (visible) {
       ensureLauncher();
-      els.launcherWrap.style.display = '';
+      els.launcherWrap.style.display = "";
       state.visible = true;
     } else {
       state.visible = false;
       if (state.open) closePanel();
-      if (els.launcherWrap) els.launcherWrap.style.display = 'none';
+      if (els.launcherWrap) els.launcherWrap.style.display = "none";
     }
     if (persist) persistVisibility(visible);
     notifyVisibility();
@@ -1945,18 +2056,21 @@
   function watchThemeMode() {
     const mo = new MutationObserver(function (records) {
       for (const r of records) {
-        if (r.attributeName === 'data-theme') {
+        if (r.attributeName === "data-theme") {
           if (state.open) renderRows();
           break;
         }
       }
     });
-    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    mo.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
   }
 
   // Cross-tab sync: another tab edited the theme or visibility → adopt it here.
   function watchStorage() {
-    window.addEventListener('storage', function (e) {
+    window.addEventListener("storage", function (e) {
       if (e.key === STORAGE.overrides) {
         state.overrides = loadOverrides();
         applyOverrides();
@@ -1981,9 +2095,11 @@
     //    without this, a stored override would flash the default theme first.
     //    Mirror the app's own default (persisted choice, else light) so we never
     //    disagree with what React sets a moment later.
-    if (!document.documentElement.getAttribute('data-theme')) {
-      const initialMode = safeGet('autheon-theme') === 'dark' ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', initialMode);
+    if (!document.documentElement.getAttribute("data-theme")) {
+      const initialMode =
+        safeGet("autheon-theme") === "dark" ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", initialMode);
+      document.documentElement.style.colorScheme = initialMode;
     }
 
     // 2) Resolve overrides by precedence — URL > localStorage > defaults — and
@@ -2003,16 +2119,16 @@
       injectStyles();
       watchThemeMode();
       watchStorage();
-      window.addEventListener('resize', onResize);
+      window.addEventListener("resize", onResize);
 
       // One centralized keydown listener for the show/hide shortcut, added once
       // (the module is a double-load-guarded singleton, so it never duplicates).
       // Also listen on the top document so the shortcut works whether focus is
       // in the framed prototype or the host page (same-origin).
-      document.addEventListener('keydown', onVisibilityKeydown);
+      document.addEventListener("keydown", onVisibilityKeydown);
       try {
         if (hostWindow.document && hostWindow.document !== document) {
-          hostWindow.document.addEventListener('keydown', onVisibilityKeydown);
+          hostWindow.document.addEventListener("keydown", onVisibilityKeydown);
         }
       } catch (_) {
         /* cross-origin host — the local listener still covers the tool */
@@ -2023,7 +2139,7 @@
       notifyVisibility();
     }
     if (document.body) mount();
-    else document.addEventListener('DOMContentLoaded', mount, { once: true });
+    else document.addEventListener("DOMContentLoaded", mount, { once: true });
   }
 
   // ---------------------------------------------------------------------------
@@ -2054,153 +2170,153 @@
   // ===========================================================================
   const EDITOR_CSS = [
     /* Launcher */
-    '.ate-launcher-wrap{position:fixed;z-index:2147482000;width:48px;height:48px;}',
-    '.ate-launcher-wrap--default{right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));}',
-    '.ate-launcher{position:absolute;inset:0;width:100%;height:100%;min-width:44px;min-height:44px;display:grid;place-items:center;border-radius:14px;',
-    'background:rgba(28,28,32,.62);color:#fff;border:1px solid rgba(255,255,255,.22);',
-    'box-shadow:0 6px 20px rgba(0,0,0,.28),0 1px 2px rgba(0,0,0,.35);',
-    '-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);opacity:.82;cursor:grab;',
-    'transition:opacity .15s ease,box-shadow .15s ease;touch-action:none;padding:0;}',
-    '.ate-launcher:hover,.ate-launcher:focus-visible{opacity:1;}',
-    '.ate-launcher:focus-visible{outline:3px solid #7cc4ff;outline-offset:2px;}',
-    '.ate-launcher--dragging{cursor:grabbing;opacity:1;}',
-    '.ate-launcher svg{pointer-events:none;}',
+    ".ate-launcher-wrap{position:fixed;z-index:2147482000;width:48px;height:48px;}",
+    ".ate-launcher-wrap--default{right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));}",
+    ".ate-launcher{position:absolute;inset:0;width:100%;height:100%;min-width:44px;min-height:44px;display:grid;place-items:center;border-radius:14px;",
+    "background:rgba(28,28,32,.62);color:#fff;border:1px solid rgba(255,255,255,.22);",
+    "box-shadow:0 6px 20px rgba(0,0,0,.28),0 1px 2px rgba(0,0,0,.35);",
+    "-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);opacity:.82;cursor:grab;",
+    "transition:opacity .15s ease,box-shadow .15s ease;touch-action:none;padding:0;}",
+    ".ate-launcher:hover,.ate-launcher:focus-visible{opacity:1;}",
+    ".ate-launcher:focus-visible{outline:3px solid #7cc4ff;outline-offset:2px;}",
+    ".ate-launcher--dragging{cursor:grabbing;opacity:1;}",
+    ".ate-launcher svg{pointer-events:none;}",
     /* Red hide badge — hides the WHOLE feature; distinct from the overlay close X */
-    '.ate-hide-badge{position:absolute;top:-6px;right:-6px;width:22px;height:22px;min-width:22px;display:grid;place-items:center;border-radius:50%;',
-    'background:#ff3b30;color:#fff;border:2px solid rgba(24,25,30,.92);box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:pointer;padding:0;z-index:2;',
-    'opacity:.95;transition:transform .12s ease,opacity .12s ease;touch-action:none;}',
-    '.ate-hide-badge:hover{opacity:1;transform:scale(1.08);}',
-    '.ate-hide-badge:active{transform:scale(.92);}',
-    '.ate-hide-badge:focus-visible{outline:2px solid #7cc4ff;outline-offset:2px;}',
-    '.ate-hide-badge svg{width:11px;height:11px;pointer-events:none;}',
+    ".ate-hide-badge{position:absolute;top:-6px;right:-6px;width:22px;height:22px;min-width:22px;display:grid;place-items:center;border-radius:50%;",
+    "background:#ff3b30;color:#fff;border:2px solid rgba(24,25,30,.92);box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:pointer;padding:0;z-index:2;",
+    "opacity:.95;transition:transform .12s ease,opacity .12s ease;touch-action:none;}",
+    ".ate-hide-badge:hover{opacity:1;transform:scale(1.08);}",
+    ".ate-hide-badge:active{transform:scale(.92);}",
+    ".ate-hide-badge:focus-visible{outline:2px solid #7cc4ff;outline-offset:2px;}",
+    ".ate-hide-badge svg{width:11px;height:11px;pointer-events:none;}",
 
     /* Root / backdrop */
     '.ate-root{position:fixed;inset:0;z-index:2147483000;font-family:"Inter Tight",system-ui,-apple-system,sans-serif;}',
-    '.ate-backdrop{position:absolute;inset:0;background:rgba(10,12,18,.28);-webkit-backdrop-filter:blur(1px);backdrop-filter:blur(1px);animation:ate-fade .12s ease;}',
-    '@keyframes ate-fade{from{opacity:0}to{opacity:1}}',
+    ".ate-backdrop{position:absolute;inset:0;background:rgba(10,12,18,.28);-webkit-backdrop-filter:blur(1px);backdrop-filter:blur(1px);animation:ate-fade .12s ease;}",
+    "@keyframes ate-fade{from{opacity:0}to{opacity:1}}",
 
     /* Panel */
-    '.ate-panel{position:absolute;width:360px;max-width:calc(100vw - 24px);max-height:min(78vh,640px);display:flex;flex-direction:column;',
-    'background:rgba(24,25,30,.94);color:#e9eaee;border:1px solid rgba(255,255,255,.12);border-radius:16px;',
-    'box-shadow:0 24px 64px rgba(0,0,0,.45),0 2px 10px rgba(0,0,0,.35);overflow:hidden;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);}',
-    '.ate-panel--sheet{left:0!important;right:0;bottom:0;top:auto!important;width:100%;max-width:100%;border-radius:16px 16px 0 0;max-height:88vh;padding-bottom:env(safe-area-inset-bottom,0px);}',
+    ".ate-panel{position:absolute;width:360px;max-width:calc(100vw - 24px);max-height:min(78vh,640px);display:flex;flex-direction:column;",
+    "background:rgba(24,25,30,.94);color:#e9eaee;border:1px solid rgba(255,255,255,.12);border-radius:16px;",
+    "box-shadow:0 24px 64px rgba(0,0,0,.45),0 2px 10px rgba(0,0,0,.35);overflow:hidden;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);}",
+    ".ate-panel--sheet{left:0!important;right:0;bottom:0;top:auto!important;width:100%;max-width:100%;border-radius:16px 16px 0 0;max-height:88vh;padding-bottom:env(safe-area-inset-bottom,0px);}",
 
     /* Header */
-    '.ate-header{display:flex;align-items:flex-start;gap:12px;padding:14px 14px 10px;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;background:inherit;}',
-    '.ate-header-main{flex:1;min-width:0;}',
-    '.ate-title{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;}',
-    '.ate-status{font-size:12px;color:#9aa0ab;margin-top:2px;transition:color .2s ease;}',
-    '.ate-status--ok{color:#57d08a;}',
-    '.ate-status--warn{color:#ffca8a;}',
-    '.ate-iconbtn{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:transparent;border:1px solid transparent;color:#c7cbd3;cursor:pointer;flex-shrink:0;}',
-    '.ate-iconbtn:hover{background:rgba(255,255,255,.08);color:#fff;}',
-    '.ate-iconbtn:focus-visible{outline:2px solid #7cc4ff;outline-offset:1px;}',
+    ".ate-header{display:flex;align-items:flex-start;gap:12px;padding:14px 14px 10px;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;background:inherit;}",
+    ".ate-header-main{flex:1;min-width:0;}",
+    ".ate-title{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;}",
+    ".ate-status{font-size:12px;color:#9aa0ab;margin-top:2px;transition:color .2s ease;}",
+    ".ate-status--ok{color:#57d08a;}",
+    ".ate-status--warn{color:#ffca8a;}",
+    ".ate-iconbtn{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:transparent;border:1px solid transparent;color:#c7cbd3;cursor:pointer;flex-shrink:0;}",
+    ".ate-iconbtn:hover{background:rgba(255,255,255,.08);color:#fff;}",
+    ".ate-iconbtn:focus-visible{outline:2px solid #7cc4ff;outline-offset:1px;}",
 
     /* Intro / search */
-    '.ate-intro{padding:10px 14px 6px;display:flex;flex-direction:column;gap:8px;}',
-    '.ate-modetag{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#8b909b;}',
-    '.ate-search{width:100%;box-sizing:border-box;padding:8px 10px;border-radius:9px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#e9eaee;font-size:13px;}',
-    '.ate-search:focus-visible{outline:2px solid #7cc4ff;outline-offset:0;border-color:transparent;}',
+    ".ate-intro{padding:10px 14px 6px;display:flex;flex-direction:column;gap:8px;}",
+    ".ate-modetag{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#8b909b;}",
+    ".ate-search{width:100%;box-sizing:border-box;padding:8px 10px;border-radius:9px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#e9eaee;font-size:13px;}",
+    ".ate-search:focus-visible{outline:2px solid #7cc4ff;outline-offset:0;border-color:transparent;}",
 
     /* Rows scroller */
-    '.ate-rows{flex:1;overflow-y:auto;padding:6px 14px 12px;}',
-    '.ate-group{margin-top:12px;}',
-    '.ate-group-title{margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8b909b;}',
-    '.ate-empty{padding:24px 4px;color:#8b909b;font-size:13px;text-align:center;}',
+    ".ate-rows{flex:1;overflow-y:auto;padding:6px 14px 12px;}",
+    ".ate-group{margin-top:12px;}",
+    ".ate-group-title{margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8b909b;}",
+    ".ate-empty{padding:24px 4px;color:#8b909b;font-size:13px;text-align:center;}",
 
     /* Row */
-    '.ate-row{display:grid;grid-template-columns:8px 1fr auto;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);}',
-    '.ate-row--derived{opacity:.9;}',
-    '.ate-mod-dot{width:7px;height:7px;border-radius:50%;background:transparent;}',
-    '.ate-mod-dot.is-on{background:#7cc4ff;box-shadow:0 0 0 3px rgba(124,196,255,.18);}',
-    '.ate-row-name{min-width:0;display:flex;flex-direction:column;gap:1px;}',
-    '.ate-row-label{font-size:13px;font-weight:600;color:#f2f3f6;line-height:1.2;}',
+    ".ate-row{display:grid;grid-template-columns:8px 1fr auto;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);}",
+    ".ate-row--derived{opacity:.9;}",
+    ".ate-mod-dot{width:7px;height:7px;border-radius:50%;background:transparent;}",
+    ".ate-mod-dot.is-on{background:#7cc4ff;box-shadow:0 0 0 3px rgba(124,196,255,.18);}",
+    ".ate-row-name{min-width:0;display:flex;flex-direction:column;gap:1px;}",
+    ".ate-row-label{font-size:13px;font-weight:600;color:#f2f3f6;line-height:1.2;}",
     '.ate-row-var{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:10.5px;color:#868c98;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}',
-    '.ate-controls{display:flex;align-items:center;gap:8px;}',
-    '.ate-swatch{width:30px;height:30px;min-width:30px;border-radius:8px;border:1px solid rgba(255,255,255,.25);box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);cursor:pointer;padding:0;background-clip:padding-box;}',
-    '.ate-swatch:focus-visible{outline:2px solid #7cc4ff;outline-offset:2px;}',
-    '.ate-swatch--ro{cursor:default;}',
-    '.ate-hex{width:92px;box-sizing:border-box;padding:6px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#eef0f3;',
+    ".ate-controls{display:flex;align-items:center;gap:8px;}",
+    ".ate-swatch{width:30px;height:30px;min-width:30px;border-radius:8px;border:1px solid rgba(255,255,255,.25);box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);cursor:pointer;padding:0;background-clip:padding-box;}",
+    ".ate-swatch:focus-visible{outline:2px solid #7cc4ff;outline-offset:2px;}",
+    ".ate-swatch--ro{cursor:default;}",
+    ".ate-hex{width:92px;box-sizing:border-box;padding:6px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#eef0f3;",
     'font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:12px;text-transform:uppercase;}',
-    '.ate-hex:focus-visible{outline:2px solid #7cc4ff;outline-offset:0;border-color:transparent;}',
-    '.ate-hex--invalid{border-color:#ff6b6b;background:rgba(255,107,107,.12);}',
-    '.ate-hex-hint{grid-column:2 / -1;font-size:11px;color:#ff9d9d;min-height:0;}',
-    '.ate-hex-hint:empty{display:none;}',
+    ".ate-hex:focus-visible{outline:2px solid #7cc4ff;outline-offset:0;border-color:transparent;}",
+    ".ate-hex--invalid{border-color:#ff6b6b;background:rgba(255,107,107,.12);}",
+    ".ate-hex-hint{grid-column:2 / -1;font-size:11px;color:#ff9d9d;min-height:0;}",
+    ".ate-hex-hint:empty{display:none;}",
     '.ate-ro-value{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:12px;color:#aeb3bd;width:92px;text-align:center;}',
-    '.ate-derived-meta{grid-column:2 / -1;display:flex;align-items:center;gap:6px;color:#868c98;font-size:11px;}',
-    '.ate-lock{display:inline-flex;color:#868c98;}',
+    ".ate-derived-meta{grid-column:2 / -1;display:flex;align-items:center;gap:6px;color:#868c98;font-size:11px;}",
+    ".ate-lock{display:inline-flex;color:#868c98;}",
 
     /* Alerts / contrast */
-    '.ate-alert{display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;padding:10px;border-radius:10px;background:rgba(255,196,84,.12);border:1px solid rgba(255,196,84,.3);color:#ffd88a;font-size:12px;line-height:1.4;}',
-    '.ate-contrast{margin-top:14px;padding:10px 12px;border-radius:10px;background:rgba(255,175,90,.1);border:1px solid rgba(255,175,90,.28);color:#ffca8a;font-size:12px;}',
-    '.ate-contrast-head{display:flex;align-items:center;gap:6px;font-weight:600;}',
-    '.ate-contrast ul{margin:6px 0 0;padding-left:18px;}',
-    '.ate-contrast li{margin:2px 0;}',
-    '.ate-contrast-note{margin-top:6px;color:#c9a878;font-size:11px;}',
+    ".ate-alert{display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;padding:10px;border-radius:10px;background:rgba(255,196,84,.12);border:1px solid rgba(255,196,84,.3);color:#ffd88a;font-size:12px;line-height:1.4;}",
+    ".ate-contrast{margin-top:14px;padding:10px 12px;border-radius:10px;background:rgba(255,175,90,.1);border:1px solid rgba(255,175,90,.28);color:#ffca8a;font-size:12px;}",
+    ".ate-contrast-head{display:flex;align-items:center;gap:6px;font-weight:600;}",
+    ".ate-contrast ul{margin:6px 0 0;padding-left:18px;}",
+    ".ate-contrast li{margin:2px 0;}",
+    ".ate-contrast-note{margin-top:6px;color:#c9a878;font-size:11px;}",
 
     /* Footer + buttons */
-    '.ate-footer{display:flex;gap:8px;padding:12px 14px;border-top:1px solid rgba(255,255,255,.08);background:inherit;}',
-    '.ate-btn{padding:8px 12px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;font-family:inherit;}',
-    '.ate-btn:focus-visible{outline:2px solid #7cc4ff;outline-offset:1px;}',
-    '.ate-btn--danger{background:rgba(255,107,107,.14);color:#ff9d9d;border-color:rgba(255,107,107,.35);flex:1;}',
-    '.ate-btn--danger:hover{background:rgba(255,107,107,.24);}',
-    '.ate-btn--ghost{background:rgba(255,255,255,.06);color:#d3d7df;border-color:rgba(255,255,255,.14);}',
-    '.ate-btn--ghost:hover{background:rgba(255,255,255,.12);}',
-    '.ate-btn--primary{background:#3b82f6;color:#fff;}',
-    '.ate-btn--primary:hover{background:#2f6fe0;}',
-    '.ate-btn--sm{padding:6px 10px;font-size:12px;}',
+    ".ate-footer{display:flex;gap:8px;padding:12px 14px;border-top:1px solid rgba(255,255,255,.08);background:inherit;}",
+    ".ate-btn{padding:8px 12px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;font-family:inherit;}",
+    ".ate-btn:focus-visible{outline:2px solid #7cc4ff;outline-offset:1px;}",
+    ".ate-btn--danger{background:rgba(255,107,107,.14);color:#ff9d9d;border-color:rgba(255,107,107,.35);flex:1;}",
+    ".ate-btn--danger:hover{background:rgba(255,107,107,.24);}",
+    ".ate-btn--ghost{background:rgba(255,255,255,.06);color:#d3d7df;border-color:rgba(255,255,255,.14);}",
+    ".ate-btn--ghost:hover{background:rgba(255,255,255,.12);}",
+    ".ate-btn--primary{background:#3b82f6;color:#fff;}",
+    ".ate-btn--primary:hover{background:#2f6fe0;}",
+    ".ate-btn--sm{padding:6px 10px;font-size:12px;}",
 
     /* Export & share (collapsible to stay compact on small screens) */
-    '.ate-export{border-top:1px solid rgba(255,255,255,.08);}',
-    '.ate-export-summary{padding:10px 14px;font-size:12px;font-weight:600;color:#c7cbd3;cursor:pointer;list-style:none;user-select:none;}',
-    '.ate-export-summary::-webkit-details-marker{display:none;}',
+    ".ate-export{border-top:1px solid rgba(255,255,255,.08);}",
+    ".ate-export-summary{padding:10px 14px;font-size:12px;font-weight:600;color:#c7cbd3;cursor:pointer;list-style:none;user-select:none;}",
+    ".ate-export-summary::-webkit-details-marker{display:none;}",
     '.ate-export-summary::before{content:"\\25B8  ";color:#8b909b;}',
     'details[open] > .ate-export-summary::before{content:"\\25BE  ";}',
-    '.ate-export-summary:focus-visible{outline:2px solid #7cc4ff;outline-offset:-2px;}',
-    '.ate-export-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 14px 12px;}',
-    '.ate-export-grid .ate-btn{width:100%;}',
-    '.ate-export-grid .ate-btn:last-child{grid-column:1 / -1;}',
+    ".ate-export-summary:focus-visible{outline:2px solid #7cc4ff;outline-offset:-2px;}",
+    ".ate-export-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 14px 12px;}",
+    ".ate-export-grid .ate-btn{width:100%;}",
+    ".ate-export-grid .ate-btn:last-child{grid-column:1 / -1;}",
 
     /* Shortcut hint (keycaps) — readable in both app themes, wraps on mobile */
-    '.ate-help{display:flex;align-items:center;flex-wrap:wrap;gap:5px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.08);color:#9aa0ab;font-size:11.5px;}',
-    '.ate-help-label{margin-right:3px;}',
-    '.ate-help-plus{color:#6b7280;}',
-    '.ate-kbd{display:inline-block;min-width:16px;text-align:center;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);border-bottom-width:2px;',
+    ".ate-help{display:flex;align-items:center;flex-wrap:wrap;gap:5px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.08);color:#9aa0ab;font-size:11.5px;}",
+    ".ate-help-label{margin-right:3px;}",
+    ".ate-help-plus{color:#6b7280;}",
+    ".ate-kbd{display:inline-block;min-width:16px;text-align:center;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);border-bottom-width:2px;",
     'font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:11px;line-height:1.35;color:#e9eaee;}',
 
     /* Confirm dialog */
-    '.ate-confirm-backdrop{position:absolute;inset:0;z-index:2147483200;display:grid;place-items:center;background:rgba(6,8,12,.5);padding:16px;}',
-    '.ate-confirm{width:320px;max-width:100%;background:rgba(28,29,35,.98);color:#e9eaee;border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:18px;box-shadow:0 24px 64px rgba(0,0,0,.5);}',
-    '.ate-confirm h3{margin:0 0 8px;font-size:15px;}',
-    '.ate-confirm p{margin:0 0 16px;font-size:13px;color:#b6bbc5;line-height:1.5;}',
-    '.ate-confirm-actions{display:flex;gap:8px;justify-content:flex-end;}',
+    ".ate-confirm-backdrop{position:absolute;inset:0;z-index:2147483200;display:grid;place-items:center;background:rgba(6,8,12,.5);padding:16px;}",
+    ".ate-confirm{width:320px;max-width:100%;background:rgba(28,29,35,.98);color:#e9eaee;border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:18px;box-shadow:0 24px 64px rgba(0,0,0,.5);}",
+    ".ate-confirm h3{margin:0 0 8px;font-size:15px;}",
+    ".ate-confirm p{margin:0 0 16px;font-size:13px;color:#b6bbc5;line-height:1.5;}",
+    ".ate-confirm-actions{display:flex;gap:8px;justify-content:flex-end;}",
 
     /* Colour picker */
-    '.ate-picker-catcher{position:absolute;inset:0;z-index:2147483100;}',
-    '.ate-picker{position:absolute;width:236px;background:rgba(24,25,30,.98);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px;box-shadow:0 24px 64px rgba(0,0,0,.5);}',
-    '.ate-picker--sheet{left:0;right:0;bottom:0;top:auto;width:100%;box-sizing:border-box;border-radius:14px 14px 0 0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));}',
-    '.ate-sv{position:relative;width:100%;height:150px;border-radius:9px;cursor:crosshair;border:1px solid rgba(255,255,255,.14);touch-action:none;}',
-    '.ate-sv:focus-visible{outline:2px solid #7cc4ff;outline-offset:2px;}',
-    '.ate-sv-thumb{position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.4);transform:translate(-50%,-50%);pointer-events:none;}',
-    '.ate-hue{-webkit-appearance:none;appearance:none;width:100%;height:12px;border-radius:7px;margin:12px 0;',
-    'background:linear-gradient(to right,#f00 0%,#ff0 17%,#0f0 33%,#0ff 50%,#00f 67%,#f0f 83%,#f00 100%);}',
-    '.ate-hue::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid rgba(0,0,0,.3);cursor:pointer;}',
-    '.ate-hue::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid rgba(0,0,0,.3);cursor:pointer;}',
-    '.ate-hue:focus-visible{outline:2px solid #7cc4ff;outline-offset:2px;}',
-    '.ate-picker-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}',
-    '.ate-preview{width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.25);}',
-    '.ate-picker-hex{flex:1;min-width:78px;}',
-    '.ate-picker-actions{display:flex;gap:6px;width:100%;justify-content:flex-end;margin-top:4px;}',
-    '.ate-picker-actions .ate-btn{padding:6px 12px;}',
+    ".ate-picker-catcher{position:absolute;inset:0;z-index:2147483100;}",
+    ".ate-picker{position:absolute;width:236px;background:rgba(24,25,30,.98);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px;box-shadow:0 24px 64px rgba(0,0,0,.5);}",
+    ".ate-picker--sheet{left:0;right:0;bottom:0;top:auto;width:100%;box-sizing:border-box;border-radius:14px 14px 0 0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));}",
+    ".ate-sv{position:relative;width:100%;height:150px;border-radius:9px;cursor:crosshair;border:1px solid rgba(255,255,255,.14);touch-action:none;}",
+    ".ate-sv:focus-visible{outline:2px solid #7cc4ff;outline-offset:2px;}",
+    ".ate-sv-thumb{position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.4);transform:translate(-50%,-50%);pointer-events:none;}",
+    ".ate-hue{-webkit-appearance:none;appearance:none;width:100%;height:12px;border-radius:7px;margin:12px 0;",
+    "background:linear-gradient(to right,#f00 0%,#ff0 17%,#0f0 33%,#0ff 50%,#00f 67%,#f0f 83%,#f00 100%);}",
+    ".ate-hue::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid rgba(0,0,0,.3);cursor:pointer;}",
+    ".ate-hue::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid rgba(0,0,0,.3);cursor:pointer;}",
+    ".ate-hue:focus-visible{outline:2px solid #7cc4ff;outline-offset:2px;}",
+    ".ate-picker-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}",
+    ".ate-preview{width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.25);}",
+    ".ate-picker-hex{flex:1;min-width:78px;}",
+    ".ate-picker-actions{display:flex;gap:6px;width:100%;justify-content:flex-end;margin-top:4px;}",
+    ".ate-picker-actions .ate-btn{padding:6px 12px;}",
 
-    '@media (prefers-reduced-motion: reduce){.ate-launcher,.ate-backdrop{transition:none;animation:none;}}',
-  ].join('');
+    "@media (prefers-reduced-motion: reduce){.ate-launcher,.ate-backdrop{transition:none;animation:none;}}",
+  ].join("");
 
   try {
     init();
   } catch (err) {
     if (window.console && console.warn) {
-      console.warn('[autheon-theme-editor] init failed', err);
+      console.warn("[autheon-theme-editor] init failed", err);
     }
   }
 })();

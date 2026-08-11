@@ -246,7 +246,10 @@ const displayNotificationTitle = (row, t) => {
   if (row?.newsId) {
     return displayNewsTitle({ id: row.newsId, title: row.title }, t);
   }
-  if (isInactivityWarningNotification(row) && typeof AuthStore !== "undefined") {
+  if (
+    isInactivityWarningNotification(row) &&
+    typeof AuthStore !== "undefined"
+  ) {
     const driver =
       (row.driverId &&
         AuthStore.getDrivers?.()?.find((d) => d.id === row.driverId)) ||
@@ -260,7 +263,10 @@ const displayNotificationTitle = (row, t) => {
 };
 
 const displayNotificationBody = (row, t) => {
-  if (isInactivityWarningNotification(row) && typeof AuthStore !== "undefined") {
+  if (
+    isInactivityWarningNotification(row) &&
+    typeof AuthStore !== "undefined"
+  ) {
     const driver =
       (row.driverId &&
         AuthStore.getDrivers?.()?.find((d) => d.id === row.driverId)) ||
@@ -1278,7 +1284,13 @@ const Ic = {
     // redesign): one icon per event, colored by severity tier.
     Key: () => (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-        <circle cx="7.5" cy="15.5" r="3.5" stroke="currentColor" strokeWidth="1.6" />
+        <circle
+          cx="7.5"
+          cy="15.5"
+          r="3.5"
+          stroke="currentColor"
+          strokeWidth="1.6"
+        />
         <path
           d="M10.5 12.5 19 4m-3 3 2 2m-5.5-1.5 2 2"
           stroke="currentColor"
@@ -3644,9 +3656,7 @@ const TourDocAmountFormSheet = ({
     walkTotal > 0 &&
     walkCurrent >= 1;
   const canSubmit = Boolean(
-    amountForm.netAmount &&
-      amountForm.grossAmount &&
-      amountForm.taxRatePercent,
+    amountForm.netAmount && amountForm.grossAmount && amountForm.taxRatePercent,
   );
 
   return (
@@ -7940,6 +7950,12 @@ function readStoredTheme() {
 
 function applyAppTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
+  // Without this, the browser keeps rendering native chrome it owns outright
+  // — the open <select> options popup, the <input type="date"> calendar
+  // flyout, scrollbars — in its OS-default light appearance, regardless of
+  // data-theme. Those aren't reachable by ordinary CSS at all; color-scheme
+  // is the one property that hands theme intent to the browser for them.
+  document.documentElement.style.colorScheme = theme;
   try {
     localStorage.setItem(THEME_KEY, theme);
   } catch (_) {
