@@ -1708,6 +1708,7 @@
               theme: localStorage.getItem("autheon-theme") || "light",
               setTheme: (next) => {
                 document.documentElement.setAttribute("data-theme", next);
+                document.documentElement.style.colorScheme = next;
                 localStorage.setItem("autheon-theme", next);
               },
             };
@@ -1723,6 +1724,11 @@
 
         useEffect(() => {
           document.documentElement.setAttribute("data-theme", theme);
+          // Covers first paint: applyAppTheme() (driver.jsx) sets this too, but
+          // only runs on a manual toggle — this effect also fires on mount, so
+          // native browser chrome (select popups, date pickers, scrollbars)
+          // matches the stored/system theme immediately, not just after a toggle.
+          document.documentElement.style.colorScheme = theme;
           localStorage.setItem("autheon-theme", theme);
         }, [theme]);
 

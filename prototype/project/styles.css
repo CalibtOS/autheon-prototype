@@ -5237,7 +5237,11 @@ select.input {
   margin-top: 14px;
   margin-bottom: 6px;
 }
-.phone-shell .tour-doc-amount-sheet .sheet-body > .tour-doc-amount-field:first-child .field-label,
+.phone-shell
+  .tour-doc-amount-sheet
+  .sheet-body
+  > .tour-doc-amount-field:first-child
+  .field-label,
 .phone-shell
   .tour-doc-amount-sheet
   .sheet-body
@@ -6263,8 +6267,9 @@ select.input {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--text);
-  color: #fff;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  color: var(--text);
   border-radius: 999px;
   padding: 6px 10px 6px 12px;
   font-size: 12.5px;
@@ -6272,10 +6277,13 @@ select.input {
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
+[data-theme="dark"] .phone-shell .filter-plz-pill {
+  background: var(--paper-3);
+}
 .phone-shell .filter-plz-pill-x {
   background: transparent;
   border: none;
-  color: #fff;
+  color: var(--muted-2);
   cursor: pointer;
   font-size: 14px;
   line-height: 1;
@@ -6556,7 +6564,7 @@ select.input {
   gap: 5px;
   font-size: var(--text-caption);
   font-weight: 600;
-  color: var(--st-ok, #1f9d55);
+  color: var(--diff-added);
   white-space: nowrap;
 }
 .phone-shell .account-email-verified .dot {
