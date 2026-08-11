@@ -230,6 +230,7 @@ html.pwa-standalone .pwa-ios-sheet {
    Tab bar is NOT a child of this node (see .pwa-tabbar-slot). */
 .phone-shell.pwa-viewport .phone-screen {
   --phone-chrome-top: env(safe-area-inset-top, 0px);
+  --driver-content-safe-top: env(safe-area-inset-top, 0px);
   position: relative;
   flex: 1 1 0;
   display: flex;
@@ -238,14 +239,14 @@ html.pwa-standalone .pwa-ios-sheet {
   min-height: 0;
   height: auto;
   max-height: none;
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--driver-content-safe-top);
   background: var(--canvas);
   overflow: hidden;
 }
 /* FE content column: short landscape keeps a minimum 0.25rem top pad. */
 @media (orientation: landscape) and (max-height: 500px) {
   .phone-shell.pwa-viewport .phone-screen {
-    padding-top: max(0.25rem, env(safe-area-inset-top, 0px));
+    --driver-content-safe-top: max(0.25rem, env(safe-area-inset-top, 0px));
   }
 }
 
@@ -257,6 +258,10 @@ html.pwa-standalone .pwa-ios-sheet {
   bottom: 0;
   z-index: 40;
   pointer-events: none;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--line);
 }
 .phone-shell.pwa-viewport .pwa-tabbar-slot .tabbar-container {
   /* styles.css pins .tabbar-container absolute; FE TabBar itself is relative
@@ -289,9 +294,16 @@ html.pwa-standalone .pwa-ios-sheet {
 .phone-shell.pwa-viewport .notifications-dropdown-header {
   padding-top: calc(16px + env(safe-area-inset-top, 0px));
 }
-/* Panel is already bottom:0; keep a single home-indicator pad on the toolbar. */
+/* Panel is already bottom:0; the document action bar owns the home indicator. */
 .phone-shell.pwa-viewport .docview-actions {
-  padding-bottom: max(12px, calc(12px + env(safe-area-inset-bottom, 0px)));
+  padding-bottom: max(12px, calc(8px + env(safe-area-inset-bottom, 0px)));
+}
+
+/* Primary screens own the top safe-area surface: the header starts at the
+   physical top of .phone-screen, while its content remains safely inset. */
+.phone-shell.pwa-viewport .pwa-screen-header {
+  margin-top: calc(-1 * var(--driver-content-safe-top, 0px));
+  padding-top: calc(16px + var(--driver-content-safe-top, 0px));
 }
 
 /* ---- Scroll body + bottom navigation (FE DriverScrollBody / TabBar) ----

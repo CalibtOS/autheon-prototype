@@ -101,7 +101,7 @@ It survives refetch, reload and the booking transition because it is derived on 
 
 Text label always present — icons support, never replace, the label.
 
-**In-app document viewer:** `DocumentPreviewSheet` is a full-height in-phone page rendering the seeded real 2-page PDF (`prototype/project/assets/transport-order-sample.pdf`) via pdf.js canvases (iframe fallback), with functional Download/Share/Print. All transport-order, tour-document, and Infopoint views/downloads serve this PDF — production streams the real file to the same surface.
+**In-app document viewer:** `DocumentPreviewSheet` is a focused full-screen driver view rendering the seeded real 2-page PDF (`prototype/project/assets/transport-order-sample.pdf`) via pdf.js canvases (iframe fallback), with functional Download/Share/Print. In the installed `/pwa` shell, opening an Infopoint document hides the global Marketplace / My jobs / Infopoint / Profile navigation and removes its reserved bottom region; closing the document restores the Infopoint tab and normal navigation. The document header surface owns the top safe area (surface extends edge-to-edge, title/subtitle/close remain inset), the PDF region is the only flexible scroller, and the document action bar owns the bottom safe area so Herunterladen / Teilen / Drucken remain above the home indicator with no blank strip below. All transport-order, tour-document, and Infopoint views/downloads serve this PDF — production streams the real file to the same surface.
 
 Card presentation: white surface on `#F5F5F7`, moderate rounding, fine outline and/or very subtle shadow, calm spacing with useful density; small supporting icons only where they aid comprehension; cards (not a desktop table) are the marketplace idiom.
 

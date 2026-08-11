@@ -784,6 +784,40 @@ const Ic = {
       />
     </svg>
   ),
+  Share: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 16V4m0 0L7 9m5-5 5 5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
+  Printer: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M7 8V4h10v4M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 14h10v6H7zM17 12h.01"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
   Calendar: () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
       <rect
@@ -3179,12 +3213,6 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
 
   const sheet = (
     <>
-      <button
-        type="button"
-        className="notifications-dropdown-backdrop"
-        onClick={onClose}
-        aria-label={t("uiDismiss")}
-      />
       <div
         className="docview-panel"
         role="dialog"
@@ -3253,17 +3281,38 @@ const DocumentPreviewSheet = ({ preview, onClose }) => {
           </div>
         ) : null}
         <div className="docview-actions">
-          <button type="button" className="btn sm" onClick={download}>
-            <Ic.Down /> {t("download")}
+          <button
+            type="button"
+            className="docview-action"
+            onClick={download}
+            aria-label={t("download")}
+          >
+            <span className="docview-action-icon" aria-hidden="true">
+              <Ic.Down />
+            </span>
+            <span className="docview-action-label">{t("download")}</span>
           </button>
-          {typeof navigator !== "undefined" &&
-          typeof navigator.share === "function" ? (
-            <button type="button" className="btn sm" onClick={share}>
-              {t("share")}
-            </button>
-          ) : null}
-          <button type="button" className="btn sm" onClick={printDoc}>
-            {t("print")}
+          <button
+            type="button"
+            className="docview-action"
+            onClick={share}
+            aria-label={t("share")}
+          >
+            <span className="docview-action-icon" aria-hidden="true">
+              <Ic.Share />
+            </span>
+            <span className="docview-action-label">{t("share")}</span>
+          </button>
+          <button
+            type="button"
+            className="docview-action"
+            onClick={printDoc}
+            aria-label={t("print")}
+          >
+            <span className="docview-action-icon" aria-hidden="true">
+              <Ic.Printer />
+            </span>
+            <span className="docview-action-label">{t("print")}</span>
           </button>
         </div>
       </div>
@@ -8983,6 +9032,7 @@ const Infopoint = ({
   // Absent for an ordinary Infopoint → message navigation, which keeps its
   // existing parent (the list) — see `closeDetail`.
   onReturnToOrigin,
+  onDocumentPreviewOpenChange,
 }) => {
   const { t } = useI18n();
   const store = useAuthStore();
@@ -9002,6 +9052,11 @@ const Infopoint = ({
   const detailItem = detailNewsId
     ? news.find((n) => n.id === detailNewsId) || null
     : null;
+
+  useEffect(() => {
+    onDocumentPreviewOpenChange?.(Boolean(docPreview));
+    return () => onDocumentPreviewOpenChange?.(false);
+  }, [docPreview, onDocumentPreviewOpenChange]);
 
   useEffect(() => {
     if (!deepLinkNewsId) return;
