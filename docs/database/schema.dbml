@@ -897,6 +897,9 @@ Table sp_cancellations {
   driver_id uuid [not null]              // executing service partner
   reason sp_cancellation_reason [not null]
   explanation text [not null]            // min 30 chars (app-enforced)
+  // Pre-cancel operational status (assigned | accepted) — mirrors empty_run_reports.status_before
+  // so list/get can restore statusBeforeProblem without reading job_status_history.
+  status_before varchar(32) [not null]
   created_at timestamptz [not null]
 }
 
