@@ -5658,51 +5658,51 @@ const DriversPane = ({ showToast, initialDriverId, onOpenJob }) => {
   // documents must be attachable in the create dialog, not only afterwards on
   // the profile). The store keys documents by driver id, which does not exist
   // until addDriver() returns, so files are staged here and flushed on save.
-  // One document per category, matching addDriverOnboardingDocument's
-  // `category_taken` rule — the picker only ever offers free categories.
+  // Multiple files may share a category — the picker always offers every
+  // category, and the file input accepts a multi-select.
   const [newDriverDocs, setNewDriverDocs] = useStateA([]);
   const newDocInputRef = useRefA(null);
   const pendingNewDocCategoryRef = useRefA(null);
-
-  const takenNewDocCategories = newDriverDocs.map((d) => d.category);
-  const availableNewDocCategories = AuthStore.DRIVER_DOC_CATEGORIES.filter(
-    (c) => !takenNewDocCategories.includes(c),
-  );
+  const newDocCategories = AuthStore.DRIVER_DOC_CATEGORIES;
   const [newDocCategory, setNewDocCategory] = useStateA("");
 
   const triggerNewDocPick = () => {
-    const category = newDocCategory || availableNewDocCategories[0];
+    const category = newDocCategory || newDocCategories[0];
     if (!category) return;
     pendingNewDocCategoryRef.current = category;
     newDocInputRef.current?.click();
   };
 
   const onNewDocPicked = (e) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files || []);
     e.target.value = "";
-    if (!file) return;
+    if (!files.length) return;
     const category = pendingNewDocCategoryRef.current;
     // Validate with the same rules the store applies, so a bad file is
     // rejected while picking instead of silently failing after the partner
     // has already been created.
-    if (!store.isAllowedTourDocumentFile(file)) {
-      showToast?.(t("adminUsersSaveFailed"), t("invoiceUploadInvalidType"));
-      return;
+    const accepted = [];
+    for (const file of files) {
+      if (!store.isAllowedTourDocumentFile(file)) {
+        showToast?.(t("adminUsersSaveFailed"), t("invoiceUploadInvalidType"));
+        continue;
+      }
+      if (store.exceedsPlatformUploadCeiling(file)) {
+        showToast?.(t("adminUsersSaveFailed"), t("stagedFailureFileTooLarge"));
+        continue;
+      }
+      accepted.push({
+        id: `staged-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        category,
+        file,
+      });
     }
-    if (store.exceedsPlatformUploadCeiling(file)) {
-      showToast?.(t("adminUsersSaveFailed"), t("stagedFailureFileTooLarge"));
-      return;
-    }
-    setNewDriverDocs((prev) =>
-      prev.some((d) => d.category === category)
-        ? prev
-        : [...prev, { category, file }],
-    );
-    setNewDocCategory("");
+    if (!accepted.length) return;
+    setNewDriverDocs((prev) => [...prev, ...accepted]);
   };
 
-  const removeNewDriverDoc = (category) =>
-    setNewDriverDocs((prev) => prev.filter((d) => d.category !== category));
+  const removeNewDriverDoc = (id) =>
+    setNewDriverDocs((prev) => prev.filter((d) => d.id !== id));
 
   const openNewDriver = () => {
     setDriverForm(emptyDriverEditForm());
@@ -6205,57 +6205,52 @@ const DriversPane = ({ showToast, initialDriverId, onOpenJob }) => {
                   newDocInputRef.current = el;
                 }}
                 type="file"
+                multiple
                 accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
                 style={{ display: "none" }}
                 onChange={onNewDocPicked}
               />
-              {availableNewDocCategories.length ? (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-end",
-                    gap: 10,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <div style={{ display: "grid", gap: 4 }}>
-                    <label
-                      className="field-label"
-                      htmlFor="new-driver-doc-category"
-                    >
-                      {t("adminSPDocCategory_")}
-                    </label>
-                    <select
-                      id="new-driver-doc-category"
-                      className="input"
-                      value={newDocCategory || availableNewDocCategories[0]}
-                      onChange={(e) => setNewDocCategory(e.target.value)}
-                    >
-                      {availableNewDocCategories.map((c) => (
-                        <option key={c} value={c}>
-                          {t("adminSPDocCategory_" + c)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn primary"
-                    onClick={triggerNewDocPick}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-end",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ display: "grid", gap: 4 }}>
+                  <label
+                    className="field-label"
+                    htmlFor="new-driver-doc-category"
                   >
-                    {t("adminSPDocUpload")}
-                  </button>
+                    {t("adminSPDocCategory_")}
+                  </label>
+                  <select
+                    id="new-driver-doc-category"
+                    className="input"
+                    value={newDocCategory || newDocCategories[0]}
+                    onChange={(e) => setNewDocCategory(e.target.value)}
+                  >
+                    {newDocCategories.map((c) => (
+                      <option key={c} value={c}>
+                        {t("adminSPDocCategory_" + c)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ) : (
-                <div className="label" style={{ fontSize: 12 }}>
-                  {t("adminSPDocAllCategoriesUsed")}
-                </div>
-              )}
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={triggerNewDocPick}
+                >
+                  {t("adminSPDocUpload")}
+                </button>
+              </div>
               {newDriverDocs.length ? (
                 <div style={{ display: "grid", gap: 6 }}>
                   {newDriverDocs.map((d) => (
                     <div
-                      key={d.category}
+                      key={d.id}
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -6273,7 +6268,7 @@ const DriversPane = ({ showToast, initialDriverId, onOpenJob }) => {
                       <button
                         type="button"
                         className="btn xs"
-                        onClick={() => removeNewDriverDoc(d.category)}
+                        onClick={() => removeNewDriverDoc(d.id)}
                       >
                         {t("adminSPDocRemove")}
                       </button>
@@ -6338,42 +6333,36 @@ const ServicePartnerProfileModal = ({
     .filter((a) => a.actor === driver.name)
     .slice(0, 50);
 
-  // Documents surface: pick a category from a dropdown, then upload one file.
-  // A category is "occupied" by any non-rejected, non-replaced doc, so it can
-  // only ever hold a single active document (uploads into a taken category are
-  // blocked by the store). Rejecting or removing a doc frees the category.
+  // Documents surface: pick a category, then upload one or more files into it.
+  // Categories stay available after an upload so admins can attach multiple
+  // files under the same category (create dialog uses the same rule).
   const activeDocs = docs.filter((d) => d.reviewStatus !== "replaced");
-  const isCategoryOccupied = (category) =>
-    docs.some(
-      (d) =>
-        d.category === category &&
-        d.reviewStatus !== "replaced" &&
-        d.reviewStatus !== "rejected",
-    );
-  const availableCategories = AuthStore.DRIVER_DOC_CATEGORIES.filter(
-    (c) => !isCategoryOccupied(c),
-  );
+  const uploadCategories = AuthStore.DRIVER_DOC_CATEGORIES;
 
   const triggerUpload = () => {
-    const category = uploadCategory || availableCategories[0];
+    const category = uploadCategory || uploadCategories[0];
     if (!category) return;
     pendingCategoryRef.current = category;
     uploadInputRef.current?.click();
   };
 
   const onFilePicked = (e) => {
-    const f = e.target.files?.[0];
+    const files = Array.from(e.target.files || []);
     e.target.value = "";
-    if (!f) return;
+    if (!files.length) return;
     const category = pendingCategoryRef.current;
-    const r = store.addDriverOnboardingDocument(driver.id, f, { category });
-    if (r.ok) showToast?.(t("adminSPDocUpload"), f.name);
-    else if (r.reason === "category_taken")
-      showToast?.(
-        t("adminSPDocCategoryTaken"),
-        t("adminSPDocCategory_" + category),
-      );
-    else showToast?.(t("adminMasterDataSaveFailed"), r.reason || "");
+    let uploaded = 0;
+    let lastName = "";
+    for (const f of files) {
+      const r = store.addDriverOnboardingDocument(driver.id, f, { category });
+      if (r.ok) {
+        uploaded++;
+        lastName = f.name;
+      } else showToast?.(t("adminMasterDataSaveFailed"), r.reason || f.name);
+    }
+    if (uploaded === 1) showToast?.(t("adminSPDocUpload"), lastName);
+    else if (uploaded > 1)
+      showToast?.(t("adminSPDocUpload"), String(uploaded));
   };
 
   const saveNotes = () => {
@@ -6685,48 +6674,43 @@ const ServicePartnerProfileModal = ({
                     uploadInputRef.current = el;
                   }}
                   type="file"
+                  multiple
                   accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
                   style={{ display: "none" }}
                   onChange={onFilePicked}
                 />
-                {availableCategories.length ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-end",
-                      gap: 10,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <div style={{ display: "grid", gap: 4 }}>
-                      <label className="field-label">
-                        {t("adminSPDocCategory_")}
-                      </label>
-                      <select
-                        className="input"
-                        value={uploadCategory || availableCategories[0]}
-                        onChange={(e) => setUploadCategory(e.target.value)}
-                      >
-                        {availableCategories.map((c) => (
-                          <option key={c} value={c}>
-                            {t("adminSPDocCategory_" + c)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn primary"
-                      onClick={triggerUpload}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-end",
+                    gap: 10,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ display: "grid", gap: 4 }}>
+                    <label className="field-label">
+                      {t("adminSPDocCategory_")}
+                    </label>
+                    <select
+                      className="input"
+                      value={uploadCategory || uploadCategories[0]}
+                      onChange={(e) => setUploadCategory(e.target.value)}
                     >
-                      {t("adminSPDocUpload")}
-                    </button>
+                      {uploadCategories.map((c) => (
+                        <option key={c} value={c}>
+                          {t("adminSPDocCategory_" + c)}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                ) : (
-                  <div className="label" style={{ fontSize: 12 }}>
-                    {t("adminSPDocAllCategoriesUsed")}
-                  </div>
-                )}
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={triggerUpload}
+                  >
+                    {t("adminSPDocUpload")}
+                  </button>
+                </div>
               </div>
 
               {activeDocs.length ? (

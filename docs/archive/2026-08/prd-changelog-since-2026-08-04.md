@@ -1,10 +1,59 @@
-# PRD changelog: 2026-08-04 / 2026-08-09 (v2.31 -> v2.37, plus main's independently-numbered v2.33 job-attachment-limits entry)
+# PRD changelog: 2026-08-04 / 2026-08-11 (v2.31 -> v2.38, plus main's independently-numbered v2.33 job-attachment-limits entry)
 
 > Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
 
 **Canonical file:** `docs/requirements/prd.json`
 
-> **Scope of this file:** the **v2.37** driver-notification entry (renumbered from v2.32 — briefly labelled v2.36 on the feature branch until main independently claimed v2.36 for service-partner onboarding documents); the **v2.36** service-partner document-upload entry; the **v2.35** status-consolidation addendum; and the **v2.34** entry plus its same-release `[v2.34-cutoff-details]`, `[v2.34-feed-redesign]`, and `[v2.34-filters]` addenda. Baseline is **v2.31** (Driver/User schema fix + several presentation addenda, 2026-08-01 — see [`../2026-07/prd-changelog-since-2026-07-30.md`](../2026-07/prd-changelog-since-2026-07-30.md)).
+> **Scope of this file:** the **v2.38** multi-file-per-category amendment to service-partner documents; the **v2.37** driver-notification entry (renumbered from v2.32 — briefly labelled v2.36 on the feature branch until main independently claimed v2.36 for service-partner onboarding documents); the **v2.36** service-partner document-upload entry; the **v2.35** status-consolidation addendum; and the **v2.34** entry plus its same-release `[v2.34-cutoff-details]`, `[v2.34-feed-redesign]`, and `[v2.34-filters]` addenda. Baseline is **v2.31** (Driver/User schema fix + several presentation addenda, 2026-08-01 — see [`../2026-07/prd-changelog-since-2026-07-30.md`](../2026-07/prd-changelog-since-2026-07-30.md)).
+
+---
+
+# PRD changelog addendum: 2026-08-11 (v2.38 — multiple active service-partner documents per category)
+
+> Historical snapshot for decision traceability. Use [`../../requirements/prd.json`](../../requirements/prd.json) for the current specification.
+
+**Canonical file:** `docs/requirements/prd.json`
+
+---
+
+## v2.38 — Multiple active service-partner documents per category (2026-08-11)
+
+**Baseline:** PRD v2.37 (type-aware driver notifications refined) / v2.36 (service-partner document upload)
+**Source:** client correction against the admin prototype — create-partner and profile Documents upload must allow several files under the same category; removing the category from the picker after one upload was incorrect.
+**Type:** domain-model + schema constraint amendment + prototype behaviour change. Amends Task 34 / v2.36; no new table or enum.
+
+### 1. Previous behaviour (v2.36)
+
+At most one *active* (`Uploaded` / `Accepted`) document was allowed per `(service partner, category)`. A second upload into an occupied category was refused (`category_taken`). The admin create dialog and profile Documents tab hid occupied categories from the picker. **`other` was the only exception** and could repeat. Schema planned a partial unique index on `driver_documents(driver_id, category) where review_status in ('uploaded','accepted') and category <> 'other'`.
+
+### 2. New behaviour
+
+- **Multiple active files per category** for every `driver_document_category` value, including business registration, licence front/back, ID front/back, and other.
+- Category stays in the picker after an upload. Create-partner staging and profile upload accept **multi-file** selection into the selected category.
+- Prototype `store.addDriverOnboardingDocument` no longer returns `category_taken`; staged create docs are keyed per file (not per category).
+- **Schema:** do **not** create the v2.36 partial unique. Keep the non-unique list index `(driver_id, category, uploaded_at)`.
+- **Unchanged:** partner-scoped table, six categories, review vocabulary (`Uploaded` / `Accepted` / `Rejected` / `Replaced`), per-row replacement versioning (`supersedes` / `replaced_by`), optional `validUntil` with derived expiry, private `upload_assets`, audit keys.
+
+### 3. Files / docs
+
+| File | Change |
+| --- | --- |
+| `docs/requirements/prd.json` | v2.38 version prefix; Task 34 acceptance criteria; `domain_model_summary` category/status wording |
+| `docs/database/schema.dbml` | Header note; enum comments; `driver_documents` index note — partial unique withdrawn |
+| `docs/database/logical-model.md` | v2.38 status override; section + constraints amended |
+| `docs/requirements/admin-client-requirements-status.md` | Phase 7 #9 evidence |
+| `docs/product/autheon-context-pack.md` | Version trail |
+| `prototype/project/store.js` / `admin.jsx` | Multi-file per category (create + profile) |
+| `autheon-be` upload driver-document use case + repo | Removed `category_taken` / `findActiveByDriverAndCategory` guard (PRD v2.38) |
+| `docs/archive/2026-08/prd-changelog-since-2026-08-04.md` | This entry |
+
+### 4. What deliberately did NOT change
+
+Tour documents (`job_documents` / `document_files`), Task 27, replacement versioning semantics, review accept/reject rules, and storage via `upload_assets`.
+
+### 5. Open points
+
+- Whether any category should later become **mandatory** before probation release / operational access remains open (same as v2.36).
 
 ---
 
@@ -33,7 +82,7 @@ A service partner's **onboarding** paperwork — business registration, driving 
 - **New Task 34**, epic _Service Partner Documents & Onboarding Compliance_ (20 acceptance criteria).
 - **Partner-scoped, never tour-scoped.** An upload links to a service partner id and never to a job id; the API rejects a create carrying a job id. These documents stay out of the tour-document lists, the tour review queue, and settlement/invoice reconciliation.
 - **Six categories:** business registration (Gewerbeanmeldung), licence front, licence reverse, ID front, ID reverse, other.
-- **One active document per category** — active means `Uploaded` or `Accepted`. A second upload into an occupied category is refused rather than silently replacing. **Rejecting or replacing frees the slot**, so a partner re-submits without an admin deleting anything. **`other` is exempt** and may repeat.
+- **One active document per category** — active means `Uploaded` or `Accepted`. A second upload into an occupied category is refused rather than silently replacing. **Rejecting or replacing frees the slot**, so a partner re-submits without an admin deleting anything. **`other` is exempt** and may repeat. **Superseded 2026-08-11 by v2.38** — multiple active files per category are now allowed for every category; see the v2.38 entry above.
 - **Own status vocabulary:** `Uploaded` / `Accepted` / `Rejected` / `Replaced`.
 - **Versioning:** a replacement **inserts** a new row (`version + 1`, status `Uploaded`) and marks the prior row `Replaced`, linked both directions. Nothing is overwritten; nothing is hard-deleted.
 - **Validity:** optional `validUntil`. **Expiry is derived at read time** — an expired document keeps its `Accepted` status.
@@ -44,7 +93,7 @@ A service partner's **onboarding** paperwork — business registration, driving 
 
 The tour statuses `Missing`, `Under Review` and `Correction Required` **cannot occur** for an onboarding document, and the tour vocabulary has no `Replaced`. Reusing `document_type` / `document_review_status` would have forced four unreachable states onto every partner document and blocked the one state it genuinely needs.
 
-Likewise, `driver_documents` is a separate table rather than a nullable `job_id` on `job_documents`. The two families share only "a reviewed file"; they differ in scope, lifecycle (onboarding/compliance vs per-tour settlement), review vocabulary, retention driver, and constraints — only the partner document has an expiry date and a one-active-row-per-category rule. A nullable-FK merge would make every existing tour-document query filter `job_id IS NOT NULL` permanently.
+Likewise, `driver_documents` is a separate table rather than a nullable `job_id` on `job_documents`. The two families share only "a reviewed file"; they differ in scope, lifecycle (onboarding/compliance vs per-tour settlement), review vocabulary, retention driver, and constraints — only the partner document has an expiry date. (v2.36 also introduced a one-active-row-per-category rule; **v2.38 withdrew that uniqueness constraint** while keeping the separate table.) A nullable-FK merge would make every existing tour-document query filter `job_id IS NOT NULL` permanently.
 
 ### 4. Files / docs
 
