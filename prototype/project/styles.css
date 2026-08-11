@@ -694,6 +694,17 @@ select.input {
 [data-theme="dark"] select.input {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aeaeb2' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
+@supports (-webkit-touch-callout: none) {
+  @media (hover: none) and (pointer: coarse) {
+    input[type="date"].input {
+      -webkit-appearance: none;
+      appearance: none;
+      min-width: 0;
+      max-width: 100%;
+      min-height: 40px;
+    }
+  }
+}
 .field-label {
   font-family: var(--font-sans);
   font-size: var(--text-caption);
@@ -7691,9 +7702,12 @@ button.notifications-dropdown-backdrop {
   flex: 1;
   min-width: 0;
 }
+/* minmax(0, ...) not `1fr`: a bare `1fr` is `minmax(auto, 1fr)`, whose auto
+   minimum is the item's content size. Native date fields have a large intrinsic
+   width, which blows the tracks past the container and eats the gap. */
 .grid-2-col-10 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
 }
 .flex-col-gap-10 {
