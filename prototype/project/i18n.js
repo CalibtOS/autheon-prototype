@@ -1205,8 +1205,6 @@ window.I18n = (() => {
       adminSPDocRemove: "Remove",
       adminSPDocRemoved: "Document removed",
       adminSPDocUploadTitle: "Upload document",
-      adminSPDocAllCategoriesUsed: "Every category already has a document.",
-      adminSPDocCategoryTaken: "This category already has a document",
       adminSPDocPendingOnSave: "Documents are attached when you save.",
       adminSPDocUploadFailedCount: "{count} document(s) could not be attached",
       adminSPDocAccept: "Accept",
@@ -3503,8 +3501,6 @@ window.I18n = (() => {
       adminSPDocRemove: "Entfernen",
       adminSPDocRemoved: "Dokument entfernt",
       adminSPDocUploadTitle: "Dokument hochladen",
-      adminSPDocAllCategoriesUsed: "Jede Kategorie hat bereits ein Dokument.",
-      adminSPDocCategoryTaken: "Diese Kategorie hat bereits ein Dokument",
       adminSPDocPendingOnSave: "Dokumente werden beim Speichern angehängt.",
       adminSPDocUploadFailedCount:
         "{count} Dokument(e) konnten nicht angehängt werden",

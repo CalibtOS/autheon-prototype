@@ -6034,17 +6034,9 @@ window.AuthStore = (() => {
       if (exceedsPlatformUploadCeiling(file))
         return { ok: false, reason: "file_too_large" };
       const category = normalizeDriverDocCategory(opts.category);
-      // One document per category: block a second upload while the category is
-      // still occupied. Only uploaded/accepted docs occupy the slot — a rejected
-      // (or removed/replaced) doc frees it so the partner can re-submit.
-      const occupying = driverDocuments.find(
-        (d) =>
-          d.driverId === driverId &&
-          d.category === category &&
-          d.reviewStatus !== "replaced" &&
-          d.reviewStatus !== "rejected",
-      );
-      if (occupying) return { ok: false, reason: "category_taken" };
+      // Multiple active files per category are allowed (create + profile
+      // upload). Rejected/replaced rows stay in history but do not block
+      // further uploads into the same category.
       const row = {
         id: `DD-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         driverId,

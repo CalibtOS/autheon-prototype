@@ -38,7 +38,8 @@
 //     active row = ended_at IS NULL — replaces BE is_active / assigned_at / accepted_at / revoked_*).
 //   - driver_documents / user_notifications / audit_events / sp_cancellations confirmed complete
 //     vs PRD domain_model_summary; indexes annotated where DBML cannot express partial uniques.
-// 2026-08-09 (PRD v2.36) — SERVICE-PARTNER (ONBOARDING) DOCUMENT UPLOAD, documented retroactively: the prototype's driverDocuments entity (store.js, Phase 7, surfaced in ServicePartnerProfileModal's "Documents" tab) had no backend counterpart in this file until now. This is the first PARTNER-scoped document model — every pre-existing document table (job_documents, document_files, generated_job_documents) is JOB-scoped and stays untouched. New driver_document_category enum (business_registration | licence_front | licence_back | id_front | id_back | other) and driver_document_status enum (uploaded | accepted | rejected | replaced) — deliberately SEPARATE from document_type and document_review_status: an onboarding document is never reviewed against a tour, never carries the missing/under_review/correction_required states, and its lifecycle adds 'replaced' for versioning. New driver_documents table (driver_id, category, upload_asset_id, valid_until, version, review_status, rejection_reason, supersedes_document_id/replaced_by_document_id, uploaded/reviewed audit columns). ONE ACTIVE DOCUMENT PER CATEGORY is a partial unique index on (driver_id, category) WHERE review_status IN ('uploaded','accepted') — a rejected or replaced row frees the slot so the partner can re-submit; see logical-model.md. Files reuse upload_assets (private access) exactly as infopoint_documents do; no second storage path. NO change to drivers (the link is driver_documents.driver_id), and NO change to job_documents. New audit_events.action_key values: driver_document_uploaded, driver_document_accepted, driver_document_rejected, driver_document_replaced, driver_document_removed, plus driver_document_viewed / driver_document_downloaded for the content-access trail (entity_type 'driver_document').
+// 2026-08-11 (PRD v2.38) — SERVICE-PARTNER DOCUMENTS: MULTIPLE ACTIVE FILES PER CATEGORY. Supersedes the v2.36 one-active-per-category rule (and its `other`-only exception). Admin create-partner and profile Documents upload keep every category available after an upload and accept multi-file selection into the selected category. schema: DROP the planned partial unique on (driver_id, category) WHERE review_status IN ('uploaded','accepted'); keep the non-unique (driver_id, category, uploaded_at) list index. Prototype: store.addDriverOnboardingDocument no longer returns category_taken. See logical-model.md and changelog.
+// 2026-08-09 (PRD v2.36) — SERVICE-PARTNER (ONBOARDING) DOCUMENT UPLOAD, documented retroactively: the prototype's driverDocuments entity (store.js, Phase 7, surfaced in ServicePartnerProfileModal's "Documents" tab) had no backend counterpart in this file until now. This is the first PARTNER-scoped document model — every pre-existing document table (job_documents, document_files, generated_job_documents) is JOB-scoped and stays untouched. New driver_document_category enum (business_registration | licence_front | licence_back | id_front | id_back | other) and driver_document_status enum (uploaded | accepted | rejected | replaced) — deliberately SEPARATE from document_type and document_review_status: an onboarding document is never reviewed against a tour, never carries the missing/under_review/correction_required states, and its lifecycle adds 'replaced' for versioning. New driver_documents table (driver_id, category, upload_asset_id, valid_until, version, review_status, rejection_reason, supersedes_document_id/replaced_by_document_id, uploaded/reviewed audit columns). AMENDED 2026-08-11 (PRD v2.38): the v2.36 "ONE ACTIVE DOCUMENT PER CATEGORY" partial unique is WITHDRAWN — multiple active rows per (driver_id, category) are allowed for every category. Files reuse upload_assets (private access) exactly as infopoint_documents do; no second storage path. NO change to drivers (the link is driver_documents.driver_id), and NO change to job_documents. New audit_events.action_key values: driver_document_uploaded, driver_document_accepted, driver_document_rejected, driver_document_replaced, driver_document_removed, plus driver_document_viewed / driver_document_downloaded for the content-access trail (entity_type 'driver_document').
 // 2026-07-31 (PRD v2.30) — CONSOLIDATED INVOICES (Admin Phase 12) schema added retroactively: the prototype's consolidatedInvoices entity had no backend counterpart in this file until now. New consolidated_invoice_status enum (in_review | correction_required | rejected | completed, deliberately separate from document_review_status and invoice_payment_status). New consolidated_invoices table (supplier_invoice_number, upload_asset_id, amount, driver_offer_sum snapshot, amount_mismatch, status, rejection_reason, internal_note, created_at/by) and consolidated_invoice_jobs join table — the first many-to-many relationship in this schema, since one consolidated invoice can span multiple completed jobs. Accepting an invoice only flips the linked jobs' existing job_financials.payment_status to 'paid'; it does not replace or duplicate that field. App-level guard (a job may not be linked to more than one non-rejected consolidated invoice at once) must be re-implemented server-side, e.g. a partial unique index or transactional check — see logical-model.md.
 // 2026-07-29 (PRD v2.24) — AUTH DEMO (PR #32), documented retroactively. Keycloak remains the identity
 // provider and AUTHEON stores no passwords / no session table / no password_resets table. AMENDED
@@ -188,13 +189,13 @@ Enum driver_document_category {
   licence_back           // driving licence, reverse
   id_front               // identity document, front
   id_back                // identity document, reverse
-  other                  // catch-all; the ONLY category that may legitimately repeat
+  other                  // catch-all; any category may hold multiple active files (PRD v2.38)
 }
 
 Enum driver_document_status {
-  uploaded   // submitted, awaiting admin review — occupies the category slot
-  accepted   // admin accepted — occupies the category slot
-  rejected   // admin rejected with a reason — FREES the slot for re-submission
+  uploaded   // submitted, awaiting admin review
+  accepted   // admin accepted
+  rejected   // admin rejected with a reason
   replaced   // superseded by a newer version; retained, never deleted
 }
 
@@ -785,15 +786,21 @@ Table job_document_reviews {
 // the admin Service Partner profile "Documents" tab reads. Deliberately a separate
 // table rather than a nullable job_id on job_documents — the two have different
 // lifecycles (onboarding/compliance vs per-tour settlement), different review
-// vocabularies, different retention drivers, and only this one has an expiry date
-// and a one-active-row-per-category rule. A nullable-FK merge would make every
-// tour-document query filter on "job_id IS NOT NULL" forever.
+// vocabularies, and different retention drivers; only this one has an expiry date.
+// A nullable-FK merge would make every tour-document query filter on
+// "job_id IS NOT NULL" forever.
+//
+// AMENDED 2026-08-11 (PRD v2.38): multiple active files per category are allowed
+// for EVERY category (the v2.36 one-active-row-per-category partial unique, and
+// its other-only exception, are withdrawn). Category labels files; it does not
+// reserve a single slot.
 //
 // VERSIONING mirrors document_files.supersedes_file_id: a replacement INSERTS a new
 // row (version + 1, review_status 'uploaded', supersedes_document_id -> the prior
 // row) and marks the prior row 'replaced' with replaced_by_document_id pointing
 // forward. The previous binary is never overwritten and the row is never deleted,
-// so document history stays reviewable.
+// so document history stays reviewable. Replacement versioning is per document
+// row, not a category-wide single-slot swap.
 Table driver_documents {
   id uuid [pk]
   driver_id uuid [not null]
@@ -817,8 +824,8 @@ Table driver_documents {
 
   indexes {
     (driver_id, category, uploaded_at)
-    // Partial unique (logical-model.md): one active doc per (driver_id, category)
-    // WHERE review_status IN ('uploaded','accepted') AND category <> 'other'
+    // PRD v2.38: NO partial unique on (driver_id, category). Multiple active
+    // (uploaded|accepted) rows per category are allowed. See logical-model.md.
   }
 }
 

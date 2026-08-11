@@ -1,5 +1,13 @@
 # AUTHEON database logical model
 
+> **Status override:** Updated 2026-08-11 - PRD v2.38: **service-partner documents allow
+> multiple active files per category**. Withdraws the v2.36 one-active-per-category partial
+> unique (and its `other`-only exception) and the prototype `category_taken` guard. Category
+> remains a label for grouping/filtering; create-partner and profile Documents upload keep
+> every category available after an upload and accept multi-file selection. **No new columns
+> or enums.** List index `(driver_id, category, uploaded_at)` stays. See "Service-partner
+> onboarding documents" and "Required constraints and indexes".
+
 > **Status override:** Updated 2026-08-09 - PRD v2.36 / Task 34: **service-partner (onboarding) document
 > upload**, documented retroactively — the prototype's `driverDocuments` entity (`store.js` Phase 7, admin
 > Service Partner profile → "Documents" tab) had no backend counterpart. **New `driver_documents` table**,
@@ -8,9 +16,9 @@
 > `id_back` / `other`) **and `driver_document_status` enum** (`uploaded` / `accepted` / `rejected` / `replaced`),
 > both deliberately **separate** from `document_type` / `document_review_status`, which describe tour
 > documents and carry states (`missing`, `under_review`, `correction_required`) that cannot occur for an
-> onboarding document. **One active document per category** is a partial unique index over
-> `review_status in ('uploaded','accepted')`, excluding `other` — a rejected or replaced row frees the slot,
-> which is the database expression of the prototype's `category_taken` guard. Versioning reuses the existing
+> onboarding document. **Amended 2026-08-11 (PRD v2.38):** the v2.36 "one active document per category"
+> partial unique / `category_taken` guard is **withdrawn** — multiple active rows per category are allowed.
+> Versioning reuses the existing
 > `supersedes`/`replaced_by` pattern (insert a new row, mark the old one `replaced`; nothing is overwritten or
 > deleted). `valid_until` is optional metadata and **expiry is derived at read time, never a stored status**.
 > Files reuse `upload_assets` (`access = 'private'`), the same path as `infopoint_documents` — no second
@@ -287,15 +295,15 @@ Files are not stored in PostgreSQL blobs. `upload_assets` is the **only** binary
 
 Generated transport-order PDFs are represented as generated job documents linked to a `document_files` row (`generated_job_documents.document_file_id`), not as standalone raw storage keys. This keeps generated documents inside the same versioning, download authorization, and audit model as driver/admin tour documents.
 
-### Service-partner onboarding documents (PRD v2.36, 2026-08-09)
+### Service-partner onboarding documents (PRD v2.36, 2026-08-09; amended v2.38, 2026-08-11)
 
 `driver_documents` is the first **partner-scoped** document table. Every other document table in this model hangs off a job; this one hangs off `drivers` and is what the admin Service Partner profile's "Documents" tab reads. It covers the client's onboarding/compliance pack — business registration, driving licence (front/back), identity document (front/back), and a catch-all `other`.
 
-**Why a separate table rather than a nullable `job_id` on `job_documents`.** The two document families share only the notion "a reviewed file". They differ in scope (partner vs tour), lifecycle (onboarding/compliance vs per-tour settlement), review vocabulary (`driver_document_status` has no `missing`/`under_review`/`correction_required`, and adds `replaced`), retention driver, and constraints — only the partner document has an expiry date and a one-active-row-per-category rule. Merging them behind a nullable FK would force every existing tour-document query to filter `job_id is not null` permanently, and would push four states onto rows that can never enter them.
+**Why a separate table rather than a nullable `job_id` on `job_documents`.** The two document families share only the notion "a reviewed file". They differ in scope (partner vs tour), lifecycle (onboarding/compliance vs per-tour settlement), review vocabulary (`driver_document_status` has no `missing`/`under_review`/`correction_required`, and adds `replaced`), retention driver, and constraints — only the partner document has an expiry date. Merging them behind a nullable FK would force every existing tour-document query to filter `job_id is not null` permanently, and would push four states onto rows that can never enter them.
 
-**Category slots.** At most one *active* document per `(driver_id, category)`, where active means `review_status in ('uploaded','accepted')`. Rejecting or replacing a document frees the slot so the partner can re-submit without an admin having to delete anything. `other` is exempt from the rule — see "Required constraints and indexes".
+**Multiple files per category (PRD v2.38).** A partner (or an admin uploading on their behalf) may hold **several active documents** under the same `(driver_id, category)`, where active means `review_status in ('uploaded','accepted')`. Category labels and groups files; it does **not** reserve a single slot. The admin create-partner dialog and the profile Documents tab keep every category available after an upload and accept multi-file selection into the selected category. The v2.36 one-active-per-category rule (and its `other`-only exception / prototype `category_taken` guard) is withdrawn.
 
-**Versioning** mirrors `document_files.supersedes_file_id` rather than inventing a second pattern: a replacement **inserts** a new row (`version + 1`, `review_status = 'uploaded'`, `supersedes_document_id` pointing back) and marks the prior row `replaced` with `replaced_by_document_id` pointing forward. The previous binary is never overwritten and no row is ever deleted, so the review history stays reconstructable. Binaries and filename/MIME/size live only in `upload_assets` (`access = 'private'`), the same path `infopoint_documents` uses — there is no second storage mechanism. MIME allowlist and per-file size ceilings are enforced at write time against the upload asset.
+**Versioning** mirrors `document_files.supersedes_file_id` rather than inventing a second pattern: a replacement **inserts** a new row (`version + 1`, `review_status = 'uploaded'`, `supersedes_document_id` pointing back) and marks the prior row `replaced` with `replaced_by_document_id` pointing forward. The previous binary is never overwritten and no row is ever deleted, so the review history stays reconstructable. Replacement is per document row (not a category-wide single-slot swap). Binaries and filename/MIME/size live only in `upload_assets` (`access = 'private'`), the same path `infopoint_documents` uses — there is no second storage mechanism. MIME allowlist and per-file size ceilings are enforced at write time against the upload asset.
 
 **Expiry** (`valid_until`) is optional metadata, not a status. An expired document keeps `review_status = 'accepted'`; "expired" is derived at read time by comparing `valid_until` to the current date. Storing it as a status would require a sweep job to mutate review rows and would conflate an admin decision with the passage of time.
 
@@ -345,8 +353,7 @@ The SQL implementation must include at least these controls:
 - Audit and status-history indexes: `(job_id, occurred_at desc)`.
 - Unique `(consolidated_invoice_id, job_id)` on `consolidated_invoice_jobs`. A job may not be linked to more than one _non-rejected_ `consolidated_invoices` row at a time (the prototype guard `countActiveInvoicesForJob`/`getActiveInvoiceForJob`) — enforce server-side with a service-level check inside the same transaction that inserts the join rows, since a partial unique index cannot express "unique except when the referenced parent's status is rejected" across two tables.
 - Document queue index: `(job_id, review_status, created_at desc)`.
-- One active service-partner document per category (PRD v2.36): partial unique index on `driver_documents(driver_id, category) where review_status in ('uploaded','accepted')`. A `rejected` or `replaced` row deliberately falls outside the index so the slot is freed and the partner can re-submit — this is the database expression of the prototype's `category_taken` guard. The `other` category is the one exception and must be **excluded** from the index (`and category <> 'other'`), since a partner may legitimately hold several miscellaneous documents at once.
-- Service-partner document tab index: `(driver_id, category, uploaded_at desc)`; expiry sweep index on `driver_documents(valid_until) where valid_until is not null and review_status = 'accepted'`.
+- Service-partner documents — multiple active files per category (PRD v2.38, supersedes v2.36): **do not** create a partial unique on `driver_documents(driver_id, category)`. Multiple `uploaded`/`accepted` rows may share the same category. Keep the list index `(driver_id, category, uploaded_at desc)` and the expiry sweep index on `driver_documents(valid_until) where valid_until is not null and review_status = 'accepted'`.
 - `driver_documents.rejection_reason` must be non-empty when `review_status = 'rejected'` (check constraint or service-level guard), mirroring the tour-document rejection rule.
 - Outbox delivery index: `(status, available_at)`.
 
