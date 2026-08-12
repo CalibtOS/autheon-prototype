@@ -38,7 +38,7 @@
       "Admins may cancel, republish, adjust, close, or resolve jobs where operations require it, with full audit history.",
       "Performed means the tour was completed operationally. Document review and settlement states are tracked separately.",
       "Version 1 uses external map app handoff for pickup and delivery navigation, not an internal map or GPS tracking module.",
-      "Drivers should not receive workflow emails from the system. Driver workflow communication should happen through the PWA and push notifications where relevant.",
+      "Drivers receive a workflow email when a job is marketplace-booked or admin-assigned; that email includes the transport-order PDF (OQ-12 resolved 2026-08-12). Other driver workflow communication stays PWA and push. Account-security emails (invite, reset, email-change) are separate.",
       "Admins can receive system email alerts with deep links for critical events in Version 1; a full backend notification center is future scope unless trivial in the chosen platform.",
       "Full finance dashboards, accounting integration, vehicle condition documentation, historical Excel tour migration, CSV mass import, and complex tour chains are out of Version 1 unless separately approved.",
       "The final app display name should be configurable because the client does not want the program to be named AUTHEON in the UI.",
@@ -62,7 +62,7 @@
       "Customer and address master-data notes are operational reference notes and must not be automatically copied to every new tour unless an admin explicitly applies or edits them for that order.",
       "German postal-prefix filtering treats broader prefixes as inclusive of narrower prefixes; for example prefix 4 matches 40 and 41 unless a more specific filter is applied.",
       "Manual direct assignment policy remains a client decision. If V1 treats it as exception-only, production must store the external confirmation/proof note and audit the assignment.",
-      "UNRESOLVED CONFLICT (F-01/F-02, post-v1.8 meeting) — driver workflow email after booking: the post-v1.8 meeting proposed an optional booking-confirmation email to drivers (possibly including the order and attached PDFs) once a driver has booked, but the standing PRD global rule and note prohibit driver workflow emails (PWA/push only). This conflict must NOT be silently resolved; the prohibiting rule stays in force until a human decides. See production_open_questions.",
+      "RESOLVED 2026-08-12 (OQ-12 / F-02): drivers receive a workflow email when a job is marketplace-booked or admin-assigned; the email includes the transport-order PDF. PWA/in-app/push channels remain. This supersedes the former global prohibition on driver workflow emails. Mail is AUTHEON SMTP (OQ-2). PDF attachment Done is gated on Task 17 / OQ #22–28.",
       "In-PWA document handling (F-03, post-v1.8 meeting): document handling should prefer preview inside the PWA for permitted PDFs/images rather than forcing a separate browser tab; download remains available, and share/print actions are exposed through standard device/system APIs where the platform supports them."
     ],
     "prototype_reference": "prototype/project (single-page HTML/React Babel demo: admin.jsx, driver.jsx, store.js, i18n.js, inputFormatters.js — not production repo layout; maps conceptually to apps/* paths in tasks). Canonical production spec is docs/requirements/prd.json (currently v1.8)."
@@ -433,7 +433,7 @@
     "Only the currently active PDF needs to be visible in the base scope; regeneration events must be auditable.",
     "Tour-linked documents and driver invoice files are always submitted in the context of a specific job/tour. There is no driver-facing unattached invoice inbox in the PWA.",
     "Rejected documents must create a visible correction need for the driver and include a rejection reason.",
-    "Drivers should not receive workflow emails from the system. Driver workflow communication should happen via PWA views and push notifications where relevant.",
+    "Drivers receive a workflow email when a job is marketplace-booked or admin-assigned; that email includes the transport-order PDF (OQ-12 resolved 2026-08-12). Other driver workflow communication stays PWA and push.",
     "Admin critical alerts can be sent as system emails with deep links to the relevant order in Version 1. The audit log remains the traceability record but is not enough by itself for urgent operational events.",
     "Postal code and country are stored separately. The postal code remains in the native country format.",
     "The system must preserve manual admin control for edge cases and must not block operations merely because an exceptional workflow was not predicted.",
@@ -443,7 +443,7 @@
     "Driver visibility before and after acceptance follows driver_visibility_matrix; server-side authorization enforces the matrix.",
     "On first tour-linked document upload after operational Performed, job document_review_summary transitions to Under Review and triggers admin notification per notification_channels_matrix.",
     "Admin lightweight notification feed lists critical operational events in the admin UI; email alerts complement the feed for urgent events.",
-    "Driver in-app notifications inform drivers of tour changes, document review outcomes, empty-run review outcomes, and new Infopoint messages without workflow email.",
+    "Driver in-app notifications inform drivers of tour changes, document review outcomes, empty-run review outcomes, and new Infopoint messages. Booking/assignment additionally sends a workflow email with the transport-order PDF (OQ-12).",
     "Cancellation attribution records whether cancellation came from driver, admin/dispatching, or customer (client).",
     "Status history for every operational transition records previous status, new status, date/time, triggering user, optional comment, and uploaded evidence reference when applicable.",
     "Pickup and delivery optional contact blocks use progressive disclosure (Add another contact / Show additional contact details) so the default form stays lean.",
@@ -493,7 +493,7 @@
         "Each driver has protected individual access because invoices and documents may be uploaded.",
         "AUTHEON stores a local app user profile linked to the Keycloak subject; it does not store passwords or duplicate role-assignment tables.",
         "Production driver and admin account provisioning uses Keycloak action emails/invite links for initial password setup and password reset; AUTHEON admins never view, copy, store, or manually send generated passwords.",
-        "The backend creates or links the Keycloak user, assigns the correct role/group, persists the local app user/profile link, and then requests Keycloak or the configured mail provider to send the invite/reset action.",
+        "The backend creates or links the Keycloak user, assigns the correct role/group, persists the local app user/profile link, then AUTHEON mail (SMTP_*) sends the invite/reset email containing the Keycloak action link. Keycloak SMTP is not used.",
         "Invite and reset links expire according to Keycloak realm policy and can be resent by an authorized admin.",
         "Exact driver login ceremony is configured in Keycloak and should keep first login simple while still forcing the user to set their own password.",
         "Admin can create admin and driver accounts and can resend or reset driver access.",
@@ -1045,7 +1045,7 @@
       "priority": 20,
       "story": "As a driver or admin, I want relevant notifications without overbuilding communication flows in Version 1.",
       "acceptance": [
-        "Drivers should not receive workflow emails from the system for new jobs or app events.",
+        "Drivers receive a workflow email (with transport-order PDF attached) when a job is marketplace-booked or admin-assigned (OQ-12 resolved 2026-08-12). Other app events stay PWA/push unless a later decision adds them.",
         "Driver push notifications can be triggered for newly Published jobs matching enabled preferences.",
         "Driver push notifications can be triggered for selected important driver events if technically implemented, such as document rejection, order cancelled by admin, problem case processed, or new Information Center/Infopoint message.",
         "Push settings are simple in Version 1: enable/disable, newly published jobs, and preferred postal code prefix area.",
@@ -1578,10 +1578,13 @@
     ],
     "driver_auth_production": "Keycloak selected for authentication. AUTHEON links users to Keycloak via keycloak_id; exact realm/client setup and driver login ceremony remain implementation configuration.",
     "admin_email_alerts_v1": "Global dispatcher mailbox list; per-event configuration deferred.",
+    "autheon_mail_all_v1": "RESOLVED 2026-08-12 (OQ-2): AUTHEON SMTP sends every application email — account invite, password reset, driver booked/assigned (with PDF), and admin alerts. Keycloak does not send mail. BE uses SMTP_* and includes the Keycloak action URL in invite/reset bodies. From-address, templates, and link expiry are ops config.",
+    "driver_terms_disclosure_v1": "RESOLVED 2026-08-12 (OQ-1): accept and cancel use DriverTermsDisclosure. Default = in-app Fahrerbedingungen sheet (EN/DE). Optional VITE_DRIVER_TERMS_URL opens the hosted AGB (HTML or PDF) when legal supplies it. Infopoint Fahrerbedingungen remains standing copy. Engineering does not invent the hosted URL or legal text.",
     "blocked_inactive_history": "Inactive and archived: read-only historical tours; blocked: no marketplace actions, read-only history.",
     "pdf_generation_timing": "On acceptance or direct assignment, not on publish.",
     "my_jobs_cancelled_ux": "Separate Cancelled tab.",
     "push_on_direct_assign": "2026-07-30: SUPERSEDED — direct assignment now triggers a driver in-app notification (job_assigned). Previously false.",
+    "driver_booking_assignment_email_v1": "RESOLVED 2026-08-12 (OQ-12): drivers receive a workflow email when a job is marketplace-booked (order_accepted_by_driver) or admin-assigned (job_assigned). The email must attach the current transport-order PDF. In-app/push channels are unchanged. Mail is AUTHEON SMTP (OQ-2). Email-with-PDF Done is gated on Task 17 / G-6 / OQ #22–28.",
     "pdf_tax": "Amounts as entered; no automated VAT until legal confirms.",
     "vehicle_categories_v1": "SUPERSEDED 2026-07-26 by resolved_defaults.vehicle_domain_v2 + vehicle_approved_values_only_v1. The former five-value list (PKW, SUV, Transporter, Oldtimer, LKW < 3,5t) is replaced by exactly three approved values: passenger_car, truck_up_to_7_5_t, truck_over_7_5_t. The removed values are no longer storable.",
     "vehicle_csv_role": "Glossary/reference only; not operational import data.",
@@ -1603,7 +1606,7 @@
       "notify_postal_code_prefix_area"
     ],
     "admin_notification_feed_v1": "v2.32: extended from \"lightweight in-admin event list for critical events; complements email alerts; not a full notification center\" to add red/orange/gray severity (always paired with text) and an explicit status that changes only via an admin action, never by viewing. v2.34: renamed open/processed to unread/read (naming only, same rule); redesigned as a table with icon+color badges, multi-select, bulk mark-as-read/delete, and pagination; delete is a soft delete (deletedAt), so the original processed-item retention-for-audit guarantee still holds underneath. Still a single shared feed (no per-admin assignment/ownership) and still not a full notification center.",
-    "account_provisioning_v1": "Prototype-generated temporary passwords are demo-only. In production, public /v1/users self-registration is removed; admins create driver/admin accounts and resend access from the admin UI, but credentials are delivered through Keycloak required-action/invite emails so users set their own passwords. AUTHEON does not expose generated passwords in the UI or store them in the application database.",
+    "account_provisioning_v1": "Prototype-generated temporary passwords are demo-only. In production, public /v1/users self-registration is removed; admins create driver/admin accounts and resend access from the admin UI. Credentials are delivered by AUTHEON mail (OQ-2 resolved 2026-08-12): BE obtains the Keycloak required-action/reset link and sends the invite/reset email via AUTHEON SMTP — Keycloak does not send mail. Users set their own passwords. AUTHEON does not expose generated passwords in the UI or store them in the application database.",
     "production_roles_v1": "Use Keycloak/application roles admin and driver. Driver workflows must resolve the local driver profile from the authenticated Keycloak subject server-side; clients must not submit or spoof driverId for self-actions.",
     "backend_schema_strategy_v1": "Backend schema changes follow existing TypeORM entity synchronization for now; explicit database migrations are deferred and must be planned before production hardening with DB_SYNCHRONIZE=false.",
     "backend_finance_boundary_v1": "Only basic job financial fields are implemented and must be feature-gated. Full Finance dashboard and advanced finance analytics remain future scope unless separately approved.",
@@ -1698,8 +1701,8 @@
     "status_consolidation_prototype": "store.js uses operationalAccess/accountAccess/inviteState; normalizeOperationalAccess/normalizeAccountAccess fail closed; setDriverOperationalAccess/setAccountAccess with confirms; runInactivitySweep returns {accessRemovedIds, deferredIds, warned}; AccessSwitch toggles in DriversPane, StaffPane, ServicePartnerProfileModal; EN/DE i18n for access vocabulary."
   },
   "production_open_questions": [
-    "Task 2 §2 (2026-07-21): provide the real Terms & Conditions / cancellation-conditions target for the service-partner cancellation warning link. The prototype currently uses a placeholder that discloses an in-app notice; the value originally supplied pointed at the Task 1 email-design HTML (a paste slip) and was deliberately not used. Decide: a hosted /legal/cancellation-terms route, a bundled PDF, or an in-app legal document.",
-    "Confirm Keycloak email action settings for account invites and password resets: sender domain, templates, link expiry, required actions, and whether SMTP is handled by Keycloak or AUTHEON's mail provider.",
+    "RESOLVED 2026-08-12 (OQ-1): German-style hybrid. Accept/cancel show in-app Fahrerbedingungen (DriverTermsDisclosure EN/DE). When legal publishes the real AGB, set VITE_DRIVER_TERMS_URL (hosted HTML or PDF) — that URL opens instead of the sheet. Do not invent the URL or rewrite legal copy. Infopoint keeps Fahrerbedingungen as standing copy. Bundled-only PDF in the app binary is out.",
+    "RESOLVED 2026-08-12 (OQ-2): AUTHEON's mail provider sends ALL application emails (account invite, password reset, driver booked/assigned with PDF, admin alerts). Keycloak SMTP / execute-actions-email is not the production sender. Keycloak still owns identity, required actions, and tokens; AUTHEON BE sends the message via SMTP_*. Sender domain, templates, and link expiry are ops config — do not invent.",
     "Confirm which map or distance API vendor to use and acceptable ongoing usage budget.",
     "Confirm production file retention period, encryption at rest, malware scanning, and DSGVO handling for tour document uploads.",
     "Confirm final production branding package (OQ-4): app display name, logo, exact hex palette, font, icon rules, and related legal/UI copy. Direction advanced 2026-07-10 — minimalist/premium, black/white/grey baseline, restrained purple accent used very sparingly, Montserrat Regular 400; final hex values, logo, display name, and legal copy still pending (client to upload the final Corporate Design package).",
@@ -1709,7 +1712,7 @@
     "RESOLVED 2026-08-07 (status consolidation): granular marketplace restriction is the model — operationalAccess=disabled while accountAccess may remain enabled (D1). Coarse Blocked status retired. See resolved_defaults.status_consolidation_access_v1.",
     "RESOLVED 2026-07-14, SUPERSEDED 2026-07-26 by the client confirmation 'Systemlogik Fahrzeugeingabe': registration status (Zugelassen/Abgemeldet) is now an explicit REQUIRED single-select category independent of transport type, the electric-vehicle and ready-to-drive characteristics are independent attributes, and the red-licence-plate flag/number are removed in favour of a derived requirement. See resolved_defaults.vehicle_domain_v2.",
     "Meeting 2026-06-29: confirm final policy for manual direct assignment: when admin direct assign is allowed, whether it is exception-only, and what external proof (phone, email, confirmation note) must be stored.",
-    "CONFLICT — Post-v1.8 meeting (F-02): should PRD be changed to allow an optional driver workflow email after booking (booking-confirmation email, potentially including the order and attached PDFs/documents), or should driver workflow email remain prohibited (PWA/push only)? This contradicts the standing global rule that drivers receive no workflow emails; the prohibition stays in force until this is decided. NEEDS HUMAN DECISION.",
+    "RESOLVED 2026-08-12 (OQ-12 / F-02): drivers receive a workflow email on marketplace booked and on admin assigned; the email must include the transport-order PDF. PWA/in-app/push remain. Mail is AUTHEON SMTP (OQ-2). PDF attachment Done gated on Task 17 / OQ #22–28.",
     "Meeting 2026-06-25: confirm whether marketplace list cards show pickup and delivery windows or only dates/regions with full windows in detail.",
     "Meeting 2026-06-25: confirm whether separate date plus time-window from/to plus flexibility warnings are enough for V1 scheduling, or whether an explicit by-latest date/time mode is required.",
     "Meeting 2026-06-25: confirm whether pickup-date and delivery-date filters are independent date ranges or linked as one schedule filter.",
@@ -2028,7 +2031,8 @@
       "admin_email": true,
       "driver_in_app": true,
       "driver_push": false,
-      "notes": "2026-07-30 new client requirement (supersedes push_on_direct_assign:false): admin directly assigning a job to a driver creates an in-app notification for that driver (store.js pushDriverNotification, notifJobAssignedTitle/Body). Push not enabled for this event in V1. 2026-08-04: BEHAVIOUR FIX, channels unchanged (driver_in_app true, driver_push false). job_assigned was missing from the prototype's notification-type map and so fell back to an informational 'plain' card with no expansion and no deep link; it is now typed as a ride event, expands inline and opens the assigned ride's full detail (fallback My Jobs, never a Marketplace-style push)."
+      "driver_email": true,
+      "notes": "2026-07-30 new client requirement (supersedes push_on_direct_assign:false): admin directly assigning a job to a driver creates an in-app notification for that driver (store.js pushDriverNotification, notifJobAssignedTitle/Body). Push not enabled for this event in V1. 2026-08-04: BEHAVIOUR FIX, channels unchanged (driver_in_app true, driver_push false). job_assigned was missing from the prototype's notification-type map and so fell back to an informational 'plain' card with no expansion and no deep link; it is now typed as a ride event, expands inline and opens the assigned ride's full detail (fallback My Jobs, never a Marketplace-style push). 2026-08-12 OQ-12: driver_email true — assignment email must attach the transport-order PDF."
     },
     {
       "event": "order_accepted_by_driver",
@@ -2036,7 +2040,8 @@
       "admin_email": true,
       "driver_in_app": false,
       "driver_push": false,
-      "notes": "Critical for dispatch",
+      "driver_email": true,
+      "notes": "Critical for dispatch. 2026-08-12 OQ-12: driver also receives a booking-confirmation email with the transport-order PDF attached.",
       "severity": "red"
     },
     {
