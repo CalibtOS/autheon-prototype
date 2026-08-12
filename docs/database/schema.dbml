@@ -4,9 +4,10 @@
 // one is modelled here — 0 BE-only tables AND 0 DBML-only tables, because the six tables carried
 // as "BE catch-up" on 2026-08-10 have all landed. Binary meta only on upload_assets.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
-// 2026-08-12 — BACKEND SYNC PASS. Verified column-by-column against autheon-be main 824b1eea
-//   plus the open two-phase-upload PR #178 (branch feat/driver-upload-ux); each item below was
-//   read off the entity AND off a synchronize:true database, not inferred.
+// 2026-08-12 — BACKEND SYNC PASS. Originally verified column-by-column against autheon-be
+//   main 824b1eea plus two-phase-upload PR #178. Catch-up 2026-08-12 (autheon-be main 708c16be):
+//   remaining documented gaps closed in BE (see 2026-08-12 CATCH-UP below). Each original item
+//   was read off the entity AND off a synchronize:true database, not inferred.
 //   Landed in BE, now recorded here:
 //     - consolidated_invoices(+_jobs), driver_documents, sp_cancellations, empty_run_reports,
 //       empty_run_evidence — the 2026-08-10 "keep as target; BE catch-up" list is CLOSED.
@@ -21,14 +22,14 @@
 //       (varchar(64), not null), audit_events.metadata, outbox_events.aggregate_id,
 //       jobs.document_review_summary (jsonb), customers.country_code, user_notifications.body,
 //       job_financials.admin_invoice_override / updated_by_user_id.
-//   KNOWN remaining differences, deliberately NOT changed here — this file stays the design target:
-//     - locations.alternate_contact_name is the ONE DBML-only column left. BE has it on
-//       job_locations but not on the master row the leg is snapshotted from. BE catch-up.
-//     - master_data_change_requests.requester_note and user_notifications.severity are NOT NULL
-//       here and nullable in BE. The stricter reading is intended; BE should tighten.
-//     - 51 BE columns are `timestamp without time zone` where this file says timestamptz —
-//       a TypeORM column-default artifact, not a design decision. Tracked as a BE fix, not a
-//       schema change; do not weaken timestamptz here to match it.
+// 2026-08-12 CATCH-UP (close remaining BE-behind-DBML gaps; do not weaken this file):
+//   - locations.alternate_contact_name now on the master LocationEntity (and copied onto
+//     job_locations when a tour snapshots an address-book row). No DBML-only columns left.
+//   - master_data_change_requests.requester_note NOT NULL default '' (API note still optional;
+//     missing note persists as empty string).
+//   - user_notifications.severity NOT NULL default 'gray'.
+//   - TypeORM CreateDate/UpdateDate/timestamp columns annotated timestamptz to match this file.
+//   - job_financials.tax_rate note: BE column is tax_rate; API/domain property remains vatRate.
 // 2026-08-10 — SCHEMA SYNC REVIEW (BE + prototype/PRD gap pass) + decided follow-ups:
 //   - Added organizations (+ organization_status) — present in autheon-be TypeORM, previously absent here.
 //   - Added drivers.second_phone (BE DriverEntity).
@@ -512,10 +513,8 @@ Table locations {
   city varchar(128) [not null]
   country_code char(2) [not null, default: 'DE']
   contact_name varchar(255)
-  // The only DBML-only column left as of the 2026-08-12 sync. BE carries
-  // alternate_contact_name on job_locations (the snapshot) but not on the master row
-  // the snapshot is taken FROM, so the prototype's "Weitere Kontaktperson" cannot be
-  // stored on an address-book entry today. BE catch-up, not an open design question.
+  // Master-row "Weitere Kontaktperson". Copied onto job_locations when a tour
+  // snapshots this address-book entry. Same column exists on the snapshot table.
   alternate_contact_name varchar(255)
   phone varchar(64)
   second_phone varchar(64)
@@ -581,9 +580,10 @@ Table jobs {
   required_vehicle_type vehicle_type
   required_transport_type transport_type
   pickup_postal_area varchar(16)
-  // BE stores the aggregate as jsonb — { status: <document_review_status> } — rather than a
-  // bare enum column, so the summary can later carry counts or a per-type breakdown without
-  // a migration. The `status` member is still exactly the document_review_status vocabulary.
+  // jsonb, not a bare enum column. DocumentBillingReconciliationService writes
+  // { status: <document_review_status> }. The column type is Record/jsonb so a
+  // per-type map (e.g. { invoice: 'accepted' }) can also be stored without a
+  // migration. Application code must treat unknown shapes as empty, not crash.
   document_review_summary jsonb [not null, default: '{}']
   settlement_state settlement_status [not null, default: 'not_started']
   // Denormalized settlement mirror on the job row. job_financials stays authoritative;
@@ -703,10 +703,10 @@ Table job_financials {
   // Optional net/gross snapshot (BE + prototype)
   total_net numeric(12,2)
   total_gross numeric(12,2)
-  // BE property `currency` maps to this column name in design docs
-  currency_code char(3) [not null, default: 'EUR', note: 'BE column: currency']
-  // BE property `vatRate` / column vat_rate
-  tax_rate numeric(5,2) [note: 'BE column: vat_rate']
+  // BE property `currencyCode` / column currency_code. API may still say currency.
+  currency_code char(3) [not null, default: 'EUR', note: 'BE column: currency_code']
+  // BE column tax_rate. Shared/API/domain property is still vatRate (mapped in the repository).
+  tax_rate numeric(5,2) [note: 'BE column: tax_rate; API property: vatRate']
   invoice_received boolean [not null, default: false]
   admin_invoice_override boolean [not null, default: false]
   payment_status invoice_payment_status [not null, default: 'invoice_missing']
@@ -935,7 +935,7 @@ Table master_data_change_requests {
   requested_by_user_id uuid [not null]
   status varchar(32) [not null, default: 'open'] // open | approved | rejected
   change_type master_data_change_type [not null]  // discriminator for admin queue filtering and per-type validation
-  requester_note text [not null]
+  requester_note text [not null, default: '']
   current_snapshot jsonb [not null]
   proposed_changes jsonb [not null]
   created_at timestamptz [not null]
