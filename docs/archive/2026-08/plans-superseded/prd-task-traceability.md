@@ -23,7 +23,7 @@
 | T13 | Admin Empty-Run Review & Cancellation Resolution | admin | G-3 |
 | T14 | Admin Job Cancellation | admin | G-4 |
 | T15 | Admin Job Overview | admin | G-1 + **M-1** |
-| T16 | Admin Job Detail | admin | G + **G-7…G-10** |
+| T16 | Admin Job Detail | admin | G + **G-7…G-9** |
 | T17 | PDF Generation & Document Automation | system | G-6 |
 | T18 | Information Center / Infopoint | both | F-4 / I-4 |
 | T19 | Driver Profile & Notification Settings | driver | F-1 / F-2 |
@@ -67,8 +67,8 @@
 
 ## Open questions — do not invent
 
-~30 still open in `production_open_questions` (7 resolved in-array: #1, #2, #9, #10, #12, #33, #34).  
-Park remaining in ClickUp **questions**. Notable still open: Cancel vs empty-run phase gates (#7), PDF Task 17 cluster (#22–28), feed severity/mark-read BE fields (#29–32).
+~30 still open in `production_open_questions` (7 resolved: #1, #2, #9, #10, #12, #33, #34).  
+That is **planning-complete** (every OQ is Resolved or Deferred+impact). Answers land one at a time per [`oq-disposition.md`](./oq-disposition.md). Notable still Deferred: #7 cancel vs empty-run, PDF #22–28, feed #29–32.
 
 ## Deprecated — FE must not reintroduce
 

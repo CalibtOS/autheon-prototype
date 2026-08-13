@@ -11,6 +11,9 @@
 **Blocks:** honest “1:1 Figma” claims for Epics E/F/D screen work  
 **Wave:** **0.5** — start with Wave 0 or immediately after A-0; do **before** deep Marketplace card polish
 
+**Card body:** Goal · Authority · Acceptance · DoD — copy each L-* section onto ClickUp ([`clickup-apply.md`](../clickup-apply.md)).  
+**Owner:** Omar L-1…L-6, L-8 · Youssef L-9.
+
 ---
 
 ## Current vs signed-off (summary)
@@ -30,6 +33,11 @@
 
 ## L-1 — Shared `DriverScreenHeader`
 
+**Goal:** One shared header on all four driver tabs; equal chrome height.  
+**Authority:** proto `DriverScreenHeader` · PRD T7–T10 · Axis V D03/D05/D13/D21/D22.  
+**Owner:** Omar.  
+**DoD:** L-1.1–L-1.5 Pass; side-by-side divider height.
+
 | # | AC | Pass? |
 |---|----|-------|
 | L-1.1 | One shared component used by Marketplace, My Jobs, Infopoint, Profile landing | ☐ |
@@ -41,6 +49,11 @@
 ---
 
 ## L-2 — Marketplace chrome (remove old layout)
+
+**Goal:** Marketplace matches signed-off PWA chrome: no greeting/avatar; sort/filter in results-row.  
+**Authority:** proto `Portal` · PRD T7 · Axis V D05.  
+**Owner:** Omar.  
+**DoD:** L-2.1–L-2.7 Pass; blocks E-1 Done.
 
 | # | AC | Pass? |
 |---|----|-------|
@@ -91,7 +104,7 @@
 
 ---
 
-## L-6 — Bottom tab visual / a11y parity
+## L-6 — Bottom tab visual / a11y + overlay stacking (includes retired L-7)
 
 | # | AC | Pass? |
 |---|----|-------|
@@ -101,16 +114,9 @@
 | L-6.4 | Infopoint badge = unread news count; cap display `99+` | ☐ |
 | L-6.5 | Safe-area: tab bar + scroll pad clear home indicator (compare prototype calc) | ☐ |
 | L-6.6 | Floating vs fixed: keep floating until client decides; document open question if still open | ☐ |
-
----
-
-## L-7 — Overlay / portal stacking
-
-| # | AC | Pass? |
-|---|----|-------|
-| L-7.1 | Sheets/dialogs portal into shell frame (`data-driver-shell` / `.phone-screen` equivalent) | ☐ |
-| L-7.2 | Sheet paint order beats tab bar (no dead taps under capsule) | ☐ |
-| L-7.3 | Z-order: sticky < popover < tabbar ≤ sheet < dialog < toast (prototype scale) | ☐ |
+| L-6.7 | Sheets/dialogs portal into shell frame (`data-driver-shell` / `.phone-screen` equivalent) | ☐ |
+| L-6.8 | Sheet paint order beats tab bar (no dead taps under capsule) | ☐ |
+| L-6.9 | Z-order: sticky < popover < tabbar ≤ sheet < dialog < toast (prototype scale) | ☐ |
 
 ---
 
@@ -144,7 +150,7 @@
 3. `[FE][UI] Notification bell on My Jobs / Infopoint / Profile`  
 4. `[FE][UI] Hide tab bar on notifications + profile/infopoint subpages`  
 5. `[FE][UI] My Jobs / Infopoint control bands below shared header`  
-6. `[FE] Tab active token = neutral (no purple capsule)`  
+6. `[FE] Tab visual + overlay stacking (neutral active; sheets beat tab bar)`  
 7. `[FE] Quarantine RootLayout / desktop template leftovers`  
 8. `[QA] Side-by-side driver chrome vs prototype PWA`  
 

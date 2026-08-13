@@ -2,7 +2,7 @@
 
 **Rule:** Engineering must **not invent** answers. Each OQ is `Resolved` (client answer recorded) or `Deferred` with **named wave/AC impact**.  
 **Source:** `prd.json` → `production_open_questions` (37).  
-**Status date:** 2026-08-11 — planning disposition only.
+**Status date:** 2026-08-13 — planning disposition complete (7 Resolved, 30 Deferred+impact).
 
 | ID | Topic (short) | Disposition | Blocks Done on | Interim build rule |
 |----|---------------|-------------|----------------|--------------------|
@@ -63,4 +63,29 @@
 | G-6 PDF | **No** for Done | **#22–28** must Resolve or waive |
 | K release | Journeys except PDF content | PDF journey content blocked |
 
-*This appendix is the planning-complete disposition. ClickUp “Needs decision” cards should mirror these rows (K-5).*
+*This appendix is the planning-complete disposition. ClickUp OQ cards should mirror these rows — teammate runbook: [`../clickup-apply.md`](../clickup-apply.md) Part E.*
+
+---
+
+## How the next OQ answer lands (one at a time)
+
+Do this **before** asking the next question. Engineering still must not invent.
+
+1. Set this table: `Disposition` → **Resolved** + date + the rule (replace the interim build rule).
+2. If it is a product rule, add/update `prd.json` → `resolved_defaults` (same words).
+3. Update the **Blocks Done on** tasks: unblock AC rows, or keep blocked if the answer still gates them.
+4. ClickUp: OQ card → `completed`; comment on the named build cards (when API allows).
+5. Stop. Do not start coding a different interpretation than the recorded rule.
+
+**Wave 0 does not wait** for remaining Deferred OQs. **G-6 Done** still waits on #22–28 (Resolve or client waive).
+
+### Recommended answer order (highest unblock)
+
+| Next | Why |
+|------|-----|
+| **#7** | Cancel vs empty-run on an active tour — unblocks D-1 / G-4 edge gates |
+| **#22** then **#23–28** | PDF cluster — unblocks G-6 / F-7 PDF attach Done (or waive content) |
+| **#13–16** | Marketplace card/filter/sort — E-1 polish vs proto |
+| **#29–32** | Feed extras — F-3 / I-2 must not invent columns |
+
+Skip / “I don’t know” keeps the row **Deferred** with the interim rule. That is still planning-complete.

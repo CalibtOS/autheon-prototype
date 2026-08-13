@@ -81,8 +81,8 @@ Signed: _______________ date: _______________
 | D02 | `DriverSetPasswordScreen` | set-password | F-5 | ☐ |
 | D03 | Shell `TabBar` + 4 tabs | `DriverShell` | L | ☐ |
 | D04 | `DriverScreenHeader` (all tabs) | shared header | L-1 | ☐ |
-| D05 | `Portal` Marketplace | `/` or marketplace | L-2, E-1 | ☐ |
-| D06 | `FilterSheet` | marketplace | E-1 | ☐ |
+| D05 | `Portal` Marketplace | `/` or marketplace | L-2, E-1a,b,d,e,f,g,i | ☐ |
+| D06 | `FilterSheet` | marketplace | E-1d, E-1e | ☐ |
 | D07 | `JobLocked` | job detail locked | E-2 | ☐ |
 | D08 | `JobUnlocked` + docs tab | job detail | E-2 | ☐ |
 | D09 | `AcceptanceModal` | accept | E-3 | ☐ |
@@ -106,17 +106,17 @@ Signed: _______________ date: _______________
 | # | Proto surface | FE route / host | Epic | Clone |
 |---|---------------|-----------------|------|-------|
 | A01 | `AdminLoginScreen` / set-password | admin auth | F-6 | ☐ |
-| A02 | `AdminNav` sidebar order + foot | admin shell | M-1, M-3 | ☐ |
+| A02 | `AdminNav` sidebar order + foot + chrome titles | admin shell | M-1, M-3 | ☐ |
 | A03 | `Overview` + row actions | `/jobs` | G-1 | ☐ |
 | A04 | `NewOrder` create/edit | create/edit | G-2 | ☐ |
-| A05 | `AdminDetail` + footer | `/jobs/:id` | G | ☐ |
+| A05 | `AdminDetail` + footer | `/jobs/:id` | G-11a, G-11b | ☐ |
 | A06 | `AssignDriverDialog` | detail | G-7 | ☐ |
 | A07 | `AdminCancelJobModal` | detail | G-4 | ☐ |
 | A08 | `EmptyRunReviewPanel` | detail | G-3 | ☐ |
 | A09 | `JobFinancePanel` | detail | G-5 | ☐ |
 | A10 | `InternalNotesPanel` | detail | G-8 | ☐ |
 | A11 | Transport-order preview | detail | G-6 | ☐ |
-| A12 | VIN / schedule-override dialogs | create/detail | G-9, G-10 | ☐ |
+| A12 | VIN / schedule-override dialogs | create/detail | G-9 | ☐ |
 | A13 | `NotificationFeedPane` | `/notifications` | I-2 | ☐ |
 | A14 | `ServicePartnersCenterPane` | `/drivers` | H | ☐ |
 | A15 | `ServicePartnerProfileModal` (7 tabs) | drivers | H-2, C | ☐ |

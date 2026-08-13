@@ -18,8 +18,8 @@
 | Screen / sheet | Must-match | Epic |
 |----------------|------------|------|
 | Auth (login / forgot / set-password) | No enumeration; OTP TTL rules | F-5 |
-| Marketplace `Portal` | Published only; filter/sort chrome; card anatomy; no tour# on card | E-1 |
-| `FilterSheet` | PLZ multi, dates, vehicle, transport; badge count rules | E-1 |
+| Marketplace `Portal` | Published only; results-row (not header); empty/loading; card anatomy; no tour# | **E-1a,b,d,e,f,g,i** (umbrella E-1; E-1c/h retired) |
+| `FilterSheet` | PLZ multi, dates, vehicle, transport; Show N; badge/chips | **E-1d, E-1e** |
 | `JobLocked` | City+PLZ only; no plate/VIN/street/contacts; Accept CTA | E-2 |
 | `AcceptanceModal` | Slide-to-confirm + legal | E-3 |
 | `JobUnlocked` | Full stops; plate/VIN; docs tab; CTAs by status | E-2 |
@@ -66,7 +66,16 @@ Transport: `All` + `own_axle` | `third_party_axle`
 - Notification ride preview = five values only  
 
 **Expanded chrome AC → Epic L:** [`epic-l-driver-pwa-shell-ui-ac.md`](./epic-l-driver-pwa-shell-ui-ac.md) (Wave 0.5).  
+**Marketplace content AC → Epic E:** [`epic-efghimk-binary-ac.md`](./epic-efghimk-binary-ac.md) § E-1 (surviving children a,b,d,e,f,g,i).  
 **Exact clone registry:** [`exact-screen-clone-gate.md`](./exact-screen-clone-gate.md) (D01–D23).
+
+### Under-split follow-ups (same pattern as Marketplace)
+
+| Surface | Today | Split needed |
+|---------|-------|--------------|
+| My Jobs | one **D-2** | D-2a buckets/chrome, D-2b cards+tour#, D-2c empty/search/sort, D-2d swipe |
+| Profile | one **F-1** | F-1a landing, F-1b MDR, F-1c email/password sheets |
+| Infopoint | one **F-4** | F-4a docs, F-4b news detail, F-4c help |
 
 ## DO NOT SHIP / prototype-only
 

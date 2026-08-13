@@ -1,10 +1,11 @@
-# Epics E / F / G / H / I / M / K — Binary acceptance criteria (expanded)
+# Epics E / F / G / H / I / M / J / K / SEC — Binary acceptance criteria (expanded)
 
 **Authority:** signed-off prototype (`driver.jsx`, `driver-ui.jsx`, `admin.jsx`, `i18n.js`) → PRD v2.38 → BE/DBML. Exact clone only — **no redesign**.  
-**Axis V:** [`exact-screen-clone-gate.md`](./exact-screen-clone-gate.md) · **Coverage:** [`coverage-gate.md`](./coverage-gate.md)  
+**Axis V:** [`exact-screen-clone-gate.md`](./exact-screen-clone-gate.md)  
 **Dual cancel vocabularies (binding):** SP Storno ≠ Admin cancel modal codes — never collapse.  
 **N/A:** `AccountAccessDialog` (proto stub `null`) — do not clone; remove from must-match Figma lists.  
-**OQ rule:** Do not invent answers. Mark **Deferred** + named AC blocked until Resolved.
+**OQ rule:** Do not invent answers. Mark **Deferred** + named AC blocked until Resolved.  
+**Card body:** Goal · Authority · Acceptance · DoD on every card ([`clickup-apply.md`](../clickup-apply.md)). Includes **F-7/F-8** and **J-1…J-3**.
 
 Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed PASS.
 
@@ -34,8 +35,8 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 | ID | Surface | Task | Clone |
 |----|---------|------|-------|
-| D05 | `Portal` Marketplace | E-1 (+ L-2 chrome) | ☐ |
-| D06 | `FilterSheet` | E-1 | ☐ |
+| D05 | `Portal` Marketplace | E-1a,b,d,e,f,g,i (+ L-2 chrome) | ☐ |
+| D06 | `FilterSheet` | E-1d, E-1e | ☐ |
 | D07 | `JobLocked` | E-2 | ☐ |
 | D08 | `JobUnlocked` + docs tab | E-2 | ☐ |
 | D09 | `AcceptanceModal` | E-3 | ☐ |
@@ -45,20 +46,80 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ---
 
-## E-1 — Marketplace cards / filters 1:1 (D05, D06)
+## E-1 — Marketplace Portal umbrella (D05, D06)
+
+**Rule:** Do **not** mark E-1 Done until surviving children **E-1a, b, d, e, f, g, i** are all Done (E-1c→b, E-1h→g). L-1/L-2 must be green first (no greeting/avatar; results-row outside header).
 
 | # | AC | Pass? |
 |---|----|-------|
-| E-1.1 | Marketplace lists **published** jobs only (proto `Portal` rule) | ☐ |
-| E-1.2 | Card anatomy matches proto: route `City → City` + PLZ, legs, footer meta, price right; **no tour# on card** | ☐ |
-| E-1.3 | Sort + filter live in **results row** under shared header (not in header) — L-2 already green | ☐ |
-| E-1.4 | `FilterSheet` keys exactly: `startPlz[]`, `endPlz[]`, `from`, `to`, `vehicleType`, `transportType` | ☐ |
-| E-1.5 | Vehicle options: All + `passenger_car` \| `truck_up_to_7_5_t` \| `truck_over_7_5_t` | ☐ |
-| E-1.6 | Transport options: All + `own_axle` \| `third_party_axle` | ☐ |
-| E-1.7 | Applied-filter **badge count** matches proto rules (T7 depth); pluralized accessible name | ☐ |
-| E-1.8 | Empty + loading states match DriverUI / proto (no invented empty illustration) | ☐ |
-| E-1.9 | OQ **#13–16** (card windows / scheduling / filters / sort) = Deferred → rows that depend on undecided rules stay **blocked for Done** (do not invent) | ☐ |
-| E-1.10 | D05 + D06 clone checklists signed with screenshots | ☐ |
+| E-1.0 | Umbrella: surviving children E-1a,b,d,e,f,g,i Done; published-only list still holds (proto `Portal`) | ☐ |
+| E-1.9 | OQ **#13–16** Deferred → contested card-window / sort-default rows **block Done** (do not invent) | ☐ |
+
+### E-1a — Results-row composition
+
+| # | AC | Pass? |
+|---|----|-------|
+| E-1a.1 | After L-2: `.portal-results-row` holds results count + `SortSelect` + filter button — **not** inside header | ☐ |
+| E-1a.2 | Removable applied-filter chips sit **under** the results-row (sibling of scroll body) | ☐ |
+| E-1a.3 | Results-row **survives loading** (controls never vanish while skeleton shows); count caption blank while loading | ☐ |
+| E-1a.4 | Sort options = `date_desc` \| `date_asc` \| `price_desc` \| `price_asc` \| `dist_desc` \| `dist_asc`; default `date_desc` | ☐ |
+
+### E-1b — Empty + loading states (includes retired E-1c)
+
+| # | AC | Pass? |
+|---|----|-------|
+| E-1b.1 | Unfiltered empty: title only `marketplaceEmptyNoOrders` — **no** description, **no** CTA | ☐ |
+| E-1b.2 | Filtered empty: title `noJobsMatch`, desc `noToursMatch`, **single** action opens FilterSheet (no dual Clear+Adjust invent) | ☐ |
+| E-1b.3 | No invented empty illustrations | ☐ |
+| E-1b.4 | Loading = `SkeletonList` count 3 under sticky results-row | ☐ |
+| E-1b.5 | `aria-label` / a11y uses loadingJobs equivalent | ☐ |
+| E-1b.6 | Whole-screen Suspense that removes results-row = FAIL | ☐ |
+
+### E-1d — FilterSheet clone (D06)
+
+| # | AC | Pass? |
+|---|----|-------|
+| E-1d.1 | Keys exactly: `startPlz[]`, `endPlz[]`, `from`, `to`, `vehicleType`, `transportType` (or documented alias map to those names) | ☐ |
+| E-1d.2 | Vehicle: All + `passenger_car` \| `truck_up_to_7_5_t` \| `truck_over_7_5_t` | ☐ |
+| E-1d.3 | Transport: All + `own_axle` \| `third_party_axle` | ☐ |
+| E-1d.4 | PLZ multi + date from/until + presets today / this_week; Reset; Cancel; primary **Show N results** with live preview count | ☐ |
+| E-1d.5 | Draft edits do **not** move the badge until Apply | ☐ |
+| E-1d.6 | D06 clone PASS with screenshots | ☐ |
+
+### E-1e — Badge + chips rules (T7)
+
+| # | AC | Pass? |
+|---|----|-------|
+| E-1e.1 | Badge count = applied-filters list length (**one per PLZ prefix**); sort never counts | ☐ |
+| E-1e.2 | Zero applied → no badge; pluralized accessible name on button | ☐ |
+| E-1e.3 | Chip remove clears that filter and refreshes list | ☐ |
+
+### E-1f — JobCard marketplace anatomy (D05 body)
+
+| # | AC | Pass? |
+|---|----|-------|
+| E-1f.1 | Route City+PLZ → City+PLZ, legs, footer vehicle + **price right**; **no tour# / status** on marketplace card | ☐ |
+| E-1f.2 | Tags: registration / EV / ready-to-drive / red-plates derived + axle chip match proto | ☐ |
+| E-1f.3 | Tap opens locked job detail; list-enter stagger 0–3 OK | ☐ |
+| E-1f.4 | D05 card body screenshot PASS | ☐ |
+
+### E-1g — Portal gated branches (includes retired E-1h)
+
+| # | AC | Pass? |
+|---|----|-------|
+| E-1g.1 | Deferred vs disabled titles/bodies match proto **or** explicit N/A documenting FE maps only capability errors | ☐ |
+| E-1g.2 | Deferred shows open-tour count + restore copy when BE provides data | ☐ |
+| E-1g.3 | Blocked branch does not invent a third status enum | ☐ |
+| E-1g.4 | When BE exposes equivalent of `inactivityWarningSentAt` → InlineAlert warn on Portal before list | ☐ |
+| E-1g.5 | If BE lacks inactivity field → mark N/A with ticket; do not invent a fake banner | ☐ |
+
+### E-1i — D05 + D06 screenshot sign-off
+
+| # | AC | Pass? |
+|---|----|-------|
+| E-1i.1 | Proto \| FE screenshots for D05 + D06 attached | ☐ |
+| E-1i.2 | Design/QA sign-off; no “close enough” | ☐ |
+| E-1i.3 | Depends on E-1a…E-1f (+ L-2) green | ☐ |
 
 ---
 
@@ -90,6 +151,11 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 ---
 
 ## E-4 — External maps handoff
+
+**Goal:** Unlocked job maps CTA uses the same external handoff as prototype (no paid SDK invent).  
+**Authority:** proto job-detail maps CTA · PRD T28 · OQ #3 Deferred · Axis V D08.  
+**Owner:** Marwan.  
+**DoD:** Interim = OS/maps URL like proto. Paid vendor **blocks Done** only if client Resolves #3 to a paid SDK.
 
 | # | AC | Pass? |
 |---|----|-------|
@@ -142,14 +208,38 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ---
 
-## F-1 — Profile + master-data change request
+## F-1 — Profile umbrella (D22/D23)
+
+**Rule:** Do **not** mark F-1 Done until **F-1a…F-1e** Done.
 
 | # | AC | Pass? |
 |---|----|-------|
-| F-1.1 | Profile landing IA matches `ProfilePaneFull` (identity, probation card placement, nav rows) | ☐ |
-| F-1.2 | MDR: **one open request** rule enforced (UI + BE 4xx handled) | ☐ |
-| F-1.3 | Change-email sheet grammar matches proto (Cancel \| Primary; code step; no email enumeration) | ☐ |
-| F-1.4 | D22/D23 clone rows for profile/subpages PASS | ☐ |
+| F-1.0 | Umbrella: F-1a…F-1e Done; D22/D23 PASS | ☐ |
+
+### F-1a — Landing IA ProfilePaneFull
+| # | AC | Pass? |
+|---|----|-------|
+| F-1a.1 | Identity, probation card, nav rows, help mailtos 1:1 `ProfilePaneFull` | ☐ |
+
+### F-1b — MDR one-open + 409
+| # | AC | Pass? |
+|---|----|-------|
+| F-1b.1 | One open MDR; second open blocked; BE 409 handled; Journey J7 | ☐ |
+
+### F-1c — Change-email Cancel\|Primary + code
+| # | AC | Pass? |
+|---|----|-------|
+| F-1c.1 | Sheet grammar Cancel \| Primary; code step; **no** email enumeration | ☐ |
+
+### F-1d — Password + appearance (or Keycloak N/A)
+| # | AC | Pass? |
+|---|----|-------|
+| F-1d.1 | Password/appearance subpages use L-5 chrome; Keycloak-owned paths marked N/A explicitly | ☐ |
+
+### F-1e — D22/D23 screenshot sign-off
+| # | AC | Pass? |
+|---|----|-------|
+| F-1e.1 | Proto\|FE attached; depends F-1a…d | ☐ |
 
 ---
 
@@ -160,29 +250,74 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 | F-2.1 | Push / email / in-app toggles match prototype settings surface | ☐ |
 | F-2.2 | Preferences persist via production API (`user_notifications` / prefs endpoints) | ☐ |
 | F-2.3 | Channel × event rows respect `notification_channels_matrix` (no invented channels) | ☐ |
+| F-2.4 | Postal/vehicle filter prefs match proto where present | ☐ |
 
 ---
 
-## F-3 — In-app notification list + deep links
+## F-3 — Notifications umbrella (D20)
+
+**Rule:** Do **not** mark F-3 Done until **F-3a…F-3d** Done.
 
 | # | AC | Pass? |
 |---|----|-------|
-| F-3.1 | List kinds/event types align to PRD/matrix (aliases OK if BE-mapped) | ☐ |
-| F-3.2 | Ride preview = **five values only** (proto rule) | ☐ |
-| F-3.3 | Deep links open locked/unlocked job correctly per `driverJobViewMode` | ☐ |
-| F-3.4 | Tab bar hidden on notifications (L-5); D20 clone PASS | ☐ |
-| F-3.5 | OQ **#29–32** feed BE fields Deferred → mark-read/severity extras **block Done** until dispositioned | ☐ |
+| F-3.0 | Umbrella: F-3a…F-3d Done; Axis V **D20** PASS | ☐ |
+
+### F-3a — List chrome + tab bar hidden + OQ gate (includes retired F-3e/f)
+| # | AC | Pass? |
+|---|----|-------|
+| F-3a.1 | Day-grouped list; mark-all; empty; **no** category chips (OQ #33) | ☐ |
+| F-3a.2 | Tab bar hidden (L-5); D20 structure PASS | ☐ |
+| F-3a.3 | No invent severity/mark-read extras until OQ #29–32 dispositioned | ☐ |
+
+### F-3b — Ride expand five values only
+| # | AC | Pass? |
+|---|----|-------|
+| F-3b.1 | Expand shows **exactly five** proto values — no PLZ/price/plate invent | ☐ |
+
+### F-3c — Ride actions locked/unlocked/unavailable
+| # | AC | Pass? |
+|---|----|-------|
+| F-3c.1 | Actions respect `driverJobViewMode`; depends E-2 | ☐ |
+
+### F-3d — Deep links news/doc/profile + return-to-origin
+| # | AC | Pass? |
+|---|----|-------|
+| F-3d.1 | Deep links + return-to-origin; depends F-4c / F-1 | ☐ |
 
 ---
 
-## F-4 — Infopoint docs / news / help
+## F-4 — Infopoint umbrella (D21)
+
+**Rule:** Do **not** mark F-4 Done until **F-4a…F-4e** Done.
 
 | # | AC | Pass? |
 |---|----|-------|
-| F-4.1 | Tabs: docs / news / help under shared header (L-4) | ☐ |
-| F-4.2 | **View** and **Download** are separate actions (proto) | ☐ |
-| F-4.3 | News opens full-page detail; document preview hides tab bar (safe-area rules) | ☐ |
-| F-4.4 | D21 clone PASS | ☐ |
+| F-4.0 | Umbrella: F-4a…F-4e Done; Axis V **D21** PASS | ☐ |
+
+### F-4a — Pills below header + swipe + unread badge
+| # | AC | Pass? |
+|---|----|-------|
+| F-4a.1 | Docs/news/help pills below header (L-4); swipe; unread badge | ☐ |
+
+### F-4b — Docs View ≠ Download + preview safe-area
+| # | AC | Pass? |
+|---|----|-------|
+| F-4b.1 | View and Download separate; preview hides tab bar / safe-area (L-5) | ☐ |
+
+### F-4c — News full-page detail (not accordion)
+| # | AC | Pass? |
+|---|----|-------|
+| F-4c.1 | News opens **full-page** detail — accordion FAIL | ☐ |
+
+### F-4d — Help contacts tel/mailto
+| # | AC | Pass? |
+|---|----|-------|
+| F-4d.1 | Help contacts tel/mailto match proto | ☐ |
+
+### F-4e — D21 screenshot sign-off
+| # | AC | Pass? |
+|---|----|-------|
+| F-4e.1 | Proto\|FE; depends F-4a…d | ☐ |
 
 ---
 
@@ -208,6 +343,42 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ---
 
+## F-7 — Driver booked/assigned email + order PDF
+
+**Goal:** Drivers receive one AUTHEON workflow email when a job is marketplace-booked or admin-assigned, with the current transport-order PDF attached.  
+**Authority:** OQ #12 Resolved 2026-08-12 · OQ #2 Resolved · PRD `driver_booking_assignment_email_v1` · G-6 / OQ #22–28 for PDF **content**.  
+**Owner:** Yasser (FS) · Ismail (SMTP send path).  
+**DoD:** Send path green; if PDF generation missing, fail loud (no “PDF attached” lie). Card Done for PDF attach waits on G-6.
+
+| # | AC | Pass? |
+|---|----|-------|
+| F-7.1 | Email fires on marketplace **accept** (`order_accepted_by_driver`) and admin **assign** (`job_assigned`) only | ☐ |
+| F-7.2 | No email on publish (no driver yet) or other driver workflow events | ☐ |
+| F-7.3 | Email attaches the **current** transport-order PDF when G-6 can generate it | ☐ |
+| F-7.4 | If PDF is missing: send fails loud or omits the “PDF attached” claim — never a lying attachment | ☐ |
+| F-7.5 | Same mailer as F-8 (`SMTP_*`); Keycloak does not send this mail | ☐ |
+| F-7.6 | In-app / push channels unchanged | ☐ |
+| F-7.7 | EN+DE templates exist as ops config — do not invent legal footer/from-address | ☐ |
+
+---
+
+## F-8 — AUTHEON SMTP for all application mail
+
+**Goal:** One BE mailer sends invite, reset, F-7 booked/assigned, and admin alerts.  
+**Authority:** OQ #2 Resolved 2026-08-12 · PRD `autheon_mail_all_v1`.  
+**Owner:** Ismail.  
+**DoD:** Mailer on `SMTP_*`; Keycloak still owns users/tokens; Autheon email contains the action link.
+
+| # | AC | Pass? |
+|---|----|-------|
+| F-8.1 | BE mailer uses `SMTP_*` for invite, reset, F-7, admin alerts | ☐ |
+| F-8.2 | Keycloak does **not** send mail (`execute-actions-email` is not the sender) | ☐ |
+| F-8.3 | Invite/reset body includes Keycloak action URL; no generated passwords in email | ☐ |
+| F-8.4 | `SMTP_FROM` / domain / link expiry are ops env — not invented in product UI | ☐ |
+| F-8.5 | F-5 production invite path uses this mailer | ☐ |
+
+---
+
 # Epic G — Admin Jobs / empty-run / cancel / finance / assign / notes / VIN / schedule
 
 **Prototype:** `Overview`, `AdminDetail`, `EmptyRunReviewPanel`, `JobFinancePanel`, `AdminCancelJobModal`, `AssignDriverDialog`, `InternalNotesPanel`, `NewOrder`  
@@ -216,14 +387,41 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ---
 
-## G-1 — Jobs overview IA + New job entry (A03)
+## G-1 — Jobs overview umbrella (A03)
+
+**Rule:** Do **not** mark G-1 Done until **G-1a…G-1b** Done.
 
 | # | AC | Pass? |
 |---|----|-------|
-| G-1.1 | Overview status tiles/umbrellas + comfort/dense + persisting filters match proto | ☐ |
-| G-1.2 | `RowActionsMenu`: unavailable actions **hidden** (not disabled-grey sprawl) | ☐ |
-| G-1.3 | New job entry path matches proto; `client_status_mapping` labels EN/DE | ☐ |
-| G-1.4 | A03 clone PASS | ☐ |
+| G-1.0 | Umbrella: G-1a…b Done; Axis V **A03** PASS | ☐ |
+
+### G-1a — Status tiles + density + filters + new-job entry (includes retired G-1c)
+| # | AC | Pass? |
+|---|----|-------|
+| G-1a.1 | Status tiles/umbrellas + comfort/dense + persisting filters match proto | ☐ |
+| G-1a.2 | `client_status_mapping` labels EN/DE | ☐ |
+| G-1a.3 | New job entry path from overview matches proto | ☐ |
+
+### G-1b — RowActionsMenu hide unavailable
+| # | AC | Pass? |
+|---|----|-------|
+| G-1b.1 | Unavailable actions **hidden** (not disabled-grey sprawl) | ☐ |
+
+---
+
+## G-11a — AdminDetail section chrome (A05) — was orphan
+
+| # | AC | Pass? |
+|---|----|-------|
+| G-11a.1 | Detail sections 01–N chrome/order/titles 1:1 `AdminDetail` | ☐ |
+| G-11a.2 | Axis V **A05** structure PASS (content widgets may still be other G-* tasks) | ☐ |
+
+## G-11b — AdminDetailFooter action matrix (A05)
+
+| # | AC | Pass? |
+|---|----|-------|
+| G-11b.1 | Footer actions match proto matrix by status; unavailable hidden | ☐ |
+| G-11b.2 | A05 footer half clone PASS | ☐ |
 
 ---
 
@@ -308,23 +506,16 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ---
 
-## G-9 — Duplicate VIN dialog (A12)
+## G-9 — VIN + schedule-override dialogs (A12) (includes retired G-10)
 
 | # | AC | Pass? |
 |---|----|-------|
 | G-9.1 | Dialog appears on duplicate VIN per proto uniqueness rules | ☐ |
 | G-9.2 | Confirm/cancel outcomes match proto (no silent overwrite) | ☐ |
 | G-9.3 | Copy EN/DE from i18n; A12 (VIN half) clone PASS | ☐ |
-
----
-
-## G-10 — Schedule-override / revert-to-draft (A12)
-
-| # | AC | Pass? |
-|---|----|-------|
-| G-10.1 | Confirm sheet requires note before override / revert-to-draft | ☐ |
-| G-10.2 | Illegal status transitions blocked (BE + UI) | ☐ |
-| G-10.3 | A12 (schedule half) clone PASS | ☐ |
+| G-9.4 | Confirm sheet requires note before override / revert-to-draft | ☐ |
+| G-9.5 | Illegal status transitions blocked (BE + UI) | ☐ |
+| G-9.6 | A12 (schedule half) clone PASS | ☐ |
 
 ---
 
@@ -336,24 +527,54 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ---
 
-## H-1 — Drivers table + access switches
+## H-1 — Drivers / SP center umbrella
+
+**Rule:** Do **not** mark H-1 Done until **H-1a…H-1b** Done.
 
 | # | AC | Pass? |
 |---|----|-------|
-| H-1.1 | Access axes UI = **enabled** \| **disabled** only (no old status enums) | ☐ |
-| H-1.2 | `AccessSwitch` behavior 1:1 proto; invite states `pending` \| `failed` \| `accepted` where shown | ☐ |
-| H-1.3 | **`AccountAccessDialog` = N/A** — no stub dialog shipped; no ClickUp AC requiring it | ☐ |
-| H-1.4 | A14 table chrome clone PASS | ☐ |
+| H-1.0 | Umbrella: H-1a…b Done; A14 PASS | ☐ |
+
+### H-1a — SP center chrome (partners \| MDR)
+| # | AC | Pass? |
+|---|----|-------|
+| H-1a.1 | Partners \| MDR chrome matches `ServicePartnersCenterPane` | ☐ |
+
+### H-1b — DriversPane + AccessSwitch
+| # | AC | Pass? |
+|---|----|-------|
+| H-1b.1 | Access = **enabled** \| **disabled** only; invite `pending`\|`failed`\|`accepted` | ☐ |
+| H-1b.2 | **`AccountAccessDialog` = N/A** — do not ship | ☐ |
 
 ---
 
-## H-2 — SP profile modal tabs (except Documents → Epic C)
+## H-2 — SP profile umbrella (except Documents → C-3)
+
+**Rule:** Do **not** mark H-2 Done until **H-2a…H-2d** Done (+ C-3 for Documents tab).
 
 | # | AC | Pass? |
 |---|----|-------|
-| H-2.1 | Tabs present: overview, masterdata, documents, orders, changerequests, notes, audit | ☐ |
-| H-2.2 | Non-Documents tabs 1:1 proto; Documents tab owned by Epic C (link only / placeholder OK until C) | ☐ |
-| H-2.3 | A15 clone PASS for non-C tabs | ☐ |
+| H-2.0 | Umbrella: H-2a…d Done; A15 non-C PASS | ☐ |
+
+### H-2a — overview + masterdata
+| # | AC | Pass? |
+|---|----|-------|
+| H-2a.1 | overview + masterdata tabs 1:1 proto | ☐ |
+
+### H-2b — orders tab
+| # | AC | Pass? |
+|---|----|-------|
+| H-2b.1 | orders tab 1:1 proto | ☐ |
+
+### H-2c — changerequests in-modal
+| # | AC | Pass? |
+|---|----|-------|
+| H-2c.1 | changerequests in-modal; ties H-3 | ☐ |
+
+### H-2d — notes + audit tabs
+| # | AC | Pass? |
+|---|----|-------|
+| H-2d.1 | notes + audit tabs 1:1 proto | ☐ |
 
 ---
 
@@ -395,24 +616,48 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ---
 
-## I-1 — Customers + Addresses master data
+## I-1 — Customers + Addresses umbrella
+
+**Rule:** Do **not** mark I-1 Done until **I-1a…I-1b** Done. Depends M-2 title hierarchy.
 
 | # | AC | Pass? |
 |---|----|-------|
-| I-1.1 | Customers vs Addresses **separation** preserved (`CustomerCenterPane` hierarchy) | ☐ |
-| I-1.2 | CRUD works; delete blocked if in use (proto) | ☐ |
-| I-1.3 | A19 (+ M-2 title hierarchy) clone PASS | ☐ |
+| I-1.0 | Umbrella: I-1a…b Done; A19 PASS | ☐ |
+
+### I-1a — Customers CRUD
+| # | AC | Pass? |
+|---|----|-------|
+| I-1a.1 | Customers CRUD; delete blocked if in use | ☐ |
+
+### I-1b — Addresses CRUD
+| # | AC | Pass? |
+|---|----|-------|
+| I-1b.1 | Addresses CRUD; separation from Customers preserved | ☐ |
 
 ---
 
-## I-2 — Admin notification feed (T33)
+## I-2 — Admin notification feed umbrella (T33)
+
+**Rule:** Do **not** mark I-2 Done until **I-2a…I-2c** Done.
 
 | # | AC | Pass? |
 |---|----|-------|
-| I-2.1 | All / Unread / Read + severity/source filters match `NotificationFeedPane` | ☐ |
-| I-2.2 | Deep links open correct admin job/SP targets | ☐ |
-| I-2.3 | Channel/event presentation per matrix; OQ **#29–32** Deferred → extra BE fields **block Done** | ☐ |
-| I-2.4 | A13 clone PASS | ☐ |
+| I-2.0 | Umbrella: I-2a…c Done; A13 PASS | ☐ |
+
+### I-2a — All/Unread/Read list chrome
+| # | AC | Pass? |
+|---|----|-------|
+| I-2a.1 | All / Unread / Read list chrome match `NotificationFeedPane` | ☐ |
+
+### I-2b — Filter menu severity/source/date
+| # | AC | Pass? |
+|---|----|-------|
+| I-2b.1 | Severity/source/date filters match proto; matrix only | ☐ |
+
+### I-2c — Deep links + bulk + row menu
+| # | AC | Pass? |
+|---|----|-------|
+| I-2c.1 | Deep links + bulk + row menu; OQ #29–32 extras block invent | ☐ |
 
 ---
 
@@ -426,24 +671,48 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ---
 
-## I-4 — Infopoint admin CRUD
+## I-4 — Infopoint admin umbrella
+
+**Rule:** Do **not** mark I-4 Done until **I-4a…I-4b** Done.
 
 | # | AC | Pass? |
 |---|----|-------|
-| I-4.1 | Docs + News CRUD; show/hide + notify flags match proto | ☐ |
-| I-4.2 | Driver visibility respects flags after publish | ☐ |
-| I-4.3 | A20 clone PASS | ☐ |
+| I-4.0 | Umbrella: I-4a…b Done; A20 PASS | ☐ |
+
+### I-4a — Docs CRUD
+| # | AC | Pass? |
+|---|----|-------|
+| I-4a.1 | Docs CRUD + visibility flags; driver sees after publish | ☐ |
+
+### I-4b — News CRUD + notify
+| # | AC | Pass? |
+|---|----|-------|
+| I-4b.1 | News CRUD + notify flags match proto | ☐ |
 
 ---
 
-## I-5 — Settings / features / operational policies
+## I-5 — Settings umbrella
+
+**Rule:** Do **not** mark I-5 Done until **I-5a…I-5c** Done.
 
 | # | AC | Pass? |
 |---|----|-------|
-| I-5.1 | User + System panes `app_settings`-backed | ☐ |
-| I-5.2 | **No Settings Prototype tab**; no theme editor; no “Run now” inactivity toy | ☐ |
-| I-5.3 | Policies / help contacts / upload limits match proto System surface | ☐ |
-| I-5.4 | A25 clone PASS | ☐ |
+| I-5.0 | Umbrella: I-5a…c Done; A25 PASS | ☐ |
+
+### I-5a — User settings
+| # | AC | Pass? |
+|---|----|-------|
+| I-5a.1 | User pane `app_settings`-backed | ☐ |
+
+### I-5b — System operational policies
+| # | AC | Pass? |
+|---|----|-------|
+| I-5b.1 | System policies match proto; **no** Settings Prototype tab / theme editor | ☐ |
+
+### I-5c — Inactivity + help + upload limits
+| # | AC | Pass? |
+|---|----|-------|
+| I-5c.1 | Inactivity **no Run now**; help contacts; upload limits | ☐ |
 
 ---
 
@@ -454,13 +723,20 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ---
 
-## M-1 — Sidebar order
+## M-1 — Sidebar order + chrome titles (includes retired M-4)
 
 | # | AC | Pass? |
 |---|----|-------|
-| M-1.1 | Sidebar sequence exactly: Jobs → Notifications → SP → Staff → CC → Infopoint → Tour Billing → Audit → Settings | ☐ |
-| M-1.2 | Labels match proto (Tour Billing = “Tour documents” product label) | ☐ |
-| M-1.3 | A02 nav order clone PASS | ☐ |
+| M-1.1 | Sidebar sequence exactly: Jobs → Notification feed → Service Partners → Staff → Customer Center → Infopoint → Tour documents → Audit log → Settings | ☐ |
+| M-1.2 | FE today FAIL order (Tour documents #2, Staff before SP) must be corrected — not “close enough” | ☐ |
+| M-1.3 | Nav labels EN match proto (`navJobs`…`navFeatures`); Tour Billing product label = “Tour documents” | ☐ |
+| M-1.4 | A02 nav order clone PASS | ☐ |
+| M-1.5 | Every top-level nav surface primary h1 = proto `sectionTitle` map (Jobs, Notification feed, Service Partners, **Staff**, Customer Center, Infopoint, Tour documents, Audit log, Settings) | ☐ |
+| M-1.6 | Staff page title = **Staff** / Personal — **not** “Staff accounts” / “Personal-Konten” | ☐ |
+| M-1.7 | DE Tour documents = Tour-Dokumente (hyphen); DE Admin Konsole spacing matches proto | ☐ |
+| M-1.8 | SP center tab “Service Partners” casing; MDR tab DE = Profiländerungen (not invent longer rename) | ☐ |
+| M-1.9 | Tour Billing / CC: chrome owns umbrella title; tab content does not promote a second peer h1 | ☐ |
+| M-1.10 | EN+DE side-by-side for all 9 nav chrome titles PASS | ☐ |
 
 ---
 
@@ -468,9 +744,10 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 | # | AC | Pass? |
 |---|----|-------|
-| M-2.1 | One chrome title + content tabs (not tabs above separate competing titles) | ☐ |
-| M-2.2 | Hierarchy matches prototype `CustomerCenterPane` | ☐ |
-| M-2.3 | No extra dashboard cards in CC chrome | ☐ |
+| M-2.1 | One chrome title **Customer Center** + content tabs under it (not tabs above separate competing h1s) | ☐ |
+| M-2.2 | Per-tab body uses pane-lead only — **no** peer h1 “Customers” / “Addresses” competing with chrome | ☐ |
+| M-2.3 | Hierarchy matches prototype `CustomerCenterPane`; A19 PASS | ☐ |
+| M-2.4 | No extra dashboard cards in CC chrome | ☐ |
 
 ---
 
@@ -480,7 +757,92 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 |---|----|-------|
 | M-3.1 | Name/avatar foot click opens own Staff profile **iff** Phase 6 still in proto | ☐ |
 | M-3.2 | If proto removed foot behavior → document N/A and skip without inventing | ☐ |
-| M-3.3 | A02 foot behavior signed vs current proto | ☐ |
+| M-3.3 | FE today FAIL: foot = logout only — must match proto or N/A | ☐ |
+| M-3.4 | A02 foot behavior signed vs current proto | ☐ |
+
+---
+
+# Epic SEC — Authz / IDOR / session
+
+**Rule:** Do **not** mark SEC Done until **SEC-1…SEC-3** Done. Do not invent OQ #4/#18 answers.
+
+## SEC — Umbrella
+
+| # | AC | Pass? |
+|---|----|-------|
+| SEC.0 | SEC-1…3 Done; findings filed as blockers | ☐ |
+
+### SEC-1 — Jobs + Storno IDOR
+| # | AC | Pass? |
+|---|----|-------|
+| SEC-1.1 | Driver A cannot GET/POST problems/cancel on driver B’s job | ☐ |
+| SEC-1.2 | Admin cancel/empty-run review require admin token | ☐ |
+| SEC-1.3 | Dual vocabulary: SP Storno codes never accepted on admin cancel endpoint | ☐ |
+
+### SEC-2 — Docs + billing IDOR
+| # | AC | Pass? |
+|---|----|-------|
+| SEC-2.1 | Cross-partner SP doc read/download 403 | ☐ |
+| SEC-2.2 | Tour-doc + CI endpoints IDOR-safe | ☐ |
+| SEC-2.3 | Driver token cannot call admin billing | ☐ |
+
+### SEC-3 — Auth/session
+| # | AC | Pass? |
+|---|----|-------|
+| SEC-3.1 | No OTP displayed in UI; Keycloak-backed | ☐ |
+| SEC-3.2 | OQ #18 Deferred extras do not invent session UX | ☐ |
+| SEC-3.3 | Collab F-5/F-6 chrome still clone PASS | ☐ |
+
+---
+
+# Epic J — BE catch-up only if prototype+PRD require a gap
+
+**Rule:** Do not open J-2/J-3 until J-1 confirms a real missing/wrong API. Prefer FE adaptation.  
+**Owner:** Ismail.
+
+---
+
+## J-1 — Gap log: prototype action → missing/wrong endpoint
+
+**Goal:** Every prototype action that cannot be wired to a live API is logged with evidence — no silent BE invention.  
+**Authority:** prototype + PRD + current BE controllers · this table.  
+**DoD:** Log exists; each row is WIRED / PLANNED / NOT-A-GAP.
+
+| # | AC | Pass? |
+|---|----|-------|
+| J-1.1 | Spreadsheet/doc: proto action → expected endpoint → actual BE result | ☐ |
+| J-1.2 | Rows classified WIRED / WRONG-CONTRACT / MISSING / N/A | ☐ |
+| J-1.3 | No FE invents a dead API to “match old FE” | ☐ |
+| J-1.4 | J-2/J-3 stay not started until at least one MISSING/WRONG row is confirmed | ☐ |
+
+---
+
+## J-2 — Implement missing BE endpoint (only if J-1 confirms)
+
+**Goal:** Add the confirmed gap under clean architecture. If J-1 has zero gaps, mark **N/A**.  
+**Authority:** J-1 · BE use-case + UoW + `@autheon/shared` DTOs.  
+**DoD:** Endpoint exists; FE consumes via Repository; no dual-write to retired tables.
+
+| # | AC | Pass? |
+|---|----|-------|
+| J-2.1 | Implements only J-1-confirmed gaps — no extra “while we’re here” APIs | ☐ |
+| J-2.2 | Use-case + UoW + presentation DTO from shared; AuditService where required | ☐ |
+| J-2.3 | Authz/IDOR tests for the new path | ☐ |
+| J-2.4 | If J-1 empty → this card N/A | ☐ |
+
+---
+
+## J-3 — Shared package dual-publish on enum change
+
+**Goal:** New/changed enums publish to BE and FE shared in one change.  
+**Authority:** A-0 · J-2.  
+**DoD:** FE submodule/tag matches BE shared; no local forks.
+
+| # | AC | Pass? |
+|---|----|-------|
+| J-3.1 | Enum/DTO change lands in BE shared and FE `@shared` together | ☐ |
+| J-3.2 | No apps/web string-union fork | ☐ |
+| J-3.3 | If no enum change this program → N/A | ☐ |
 
 ---
 
@@ -533,13 +895,20 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ---
 
-## K-5 — ClickUp import + assignment matrix
+## K-5 — ClickUp hygiene + assignment matrix
+
+**Goal:** Board matches the plans: surviving IDs, owners, Goal/Authority/AC/DoD bodies.  
+**Authority:** [`clickup-apply.md`](../clickup-apply.md) · [`task-book.md`](../task-book.md).  
+**Owner:** Omar.  
+**DoD:** [`clickup-apply.md`](../clickup-apply.md) Parts A–F ticked; leftover `[Person]` tags match the task book.
 
 | # | AC | Pass? |
 |---|----|-------|
-| K-5.1 | Epics A–N (+ Needs-decision OQs) imported | ☐ |
-| K-5.2 | Each task has Surface / Prototype ref / PRD / BE / AC fields | ☐ |
-| K-5.3 | This appendix linked on E/F/G/H/I/M/K tasks | ☐ |
+| K-5.1 | Epics A–N + OQ cards exist in AUTHEON list `901217611464` | ☐ |
+| K-5.2 | Retired IDs (L-7, M-4, E-1c, E-1h, G-10, G-1c, F-3e, F-3f) are `canceled` with merge pointer | ☐ |
+| K-5.3 | Title `[Person]` + primary assignee match [`task-book.md`](../task-book.md) (single owner) | ☐ |
+| K-5.4 | Each surviving card body has Goal · Authority · Acceptance · DoD (copied from AC appendix) | ☐ |
+| K-5.5 | OQ cards have no wave prefix; Resolved (#1 #2 #9 #10 #12 #33 #34) are `completed`; Deferred stay `questions` | ☐ |
 
 ---
 

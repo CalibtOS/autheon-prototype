@@ -1,6 +1,9 @@
 # Prototype → FE → BE Production Alignment Plan
 
-**Status:** **Planning Complete v2.0** (2026-08-11) — coverage gate plan-complete criteria met; ready for Wave 0 execution  
+**Status:** **Planning Complete 100% (v2.2)** — 2026-08-13.  
+**Work list / order / owners:** [`task-book.md`](./task-book.md)  
+**ClickUp board sync (give to a teammate):** [`clickup-apply.md`](./clickup-apply.md)  
+**Index:** [`README.md`](./README.md)  
 **Authority (binding order):**
 1. **Signed-off prototype** — `Autheon/prototype/project/` (`admin.jsx`, `driver.jsx`, `driver-ui.jsx`, `store.js`, `i18n.js`, `DOMAIN.md`) treated as Figma / client visual+behavioral sign-off
 2. **PRD** — `Autheon/docs/requirements/prd.json` (**v2.38**) for acceptance criteria and scope
@@ -53,6 +56,8 @@ Use cases + UoW + domain entities; presentation DTOs from `@autheon/shared`; no 
 - No regress of already-green Scope A BE e2e
 
 ### 1.5 ClickUp field conventions
+Title: `[Wn][ID][Role][Person] Short title`. Assignees follow [`task-book.md`](./task-book.md). Board edits: [`clickup-apply.md`](./clickup-apply.md).
+
 Suggested custom fields on every task:
 - `Surface`: Admin | Driver | Shared | BE | Cross
 - `Prototype ref`: file + component name
@@ -145,25 +150,25 @@ Tab **IA** is already 4-tab `DriverShell` + floating `BottomTabBar`. Visual/beha
 | L-3 | Notification bell on My Jobs / Infopoint / Profile | FE | S | Hard UI | Same unread source + destination |
 | L-4 | My Jobs / Infopoint control bands below shared header | FE | M | Hard UI | Search/sort/pills / info tabs not inside header |
 | L-5 | Hide tab bar on notifications + profile/infopoint subpages | FE | S | Hard UI | Extend `detailScreenHandle` rules |
-| L-6 | Tab active token = neutral (no purple capsule) + safe-area pad | FE | S | Soft | Board §H + prototype CSS |
-| L-7 | Overlay portal stacking beats tab bar | FE | S | Soft | No dead taps under capsule |
+| L-6 | Tab visual + overlay stacking (includes retired L-7) | FE | M | Soft | Neutral active; sheets beat tab bar |
 | L-8 | Quarantine `RootLayout` / desktop template leftovers | FE | S | Soft | Not in live router; no sidebar IA |
 | L-9 | QA side-by-side chrome checklist (phone + tablet) | QA | M | Hard UI | Screenshots signed vs prototype PWA |
 
 **Expanded binary AC:** [`appendices/epic-l-driver-pwa-shell-ui-ac.md`](./appendices/epic-l-driver-pwa-shell-ui-ac.md)
 
-### Epic M — Admin chrome soft parity (nav / Customer Center)
+### Epic M — Admin chrome soft parity (nav / titles / Customer Center)
 
 **Owner mix:** FE Admin  
 **Depends on:** none  
-**Exit:** Sidebar order + Customer Center title hierarchy match prototype; foot profile open optional.  
-**Note:** Admin shell is **not** an old-layout hard break (unlike Epic L). Soft only.
+**Exit:** Sidebar order + page chrome titles + CC hierarchy + foot match prototype.  
+**Note:** Admin shell is **not** an old-layout hard break (unlike Epic L). Soft only.  
+**2026-08-13:** Screen-by-screen nav audit — FE order/naming still FAIL. See [`task-book.md`](./task-book.md) § M.
 
 | Task ID | Title | Role | Effort | AC |
 |---------|-------|------|--------|----|
-| M-1 | Reorder admin sidebar to prototype sequence | FE | S | Jobs → Notifications → SP → Staff → CC → Infopoint → Tour Billing → Audit → Settings |
-| M-2 | Customer Center: one chrome title + content tabs (not tabs above separate titles) | FE | S | Hierarchy matches prototype |
-| M-3 | Sidebar foot: open own Staff profile on name/avatar click (if Phase 6 still in proto) | FE | S | Same as prototype foot behavior |
+| M-1 | Sidebar order **and** chrome titles EN+DE (includes retired M-4) | FE | L | Proto sequence + sectionTitle map (Staff≠Staff accounts) |
+| M-2 | Customer Center: one chrome title + tabs under it | FE | S | No competing per-tab h1 |
+| M-3 | Sidebar foot → own Staff profile (if still in proto) | FE | S | Proto foot or N/A |
 
 ### Epic N — Error handling & dialog standard (PRD T23)
 **Owner mix:** FE shared UI  
@@ -189,7 +194,8 @@ Tab **IA** is already 4-tab `DriverShell` + floating `BottomTabBar`. Visual/beha
 |---------|-------|------|--------|----|
 | B-1 | Shared DTOs/Zod for consolidated invoices | FE | S | Schemas match BE responses |
 | B-2 | Repository + hooks (list/create/review) | FE | M | Layered FE architecture only |
-| B-3 | Tour Billing center shell with 2 tabs (match prototype) | FE | M | Side-by-side IA match |
+| B-3 | **Umbrella** — Tour Billing 2-tab center (A21) | FE | — | B-3 shell + B-3a Done |
+| B-3a | TourBillingPane docs tab 1:1 (A22) | FE | M | Existing tour-docs surface clone |
 | B-4 | Consolidated invoice create + mismatch UX | FE | L | Matches prototype validation/copy |
 | B-5 | Review decisions (complete/reject/correction) + financeModule gate | FE | M | BE 422 when finance off handled |
 | B-6 | E2E: create → review → jobs payment_status paid | QA | M | Green against live BE |
@@ -219,17 +225,32 @@ Tab **IA** is already 4-tab `DriverShell` + floating `BottomTabBar`. Visual/beha
 | Task ID | Title | Role | Effort | AC |
 |---------|-------|------|--------|----|
 | D-1 | Report problem UX parity (copy, validation length, evidence) | FE | M | Prototype match + BE limits |
-| D-2 | My Jobs Active/Performed/Cancelled/Empty-run buckets | FE | M | Same filters/labels as prototype |
+| D-2 | **Umbrella** — My Jobs exact clone (D13) | FE | — | All D-2a…D-2f Done |
+| D-2a | Bucket membership (active/performed/cancelled+empty-run terminals/review) | FE | M | Empty-run terminals in Cancelled |
+| D-2b | Control band below shared header (search/sort/pills) | FE | M | Depends L-4 |
+| D-2c | My-jobs JobCard (tour# + status; assigned banner; correction chip) | FE | M | Opposite of marketplace card |
+| D-2d | Empty / search-miss / soft-cap / loading states | FE | S | Per-bucket empty copy |
+| D-2e | SwipeViews axis-lock + pill sync | FE | S | Vertical scroll preserved |
+| D-2f | D13 screenshot sign-off | QA | S | 4 buckets × empty/populated |
 | D-3 | Cancelled job reason label rendering (new codes) | FE | S | EN/DE labels, no raw ids |
 | D-4 | Evidence upload source sheet phases vs prototype | FE | M | Spec + prototype match |
 | D-5 | E2E full Storno vertical (driver → admin) | QA | L | End-to-end green |
 
 ### Epic E — Driver marketplace & job detail fidelity (Figma-mode)
-**Sources:** `driver.jsx`, `driver-ui.jsx`, `driver-screen-spec.md`
+**Sources:** `driver.jsx` (`Portal`, `FilterSheet`, `JobCard`), `driver-ui.jsx`, `driver-screen-spec.md`  
+**Depends on:** Epic L (L-1/L-2 chrome PASS) before Marketplace content clone can be Done.  
+**WBS:** E-1 surviving children **E-1a, b, d, e, f, g, i**. See [`task-book.md`](./task-book.md).
 
 | Task ID | Title | Role | Effort | AC |
 |---------|-------|------|--------|----|
-| E-1 | Marketplace cards/filters 1:1 prototype | FE | L | Screen-spec checklist complete |
+| E-1 | **Umbrella** — Marketplace Portal exact clone (D05+D06) | FE | — | Surviving children Done; screenshots |
+| E-1a | Results-row composition (count + SortSelect + filter btn + chips) | FE | M | Survives loading; not in header |
+| E-1b | Empty + loading states (includes retired E-1c) | FE | M | Unfiltered/filtered empty; SkeletonList×3 |
+| E-1d | FilterSheet clone (D06) — sections, Reset, Show N results, keys | FE | L | vehicleType/transportType keys |
+| E-1e | Badge + chips rules (T7) — per-PLZ count; sort excluded | FE | S | Plural a11y; zero → no badge |
+| E-1f | JobCard marketplace anatomy (no tour#; route/legs/price/tags) | FE | M | D05 body clone PASS |
+| E-1g | Portal gated branches — access-blocked + inactivity (includes retired E-1h) | FE | L | Or explicit N/A; do not invent banner |
+| E-1i | D05+D06 screenshot sign-off | QA | S | Proto\|FE attached; no close-enough |
 | E-2 | Locked/unlocked job chrome + red-plate notice | FE | M | Spec § match |
 | E-3 | Accept / Mark performed sheets | FE | M | Prototype match |
 | E-4 | External maps handoff | FE | S | Same behavior as prototype |
@@ -237,60 +258,114 @@ Tab **IA** is already 4-tab `DriverShell` + floating `BottomTabBar`. Visual/beha
 | E-6 | Same-day overlap confirm sheet | FE | M | Matches `SameDayOverlapSheet`; PRD T9/T30 |
 | E-7 | Probation limit block sheet (driver) | FE | M | Matches `ProbationLimitSheet`; ties H-5 |
 
+**Known FE hard UI today (Marketplace):** `MarketplaceHeader` still has greeting/avatar + sort/filter in header → **L-2** must land before E-1a can PASS.
+
 ### Epic F — Driver profile, auth, Infopoint, notifications
+**2026-08-13 split:** F-1 / F-3 / F-4 were mega-cards. See [`task-book.md`](./task-book.md).
+
 | Task ID | Title | Role | Effort | AC |
 |---------|-------|------|--------|----|
-| F-1 | Profile + master-data change request UX | FE | M | One-open-request rule |
-| F-2 | Notification preferences (push/email/postal) | FE | M | Matches prototype settings |
-| F-3 | In-app notification list + deep links | FE | M | Matrix-aligned event types |
-| F-4 | Infopoint docs/news/help | FE | M | Separate View/Download |
+| F-1 | **Umbrella** — Profile (D22/D23) | FE | — | All F-1a…F-1e Done |
+| F-1a | Landing IA ProfilePaneFull | FE | M | Identity, probation, nav, help mailtos |
+| F-1b | MDR one-open + 409 | FE | M | No second open; Journey J7 |
+| F-1c | Change-email Cancel\|Primary + code step | FE | M | No enumeration |
+| F-1d | Password + appearance (or Keycloak N/A) | FE | S | L-5 subpage chrome |
+| F-1e | D22/D23 screenshot sign-off | QA | S | Proto\|FE |
+| F-2 | Notification preferences (single card) | FE | M | Matrix; postal/vehicle filters |
+| F-3 | **Umbrella** — Notifications (D20) | FE | — | F-3a…d Done |
+| F-3a | List chrome + tab bar hidden + OQ #29–32 gate (includes retired F-3e/f) | FE | L | Mark-all; empty; no invent severity |
+| F-3b | Ride expand five values only | FE | L | No PLZ/price/plate invent |
+| F-3c | Ride actions locked/unlocked/unavailable | FE | M | Depends E-2 |
+| F-3d | Deep links news/doc/profile + return-to-origin | FE | L | Depends F-4c |
+| F-4 | **Umbrella** — Infopoint (D21) | FE | — | All F-4a…F-4e Done |
+| F-4a | Pills below header + swipe + unread badge | FE | M | L-4 |
+| F-4b | Docs View ≠ Download + preview safe-area | FE | M | L-5 |
+| F-4c | News **full-page** detail (not accordion) | FE | L | Hard FE gap today |
+| F-4d | Help contacts tel/mailto | FE | S | — |
+| F-4e | D21 screenshot sign-off | QA | S | — |
 | F-5 | Driver auth splash/login/set-password/reset | FE | M | Prototype flows |
 | F-6 | Admin auth login/set-password chrome | FE | M | `AdminLoginScreen` / `AdminSetPasswordScreen` parity |
+| F-7 | Driver booked/assigned email + order PDF | FS | M | OQ-12; blocked PDF content on G-6 |
+| F-8 | AUTHEON SMTP for all mail | BE | M | OQ-2 |
 
 ### Epic G — Admin Jobs / empty-run / cancel / finance panel
-**Prototype:** `Overview`, job detail, `EmptyRunReviewPanel`, `JobFinancePanel`, `AdminCancelJob…`
+**Prototype:** `Overview`, `AdminDetail`, `EmptyRunReviewPanel`, `JobFinancePanel`, `AdminCancelJob…`  
+**2026-08-13:** G-1 mega + **A05 AdminDetail had no task** → G-1a/b + G-11a/b. See [`task-book.md`](./task-book.md).
 
 | Task ID | Title | Role | Effort | AC |
 |---------|-------|------|--------|----|
-| G-1 | Jobs overview IA + New job entry | FE | M | Prototype + PRD |
+| G-1 | **Umbrella** — Jobs overview (A03) | FE | — | G-1a…b Done |
+| G-1a | Status tiles + density + filters + new-job entry (includes retired G-1c) | FE | L | A03 |
+| G-1b | RowActionsMenu — hide unavailable (not grey sprawl) | FE | M | A03 |
+| G-11a | AdminDetail section chrome 01–N | FE | L | **A05** (was orphan) |
+| G-11b | AdminDetailFooter action matrix | FE | M | **A05** |
 | G-2 | Job create/edit vehicle domain (Systemlogik) | FE | L | Three vehicle types; red-plate derived |
 | G-3 | Empty-run review chips/copy 1:1 | FE | S | Already wired — fidelity only |
-| G-4 | Admin cancel with driver-facing message | FE | M | Required reason message |
+| G-4 | Admin cancel with driver-facing message | FE | M | Admin allow-list only; ≠ SP Storno |
 | G-5 | Job finance panel vs `job_financials` | FE | M | paymentStatus compatible |
 | G-6 | Transport-order PDF generation UX | FE | M | Matches prototype generation; blocked on PDF OQs |
 | G-7 | Assign / reassign driver dialog | FE | M | `AssignDriverDialog` parity + audit |
 | G-8 | Internal notes panel | FE | M | `InternalNotesPanel` + T32 notes rules |
-| G-9 | Duplicate VIN dialog | FE | S | Proto uniqueness rules |
-| G-10 | Schedule-override / revert-to-draft confirm | FE | S | Required note; illegal transition blocked |
+| G-9 | VIN + schedule-override / revert-to-draft dialogs (includes retired G-10) | FE | M | A12; required note; illegal transition blocked |
 
 ### Epic H — Admin Drivers / Staff / access axes
-**Prototype:** `ServicePartnersCenterPane`, `StaffPane`, `AccessSwitch` (`AccountAccessDialog` = proto stub `null` → **N/A**, do not clone)
+**Prototype:** `ServicePartnersCenterPane`, `StaffPane`, `AccessSwitch` (`AccountAccessDialog` = proto stub `null` → **N/A**, do not clone)  
+**2026-08-13 split:** H-1 / H-2 mega. Documents stay Epic C-3. See [`task-book.md`](./task-book.md).
 
 | Task ID | Title | Role | Effort | AC |
 |---------|-------|------|--------|----|
-| H-1 | Drivers table + access switches | FE | M | enabled/disabled only |
-| H-2 | SP profile modal tabs (except Documents → Epic C) | FE | L | Prototype tabs |
+| H-1 | **Umbrella** — Drivers / SP center | FE | — | H-1a…b Done |
+| H-1a | SP center chrome (partners \| MDR) | FE | M | Proto IA |
+| H-1b | DriversPane + AccessSwitch | FE | M | enabled/disabled only |
+| H-2 | **Umbrella** — SP profile modal (except Documents) | FE | — | H-2a…d Done |
+| H-2a | overview + masterdata tabs | FE | M | Proto tabs |
+| H-2b | orders tab | FE | M | Proto |
+| H-2c | changerequests in-modal | FE | M | Ties H-3 |
+| H-2d | notes + audit tabs | FE | M | Proto |
 | H-3 | MDR queue + approve/reject + inline edit | FE | L | PRD master-data rules |
 | H-4 | Staff invite / resend / last-admin guards | FE | M | Prototype guards |
 | H-5 | Probation UI + manual release | FE | M | Snapshot limit semantics |
 
 ### Epic I — Admin Customer Center, Infopoint, Audit, Notifications, Settings
+**2026-08-13 split:** I-1 / I-2 / I-4 / I-5 mega. See [`task-book.md`](./task-book.md).
+
 | Task ID | Title | Role | Effort | AC |
 |---------|-------|------|--------|----|
-| I-1 | Customers + Addresses master data | FE | M | Separation preserved |
-| I-2 | Admin notification feed (Task 33) | FE | L | Spec + prototype feed |
+| I-1 | **Umbrella** — Customers + Addresses | FE | — | I-1a…b Done |
+| I-1a | Customers CRUD | FE | M | Separation preserved |
+| I-1b | Addresses CRUD | FE | M | Separation preserved |
+| I-2 | **Umbrella** — Admin notification feed | FE | — | I-2a…c Done |
+| I-2a | All/Unread/Read list chrome | FE | M | Task 33 |
+| I-2b | Filter menu severity/source/date | FE | M | Proto |
+| I-2c | Deep links + bulk + row menu | FE | M | Proto |
 | I-3 | Audit log filters/export UX | FE | M | Prototype parity |
-| I-4 | Infopoint admin CRUD | FE | M | Visibility + notify flags |
-| I-5 | Settings / features / operational policies | FE | M | `app_settings` backed |
+| I-4 | **Umbrella** — Infopoint admin | FE | — | I-4a…b Done |
+| I-4a | Docs CRUD | FE | M | Visibility flags |
+| I-4b | News CRUD + notify | FE | M | Notify flags |
+| I-5 | **Umbrella** — Settings | FE | — | I-5a…c Done |
+| I-5a | User settings | FE | M | `app_settings` |
+| I-5b | System operational policies | FE | M | Proto |
+| I-5c | Inactivity (no Run now) + help + upload limits | FE | M | Proto |
 
 ### Epic J — BE catch-up only if prototype+PRD require gaps vs current BE
-**Rule:** Do not open BE tasks unless a prototype action has no API or wrong contract. Prefer FE adaptation.
+**Rule:** Do not open BE tasks unless a prototype action has no API or wrong contract. Prefer FE adaptation.  
+**Owner:** Ismail (primary). J-2/J-3 stay **not started** until J-1 confirms a real gap.
 
 | Task ID | Title | Role | Trigger |
 |---------|-------|------|---------|
 | J-1 | Gap log: prototype action → missing/wrong endpoint | BE/FE | Discovery during Epics B–I |
 | J-2 | Implement missing BE endpoint (if any) under clean arch | BE | J-1 confirmed |
 | J-3 | Shared package dual-publish (BE + FE) for new enums | Full-stack | When enums change |
+
+### Epic SEC — Authz / IDOR / session (Wave 5, parallel with K)
+**Owner:** Ayman. One mega-card is not enough for jobs vs docs vs auth.
+
+| Task ID | Title | Role | Effort | AC |
+|---------|-------|------|--------|----|
+| SEC | **Umbrella** — Authz/IDOR/session gate | Sec | — | SEC-1…3 Done |
+| SEC-1 | Jobs + Storno IDOR (driver A cannot act on B; admin-only cancel) | Sec | M | Negative tests green |
+| SEC-2 | Docs + billing IDOR (SP docs, tour docs, CI) | Sec | M | Cross-partner 403 |
+| SEC-3 | Auth/session (Keycloak; no OTP in UI; F-5 collab) | Sec | M | OQ #18 gates extras |
 
 ### Epic K — QA / Release readiness
 | Task ID | Title | Role | Effort | AC |
@@ -363,12 +438,12 @@ Reason codes (binding):
 PRD file: `Autheon/docs/requirements/prd.json`  
 - 34 tasks with fields: `id`, `epic`, `priority`, `story`, `acceptance[]`, `status`, `files[]`  
 - `scope_alignment.v1_in_scope` (29) = must implement  
-- `production_open_questions` (37) = **disposition** each as Resolved | Deferred+wave impact (see coverage-gate §6)  
+- `production_open_questions` (37) = **disposition** each as Resolved | Deferred+wave impact (see [`oq-disposition.md`](./appendices/oq-disposition.md))  
 - `prototype_validation.verdict` = PASS (prototype is ahead of FE)
 
 When creating ClickUp tasks, attach `PRD T{n}` + story text + acceptance list as description checklist.
 
-**Coverage proof:** [`appendices/coverage-gate.md`](./appendices/coverage-gate.md) — axes P/R/B/M/J/X/**V**. Do not claim “plan complete” without 0 Axis-P orphans, 0 Axis-R MISSING, and Axis V registries in place.
+**Coverage proof:** Axis V registries in [`exact-screen-clone-gate.md`](./appendices/exact-screen-clone-gate.md). Do not claim “plan complete” without 0 Axis-P orphans, 0 Axis-R MISSING, and Axis V registries in place. Historical coverage-gate notes: `docs/archive/2026-08/plans-superseded/coverage-gate.md`.
 
 ---
 
@@ -401,33 +476,32 @@ When creating ClickUp tasks, attach `PRD T{n}` + story text + acceptance list as
 
 ---
 
-## 12. Next actions (execution — plan is complete)
+## 12. Next actions (execution — plan is 100% complete)
 
-1. Import Epics A–N + Needs-decision (mirror [`oq-disposition.md`](./appendices/oq-disposition.md)) into ClickUp — **K-5**  
-2. Attach binary AC appendices on every card  
-3. **Start Wave 0:** Epic A (shared sync + ReportProblemSheet)  
-4. **Parallel Wave 0.5:** Epic L (PWA chrome) + Epic N (dialogs)  
-5. Do not invent OQ answers; G-6 PDF Done blocked on #22–28 until client Resolves or waives  
-6. Re-run coverage / Axis V registries before program Done  
+1. **Answer OQs** one at a time — start with **#7**, then PDF **#22–28** — [oq-disposition.md](./appendices/oq-disposition.md) § How answers land
+2. **Start Wave 0:** Ismail A-0 · Omar A + L + N-2 · Yasser N-1 · Karim M-1
+3. Pull cards only if Definition of Ready is green — [`task-book.md`](./task-book.md) §1
+4. Do not invent OQ answers; G-6 PDF Done blocked on #22–28 until client Resolves or waives
+5. When ClickUp API recovers (or via UI now): execute [`clickup-apply.md`](./clickup-apply.md)
 
 ---
 
-## Appendix index
+## Living plan files
 
-| Appendix | Status | Role |
-|----------|--------|------|
-| [`appendices/admin-prototype-inventory.md`](./appendices/admin-prototype-inventory.md) | **Complete** | Admin surfaces |
-| [`appendices/driver-prototype-inventory.md`](./appendices/driver-prototype-inventory.md) | **Complete** | Driver surfaces |
-| [`appendices/prd-task-traceability.md`](./appendices/prd-task-traceability.md) | **Complete** | T1–T34 → epics |
-| [`appendices/fe-be-gap-matrix.md`](./appendices/fe-be-gap-matrix.md) | **Complete** | FE/BE gaps |
-| [`appendices/coverage-gate.md`](./appendices/coverage-gate.md) | **Complete** | Axes P/R/B/M/J/X/V |
-| [`appendices/exact-screen-clone-gate.md`](./appendices/exact-screen-clone-gate.md) | **Complete** | Axis V registries D/A |
-| [`appendices/oq-disposition.md`](./appendices/oq-disposition.md) | **Complete** | All 37 OQs dispositioned |
-| [`appendices/matrices-and-journeys.md`](./appendices/matrices-and-journeys.md) | **Complete** | Axis M + J index |
-| [`appendices/epic-a-binary-ac.md`](./appendices/epic-a-binary-ac.md) | **Complete** | Epic A AC |
-| [`appendices/epic-l-driver-pwa-shell-ui-ac.md`](./appendices/epic-l-driver-pwa-shell-ui-ac.md) | **Complete** | Epic L AC |
-| [`appendices/epic-ndbc-binary-ac.md`](./appendices/epic-ndbc-binary-ac.md) | **Complete** | Epics N, D, B, C AC |
-| [`appendices/epic-efghimk-binary-ac.md`](./appendices/epic-efghimk-binary-ac.md) | **Complete** | Epics E–I, M, K + journeys AC |
+Index: [`README.md`](./README.md).
+
+| File | Role |
+|------|------|
+| [`task-book.md`](./task-book.md) | Owners, order, surviving IDs, PRD T1–T34 map |
+| [`clickup-apply.md`](./clickup-apply.md) | **Give to a teammate** — every ClickUp change |
+| [`appendices/oq-disposition.md`](./appendices/oq-disposition.md) | All 37 OQs |
+| [`appendices/exact-screen-clone-gate.md`](./appendices/exact-screen-clone-gate.md) | Axis V registries D/A |
+| [`appendices/epic-a-binary-ac.md`](./appendices/epic-a-binary-ac.md) | Epic A AC |
+| [`appendices/epic-l-driver-pwa-shell-ui-ac.md`](./appendices/epic-l-driver-pwa-shell-ui-ac.md) | Epic L AC |
+| [`appendices/epic-ndbc-binary-ac.md`](./appendices/epic-ndbc-binary-ac.md) | Epics N, D, B, C AC |
+| [`appendices/epic-efghimk-binary-ac.md`](./appendices/epic-efghimk-binary-ac.md) | Epics E–I, M, J, K, SEC, F-7/F-8 + journeys AC |
+
+Superseded drafts (inventories, old WBS, PM OS, coverage-gate): `docs/archive/2026-08/plans-superseded/`.
 
 ### Planning-complete verdict
 
@@ -435,14 +509,15 @@ When creating ClickUp tasks, attach `PRD T{n}` + story text + acceptance list as
 |-----------|------|
 | 0 Axis-P orphans (tasks exist) | **Yes** |
 | 0 Axis-R MISSING (T23→N) | **Yes** |
-| All OQs Resolved or Deferred+impact | **Yes** ([oq-disposition.md](./appendices/oq-disposition.md)) |
-| Binary AC for every epic A–N | **Yes** |
+| All OQs Resolved or Deferred+impact | **Yes** ([oq-disposition.md](./appendices/oq-disposition.md)) — 7 Resolved, 30 Deferred+impact, 0 invented |
+| Binary AC + Goal/Authority/DoD for every surviving task ID | **Yes** (A, L, NDBC, EFGHIMK incl. F-7/F-8, B-3a, J-1…3, E-4 owned) |
 | Axis V registries exist | **Yes** |
 | Matrices + journeys indexed | **Yes** |
-| Implementation / clone PASS rows | **No** — execution next (Wave 0) |
-| ClickUp cards created | **No** — K-5 operational import |
+| PM operating system (RACI, DoR/DoD, card schema) | **Yes** |
+| Implementation / clone PASS rows | **No** — that is **program** Done, not plan Done |
+| ClickUp board exists | **Yes** — K-5 remaining is [`clickup-apply.md`](./clickup-apply.md) (API rate-limited); [`task-book.md`](./task-book.md) is SOT |
 
-**100% planning complete ≠ 100% product shipped.** Next: execute Wave 0 (A) ∥ Wave 0.5 (L + N).
+**Planning is 100% complete. Product is not shipped.** Next: (1) answer remaining OQs one at a time per [oq-disposition.md](./appendices/oq-disposition.md) § How answers land; (2) execute Wave 0.
 
 ### Critical discoveries from inventories (update plan AC)
 
@@ -455,7 +530,7 @@ When creating ClickUp tasks, attach `PRD T{n}` + story text + acceptance list as
 7. **Tour-doc metadata sheet** missing in FE → Epic B-7…B-9 (not only consolidated invoices).  
 8. **Admin chrome** largely OK; soft nav order + Customer Center title hierarchy → Epic M (not a hard layout rewrite).  
 9. **PRD v2.38:** T34 allows multiple active SP documents per category — Epic C must not reintroduce one-active/`category_taken`.  
-10. **Coverage gate:** Prototype/PRD/BE audits found orphans (SameDayOverlap, RemoveDoc, VIN dialog, admin auth, T23). Closed via E-6/E-7, B-10, G-7…G-10, F-6, Epic N. Method: [`coverage-gate.md`](./appendices/coverage-gate.md).  
+10. **Coverage gate:** Prototype/PRD/BE audits found orphans (SameDayOverlap, RemoveDoc, VIN dialog, admin auth, T23). Closed via E-6/E-7, B-10, G-7…G-9, F-6, Epic N. Historical notes: `docs/archive/2026-08/plans-superseded/coverage-gate.md`.  
 11. **Exact clone:** FE screens must match prototype 1:1 (Axis V). Current Marketplace greeting header = V FAIL until Epic L. Protocol: [`exact-screen-clone-gate.md`](./appendices/exact-screen-clone-gate.md).
 
 *Generated for Autheon production alignment. Prototype is the signed-off visual/behavioral contract; PRD supplies acceptance; BE/DBML supplies machine contracts.*

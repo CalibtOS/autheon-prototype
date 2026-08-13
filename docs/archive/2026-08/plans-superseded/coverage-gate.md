@@ -37,7 +37,7 @@
 - [x] AC-expansion backlog ordered; **all epic AC appendices written**  
 - [x] Over-scope tasks flagged (E-5, AccountAccess stub, etc.)
 
-**Planning Complete: YES (v2.0).** Execution / clone PASS / ClickUp import remain.
+**Planning Complete: YES 100% (v2.2).** Remaining work is **execution** (clone PASS) and **client OQ answers** — not missing tasks, AC, or owners.
 
 ---
 
@@ -61,7 +61,7 @@
 | P-1 | Same-day overlap | `SameDayOverlapSheet` | **E-6** | Shown when accept conflicts same calendar day; confirm/cancel; PRD T9/T30 |
 | P-2 | Remove tour doc | `RemoveDocModal` | **B-10** | Confirm remove; BE delete/replace; EN/DE |
 | P-3 | Duplicate VIN | AdminApp dialog | **G-9** | Matches proto VIN uniqueness rules |
-| P-4 | Schedule override / revert-draft | AdminApp ConfirmSheet | **G-10** | Note required; blocks illegal transition |
+| P-4 | Schedule override / revert-draft | AdminApp ConfirmSheet | **G-9** | Note required; blocks illegal transition |
 | P-5 | Admin auth | `AdminLoginScreen`, `AdminSetPasswordScreen` | **F-6** | Admin auth chrome 1:1; Keycloak-backed |
 | P-6 | Probation limit (driver) | `ProbationLimitSheet` | **E-7** | Block accept UX; ties H-5 |
 | P-7 | Assign / reassign | `AssignDriverDialog` | **G-7** | Assign/reassign flows + audit |
@@ -137,9 +137,10 @@
 1. A Storno — **done** (`epic-a-binary-ac.md`)  
 2. L Driver chrome — **done** (`epic-l-driver-pwa-shell-ui-ac.md`)  
 3. N / D / B / C — **done** (`epic-ndbc-binary-ac.md`)  
-4. E–I / M / K + journeys — **done** (`epic-efghimk-binary-ac.md`)  
+4. E–I / M / J / K / SEC + F-7/F-8 + journeys — **done** (`epic-efghimk-binary-ac.md`)  
+5. B-3a documents tab — **done** (`epic-ndbc-binary-ac.md`)
 
-**Backlog cleared for planning.** Coding still follows expand-before-build using these appendices as the AC source.
+**Backlog cleared for planning.** Every surviving task ID has binary AC. Card body schema = Goal · Authority · Acceptance · DoD ([pm-operating-system.md](./pm-operating-system.md) §4.4). Coding still copies from these appendices — do not invent AC on ClickUp.
 
 ---
 
@@ -158,13 +159,17 @@ Every new epic AC appendix must include:
 
 ## 10. PM checklist
 
-**Plan-complete (now):**
+**Plan-complete (100%):**
 - [x] Method documented (7 axes incl. V)  
 - [x] Master plan updated with P-1…P-8, Epic N, OQ list, E-5 rewrite  
-- [x] OQ disposition appendix for all 37 (`oq-disposition.md`) — ClickUp mirror = K-5  
+- [x] OQ disposition appendix for all 37 (`oq-disposition.md`) — 7 Resolved, 30 Deferred+impact  
 - [x] AccountAccessDialog marked N/A  
-- [x] Binary AC for all epics A–N  
+- [x] Binary AC for all surviving IDs including F-7, F-8, J-1…3, B-3a, E-4 owned  
 - [x] Exact-clone registries + matrices/journeys index  
+- [x] PM OS: RACI, DoR/DoD, card schema Goal/Authority/AC/DoD  
+- [x] WBS merge pass; retired IDs never reused  
+
+**Not plan holes:** clone PASS rows, ClickUp assignee retitles (K-5, API rate-limited), remaining client OQ **answers**.  
 
 **Before each fidelity wave:** use the epic’s binary AC appendix; blocking OQs per `oq-disposition.md`.  
 **Before program Done:** re-run axes; 0 ORPHAN; 0 MISSING; 0 PARTIAL on shipped scope; journeys green; Axis V all PASS.

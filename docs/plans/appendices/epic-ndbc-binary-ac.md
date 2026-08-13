@@ -5,7 +5,8 @@
 **CI statuses:** `in_review` | `correction_required` | `rejected` | `completed`.  
 **SP docs (T34 v2.38):** multiple active docs per category; **no** `category_taken`.  
 **Axis V:** D14/D15 (Report Problem), D13 (My Jobs), D17/D19 (upload/RemoveDoc), A21–A23 (Tour Billing), A15/A16 (SP profile/Documents).  
-**Template:** happy path · empty/error/validation · Axis M · authz negative · EN+DE · journey · OQ Deferred+impact (no invented client answers).
+**Template:** happy path · empty/error/validation · Axis M · authz negative · EN+DE · journey · OQ Deferred+impact (no invented client answers).  
+**Card body:** Goal · Authority · Acceptance · DoD on every N/D/B/C card ([`clickup-apply.md`](../clickup-apply.md)).
 
 Pass/fail only. ☐ = unchecked.
 
@@ -33,6 +34,11 @@ Pass/fail only. ☐ = unchecked.
 ---
 
 ## N-1 — Inventory FE alert/confirm/toast usage
+
+**Goal:** Complete list of native dialog call sites so N-3 can migrate them.  
+**Authority:** PRD T23 · `apps/web` + admin.  
+**Owner:** Yasser.  
+**DoD:** Inventory attached on the card; every site classified.
 
 | # | AC | Pass? |
 |---|----|-------|
@@ -132,18 +138,57 @@ Pass/fail only. ☐ = unchecked.
 
 ---
 
-## D-2 — My Jobs Active / Performed / Cancelled / Empty-run buckets
+## D-2 — My Jobs umbrella (D13)
+
+**Rule:** Do **not** mark D-2 Done until **D-2a…D-2f** are all Done. Depends on Epic A + L-4 chrome.
 
 | # | AC | Pass? |
 |---|----|-------|
-| D-2.1 | Happy: four buckets match proto labels/filters (Active, Performed, Cancelled, Empty-run review) | ☐ |
-| D-2.2 | Happy: `cancelled_by_sp` / `cancelled_by_autheon` land in Cancelled; `empty_run_reported` in Empty-run review; terminal recognised/not-recognised stay review/history per proto | ☐ |
-| D-2.3 | Empty: each bucket empty-state copy matches proto (EN+DE) | ☐ |
-| D-2.4 | Error: list fetch fail → shared error + retry; no silent blank | ☐ |
-| D-2.5 | Authz negative: driver never sees another partner’s jobs | ☐ |
-| D-2.6 | Axis M: `client_status_mapping` labels used for row status chips | ☐ |
-| D-2.7 | Axis V **D13**: control band below shared header (after L); bucket chrome 1:1 | ☐ |
-| D-2.8 | Journey: post-Storno job appears in correct bucket without manual refresh beyond agreed invalidate | ☐ |
+| D-2.0 | Umbrella: every child D-2a…D-2f Done; Axis V **D13** PASS | ☐ |
+
+### D-2a — Bucket membership
+
+| # | AC | Pass? |
+|---|----|-------|
+| D-2a.1 | Four buckets match proto labels (Active, Performed, Cancelled, Empty-run review / Review) | ☐ |
+| D-2a.2 | `cancelled_by_sp` / `cancelled_by_autheon` → Cancelled; `empty_run_reported` → Empty-run review; terminals recognised/not-recognised per proto | ☐ |
+| D-2a.3 | Authz: driver never sees another partner’s jobs | ☐ |
+| D-2a.4 | Journey: post-Storno job lands correct bucket after agreed invalidate | ☐ |
+
+### D-2b — Control band below shared header
+
+| # | AC | Pass? |
+|---|----|-------|
+| D-2b.1 | Search / sort / pills sit **below** shared header (L-1/L-4) — never in header | ☐ |
+| D-2b.2 | Pill ↔ page sync; EN+DE captions | ☐ |
+
+### D-2c — My-jobs JobCard
+
+| # | AC | Pass? |
+|---|----|-------|
+| D-2c.1 | Card shows tour# + status chip (`client_status_mapping`); **opposite** of marketplace card (marketplace has no tour#) | ☐ |
+| D-2c.2 | Assigned banner + correction chip per proto when applicable | ☐ |
+
+### D-2d — Empty / search-miss / soft-cap / loading
+
+| # | AC | Pass? |
+|---|----|-------|
+| D-2d.1 | Per-bucket empty copy EN+DE matches proto | ☐ |
+| D-2d.2 | Search-miss + soft-cap + skeleton/loading match proto; fetch fail → shared error + retry | ☐ |
+
+### D-2e — SwipeViews axis-lock + pill sync
+
+| # | AC | Pass? |
+|---|----|-------|
+| D-2e.1 | Horizontal swipe changes bucket; vertical scroll preserved (axis lock) | ☐ |
+| D-2e.2 | Swipe updates pills; pills update page | ☐ |
+
+### D-2f — D13 screenshot sign-off
+
+| # | AC | Pass? |
+|---|----|-------|
+| D-2f.1 | Proto\|FE screenshots: 4 buckets × empty + populated | ☐ |
+| D-2f.2 | Depends D-2a…e green | ☐ |
 
 ---
 
@@ -240,6 +285,23 @@ Pass/fail only. ☐ = unchecked.
 | B-3.4 | Authz negative: non-admin role cannot route to Tour Billing | ☐ |
 | B-3.5 | Axis V **A21**: side-by-side chrome PASS (2-tab shell) | ☐ |
 | B-3.6 | EN+DE: tab titles both locales | ☐ |
+
+---
+
+## B-3a — TourBillingPane documents tab 1:1 (A22)
+
+**Goal:** The Documents tab inside Tour Billing matches prototype `TourBillingPane` (existing tour-docs surface, not a redesign).  
+**Authority:** proto `TourBillingPane` · Axis V **A22** · PRD T27 · B-3 shell.  
+**Owner:** Yasser.  
+**DoD:** A22 clone PASS; CI tab remains B-4/B-5.
+
+| # | AC | Pass? |
+|---|----|-------|
+| B-3a.1 | Documents tab lists/uploads/reviews tour docs 1:1 proto pane | ☐ |
+| B-3a.2 | No consolidated-invoice controls on this tab | ☐ |
+| B-3a.3 | Amount/metadata fields follow B-7/B-8/B-9 — do not invent extra columns | ☐ |
+| B-3a.4 | Axis V **A22** clone PASS | ☐ |
+| B-3a.5 | EN+DE labels match proto | ☐ |
 
 ---
 

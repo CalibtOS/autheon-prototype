@@ -35,7 +35,7 @@
 | Admin sidebar order / CC title hierarchy | soft mismatch | N/A | soft | FE | S | **M** (A02, A19) |
 | Dialog / native alert usage | partial | N/A | soft | FE | M | **N** |
 | Same-day overlap / probation sheets | missing tasks→now tasked | present | soft | FE | M | **E-6, E-7** |
-| Assign / notes / VIN / schedule dialogs | partial→now tasked | present | soft | FE | M | **G-7…G-10** |
+| Assign / notes / VIN / schedule dialogs | partial→now tasked | present | soft | FE | M | **G-7…G-9** |
 | Admin auth screens | orphan→**F-6** | present | soft | FE | M | **F-6** |
 | Orphan web `features/invoices` | orphan | N/A | none | FE | S | E hygiene |
 | Shared submodule | stale | ahead | **hard** | Full-stack | M | **A** |

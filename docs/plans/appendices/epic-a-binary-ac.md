@@ -4,13 +4,20 @@
 **Prototype:** `ReportProblemSheet`, cancel / empty-run paths in `driver.jsx`  
 **BE:** `SpCancellationReason`, `EmptyRunReason`; POST `/problems`  
 **Depends on:** nothing (BE ready)  
-**Blocks:** Epic D fidelity; any Storno E2E
+**Blocks:** Epic D fidelity; any Storno E2E  
+**Owner mix:** Ismail A-0 · Omar A-1…A-4, A-6 · Youssef A-5
 
-Pass/fail only. Do not invent answers to open PRD questions (T&C link target stays placeholder until client decides).
+Pass/fail only. Do not invent OQ answers.
+
+**Card body (copy onto ClickUp):** Goal · Authority · Acceptance (table) · DoD — see [`clickup-apply.md`](../clickup-apply.md).
 
 ---
 
 ## A-0 — Sync FE `packages/shared` to BE shared HEAD
+
+**Goal:** FE `@shared` is the same enum/DTO SOT as BE shared HEAD — no local Storno forks.  
+**Authority:** BE `packages/shared` · DBML · PRD T12/T32 · this table.  
+**DoD:** All rows Pass; FE packages that import `@shared` build green.
 
 | # | AC | Pass? |
 |---|----|-------|
@@ -24,6 +31,10 @@ Pass/fail only. Do not invent answers to open PRD questions (T&C link target sta
 
 ## A-1 — Enums available to UI (if A-0 alone incomplete)
 
+**Goal:** UI can import exact DBML Storno unions. If A-0 already exports them, mark this card **N/A** (do not duplicate).  
+**Authority:** DBML · A-0 · this table.  
+**DoD:** Rows Pass **or** explicit N/A because A-0 already satisfies them.
+
 | # | AC | Pass? |
 |---|----|-------|
 | A-1.1 | Cancel allow-list exactly: `appointment_not_kept`, `booked_accidentally`, `org_not_possible`, `other` | ☐ |
@@ -33,6 +44,10 @@ Pass/fail only. Do not invent answers to open PRD questions (T&C link target sta
 ---
 
 ## A-2 — `ReportProblemSheet` codes + validation
+
+**Goal:** Driver Report Problem submits only current DBML codes with proto validation (MIN 30, evidence rules).  
+**Authority:** proto `ReportProblemSheet` · PRD T12/T32 · Axis V D14/D15 · live POST `/problems`.  
+**DoD:** All rows Pass; no legacy codes in the sheet.
 
 | # | AC | Pass? |
 |---|----|-------|
@@ -51,6 +66,10 @@ Pass/fail only. Do not invent answers to open PRD questions (T&C link target sta
 
 ## A-3 — i18n EN/DE
 
+**Goal:** Reason labels match prototype `i18n.js`; users never see raw machine ids.  
+**Authority:** `prototype/project/i18n.js` · PRD T12.  
+**DoD:** EN+DE happy path; no raw-id fallback.
+
 | # | AC | Pass? |
 |---|----|-------|
 | A-3.1 | Keys use new machine ids (match prototype `i18n.js` labels) | ☐ |
@@ -60,6 +79,10 @@ Pass/fail only. Do not invent answers to open PRD questions (T&C link target sta
 ---
 
 ## A-4 — Tests / fixtures
+
+**Goal:** Tests assert new codes only; legacy codes are rejected, not fixtures.  
+**Authority:** A-2 · Scope A BE e2e.  
+**DoD:** Unit/MSW/e2e green; grep clean except explicit reject-legacy tests.
 
 | # | AC | Pass? |
 |---|----|-------|
@@ -71,6 +94,10 @@ Pass/fail only. Do not invent answers to open PRD questions (T&C link target sta
 
 ## A-5 — Live BE smoke
 
+**Goal:** Cancel + empty-run + admin review work on live BE.  
+**Authority:** A-2 · G-3 review path · PRD T12/T13.  
+**DoD:** POST 201; review recognised / not_recognised works.
+
 | # | AC | Pass? |
 |---|----|-------|
 | A-5.1 | Driver cancel → job cancelled_by_sp (or PRD-mapped status) | ☐ |
@@ -80,6 +107,10 @@ Pass/fail only. Do not invent answers to open PRD questions (T&C link target sta
 ---
 
 ## A-6 — Dual vocabulary docs
+
+**Goal:** SP Storno and Admin cancel stay two vocabularies in code and docs.  
+**Authority:** proto Admin cancel modal · DBML admin codes · PRD T14/T32.  
+**DoD:** Shared note exists; admin UI not collapsed into SP enums.
 
 | # | AC | Pass? |
 |---|----|-------|
@@ -91,5 +122,5 @@ Pass/fail only. Do not invent answers to open PRD questions (T&C link target sta
 ## Explicit non-AC (do not block Epic A)
 
 - Pixel-perfect sheet chrome → Epic D-1 / Epic L  
-- T&C URL final target → open question  
+- T&C link: **OQ #1 Resolved 2026-08-12** — in-app Fahrerbedingungen; optional `VITE_DRIVER_TERMS_URL`. Do not invent the URL.  
 - Admin Problems list beyond empty-run → separate backlog  
