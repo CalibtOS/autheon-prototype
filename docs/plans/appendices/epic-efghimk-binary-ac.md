@@ -153,15 +153,15 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 ## E-4 — External maps handoff
 
 **Goal:** Unlocked job maps CTA uses the same external handoff as prototype (no paid SDK invent).  
-**Authority:** proto job-detail maps CTA · PRD T28 · OQ #3 Deferred · Axis V D08.  
+**Authority:** proto job-detail maps CTA · PRD T28 · **OQ #3 Resolved 2026-08-14** · Axis V D08.  
 **Owner:** Marwan.  
-**DoD:** Interim = OS/maps URL like proto. Paid vendor **blocks Done** only if client Resolves #3 to a paid SDK.
+**DoD:** Proto-equivalent Google Maps search URL handoff; no paid in-app SDK.
 
 | # | AC | Pass? |
 |---|----|-------|
-| E-4.1 | Maps CTA opens same external handoff behavior as prototype (platform chooser / deep link) | ☐ |
+| E-4.1 | Maps CTA opens same external handoff as prototype (Google Maps search URL from street+PLZ+city) | ☐ |
 | E-4.2 | Address payload matches unlocked stop fields only (locked never leaks street) | ☐ |
-| E-4.3 | OQ **#3** (map vendor/budget) Deferred → production vendor choice **blocks Done** if product requires paid SDK; interim = proto-equivalent OS/maps URL only | ☐ |
+| E-4.3 | **OQ #3 Resolved** — no paid in-app maps SDK in V1; distance km remains BE-owned (GraphHopper/no-op), not an FE vendor call | ☐ |
 
 ---
 
@@ -195,7 +195,7 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 | E-7.1 | When probation snapshot limit reached → `ProbationLimitSheet` blocks accept | ☐ |
 | E-7.2 | Single dismiss/primary action matches proto; no alternate “override” on driver | ☐ |
 | E-7.3 | Limit semantics = admin H-5 snapshot (same source of truth) | ☐ |
-| E-7.4 | OQ **#35–37** probation-notif / type-map gaps Deferred → do not invent notif event; driver sheet still ships | ☐ |
+| E-7.4 | OQ **#36 Resolved** — probation = Profile card + limit sheet only; **no** push/in-app probation event. OQ **#37 Resolved** → type registry covers channel-matrix events (fail loud) | ☐ |
 | E-7.5 | D11 clone PASS | ☐ |
 
 ---
@@ -267,12 +267,13 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 |---|----|-------|
 | F-3a.1 | Day-grouped list; mark-all; empty; **no** category chips (OQ #33) | ☐ |
 | F-3a.2 | Tab bar hidden (L-5); D20 structure PASS | ☐ |
-| F-3a.3 | No invent severity/mark-read extras until OQ #29–32 dispositioned | ☐ |
+| F-3a.3 | OQ **#29–32 / #37 Resolved** for type/feed rules; OQ **#20 Resolved** — delivery = in-app + email + Web Push (VAPID) as-built; no invented FCM/APNs | ☐ |
 
 ### F-3b — Ride expand five values only
 | # | AC | Pass? |
 |---|----|-------|
 | F-3b.1 | Expand shows **exactly five** proto values — no PLZ/price/plate invent | ☐ |
+| F-3b.2 | **OQ #37 Resolved** — registry covers `job_assigned` + `document_correction_required` (and all channel-matrix events) with deep-link + i18n; missing type fails loudly (no plain-card degrade) | ☐ |
 
 ### F-3c — Ride actions locked/unlocked/unavailable
 | # | AC | Pass? |
@@ -330,6 +331,7 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 | F-5.3 | Demo fill / `?screen=` debug toys **not** shipped | ☐ |
 | F-5.4 | D01 + D02 clone PASS | ☐ |
 | F-5.5 | OQ **#2 Resolved** — invite/reset mail is AUTHEON SMTP (not Keycloak). Production invite Done requires AUTHEON mailer + Keycloak action link; from-address is ops `SMTP_FROM` | ☐ |
+| F-5.6 | OQ **#18 Resolved** — Keycloak login events populate `lastLoginAt`; Active only after activation/first successful login; no demo OTP / fake last-login | ☐ |
 
 ---
 
@@ -455,7 +457,7 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 | G-4.1 | Reason allow-list **only:** `driver_unavailable`, `vehicle_not_available`, `customer_cancelled`, `appointment_not_possible`, `incorrect_order_data`, `vehicle_not_roadworthy`, `other` | ☐ |
 | G-4.2 | **Zero** SP Storno codes in this modal (`appointment_not_kept`, etc. absent) | ☐ |
 | G-4.3 | Driver-facing message required (proto min length); cutoff override UX matches proto | ☐ |
-| G-4.4 | OQ **#7** (cancel vs empty-run phase gates) Deferred → phase-gate edge cases **block Done** until Resolved | ☐ |
+| G-4.4 | OQ **#7 Resolved 2026-08-14** — V1 status gates only (`assigned` \| `accepted`); no pickup/delivery phase invent | ☐ |
 | G-4.5 | A07 clone PASS | ☐ |
 
 ---
@@ -471,15 +473,27 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ---
 
-## G-6 — Transport-order PDF generation UX (A11) — **OQ #22–28 BLOCK**
+## G-6 — Transport-order PDF generation UX (A11) — **OQ #27–28 still block Done**
+
+**Goal:** Admin transport-order PDF preview/generate matches proto structure; content contract from Resolved OQs; fail path + V1 auto-retry.  
+**Authority:** proto A11 · PRD T17 · OQ #22–26 Resolved · OQ #27–28 Deferred · Ismail PDF BE collab.  
+**Owner:** Omar (primary). Ismail BE collab.  
+**DoD:** All rows Pass or N/A; #27–28 Resolved/waived before claiming content Done.
 
 | # | AC | Pass? |
 |---|----|-------|
 | G-6.1 | Preview/generate UX shell matches proto transport-order preview **structurally** | ☐ |
-| G-6.2 | **OQ #22–28 (PDF cluster) = Deferred** — do **not** invent template/field/retention answers | ☐ |
-| G-6.3 | Task **G-6 Done is blocked** until #22–28 Resolved **or** explicit client waiver naming which PDF ACs ship | ☐ |
-| G-6.4 | No shipping prototype “sample PDF everywhere” as production content | ☐ |
-| G-6.5 | A11 clone PASS only after OQ disposition unlocks content contract | ☐ |
+| G-6.2 | **OQ #22 Resolved** — `distanceKm` excluded from PDF payload and `PDF_RELEVANT_FIELDS` | ☐ |
+| G-6.3 | **OQ #23 Resolved** — new version + partner notify only on template-rendered field changes | ☐ |
+| G-6.4 | **OQ #24 Resolved — fail path:** after binding booking saved, on missing required data or generation failure: keep booking; publish no broken PDF; keep previous active version if any; audit `pdf_generation_failed`; admin sees clear generation-failed error | ☐ |
+| G-6.5 | **OQ #24 Resolved — auto-retry:** generation path retries up to **3** times with short backoff (in-request); if all fail → G-6.4 path. No durable out-of-process queue beyond those retries | ☐ |
+| G-6.6 | **OQ #25 Resolved** — driver/SP sees active PDF only; history = admin/audit only | ☐ |
+| G-6.7 | **OQ #26 Resolved** — SP house number + order-creator phone stay optional; PDF collapses cleanly; no new form mandates | ☐ |
+| G-6.8 | **OQ #27 Deferred** — proto placeholders for structure only; legal PASS blocked until client pack. **OQ #5 Resolved** (proto-tokens) covers app chrome only — do not invent PDF legal finals | ☐ |
+| G-6.9 | **OQ #28 Deferred** — no external font host at production render; Done waits on local font assets in pipeline | ☐ |
+| G-6.10 | Task **G-6 legal/font Done is blocked** until #27–28 Resolved **or** explicit client waiver | ☐ |
+| G-6.11 | No shipping prototype “sample PDF everywhere” as production content | ☐ |
+| G-6.12 | A11 structural clone may PASS; full content/legal/font clone waits #27–28 | ☐ |
 
 ---
 
@@ -490,7 +504,7 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 | G-7.1 | `AssignDriverDialog` assign + reassign modes match proto | ☐ |
 | G-7.2 | Empty active-drivers state matches proto; marketplace-accepted **not** reassignable (proto rule) | ☐ |
 | G-7.3 | Audit event written on assign/reassign | ☐ |
-| G-7.4 | OQ **#11** (direct-assignment policy) Deferred → policy edge **blocks Done** if contested | ☐ |
+| G-7.4 | **OQ #11 Resolved** — proto assign/reassign + confirmation note only; no exception-only / phone-email proof invent | ☐ |
 | G-7.5 | A06 clone PASS | ☐ |
 
 ---
@@ -545,6 +559,7 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 |---|----|-------|
 | H-1b.1 | Access = **enabled** \| **disabled** only; invite `pending`\|`failed`\|`accepted` | ☐ |
 | H-1b.2 | **`AccountAccessDialog` = N/A** — do not ship | ☐ |
+| H-1b.3 | **OQ #6 Resolved** — create shows auto `driverCode` as `AU-41-####`; edit cannot change it; FE never invents format | ☐ |
 
 ---
 
@@ -605,7 +620,7 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 |---|----|-------|
 | H-5.1 | Probation snapshot limit displayed; manual release control matches proto | ☐ |
 | H-5.2 | Release updates same limit source consumed by E-7 driver sheet | ☐ |
-| H-5.3 | No daily-limit MDR toy; OQ **#35–37** Deferred items not silently invented | ☐ |
+| H-5.3 | No daily-limit MDR toy; OQ **#36 Resolved** — release/status via Profile card only; **no** invented probation notif; release still updates E-7 source | ☐ |
 
 ---
 
@@ -638,11 +653,13 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ## I-2 — Admin notification feed umbrella (T33)
 
-**Rule:** Do **not** mark I-2 Done until **I-2a…I-2c** Done.
+**Rule:** Do **not** mark I-2 Done until **I-2a…I-2d** Done.  
+**Authority:** signed-off proto `NotificationFeedPane` · **OQ #29 Resolved** — `docs/requirements/dispatch-notification-feed-spec.md` is **binding** · **OQ #30 Resolved** — BE fields + mark-processed required · PRD T33.  
+**Owners:** Karim I-2a…c (FE) · Ismail I-2d (BE).
 
 | # | AC | Pass? |
 |---|----|-------|
-| I-2.0 | Umbrella: I-2a…c Done; A13 PASS | ☐ |
+| I-2.0 | Umbrella: I-2a…d Done; A13 PASS | ☐ |
 
 ### I-2a — All/Unread/Read list chrome
 | # | AC | Pass? |
@@ -652,12 +669,20 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 ### I-2b — Filter menu severity/source/date
 | # | AC | Pass? |
 |---|----|-------|
-| I-2b.1 | Severity/source/date filters match proto; matrix only | ☐ |
+| I-2b.1 | Severity/source/date filters match proto + binding feed spec; matrix only — no invented filter axes | ☐ |
 
 ### I-2c — Deep links + bulk + row menu
 | # | AC | Pass? |
 |---|----|-------|
-| I-2c.1 | Deep links + bulk + row menu; OQ #29–32 extras block invent | ☐ |
+| I-2c.1 | Deep links + bulk + row menu per proto + binding feed spec; **OQ #32 Resolved** — event names = BE/@shared | ☐ |
+
+### I-2d — BE feed contract (OQ #30 Resolved) — Ismail
+| # | AC | Pass? |
+|---|----|-------|
+| I-2d.1 | UserNotification (or equivalent) exposes severity + open/processed status + processedAt/processedBy as needed by binding feed spec + proto | ☐ |
+| I-2d.2 | Mark-processed (or equivalent) endpoint exists and is authorized for admin | ☐ |
+| I-2d.3 | FE I-2a…c Open/Processed behaviour blocked Done until I-2d green (or explicit N/A with J-1 row) | ☐ |
+| I-2d.4 | Shared DTOs published; no FE invent of dead fields | ☐ |
 
 ---
 
@@ -666,8 +691,9 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 | # | AC | Pass? |
 |---|----|-------|
 | I-3.1 | Filters + CSV export match `AuditPane` | ☐ |
-| I-3.2 | Retention purge UI only if proto+policy allow; OQ **#4**/#17–21 Deferred → purge semantics **block Done** if undecided | ☐ |
-| I-3.3 | A24 clone PASS | ☐ |
+| I-3.2 | Retention purge UI only if proto shows it; OQ **#4 Resolved** — V1 = existing upload pipeline; **no** invented malware/DSGVO/purge claims. Purge control ships only when proto+ops policy exist | ☐ |
+| I-3.3 | OQ **#19 Resolved** — durable source = live BE audit APIs; **no** in-memory FE audit; J-1→J-2 if durability gap | ☐ |
+| I-3.4 | A24 clone PASS | ☐ |
 
 ---
 
@@ -688,6 +714,7 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 | # | AC | Pass? |
 |---|----|-------|
 | I-4b.1 | News CRUD + notify flags match proto | ☐ |
+| I-4b.2 | OQ **#20 Resolved** — notify uses as-built in-app + email + Web Push; no invented native-push provider | ☐ |
 
 ---
 
@@ -764,7 +791,7 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 # Epic SEC — Authz / IDOR / session
 
-**Rule:** Do **not** mark SEC Done until **SEC-1…SEC-3** Done. Do not invent OQ #4/#18 answers.
+**Rule:** Do **not** mark SEC Done until **SEC-1…SEC-3** Done. OQ **#4 Resolved** (pipeline-as-is). OQ **#18 Resolved** (keycloak-as-planned).
 
 ## SEC — Umbrella
 
@@ -790,7 +817,7 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 | # | AC | Pass? |
 |---|----|-------|
 | SEC-3.1 | No OTP displayed in UI; Keycloak-backed | ☐ |
-| SEC-3.2 | OQ #18 Deferred extras do not invent session UX | ☐ |
+| SEC-3.2 | OQ **#18 Resolved** — session/lastLogin from Keycloak; do not invent alternate session UX | ☐ |
 | SEC-3.3 | Collab F-5/F-6 chrome still clone PASS | ☐ |
 
 ---
@@ -813,7 +840,7 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 | J-1.1 | Spreadsheet/doc: proto action → expected endpoint → actual BE result | ☐ |
 | J-1.2 | Rows classified WIRED / WRONG-CONTRACT / MISSING / N/A | ☐ |
 | J-1.3 | No FE invents a dead API to “match old FE” | ☐ |
-| J-1.4 | J-2/J-3 stay not started until at least one MISSING/WRONG row is confirmed | ☐ |
+| J-1.4 | J-2/J-3 stay not started until at least one MISSING/WRONG row is confirmed. **OQ #17 Resolved** — j1-gap-gated; no blanket FE-validator port | ☐ |
 
 ---
 
@@ -1015,15 +1042,22 @@ Master plan §6. Each journey ≥3 binary rows. Cross-links epics. Staging + liv
 | #1 | RESOLVED — in-app terms + optional `VITE_DRIVER_TERMS_URL` | E-3.2 |
 | #2 | Invite/reset SMTP | F-5 production invite mail |
 | #3 | Map vendor | E-4 paid SDK choice |
-| #4, #17–21 | Retention / audit / session / push | I-3 purge; related Settings |
+| #4 | RESOLVED — pipeline-as-is; no invented malware/DSGVO claims | B/C upload; I-3 purge soft |
+| #17 | RESOLVED — j1-gap-gated; J-2 only after J-1 confirms gap | J-1 / J-2 |
+| #18 | RESOLVED — keycloak-as-planned; lastLoginAt + Active from real login | F-5 / SEC-3 |
+| #19 | RESOLVED — live-audit-apis; no FE in-memory trail | I-3 |
+| #20 | RESOLVED — in-app + email + Web Push (VAPID) as-built | F-3 / I-4 |
+| #21 | RESOLVED — Missing = delivery_note + invoice only | B-7 |
 | #7 | Cancel vs empty-run phase gates | G-4 edge |
 | #11 | Direct-assignment policy | G-7 edge |
 | #13–16 | Marketplace windows/filters/sort | E-1 contested rows |
 | **#22–28** | **PDF cluster** | **G-6 / T17 entire Done** |
 | #29–32 | Feed BE fields | F-3, I-2, J8 extras |
-| #35–37 | Probation notif / type-map | H-5/E-7 notif side only |
+| #35 | RESOLVED — in-app Back only; pushState out of scope | L chrome / driver nav |
+| #36 | RESOLVED — profile-card-only; no probation notif event | H-5 / E-7 |
+| #37 | RESOLVED — full type registry; fail loud | F-3 |
 
-**Resolved (do not reopen):** #1, #2, #9, #10, #12, #33, #34.
+**Resolved (do not reopen):** #1–3, #7, #9–16, #22–26, #29–37 (and earlier closed #33–34).
 
 ---
 

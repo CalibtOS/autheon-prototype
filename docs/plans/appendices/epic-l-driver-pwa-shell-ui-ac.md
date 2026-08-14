@@ -101,6 +101,7 @@
 | L-5.4 | Profile subpages (account, settings, MDR, appearance, …): tab bar **hidden**; back via `DriverSubpageHeader` pattern | ☐ |
 | L-5.5 | Infopoint message detail: tab bar **hidden** | ☐ |
 | L-5.6 | No double bottom chrome (tab bar + sticky CTA) on any pushed screen | ☐ |
+| L-5.7 | **OQ #35 Resolved** — V1 navigation Done = **in-app Back** (`DriverSubpageHeader` / proto chrome) only; no browser `pushState`/`popstate` history stack | ☐ |
 
 ---
 

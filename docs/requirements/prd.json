@@ -1617,7 +1617,7 @@
     "report_problem_cancel_ux_v1": "Binding warning + driver terms link before slide; warning icon on tour detail and sheet header. SUPERSEDED for the driver flow by Task 32 (v2.4, Storno): the ⚠ entry now splits into SP Cancel order (4 reasons, ≥30-char explanation → cancelled_by_sp) and Report empty run (6 reasons → empty_run_reported); the seven reason codes remain the ADMIN/legacy cancellation set, and the ≥30-char minimum supersedes the old 10-character slide gate.",
     "empty_run_evidence_v1": "Optional file upload (PDF/images, capped in prototype) attached to the empty-run report (empty_run_reported); never required to submit; listed on the admin empty-run review panel; reviewed via Recognised / Not recognised; metadata only in demo.",
     "driver_probation_acceptance_limit_v1": "One-time probation model (F-01, replaces the former per-calendar-day daily_job_limit model). Each driver stores a probation_job_limit (smallint, default 3, confirmable with client) and a probation-released state (probation_cleared_at). A driver on probation may book up to probation_job_limit initial jobs and must have that many jobs marked Performed to be released; after release no further V1 booking limit applies. No rolling daily quota and no driver limit-increase request flow. Admin may manually release a driver from probation for exceptional account-reset cases. Probation constrains only driver self-service marketplace booking; admin direct assignment is exempt, so admin may assign additional jobs to a driver even while on probation (decision 2026-07-10), and Performed jobs count toward release whether self-accepted or admin-assigned. Same-day overlap (existing accepted/assigned job on the same calendar day) still shows a confirmation prompt only — not a hard block. Geo/travel-time overlap detection is out of V1 scope. Driver-facing UI (F-02): a probation-specific status/progress card replaces the legacy daily-limit usage meter and 'request higher limit' action; the card is hidden once the driver is released.",
-    "driver_id_generation_v1": "Driver IDs are assigned automatically by the system on driver creation using a monotonic sequence (not entered manually). Assigned IDs are immutable and are never reused, including after a driver is blocked, inactive, archived, soft-deleted, or departed. The exact ID format (prefix, numeric length, padding, optional year component, starting sequence) is client-defined and tracked in production_open_questions (F-03).",
+    "driver_id_generation_v1": "Driver IDs are assigned automatically on create using AU-41-#### (4-digit zero-padded monotonic sequence from max+1). Immutable and never reused. Exact format RESOLVED 2026-08-14 OQ-6 to match BE DriverCodeAssignmentService. FE displays API driverCode only.",
     "time_window_same_day_v1": "Each tour leg's time window must start and end on the same calendar day; pickup and delivery may be on different dates. Cross-midnight windows are unsupported in V1 and are rejected or blocked with a clear message on save/publish (F-04).",
     "general_documents_actions_v1": "Infopoint General Documents (and driver document rows) expose separate View and Download actions where mobile layout allows; non-previewable types fall back to download-only, and constrained layouts may place Download inside the View preview screen (F-05).",
     "document_upload_pre_completion_v1": "Tour-linked document upload is available at any job operational status (active as well as Performed). Upload is no longer restricted to post-Performed only. Applies to both driver and admin uploads.",
@@ -1663,7 +1663,224 @@
     "transport_order_pdf_versioning_v1": "Transport-order PDF versioning and access (Task 17, PRD v2.26). store.transportOrderDocuments is append-only; the ONLY field mutated after insert is isActive. generateTransportOrderPdf() is called from acceptJob (marketplace_acceptance), assignJob (direct_assignment), finalizeOrderEdit (relevant_change) and regeneratePdf (admin_manual, force). It refuses any order outside PDF_BINDING_STATUSES = assigned|accepted|performed, is idempotent per job.dataRevision, freezes the service-partner snapshot at v1 and carries it forward unchanged, and flips isActive inside one synchronous block with no interleaved emit() so no reader can observe two active versions or none. PDF_RELEVANT_FIELDS is the explicit relevant-change set: exactly the ORDER_EDIT_FIELDS keys the document renders. distanceKm, expenses, internal notes, category and the additional vehicle characteristics are excluded, so they neither mint a version nor reach the partner notification. Version > 1 notifies the assigned partner in-app with the tour and version only. authorizeTransportOrderDocument() is the single access gate: a driver actor must be committed to the order, and only the active document is served.",
     "driver_inactivity_auto_deactivation_v1": "SUPERSEDED 2026-08-07 by resolved_defaults.status_consolidation_access_v1 (D6). Historical v1 text assumed driver.status→Inactive on the operational axis only and left login untouched; D6 instead removes accountAccess+operationalAccess together when there are no active tours, and falls back to operational-only disable when tours are still open.",
     "driver_upload_limits_v1": "Resolved 2026-08-04 (product be#163/fe#43; prototype PR #46). app_settings key driver.uploads.limits = { maxFileMb: 25, maxTotalMb: 50 }, admin-editable on System settings as 'Driver upload limits'. Per-file limit (1..platform ceiling 50) and per-upload-area total (1..1024, must be >= per-file) govern tour documents and Report Problem evidence. Two independent upload areas read the same numbers; the admin total label must say 'per upload area', never 'per tour'. Tour-documents usage counts live driver + admin_off_channel rows, excludes reviewStatus=replaced, excludes transport-order documents structurally; remaining clamps at zero. Distinct refusals: file_too_large vs allowance_exhausted. Replace charged as delta. PLATFORM_UPLOAD_CEILING = 50 MB for dispatch attach and driver personal documents. Lowering a limit invalidates nothing already attached. Staged multi-select review before upload; evidence prechecked before Report Problem submit. Client sign-off items: docs/requirements/job-attachment-size-limits-sign-off.md.",
-    "status_consolidation_access_v1": "Resolved 2026-08-07 (tasks/status-consolidation-decision-brief.md APPROVED). MACHINE CODES: operationalAccess/accountAccess = enabled|disabled; inviteState = pending|failed|accepted; deactivationReason = null|inactivity. NORMALISATION fails closed (unknown/null → disabled). ACTIVITY CLOCK: users.last_activity_at (E5), write-throttled; dormancy from created_at when null. SWEEP POLICY: app_settings driver.inactivity.policy {enabled, thresholdDays:90, warningDays:15}. D6 BRANCH A: no active tours → disable BOTH axes (accountAccess on the user/login side AND operationalAccess on the partner/marketplace side), audit driver_auto_deactivated, feed driver_access_removed_auto, driver notification (email in production). D6 BRANCH B: active tours → disable operationalAccess only, keep accountAccess, set accessRemovalDeferredAt, audit driver_access_removal_deferred every attempt (adminNotified true only on first), feed once, driver marketplace-deferred copy (never promise that finishing tours restores access). REVERSAL: per-axis manual re-enable by admin; re-enable clears deferred marker / deactivationReason as applicable and re-arms activity. ADMIN UI: toggle switches per axis with confirm on disable; overview has no Auto badge (D4 — provenance lives in audit/notifications). SEEDS: demo accounts may start fully enabled; dormantDaysAgo / lastActiveAt only backdate the clock."
+    "status_consolidation_access_v1": "Resolved 2026-08-07 (tasks/status-consolidation-decision-brief.md APPROVED). MACHINE CODES: operationalAccess/accountAccess = enabled|disabled; inviteState = pending|failed|accepted; deactivationReason = null|inactivity. NORMALISATION fails closed (unknown/null → disabled). ACTIVITY CLOCK: users.last_activity_at (E5), write-throttled; dormancy from created_at when null. SWEEP POLICY: app_settings driver.inactivity.policy {enabled, thresholdDays:90, warningDays:15}. D6 BRANCH A: no active tours → disable BOTH axes (accountAccess on the user/login side AND operationalAccess on the partner/marketplace side), audit driver_auto_deactivated, feed driver_access_removed_auto, driver notification (email in production). D6 BRANCH B: active tours → disable operationalAccess only, keep accountAccess, set accessRemovalDeferredAt, audit driver_access_removal_deferred every attempt (adminNotified true only on first), feed once, driver marketplace-deferred copy (never promise that finishing tours restores access). REVERSAL: per-axis manual re-enable by admin; re-enable clears deferred marker / deactivationReason as applicable and re-arms activity. ADMIN UI: toggle switches per axis with confirm on disable; overview has no Auto badge (D4 — provenance lives in audit/notifications). SEEDS: demo accounts may start fully enabled; dormantDaysAgo / lastActiveAt only backdate the clock.",
+    "cancel_vs_empty_run_phase_gates_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Both Cancel and Empty-run only when status assigned|accepted; no pickup/delivery phase gates in V1; driver chooses path in Report Problem; hidden when terminal or empty_run_reported.",
+      "authority": "signed-off prototype canServicePartnerReport",
+      "open_question": "OQ-7"
+    },
+    "transport_order_pdf_distance_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Exclude distanceKm from transport-order PDF and PDF_RELEVANT_FIELDS; PWA-only.",
+      "authority": "Technical_Specifications_EN.pdf section 3 + signed-off prototype",
+      "open_question": "OQ-22"
+    },
+    "transport_order_pdf_relevant_change_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Mint new PDF + notify only on template-rendered field changes; category/EV/ready/red-plates/distance/expenses/internal notes do not mint.",
+      "authority": "implemented PDF_RELEVANT_FIELDS + client confirm 2026-08-14",
+      "open_question": "OQ-23"
+    },
+    "transport_order_pdf_failure_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Keep booking; no broken PDF publish; previous active stays; audit pdf_generation_failed; admin error; auto-retry up to 3 with short backoff then fail; no durable queue beyond in-request retries.",
+      "authority": "prototype fail path + client add auto-retry 2026-08-14",
+      "open_question": "OQ-24",
+      "auto_retry": {
+        "max_attempts": 3,
+        "mode": "in_request_short_backoff"
+      }
+    },
+    "transport_order_pdf_history_visibility_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Driver/SP: active PDF only. Admin/audit: version history.",
+      "authority": "signed-off prototype + client confirm 2026-08-14",
+      "open_question": "OQ-25"
+    },
+    "transport_order_pdf_optional_fields_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "SP house number + order-creator phone optional; PDF collapses cleanly; no new form mandates.",
+      "authority": "client confirm 2026-08-14",
+      "open_question": "OQ-26"
+    },
+    "marketplace_card_schedule_display_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Cards show date · window (or Flexible) via proto legWhen; full schedule in detail.",
+      "authority": "signed-off prototype + client confirm 2026-08-14",
+      "open_question": "OQ-13"
+    },
+    "scheduling_modes_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Date + window from/to + flexibility only; no by-latest mode in V1.",
+      "authority": "signed-off prototype + client confirm 2026-08-14",
+      "open_question": "OQ-14"
+    },
+    "marketplace_date_filter_linkage_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "One linked schedule filter (from/to + presets); not independent pickup vs delivery ranges.",
+      "authority": "signed-off prototype FilterSheet + client confirm 2026-08-14",
+      "open_question": "OQ-15"
+    },
+    "marketplace_sort_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Sort keys date_desc|date_asc|price_desc|price_asc|dist_desc|dist_asc; default date_desc; i18n labels.",
+      "authority": "signed-off prototype SortSelect + client confirm 2026-08-14",
+      "open_question": "OQ-16"
+    },
+    "dispatch_feed_spec_provenance_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "dispatch-notification-feed-spec.md reconstruction is binding until original replaces it.",
+      "authority": "client/product confirm 2026-08-14",
+      "open_question": "OQ-29",
+      "binding_doc": "docs/requirements/dispatch-notification-feed-spec.md"
+    },
+    "admin_feed_be_contract_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "BE required: severity + status + processedAt/By + mark-processed endpoint before I-2 Open/Processed Done.",
+      "authority": "client confirm 2026-08-14 + binding feed spec + prototype",
+      "open_question": "OQ-30",
+      "owners": {
+        "be": "Ismail",
+        "fe": "Karim",
+        "task": "I-2d"
+      }
+    },
+    "service_partner_activity_clock_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Activity = last authenticated request → users.last_activity_at (write-throttled). Not Keycloak login; not heartbeat endpoint.",
+      "authority": "existing BE DriverActivityInterceptor + client confirm 2026-08-14",
+      "open_question": "OQ-31",
+      "be_refs": [
+        "src/modules/drivers/presentation/interceptors/driver-activity.interceptor.ts",
+        "users.last_activity_at",
+        "resolved_defaults.status_consolidation_access_v1 ACTIVITY CLOCK"
+      ]
+    },
+    "notification_event_names_canonical_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Code/@shared event names win; matrix and FE align; no invented types; J-1 for leftovers.",
+      "authority": "client confirm 2026-08-14",
+      "open_question": "OQ-32"
+    },
+    "maps_and_distance_vendor_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "maps_cta": "Google Maps search URL handoff (proto); no paid in-app SDK",
+      "distance_km": "BE-owned GraphHopper/no-op adapter; FE displays job.distanceKm only",
+      "open_question": "OQ-3"
+    },
+    "manual_direct_assignment_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Proto assign/reassign + confirmation note; not exception-only; no invented proof vault.",
+      "authority": "signed-off prototype AssignDriverDialog + client confirm 2026-08-14",
+      "open_question": "OQ-11"
+    },
+    "notification_type_registry_completeness_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Full registry coverage incl. job_assigned + document_correction_required; fail loud on missing type; no plain-card degrade.",
+      "authority": "proto fix 2026-08-04 + client confirm 2026-08-14",
+      "open_question": "OQ-37"
+    },
+    "driver_pwa_navigation_history_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "In-app Back only for V1; pushState/popstate out of scope.",
+      "authority": "client confirm 2026-08-14",
+      "open_question": "OQ-35"
+    },
+    "probation_notification_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Profile card + E-7 sheet only; no probation notification event in V1.",
+      "authority": "client confirm 2026-08-14",
+      "open_question": "OQ-36"
+    },
+    "upload_security_pipeline_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Existing upload-asset pipeline only; no invented malware/DSGVO claims in V1.",
+      "authority": "client confirm 2026-08-14",
+      "open_question": "OQ-4"
+    },
+    "production_branding_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Proto tokens for V1; Corporate Design pack is a later cosmetics swap.",
+      "authority": "client confirm 2026-08-14",
+      "open_question": "OQ-5"
+    },
+    "driver_id_format_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "AU-41-#### (4-digit pad); BE as-is; FE display-only.",
+      "pattern": "AU-41-{NNNN}",
+      "authority": "client confirm 2026-08-14 + BE DriverCodeAssignmentService",
+      "open_question": "OQ-6"
+    },
+    "production_domain_hosting_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Clone unblocked; domain/hosting/clearance = ops env only; no invented public hostname.",
+      "authority": "client confirm 2026-08-14",
+      "open_question": "OQ-8",
+      "blocks_done_on": "T29 ops"
+    },
+    "admin_proto_server_gates_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "j1-gap-gated: FE→live BE; BE ports only J-1 MISSING/WRONG gates via J-2.",
+      "authority": "client confirm 2026-08-14",
+      "open_question": "OQ-17"
+    },
+    "keycloak_session_last_login_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Keycloak login events → lastLoginAt; Active after activation/first login; no demo OTP.",
+      "authority": "client confirm 2026-08-14",
+      "open_question": "OQ-18"
+    },
+    "durable_audit_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Live BE audit APIs only; no FE in-memory audit; J-1→J-2 on durability gaps.",
+      "authority": "client confirm 2026-08-14",
+      "open_question": "OQ-19"
+    },
+    "notification_transport_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "In-app + email + Web Push (VAPID) as-built; no invented FCM/APNs for V1.",
+      "authority": "client confirm 2026-08-14 + existing BE WebPushSenderAdapter",
+      "open_question": "OQ-20"
+    },
+    "expected_tour_doc_types_v1": {
+      "status": "RESOLVED",
+      "resolved_date": "2026-08-14",
+      "rule": "Missing checklist = delivery_note + invoice only; full upload catalog unchanged.",
+      "expected_for_missing": [
+        "delivery_note",
+        "invoice"
+      ],
+      "authority": "client confirm 2026-08-14",
+      "open_question": "OQ-21"
+    }
   },
   "prototype_assumptions": {
     "purpose": "Client-facing UX validation for PRD v1.5; in-memory only.",
@@ -1703,41 +1920,41 @@
   "production_open_questions": [
     "RESOLVED 2026-08-12 (OQ-1): German-style hybrid. Accept/cancel show in-app Fahrerbedingungen (DriverTermsDisclosure EN/DE). When legal publishes the real AGB, set VITE_DRIVER_TERMS_URL (hosted HTML or PDF) — that URL opens instead of the sheet. Do not invent the URL or rewrite legal copy. Infopoint keeps Fahrerbedingungen as standing copy. Bundled-only PDF in the app binary is out.",
     "RESOLVED 2026-08-12 (OQ-2): AUTHEON's mail provider sends ALL application emails (account invite, password reset, driver booked/assigned with PDF, admin alerts). Keycloak SMTP / execute-actions-email is not the production sender. Keycloak still owns identity, required actions, and tokens; AUTHEON BE sends the message via SMTP_*. Sender domain, templates, and link expiry are ops config — do not invent.",
-    "Confirm which map or distance API vendor to use and acceptable ongoing usage budget.",
-    "Confirm production file retention period, encryption at rest, malware scanning, and DSGVO handling for tour document uploads.",
-    "Confirm final production branding package (OQ-4): app display name, logo, exact hex palette, font, icon rules, and related legal/UI copy. Direction advanced 2026-07-10 — minimalist/premium, black/white/grey baseline, restrained purple accent used very sparingly, Montserrat Regular 400; final hex values, logo, display name, and legal copy still pending (client to upload the final Corporate Design package).",
-    "Post-v1.9 meeting 2026-07-10 (F-03): confirm the exact automatic driver ID format — prefix, numeric length, padding, optional year component, and starting sequence number.",
-    "Post-v1.9 meeting 2026-07-10 (F-06): for active tours, when exactly is driver Cancel order allowed, when is Report empty run required instead, and does availability of each path change before pickup, after pickup, before delivery, or after delivery?",
-    "Post-v1.9 meeting 2026-07-10 (F-07): what final production domain, legal/market clearance outcome, and hosting provider/responsibility should be used (likely .com domain and Hetzner hosting if approved)?",
+    "RESOLVED 2026-08-14 (OQ-3): Split maps handoff vs distance. (1) Driver/admin maps CTA (E-4): V1 matches signed-off prototype — open Google Maps search URL from street+PLZ+city; no paid in-app maps SDK. (2) Distance km is server-owned via existing BE routing adapter (GraphHopper when enabled, no-op otherwise); FE never calls a routing vendor with a client API key. Paid FE map SDK or alternate product is out of scope until a later client decision.",
+    "RESOLVED 2026-08-14 (OQ-4): V1 tour/SP document security = pipeline-as-is — use the existing BE upload-asset pipeline (storage + whatever retention/encryption is already configured). No malware-scanner product claim and no invented DSGVO/purge policy text in V1 Done. Soft purge/DSGVO wording may land later via ops/legal without blocking upload clone.",
+    "RESOLVED 2026-08-14 (OQ-5): V1 production branding = proto-tokens — ship signed-off prototype display name, logo, palette, font, and icon rules until the Corporate Design pack lands. Brand swap is a later cosmetics pass. Do not invent final hex values, logo, display name, or legal/UI copy. G-6 legal content remains gated by OQ-27 (placeholders only).",
+    "RESOLVED 2026-08-14 (OQ-6): V1 automatic driver ID format = be-as-is — AU-41- + 4-digit zero-padded monotonic sequence (AU-41-0001…). Matches BE DriverCodeAssignmentService (max AU-41 sequence + 1). Immutable after create; never reused. FE displays API driverCode only — do not invent another scheme.",
+    "RESOLVED 2026-08-14 (OQ-7 / F-06): V1 locks to signed-off prototype. Driver Cancel order and Report empty run are both available only when job status is assigned or accepted (canServicePartnerReport). No pickup/after-pickup/before-delivery/after-delivery phase gates in FE or BE for V1. Driver chooses Cancel vs Empty-run inside Report Problem. Action hidden when terminal or empty_run_reported. Do not invent stricter phase gates.",
+    "RESOLVED 2026-08-14 (OQ-8): V1 = ops-later — FE/BE prototype clone is unblocked. Final production domain, legal/market clearance, and hosting provider/responsibility stay ops/deploy configuration (VITE_* / hosting). Do not invent a public hostname in product copy. T29 Done waits on the ops pack.",
     "RESOLVED 2026-08-07 (status consolidation): granular marketplace restriction is the model — operationalAccess=disabled while accountAccess may remain enabled (D1). Coarse Blocked status retired. See resolved_defaults.status_consolidation_access_v1.",
     "RESOLVED 2026-07-14, SUPERSEDED 2026-07-26 by the client confirmation 'Systemlogik Fahrzeugeingabe': registration status (Zugelassen/Abgemeldet) is now an explicit REQUIRED single-select category independent of transport type, the electric-vehicle and ready-to-drive characteristics are independent attributes, and the red-licence-plate flag/number are removed in favour of a derived requirement. See resolved_defaults.vehicle_domain_v2.",
-    "Meeting 2026-06-29: confirm final policy for manual direct assignment: when admin direct assign is allowed, whether it is exception-only, and what external proof (phone, email, confirmation note) must be stored.",
+    "RESOLVED 2026-08-14 (OQ-11): V1 manual direct assignment matches signed-off prototype. Admin may assign and reassign via AssignDriverDialog with eligible active driver picker and confirmation note. Not exception-only. Do not invent phone/email proof vault or extra policy gates beyond proto.",
     "RESOLVED 2026-08-12 (OQ-12 / F-02): drivers receive a workflow email on marketplace booked and on admin assigned; the email must include the transport-order PDF. PWA/in-app/push remain. Mail is AUTHEON SMTP (OQ-2). PDF attachment Done gated on Task 17 / OQ #22–28.",
-    "Meeting 2026-06-25: confirm whether marketplace list cards show pickup and delivery windows or only dates/regions with full windows in detail.",
-    "Meeting 2026-06-25: confirm whether separate date plus time-window from/to plus flexibility warnings are enough for V1 scheduling, or whether an explicit by-latest date/time mode is required.",
-    "Meeting 2026-06-25: confirm whether pickup-date and delivery-date filters are independent date ranges or linked as one schedule filter.",
-    "Meeting 2026-06-25: confirm final marketplace sort labels, order, and defaults.",
-    "2026-07-31 QA+judge audit of the admin prototype (see docs/requirements/admin-client-requirements-status.md): server-side re-implementation is required for every client-side validation gate added across the 15-phase admin change plan before production go-live — AuthStore.validateOrderDraft, findDuplicateVehicle, parseStrictDate, validateIban, validateTourDocumentAmountMath, and the account-status guards (cannot_change_own_status, last_active_admin) all currently run client-side only and are trivially bypassable; none are a substitute for API-level enforcement.",
-    "2026-07-31 QA+judge audit: real authentication/session infrastructure (Keycloak, per the existing Task 2 decision) is required in production to populate driver.lastLoginAt and admin.lastLoginAt (currently null/prototype-only) and to implement the account-status rule \"Active is set only after activation or first successful login\" against real login events rather than an explicit admin action.",
-    "2026-07-31 QA+judge audit: the Audit Log is in-memory only in the prototype (resets on page reload) — production needs durable server-side audit-event persistence (e.g. an audit_events table) so the trail survives restarts and is queryable at scale, not just filterable within one browser session.",
-    "2026-07-31 QA+judge audit: Infopoint/notification delivery is UI-only in the prototype (toggles and in-app state, no real push transport) — production needs a real push-notification delivery backend (FCM for Android, APNs for iOS, or a unified provider) wired to the existing notification_channels_matrix triggers.",
-    "2026-07-31 QA+judge audit (Phase 11): the admin prototype recognizes \"missing\" tour documents using a hardcoded EXPECTED_TOUR_DOC_TYPES = [delivery_note, invoice] pair (admin.jsx) since the data model has no per-tour expected-document concept. Confirm with the client whether production needs a configurable per-customer or per-transport-type expected-document-type list instead of this fixed pair.",
-    "Task 17 / PDF distance conflict (PRD v2.26): references/Technical_Specifications_EN.pdf section 3 excludes the PWA distance from the transport-order PDF and the prototype implements the exclusion, but the older Task 17 acceptance text listed distance as PDF content. Confirm in writing that the client technical specification supersedes it BEFORE this work is merged to production. The change is isolated to two places (the payload mapping and PDF_RELEVANT_FIELDS) so it can be reversed additively.",
-    "Task 17 relevant-change list (PRD v2.26): confirm the exact backend fields that must create a new immutable PDF version and notify the service partner. The implemented set is every field the approved template renders (34 keys) and deliberately excludes distanceKm, expenses, internal notes, category, electricVehicle, readyToDrive and requiresRedLicencePlates. Confirm in particular whether category or the additional vehicle characteristics should force a new legal version even though the template does not render them.",
-    "Task 17 mandatory-field failure behaviour (PRD v2.26): confirm the admin-facing error, whether an alert is raised, and the retry policy when required data is missing or generation fails after the binding booking is already saved. The prototype commits the booking, publishes nothing, keeps any previous version active and audits pdf_generation_failed - with no automatic retry and no durable job queue, because the prototype has no such infrastructure.",
-    "Task 17 historical-version visibility (PRD v2.26): confirm whether PDF versions earlier than the active one are visible only to admin/audit users or also to the assigned service partner. The prototype exposes only the active document in the driver flow and keeps history on the admin/audit surface.",
-    "Task 17 optional-vs-mandatory classification (PRD v2.26): the technical specification lists the service-partner house number and the order creator's telephone number as PDF content, but the repository's existing address and admin validation requires neither, so both are treated as optional and collapse cleanly. Confirm whether they must become mandatory - which would also make them mandatory on the partner and admin profile forms.",
+    "RESOLVED 2026-08-14 (OQ-13): Marketplace (and My Jobs) list cards show pickup and delivery date plus time window (or Flexible) per signed-off prototype legWhen (date · from–to). Full windows/detail stay on the detail surface. Not dates/regions-only on cards.",
+    "RESOLVED 2026-08-14 (OQ-14): V1 scheduling uses separate date plus time-window from/to plus flexibility warnings only (signed-off prototype NewOrder / schedule fields). No explicit by-latest date/time mode is required for V1.",
+    "RESOLVED 2026-08-14 (OQ-15): Marketplace pickup/delivery date filtering is one linked schedule filter (FilterSheet from/to + presets), not independent pickup-date and delivery-date ranges. Match signed-off prototype.",
+    "RESOLVED 2026-08-14 (OQ-16): Marketplace sort options, order, and default match signed-off prototype SortSelect: date_desc, date_asc, price_desc, price_asc, dist_desc, dist_asc; default date_desc; labels from i18n (sortDateDesc, etc.).",
+    "RESOLVED 2026-08-14 (OQ-17): V1 = j1-gap-gated. FE adapts to live BE. Server re-implementation of an admin-prototype client validation gate (e.g. AuthStore.validateOrderDraft, findDuplicateVehicle, parseStrictDate, validateIban, validateTourDocumentAmountMath, account-status guards) only when J-1 marks that gate MISSING/WRONG — then J-2. Do not invent a blanket backlog to port every 15-phase FE validator. J-2/J-3 stay not-started until J-1 confirms a gap.",
+    "RESOLVED 2026-08-14 (OQ-18): V1 = keycloak-as-planned (Task 2). Real Keycloak login events populate driver.lastLoginAt / admin.lastLoginAt. Account Active is set only after activation or first successful login against those real events — not prototype nulls or admin-only toggles as the sole clock. No demo OTP UI; no fake last-login. F-5 Done requires that wiring.",
+    "RESOLVED 2026-08-14 (OQ-19): V1 = live-audit-apis. I-3 Done wires the Audit Log to existing durable BE audit APIs so the trail survives restarts and is queryable at scale. No in-memory FE audit trail. If J-1 finds durability MISSING/WRONG → J-2; do not invent a second audit store.",
+    "RESOLVED 2026-08-14 (OQ-20): V1 notification delivery = as-built channels — in-app + email + Web Push (VAPID) wired to notification_channels_matrix via existing BE (PUSH_ENABLED / WebPushSenderAdapter + AUTHEON SMTP). Do not invent FCM/APNs unless native store apps are later scoped. F-3 / I-4 Done requires those three channels working; no separate push-ops-TBD gate.",
+    "RESOLVED 2026-08-14 (OQ-21): V1 admin “Missing” tour-document checklist = fixed-pair delivery_note + invoice only (matches proto EXPECTED_TOUR_DOC_TYPES). Full upload catalog unchanged (min_document_types_v1 / BE DocumentType). No per-customer or per-transport-type expected-document-type configuration in V1.",
+    "RESOLVED 2026-08-14 (OQ-22 / Task 17 PDF distance): Client Technical_Specifications_EN.pdf section 3 and the signed-off prototype win. PWA distance (distanceKm) is EXCLUDED from the transport-order PDF payload and from PDF_RELEVANT_FIELDS. Distance remains PWA-only. The older Task 17 acceptance text that listed distance as PDF content is superseded. Change is isolated and reversible if the client later reverses.",
+    "RESOLVED 2026-08-14 (OQ-23 / Task 17 relevant-change): Keep the implemented set. A new immutable transport-order PDF version + service-partner notify is minted only when a template-rendered field changes (the ~34 keys the approved template renders / PDF_RELEVANT_FIELDS). Explicitly excluded from minting: distanceKm, expenses, internal notes, category, electricVehicle, readyToDrive, requiresRedLicencePlates — these do not force a new legal version even if stored on the job.",
+    "RESOLVED 2026-08-14 (OQ-24 / Task 17 mandatory-field failure): After the binding booking is already saved, if required data is missing or PDF generation fails: keep the booking committed; publish nothing new; keep any previous active PDF version; audit pdf_generation_failed; show a clear admin-facing generation-failed error. V1 ADDS automatic retry (not in the prototype): up to 3 attempts with short backoff in the generation path; if all fail, use the fail path above. No durable out-of-process job queue beyond those in-request retries.",
+    "RESOLVED 2026-08-14 (OQ-25 / Task 17 historical-version visibility): Driver/service-partner flow exposes only the active transport-order PDF. Earlier versions are visible on the admin/audit surface only (signed-off prototype).",
+    "RESOLVED 2026-08-14 (OQ-26 / Task 17 optional-vs-mandatory): Service-partner house number and order creator telephone remain OPTIONAL for V1. The PDF collapses cleanly when either is missing. Do not add new mandatory validation on partner or admin profile forms for these fields. Tech Spec listing them as PDF content does not make them form-required.",
     "Task 17 legal and branding sign-off (PRD v2.26): the standard legal paragraph, the footer register data, the referenced GTC/AGB document id and version (the prototype declares a single AGB-SP@2026-01 because there is no versioned GTC entity), the AUTHEON logo asset (currently a typeset placeholder - same item as OQ-4), and the additional-information row labels all require approval. The additional-information ORDER is fixed by the work order and is implemented and tested; only the label wording is open.",
     "Task 17 production font assets (PRD v2.26): vendor licensed Montserrat Regular 400 / Bold 700 into the application's own asset pipeline. The prototype references the canonical OFL faces on Google's font host and caches them git-ignored for generation; a legal document must not depend on an external host at render time, and offline determinism requires local files. options.fontCss / --font-dir is the seam.",
-    "Task 33 (2026-08-05): docs/requirements/dispatch-notification-feed-spec.md is a reconstruction of the client's spec from a direct engineering conversation, not a verbatim copy of an original file/email — replace it with the original if one exists.",
-    "Task 33 (2026-08-05): backend UserNotification has no severity/status/processedAt/processedBy fields, and no mark-processed endpoint exists yet — required before the admin frontend can drive the same Open/Processed behaviour the prototype now demonstrates.",
-    "Task 33 §6 (2026-08-05): this backend has no discrete login use case (auth is delegated entirely to Keycloak via already-validated JWTs) — decide how 'service partner activity' is actually measured in production: last authenticated request (cheap, needs write-throttling on a hot-path interceptor) vs. a dedicated client-called endpoint vs. a real Keycloak login event.",
-    "Task 33 (2026-08-05): notification_channels_matrix and the actual code emit different event names for some of the same events (e.g. order_cancelled_by_driver here vs. order_cancelled_by_sp in code; document_reuploaded here vs. tour_document_reuploaded in code) — found while adding severity, not resolved. Pick one canonical name per event and reconcile both sides.",
+    "RESOLVED 2026-08-14 (OQ-29 / Task 33): docs/requirements/dispatch-notification-feed-spec.md (reconstruction from engineering conversation) is treated as BINDING for the admin notification feed until a verbatim original client file/email replaces it. Build I-2 against that document plus the signed-off prototype feed UI; do not invent beyond those.",
+    "RESOLVED 2026-08-14 (OQ-30 / Task 33): BE is REQUIRED before admin Open/Processed clone. Add UserNotification (or equivalent) fields for severity, open/processed status, processedAt, processedBy as needed by the binding feed spec + prototype, plus a mark-processed (or equivalent) admin endpoint. Ismail owns BE (I-2d); Karim owns FE (I-2a…c). FE must not invent dead fields; log as PLANNED in J-1 until shipped.",
+    "RESOLVED 2026-08-14 (OQ-31 / Task 33 §6): Service-partner activity is measured as the last authenticated API request, persisted on users.last_activity_at with write-throttling (DriverActivityInterceptor + touchLastActivity / recordActivity). Matches existing BE. Not a Keycloak login event and not a dedicated client heartbeat endpoint. Inactivity sweep and feed §6 (90+ days) use that clock; dormancy from created_at when last_activity_at is null.",
+    "RESOLVED 2026-08-14 (OQ-32 / Task 33): Canonical notification event names are those emitted by BE / @shared code. Align notification_channels_matrix and FE maps to those names (examples: order_cancelled_by_sp not order_cancelled_by_driver; tour_document_reuploaded not document_reuploaded). Transition aliases only if needed. Do not invent new event types. Flag remaining mismatches in J-1.",
     "RESOLVED 2026-08-04 (client decision, Thursday meeting): the notification category taxonomy open question from v2.20 is closed by REMOVAL - there is no visible category, so no taxonomy needs confirming. The related v2.20 question of whether 'View more orders' should be conditional is also closed by removal of that action. See resolved_defaults.driver_notification_presentation_v2.",
     "RESOLVED 2026-08-04: the v2.20 'profile-decision deep-link destination' question is closed for master-data change events (they open the Profile Basic data subpage). The sign-in email-change event routes to the Profile LANDING page because that is where the Account group and the email row live and no Account & sign-in subpage exists. Still open for production: whether production should introduce a dedicated Account & sign-in subpage, which would then become that event's destination.",
-    "2026-08-04 OPEN (deliberately deferred, not a defect): the Driver PWA shells have no browser-history (pushState/popstate) wiring for their own screens - only the admin app does - so hardware/browser Back exits the app rather than stepping back through driver screens. Origin-aware notification Back is implemented on the VISIBLE Back control, which is the Back the driver shells support. Production should decide whether the driver shells gain a real history stack; if they do, the notification origin must be carried in history state rather than in component state so a popstate Back honours it too.",
-    "2026-08-04 GAP recorded: no probation notification event exists anywhere (no store event, no channel-matrix row, no i18n copy), so probation-release and probation-status changes reach the driver through the Profile probation card only. Probation is listed as a possible notification type in the refinement brief but adding triggers or channels for it needs separate client approval - it was NOT invented for this task.",
-    "2026-08-04 fixed in the prototype, flagged for the backend: job_assigned and document_correction_required were absent from the notification-type map and silently degraded to informational 'plain' cards - an assigned ride could not be expanded or opened from its own notification, and a correction-required document did not link to the file the driver had to replace. document_correction_required also carried hardcoded English title/body while every sibling event resolved copy through i18n. Production must ensure its own notification-type registry covers every event the channel matrix emits, and that a type with no registry entry fails loudly rather than degrading to an untyped card."
+    "RESOLVED 2026-08-14 (OQ-35): V1 driver PWA navigation Done requires in-app Back matching signed-off prototype chrome only. Browser history pushState/popstate wiring is out of scope for V1 — do not invent a history stack. Optional polish may follow later.",
+    "RESOLVED 2026-08-14 (OQ-36): V1 probation UX = profile-card-only. Probation release/status reach the driver through the Profile probation card and E-7 ProbationLimitSheet only. No push/in-app probation notification event, channel-matrix row, or i18n copy — do not invent. Optional later only if client supplies type, channels, copy, and deep-link.",
+    "RESOLVED 2026-08-14 (OQ-37): Production notification-type registry must include every event the channel matrix / BE emits, including job_assigned and document_correction_required, with correct deep-link behaviour and i18n (no hardcoded English-only copy). A type with no registry entry must fail loudly — never silently degrade to an untyped/plain card. Canonical names follow OQ-32 (code/@shared wins)."
   ],
   "risks": [
     "Legal wording inside the transport-order PDF requires legal review before production.",

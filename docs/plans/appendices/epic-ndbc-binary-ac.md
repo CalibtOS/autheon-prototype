@@ -105,7 +105,7 @@ Pass/fail only. ☐ = unchecked.
 
 | OQ | Disposition | Impact on N |
 |----|-------------|-------------|
-| #5 Production branding | **Deferred** | Token/brand chrome may shift; do not invent brand palette — keep proto tokens until client decides |
+| #5 Production branding | **Resolved 2026-08-14** | Proto tokens for V1; Corporate Design pack = later cosmetics |
 | #1 T&C link target | **Resolved 2026-08-12** | Use `DriverTermsDisclosure` (in-app sheet; hosted URL only if `VITE_DRIVER_TERMS_URL` set). N does not invent URL |
 
 ---
@@ -234,8 +234,8 @@ Pass/fail only. ☐ = unchecked.
 | OQ | Disposition | Impact on D |
 |----|-------------|-------------|
 | #1 T&C link target | **Resolved 2026-08-12** | Cancel/accept use `DriverTermsDisclosure` (in-app sheet; `VITE_DRIVER_TERMS_URL` when legal supplies it). Do not invent the URL |
-| #7 Cancel vs empty-run phase gates | **Deferred** | When ⚠ shows / which statuses allow each path — follow prototype `canServicePartnerReport` until client confirms alternate gates; do not invent stricter/looser gates |
-| #4 Retention / malware / DSGVO | **Deferred** | Evidence malware scanning / retention copy not invented; use existing upload-asset pipeline; production security policy TBD |
+| #7 Cancel vs empty-run phase gates | **Resolved 2026-08-14** | V1 = proto: Cancel + Empty-run only on `assigned` \| `accepted` (`canServicePartnerReport`); no pickup/delivery phase gates; driver chooses path in Report Problem |
+| #4 Retention / malware / DSGVO | **Resolved 2026-08-14** | Evidence/docs = existing upload-asset pipeline; no invented malware scanner UX or DSGVO copy |
 
 ---
 
@@ -355,6 +355,7 @@ Pass/fail only. ☐ = unchecked.
 | B-7.3 | Gaps tagged Open (needs BE) vs FE-only; no silent field invention | ☐ |
 | B-7.4 | Axis M artifact attached to B-8/B-9 ClickUp | ☐ |
 | B-7.5 | EN+DE label column filled from `i18n.js` | ☐ |
+| B-7.6 | **OQ #21 Resolved** — “Missing” expected set = `delivery_note` + `invoice` only; matrix must not invent configurable expected lists | ☐ |
 
 ---
 
@@ -400,9 +401,11 @@ Pass/fail only. ☐ = unchecked.
 
 | OQ | Disposition | Impact on B |
 |----|-------------|-------------|
-| #17–21 (esp. expected tour-doc types) | **Deferred** | B-7 matrix must not invent “expected types” beyond proto/PRD `min_document_types_v1`; client confirmation may extend list later |
-| #4 Retention / encryption / malware | **Deferred** | Storage/malware policy for invoices/docs — use existing secure upload; do not invent scanning UX |
-| #5 Production branding | **Deferred** | Tour Billing chrome stays proto tokens |
+| #17 | RESOLVED — j1-gap-gated | J-1 / J-2 |
+| #20 | RESOLVED — in-app + email + Web Push as-built | F-3 / I-4 |
+| #21 Expected tour-doc types | **Resolved 2026-08-14** | Missing = `delivery_note` + `invoice` only; full upload catalog unchanged |
+| #4 Retention / encryption / malware | **Resolved 2026-08-14** | Storage = existing secure upload pipeline; do not invent scanning UX or DSGVO claims |
+| #5 Production branding | **Resolved 2026-08-14** | Tour Billing chrome = proto tokens |
 | #22–28 PDF cluster | **Deferred** | Does **not** block B CI/docs; blocks T17/G-6 only — listed so B does not pull PDF scope |
 
 ---
@@ -488,9 +491,9 @@ Pass/fail only. ☐ = unchecked.
 
 | OQ | Disposition | Impact on C |
 |----|-------------|-------------|
-| #4 Retention / encryption / malware / DSGVO | **Deferred** | Private storage + malware policy TBD; reuse platform upload-asset; do not invent OCR/quality scoring (OOS) |
-| #5 Production branding | **Deferred** | Tab chrome stays proto |
-| #6 Driver ID format | **Deferred** | Display-only if ID shown on profile; upload flows do not invent ID format |
+| #4 Retention / encryption / malware / DSGVO | **Resolved 2026-08-14** | Private storage via platform upload-asset; no invented OCR/quality scoring or malware UX |
+| #5 Production branding | **Resolved 2026-08-14** | Tab chrome = proto tokens |
+| #6 Driver ID format | **Resolved 2026-08-14** | Display API `driverCode` (`AU-41-####`); do not invent format |
 
 ---
 

@@ -53,7 +53,7 @@ Parallel after A-0: Ismail B-1/C-1 → Yasser B/C. Karim **M-1** from day 1.
 | 1 | A-0 done | Ismail B-1, C-1, B-8 · Yasser B-2 → B-3 → B-3a → B-4 → B-5 and C-2 → C-3 · Karim M-2, M-3 if M-1 done |
 | 2 | Epic A exit | Omar D-1 → D-2a → D-3 → D-4 · Marwan D-2b…e · Karim G-3 → G-4 → G-7 → G-8 |
 | 3 | L-1 **and** L-2 PASS | Omar E-1d → E-2 → E-1g → E-6 → E-7 → F-5 · Marwan E-1a → E-1b → E-1f → E-1e (after E-1d) → E-3 → E-4 → F-1/F-2/F-4 · Karim F-6 → F-3a/b/c · Yasser F-7 · Ismail F-8 |
-| 4 | B-3 shell + phase 2 moving | Omar G-2, H-5, G-6 (when OQs allow) · Marwan H-1a, H-2a…c, H-3 · Karim G-1a/b, G-11a/b, G-9, I-2, H-1b, H-2d, H-4 · Yasser G-5, I-1, I-3, I-4, I-5, N-3 (after N-2), N-4 · Ismail J-1 |
+| 4 | B-3 shell + phase 2 moving | Omar G-2, H-5, G-6 (when OQs allow) · Marwan H-1a, H-2a…c, H-3 · Karim G-1a/b, G-11a/b, G-9, I-2a…c, H-1b, H-2d, H-4 · Yasser G-5, I-1, I-3, I-4, I-5, N-3 (after N-2), N-4 · Ismail J-1 · **I-2d** (feed BE, OQ #30) |
 | 5 | Build waves done | Youssef K · Ayman SEC-1…3 · Ismail J-2/J-3 only if J-1 confirmed · Omar K-5 |
 
 ---
@@ -66,7 +66,7 @@ Parallel after A-0: Ismail B-1/C-1 → Yasser B/C. Karim **M-1** from day 1.
 | **Marwan** | Driver FE + SP UI | F-1a…d, F-2, F-4a…d, F-3d · H-1a, H-2a…c, H-3 · D-2b…e · E-1a, E-1b, E-1e, E-1f, E-4 · E-3, E-5 |
 | **Karim** | Admin FE + notif chrome | G-1a, G-1b, G-11a/b, G-3, G-4, G-7, G-8, G-9 · M-1…M-3 · I-2a…c · F-6 · F-3a/b/c · H-1b, H-2d, H-4 |
 | **Yasser** | BE-strong FS | B-2, B-3a, B-4, B-5, B-7, B-9, B-10 · C-2, C-3, C-4 · I-1a/b, I-3, I-4a/b, I-5a…c · G-5 · F-7 · N-1, N-3, N-4 |
-| **Ismail** | BE only | A-0 · B-1, B-8 · C-1 · F-8 · J-1, J-2, J-3 · G-6 BE collab |
+| **Ismail** | BE only | A-0 · B-1, B-8 · C-1 · F-8 · **I-2d** · J-1, J-2, J-3 · G-6 BE collab |
 | **Youssef** | QA | K-1…K-4, K-6 · L-9 · A-5 · D-2f, D-5 · E-1i · F-1e, F-4e · B-6 · C-5 · N-5 |
 | **Ayman** | Security | SEC-1, SEC-2, SEC-3 (F-5 collab) |
 
@@ -161,11 +161,16 @@ List `901217611464`. Full apply steps: [`clickup-apply.md`](./clickup-apply.md).
 | G-11b | `869ehet5q` |
 | I-1 | `869egzm1k` |
 | I-1a | `869ehet6k` |
+| I-2d | `869ehx7t2` |
 | L-6 | `869egzkua` |
 | M-1 | `869egzm1u` |
 | M-2 | `869egzm1t` |
 | J-2 | `869eheu37` |
 | J-3 | `869eheu98` |
+| OQ-9 | `869ehx92u` |
+| OQ-10 | `869ehx91v` |
+| OQ-33 | `869ehx91t` |
+| OQ-34 | `869ehx91u` |
 | SEC-1 | `869eheu2h` |
 | SEC-2 | `869eheu2t` |
 | SEC-3 | `869eheu2u` |
