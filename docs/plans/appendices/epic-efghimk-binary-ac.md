@@ -473,12 +473,12 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ---
 
-## G-6 — Transport-order PDF generation UX (A11) — **OQ #27–28 still block Done**
+## G-6 — Transport-order PDF generation UX (A11) — **OQ #22–28 Resolved (unblocked)**
 
-**Goal:** Admin transport-order PDF preview/generate matches proto structure; content contract from Resolved OQs; fail path + V1 auto-retry.  
-**Authority:** proto A11 · PRD T17 · OQ #22–26 Resolved · OQ #27–28 Deferred · Ismail PDF BE collab.  
+**Goal:** Admin transport-order PDF preview/generate matches proto structure where required; V1 content/fonts follow Resolved OQs; fail path + V1 auto-retry.  
+**Authority:** proto A11 · PRD T17 · OQ #22–28 Resolved · Ismail PDF BE collab.  
 **Owner:** Omar (primary). Ismail BE collab.  
-**DoD:** All rows Pass or N/A; #27–28 Resolved/waived before claiming content Done.
+**DoD:** All rows Pass or N/A.
 
 | # | AC | Pass? |
 |---|----|-------|
@@ -489,11 +489,11 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 | G-6.5 | **OQ #24 Resolved — auto-retry:** generation path retries up to **3** times with short backoff (in-request); if all fail → G-6.4 path. No durable out-of-process queue beyond those retries | ☐ |
 | G-6.6 | **OQ #25 Resolved** — driver/SP sees active PDF only; history = admin/audit only | ☐ |
 | G-6.7 | **OQ #26 Resolved** — SP house number + order-creator phone stay optional; PDF collapses cleanly; no new form mandates | ☐ |
-| G-6.8 | **OQ #27 Deferred** — proto placeholders for structure only; legal PASS blocked until client pack. **OQ #5 Resolved** (proto-tokens) covers app chrome only — do not invent PDF legal finals | ☐ |
-| G-6.9 | **OQ #28 Deferred** — no external font host at production render; Done waits on local font assets in pipeline | ☐ |
-| G-6.10 | Task **G-6 legal/font Done is blocked** until #27–28 Resolved **or** explicit client waiver | ☐ |
+| G-6.8 | **OQ #27 Resolved** — V1 = proto placeholders + BE as-built legal note / template; no invented finals; client pack = later swap | ☐ |
+| G-6.9 | **OQ #28 Resolved** — V1 = PdfKit built-in fonts (no Montserrat vendoring / no external font host); Montserrat embed = later polish | ☐ |
+| G-6.10 | G-6 Done is **not** OQ-blocked; implement against #22–28 Resolved rules | ☐ |
 | G-6.11 | No shipping prototype “sample PDF everywhere” as production content | ☐ |
-| G-6.12 | A11 structural clone may PASS; full content/legal/font clone waits #27–28 | ☐ |
+| G-6.12 | A11 structural + V1 content/font rules Pass; pixel-perfect Montserrat/legal pack is optional later polish | ☐ |
 
 ---
 
@@ -1051,7 +1051,7 @@ Master plan §6. Each journey ≥3 binary rows. Cross-links epics. Staging + liv
 | #7 | Cancel vs empty-run phase gates | G-4 edge |
 | #11 | Direct-assignment policy | G-7 edge |
 | #13–16 | Marketplace windows/filters/sort | E-1 contested rows |
-| **#22–28** | **PDF cluster** | **G-6 / T17 entire Done** |
+| **#22–28** | **PDF cluster** | **G-6 / T17** — all Resolved; implement against recorded rules |
 | #29–32 | Feed BE fields | F-3, I-2, J8 extras |
 | #35 | RESOLVED — in-app Back only; pushState out of scope | L chrome / driver nav |
 | #36 | RESOLVED — profile-card-only; no probation notif event | H-5 / E-7 |
@@ -1071,4 +1071,4 @@ Master plan §6. Each journey ≥3 binary rows. Cross-links epics. Staging + liv
 
 ---
 
-*Appendix for Autheon production alignment. Exact clone; dual cancel vocabularies; PDF G-6 blocked on OQ #22–28 Deferred.*
+*Appendix for Autheon production alignment. Exact clone; dual cancel vocabularies; PDF G-6 OQ #22–28 Resolved (V1 PdfKit fonts + proto/BE legal placeholders).*

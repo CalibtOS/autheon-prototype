@@ -10,14 +10,14 @@
 | #2 | Keycloak invite/reset SMTP | **Resolved 2026-08-12** | — | **AUTHEON mail for all** emails: invite, reset, booked/assigned PDF, admin alerts. Do **not** send via Keycloak SMTP. From-address / templates / link expiry = ops env (`SMTP_*`), not invented. |
 | #3 | Map/distance vendor + budget | **Resolved 2026-08-14** | — | **E-4 maps CTA:** V1 = proto-style **Google Maps search URL** handoff only — no paid in-app maps SDK. **Distance km:** server-owned via existing BE routing adapter (GraphHopper when enabled); FE never calls a routing vendor. Paid FE SDK / alternate map product = out of scope until a later client decision. |
 | #4 | Retention / encryption / malware / DSGVO | **Resolved 2026-08-14** | — | V1 = **pipeline-as-is**: use existing BE upload-asset pipeline (storage + configured retention/encryption). **No** malware-scanner product claim and **no** invented DSGVO/purge policy text in V1 Done. Soft purge/DSGVO wording may land later via ops/legal without blocking upload clone. |
-| #5 | Production branding package | **Resolved 2026-08-14** | — | V1 = **proto-tokens**: ship signed-off prototype display name/logo/palette/font/icon rules until Corporate Design pack lands. Brand swap = later cosmetics pass. Does **not** invent final hex/logo/legal copy. G-6 legal content still gated by **#27** (placeholders only). |
+| #5 | Production branding package | **Resolved 2026-08-14** | — | V1 = **proto-tokens**: ship signed-off prototype display name/logo/palette/font/icon rules until Corporate Design pack lands. Brand swap = later cosmetics pass. Does **not** invent final hex/logo/legal copy. PDF legal/branding for G-6 follows **#27**. |
 | #6 | Exact driver ID format | **Resolved 2026-08-14** | — | V1 = **be-as-is**: `AU-41-` + 4-digit zero-padded monotonic sequence (`AU-41-0001`…). Matches BE `DriverCodeAssignmentService`. Immutable after create; never reused. FE displays API `driverCode` only — do not invent another scheme. |
 | #7 | Cancel vs empty-run phase gates (active tours) | **Resolved 2026-08-14** | — | V1 = signed-off proto: Cancel + Empty-run only when status `assigned` \| `accepted` (`canServicePartnerReport`). No pickup/delivery phase gates in FE/BE. Driver chooses path inside Report Problem. Hidden when terminal or `empty_run_reported`. |
 | #8 | Production domain / hosting | **Resolved 2026-08-14** | — | V1 = **ops-later**: FE/BE prototype clone is **unblocked**. Final domain, legal/market clearance, and hosting provider stay ops/deploy env (`VITE_*` / hosting config) — do **not** invent a public hostname in product copy. **T29 Done** waits on ops pack. |
 | #9 | Marketplace restriction model | **Resolved** | — | Granular axes — do not reopen |
 | #10 | Vehicle Systemlogik | **Resolved** (superseded by client PDF) | — | Use `vehicle_domain_v2` |
 | #11 | Manual direct-assignment policy | **Resolved 2026-08-14** | — | V1 = signed-off proto: admin **assign + reassign** via `AssignDriverDialog` with driver picker + **confirmation note**. Not exception-only. Do **not** invent phone/email proof vault or extra policy gates. |
-| #12 | Driver booking email conflict | **Resolved 2026-08-12** | — | Drivers **do** get workflow email on marketplace **booked** and admin **assigned**; email **must attach the transport-order PDF**. Push/in-app stay. Mail via AUTHEON SMTP (OQ #2). PDF attach gated on G-6 / remaining PDF OQs (#27–28). |
+| #12 | Driver booking email conflict | **Resolved 2026-08-12** | — | Drivers **do** get workflow email on marketplace **booked** and admin **assigned**; email **must attach the transport-order PDF**. Push/in-app stay. Mail via AUTHEON SMTP (OQ #2). PDF attach Done gated on G-6 generate path (#22–28 Resolved). |
 | #13 | Marketplace cards: windows vs dates | **Resolved 2026-08-14** | — | List cards show pickup/delivery **date · window** (or Flexible) per proto `legWhen`. Full schedule remains in detail. Not dates/regions-only on cards. |
 | #14 | By-latest scheduling vs windows | **Resolved 2026-08-14** | — | V1 scheduling = **date + time-window from/to + flexibility** only (proto form). No explicit by-latest date/time mode. |
 | #15 | Independent vs linked date filters | **Resolved 2026-08-14** | — | Marketplace FilterSheet uses **one linked schedule filter** (`from` / `to` + presets) — not independent pickup vs delivery date ranges. Match proto. |
@@ -32,8 +32,8 @@
 | #24 | PDF mandatory-field failure UX | **Resolved 2026-08-14** | — | After binding booking saved: keep booking; publish no broken PDF; keep previous active version if any; audit `pdf_generation_failed`; admin sees generation-failed error. **V1 adds auto-retry** (not in proto): up to **3** attempts with short backoff, then same fail path. No durable out-of-process job queue beyond those in-request retries. |
 | #25 | PDF historical-version visibility | **Resolved 2026-08-14** | — | Driver/SP sees **active** transport-order PDF only. Earlier versions visible on **admin/audit** surface only (proto). |
 | #26 | PDF optional vs mandatory fields | **Resolved 2026-08-14** | — | SP house number + order-creator telephone stay **optional** for V1. PDF collapses cleanly when missing. Do **not** add new mandatory validation on partner/admin profile forms for these. |
-| #27 | PDF legal/branding sign-off | **Deferred** | **G-6 content / legal Done** | No finals yet. Interim: match **proto placeholders** for structure/wiring only. Do **not** invent legal paragraph, footer register, AGB id/version, logo, or label wording. Legal PASS waits on client pack. App chrome uses **#5 proto-tokens**. |
-| #28 | PDF font assets licensing | **Deferred** | **G-6 font / production generate Done** | No licensed local files yet. Interim: production generate must **not** depend on Google Fonts or any external host at render time. Dev/proto cache only for local experiments. Done waits on local Montserrat 400/700 (or client-approved substitute) in the asset pipeline (`fontCss` / `--font-dir`). |
+| #27 | PDF legal/branding sign-off | **Resolved 2026-08-14** | — | V1 = **proto-placeholders-as-shipped** + **BE template as-built**. Ship signed-off proto PDF legal/footer/GTC placeholders (`GTC_DOCUMENT` AGB-SP / 2026-01, typeset AUTHEON wordmark) and the existing BE generator copy (`TRANSPORT_ORDER_LEGAL_NOTE` / `TransportOrderPdfTemplateService`) as production V1 content. Do **not** invent new legal paragraphs, Corporate Design logo, or a real AGB entity. Client pack swap = later cosmetics/legal pass — **does not block G-6 Done**. App chrome still **#5 proto-tokens**. |
+| #28 | PDF font assets licensing | **Resolved 2026-08-14** | — | V1 = **pdfkit-defaults**: production generate uses the **existing BE PdfKit built-in fonts** (`LocalTransportOrderPdfGeneratorAdapter`) — no Montserrat vendoring, no Google Fonts / external host at render, no new font pipeline. Exact Montserrat embed = later polish when worth the BE change. **Does not block G-6 Done.** |
 | #29 | Dispatch feed spec provenance | **Resolved 2026-08-14** | — | `docs/requirements/dispatch-notification-feed-spec.md` (reconstruction) is **binding** for admin feed (Task 33 / I-2) until a verbatim original replaces it. Build I-2 against that doc + proto UI; do not invent beyond those two. |
 | #30 | Feed severity/mark-read BE fields | **Resolved 2026-08-14** | — | **BE required** before admin Open/Processed clone: add `severity`, `status`, `processedAt`, `processedBy` on UserNotification (or equivalent) + **mark-processed** endpoint. FE I-2 drives proto behaviour only after BE lands. Ismail owns BE; Karim owns FE chrome. Log in J-1 as PLANNED if not yet in BE. |
 | #31 | 90-day inactivity “activity” definition | **Resolved 2026-08-14** | — | Activity = **last authenticated API request** → `users.last_activity_at` (write-throttled), as already implemented (`DriverActivityInterceptor` + inactivity sweep). **Not** Keycloak login events; **not** a dedicated heartbeat endpoint. Feed §6 / dormancy use that clock. |
@@ -48,8 +48,8 @@
 
 | State | Count |
 |-------|------:|
-| Resolved | 35 (#1–26, #29–37) |
-| Deferred + impact named | 2 (#27–28) |
+| Resolved | **37** (#1–37) |
+| Deferred + impact named | **0** |
 | Invented by eng | **0** |
 
 ## Wave impact (planning)
@@ -60,8 +60,8 @@
 | 1 B+C | **Yes** | #21 Resolved — Missing = delivery_note + invoice |
 | 2 D + G-3/4 | **Yes** | #7 Resolved — proto status gates only |
 | 3–4 E–I | **Yes** matching current proto | Contested E-1 rows / feed extras / G-6 |
-| G-6 PDF | **No** for full Done | **#27–28** Deferred (placeholders/fonts); #22–26 Resolved unlock fail/history/optional/distance/relevant-change |
-| K release | Journeys except PDF content | PDF journey content blocked |
+| G-6 PDF | **Yes** — #22–28 all Resolved | Content = #27 proto/BE as-built; fonts = #28 PdfKit defaults |
+| K release | Journeys unblocked on OQ side | Build G-6 / F-7 PDF attach against Resolved rules |
 
 *This appendix is the planning-complete disposition. ClickUp OQ cards should mirror these rows — teammate runbook: [`../clickup-apply.md`](../clickup-apply.md) Part E.*
 
@@ -77,12 +77,12 @@ Do this **before** asking the next question. Engineering still must not invent.
 4. ClickUp: OQ card → `completed`; comment on the named build cards (when API allows).
 5. Stop. Do not start coding a different interpretation than the recorded rule.
 
-**Wave 0 does not wait** for remaining Deferred OQs. **G-6 full Done** still waits on **#27–28** (#22–26 Resolved; structural work may proceed).
+**All 37 OQs Resolved** (2026-08-14). No Deferred rows. G-6 / F-7 PDF attach are unblocked on the open-question side — implement against the recorded rules.
 
 ### Recommended answer order (highest unblock)
 
 | Next | Why |
 |------|-----|
-| Remaining Deferred | #27 #28 (legal pack + PDF fonts — already skipped; G-6 content Done blocked) |
+| — | None — disposition complete |
 
-Skip / “I don’t know” keeps the row **Deferred** with the interim rule. That is still planning-complete.
+Skip / “I don’t know” would keep a row **Deferred**; none remain.

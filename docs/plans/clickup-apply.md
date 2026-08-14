@@ -5,7 +5,7 @@ Owners and IDs also live in [`task-book.md`](./task-book.md). If ClickUp and the
 
 **Who:** anyone with edit access to the AUTHEON list.  
 **How:** Prefer MCP/`clickup_update_task` when the API allows; otherwise the ClickUp **website**.  
-**API status (2026-08-14):** Sync **complete** (Parts A–F). Part D AC pasted on must-refresh + merge parents · Part E = **35** Resolved `completed` + **2** Deferred `questions` (#27–28) · missing OQ cards #9/#10/#33/#34 created · Part F audit clean · **I-2d** `869ehx7t2` · K-5 commented. Non-WBS client-review cards intentionally untouched.  
+**API status (2026-08-14):** Sync **complete** (Parts A–F). **All 37 OQs Resolved** (incl. #27 proto/BE legal placeholders, #28 PdfKit default fonts). G-6 unblocked. Non-WBS client-review cards intentionally untouched.  
 **Do not:** invent OQ answers · reuse retired IDs · put umbrellas `in progress` · assign Ismail to FE clone cards · implement on RETIRED cards · invent new WBS IDs (OQ mirror cards only when disposition has a row with no card).
 
 **Done when:** every checkbox in Parts A–F is ticked, then comment on **K-5**: `ClickUp apply playbook 2026-08-14 complete` (posted).
@@ -200,7 +200,7 @@ Work top to bottom. For each row:
 | ☑ | N-2 | `[W0][N-2][FE][Omar] Shared Dialog / Confirm / toast primitives` | search |
 | ☑ | G-2 | `[W4][G-2][FE][Omar] Job create/edit vehicle domain` | https://app.clickup.com/t/869egzm0x |
 | ☑ | F-5 | `[W3][F-5][FE][Omar] Driver auth splash / login / set-password` | search — comment Ayman |
-| ☑ | G-6 | `[W4][G-6][FE][Omar] Transport-order PDF UX — BLOCKED OQ #22–28` | https://app.clickup.com/t/869egzm11 — comment Ismail; status `questions` until OQs resolve or waive |
+| ☑ | G-6 | `[W4][G-6][FE][Omar] Transport-order PDF UX` | https://app.clickup.com/t/869egzm11 — unblocked; OQ #22–28 Resolved |
 | ☑ | H-5 | `[W4][H-5][FE][Omar] Probation UI + manual release` | search |
 | ☑ | K-5 | `[W5][K-5][PM][Omar] ClickUp hygiene + assignment` | search |
 
@@ -431,14 +431,14 @@ First line of description = the recorded rule. Title may add `RESOLVED` if it do
 
 ### Deferred → status `questions`
 
-First line: `Deferred. Blocks Done on: {cards}. Interim: {rule}. Do not invent.`
+*(None remaining — #27–28 Resolved 2026-08-14.)*
 
-| ☑ | OQ | Blocks Done on | Interim |
-|---|-----|----------------|---------|
-| ☑ | #27 | **G-6 legal Done** | No finals. Interim: proto placeholders only; app chrome uses #5 proto-tokens |
-| ☑ | #28 | **G-6 font Done** | No local licensed files yet. Interim: no external font host at production render |
+| ☑ | OQ | Was | Now |
+|---|-----|-----|-----|
+| ☑ | #27 | Blocked G-6 legal Done | **Resolved** — proto-placeholders + BE as-built |
+| ☑ | #28 | Blocked G-6 font Done | **Resolved** — PdfKit defaults V1 |
 
-Link OQ #27–28 on **G-6**. Link OQ #3 on **E-4**.
+Link OQ #27–28 on **G-6** as Resolved (G-6 → `not started`, drop BLOCKED from title). Link OQ #3 on **E-4**.
 
 ---
 
@@ -454,10 +454,10 @@ Search the AUTHEON list (include closed):
 | ☑ | Wave prefix matches the tables above (OQs have none) |
 | ☑ | Umbrellas are not `in progress` |
 | ☑ | J-2 / J-3 still `not started` unless J-1 has a confirmed gap |
-| ☑ | G-6 is `questions` and notes **BLOCKED OQ #27–28** (title; #22–26 Resolved) |
+| ☑ | G-6 is `not started` (unblocked; #22–28 Resolved) |
 | ☑ | No Ismail on FE clone cards (E-1a/b, F-1, G-1, M-*) |
-| ☑ | Resolved OQs through today’s disposition (see oq-disposition.md) are `completed`; Deferred stay `questions` |
-| ☑ | Deferred OQs are `questions`, not silently `completed` |
+| ☑ | All 37 Resolved OQs are `completed`; **0** Deferred |
+| ☑ | No Deferred OQs left in `questions` for #27–28 |
 | ☑ | Comment on K-5: `ClickUp apply playbook 2026-08-14 complete` |
 
 ---
@@ -468,7 +468,7 @@ Search the AUTHEON list (include closed):
 - [x] Part B: 7 parents retitled, one owner, absorbed AC pasted  
 - [x] Part C: every surviving ID titled + one assignee (especially the “confirmed wrong today” rows)  
 - [x] Part D: F-7, F-8, J-1…3, B-3a, E-4, Epic A, merge parents match current AC  
-- [x] Part E: **35** Resolved OQs `completed`; **2** Deferred (#27–28) stay `questions` (created missing #9/#10/#33/#34)  
+- [x] Part E: **37** Resolved OQs `completed`; **0** Deferred  
 - [x] Part F: audit clean  
 
 Tell Omar in standup. After this, **ClickUp matches `task-book.md`**.
