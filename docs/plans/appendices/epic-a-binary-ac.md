@@ -9,7 +9,7 @@
 
 Pass/fail only. Do not invent OQ answers.
 
-**Card body (copy onto ClickUp):** Goal · Authority · Acceptance (table) · DoD — see [`clickup-apply.md`](../clickup-apply.md).
+**Card body (copy onto ClickUp):** Goal · Authority · Acceptance (table) · DoD.
 
 ---
 

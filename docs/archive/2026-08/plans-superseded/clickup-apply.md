@@ -1,14 +1,12 @@
-# ClickUp apply playbook — give this file to a teammate
+# ClickUp apply — COMPLETE (frozen record)
 
-**This is the only file they need to edit the AUTHEON board.**  
-Owners and IDs also live in [`task-book.md`](./task-book.md). If ClickUp and the task book disagree after this run, **the task book wins** — fix ClickUp again. Do not invent a third assignment scheme.
+**Status:** **Done / archived.** AUTHEON board is in sync with [`task-book.md`](../../../plans/task-book.md) (2026-08-16). Do **not** re-run Parts A–F. Living index: [`../../../plans/README.md`](../../../plans/README.md).
 
-**Who:** anyone with edit access to the AUTHEON list.  
-**How:** Prefer MCP/`clickup_update_task` when the API allows; otherwise the ClickUp **website**.  
-**API status (2026-08-16):** Sync complete + **G-6b** integrated (`869ebyppk` Ismail BE client-pack templates). OQ #27 amended to client pack. G-6 = Omar FE. Non-WBS client-review `869ebf84g` kept as authority.  
-**Do not:** invent OQ answers · reuse retired IDs · put umbrellas `in progress` · assign Ismail to FE clone cards · implement on RETIRED cards · invent new WBS IDs (OQ mirror cards only when disposition has a row with no card).
+**Going forward:** edit ClickUp only when ownership/IDs/AC change in the **task book** or an AC appendix. If board and task book disagree, **task book wins** — fix ClickUp. Do not invent a third assignment scheme.
 
-**Done when:** every checkbox in Parts A–F is ticked, then comment on **K-5**: `ClickUp apply playbook 2026-08-14 complete` (posted).
+**This file keeps:** people IDs, title/status conventions, and the checked apply history below. It is **not** a living worklist.
+
+**Last sync notes (2026-08-16):** G-6b integrated (`869ebyppk` Ismail); OQ #27 = client pack; A-1…A-4 → Yasser; all 37 OQs Resolved; K-5 apply-complete comment posted.
 
 ---
 
@@ -485,7 +483,7 @@ Tell Omar in standup. After this, **ClickUp matches `task-book.md`**.
 | Cannot find `[E-1e]` | Search `E-1e` without brackets; check it is a subtask under E-1 |
 | Status `canceled` missing | Use `cancelled` or Close + comment `RETIRED merged into …` |
 | API / MCP errors | Use the website only. This playbook does not need MCP |
-| Unsure who owns an ID | This file Part C, or [`task-book.md`](./task-book.md) — not the current ClickUp title |
+| Unsure who owns an ID | This file Part C, or [`task-book.md`](../../../plans/task-book.md) — not the current ClickUp title |
 | Unsure what AC to paste | Table in §0 → open that markdown heading |
 | Card missing entirely | Create it in AUTHEON with the exact title from Part C. Do not reuse a RETIRED id |
 | Two people on a card | Keep the Person in the title; remove the other; add a collab comment if listed in §0 |

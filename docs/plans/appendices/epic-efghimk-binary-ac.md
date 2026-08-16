@@ -5,7 +5,7 @@
 **Dual cancel vocabularies (binding):** SP Storno ≠ Admin cancel modal codes — never collapse.  
 **N/A:** `AccountAccessDialog` (proto stub `null`) — do not clone; remove from must-match Figma lists.  
 **OQ rule:** Do not invent answers. Mark **Deferred** + named AC blocked until Resolved.  
-**Card body:** Goal · Authority · Acceptance · DoD on every card ([`clickup-apply.md`](../clickup-apply.md)). Includes **F-7/F-8** and **J-1…J-3**.
+**Card body:** Goal · Authority · Acceptance · DoD on every card. Includes **F-7/F-8** and **J-1…J-3**.
 
 Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed PASS.
 
@@ -948,18 +948,18 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ## K-5 — ClickUp hygiene + assignment matrix
 
-**Goal:** Board matches the plans: surviving IDs, owners, Goal/Authority/AC/DoD bodies.  
-**Authority:** [`clickup-apply.md`](../clickup-apply.md) · [`task-book.md`](../task-book.md).  
+**Goal:** Board stays matched to the plans: surviving IDs, owners, Goal/Authority/AC/DoD bodies.  
+**Authority:** [`task-book.md`](../task-book.md) (SOT).  
 **Owner:** Omar.  
-**DoD:** [`clickup-apply.md`](../clickup-apply.md) Parts A–F ticked; leftover `[Person]` tags match the task book.
+**DoD:** Initial apply Parts A–F complete (2026-08-16). Ongoing: `[Person]` tags and assignees match the task book after any ownership change.
 
 | # | AC | Pass? |
 |---|----|-------|
-| K-5.1 | Epics A–N + OQ cards exist in AUTHEON list `901217611464` | ☐ |
-| K-5.2 | Retired IDs (L-7, M-4, E-1c, E-1h, G-10, G-1c, F-3e, F-3f) are `canceled` with merge pointer | ☐ |
-| K-5.3 | Title `[Person]` + primary assignee match [`task-book.md`](../task-book.md) (single owner) | ☐ |
-| K-5.4 | Each surviving card body has Goal · Authority · Acceptance · DoD (copied from AC appendix) | ☐ |
-| K-5.5 | OQ cards have no wave prefix; Resolved (#1 #2 #9 #10 #12 #33 #34) are `completed`; Deferred stay `questions` | ☐ |
+| K-5.1 | Epics A–N + OQ cards exist in AUTHEON list `901217611464` | ☑ |
+| K-5.2 | Retired IDs (L-7, M-4, E-1c, E-1h, G-10, G-1c, F-3e, F-3f) are `canceled` with merge pointer | ☑ |
+| K-5.3 | Title `[Person]` + primary assignee match [`task-book.md`](../task-book.md) (single owner) | ☑ |
+| K-5.4 | Each surviving card body has Goal · Authority · Acceptance · DoD (copied from AC appendix) | ☑ |
+| K-5.5 | OQ cards have no wave prefix; all 37 Resolved OQs are `completed`; **0** Deferred in `questions` | ☑ |
 
 ---
 

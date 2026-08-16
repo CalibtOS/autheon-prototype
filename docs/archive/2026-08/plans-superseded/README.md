@@ -7,13 +7,13 @@ These files were absorbed into the living set and must **not** be used as curren
 | Need | File |
 |------|------|
 | Owners / order / surviving IDs | [`../../../plans/task-book.md`](../../../plans/task-book.md) |
-| ClickUp board edits | [`../../../plans/clickup-apply.md`](../../../plans/clickup-apply.md) |
 | Program charter | [`../../../plans/prototype-fe-be-production-alignment.md`](../../../plans/prototype-fe-be-production-alignment.md) |
 | Index | [`../../../plans/README.md`](../../../plans/README.md) |
 
-| Archived file | Absorbed into |
-|---------------|---------------|
-| `assignment-capacity-matrix.md` | `task-book.md` §3 + `clickup-apply.md` |
+| Archived file | Absorbed into / note |
+|---------------|----------------------|
+| `clickup-apply.md` | **Complete** board-sync record (2026-08-16). Do not re-run. Living SOT = `task-book.md` |
+| `assignment-capacity-matrix.md` | `task-book.md` §3 |
 | `task-split-registry.md` | `task-book.md` §4–5 |
 | `pm-operating-system.md` | `task-book.md` §1 |
 | `execution-order.md` | `task-book.md` §2 |

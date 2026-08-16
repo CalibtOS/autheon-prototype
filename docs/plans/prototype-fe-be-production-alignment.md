@@ -1,8 +1,7 @@
 # Prototype → FE → BE Production Alignment Plan
 
-**Status:** **Planning Complete 100% (v2.2)** — 2026-08-13.  
-**Work list / order / owners:** [`task-book.md`](./task-book.md)  
-**ClickUp board sync (give to a teammate):** [`clickup-apply.md`](./clickup-apply.md)  
+**Status:** **Planning Complete 100% (v2.2)** — 2026-08-13. ClickUp board synced 2026-08-16.  
+**Work list / order / owners (SOT):** [`task-book.md`](./task-book.md)  
 **Index:** [`README.md`](./README.md)  
 **Authority (binding order):**
 1. **Signed-off prototype** — `Autheon/prototype/project/` (`admin.jsx`, `driver.jsx`, `driver-ui.jsx`, `store.js`, `i18n.js`, `DOMAIN.md`) treated as Figma / client visual+behavioral sign-off
@@ -56,7 +55,7 @@ Use cases + UoW + domain entities; presentation DTOs from `@autheon/shared`; no 
 - No regress of already-green Scope A BE e2e
 
 ### 1.5 ClickUp field conventions
-Title: `[Wn][ID][Role][Person] Short title`. Assignees follow [`task-book.md`](./task-book.md). Board edits: [`clickup-apply.md`](./clickup-apply.md).
+Title: `[Wn][ID][Role][Person] Short title`. Assignees follow [`task-book.md`](./task-book.md). Board already synced; on drift fix ClickUp to match the task book.
 
 Suggested custom fields on every task:
 - `Surface`: Admin | Driver | Shared | BE | Cross
@@ -478,11 +477,10 @@ When creating ClickUp tasks, attach `PRD T{n}` + story text + acceptance list as
 
 ## 12. Next actions (execution — plan is 100% complete)
 
-1. **Answer OQs** one at a time — start with **#7**, then PDF **#22–28** — [oq-disposition.md](./appendices/oq-disposition.md) § How answers land
-2. **Start Wave 0:** Ismail A-0 · Yasser A-1…A-4 · Omar A-6 + L + N-2 · Yasser N-1 · Karim M-1
-3. Pull cards only if Definition of Ready is green — [`task-book.md`](./task-book.md) §1
-4. Do not invent OQ answers; G-6 PDF Done blocked on #22–28 until client Resolves or waives
-5. When ClickUp API recovers (or via UI now): execute [`clickup-apply.md`](./clickup-apply.md)
+1. **Start Wave 0:** Ismail A-0 · Yasser A-1…A-4 · Omar A-6 + L + N-2 · Yasser N-1 · Karim M-1
+2. Pull cards only if Definition of Ready is green — [`task-book.md`](./task-book.md) §1
+3. All 37 OQs are **Resolved** — [oq-disposition.md](./appendices/oq-disposition.md). Do not invent answers.
+4. ClickUp apply is **done** (archived). Fix any drift against the task book only.
 
 ---
 
@@ -492,16 +490,15 @@ Index: [`README.md`](./README.md).
 
 | File | Role |
 |------|------|
-| [`task-book.md`](./task-book.md) | Owners, order, surviving IDs, PRD T1–T34 map |
-| [`clickup-apply.md`](./clickup-apply.md) | **Give to a teammate** — every ClickUp change |
-| [`appendices/oq-disposition.md`](./appendices/oq-disposition.md) | All 37 OQs |
+| [`task-book.md`](./task-book.md) | Owners, order, surviving IDs, PRD T1–T34 map (SOT) |
+| [`appendices/oq-disposition.md`](./appendices/oq-disposition.md) | All 37 OQs (Resolved) |
 | [`appendices/exact-screen-clone-gate.md`](./appendices/exact-screen-clone-gate.md) | Axis V registries D/A |
 | [`appendices/epic-a-binary-ac.md`](./appendices/epic-a-binary-ac.md) | Epic A AC |
 | [`appendices/epic-l-driver-pwa-shell-ui-ac.md`](./appendices/epic-l-driver-pwa-shell-ui-ac.md) | Epic L AC |
 | [`appendices/epic-ndbc-binary-ac.md`](./appendices/epic-ndbc-binary-ac.md) | Epics N, D, B, C AC |
 | [`appendices/epic-efghimk-binary-ac.md`](./appendices/epic-efghimk-binary-ac.md) | Epics E–I, M, J, K, SEC, F-7/F-8 + journeys AC |
 
-Superseded drafts (inventories, old WBS, PM OS, coverage-gate): `docs/archive/2026-08/plans-superseded/`.
+Superseded drafts (inventories, old WBS, PM OS, coverage-gate, completed ClickUp apply): `docs/archive/2026-08/plans-superseded/`.
 
 ### Planning-complete verdict
 
@@ -509,15 +506,15 @@ Superseded drafts (inventories, old WBS, PM OS, coverage-gate): `docs/archive/20
 |-----------|------|
 | 0 Axis-P orphans (tasks exist) | **Yes** |
 | 0 Axis-R MISSING (T23→N) | **Yes** |
-| All OQs Resolved or Deferred+impact | **Yes** ([oq-disposition.md](./appendices/oq-disposition.md)) — 7 Resolved, 30 Deferred+impact, 0 invented |
+| All OQs Resolved | **Yes** ([oq-disposition.md](./appendices/oq-disposition.md)) — 37 Resolved, 0 Deferred, 0 invented |
 | Binary AC + Goal/Authority/DoD for every surviving task ID | **Yes** (A, L, NDBC, EFGHIMK incl. F-7/F-8, B-3a, J-1…3, E-4 owned) |
 | Axis V registries exist | **Yes** |
 | Matrices + journeys indexed | **Yes** |
 | PM operating system (RACI, DoR/DoD, card schema) | **Yes** |
 | Implementation / clone PASS rows | **No** — that is **program** Done, not plan Done |
-| ClickUp board exists | **Yes** — K-5 remaining is [`clickup-apply.md`](./clickup-apply.md) (API rate-limited); [`task-book.md`](./task-book.md) is SOT |
+| ClickUp board synced to task-book | **Yes** — apply complete; [`task-book.md`](./task-book.md) remains SOT |
 
-**Planning is 100% complete. Product is not shipped.** Next: (1) answer remaining OQs one at a time per [oq-disposition.md](./appendices/oq-disposition.md) § How answers land; (2) execute Wave 0.
+**Planning is 100% complete. Product is not shipped.** Next: execute Wave 0.
 
 ### Critical discoveries from inventories (update plan AC)
 

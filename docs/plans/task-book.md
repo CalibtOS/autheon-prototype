@@ -1,6 +1,6 @@
 # Task book — IDs, owners, order
 
-**This is the work list.** ClickUp must match it after [`clickup-apply.md`](./clickup-apply.md).  
+**This is the work list** and the source of truth for owners/IDs. ClickUp already matches. If the board drifts, fix ClickUp to match this file.  
 **Acceptance** for a card: `appendices/epic-*-binary-ac.md` (not this file).  
 **Charter / program Done:** [`prototype-fe-be-production-alignment.md`](./prototype-fe-be-production-alignment.md).  
 **Client questions:** [`appendices/oq-disposition.md`](./appendices/oq-disposition.md).
@@ -11,7 +11,7 @@ Authority: prototype → PRD v2.38 → DBML/BE. Exact clone. Do not invent OQs. 
 
 ## 1. How to run one card
 
-1. You are the **Owner** in §3 (ignore stale ClickUp `[Person]` until clickup-apply is done).  
+1. You are the **Owner** in §3 (ClickUp `[Person]` should already match).  
 2. Open the AC section for that ID.  
 3. Open the prototype named in Authority.  
 4. Implement only the AC rows. One card `in progress`.  
@@ -136,7 +136,7 @@ T1 foundation (BE done) · T2 H/F-5/F-6 · T3 H · T4 I-1 · T5 G-2 · T6 G · T
 
 ## 7. ClickUp IDs we already know
 
-List `901217611464`. Full apply steps: [`clickup-apply.md`](./clickup-apply.md).
+List `901217611464`. Board synced. Historical apply record: [`../archive/2026-08/plans-superseded/clickup-apply.md`](../archive/2026-08/plans-superseded/clickup-apply.md).
 
 | ID | ClickUp |
 |----|---------|

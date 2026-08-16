@@ -2,7 +2,7 @@
 
 **Rule:** Engineering must **not invent** answers. Each OQ is `Resolved` (client answer recorded) or `Deferred` with **named wave/AC impact**.  
 **Source:** `prd.json` → `production_open_questions` (37).  
-**Status date:** 2026-08-14 — answering Deferred OQs; ClickUp sync last via [`clickup-apply.md`](../clickup-apply.md).
+**Status date:** 2026-08-16 — **all 37 Resolved**; ClickUp OQ cards mirrored (apply frozen).
 
 | ID | Topic (short) | Disposition | Blocks Done on | Interim build rule |
 |----|---------------|-------------|----------------|--------------------|
@@ -63,7 +63,7 @@
 | G-6 PDF | **Yes** — #22–28 Resolved | FE = **G-6** (Omar); BE templates = **G-6b** (Ismail, client pack); fonts = #28 PdfKit defaults unless PR embeds Montserrat |
 | K release | Journeys unblocked on OQ side | Build G-6 / F-7 PDF attach against Resolved rules |
 
-*This appendix is the planning-complete disposition. ClickUp OQ cards should mirror these rows — teammate runbook: [`../clickup-apply.md`](../clickup-apply.md) Part E.*
+*This appendix is the planning-complete disposition. ClickUp OQ cards already mirror these rows.*
 
 ---
 
