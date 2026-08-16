@@ -1,5 +1,26 @@
 # AUTHEON database logical model
 
+> **Status override:** Updated 2026-08-16 - **Transport-order PDF generation, BE sync
+> (post-implementation)**. The v2.26 (2026-07-30) `generated_job_documents` shape was written
+> ahead of the BE build; read column-by-column off the finished `GeneratedJobDocumentEntity`,
+> it differs in five ways: (1) `document_file_id`, `template_key`, `document_title`,
+> `file_name`, `generation_trigger`, `service_partner_snapshot`, `gtc_document_id`,
+> `gtc_version` are **nullable**, not `NOT NULL` — a real `generation_status = 'failed'` row
+> exists (mandatory data missing at generation time) and populates none of them, though it
+> still consumes a `version_number` so numbering stays monotonic across failures; (2)
+> `booked_at` and `source_data_revision` were **never implemented** and are removed, along
+> with the `(job_id, document_kind, source_data_revision)` unique index — the no-op check for
+> a `RELEVANT_CHANGE` trigger is an **application-level** diff of the new `source_snapshot`
+> column against live data inside the generation transaction, not a DB-uniqueness guarantee,
+> and `booked_at` is never frozen per version (the document always renders the job's live
+> `bound_at`/`accepted_at`); (3) `source_checksum_sha256` is renamed `checksum_sha256` and
+> re-scoped to the **rendered PDF's output-byte hash** (duplicating `upload_assets.checksum`
+> for the same file), not a distinct render-source fingerprint; (4) new nullable
+> `source_snapshot jsonb` column: the frozen 34-field job/location/financial snapshot each
+> version was generated from, which `changed_fields` and the no-op check are computed from;
+> (5) `checksum_sha256` is BE `varchar`, not `char(64)`. See "Transport-order PDF versioning"
+> below.
+
 > **Status override:** Updated 2026-08-11 - PRD v2.38: **service-partner documents allow
 > multiple active files per category**. Withdraws the v2.36 one-active-per-category partial
 > unique (and its `other`-only exception) and the prototype `category_taken` guard. Category
@@ -307,21 +328,21 @@ Generated transport-order PDFs are represented as generated job documents linked
 
 **Expiry** (`valid_until`) is optional metadata, not a status. An expired document keeps `review_status = 'accepted'`; "expired" is derived at read time by comparing `valid_until` to the current date. Storing it as a status would require a sweep job to mutate review rows and would conflate an admin decision with the passage of time.
 
-### Transport-order PDF versioning (PRD v2.26, 2026-07-30)
+### Transport-order PDF versioning (PRD v2.26, 2026-07-30; corrected 2026-08-16 against the finished BE entity)
 
-`generated_job_documents` rows are **immutable after insert**. The only column ever updated is `is_current`. A relevant order-data change never rewrites a row or its binary: it inserts the next `version_number` pointing at a new `document_files` row, then moves `is_current` in the same transaction. This is what makes an earlier version's binary, checksum and booking-time snapshot permanently reproducible from the audit trail (binary checksum via `document_files` → `upload_assets.checksum`).
+`generated_job_documents` rows are **immutable after insert**. The only column ever updated is `is_current`. A relevant order-data change never rewrites a row or its binary: it inserts the next `version_number` pointing at a new `document_files` row, then moves `is_current` in the same transaction. This is what makes an earlier version's binary and frozen data snapshot permanently reproducible from the audit trail (binary checksum via `document_files` → `upload_assets.checksum`).
 
-Each row carries the generation audit set the client technical specification requires: `booked_at`, `source_data_revision`, `generation_trigger`, `service_partner_snapshot`, `generated_by_user_id`, `gtc_document_id` + `gtc_version`, `file_name` (Fahrauftrag download/audit identity — on success, also written to `upload_assets.original_name`), and `source_checksum_sha256` (canonical render-source fingerprint; changes iff rendered content changes). Stored-binary integrity is `upload_assets.checksum`, not a second column on this table.
+Each row carries the generation audit set the client technical specification requires: `generation_trigger`, `service_partner_snapshot`, `source_snapshot`, `generated_by_user_id`, `gtc_document_id` + `gtc_version`, `file_name` (Fahrauftrag download/audit identity — on success, also written to `upload_assets.original_name`), and `checksum_sha256` — the SHA-256 of the rendered PDF's output bytes, so it duplicates `upload_assets.checksum` for the same file rather than acting as a distinct render-source fingerprint. All of these, plus `document_file_id`/`template_key`/`document_title`, are **nullable**: a `generation_status = 'failed'` row (mandatory data missing at generation time) populates none of them, only `id`/`job_id`/`document_kind`/`generated_at`/`generated_by_user_id`/`version_number`/`generation_error`. There is no `booked_at` column — the document always renders the job's live `bound_at`/`accepted_at` at generation time, never a value frozen per version (low risk in practice, since that instant does not change once a job is bound, but not independently reproducible from the row alone).
 
-Three rules are database concerns, not application discipline:
+Two rules are database concerns, not application discipline; a third — idempotency — is enforced at the application layer instead of the database, unlike the original v2.26 intent:
 
 - **One active document per job and kind.** `CREATE UNIQUE INDEX … ON generated_job_documents (job_id, document_kind) WHERE is_current` — a partial unique index, which DBML cannot express, so `schema.dbml` carries the plain index and this note carries the predicate.
-- **Idempotent generation.** `(job_id, document_kind, source_data_revision)` is unique, so a retry, a duplicated event or two concurrent triggers for the same revision cannot mint a second version. The write is the concurrency control.
-- **Monotonic versions.** `(job_id, document_kind, version_number)` stays unique, as before.
+- **Monotonic versions.** `(job_id, document_kind, version_number)` stays unique.
+- **Idempotent generation is NOT a DB unique index.** There is no `source_data_revision` column. Instead, the generation service diffs the new `source_snapshot` column (the frozen 34-field job/location/financial snapshot) against the job's live data inside the generation transaction: a `RELEVANT_CHANGE` trigger with zero actual field differences returns the existing current version rather than minting a new one. This is an application-level check — a retry or a genuinely concurrent duplicate trigger is not blocked by a database uniqueness guarantee the way the v2.26 design intended.
 
 The **recipient snapshot is frozen at v1 and carried forward unchanged** to every later version of the same booking. A later edit to the service partner's profile must not alter any version of an already binding document — including a new version generated afterwards for an unrelated field change. `drivers.street` / `house_number` / `postal_code` / `city` / `country_code` are the source the snapshot is built from; they already exist and need no change.
 
-`generation_status` = `failed` with `generation_error` records a generation that could not publish (missing mandatory data, renderer error). A failed row never becomes `is_current`, and the previously active document stays current. The matching audit key is `pdf_generation_failed`; `pdf_generated`, `pdf_regenerated`, `pdf_viewed` and `pdf_downloaded` are unchanged.
+`generation_status` = `failed` with `generation_error` records a generation that could not publish (missing mandatory data, renderer error). A failed row never becomes `is_current`, and the previously active document stays current — it still consumes the next `version_number` so numbering stays monotonic across failed attempts. The matching audit key is `pdf_generation_failed`; `pdf_generated`, `pdf_regenerated`, `pdf_viewed` and `pdf_downloaded` are unchanged.
 
 **Order-creator fields.** The document's `Auftragserstellung` field needs the generating admin's initials/name **and** telephone number. The users/admins representation must expose both; the prototype adds `initials` and `phone` to its admin records. Whether they become mandatory is an open question (see `prd.json` production open questions).
 
