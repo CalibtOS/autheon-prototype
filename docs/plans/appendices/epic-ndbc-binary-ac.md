@@ -6,7 +6,7 @@
 **SP docs (T34 v2.38):** multiple active docs per category; **no** `category_taken`.  
 **Axis V:** D14/D15 (Report Problem), D13 (My Jobs), D17/D19 (upload/RemoveDoc), A21–A23 (Tour Billing), A15/A16 (SP profile/Documents).  
 **Template:** happy path · empty/error/validation · Axis M · authz negative · EN+DE · journey · OQ Deferred+impact (no invented client answers).  
-**Card body:** Goal · Authority · Acceptance · DoD on every N/D/B/C card ([`clickup-apply.md`](../clickup-apply.md)).
+**Card body:** Goal · Authority · Acceptance · DoD on every N/D/B/C card.
 
 Pass/fail only. ☐ = unchecked.
 

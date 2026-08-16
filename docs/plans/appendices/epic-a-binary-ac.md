@@ -5,11 +5,11 @@
 **BE:** `SpCancellationReason`, `EmptyRunReason`; POST `/problems`  
 **Depends on:** nothing (BE ready)  
 **Blocks:** Epic D fidelity; any Storno E2E  
-**Owner mix:** Ismail A-0 · Omar A-1…A-4, A-6 · Youssef A-5
+**Owner mix:** Ismail A-0 · **Yasser A-1…A-4** · Omar A-6 · Youssef A-5
 
 Pass/fail only. Do not invent OQ answers.
 
-**Card body (copy onto ClickUp):** Goal · Authority · Acceptance (table) · DoD — see [`clickup-apply.md`](../clickup-apply.md).
+**Card body (copy onto ClickUp):** Goal · Authority · Acceptance (table) · DoD.
 
 ---
 

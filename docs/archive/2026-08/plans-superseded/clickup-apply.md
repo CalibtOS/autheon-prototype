@@ -1,14 +1,12 @@
-# ClickUp apply playbook — give this file to a teammate
+# ClickUp apply — COMPLETE (frozen record)
 
-**This is the only file they need to edit the AUTHEON board.**  
-Owners and IDs also live in [`task-book.md`](./task-book.md). If ClickUp and the task book disagree after this run, **the task book wins** — fix ClickUp again. Do not invent a third assignment scheme.
+**Status:** **Done / archived.** AUTHEON board is in sync with [`task-book.md`](../../../plans/task-book.md) (2026-08-16). Do **not** re-run Parts A–F. Living index: [`../../../plans/README.md`](../../../plans/README.md).
 
-**Who:** anyone with edit access to the AUTHEON list.  
-**How:** Prefer MCP/`clickup_update_task` when the API allows; otherwise the ClickUp **website**.  
-**API status (2026-08-14):** Sync **complete** (Parts A–F). **All 37 OQs Resolved** (incl. #27 proto/BE legal placeholders, #28 PdfKit default fonts). G-6 unblocked. Non-WBS client-review cards intentionally untouched.  
-**Do not:** invent OQ answers · reuse retired IDs · put umbrellas `in progress` · assign Ismail to FE clone cards · implement on RETIRED cards · invent new WBS IDs (OQ mirror cards only when disposition has a row with no card).
+**Going forward:** edit ClickUp only when ownership/IDs/AC change in the **task book** or an AC appendix. If board and task book disagree, **task book wins** — fix ClickUp. Do not invent a third assignment scheme.
 
-**Done when:** every checkbox in Parts A–F is ticked, then comment on **K-5**: `ClickUp apply playbook 2026-08-14 complete` (posted).
+**This file keeps:** people IDs, title/status conventions, and the checked apply history below. It is **not** a living worklist.
+
+**Last sync notes (2026-08-16):** G-6b integrated (`869ebyppk` Ismail); OQ #27 = client pack; A-1…A-4 → Yasser; all 37 OQs Resolved; K-5 apply-complete comment posted.
 
 ---
 
@@ -41,7 +39,8 @@ If a card has two people, **remove** the extra. Collab is a **comment**, not a s
 | Card | Comment to add |
 |------|----------------|
 | F-7 | `Collab: Ismail SMTP (F-8). Yasser stays primary.` |
-| G-6 | `Collab: Ismail PDF BE. Omar stays primary. Done blocked on OQ #22–28.` |
+| G-6 | FE Omar — PDF bytes from **G-6b** |
+| G-6b | Ismail primary — client pack templates (`869ebyppk`) |
 | F-5 | `Collab: Ayman (SEC). Omar stays primary.` |
 
 ### Statuses (use only these)
@@ -117,10 +116,11 @@ For each row: open the card → status **`canceled`** → rename as in “New ti
 | ☑ | `[G-1c]` | https://app.clickup.com/t/869ehet5p | `[RETIRED][G-1c] Merged into G-1a` | `Merged into G-1a (https://app.clickup.com/t/869ehet5h). New-job entry is G-1a.3. Do not implement.` |
 | ☑ | `[F-3e]` | https://app.clickup.com/t/869ehet59 | `[RETIRED][F-3e] Merged into F-3a` | `Merged into F-3a (https://app.clickup.com/t/869ehet4u). Tab-bar hide is F-3a.2. Do not implement.` |
 | ☑ | `[F-3f]` | https://app.clickup.com/t/869ehet5a | `[RETIRED][F-3f] Merged into F-3a` | `Merged into F-3a (https://app.clickup.com/t/869ehet4u). OQ #29–32 is F-3a.3 (gate, not a build card). Do not implement.` |
+| ☑ | Pre-plan notif mega | https://app.clickup.com/t/869efuuc7 | `[RETIRED] Notifications refactor — superseded by F-3 / I-2 / I-2d / J-1` | Pointers to F-3 · I-2d · J-1; schedule CRON gaps → J-1→J-2 |
 
 Also cancel if still open: `[E-1-OLD]` / `SUPERSEDED` mega-card `869egzkwb` (already canceled once — confirm).
 
-**Never reuse** L-7, M-4, E-1c, E-1h, G-10, G-1c, F-3e, F-3f as new work.
+**Never reuse** L-7, M-4, E-1c, E-1h, G-10, G-1c, F-3e, F-3f, or `869efuuc7` as new work.
 
 ---
 
@@ -176,10 +176,6 @@ Work top to bottom. For each row:
 
 | ☑ | ID | Exact title | URL |
 |---|-----|-------------|-----|
-| ☑ | A-1 | `[W0][A-1][FE][Omar] Enums available to UI` | search |
-| ☑ | A-2 | `[W0][A-2][FE][Omar] ReportProblemSheet codes + validation` | https://app.clickup.com/t/869egzktf |
-| ☑ | A-3 | `[W0][A-3][FE][Omar] Storno i18n EN+DE` | search |
-| ☑ | A-4 | `[W0][A-4][FE][Omar] Storno tests / fixtures` | search |
 | ☑ | A-6 | `[W0][A-6][FE][Omar] Dual cancel vocabulary docs` | search |
 | ☑ | L-1 | `[W0][L-1][FE][Omar] Shared DriverScreenHeader` | search |
 | ☑ | L-2 | `[W0][L-2][FE][Omar] Marketplace chrome remove old layout` | search |
@@ -200,7 +196,7 @@ Work top to bottom. For each row:
 | ☑ | N-2 | `[W0][N-2][FE][Omar] Shared Dialog / Confirm / toast primitives` | search |
 | ☑ | G-2 | `[W4][G-2][FE][Omar] Job create/edit vehicle domain` | https://app.clickup.com/t/869egzm0x |
 | ☑ | F-5 | `[W3][F-5][FE][Omar] Driver auth splash / login / set-password` | search — comment Ayman |
-| ☑ | G-6 | `[W4][G-6][FE][Omar] Transport-order PDF UX` | https://app.clickup.com/t/869egzm11 — unblocked; OQ #22–28 Resolved |
+| ☑ | G-6 | `[W4][G-6][FE][Omar] Transport-order PDF UX` | https://app.clickup.com/t/869egzm11 — FE only; PDF bytes from **G-6b** |
 | ☑ | H-5 | `[W4][H-5][FE][Omar] Probation UI + manual release` | search |
 | ☑ | K-5 | `[W5][K-5][PM][Omar] ClickUp hygiene + assignment` | search |
 
@@ -266,6 +262,10 @@ Work top to bottom. For each row:
 
 | ☑ | ID | Exact title | URL |
 |---|-----|-------------|-----|
+| ☑ | A-1 | `[W0][A-1][FE][Yasser] Enums available to UI` | https://app.clickup.com/t/869egzktn |
+| ☑ | A-2 | `[W0][A-2][FE][Yasser] ReportProblemSheet codes + validation` | https://app.clickup.com/t/869egzktf |
+| ☑ | A-3 | `[W0][A-3][FE][Yasser] Storno i18n EN+DE` | https://app.clickup.com/t/869egzktj |
+| ☑ | A-4 | `[W0][A-4][FE][Yasser] Storno tests / fixtures` | https://app.clickup.com/t/869egzktg |
 | ☑ | B-2 | `[W1][B-2][FS][Yasser] CI repository + hooks` | search |
 | ☑ | B-3a | `[W1][B-3a][FS][Yasser] Tour Billing documents tab` | search |
 | ☑ | B-4 | `[W1][B-4][FS][Yasser] Consolidated invoice create + mismatch` | search |
@@ -301,12 +301,13 @@ Do **not** put Ismail on marketplace, admin clone, G-10, or any FE 1:1 card.
 | ☑ | B-8 | `[W1][B-8][BE][Ismail] Persist tour-doc metadata on upload/accept` | search |
 | ☑ | C-1 | `[W1][C-1][BE][Ismail] Shared driver-document enums/DTOs` | search |
 | ☑ | F-8 | `[W3][F-8][BE][Ismail] AUTHEON SMTP for all application mail` | https://app.clickup.com/t/869egzp84 |
+| ☑ | G-6b | `[W4][G-6b][BE][Ismail] Transport-order PDF templates (client pack)` | https://app.clickup.com/t/869ebyppk — authority `869ebf84g` |
 | ☑ | J-1 | `[W5][J-1][BE][Ismail] Gap log prototype action → endpoint` | search |
 | ☑ | I-2d | `[W4][I-2d][BE][Ismail] Admin feed severity/status + mark-processed` | https://app.clickup.com/t/869ehx7t2 — under I-2; OQ #30 |
 | ☑ | J-2 | `[W5][J-2][BE][Ismail] Implement missing BE endpoint` | https://app.clickup.com/t/869eheu37 — keep `not started` until J-1 confirms a gap |
 | ☑ | J-3 | `[W5][J-3][BE][Ismail] Shared package dual-publish on enum change` | https://app.clickup.com/t/869eheu98 — same as J-2 |
 
-G-6 stays **Omar** primary. Ismail is comment-only collab.
+**G-6** FE stays **Omar**. **G-6b** BE templates = **Ismail** primary (client pack).
 
 ### C.6 — Youssef (primary) — QA
 
@@ -482,7 +483,7 @@ Tell Omar in standup. After this, **ClickUp matches `task-book.md`**.
 | Cannot find `[E-1e]` | Search `E-1e` without brackets; check it is a subtask under E-1 |
 | Status `canceled` missing | Use `cancelled` or Close + comment `RETIRED merged into …` |
 | API / MCP errors | Use the website only. This playbook does not need MCP |
-| Unsure who owns an ID | This file Part C, or [`task-book.md`](./task-book.md) — not the current ClickUp title |
+| Unsure who owns an ID | This file Part C, or [`task-book.md`](../../../plans/task-book.md) — not the current ClickUp title |
 | Unsure what AC to paste | Table in §0 → open that markdown heading |
 | Card missing entirely | Create it in AUTHEON with the exact title from Part C. Do not reuse a RETIRED id |
 | Two people on a card | Keep the Person in the title; remove the other; add a collab comment if listed in §0 |

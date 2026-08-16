@@ -11,7 +11,7 @@
 **Blocks:** honest “1:1 Figma” claims for Epics E/F/D screen work  
 **Wave:** **0.5** — start with Wave 0 or immediately after A-0; do **before** deep Marketplace card polish
 
-**Card body:** Goal · Authority · Acceptance · DoD — copy each L-* section onto ClickUp ([`clickup-apply.md`](../clickup-apply.md)).  
+**Card body:** Goal · Authority · Acceptance · DoD — copy each L-* section onto ClickUp.  
 **Owner:** Omar L-1…L-6, L-8 · Youssef L-9.
 
 ---
