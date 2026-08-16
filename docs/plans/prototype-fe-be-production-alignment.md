@@ -479,7 +479,7 @@ When creating ClickUp tasks, attach `PRD T{n}` + story text + acceptance list as
 ## 12. Next actions (execution — plan is 100% complete)
 
 1. **Answer OQs** one at a time — start with **#7**, then PDF **#22–28** — [oq-disposition.md](./appendices/oq-disposition.md) § How answers land
-2. **Start Wave 0:** Ismail A-0 · Omar A + L + N-2 · Yasser N-1 · Karim M-1
+2. **Start Wave 0:** Ismail A-0 · Yasser A-1…A-4 · Omar A-6 + L + N-2 · Yasser N-1 · Karim M-1
 3. Pull cards only if Definition of Ready is green — [`task-book.md`](./task-book.md) §1
 4. Do not invent OQ answers; G-6 PDF Done blocked on #22–28 until client Resolves or waives
 5. When ClickUp API recovers (or via UI now): execute [`clickup-apply.md`](./clickup-apply.md)

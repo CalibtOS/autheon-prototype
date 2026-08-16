@@ -178,10 +178,6 @@ Work top to bottom. For each row:
 
 | ☑ | ID | Exact title | URL |
 |---|-----|-------------|-----|
-| ☑ | A-1 | `[W0][A-1][FE][Omar] Enums available to UI` | search |
-| ☑ | A-2 | `[W0][A-2][FE][Omar] ReportProblemSheet codes + validation` | https://app.clickup.com/t/869egzktf |
-| ☑ | A-3 | `[W0][A-3][FE][Omar] Storno i18n EN+DE` | search |
-| ☑ | A-4 | `[W0][A-4][FE][Omar] Storno tests / fixtures` | search |
 | ☑ | A-6 | `[W0][A-6][FE][Omar] Dual cancel vocabulary docs` | search |
 | ☑ | L-1 | `[W0][L-1][FE][Omar] Shared DriverScreenHeader` | search |
 | ☑ | L-2 | `[W0][L-2][FE][Omar] Marketplace chrome remove old layout` | search |
@@ -203,7 +199,6 @@ Work top to bottom. For each row:
 | ☑ | G-2 | `[W4][G-2][FE][Omar] Job create/edit vehicle domain` | https://app.clickup.com/t/869egzm0x |
 | ☑ | F-5 | `[W3][F-5][FE][Omar] Driver auth splash / login / set-password` | search — comment Ayman |
 | ☑ | G-6 | `[W4][G-6][FE][Omar] Transport-order PDF UX` | https://app.clickup.com/t/869egzm11 — FE only; PDF bytes from **G-6b** |
-| ☑ | G-6b | `[W4][G-6b][BE][Ismail] Transport-order PDF templates (client pack)` | https://app.clickup.com/t/869ebyppk — authority `869ebf84g` |
 | ☑ | H-5 | `[W4][H-5][FE][Omar] Probation UI + manual release` | search |
 | ☑ | K-5 | `[W5][K-5][PM][Omar] ClickUp hygiene + assignment` | search |
 
@@ -269,6 +264,10 @@ Work top to bottom. For each row:
 
 | ☑ | ID | Exact title | URL |
 |---|-----|-------------|-----|
+| ☑ | A-1 | `[W0][A-1][FE][Yasser] Enums available to UI` | https://app.clickup.com/t/869egzktn |
+| ☑ | A-2 | `[W0][A-2][FE][Yasser] ReportProblemSheet codes + validation` | https://app.clickup.com/t/869egzktf |
+| ☑ | A-3 | `[W0][A-3][FE][Yasser] Storno i18n EN+DE` | https://app.clickup.com/t/869egzktj |
+| ☑ | A-4 | `[W0][A-4][FE][Yasser] Storno tests / fixtures` | https://app.clickup.com/t/869egzktg |
 | ☑ | B-2 | `[W1][B-2][FS][Yasser] CI repository + hooks` | search |
 | ☑ | B-3a | `[W1][B-3a][FS][Yasser] Tour Billing documents tab` | search |
 | ☑ | B-4 | `[W1][B-4][FS][Yasser] Consolidated invoice create + mismatch` | search |
