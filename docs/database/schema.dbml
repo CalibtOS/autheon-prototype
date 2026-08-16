@@ -4,6 +4,34 @@
 // one is modelled here — 0 BE-only tables AND 0 DBML-only tables, because the six tables carried
 // as "BE catch-up" on 2026-08-10 have all landed. Binary meta only on upload_assets.
 // See logical-model.md for constraints that DBML cannot express (partial unique indexes, RLS, and transition rules).
+// 2026-08-16 — TRANSPORT-ORDER PDF GENERATION, BE SYNC (post-implementation). The v2.26
+//   (2026-07-30) generated_job_documents shape below was written ahead of the BE build;
+//   read column-by-column off the finished GeneratedJobDocumentEntity, five things differ:
+//   1. document_file_id, template_key, document_title, file_name, generation_trigger,
+//      service_partner_snapshot, gtc_document_id, gtc_version are NULLABLE, not NOT NULL.
+//      generation_status = 'failed' rows exist for real (mandatory data missing at
+//      generation time) and populate none of these — only id/job_id/document_kind/
+//      generated_at/generated_by_user_id/version_number/generation_error. A failed row
+//      still consumes a version_number (numbering stays monotonic across failures) but
+//      never becomes is_current.
+//   2. booked_at and source_data_revision were never implemented and are REMOVED, along
+//      with the (job_id, document_kind, source_data_revision) unique index. BE detects a
+//      no-op RELEVANT_CHANGE trigger by diffing the new source_snapshot column (below)
+//      against the live job/location/financial data inside the generation transaction —
+//      an application-level check, not a DB-uniqueness guarantee. booked_at is never
+//      frozen per version: the document always renders the job's live bound_at/accepted_at
+//      at generation time (low risk in practice — that instant does not change once a job
+//      is bound — but not independently reproducible from the row alone).
+//   3. source_checksum_sha256 is RENAMED checksum_sha256 and re-scoped: BE computes it over
+//      the rendered PDF's output bytes (LocalTransportOrderPdfGeneratorAdapter), so it
+//      duplicates upload_assets.checksum for the same file rather than being a distinct
+//      render-source fingerprint. Nullable (null on a failed row — no binary was produced).
+//   4. New column source_snapshot jsonb (nullable): the frozen 34-field job/location/
+//      financial snapshot each version was generated from (customer, pickup*, delivery*,
+//      vehicle*, transportType, registrationStatus, driverOfferAmount, driverVisibleNotes).
+//      This is what changed_fields and the no-op skip in point 2 are computed from.
+//   5. checksum_sha256 is BE varchar, not char(64) (TypeORM default column length).
+//   See logical-model.md "Transport-order PDF versioning" for the updated prose.
 // 2026-08-12 — BACKEND SYNC PASS. Originally verified column-by-column against autheon-be
 //   main 824b1eea plus two-phase-upload PR #178. Catch-up 2026-08-12 (autheon-be main 708c16be):
 //   remaining documented gaps closed in BE (see 2026-08-12 CATCH-UP below). Each original item
@@ -892,37 +920,43 @@ Table driver_documents {
 Table generated_job_documents {
   id uuid [pk]
   job_id uuid [not null]
-  document_file_id uuid [not null]
+  // Null only for a generation_status = 'failed' row — a failed attempt never produces a file.
+  document_file_id uuid
   document_kind varchar(64) [not null] // transport_order
   version_number int [not null]
   generated_at timestamptz [not null]
   generated_by_user_id uuid           // null when a system trigger generated it
   is_current boolean [not null, default: true]
 
-  // --- v2.26 additions ---
-  template_key varchar(16) [not null]      // pkw | lkw — resolved from jobs.vehicle_type, never from display text
-  document_title varchar(64) [not null]    // FAHRAUFTRAG PKW | FAHRAUFTRAG LKW
+  // --- v2.26 additions, corrected 2026-08-16 against the finished BE entity ---
+  // All of the following are null on a generation_status = 'failed' row: mandatory data was
+  // missing, so nothing was resolved/rendered/frozen for that attempt.
+  template_key varchar(16)      // pkw | lkw — resolved from jobs.vehicle_type, never from display text
+  document_title varchar(64)    // FAHRAUFTRAG PKW | FAHRAUFTRAG LKW
   // Client-required Fahrauftrag download/audit identity (Fahrauftrag-<tour_number>.pdf).
   // On successful generation, write the same value to upload_assets.original_name via
   // document_files; do NOT add a second stored-binary checksum column here —
   // upload_assets.checksum is the binary hash.
-  file_name varchar(255) [not null]
-  booked_at timestamptz [not null]         // the binding-booking instant the document renders in Europe/Berlin
-  source_data_revision int [not null]      // deterministic revision marker; generation is idempotent per (job_id, revision)
-  generation_trigger varchar(32) [not null] // marketplace_acceptance | direct_assignment | relevant_change | admin_manual
-  service_partner_snapshot jsonb [not null] // company, person, street, house number, postal code, city, country FROZEN at v1 and carried forward; later profile edits never alter any version
-  gtc_document_id varchar(64) [not null]    // applicable AGB/GTC at booking time
-  gtc_version varchar(32) [not null]
-  source_checksum_sha256 char(64) [not null] // SHA-256 of the canonical render source (payload + markup) — the revision fingerprint (NOT the stored binary)
+  file_name varchar(255)
+  generation_trigger varchar(32) // marketplace_acceptance | direct_assignment | relevant_change | admin_manual
+  service_partner_snapshot jsonb // company, person, street, house number, postal code, city, country FROZEN at v1 and carried forward; later profile edits never alter any version
+  // The frozen 34-field job/location/financial snapshot this version was generated from
+  // (customer, pickup*, delivery*, vehicle*, transportType, registrationStatus,
+  // driverOfferAmount, driverVisibleNotes). Diffed against live data at generation time to
+  // detect a no-op RELEVANT_CHANGE trigger and to populate changed_fields — this table has
+  // no source_data_revision column; the diff itself is the idempotency check.
+  source_snapshot jsonb
+  gtc_document_id varchar(64)    // applicable AGB/GTC at booking time
+  gtc_version varchar(32)
+  // SHA-256 of the RENDERED PDF's bytes (LocalTransportOrderPdfGeneratorAdapter) — duplicates
+  // upload_assets.checksum for the same file, not a distinct render-source fingerprint.
+  checksum_sha256 varchar
   changed_fields jsonb                      // relevant-change field keys, when generation_trigger = relevant_change
   generation_status varchar(32) [not null, default: 'generated'] // generated | failed
   generation_error text                     // missing mandatory fields or renderer error, when generation_status = failed
 
   indexes {
     (job_id, document_kind, version_number) [unique]
-    // Idempotency: one document per job revision, so a retry or a duplicate
-    // event cannot mint a second version.
-    (job_id, document_kind, source_data_revision) [unique]
     // Exactly one active document per job and kind (partial index:
     // WHERE is_current — DBML has no partial-index syntax, see logical-model.md).
     (job_id, document_kind, is_current)

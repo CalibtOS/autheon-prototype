@@ -1,8 +1,9 @@
 # Open-question disposition (planning-complete)
 
 **Rule:** Engineering must **not invent** answers. Each OQ is `Resolved` (client answer recorded) or `Deferred` with **named wave/AC impact**.  
-**Source:** `prd.json` → `production_open_questions` (37).  
+**Source:** `prd.json` → `production_open_questions` (38).  
 **Status date:** 2026-08-14 — answering Deferred OQs; ClickUp sync last via [`clickup-apply.md`](../clickup-apply.md).
+**Amended 2026-08-16** — BE audit of the finished transport-order PDF implementation (Task 17 / G-6) found one recorded rule deviated from in shipped code (#28) and one gap not yet raised as an OQ (#38, new). Neither was invented by this update — both are read directly off the code against the already-recorded rules. See rows below.
 
 | ID | Topic (short) | Disposition | Blocks Done on | Interim build rule |
 |----|---------------|-------------|----------------|--------------------|
@@ -33,7 +34,8 @@
 | #25 | PDF historical-version visibility | **Resolved 2026-08-14** | — | Driver/SP sees **active** transport-order PDF only. Earlier versions visible on **admin/audit** surface only (proto). |
 | #26 | PDF optional vs mandatory fields | **Resolved 2026-08-14** | — | SP house number + order-creator telephone stay **optional** for V1. PDF collapses cleanly when missing. Do **not** add new mandatory validation on partner/admin profile forms for these. |
 | #27 | PDF legal/branding sign-off | **Resolved 2026-08-14** | — | V1 = **proto-placeholders-as-shipped** + **BE template as-built**. Ship signed-off proto PDF legal/footer/GTC placeholders (`GTC_DOCUMENT` AGB-SP / 2026-01, typeset AUTHEON wordmark) and the existing BE generator copy (`TRANSPORT_ORDER_LEGAL_NOTE` / `TransportOrderPdfTemplateService`) as production V1 content. Do **not** invent new legal paragraphs, Corporate Design logo, or a real AGB entity. Client pack swap = later cosmetics/legal pass — **does not block G-6 Done**. App chrome still **#5 proto-tokens**. |
-| #28 | PDF font assets licensing | **Resolved 2026-08-14** | — | V1 = **pdfkit-defaults**: production generate uses the **existing BE PdfKit built-in fonts** (`LocalTransportOrderPdfGeneratorAdapter`) — no Montserrat vendoring, no Google Fonts / external host at render, no new font pipeline. Exact Montserrat embed = later polish when worth the BE change. **Does not block G-6 Done.** |
+| #28 | PDF font assets licensing | **Resolved 2026-08-14; DEVIATION FLAGGED 2026-08-16** | Needs a decision | V1 = **pdfkit-defaults**: production generate uses the **existing BE PdfKit built-in fonts** (`LocalTransportOrderPdfGeneratorAdapter`) — no Montserrat vendoring, no Google Fonts / external host at render, no new font pipeline. Exact Montserrat embed = later polish when worth the BE change. **Does not block G-6 Done.** ⚠ Shipped code does not match this rule: the renderer already embeds real `Montserrat-Regular.ttf` / `Montserrat-Bold.ttf`. This is engineering shipping ahead of the recorded answer, not a stale doc — needs either retroactive sign-off to supersede this rule, or a revert to pdfkit defaults. |
+| #38 | Relevant-change PDF regeneration does not notify the driver | **Not yet resolved — audit finding 2026-08-16** | Needs a decision | `resolved_defaults.transport_order_pdf_relevant_change_v1` already says "mint new PDF + **notify** only on template-rendered field changes", matching v2.26 and the prototype's own `store.js` `pushDriverNotification({type:"order_updated"})`. `UpdateJobUseCase.tryRegenerateTransportOrder` only calls `TransportOrderGenerationService.generate()` — no email, no in-app notification. Booking/assignment notification (#12) is unaffected and fully implemented. Decision needed: implement the missing notification for V1, or explicitly descope it the way #27/#28 descoped legal copy and fonts. |
 | #29 | Dispatch feed spec provenance | **Resolved 2026-08-14** | — | `docs/requirements/dispatch-notification-feed-spec.md` (reconstruction) is **binding** for admin feed (Task 33 / I-2) until a verbatim original replaces it. Build I-2 against that doc + proto UI; do not invent beyond those two. |
 | #30 | Feed severity/mark-read BE fields | **Resolved 2026-08-14** | — | **BE required** before admin Open/Processed clone: add `severity`, `status`, `processedAt`, `processedBy` on UserNotification (or equivalent) + **mark-processed** endpoint. FE I-2 drives proto behaviour only after BE lands. Ismail owns BE; Karim owns FE chrome. Log in J-1 as PLANNED if not yet in BE. |
 | #31 | 90-day inactivity “activity” definition | **Resolved 2026-08-14** | — | Activity = **last authenticated API request** → `users.last_activity_at` (write-throttled), as already implemented (`DriverActivityInterceptor` + inactivity sweep). **Not** Keycloak login events; **not** a dedicated heartbeat endpoint. Feed §6 / dormancy use that clock. |
@@ -49,8 +51,12 @@
 | State | Count |
 |-------|------:|
 | Resolved | **37** (#1–37) |
+| Resolved but shipped code deviates | **1** (#28 — needs a decision) |
+| Not yet resolved (new, 2026-08-16) | **1** (#38 — needs a decision) |
 | Deferred + impact named | **0** |
-| Invented by eng | **0** |
+| Invented by eng | **0*** |
+
+\* No answer was invented in place of asking the client. #28 is engineering **shipping ahead of** a recorded answer (Montserrat instead of pdfkit defaults), which is a different failure mode than inventing an answer to an unasked question — flagged above rather than folded into this count, but a project lead may prefer to count it here instead.
 
 ## Wave impact (planning)
 
@@ -60,7 +66,7 @@
 | 1 B+C | **Yes** | #21 Resolved — Missing = delivery_note + invoice |
 | 2 D + G-3/4 | **Yes** | #7 Resolved — proto status gates only |
 | 3–4 E–I | **Yes** matching current proto | Contested E-1 rows / feed extras / G-6 |
-| G-6 PDF | **Yes** — #22–28 all Resolved | Content = #27 proto/BE as-built; fonts = #28 PdfKit defaults |
+| G-6 PDF | **Yes** — #22–28 all Resolved | Content = #27 proto/BE as-built; fonts = #28 PdfKit defaults **but shipped code deviates — see #28 row**; #38 (new) — relevant-change notify gap needs a decision before G-6 can be called fully Done |
 | K release | Journeys unblocked on OQ side | Build G-6 / F-7 PDF attach against Resolved rules |
 
 *This appendix is the planning-complete disposition. ClickUp OQ cards should mirror these rows — teammate runbook: [`../clickup-apply.md`](../clickup-apply.md) Part E.*
@@ -77,7 +83,7 @@ Do this **before** asking the next question. Engineering still must not invent.
 4. ClickUp: OQ card → `completed`; comment on the named build cards (when API allows).
 5. Stop. Do not start coding a different interpretation than the recorded rule.
 
-**All 37 OQs Resolved** (2026-08-14). No Deferred rows. G-6 / F-7 PDF attach are unblocked on the open-question side — implement against the recorded rules.
+**All 37 OQs Resolved** (2026-08-14). No Deferred rows. G-6 / F-7 PDF attach are unblocked on the open-question side — implement against the recorded rules. **Amended 2026-08-16:** #28's recorded rule has a shipped-code deviation, and #38 is a new, not-yet-resolved gap — both need a decision before treating G-6 as fully closed; see the rows above.
 
 ### Recommended answer order (highest unblock)
 
