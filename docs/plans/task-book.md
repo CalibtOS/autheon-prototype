@@ -124,6 +124,7 @@ Wave prefix: W0 = A, L, N · W1 = B, C · W2 = D + G-3/4/7/8 · W3 = E, F, F-7/F
 | G-10 | G-9 |
 | G-1c | G-1a |
 | F-3e, F-3f | F-3a |
+| Pre-plan notif mega `869efuuc7` | F-3 / I-2 / **I-2d** / J-1 (schedule CRON gaps → J-1→J-2) |
 
 ---
 
@@ -162,6 +163,7 @@ List `901217611464`. Full apply steps: [`clickup-apply.md`](./clickup-apply.md).
 | I-1 | `869egzm1k` |
 | I-1a | `869ehet6k` |
 | I-2d | `869ehx7t2` |
+| RETIRED notif mega | `869efuuc7` |
 | L-6 | `869egzkua` |
 | M-1 | `869egzm1u` |
 | M-2 | `869egzm1t` |

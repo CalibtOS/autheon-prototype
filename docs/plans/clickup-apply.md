@@ -117,10 +117,11 @@ For each row: open the card → status **`canceled`** → rename as in “New ti
 | ☑ | `[G-1c]` | https://app.clickup.com/t/869ehet5p | `[RETIRED][G-1c] Merged into G-1a` | `Merged into G-1a (https://app.clickup.com/t/869ehet5h). New-job entry is G-1a.3. Do not implement.` |
 | ☑ | `[F-3e]` | https://app.clickup.com/t/869ehet59 | `[RETIRED][F-3e] Merged into F-3a` | `Merged into F-3a (https://app.clickup.com/t/869ehet4u). Tab-bar hide is F-3a.2. Do not implement.` |
 | ☑ | `[F-3f]` | https://app.clickup.com/t/869ehet5a | `[RETIRED][F-3f] Merged into F-3a` | `Merged into F-3a (https://app.clickup.com/t/869ehet4u). OQ #29–32 is F-3a.3 (gate, not a build card). Do not implement.` |
+| ☑ | Pre-plan notif mega | https://app.clickup.com/t/869efuuc7 | `[RETIRED] Notifications refactor — superseded by F-3 / I-2 / I-2d / J-1` | Pointers to F-3 · I-2d · J-1; schedule CRON gaps → J-1→J-2 |
 
 Also cancel if still open: `[E-1-OLD]` / `SUPERSEDED` mega-card `869egzkwb` (already canceled once — confirm).
 
-**Never reuse** L-7, M-4, E-1c, E-1h, G-10, G-1c, F-3e, F-3f as new work.
+**Never reuse** L-7, M-4, E-1c, E-1h, G-10, G-1c, F-3e, F-3f, or `869efuuc7` as new work.
 
 ---
 

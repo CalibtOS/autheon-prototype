@@ -683,6 +683,7 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 | I-2d.2 | Mark-processed (or equivalent) endpoint exists and is authorized for admin | ☐ |
 | I-2d.3 | FE I-2a…c Open/Processed behaviour blocked Done until I-2d green (or explicit N/A with J-1 row) | ☐ |
 | I-2d.4 | Shared DTOs published; no FE invent of dead fields | ☐ |
+| I-2d.5 | Binding feed **schedule-driven** triggers (§1 order not accepted by cutoff · §4 document unreviewed stale · §6 SP inactive 90+ days) emit into the admin feed via existing `@Cron` / scheduler pattern (reuse `ScheduleModule`; do not invent a second bus). If a trigger is not yet in BE → **J-1** row PLANNED/MISSING (then J-2). Event-driven types (2, 3, 5) stay on workflow paths. Pre-plan catch-all `869efuuc7` is **RETIRED** — do not reopen | ☐ |
 
 ---
 
@@ -841,6 +842,7 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 | J-1.2 | Rows classified WIRED / WRONG-CONTRACT / MISSING / N/A | ☐ |
 | J-1.3 | No FE invents a dead API to “match old FE” | ☐ |
 | J-1.4 | J-2/J-3 stay not started until at least one MISSING/WRONG row is confirmed. **OQ #17 Resolved** — j1-gap-gated; no blanket FE-validator port | ☐ |
+| J-1.5 | Explicitly include binding feed **schedule-driven** emitters (cutoff / stale tour-doc / 90-day inactivity → admin feed) and notification channel gaps vs `notification_channels_matrix`. Pre-plan `869efuuc7` RETIRED — gaps land here → J-2, not a catch-all refactor card | ☐ |
 
 ---
 
