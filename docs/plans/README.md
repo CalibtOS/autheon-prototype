@@ -31,7 +31,7 @@ QA: clone scoreboard. Client Q: oq-disposition. Board cleanup: clickup-apply.
 
 1. Exact clone. Four locks: proto · PRD · BE/DBML · screenshots.  
 2. SP Storno ≠ Admin cancel.  
-3. G-6 PDF Done waits on OQ #22–28.  
+3. PDF = **G-6** FE (Omar) + **G-6b** BE client-pack templates (Ismail); OQ #22–28 Resolved (#27 = client pack). F-7 attach waits on G-6b.  
 4. FE: Page → api/hook → Repository → apiClient.  
 5. ClickUp body = Goal · Authority · Acceptance · DoD from the AC appendix.
 

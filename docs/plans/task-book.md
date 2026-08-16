@@ -33,7 +33,7 @@ Ismail A-0 → Omar A-2 → A-3 → A-4 → A-6
 
 Parallel after A-0: Ismail B-1/C-1 → Yasser B/C. Karim **M-1** from day 1.
 
-**Do not:** Marketplace clone before L-2 · Marwan My Jobs before D-2a · G-6 Done before OQ #22–28 · J-2 before J-1 confirms a gap.
+**Do not:** Marketplace clone before L-2 · Marwan My Jobs before D-2a · F-7 PDF attach before **G-6b** can generate · J-2 before J-1 confirms a gap.
 
 ### Phase 0 (start now)
 
@@ -53,7 +53,7 @@ Parallel after A-0: Ismail B-1/C-1 → Yasser B/C. Karim **M-1** from day 1.
 | 1 | A-0 done | Ismail B-1, C-1, B-8 · Yasser B-2 → B-3 → B-3a → B-4 → B-5 and C-2 → C-3 · Karim M-2, M-3 if M-1 done |
 | 2 | Epic A exit | Omar D-1 → D-2a → D-3 → D-4 · Marwan D-2b…e · Karim G-3 → G-4 → G-7 → G-8 |
 | 3 | L-1 **and** L-2 PASS | Omar E-1d → E-2 → E-1g → E-6 → E-7 → F-5 · Marwan E-1a → E-1b → E-1f → E-1e (after E-1d) → E-3 → E-4 → F-1/F-2/F-4 · Karim F-6 → F-3a/b/c · Yasser F-7 · Ismail F-8 |
-| 4 | B-3 shell + phase 2 moving | Omar G-2, H-5, G-6 (when OQs allow) · Marwan H-1a, H-2a…c, H-3 · Karim G-1a/b, G-11a/b, G-9, I-2a…c, H-1b, H-2d, H-4 · Yasser G-5, I-1, I-3, I-4, I-5, N-3 (after N-2), N-4 · Ismail J-1 · **I-2d** (feed BE, OQ #30) |
+| 4 | B-3 shell + phase 2 moving | Omar G-2, H-5, G-6 (FE) · Marwan H-1a, H-2a…c, H-3 · Karim G-1a/b, G-11a/b, G-9, I-2a…c, H-1b, H-2d, H-4 · Yasser G-5, I-1, I-3, I-4, I-5, N-3 (after N-2), N-4 · Ismail **G-6b** · J-1 · **I-2d** (feed BE, OQ #30) |
 | 5 | Build waves done | Youssef K · Ayman SEC-1…3 · Ismail J-2/J-3 only if J-1 confirmed · Omar K-5 |
 
 ---
@@ -62,11 +62,11 @@ Parallel after A-0: Ismail B-1/C-1 → Yasser B/C. Karim **M-1** from day 1.
 
 | Person | Lane | IDs |
 |--------|------|-----|
-| **Omar** | Architect / hard FS | A-1…A-4, A-6 · L-1…L-6, L-8 · D-1, D-2a, D-3, D-4 · E-1d, E-1g, E-2, E-6, E-7 · N-2 · G-2, G-6, H-5, F-5, K-5 |
+| **Omar** | Architect / hard FS | A-1…A-4, A-6 · L-1…L-6, L-8 · D-1, D-2a, D-3, D-4 · E-1d, E-1g, E-2, E-6, E-7 · N-2 · G-2, **G-6** (FE), H-5, F-5, K-5 |
 | **Marwan** | Driver FE + SP UI | F-1a…d, F-2, F-4a…d, F-3d · H-1a, H-2a…c, H-3 · D-2b…e · E-1a, E-1b, E-1e, E-1f, E-4 · E-3, E-5 |
 | **Karim** | Admin FE + notif chrome | G-1a, G-1b, G-11a/b, G-3, G-4, G-7, G-8, G-9 · M-1…M-3 · I-2a…c · F-6 · F-3a/b/c · H-1b, H-2d, H-4 |
 | **Yasser** | BE-strong FS | B-2, B-3a, B-4, B-5, B-7, B-9, B-10 · C-2, C-3, C-4 · I-1a/b, I-3, I-4a/b, I-5a…c · G-5 · F-7 · N-1, N-3, N-4 |
-| **Ismail** | BE only | A-0 · B-1, B-8 · C-1 · F-8 · **I-2d** · J-1, J-2, J-3 · G-6 BE collab |
+| **Ismail** | BE only | A-0 · B-1, B-8 · C-1 · F-8 · **G-6b** · **I-2d** · J-1, J-2, J-3 |
 | **Youssef** | QA | K-1…K-4, K-6 · L-9 · A-5 · D-2f, D-5 · E-1i · F-1e, F-4e · B-6 · C-5 · N-5 |
 | **Ayman** | Security | SEC-1, SEC-2, SEC-3 (F-5 collab) |
 
@@ -103,7 +103,7 @@ Wave prefix: W0 = A, L, N · W1 = B, C · W2 = D + G-3/4/7/8 · W3 = E, F, F-7/F
 | B-1…B-10 | Tour billing (B-3 umbrella + B-3a docs tab) | B-1 before B-2 |
 | C-1…C-5 | SP documents | C-1 before C-2 |
 | G-1 | Umbrella overview | G-1a (was +G-1c), G-1b |
-| G-2…G-9, G-11a/b | Jobs / PDF / VIN+schedule (G-10 → G-9) | G-6 Done blocked OQ #22–28 |
+| G-2…G-9, G-11a/b | Jobs / PDF / VIN+schedule (G-10 → G-9) | **G-6** FE Omar · **G-6b** BE Ismail (client pack) |
 | H-1…H-5 | SP / Staff / MDR / probation | Documents tab = C-3 |
 | I-1…I-5 | CC, feed, audit, Infopoint admin, settings | — |
 | M-1…M-3 | Admin nav + titles (M-4 → M-1), CC hierarchy, foot | — |
@@ -158,6 +158,7 @@ List `901217611464`. Full apply steps: [`clickup-apply.md`](./clickup-apply.md).
 | G-2 | `869egzm0x` |
 | G-5 | `869egzm0y` |
 | G-6 | `869egzm11` |
+| G-6b | `869ebyppk` |
 | G-9 | `869egzm18` |
 | G-11b | `869ehet5q` |
 | I-1 | `869egzm1k` |

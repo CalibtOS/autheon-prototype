@@ -5,7 +5,7 @@ Owners and IDs also live in [`task-book.md`](./task-book.md). If ClickUp and the
 
 **Who:** anyone with edit access to the AUTHEON list.  
 **How:** Prefer MCP/`clickup_update_task` when the API allows; otherwise the ClickUp **website**.  
-**API status (2026-08-14):** Sync **complete** (Parts A–F). **All 37 OQs Resolved** (incl. #27 proto/BE legal placeholders, #28 PdfKit default fonts). G-6 unblocked. Non-WBS client-review cards intentionally untouched.  
+**API status (2026-08-16):** Sync complete + **G-6b** integrated (`869ebyppk` Ismail BE client-pack templates). OQ #27 amended to client pack. G-6 = Omar FE. Non-WBS client-review `869ebf84g` kept as authority.  
 **Do not:** invent OQ answers · reuse retired IDs · put umbrellas `in progress` · assign Ismail to FE clone cards · implement on RETIRED cards · invent new WBS IDs (OQ mirror cards only when disposition has a row with no card).
 
 **Done when:** every checkbox in Parts A–F is ticked, then comment on **K-5**: `ClickUp apply playbook 2026-08-14 complete` (posted).
@@ -41,7 +41,8 @@ If a card has two people, **remove** the extra. Collab is a **comment**, not a s
 | Card | Comment to add |
 |------|----------------|
 | F-7 | `Collab: Ismail SMTP (F-8). Yasser stays primary.` |
-| G-6 | `Collab: Ismail PDF BE. Omar stays primary. Done blocked on OQ #22–28.` |
+| G-6 | FE Omar — PDF bytes from **G-6b** |
+| G-6b | Ismail primary — client pack templates (`869ebyppk`) |
 | F-5 | `Collab: Ayman (SEC). Omar stays primary.` |
 
 ### Statuses (use only these)
@@ -201,7 +202,8 @@ Work top to bottom. For each row:
 | ☑ | N-2 | `[W0][N-2][FE][Omar] Shared Dialog / Confirm / toast primitives` | search |
 | ☑ | G-2 | `[W4][G-2][FE][Omar] Job create/edit vehicle domain` | https://app.clickup.com/t/869egzm0x |
 | ☑ | F-5 | `[W3][F-5][FE][Omar] Driver auth splash / login / set-password` | search — comment Ayman |
-| ☑ | G-6 | `[W4][G-6][FE][Omar] Transport-order PDF UX` | https://app.clickup.com/t/869egzm11 — unblocked; OQ #22–28 Resolved |
+| ☑ | G-6 | `[W4][G-6][FE][Omar] Transport-order PDF UX` | https://app.clickup.com/t/869egzm11 — FE only; PDF bytes from **G-6b** |
+| ☑ | G-6b | `[W4][G-6b][BE][Ismail] Transport-order PDF templates (client pack)` | https://app.clickup.com/t/869ebyppk — authority `869ebf84g` |
 | ☑ | H-5 | `[W4][H-5][FE][Omar] Probation UI + manual release` | search |
 | ☑ | K-5 | `[W5][K-5][PM][Omar] ClickUp hygiene + assignment` | search |
 
@@ -302,12 +304,13 @@ Do **not** put Ismail on marketplace, admin clone, G-10, or any FE 1:1 card.
 | ☑ | B-8 | `[W1][B-8][BE][Ismail] Persist tour-doc metadata on upload/accept` | search |
 | ☑ | C-1 | `[W1][C-1][BE][Ismail] Shared driver-document enums/DTOs` | search |
 | ☑ | F-8 | `[W3][F-8][BE][Ismail] AUTHEON SMTP for all application mail` | https://app.clickup.com/t/869egzp84 |
+| ☑ | G-6b | `[W4][G-6b][BE][Ismail] Transport-order PDF templates (client pack)` | https://app.clickup.com/t/869ebyppk — authority `869ebf84g` |
 | ☑ | J-1 | `[W5][J-1][BE][Ismail] Gap log prototype action → endpoint` | search |
 | ☑ | I-2d | `[W4][I-2d][BE][Ismail] Admin feed severity/status + mark-processed` | https://app.clickup.com/t/869ehx7t2 — under I-2; OQ #30 |
 | ☑ | J-2 | `[W5][J-2][BE][Ismail] Implement missing BE endpoint` | https://app.clickup.com/t/869eheu37 — keep `not started` until J-1 confirms a gap |
 | ☑ | J-3 | `[W5][J-3][BE][Ismail] Shared package dual-publish on enum change` | https://app.clickup.com/t/869eheu98 — same as J-2 |
 
-G-6 stays **Omar** primary. Ismail is comment-only collab.
+**G-6** FE stays **Omar**. **G-6b** BE templates = **Ismail** primary (client pack).
 
 ### C.6 — Youssef (primary) — QA
 

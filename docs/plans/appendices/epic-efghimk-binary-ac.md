@@ -348,15 +348,15 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 ## F-7 — Driver booked/assigned email + order PDF
 
 **Goal:** Drivers receive one AUTHEON workflow email when a job is marketplace-booked or admin-assigned, with the current transport-order PDF attached.  
-**Authority:** OQ #12 Resolved 2026-08-12 · OQ #2 Resolved · PRD `driver_booking_assignment_email_v1` · G-6 / OQ #22–28 for PDF **content**.  
-**Owner:** Yasser (FS) · Ismail (SMTP send path).  
-**DoD:** Send path green; if PDF generation missing, fail loud (no “PDF attached” lie). Card Done for PDF attach waits on G-6.
+**Authority:** OQ #12 Resolved 2026-08-12 · OQ #2 Resolved · PRD `driver_booking_assignment_email_v1` · **G-6b** PDF bytes · G-6 FE UX.  
+**Owner:** Yasser (FS) · Ismail (SMTP send path + G-6b generate).  
+**DoD:** Send path green; if PDF generation missing, fail loud (no “PDF attached” lie). Card Done for PDF attach waits on **G-6b**.
 
 | # | AC | Pass? |
 |---|----|-------|
 | F-7.1 | Email fires on marketplace **accept** (`order_accepted_by_driver`) and admin **assign** (`job_assigned`) only | ☐ |
 | F-7.2 | No email on publish (no driver yet) or other driver workflow events | ☐ |
-| F-7.3 | Email attaches the **current** transport-order PDF when G-6 can generate it | ☐ |
+| F-7.3 | Email attaches the **current** transport-order PDF when **G-6b** can generate it | ☐ |
 | F-7.4 | If PDF is missing: send fails loud or omits the “PDF attached” claim — never a lying attachment | ☐ |
 | F-7.5 | Same mailer as F-8 (`SMTP_*`); Keycloak does not send this mail | ☐ |
 | F-7.6 | In-app / push channels unchanged | ☐ |
@@ -475,10 +475,10 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 
 ## G-6 — Transport-order PDF generation UX (A11) — **OQ #22–28 Resolved (unblocked)**
 
-**Goal:** Admin transport-order PDF preview/generate matches proto structure where required; V1 content/fonts follow Resolved OQs; fail path + V1 auto-retry.  
-**Authority:** proto A11 · PRD T17 · OQ #22–28 Resolved · Ismail PDF BE collab.  
-**Owner:** Omar (primary). Ismail BE collab.  
-**DoD:** All rows Pass or N/A.
+**Goal:** Admin transport-order PDF preview/generate/fail UX matches proto A11; consumes PDF bytes from **G-6b**.  
+**Authority:** proto A11 · PRD T17 · OQ #22–28 Resolved · **G-6b** BE templates.  
+**Owner:** Omar (FE). Ismail owns **G-6b** (not this card).  
+**DoD:** All rows Pass or N/A. Do not mark G-6 Done while G-6b still cannot produce a downloadable client-pack PDF (F-7 attach depends on G-6b bytes).
 
 | # | AC | Pass? |
 |---|----|-------|
@@ -489,11 +489,33 @@ Pass/fail only. Screenshots (proto \| FE) required for every Axis V row claimed 
 | G-6.5 | **OQ #24 Resolved — auto-retry:** generation path retries up to **3** times with short backoff (in-request); if all fail → G-6.4 path. No durable out-of-process queue beyond those retries | ☐ |
 | G-6.6 | **OQ #25 Resolved** — driver/SP sees active PDF only; history = admin/audit only | ☐ |
 | G-6.7 | **OQ #26 Resolved** — SP house number + order-creator phone stay optional; PDF collapses cleanly; no new form mandates | ☐ |
-| G-6.8 | **OQ #27 Resolved** — V1 = proto placeholders + BE as-built legal note / template; no invented finals; client pack = later swap | ☐ |
-| G-6.9 | **OQ #28 Resolved** — V1 = PdfKit built-in fonts (no Montserrat vendoring / no external font host); Montserrat embed = later polish | ☐ |
-| G-6.10 | G-6 Done is **not** OQ-blocked; implement against #22–28 Resolved rules | ☐ |
+| G-6.8 | **OQ #27 Amended** — PDF content authority = client pack via **G-6b**; FE does not invent legal/branding | ☐ |
+| G-6.9 | **OQ #28 Resolved** — V1 fonts follow G-6b generator (PdfKit defaults unless PR embeds local faces); no Google Fonts at render | ☐ |
+| G-6.10 | G-6 FE Done is **not** OQ-blocked; wired to G-6b generate API | ☐ |
 | G-6.11 | No shipping prototype “sample PDF everywhere” as production content | ☐ |
-| G-6.12 | A11 structural + V1 content/font rules Pass; pixel-perfect Montserrat/legal pack is optional later polish | ☐ |
+| G-6.12 | A11 FE clone Pass against live G-6b artefacts | ☐ |
+
+---
+
+## G-6b — Transport-order PDF templates BE (client pack) — Ismail
+
+**Goal:** BE generates downloadable Fahrauftrag PDFs from **client-supplied** PKW/LKW templates + live job data (not invented eng layout).  
+**Authority:** client-req https://app.clickup.com/t/869ebf84g · Drive pack linked there · translated PDFs folder · PRD T17 · OQ #22–27 · ClickUp `869ebyppk`.  
+**Owner:** Ismail.  
+**DoD:** All rows Pass or N/A; PR reviewable; F-7 can attach real bytes.
+
+| # | AC | Pass? |
+|---|----|-------|
+| G-6b.1 | Correct template for **PKW** vs **LKW** from `vehicleType` / `resolveTemplate` | ☐ |
+| G-6b.2 | Populate SP + customer, order #, business area, creator, vehicle (make/model/plate/VIN), registration status, pickup/drop addresses+contacts+windows+notes, booking datetime, net compensation — from BE job data | ☐ |
+| G-6b.3 | Formats: date `DD.MM.YYYY` · time `HH:MM Uhr` · money `100,00 EUR Netto` | ☐ |
+| G-6b.4 | Registration status marked from data; **Abgemeldet** rendered red where required | ☐ |
+| G-6b.5 | Layout/legal/footer match **client pack** (no invented legal paragraphs); no editable placeholders | ☐ |
+| G-6b.6 | **OQ #22–26** respected (no distanceKm; relevant-change; fail path; history; optional house#/phone collapse) | ☐ |
+| G-6b.7 | Country names written out in addresses (not single-letter codes like `D`) — client feedback 2026-08-16 | ☐ |
+| G-6b.8 | Dynamic layout: empty “additional information” does not reserve large whitespace; legal/footer move up | ☐ |
+| G-6b.9 | **OQ #28** — no external font host at production render | ☐ |
+| G-6b.10 | Generate/download path usable by G-6 FE + F-7 email attach | ☐ |
 
 ---
 
@@ -1053,7 +1075,7 @@ Master plan §6. Each journey ≥3 binary rows. Cross-links epics. Staging + liv
 | #7 | Cancel vs empty-run phase gates | G-4 edge |
 | #11 | Direct-assignment policy | G-7 edge |
 | #13–16 | Marketplace windows/filters/sort | E-1 contested rows |
-| **#22–28** | **PDF cluster** | **G-6 / T17** — all Resolved; implement against recorded rules |
+| **#22–28** | **PDF cluster** | **G-6** FE + **G-6b** BE templates — all OQs Resolved; #27 = client pack on G-6b |
 | #29–32 | Feed BE fields | F-3, I-2, J8 extras |
 | #35 | RESOLVED — in-app Back only; pushState out of scope | L chrome / driver nav |
 | #36 | RESOLVED — profile-card-only; no probation notif event | H-5 / E-7 |
@@ -1073,4 +1095,4 @@ Master plan §6. Each journey ≥3 binary rows. Cross-links epics. Staging + liv
 
 ---
 
-*Appendix for Autheon production alignment. Exact clone; dual cancel vocabularies; PDF G-6 OQ #22–28 Resolved (V1 PdfKit fonts + proto/BE legal placeholders).*
+*Appendix for Autheon production alignment. Exact clone; dual cancel vocabularies; PDF = G-6 FE + G-6b client-pack BE (OQ #22–28 Resolved; #27 amended 2026-08-16).*
