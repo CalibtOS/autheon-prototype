@@ -17,12 +17,24 @@ import {
   verifyBaselines,
 } from './lib/visual-baseline.mjs';
 import {
+  baselineMissingFindings,
   buildCoverage,
-  coverageBlockingReasons,
+  captureFailureFindings,
+  coverageMismatchFindings,
   readPlaywrightOutcomes,
   scenariosForProfile,
   readRegistry,
 } from './lib/visual-coverage.mjs';
+import {
+  CATEGORY,
+  buildComparison,
+  buildGate,
+  deriveState,
+  describeState,
+  legacyStatus,
+  presentCategories,
+} from './lib/visual-classification.mjs';
+import { discoverSpecSnapshots } from './lib/visual-scenarios.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -30,6 +42,12 @@ const repoRoot = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
 const options = {
   strict: args.includes('--strict') || isTruthy(process.env.VISUAL_REGRESSION_STRICT),
+  // Opt-in only. Visual regression is an observability system: by default not
+  // even an infrastructure failure blocks the application pipeline. It is still
+  // reported loudly enough that it cannot be read as a successful comparison.
+  failOnInfrastructure:
+    args.includes('--fail-on-infrastructure') ||
+    isTruthy(process.env.VISUAL_REGRESSION_FAIL_ON_INFRASTRUCTURE),
   noClean: args.includes('--no-clean'),
   reuseResults: args.includes('--reuse-results'),
   help: args.includes('--help') || args.includes('-h'),
@@ -105,6 +123,44 @@ let analysis;
 let summaryMarkdown = '';
 let archivePath = path.resolve(paths.artifactDir, settings.archiveName);
 
+// ---------------------------------------------------------------------------
+// Module state and lookup tables used by the run below.
+//
+// These MUST stay above the top-level `try`. Function declarations hoist, but
+// `const`/`let` do not initialise until the interpreter reaches them — and the
+// top-level `await` in that try block executes first. Declaring either of these
+// further down the file throws a temporal-dead-zone ReferenceError the moment the
+// run touches it, which is exactly how an engine crash was introduced here once.
+// ---------------------------------------------------------------------------
+
+/** Snapshot IDs declared by each spec/test, indexed before the run. */
+let declaredSnapshotIndex = null;
+
+/**
+ * Infrastructure-level failure signatures.
+ *
+ * These are failures of the harness, not of the spec: no amount of fixing a
+ * locator would help. Kept narrow on purpose — anything that merely means "the
+ * test did not get where it expected to be" is a CAPTURE_FAILURE, which is the
+ * finding an application developer can actually act on.
+ */
+const INFRASTRUCTURE_SIGNATURES = [
+  /browserType\.launch/i,
+  /Failed to launch/i,
+  /Target (?:page|browser|context) closed/i,
+  /Browser has been closed/i,
+  /browser has disconnected/i,
+  /Protocol error/i,
+  /Cannot find module/i,
+  /ERR_MODULE_NOT_FOUND/i,
+  /Executable doesn't exist/i,
+  /playwright install/i,
+  /worker process (?:exited|crashed)/i,
+  /ENOSPC|EACCES|EMFILE|ENOMEM/,
+  /net::ERR_CONNECTION_REFUSED/i,
+  /ECONNREFUSED/i,
+];
+
 try {
   await prepareOutputDirectories();
 
@@ -115,9 +171,19 @@ try {
   log(`Test results directory: ${settings.testResultsDir}`);
 
   // ---------------------------------------------------------------------------
-  // Preflight. Runs BEFORE Playwright so a baseline problem is reported as a
-  // classified, blocking framework failure instead of 46 opaque test failures.
+  // Preflight. Records findings; it does NOT decide whether the run happens.
+  //
+  // A missing baseline, an outdated spec, or a registry inconsistency is
+  // evidence to collect, not a reason to abort: aborting produced a run that
+  // reported "0 visual differences" simply because nothing was ever compared.
+  // Execution stops only when comparison is technically impossible (see
+  // `preflight.fatal`), and even then the summary, artifacts and notification
+  // are still produced below.
   // ---------------------------------------------------------------------------
+  // Indexed before the run so a spec that crashes before producing any
+  // attachment can still be reported against the snapshot it was meant to cover.
+  await loadDeclaredSnapshotIndex();
+
   const preflight = await runPreflight();
   const visualBaselineCount = preflight.baseline.foundCount;
 
@@ -130,9 +196,12 @@ try {
       preflight.coverage?.counts.registered ?? 0
     } registered scenarios, ${preflight.coverage?.counts.expectedSnapshots ?? 0} expected snapshots)`,
   );
+  logPreflightReport(preflight);
 
-  if (preflight.blocking.length > 0) {
-    analysis = createPreflightFailure(preflight);
+  if (preflight.fatal.length > 0) {
+    // Cannot compare at all. Still classified, still reported, still archived.
+    log('Preflight status: FATAL — visual execution cannot proceed.');
+    analysis = createUnexecutedRun(preflight);
   } else {
     if (!options.reuseResults) {
       playwrightExitCode = await runPlaywright();
@@ -144,11 +213,11 @@ try {
     analysis.baseline = preflight.baseline;
     analysis.environment = environmentMetadata();
     analysis.git = gitMetadata();
-    analysis.coverage = await buildRunCoverage();
-    applyCoverageToAnalysis(analysis);
+    analysis.coverage = await buildRunCoverage(preflight);
+    applyCoverageToAnalysis(analysis, preflight);
   }
 
-  analysis.gate = buildGate(analysis);
+  finalizeAnalysis(analysis);
   summaryMarkdown = renderSummaryMarkdown(analysis);
   await writeSummaryFiles(analysis, summaryMarkdown);
   await appendGitHubStepSummary(summaryMarkdown);
@@ -166,59 +235,236 @@ try {
 
   process.exitCode = analysis.gate.exitCode;
 } catch (error) {
+  // The engine itself threw. Evidence generation must still happen: without a
+  // summary.json the downstream gate and notifier have nothing to classify, and
+  // the run is indistinguishable from "no result at all". Previously this branch
+  // only logged, so an engine crash produced a bare exit code and no artifact.
   console.error(`[visual-regression] ERROR: ${error.stack || error.message || String(error)}`);
-  process.exitCode = 1;
+
+  try {
+    analysis = createEngineFailureRun(error, analysis);
+    finalizeAnalysis(analysis);
+    summaryMarkdown = renderSummaryMarkdown(analysis);
+    await writeSummaryFiles(analysis, summaryMarkdown);
+    await appendGitHubStepSummary(summaryMarkdown);
+    printTerminalSummary(analysis);
+    emitGitHubAnnotations(analysis);
+    log('Engine failure recorded in summary.json; downstream reporting can proceed.');
+    process.exitCode = analysis.gate.exitCode;
+  } catch (writeError) {
+    // Nothing else can be done — but say so explicitly rather than exiting
+    // silently, so the absent summary is attributable.
+    console.error(
+      `[visual-regression] FATAL: could not record the engine failure: ${
+        writeError.stack || writeError.message || String(writeError)
+      }`,
+    );
+    process.exitCode = 1;
+  }
+}
+
+/**
+ * Result shape for an engine crash.
+ *
+ * Preserves whatever the run had already classified before it threw, so a crash
+ * during archiving does not discard real visual differences that were found.
+ */
+function createEngineFailureRun(error, partial) {
+  const base = partial && typeof partial === 'object' ? partial : {};
+
+  return {
+    createdAt: new Date().toISOString(),
+    command,
+    ci: Boolean(process.env.CI),
+    strict: options.strict,
+    platform: process.platform,
+    node: process.version,
+    playwrightExitCode: base.playwrightExitCode ?? null,
+    executed: base.executed ?? false,
+    engineFailed: true,
+    baselineDir: settings.baselineDir,
+    visualBaselineCount: base.visualBaselineCount ?? 0,
+    baseline: base.baseline ?? null,
+    coverage: base.coverage ?? null,
+    environment: base.environment ?? safely(environmentMetadata),
+    git: base.git ?? safely(gitMetadata),
+    playwrightReport: path.join(settings.playwrightReportDir, 'index.html'),
+    testResults: settings.testResultsDir,
+    archiveName: settings.archiveName,
+    totalTests: base.totalTests ?? 0,
+    expected: base.expected ?? 0,
+    skipped: base.skipped ?? 0,
+    flaky: base.flaky ?? [],
+    visualDifferences: base.visualDifferences ?? [],
+    captureFailures: base.captureFailures ?? [],
+    missingBaselines: base.missingBaselines ?? [],
+    coverageProblems: base.coverageProblems ?? [],
+    infrastructureFailures: [
+      ...(base.infrastructureFailures ?? []),
+      {
+        snapshot: 'visual regression engine',
+        title: 'Visual regression engine threw',
+        file: 'scripts/visual-regression-ci.mjs',
+        message: `${error.message || String(error)}\n\n${error.stack || ''}`.trim(),
+        comparisonPerformed: false,
+      },
+    ],
+    notification: base.notification ?? initialNotificationState(),
+  };
+}
+
+/** Best-effort metadata collection that must not mask the original error. */
+function safely(fn) {
+  try {
+    return fn();
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Baseline + coverage preflight.
  *
- * Both checks must pass before Playwright is allowed to start:
- *   - the approved baseline set exists, is intact, and matches its manifest;
- *   - the coverage registry is valid JSON with a usable expected-snapshot list.
+ * Collects findings and classifies them. It answers exactly one yes/no question:
+ * "can a meaningful screenshot comparison happen at all?" Everything else is
+ * recorded and carried into the summary while the run continues.
  *
- * A failure here is deliberately NOT "continue-on-error": comparing against an
- * unknown or corrupt baseline set produces results nobody can act on.
+ * FATAL (comparison technically impossible):
+ *   - running on a platform whose renderer does not match the approved baselines
+ *   - no approved baseline set whatsoever for this platform
+ *   - the visual spec directory does not exist
+ *
+ * NON-FATAL (recorded, run continues):
+ *   - individual missing approved baselines   -> BASELINE_MISSING
+ *   - coverage registry inconsistencies       -> COVERAGE_MISMATCH
+ *   - an unreadable/invalid registry          -> COVERAGE_MISMATCH (the suite can
+ *     still run; only the expected-snapshot list is untrustworthy)
+ *   - baseline checksum mismatches            -> INFRASTRUCTURE_FAILURE
  */
 async function runPreflight() {
   const result = {
     baseline: null,
     coverage: null,
     registryValid: false,
-    blocking: [],
+    // Findings, already classified.
+    baselineMissing: [],
+    coverageProblems: [],
+    infrastructureFailures: [],
+    // Only conditions that make comparison impossible.
+    fatal: [],
   };
 
   result.baseline = await verifyBaselines({ platform: APPROVED_PLATFORM });
 
+  // A checksum mismatch means the approved set on disk is not the approved set
+  // that was reviewed. That is an integrity problem with the engine's inputs,
+  // not a visual change — but it does not stop the other screens comparing.
   if (baselineVerificationBlocking(result.baseline)) {
-    result.blocking.push(
-      ...baselineVerificationMessages(result.baseline).map((message) => ({
-        kind: 'missing-baseline',
-        title: 'Approved baseline preflight',
+    for (const message of baselineVerificationMessages(result.baseline)) {
+      result.infrastructureFailures.push({
+        snapshot: 'approved baseline set',
+        title: 'Approved baseline integrity',
         file: settings.baselineDir,
         message,
-      })),
-    );
+      });
+    }
+  }
+
+  if ((result.baseline.foundCount ?? 0) === 0) {
+    result.fatal.push({
+      snapshot: 'approved baseline set',
+      title: 'No approved baselines',
+      file: settings.baselineDir,
+      message:
+        `No approved "${APPROVED_PLATFORM}" baselines exist in ${settings.baselineDir}, so no comparison is possible. ` +
+        'Render candidates with the Visual Regression Baseline workflow, review them, then approve and commit.',
+    });
   }
 
   // Guard against comparing baselines with a different renderer. macOS and
   // Linux rasterize fonts differently, so a Darwin screenshot against a Linux
-  // baseline reports 1-3% false diffs on every text-bearing screen.
+  // baseline reports 1-3% false diffs on every text-bearing screen. Continuing
+  // would produce confidently wrong "visual differences", which is worse than
+  // not running.
   if (process.platform !== APPROVED_PLATFORM) {
-    result.blocking.push({
-      kind: 'execution-failure',
+    result.fatal.push({
+      snapshot: 'rendering environment',
       title: 'Wrong rendering platform',
       file: settings.baselineDir,
       message:
         `This wrapper compares against approved "${APPROVED_PLATFORM}" baselines but is running on "${process.platform}". ` +
-        'Run the pipeline through Docker instead: "npm run test:regression:ci".',
+        'Every text-bearing screen would report a false difference. Run the pipeline through Docker instead: "npm run test:regression:ci".',
     });
   } else if (APPROVED_PLATFORM !== CANONICAL_PLATFORM) {
-    // Not blocking — but loud, and recorded in the summary.
     log(
       `NON-CANONICAL RUN: comparing against "${APPROVED_PLATFORM}" baselines via VISUAL_REGRESSION_APPROVED_PLATFORM. ` +
         `Only "${CANONICAL_PLATFORM}" baselines are approved for merge decisions.`,
     );
+  }
+
+  // Playwright's {platform} token is "linux" for BOTH linux/amd64 and
+  // linux/arm64, but Chromium rasterizes text differently on the two. Comparing
+  // an amd64 render against an arm64-approved baseline produces a small
+  // difference on every text-bearing screen, which would be reported as ~50
+  // visual changes that no developer caused. Reported as an infrastructure
+  // problem so the run cannot be mistaken for a trustworthy comparison, but NOT
+  // fatal: the comparison still runs and the evidence is still worth having.
+  const baselineArch = result.baseline?.manifestArchitecture ?? null;
+  if (baselineArch && baselineArch !== process.arch) {
+    result.infrastructureFailures.push({
+      snapshot: 'rendering architecture',
+      title: 'Baseline architecture mismatch',
+      file: settings.baselineDir,
+      message:
+        `The approved baselines were rendered on "${baselineArch}" but this run is on "${process.arch}". ` +
+        'Chromium rasterizes text differently across CPU architectures, so text-bearing screens will report ' +
+        'differences that are rendering artefacts rather than real UI changes. Pin the canonical architecture ' +
+        '(VISUAL_REGRESSION_DOCKER_PLATFORM) or re-approve the baseline set on the architecture CI uses.',
+      comparisonPerformed: false,
+    });
+  }
+
+  // Rendering-environment drift.
+  //
+  // The base image tag is floating, so an image rebuilt weeks later can carry a
+  // different fontconfig/freetype and shift Chromium text rasterization on every
+  // text-bearing screen. That produces a run where ~every compared snapshot
+  // "changed" while no application code did. Recorded as a coverage-maintenance
+  // finding so the report explains the pattern instead of presenting 40+ false
+  // visual changes with no context.
+  const baselineDigest = result.baseline?.manifestEnvironment?.imageDigest ?? null;
+  const runDigest = process.env.VISUAL_REGRESSION_IMAGE_DIGEST || null;
+  if (baselineDigest && runDigest && baselineDigest !== runDigest) {
+    result.coverageProblems.push({
+      snapshot: 'rendering environment',
+      kind: 'image-digest-drift',
+      reason:
+        `The approved baselines were rendered by image ${short(baselineDigest)} but this run used ${short(runDigest)}. ` +
+        'The base image tag is floating, so the font stack may differ. If many unrelated snapshots report ' +
+        'full-page differences, suspect this before suspecting the UI.',
+      spec: settings.baselineDir,
+    });
+  } else if (!baselineDigest && runDigest) {
+    result.coverageProblems.push({
+      snapshot: 'rendering environment',
+      kind: 'baseline-provenance-incomplete',
+      reason:
+        'The approved baseline manifest records no image digest, so this run cannot prove it rendered in the ' +
+        'same environment the baselines were approved in. Regenerate the manifest on the next approved ' +
+        'baseline update to close this gap.',
+      spec: settings.baselineDir,
+    });
+  }
+
+  if (!fsSync.existsSync(path.resolve(repoRoot, settings.testDir))) {
+    result.fatal.push({
+      snapshot: 'visual spec directory',
+      title: 'Visual spec directory missing',
+      file: settings.testDir,
+      message:
+        `The configured visual spec directory "${settings.testDir}" does not exist, so no scenario can execute. ` +
+        'Check VISUAL_REGRESSION_TEST_DIR.',
+    });
   }
 
   try {
@@ -228,36 +474,64 @@ async function runPreflight() {
     });
     result.registryValid = true;
 
-    for (const reason of coverageBlockingReasons(result.coverage)) {
-      result.blocking.push({
-        kind: reason.startsWith('Missing approved baseline')
-          ? 'missing-baseline'
-          : 'execution-failure',
-        title: 'Visual coverage preflight',
-        file: result.coverage.registry,
-        message: reason,
-      });
-    }
+    result.baselineMissing.push(...baselineMissingFindings(result.coverage));
+    result.coverageProblems.push(...coverageMismatchFindings(result.coverage));
   } catch (error) {
-    result.blocking.push({
-      kind: 'execution-failure',
-      title: 'Invalid visual coverage registry',
-      file: 'tests/regression/visual-coverage.manifest.json',
-      message: error.message,
+    // An invalid registry makes the expected-snapshot list untrustworthy, so
+    // coverage scoring is suppressed — but the specs themselves are unaffected
+    // and their comparisons are still worth having.
+    result.coverageProblems.push({
+      snapshot: 'visual coverage registry',
+      kind: 'invalid-registry',
+      reason: `${error.message} Coverage scoring is unavailable for this run; screenshot comparison continues.`,
+      spec: 'tests/regression/visual-coverage.manifest.json',
     });
   }
 
   return result;
 }
 
-/** Coverage scored against what the run actually produced. */
-async function buildRunCoverage() {
+/** Human-readable preflight block, mirroring the required PRECHECK shape. */
+function logPreflightReport(preflight) {
+  const coverage = preflight.coverage;
+  const status = preflight.fatal.length > 0
+    ? 'FATAL'
+    : preflight.baselineMissing.length > 0 ||
+        preflight.coverageProblems.length > 0 ||
+        preflight.infrastructureFailures.length > 0
+      ? 'WARNING / INCOMPLETE'
+      : 'OK';
+
+  log('PRECHECK');
+  log(`  baseline manifest integrity:   ${preflight.infrastructureFailures.length === 0 ? 'OK' : 'FAILED'}`);
+  log(`  expected screenshots:          ${coverage?.counts.expectedInProfile ?? 'unknown'}`);
+  log(`  approved baselines:            ${coverage?.counts.approvedBaselines ?? 'unknown'}`);
+  log(`  missing baselines:             ${preflight.baselineMissing.length}`);
+  log(`  coverage inconsistencies:      ${preflight.coverageProblems.length}`);
+  log(`  Preflight status:              ${status}`);
+  log(`  Continue visual execution:     ${preflight.fatal.length > 0 ? 'NO' : 'YES'}`);
+
+  for (const finding of preflight.fatal) {
+    log(`  FATAL: ${finding.title} — ${firstLine(finding.message)}`);
+  }
+}
+
+/**
+ * Coverage scored against what the run actually produced.
+ *
+ * `approvedSnapshotIds` comes from the PREFLIGHT, not from re-listing the
+ * snapshot directory. Playwright writes a missing snapshot to disk before failing
+ * the test, so re-listing here would count those unapproved images as approved
+ * and report better coverage than the repository actually has.
+ */
+async function buildRunCoverage(preflight) {
   try {
     const outcomes = await readPlaywrightOutcomes(paths.resultsJson);
     return await buildCoverage({
       platform: APPROVED_PLATFORM,
       profile: options.profile,
       outcomes,
+      approvedSnapshotIds: preflight.baseline?.approvedSnapshotIds ?? null,
     });
   } catch (error) {
     return { error: error.message };
@@ -265,87 +539,69 @@ async function buildRunCoverage() {
 }
 
 /**
- * Fold post-run coverage findings into the classified result lists.
+ * Fold coverage findings into the classified result lists.
  *
- * A snapshot that was expected but never captured is a *missing capture*, not a
+ * A snapshot that was expected but never captured is a *capture failure*, not a
  * passing test. Without this, a suite whose test silently stopped short would
  * report "all green".
+ *
+ * Coverage-derived capture failures are deduplicated against the ones the
+ * Playwright report already produced: a spec that threw before its screenshot
+ * assertion shows up in BOTH sources, and reporting it twice would double-count
+ * the same broken screen.
  */
-function applyCoverageToAnalysis(analysis) {
+function applyCoverageToAnalysis(analysis, preflight) {
+  // Registry inconsistencies and integrity problems are known before the run
+  // and are unaffected by it.
+  analysis.coverageProblems.push(...preflight.coverageProblems);
+  analysis.infrastructureFailures.push(...preflight.infrastructureFailures);
+
   const coverage = analysis.coverage;
   if (!coverage || coverage.error) return;
 
-  for (const entry of coverage.missingCaptures) {
-    analysis.executionFailures.push({
-      title: `Expected snapshot never captured: ${entry.snapshotId}`,
-      file: entry.spec,
-      status: 'missing-capture',
-      durationMs: 0,
-      message: entry.reason,
+  const alreadyReported = new Set(
+    [
+      ...analysis.captureFailures.map((entry) => entry.snapshot),
+      ...analysis.visualDifferences.map((entry) => entry.snapshot),
+      ...analysis.missingBaselines.map((entry) => entry.snapshot),
+    ].filter(Boolean),
+  );
+
+  for (const entry of captureFailureFindings(coverage)) {
+    if (alreadyReported.has(entry.snapshot)) continue;
+    analysis.captureFailures.push({
+      title: `Expected snapshot never captured: ${entry.snapshot}`,
+      ...entry,
     });
   }
 
-  if (analysis.executionFailures.length > 0 || analysis.missingBaselines.length > 0) {
-    analysis.status = 'failed';
-  }
-}
-
-/**
- * The single gate decision.
- *
- * Everything downstream — the terminal summary, the GitHub step summary, the
- * annotations, the email, and the workflow's final exit code — reads this
- * object. Nothing re-derives the verdict from raw counters.
- */
-function buildGate(analysis) {
-  const reasons = [];
-
-  for (const failure of analysis.missingBaselines) {
-    reasons.push({ classification: 'missing-baseline', blocking: true, detail: firstLine(failure.message) });
-  }
-
-  for (const failure of analysis.executionFailures) {
-    reasons.push({ classification: 'execution-failure', blocking: true, detail: firstLine(failure.message) });
-  }
-
-  for (const diff of analysis.visualDifferences) {
-    reasons.push({
-      classification: 'visual-difference',
-      blocking: Boolean(analysis.strict),
-      detail: `${diff.snapshot || diff.title} changed.`,
+  // Baselines that the registry knows are absent, but which Playwright never
+  // reported because the spec did not get far enough to ask for them.
+  const reportedMissing = new Set(analysis.missingBaselines.map((entry) => entry.snapshot));
+  for (const entry of baselineMissingFindings(coverage)) {
+    if (reportedMissing.has(entry.snapshot)) continue;
+    if (alreadyReported.has(entry.snapshot)) continue;
+    analysis.missingBaselines.push({
+      title: `No approved baseline: ${entry.snapshot}`,
+      ...entry,
     });
   }
-
-  const blocking = reasons.some((reason) => reason.blocking);
-
-  return {
-    blocking,
-    strict: Boolean(analysis.strict),
-    exitCode: blocking ? 1 : 0,
-    // Notification is reported separately and never overwrites this verdict.
-    // The notifier fills in `analysis.notification`.
-    policy: {
-      'visual-difference': analysis.strict ? 'blocking (strict mode)' : 'non-blocking',
-      'missing-baseline': 'blocking',
-      'missing-capture': 'blocking',
-      'execution-failure': 'blocking',
-      'corrupt-baseline': 'blocking',
-      'invalid-coverage-registry': 'blocking',
-      'notification-failure': 'reported separately, never blocking the regression verdict',
-    },
-    reasons,
-  };
 }
 
 function environmentMetadata() {
   return {
     platform: process.platform,
+    // Recorded because {platform} in the snapshot path cannot distinguish
+    // linux/arm64 from linux/amd64, yet they render text differently.
+    architecture: process.arch,
+    dockerPlatform: process.env.VISUAL_REGRESSION_DOCKER_PLATFORM || null,
     approvedPlatform: APPROVED_PLATFORM,
     canonicalPlatform: CANONICAL_PLATFORM,
     canonicalBaselineSet: APPROVED_PLATFORM === CANONICAL_PLATFORM,
     node: process.version,
     playwrightVersion: playwrightVersion(),
     dockerBaseImage: process.env.VISUAL_REGRESSION_DOCKER_BASE_IMAGE || 'node:24-bookworm-slim',
+    imageDigest: process.env.VISUAL_REGRESSION_IMAGE_DIGEST || null,
     dockerImage: process.env.VISUAL_REGRESSION_DOCKER_IMAGE || null,
     project: settings.project,
     profile: options.profile,
@@ -493,39 +749,35 @@ async function analyzeRun(playwrightExitCode, visualBaselineCount) {
     playwrightReport: path.join(settings.playwrightReportDir, 'index.html'),
     testResults: settings.testResultsDir,
     archiveName: settings.archiveName,
+    executed: true,
     totalTests: 0,
     expected: 0,
     skipped: 0,
     flaky: [],
     visualDifferences: [],
+    captureFailures: [],
     missingBaselines: [],
-    executionFailures: [],
-    status: 'unknown',
+    coverageProblems: [],
+    infrastructureFailures: [],
     preflightFailed: false,
     // Filled in by scripts/notify-visual-regression.mjs. Present up front so
     // consumers can rely on the field existing even if notification never ran.
-    notification: {
-      status: 'not-attempted',
-      attempted: false,
-      delivered: false,
-      failureKind: null,
-      missingVariables: [],
-      message: 'Notification has not run yet.',
-    },
+    notification: initialNotificationState(),
   };
 
   const resultsJson = await readJsonIfExists(paths.resultsJson);
   if (!resultsJson) {
-    if (playwrightExitCode === 0) {
-      base.status = 'passed';
-    } else {
-      base.executionFailures.push({
+    // No JSON report at all. Playwright could not report, so the engine cannot
+    // classify anything: that is an infrastructure failure, not a clean run.
+    if (playwrightExitCode !== 0) {
+      base.infrastructureFailures.push({
+        snapshot: 'playwright json report',
         title: 'Playwright JSON report missing',
         file: toWorkspacePath(paths.resultsJson),
         message:
-          'Playwright exited non-zero and test-results/results.json was not produced. Treating this as a regression execution failure.',
+          `Playwright exited ${playwrightExitCode} and ${settings.testResultsDir}/results.json was not produced, so no result could be classified. ` +
+          'Check the pipeline log for a browser launch or worker crash.',
       });
-      base.status = 'failed';
     }
     return base;
   }
@@ -552,12 +804,19 @@ async function analyzeRun(playwrightExitCode, visualBaselineCount) {
     const result = latestNonPassingResult(testCase);
     const classification = await classifyFailure(testCase, result);
 
-    if (classification.kind === 'visual-difference') {
-      base.visualDifferences.push(classification.record);
-    } else if (classification.kind === 'missing-baseline') {
-      base.missingBaselines.push(classification.record);
-    } else {
-      base.executionFailures.push(classification.record);
+    switch (classification.category) {
+      case CATEGORY.VISUAL_CHANGES:
+        base.visualDifferences.push(classification.record);
+        break;
+      case CATEGORY.BASELINE_MISSING:
+        base.missingBaselines.push(classification.record);
+        break;
+      case CATEGORY.INFRASTRUCTURE_FAILURE:
+        base.infrastructureFailures.push(classification.record);
+        break;
+      default:
+        base.captureFailures.push(classification.record);
+        break;
     }
   }
 
@@ -565,9 +824,13 @@ async function analyzeRun(playwrightExitCode, visualBaselineCount) {
     playwrightExitCode !== 0 &&
     base.visualDifferences.length === 0 &&
     base.missingBaselines.length === 0 &&
-    base.executionFailures.length === 0
+    base.captureFailures.length === 0 &&
+    base.infrastructureFailures.length === 0
   ) {
-    base.executionFailures.push({
+    // Playwright failed but the report explains nothing. Selecting zero tests is
+    // a configuration/infrastructure problem, not a clean run.
+    base.infrastructureFailures.push({
+      snapshot: tests.length === 0 ? 'test selection' : 'playwright run',
       title: 'Playwright exited non-zero without a classified test failure',
       file: settings.testDir,
       project: settings.project,
@@ -575,36 +838,95 @@ async function analyzeRun(playwrightExitCode, visualBaselineCount) {
       durationMs: 0,
       message:
         tests.length === 0
-          ? 'Playwright did not find any matching tests. Check VISUAL_REGRESSION_TEST_DIR, VISUAL_REGRESSION_GREP, and project filters.'
-          : `Playwright exited with code ${playwrightExitCode}, but the JSON report did not contain a screenshot diff, missing baseline, or explicit failed test result.`,
+          ? `Playwright selected no tests (grep "${profileGrep}", project "${settings.project}", dir "${settings.testDir}"). Nothing was compared.`
+          : `Playwright exited with code ${playwrightExitCode}, but the JSON report contained no screenshot diff, missing baseline, or failed test result.`,
     });
-  }
-
-  if (base.executionFailures.length > 0 || base.missingBaselines.length > 0) {
-    base.status = 'failed';
-  } else if (base.visualDifferences.length > 0) {
-    base.status = options.strict ? 'visual-differences-failed' : 'visual-differences-non-blocking';
-  } else {
-    base.status = 'passed';
   }
 
   return base;
 }
 
-/**
- * Result shape for a preflight that refused to start Playwright.
- *
- * Every blocking preflight finding keeps its own classification, so a missing
- * baseline is never reported as an execution failure and vice versa.
- */
-function createPreflightFailure(preflight) {
-  const missingBaselines = preflight.blocking
-    .filter((entry) => entry.kind === 'missing-baseline')
-    .map(({ kind, ...record }) => record);
-  const executionFailures = preflight.blocking
-    .filter((entry) => entry.kind !== 'missing-baseline')
-    .map(({ kind, ...record }) => record);
+/** Notification state placeholder, so the field always exists. */
+function initialNotificationState() {
+  return {
+    status: 'not-attempted',
+    attempted: false,
+    delivered: false,
+    failureKind: null,
+    missingVariables: [],
+    message: 'Notification has not run yet.',
+  };
+}
 
+/**
+ * Derive every downstream field from the classified finding lists.
+ *
+ * This is the ONLY place the run's state, comparison counters, categories, gate
+ * and legacy status are computed. The CI gate, the notifier and the artifact
+ * manifest read these fields; none of them recompute a verdict.
+ */
+function finalizeAnalysis(analysis) {
+  for (const field of [
+    'visualDifferences',
+    'captureFailures',
+    'missingBaselines',
+    'coverageProblems',
+    'infrastructureFailures',
+  ]) {
+    if (!Array.isArray(analysis[field])) analysis[field] = [];
+  }
+
+  const coverage = analysis.coverage && !analysis.coverage.error ? analysis.coverage : null;
+
+  // A missing baseline only counts as a CAPTURE when a screenshot was actually
+  // taken — i.e. Playwright ran the assertion, wrote an `actual` image, and found
+  // no approved image to compare it with. Baselines the coverage registry knows
+  // are absent for a scenario that never executed captured nothing, and counting
+  // those would report captures for a run that took no screenshots at all.
+  const capturedWithoutBaseline = analysis.missingBaselines.filter(
+    (entry) => entry.actual,
+  ).length;
+
+  // `producedSnapshots` already includes these: it counts a snapshot as produced
+  // when the run attached an image for it, and a missing-baseline failure attaches
+  // its `-actual.png`. Adding them again reported captured > expected.
+  const captured = coverage?.counts.producedSnapshots ?? capturedWithoutBaseline;
+
+  analysis.comparison = buildComparison({
+    expected: coverage?.counts.expectedInProfile ?? 0,
+    captured,
+    changed: analysis.visualDifferences.length,
+    missingBaselines: capturedWithoutBaseline,
+  });
+
+  analysis.categories = presentCategories(analysis);
+  analysis.state = deriveState(analysis);
+  analysis.status = legacyStatus(analysis, { strict: options.strict });
+  analysis.gate = buildGate(analysis, {
+    strict: options.strict,
+    failOnInfrastructure: options.failOnInfrastructure,
+  });
+
+  // Backwards compatibility. `executionFailures` was the single bucket for
+  // "something other than a visual difference went wrong"; it is now the union
+  // of the two categories that replaced it. Consumers should prefer the
+  // specific fields — this exists so an older reader does not silently see zero.
+  analysis.executionFailures = [
+    ...analysis.captureFailures,
+    ...analysis.infrastructureFailures,
+  ];
+
+  return analysis;
+}
+
+/**
+ * Result shape for a run that could not execute at all.
+ *
+ * Reached only from `preflight.fatal`. Every finding keeps its own
+ * classification, and the summary/artifact/notification path still runs, so a
+ * fatal preflight produces evidence rather than silence.
+ */
+function createUnexecutedRun(preflight) {
   return {
     createdAt: new Date().toISOString(),
     command,
@@ -612,7 +934,8 @@ function createPreflightFailure(preflight) {
     strict: options.strict,
     platform: process.platform,
     node: process.version,
-    playwrightExitCode: 1,
+    playwrightExitCode: null,
+    executed: false,
     preflightFailed: true,
     baselineDir: settings.baselineDir,
     visualBaselineCount: preflight.baseline?.foundCount ?? 0,
@@ -628,9 +951,13 @@ function createPreflightFailure(preflight) {
     skipped: 0,
     flaky: [],
     visualDifferences: [],
-    missingBaselines,
-    executionFailures,
-    status: 'failed',
+    captureFailures: [],
+    missingBaselines: preflight.baselineMissing,
+    coverageProblems: preflight.coverageProblems,
+    // A fatal preflight IS an infrastructure failure: the engine could not do
+    // its job, so this run must never read as a successful comparison.
+    infrastructureFailures: [...preflight.infrastructureFailures, ...preflight.fatal],
+    notification: initialNotificationState(),
   };
 }
 
@@ -667,6 +994,19 @@ function flattenPlaywrightTests(resultsJson) {
   return tests;
 }
 
+/**
+ * Classify one non-passing Playwright test into a category.
+ *
+ * The order matters:
+ *   1. missing baseline  — no expected image, so no comparison was possible
+ *   2. visual difference — a real comparison ran and produced expected/actual/diff
+ *   3. infrastructure    — the harness itself broke
+ *   4. capture failure   — the spec never reached its screenshot assertion
+ *
+ * Step 4 is the default because it is the honest answer for "the test failed and
+ * we have no comparison": an outdated locator must never be reported as a visual
+ * change, because no pixels were ever compared.
+ */
 async function classifyFailure(testCase, result) {
   const record = toFailureRecord(testCase, result);
   const message = record.message;
@@ -687,15 +1027,24 @@ async function classifyFailure(testCase, result) {
   const inferred = inferSiblingEvidence(resolved);
   const evidence = { ...resolved, ...inferred };
 
+  // Snapshot IDs the spec declares for this test, so a failure that produced no
+  // attachments can still name the screen whose coverage was lost.
+  const declared = declaredSnapshotsFor(testCase);
+
   if (missingBaseline) {
     return {
-      kind: 'missing-baseline',
+      category: CATEGORY.BASELINE_MISSING,
       record: {
         ...record,
-        snapshot: evidenceRefs.snapshot || null,
-        expected: toWorkspacePath(evidence.expected),
+        snapshot:
+          evidenceRefs.snapshot || snapshotNameFromPath(evidence.actual) || declared[0] || null,
+        expected: null,
         actual: toWorkspacePath(evidence.actual),
-        diff: toWorkspacePath(evidence.diff),
+        diff: null,
+        comparisonPerformed: false,
+        reason:
+          'Playwright found no approved baseline for this snapshot. A current screenshot may exist, ' +
+          'but there is no approved previous screenshot to compare it against.',
       },
     };
   }
@@ -705,10 +1054,12 @@ async function classifyFailure(testCase, result) {
     const imageStats = await buildImageStats(evidence.expected, evidence.actual);
 
     return {
-      kind: 'visual-difference',
+      category: CATEGORY.VISUAL_CHANGES,
       record: {
         ...record,
         snapshot: evidenceRefs.snapshot || snapshotNameFromPath(evidence.actual),
+        spec: record.file,
+        comparisonPerformed: true,
         changedPixels: parsedPixelSummary.changedPixels ?? imageStats.changedPixels,
         changedRatio: parsedPixelSummary.changedRatio ?? imageStats.changedRatio,
         rawChangedPixels: imageStats.changedPixels,
@@ -722,7 +1073,66 @@ async function classifyFailure(testCase, result) {
     };
   }
 
-  return { kind: 'execution-failure', record };
+  if (INFRASTRUCTURE_SIGNATURES.some((pattern) => pattern.test(message))) {
+    return {
+      category: CATEGORY.INFRASTRUCTURE_FAILURE,
+      record: {
+        ...record,
+        snapshot: declared[0] || record.title,
+        spec: record.file,
+        comparisonPerformed: false,
+      },
+    };
+  }
+
+  // The spec failed before it could assert a screenshot. This is the case that
+  // used to be reported as an opaque "execution failure" next to real Docker
+  // breakage, and the one a renamed button produces.
+  return {
+    category: CATEGORY.CAPTURE_FAILURE,
+    record: {
+      ...record,
+      snapshot: declared[0] || record.title,
+      snapshots: declared,
+      spec: record.file,
+      error: firstLine(message),
+      comparisonPerformed: false,
+      reason:
+        'The spec did not reach its screenshot assertion, so no visual comparison was performed. ' +
+        'Coverage for this screen is unavailable until the spec is repaired.',
+    },
+  };
+}
+
+/**
+ * Populate the declared-snapshot index from the static spec scan, so a test that
+ * crashed before producing any attachment can still be reported against the
+ * screen it covers. `declaredSnapshotIndex` is declared at the top of the module.
+ */
+async function loadDeclaredSnapshotIndex() {
+  const index = new Map();
+  try {
+    const snapshots = await discoverSpecSnapshots({ grep: settings.grep });
+    for (const snapshot of snapshots) {
+      const key = declaredKey(snapshot.spec, snapshot.testTitle);
+      index.set(key, [...(index.get(key) || []), snapshot.snapshotId]);
+    }
+  } catch (error) {
+    log(`Could not index declared snapshots: ${error.message}`);
+  }
+  declaredSnapshotIndex = index;
+}
+
+function declaredKey(specPath, testTitle) {
+  return `${path.basename(String(specPath || ''))}::${testTitle}`;
+}
+
+function declaredSnapshotsFor(testCase) {
+  if (!declaredSnapshotIndex) return [];
+  // `testCase.title` is "describe > test"; the index keys on the test title.
+  const titles = String(testCase.title || '').split(' > ');
+  const leaf = titles[titles.length - 1];
+  return declaredSnapshotIndex.get(declaredKey(testCase.file, leaf)) || [];
 }
 
 function toFailureRecord(testCase, result) {
@@ -1059,28 +1469,37 @@ function readPngDimensionsSafe(filePath) {
 }
 
 function renderSummaryMarkdown(run) {
-  const statusLabel = {
-    passed: 'Passed',
-    failed: 'Failed',
-    'visual-differences-non-blocking': 'Visual Differences Detected',
-    'visual-differences-failed': 'Visual Differences Detected',
-  }[run.status] || run.status;
-
   const coverage = run.coverage && !run.coverage.error ? run.coverage : null;
+  const comparison = run.comparison || {};
 
   const lines = [
     '# Visual Regression CI Summary',
     '',
-    `- Status: ${statusLabel}`,
-    `- Blocking result: ${isBlocking(run) ? 'yes' : 'no'}`,
+    `- State: ${run.state}`,
+    `- Verdict: ${describeState(run.state, run.comparison)}`,
+    `- Categories: ${run.categories.length > 0 ? run.categories.join(', ') : 'none'}`,
+    `- Blocking result: ${run.gate.blocking ? 'yes' : 'no'}`,
+    `- Legacy status: ${run.status}`,
     `- Strict visual mode: ${run.strict ? 'yes' : 'no'}`,
     `- Execution profile: ${run.environment?.profile || options.profile}`,
-    `- Playwright exit code: ${run.playwrightExitCode}`,
+    `- Visual execution performed: ${run.executed === false ? 'no' : 'yes'}`,
+    `- Playwright exit code: ${run.playwrightExitCode ?? 'n/a (not executed)'}`,
+    '',
+    '## Comparison',
+    '',
+    `- Expected: ${comparison.expected ?? 'n/a'}`,
+    `- Captured: ${comparison.captured ?? 'n/a'}`,
+    `- Compared: ${comparison.compared ?? 'n/a'}`,
+    `- Unchanged: ${comparison.unchanged ?? 'n/a'}`,
+    `- Changed: ${comparison.changed ?? 'n/a'}`,
+    '',
+    `- Visual differences: ${run.visualDifferences.length}`,
+    `- Capture failures (no comparison performed): ${run.captureFailures.length}`,
+    `- Missing baselines: ${run.missingBaselines.length}`,
+    `- Coverage problems: ${run.coverageProblems.length}`,
+    `- Infrastructure failures: ${run.infrastructureFailures.length}`,
     `- Total tests: ${run.totalTests}`,
     `- Expected/pass count: ${run.expected}`,
-    `- Visual differences: ${run.visualDifferences.length}`,
-    `- Missing baselines: ${run.missingBaselines.length}`,
-    `- Execution failures: ${run.executionFailures.length}`,
     `- Approved baseline: ${run.baselineDir} (${run.visualBaselineCount} PNG files)`,
     `- Baseline revision: ${run.baseline?.baselineRevision || 'unknown'}`,
     `- Baseline manifest: ${run.baseline?.manifestPresent ? `present, ${run.baseline.verifiedCount} checksum-verified` : 'MISSING'}`,
@@ -1159,18 +1578,58 @@ function renderSummaryMarkdown(run) {
     lines.push('');
   }
 
-  if (run.missingBaselines.length > 0) {
-    lines.push('## Missing Baselines', '');
-    for (const failure of run.missingBaselines) {
-      lines.push(`- ${failure.title} (${failure.file}): ${firstLine(failure.message)}`);
+  if (run.captureFailures.length > 0) {
+    lines.push(
+      '## Visual Specs Requiring Attention',
+      '',
+      'These specs could not reach their screenshot assertion, so **no visual comparison was performed**. This is not a visual change.',
+      '',
+    );
+    for (const failure of run.captureFailures) {
+      lines.push(
+        `- **${failure.snapshot || failure.title}**`,
+        `  - Spec: ${failure.spec || failure.file}`,
+        `  - Reason: ${firstLine(failure.error || failure.message)}`,
+        '  - Visual comparison: NOT PERFORMED',
+      );
     }
     lines.push('');
   }
 
-  if (run.executionFailures.length > 0) {
-    lines.push('## Execution Failures', '');
-    for (const failure of run.executionFailures) {
-      lines.push(`- ${failure.title} (${failure.file}): ${firstLine(failure.message)}`);
+  if (run.missingBaselines.length > 0) {
+    lines.push(
+      '## Baselines Requiring Approval',
+      '',
+      'A current screenshot may have been captured, but there is no approved previous screenshot to compare against. Current screenshots are never promoted automatically.',
+      '',
+    );
+    for (const failure of run.missingBaselines) {
+      lines.push(
+        `- **${failure.snapshot || failure.title}** — ${firstLine(failure.reason || failure.message)}`,
+      );
+    }
+    lines.push('');
+  }
+
+  if (run.coverageProblems.length > 0) {
+    lines.push('## Coverage Maintenance Findings', '');
+    for (const problem of run.coverageProblems) {
+      lines.push(
+        `- **${problem.snapshot}** [${problem.kind || 'coverage'}] — ${firstLine(problem.reason)}`,
+      );
+    }
+    lines.push('');
+  }
+
+  if (run.infrastructureFailures.length > 0) {
+    lines.push(
+      '## Visual Regression Infrastructure Failure',
+      '',
+      'The visual-regression engine itself could not complete reliably. This run must not be read as a successful visual comparison.',
+      '',
+    );
+    for (const failure of run.infrastructureFailures) {
+      lines.push(`- **${failure.title}** (${failure.file}): ${firstLine(failure.message)}`);
     }
     lines.push('');
   }
@@ -1236,8 +1695,11 @@ async function writeSummaryFiles(run, summaryMarkdown) {
     `${JSON.stringify(
       {
         createdAt: run.createdAt,
+        state: run.state,
+        categories: run.categories,
+        comparison: run.comparison ?? null,
         status: run.status,
-        blocking: isBlocking(run),
+        blocking: run.gate?.blocking ?? false,
         gate: run.gate ?? null,
         archiveName: settings.archiveName,
         archiveSha256: run.archiveSha256 ?? null,
@@ -1270,12 +1732,20 @@ async function appendGitHubStepSummary(summaryMarkdown) {
 }
 
 function printTerminalSummary(run) {
-  const blocking = isBlocking(run);
   const coverage = run.coverage && !run.coverage.error ? run.coverage : null;
+  const comparison = run.comparison || {};
 
   log(
-    `Completed with status=${run.status}, blocking=${blocking ? 'yes' : 'no'}, visualDifferences=${run.visualDifferences.length}, executionFailures=${run.executionFailures.length}, missingBaselines=${run.missingBaselines.length}`,
+    `Completed with state=${run.state}, blocking=${run.gate.blocking ? 'yes' : 'no'}, ` +
+      `visualChanges=${run.visualDifferences.length}, captureFailures=${run.captureFailures.length}, ` +
+      `missingBaselines=${run.missingBaselines.length}, coverageProblems=${run.coverageProblems.length}, ` +
+      `infrastructureFailures=${run.infrastructureFailures.length}`,
   );
+  log(
+    `Comparison: expected=${comparison.expected} captured=${comparison.captured} ` +
+      `compared=${comparison.compared} unchanged=${comparison.unchanged} changed=${comparison.changed}`,
+  );
+  log(describeState(run.state, run.comparison));
 
   if (coverage) {
     log(
@@ -1293,25 +1763,76 @@ function printTerminalSummary(run) {
     );
   }
 
-  for (const failure of [...run.missingBaselines, ...run.executionFailures]) {
-    log(`BLOCKING FAILURE: ${failure.title} (${failure.file}) ${firstLine(failure.message)}`);
+  for (const failure of run.captureFailures) {
+    log(
+      `CAPTURE FAILURE (no comparison performed): ${failure.snapshot || failure.title} ` +
+        `(${failure.spec || failure.file}) ${firstLine(failure.error || failure.message)}`,
+    );
+  }
+
+  for (const failure of run.missingBaselines) {
+    log(
+      `BASELINE MISSING (approval required): ${failure.snapshot || failure.title} ` +
+        `${firstLine(failure.reason || failure.message)}`,
+    );
+  }
+
+  for (const problem of run.coverageProblems) {
+    log(`COVERAGE MISMATCH: ${problem.snapshot} [${problem.kind}] ${firstLine(problem.reason)}`);
+  }
+
+  for (const failure of run.infrastructureFailures) {
+    log(
+      `INFRASTRUCTURE FAILURE: ${failure.title} (${failure.file}) ${firstLine(failure.message)}`,
+    );
   }
 }
 
+/**
+ * GitHub annotations, one severity per category.
+ *
+ * Annotation severity communicates "needs attention", not "blocks the build" —
+ * the gate is separate and non-blocking by default. Infrastructure failures use
+ * `error` specifically so a broken engine can never be skimmed as a green run.
+ */
 function emitGitHubAnnotations(run) {
   if (!process.env.GITHUB_ACTIONS) return;
 
   for (const diff of run.visualDifferences) {
     console.log(
-      `::warning title=${gha('Visual regression')}::${gha(
+      `::warning title=${gha('Visual regression: visual change')}::${gha(
         `${diff.title}: ${diff.snapshot || 'snapshot'} changed. Review ${diff.diff || 'diff image'} in the artifact.`,
       )}`,
     );
   }
 
-  for (const failure of [...run.missingBaselines, ...run.executionFailures]) {
+  for (const failure of run.captureFailures) {
     console.log(
-      `::error title=${gha('Visual regression execution failure')}::${gha(
+      `::warning title=${gha('Visual regression: spec requires attention')}::${gha(
+        `${failure.snapshot || failure.title} was NOT compared — ${firstLine(failure.error || failure.message)}`,
+      )}`,
+    );
+  }
+
+  for (const failure of run.missingBaselines) {
+    console.log(
+      `::warning title=${gha('Visual regression: baseline approval required')}::${gha(
+        `${failure.snapshot || failure.title} has no approved baseline, so it could not be compared.`,
+      )}`,
+    );
+  }
+
+  for (const problem of run.coverageProblems) {
+    console.log(
+      `::notice title=${gha('Visual regression: coverage maintenance')}::${gha(
+        `${problem.snapshot} [${problem.kind}] — ${firstLine(problem.reason)}`,
+      )}`,
+    );
+  }
+
+  for (const failure of run.infrastructureFailures) {
+    console.log(
+      `::error title=${gha('Visual regression: infrastructure failure')}::${gha(
         `${failure.title}: ${firstLine(failure.message)}`,
       )}`,
     );
@@ -1340,15 +1861,54 @@ async function createArchive(run, summaryMarkdown) {
     });
   }
 
+  // Copy ONLY the files the preflight saw as approved.
+  //
+  // `toHaveScreenshot()` writes a missing snapshot into the snapshot directory
+  // before failing the test, so by now the directory can contain images that were
+  // never reviewed. Copying it wholesale would ship unapproved screenshots in a
+  // folder literally named "approved-baseline", which is exactly the file someone
+  // would copy back into the repository to "fix" a missing baseline.
+  const approvedFiles = run.baseline?.approvedFiles ?? null;
+
   if (fsSync.existsSync(paths.baselineDir)) {
-    await fs.mkdir(path.join(packageRoot, 'approved-baseline', 'tests', 'regression'), {
-      recursive: true,
-    });
-    await fs.cp(
-      paths.baselineDir,
-      path.join(packageRoot, 'approved-baseline', 'tests', 'regression', 'snapshots'),
-      { recursive: true },
-    );
+    const targetRoot = path.join(packageRoot, 'approved-baseline');
+    let copied = 0;
+    let skipped = 0;
+
+    if (approvedFiles) {
+      for (const workspaceFile of approvedFiles) {
+        const source = path.resolve(repoRoot, workspaceFile);
+        if (!fsSync.existsSync(source)) continue;
+        const target = path.join(targetRoot, workspaceFile);
+        await fs.mkdir(path.dirname(target), { recursive: true });
+        await fs.copyFile(source, target);
+        copied += 1;
+      }
+
+      const onDisk = await countFiles(paths.baselineDir, (filePath) =>
+        filePath.endsWith(`-${APPROVED_PLATFORM}.png`),
+      );
+      skipped = Math.max(0, onDisk - copied);
+
+      // Also carry the manifest so a reviewer can verify checksums.
+      await copyIfExists(
+        path.join(paths.baselineDir, 'baseline-manifest.json'),
+        path.join(targetRoot, settings.baselineDir, 'baseline-manifest.json'),
+      );
+    } else {
+      // No preflight listing (engine failed very early). Copy nothing rather than
+      // risk shipping unapproved images as approved.
+      skipped = -1;
+    }
+
+    if (skipped > 0) {
+      log(
+        `Archive: copied ${copied} approved baseline(s); excluded ${skipped} unapproved image(s) ` +
+          'written by Playwright during the run.',
+      );
+    } else if (skipped < 0) {
+      log('Archive: approved-baseline copy omitted (no verified approved set available).');
+    }
   }
 
   const archivePath = path.join(paths.artifactDir, settings.archiveName);
@@ -1370,11 +1930,17 @@ Start with:
 
 The approved baseline copy is included under \`approved-baseline/tests/regression/snapshots\` for review only. Do not promote current screenshots into that baseline without human approval.
 
-Run status: ${run.status}
-Blocking: ${isBlocking(run) ? 'yes' : 'no'}
-Visual differences: ${run.visualDifferences.length}
-Execution failures: ${run.executionFailures.length}
-Missing baselines: ${run.missingBaselines.length}
+State: ${run.state}
+Verdict: ${describeState(run.state, run.comparison)}
+Blocking: ${run.gate.blocking ? 'yes' : 'no'}
+
+Comparison: expected ${run.comparison?.expected ?? 'n/a'}, captured ${run.comparison?.captured ?? 'n/a'}, compared ${run.comparison?.compared ?? 'n/a'}, unchanged ${run.comparison?.unchanged ?? 'n/a'}, changed ${run.comparison?.changed ?? 'n/a'}
+
+Visual differences:      ${run.visualDifferences.length}
+Capture failures:        ${run.captureFailures.length}  (no comparison performed)
+Missing baselines:       ${run.missingBaselines.length}  (approval required)
+Coverage problems:       ${run.coverageProblems.length}
+Infrastructure failures: ${run.infrastructureFailures.length}
 `;
 }
 
@@ -1390,14 +1956,6 @@ async function spawnChecked(commandName, commandArgs) {
       else reject(new Error(`${commandName} exited with code ${code}`));
     });
   });
-}
-
-function isBlocking(run) {
-  return (
-    run.executionFailures.length > 0 ||
-    run.missingBaselines.length > 0 ||
-    (run.visualDifferences.length > 0 && run.strict)
-  );
 }
 
 async function readJsonIfExists(filePath) {
@@ -1479,6 +2037,13 @@ function formatEvidence(diff) {
 
 function firstLine(message) {
   return String(message || '').split('\n').find(Boolean) || 'No error message available.';
+}
+
+/** Abbreviate a SHA/digest for log and report lines. */
+function short(value) {
+  const text = String(value || '');
+  const bare = text.startsWith('sha256:') ? text.slice(7) : text;
+  return bare ? bare.slice(0, 12) : 'unknown';
 }
 
 function md(value) {

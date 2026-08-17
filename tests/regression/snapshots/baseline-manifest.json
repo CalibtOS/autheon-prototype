@@ -1,12 +1,15 @@
 {
   "manifestVersion": 1,
   "platform": "linux",
-  "generatedAt": "2026-07-28T09:48:33.994Z",
+  "architecture": "arm64",
+  "generatedAt": "2026-08-17T11:15:40.055Z",
   "generator": "scripts/visual-baseline-manifest.mjs",
   "approvalNote": "Approved baselines are rendered inside docker/visual-regression-ci.Dockerfile and promoted only by scripts/approve-visual-baselines.mjs after human review.",
   "environment": {
     "playwrightVersion": "1.55.1",
+    "architecture": "arm64",
     "dockerBaseImage": "node:24-bookworm-slim",
+    "imageDigest": null,
     "generatedOnPlatform": "darwin",
     "node": "v24.2.0"
   },

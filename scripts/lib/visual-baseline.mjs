@@ -180,14 +180,24 @@ export async function buildManifest({
   return {
     manifestVersion: MANIFEST_VERSION,
     platform,
+    // Playwright's {platform} token is only "linux" — it does NOT distinguish
+    // linux/arm64 from linux/amd64, but Chromium rasterizes text differently on
+    // the two. Recording the architecture is what lets a run detect that it is
+    // comparing against a baseline set rendered on a different CPU architecture
+    // instead of silently reporting the difference as a visual change.
+    architecture: process.arch,
     generatedAt: new Date().toISOString(),
     generator: 'scripts/visual-baseline-manifest.mjs',
     approvalNote:
       'Approved baselines are rendered inside docker/visual-regression-ci.Dockerfile and promoted only by scripts/approve-visual-baselines.mjs after human review.',
     environment: {
       playwrightVersion: playwrightVersion(),
+      architecture: process.arch,
       dockerBaseImage:
         process.env.VISUAL_REGRESSION_DOCKER_BASE_IMAGE || 'node:24-bookworm-slim',
+      // The base image tag is floating, so the tag alone does not identify the
+      // font stack that rendered these images. The digest does.
+      imageDigest: process.env.VISUAL_REGRESSION_IMAGE_DIGEST || null,
       ...environment,
     },
     baselineCount: entries.length,
@@ -228,6 +238,9 @@ export async function verifyBaselines({ platform = APPROVED_PLATFORM } = {}) {
     manifestVersion: null,
     manifestGeneratedAt: null,
     manifestEnvironment: null,
+    // CPU architecture the approved set was rendered on. null for a manifest
+    // written before architecture was recorded.
+    manifestArchitecture: null,
     baselineRevision: gitBaselineRevision(),
     expectedCount: 0,
     foundCount: 0,
@@ -241,6 +254,16 @@ export async function verifyBaselines({ platform = APPROVED_PLATFORM } = {}) {
 
   const found = await listApprovedBaselines(platform);
   report.foundCount = found.length;
+  // The approved set as it existed BEFORE any test ran.
+  //
+  // This matters because `toHaveScreenshot()` writes a missing snapshot into the
+  // snapshot directory and then fails the test. Those files are NOT approved, but
+  // anything that re-lists the directory after the run would count them as if
+  // they were — overstating coverage and, worse, putting unapproved images into
+  // the artifact's "approved-baseline" copy where someone could commit them.
+  // Callers that need the approved set after the run must use this snapshot.
+  report.approvedFiles = found.map((entry) => entry.file);
+  report.approvedSnapshotIds = found.map((entry) => entry.snapshotId);
 
   if (found.length === 0) {
     report.errors.push(
@@ -263,6 +286,8 @@ export async function verifyBaselines({ platform = APPROVED_PLATFORM } = {}) {
     report.manifestVersion = manifest.manifestVersion ?? null;
     report.manifestGeneratedAt = manifest.generatedAt ?? null;
     report.manifestEnvironment = manifest.environment ?? null;
+    report.manifestArchitecture =
+      manifest.architecture ?? manifest.environment?.architecture ?? null;
 
     if (manifest.manifestVersion !== MANIFEST_VERSION) {
       report.errors.push(

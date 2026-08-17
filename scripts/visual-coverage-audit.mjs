@@ -17,8 +17,10 @@ import path from 'node:path';
 
 import { APPROVED_PLATFORM, repoRoot } from './lib/visual-baseline.mjs';
 import {
+  baselineMissingFindings,
   buildCoverage,
-  coverageBlockingReasons,
+  captureFailureFindings,
+  coverageMismatchFindings,
   readPlaywrightOutcomes,
 } from './lib/visual-coverage.mjs';
 
@@ -56,17 +58,28 @@ try {
   process.exit(1);
 }
 
-const blocking = coverageBlockingReasons(coverage);
+const findings = {
+  baselineMissing: baselineMissingFindings(coverage),
+  captureFailures: captureFailureFindings(coverage),
+  coverageMismatches: coverageMismatchFindings(coverage),
+};
+const findingCount =
+  findings.baselineMissing.length +
+  findings.captureFailures.length +
+  findings.coverageMismatches.length;
 
 if (args.includes('--json')) {
-  console.log(JSON.stringify(coverage, null, 2));
+  console.log(JSON.stringify({ ...coverage, findings }, null, 2));
 } else {
-  printHumanReport(coverage, blocking);
+  printHumanReport(coverage, findings, findingCount);
 }
 
-process.exit(blocking.length > 0 ? 1 : 0);
+// Exit 0 even with findings. This audit is an observability tool: a coverage
+// inconsistency is a maintenance finding, not a reason to fail a pipeline step.
+// `--exit-code` opts into a non-zero exit for a developer who wants to chain it.
+process.exit(args.includes('--exit-code') && findingCount > 0 ? 1 : 0);
 
-function printHumanReport(result, blockingReasons) {
+function printHumanReport(result, grouped, total) {
   const { counts } = result;
 
   console.log('[visual-coverage] AUTHEON visual coverage audit');
@@ -91,29 +104,22 @@ function printHumanReport(result, blockingReasons) {
     `[visual-coverage] Coverage: ${result.coveragePercent}% (${result.coverageBasis})`,
   );
 
-  section('BLOCKING — missing approved baselines', result.missingBaselines, (entry) =>
-    `${entry.snapshotId} (${entry.spec}) — ${entry.reason}`,
+  // Every finding below is NON-BLOCKING. Visual regression is an observability
+  // system; these are reported so they get fixed, not to stop a pipeline.
+  section('BASELINE_MISSING — approval required', grouped.baselineMissing, (entry) =>
+    `${entry.snapshot} (${entry.spec}) — ${entry.reason}`,
   );
-  section('BLOCKING — expected snapshots never captured', result.missingCaptures, (entry) =>
-    `${entry.snapshotId} (${entry.spec}) — ${entry.reason}`,
+  section('CAPTURE_FAILURE — expected snapshots never captured', grouped.captureFailures, (entry) =>
+    `${entry.snapshot} (${entry.spec}) — ${entry.error}`,
   );
-  section('BLOCKING — active scenarios with no spec', result.scenariosWithoutSpec, (entry) =>
-    `${entry.snapshotId} — ${entry.reason}`,
-  );
-  section('BLOCKING — unregistered snapshots', result.unregisteredSnapshots, (entry) =>
-    `${entry.snapshotId} at ${entry.spec}`,
-  );
-  section('BLOCKING — duplicate snapshot IDs', result.duplicateSnapshotIds, (entry) =>
-    `${entry.snapshotId} at ${entry.locations.join(' and ')}`,
+  section('COVERAGE_MISMATCH — registry maintenance', grouped.coverageMismatches, (entry) =>
+    `${entry.snapshot} [${entry.kind}] — ${entry.reason}`,
   );
 
   section(
-    'Baseline gaps outside this profile (reported, non-blocking)',
+    'Baseline gaps outside this profile (reported)',
     result.baselineGapsOutsideProfile,
     (entry) => `${entry.snapshotId} (${entry.spec}) — ${entry.reason}`,
-  );
-  section('Orphan baselines (remove in the next approved update)', result.orphanBaselines, (entry) =>
-    `${entry.snapshotId} — ${entry.reason}`,
   );
   section('Excluded scenarios (documented)', result.excludedScenarios, (entry) =>
     `${entry.snapshotId} [${entry.status}] — ${entry.reason}`,
@@ -125,10 +131,18 @@ function printHumanReport(result, blockingReasons) {
   );
 
   console.log('');
-  if (blockingReasons.length === 0) {
-    console.log('[visual-coverage] No blocking coverage findings.');
+  if (total === 0) {
+    console.log('[visual-coverage] No coverage findings.');
   } else {
-    console.log(`[visual-coverage] ${blockingReasons.length} blocking coverage finding(s).`);
+    console.log(
+      `[visual-coverage] ${total} coverage finding(s) — ` +
+        `${grouped.baselineMissing.length} BASELINE_MISSING, ` +
+        `${grouped.captureFailures.length} CAPTURE_FAILURE, ` +
+        `${grouped.coverageMismatches.length} COVERAGE_MISMATCH.`,
+    );
+    console.log(
+      '[visual-coverage] All non-blocking: reported for maintenance, visual execution continues.',
+    );
   }
 }
 

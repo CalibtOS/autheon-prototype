@@ -56,6 +56,10 @@ Useful environment:
   REGRESSION_NOTIFICATION_EMAIL         Recipient, default youssef.elkondakly@calibtos.com
   VISUAL_REGRESSION_DOCKER_ARTIFACT_DIR Host artifact directory.
   VISUAL_REGRESSION_DOCKER_BASE_IMAGE   Docker base image, default node:24-bookworm-slim.
+  VISUAL_REGRESSION_DOCKER_PLATFORM     Pin the image CPU architecture, e.g.
+                                        linux/amd64. Unset = host-native. Approved
+                                        baselines are architecture-specific even
+                                        though the filename only says "linux".
   VISUAL_REGRESSION_TEST_DIR            Override test dir for controlled failure simulation.
   VISUAL_REGRESSION_RETRIES             Playwright retries for the visual suite, default 0.
 `);
@@ -73,9 +77,25 @@ const artifactHostDir = path.resolve(
 
 await fs.mkdir(artifactHostDir, { recursive: true });
 
+// Optional CPU-architecture pin for the canonical rendering environment.
+//
+// Playwright's {platform} token in the snapshot path is only "linux": it cannot
+// tell linux/amd64 from linux/arm64. Chromium rasterizes text differently on the
+// two, so an unpinned image renders arm64 on an Apple Silicon laptop and amd64 on
+// a standard CI runner, and the same approved baseline set cannot match both.
+// Setting this makes the environment reproducible across machines; leaving it
+// unset keeps the host-native (fast) behaviour.
+const dockerPlatform = process.env.VISUAL_REGRESSION_DOCKER_PLATFORM || null;
+const platformArgs = dockerPlatform ? ['--platform', dockerPlatform] : [];
+
+if (dockerPlatform) {
+  console.log(`[docker-visual-ci] Pinning Docker platform to ${dockerPlatform}.`);
+}
+
 if (!options.noBuild) {
   const buildCode = await run('docker', [
     'build',
+    ...platformArgs,
     '--file',
     dockerfile,
     '--tag',
@@ -87,8 +107,22 @@ if (!options.noBuild) {
   if (buildCode !== 0) process.exit(buildCode);
 }
 
+// Resolve the image digest on the host and hand it to the container.
+//
+// `node:24-bookworm-slim` is a FLOATING tag: rebuilding the image weeks later
+// pulls a different fontconfig/freetype, which shifts Chromium text rasterization
+// on every text-bearing screen. That reads as ~100% of screenshots "changing"
+// while no application code changed at all. The container cannot inspect its own
+// image, so the digest is resolved here and recorded in the summary/manifest,
+// letting a run report environment drift instead of mislabelling it a UI change.
+const imageDigest = resolveImageDigest(imageName);
+if (imageDigest) {
+  console.log(`[docker-visual-ci] Image digest: ${imageDigest}`);
+}
+
 const dockerEnv = dockerEnvironment({
   REGRESSION_ARTIFACT_HOST_DIR: artifactHostDir,
+  ...(imageDigest ? { VISUAL_REGRESSION_IMAGE_DIGEST: imageDigest } : {}),
   VISUAL_REGRESSION_ARTIFACT_DIR: '/app/visual-regression-artifacts',
   VISUAL_REGRESSION_PROFILE: options.profile,
   ...(options.baseline ? { VISUAL_REGRESSION_MODE: 'baseline' } : {}),
@@ -102,6 +136,7 @@ const runCode = await run('docker', [
   'run',
   '--rm',
   '--init',
+  ...platformArgs,
   ...dockerEnv,
   '--volume',
   `${artifactHostDir}:/app/visual-regression-artifacts`,
@@ -126,6 +161,7 @@ function dockerEnvironment(extra) {
     'VISUAL_REGRESSION_GREP',
     'VISUAL_REGRESSION_PROJECT',
     'VISUAL_REGRESSION_STRICT',
+    'VISUAL_REGRESSION_FAIL_ON_INFRASTRUCTURE',
     'VISUAL_REGRESSION_CI_ARGS',
     'VISUAL_REGRESSION_MODE',
     'VISUAL_REGRESSION_RETRIES',
@@ -213,4 +249,23 @@ async function run(command, commandArgs) {
     child.on('error', reject);
     child.on('close', (code) => resolve(code || 0));
   });
+}
+
+/**
+ * The built image's content ID, used as the rendering-environment fingerprint.
+ *
+ * Best-effort: a missing digest is reported as unknown rather than failing the
+ * run, because it is diagnostic metadata, not a correctness input.
+ */
+function resolveImageDigest(name) {
+  try {
+    const output = execFileSync(
+      'docker',
+      ['image', 'inspect', name, '--format', '{{.Id}}'],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+    );
+    return output.trim() || null;
+  } catch {
+    return null;
+  }
 }

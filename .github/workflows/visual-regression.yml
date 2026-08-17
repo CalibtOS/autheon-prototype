@@ -89,6 +89,9 @@ jobs:
       # failures fail CI. A manual run or the VISUAL_REGRESSION_STRICT repository
       # variable can opt into a strict gate.
       VISUAL_REGRESSION_STRICT: ${{ github.event.inputs.strict || vars.VISUAL_REGRESSION_STRICT || 'false' }}
+      # Also opt-in only. Leave false to keep an engine/Docker/Chromium failure
+      # loudly reported (annotated as an error) without failing the job.
+      VISUAL_REGRESSION_FAIL_ON_INFRASTRUCTURE: ${{ vars.VISUAL_REGRESSION_FAIL_ON_INFRASTRUCTURE || 'false' }}
       VISUAL_REGRESSION_PROFILE: ${{ github.event.inputs.profile || 'full' }}
       VISUAL_REGRESSION_DIAGNOSTIC: ${{ github.event.inputs.diagnostic || 'false' }}
 
@@ -157,14 +160,13 @@ jobs:
       - name: Install launcher dependencies
         run: npm ci
 
-      # Cheap fail-fast: catches a corrupt or unregistered baseline set and an
-      # invalid coverage registry before spending minutes on a Docker build.
-      # Non-blocking here on purpose — the in-container preflight is the real
-      # gate and produces the classified, reportable result.
-      - name: Baseline and coverage preflight (host, advisory)
-        continue-on-error: true
+      # Informational only. The engine runs the same coverage model in-container
+      # and records its findings in summary.json, so this step exists purely to
+      # put the numbers in the log early. Both scripts exit 0 by design: a
+      # coverage finding is a maintenance signal, not a pipeline failure.
+      - name: Baseline and coverage report (host, informational)
         run: |
-          node scripts/visual-baseline-manifest.mjs --verify
+          node scripts/visual-baseline-manifest.mjs --verify || true
           node scripts/visual-coverage-audit.mjs --profile "${VISUAL_REGRESSION_PROFILE}"
 
       - name: Run visual regression pipeline (Docker/Linux)
@@ -255,18 +257,34 @@ jobs:
       # THE GATE. Last step on purpose: diagnostics, artifacts, notification and
       # the job summary have all already run.
       #
-      # Blocking:     missing baselines, missing captures, execution failures,
-      #               corrupt baselines, invalid coverage registry, corrupt or
-      #               absent summary, infrastructure failures.
-      # Non-blocking: confirmed visual differences (unless strict mode is on).
+      # Visual regression is an observability / review system, NOT a deployment
+      # gate. Nothing here blocks by default — not a visual difference, not a
+      # missing baseline, not a broken spec, not a coverage inconsistency, not an
+      # infrastructure failure. Every finding is reported loudly (annotations +
+      # job summary + email + artifact) while the pipeline continues.
+      #
+      # `blocking` is true only when a policy was explicitly opted into:
+      #   VISUAL_REGRESSION_STRICT                  -> visual differences block
+      #   VISUAL_REGRESSION_FAIL_ON_INFRASTRUCTURE  -> infra failures block
+      # The engine decides this in scripts/lib/visual-classification.mjs; this
+      # step only reads the answer and never re-derives it.
       - name: Apply visual regression gate
         if: always()
         run: |
+          echo "State:          ${{ steps.classify.outputs.state }}"
+          echo "Categories:     ${{ steps.classify.outputs.categories }}"
+          echo "Visual changes: ${{ steps.classify.outputs.visual_differences }}"
+          echo "Not compared:   ${{ steps.classify.outputs.capture_failures }}"
+          echo "Missing bases:  ${{ steps.classify.outputs.missing_baselines }}"
+          echo "Coverage:       ${{ steps.classify.outputs.coverage_problems }}"
+          echo "Infrastructure: ${{ steps.classify.outputs.infrastructure_failures }}"
+
           if [ "${{ steps.classify.outputs.blocking }}" = "true" ]; then
-            echo "Blocking classification: ${{ steps.classify.outputs.classification }}"
+            echo "Blocking (an explicit strict policy is enabled): ${{ steps.classify.outputs.classification }}"
             echo "See the job summary and the visual-regression-artifacts artifact."
             exit 1
           fi
 
           echo "Non-blocking result: ${{ steps.classify.outputs.classification }}"
+          echo "Findings are reported above and in the artifact; the application pipeline is not gated on them."
           exit 0

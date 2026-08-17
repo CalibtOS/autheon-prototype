@@ -267,10 +267,19 @@ export async function buildCoverage({
   platform = APPROVED_PLATFORM,
   profile = 'full',
   outcomes = null,
+  // Snapshot IDs that were approved BEFORE the run, from the preflight.
+  //
+  // Required for any post-run scoring: `toHaveScreenshot()` writes a missing
+  // snapshot into the snapshot directory before failing, so re-listing the
+  // directory afterwards would count those unapproved images as approved and
+  // silently inflate the coverage percentage.
+  approvedSnapshotIds = null,
 } = {}) {
   const registry = await readRegistry();
   const specSnapshots = await discoverSpecSnapshots({ grep: registry.grep });
-  const baselines = await listApprovedBaselines(platform);
+  const baselines = approvedSnapshotIds
+    ? approvedSnapshotIds.map((snapshotId) => ({ snapshotId, file: null }))
+    : await listApprovedBaselines(platform);
   const producedSnapshotIds = outcomes
     ? resolveProducedSnapshots(outcomes, specSnapshots)
     : null;
@@ -478,38 +487,102 @@ export async function buildCoverage({
 }
 
 /**
- * Coverage findings that must block the run.
+ * Coverage findings, split by what they actually MEAN.
  *
- * Deliberately excludes visual differences (a separate, non-blocking-by-default
- * classification) and excludes `missingCoverage`, which is the declared,
- * reason-documented gap.
+ * These used to be one flat "blocking reasons" list, which is why a registry
+ * inconsistency and an absent approved image were reported identically and both
+ * aborted the run. They are three different problems with three different
+ * owners, so each maps to its own classification:
+ *
+ *   coverageMismatchFindings  COVERAGE_MISMATCH  framework maintenance
+ *   baselineMissingFindings   BASELINE_MISSING   awaiting human approval
+ *   captureFailureFindings    CAPTURE_FAILURE    a spec did not produce a capture
+ *
+ * None of them block. See scripts/lib/visual-classification.mjs for the policy.
  */
-export function coverageBlockingReasons(coverage) {
-  const reasons = [];
 
-  for (const entry of coverage.missingBaselines) {
-    reasons.push(`Missing approved baseline for active scenario ${entry.snapshotId}.`);
-  }
-
-  for (const entry of coverage.missingCaptures) {
-    reasons.push(`Expected snapshot ${entry.snapshotId} was never captured by the run.`);
-  }
+/**
+ * Registry / spec / baseline disagreements.
+ *
+ * `missingCoverage` is deliberately excluded: it is the declared,
+ * reason-documented gap, not an inconsistency.
+ */
+export function coverageMismatchFindings(coverage) {
+  const findings = [];
 
   for (const entry of coverage.scenariosWithoutSpec) {
-    reasons.push(`Active scenario ${entry.snapshotId} has no implementing spec.`);
+    findings.push({
+      snapshot: entry.snapshotId,
+      kind: 'active-scenario-without-spec',
+      reason: entry.reason,
+      screen: entry.screen ?? null,
+      spec: null,
+    });
   }
 
   for (const entry of coverage.unregisteredSnapshots) {
-    reasons.push(
-      `Snapshot ${entry.snapshotId} at ${entry.spec} is not registered in the coverage manifest.`,
-    );
+    findings.push({
+      snapshot: entry.snapshotId,
+      kind: 'unregistered-snapshot',
+      reason: entry.reason,
+      screen: null,
+      spec: entry.spec,
+    });
   }
 
   for (const entry of coverage.duplicateSnapshotIds) {
-    reasons.push(
-      `Duplicate snapshot ID ${entry.snapshotId} declared at ${entry.locations.join(' and ')}.`,
-    );
+    findings.push({
+      snapshot: entry.snapshotId,
+      kind: 'duplicate-snapshot-id',
+      reason: `Declared more than once, at ${entry.locations.join(' and ')}. The expected-snapshot list cannot be authoritative while a single ID maps to two captures.`,
+      screen: null,
+      spec: entry.locations[0] ?? null,
+    });
   }
 
-  return reasons;
+  for (const entry of coverage.orphanBaselines) {
+    findings.push({
+      snapshot: entry.snapshotId,
+      kind: 'orphan-baseline',
+      reason: entry.reason,
+      screen: null,
+      spec: null,
+      file: entry.file ?? null,
+    });
+  }
+
+  return findings;
 }
+
+/**
+ * Active, spec-backed scenarios with no approved baseline for this platform.
+ *
+ * Not a visual difference: without an expected image there is nothing to compare
+ * against. Never resolved by promoting the current screenshot automatically.
+ */
+export function baselineMissingFindings(coverage) {
+  return coverage.missingBaselines.map((entry) => ({
+    snapshot: entry.snapshotId,
+    spec: entry.spec,
+    screen: entry.screen ?? null,
+    reason: entry.reason,
+    comparisonPerformed: false,
+  }));
+}
+
+/**
+ * Snapshots this profile expected but for which the run produced no comparison.
+ *
+ * Only meaningful after a run: `missingCaptures` is empty on a static audit.
+ */
+export function captureFailureFindings(coverage) {
+  return coverage.missingCaptures.map((entry) => ({
+    snapshot: entry.snapshotId,
+    spec: entry.spec,
+    screen: entry.screen ?? null,
+    error: entry.reason,
+    comparisonPerformed: false,
+    source: 'coverage',
+  }));
+}
+

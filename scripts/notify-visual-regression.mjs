@@ -14,6 +14,15 @@ import {
   smtpPreflight,
   smtpTransportOptions,
 } from './lib/smtp-preflight.mjs';
+import {
+  CATEGORY_HEADING,
+  CATEGORY_MEANING,
+  STATE,
+  deriveState,
+  describeState,
+  presentCategories,
+  shouldNotify,
+} from './lib/visual-classification.mjs';
 
 const repoRoot = process.cwd();
 
@@ -33,7 +42,10 @@ const summaryPath = path.join(summaryDir, 'summary.json');
 const recipient = notificationSetting('REGRESSION_NOTIFICATION_EMAIL');
 const sender = notificationSetting('SMTP_FROM') || notificationSetting('SMTP_USER');
 const hostArtifactDir = process.env.REGRESSION_ARTIFACT_HOST_DIR || artifactDir;
-const ciExitCode = Number(process.env.REGRESSION_CI_EXIT_CODE || '0');
+// REGRESSION_CI_EXIT_CODE is deliberately NOT read any more. The raw pipeline
+// exit code used to feed this script's own verdict, which meant a non-zero exit
+// could relabel a non-blocking visual difference as an execution failure. The
+// verdict now comes solely from the canonical summary.
 const dryRun = isTruthy(process.env.REGRESSION_NOTIFICATION_DRY_RUN);
 const notifyOnSuccess = isTruthy(process.env.REGRESSION_NOTIFY_ON_SUCCESS);
 const notificationRequired = isTruthy(process.env.REGRESSION_NOTIFICATION_REQUIRED);
@@ -49,8 +61,10 @@ try {
 
 const classification = classify(summary);
 
-if (classification.kind === 'success' && !notifyOnSuccess) {
-  console.log('[visual-regression-notify] No notification sent for a clean successful run.');
+// One notification per run, and only when there is something to act on. A clean
+// run stays silent unless success notifications are explicitly configured.
+if (!shouldNotify(summary, { notifyOnSuccess })) {
+  console.log('[visual-regression-notify] No notification sent: run is CLEAN.');
   await recordNotificationStatus({
     status: 'skipped-passing',
     attempted: false,
@@ -58,7 +72,7 @@ if (classification.kind === 'success' && !notifyOnSuccess) {
     failureKind: null,
     missingVariables: [],
     message:
-      'Run passed with no visual differences. Success notifications are off; set REGRESSION_NOTIFY_ON_SUCCESS=true to enable them.',
+      'Run was CLEAN: everything expected was compared and nothing changed. Success notifications are off; set REGRESSION_NOTIFY_ON_SUCCESS=true to enable them.',
   });
   process.exit(0);
 }
@@ -74,47 +88,47 @@ if (!result.ok && notificationRequired) {
 
 process.exit(0);
 
+/**
+ * Read the verdict out of the canonical summary.
+ *
+ * This deliberately derives NOTHING. The engine already classified the run in
+ * scripts/lib/visual-classification.mjs, and the previous version of this
+ * function re-derived a competing verdict from raw counters plus the pipeline's
+ * exit code — which is how a mail outage or a non-zero exit could relabel a
+ * non-blocking visual difference as "FAILURE — EXECUTION ERROR".
+ */
 function classify(summaryJson) {
-  const executionFailures = summaryJson.executionFailures?.length || 0;
-  const missingBaselines = summaryJson.missingBaselines?.length || 0;
-  const visualDifferences = summaryJson.visualDifferences?.length || 0;
+  const state = summaryJson.state || deriveState(summaryJson);
+  const categories = summaryJson.categories?.length
+    ? summaryJson.categories
+    : presentCategories(summaryJson);
+  const blocking = Boolean(summaryJson.gate?.blocking);
 
-  if (executionFailures > 0 || missingBaselines > 0 || (ciExitCode !== 0 && visualDifferences === 0)) {
-    return {
-      kind: 'failure',
-      label: 'FAILURE — EXECUTION ERROR',
-      subjectStatus: 'CI failed',
-      blocking: true,
-      reason: 'Visual regression execution failed.',
-    };
-  }
-
-  if (summaryJson.strict && visualDifferences > 0) {
-    return {
-      kind: 'failure',
-      label: 'FAILURE — VISUAL CHANGES DETECTED',
-      subjectStatus: 'CI failed',
-      blocking: true,
-      reason: 'Visual regression differences were found in strict mode.',
-    };
-  }
-
-  if (visualDifferences > 0) {
-    return {
-      kind: 'warning',
-      label: 'WARNING — VISUAL CHANGES DETECTED',
-      subjectStatus: 'CI passed',
-      blocking: false,
-      reason: 'Visual differences were detected, but CI execution succeeded.',
-    };
-  }
+  const label = {
+    [STATE.CLEAN]: 'CLEAN — NO VISUAL CHANGES',
+    [STATE.VISUAL_CHANGES]: 'VISUAL CHANGES DETECTED',
+    [STATE.INCOMPLETE]: 'INCOMPLETE — SOME SNAPSHOTS NOT COMPARED',
+    [STATE.INCOMPLETE_WITH_VISUAL_CHANGES]:
+      'VISUAL CHANGES DETECTED — AND SOME SNAPSHOTS NOT COMPARED',
+    [STATE.INFRASTRUCTURE_FAILURE]: 'VISUAL REGRESSION INFRASTRUCTURE FAILURE',
+  }[state] || state;
 
   return {
-    kind: 'success',
-    label: 'PASS',
-    subjectStatus: 'passed',
-    blocking: false,
-    reason: 'Visual regression completed without differences or execution failures.',
+    // `kind` drives styling/severity only, never the send decision.
+    kind:
+      state === STATE.CLEAN
+        ? 'success'
+        : state === STATE.INFRASTRUCTURE_FAILURE
+          ? 'failure'
+          : 'warning',
+    state,
+    categories,
+    label: blocking ? `BLOCKED — ${label}` : label,
+    // The application pipeline is not gated on this result, so the subject must
+    // not claim "CI failed" for a non-blocking finding.
+    subjectStatus: blocking ? 'blocking' : 'non-blocking',
+    blocking,
+    reason: describeState(state, summaryJson.comparison),
   };
 }
 
@@ -122,12 +136,37 @@ function buildReportModel(summaryJson, classification) {
   const visualDifferences = (summaryJson.visualDifferences || []).map((diff, index) =>
     buildVisualDifference(diff, index),
   );
-  const executionFailures = (summaryJson.executionFailures || []).map((failure, index) =>
-    buildFailure(failure, index, 'execution failure'),
+  const captureFailures = (summaryJson.captureFailures || []).map((failure, index) =>
+    buildFailure(failure, index, 'capture failure — not compared'),
   );
   const missingBaselines = (summaryJson.missingBaselines || []).map((failure, index) =>
-    buildFailure(failure, index, 'missing baseline'),
+    buildFailure(failure, index, 'baseline approval required'),
   );
+  const coverageProblems = (summaryJson.coverageProblems || []).map((problem, index) =>
+    buildFailure(
+      { ...problem, title: problem.snapshot, message: problem.reason, file: problem.spec },
+      index,
+      `coverage — ${problem.kind || 'mismatch'}`,
+    ),
+  );
+  const infrastructureFailures = (summaryJson.infrastructureFailures || []).map(
+    (failure, index) => buildFailure(failure, index, 'infrastructure failure'),
+  );
+
+  // Backwards-compatible union of the two categories that replaced the old
+  // single "execution failure" bucket.
+  const executionFailures = [...captureFailures, ...infrastructureFailures];
+
+  // The four non-visual sections, in report order. Every renderer (HTML, plain
+  // text, PDF, CSV) walks this one structure, so a section can never appear in
+  // one output format and be missing from another.
+  const failureSections = [
+    section('CAPTURE_FAILURE', captureFailures),
+    section('BASELINE_MISSING', missingBaselines),
+    section('COVERAGE_MISMATCH', coverageProblems),
+    section('INFRASTRUCTURE_FAILURE', infrastructureFailures),
+  ].filter((entry) => entry.entries.length > 0);
+
   const browser = inferBrowser(summaryJson, visualDifferences, executionFailures, missingBaselines);
   const viewport = inferViewport(visualDifferences);
 
@@ -177,8 +216,14 @@ function buildReportModel(summaryJson, classification) {
       passed: summaryJson.expected,
       skipped: summaryJson.skipped,
       visualDifferences: visualDifferences.length,
-      executionFailures: executionFailures.length,
+      captureFailures: captureFailures.length,
       missingBaselines: missingBaselines.length,
+      coverageProblems: coverageProblems.length,
+      infrastructureFailures: infrastructureFailures.length,
+      executionFailures: executionFailures.length,
+      state: summaryJson.state || null,
+      categories: summaryJson.categories || [],
+      comparison: summaryJson.comparison || null,
       wrapperStatus: summaryJson.status,
       playwrightExitCode: summaryJson.playwrightExitCode,
       strict: summaryJson.strict,
@@ -203,10 +248,23 @@ function buildReportModel(summaryJson, classification) {
       testResults: summaryJson.testResults,
     },
     visualDifferences,
-    executionFailures,
+    captureFailures,
     missingBaselines,
-    needsDetailedReport:
-      visualDifferences.length > 0 || executionFailures.length > 0 || missingBaselines.length > 0,
+    coverageProblems,
+    infrastructureFailures,
+    executionFailures,
+    failureSections,
+    needsDetailedReport: visualDifferences.length > 0 || failureSections.length > 0,
+  };
+}
+
+/** One report section: heading, meaning, and its findings. */
+function section(category, entries) {
+  return {
+    category,
+    heading: CATEGORY_HEADING[category],
+    meaning: CATEGORY_MEANING[category],
+    entries,
   };
 }
 
@@ -360,17 +418,19 @@ function attachInlineImages(model) {
     }
   }
 
-  for (const failure of [...model.executionFailures, ...model.missingBaselines]) {
+  for (const reportSection of model.failureSections) {
+    for (const failure of reportSection.entries) {
     const screenshotPath = failure.screenshot?.absolutePath;
     if (!screenshotPath || !fsSync.existsSync(screenshotPath)) continue;
-    const cid = `execution-failure-${failure.classification.replace(/\s+/g, '-')}-${failure.index}@autheon.local`;
+    const cid = `${reportSection.category.toLowerCase()}-${failure.index}@autheon.local`;
     failure.screenshot.cid = cid;
     attachments.push({
-      filename: `failure-${String(failure.index).padStart(2, '0')}-${path.basename(screenshotPath)}`,
+      filename: `${reportSection.category.toLowerCase()}-${String(failure.index).padStart(2, '0')}-${path.basename(screenshotPath)}`,
       path: screenshotPath,
       cid,
       contentType: 'image/png',
     });
+    }
   }
 
   return attachments;
@@ -622,36 +682,41 @@ async function recordNotificationStatus(status) {
  */
 function subjectFor(model) {
   const visualCount = model.visualDifferences.length;
-  const executionCount = model.executionFailures.length;
-  const missingCount = model.missingBaselines.length;
   const scope = model.metadata.pullRequest
     ? ` — PR #${model.metadata.pullRequest}`
     : model.metadata.branch
       ? ` — ${model.metadata.branch}`
       : '';
 
-  if (missingCount > 0) {
-    return `[AUTHEON Visual Regression] BLOCKED — Missing baselines (${missingCount})${scope}`;
-  }
-
-  if (executionCount > 0) {
-    return `[AUTHEON Visual Regression] INFRA FAILURE — ${executionCount} execution ${plural(
-      executionCount,
-      'failure',
-      'failures',
-    )}${scope}`;
-  }
+  // Built from the canonical state, so the subject can never disagree with the
+  // body. It never says "CI failed" for a non-blocking finding.
+  const prefix = model.classification.blocking ? 'BLOCKED — ' : '';
+  const parts = [];
 
   if (visualCount > 0) {
-    const strictLabel = model.summary.strict ? 'BLOCKED — ' : '';
-    return `[AUTHEON Visual Regression] ${strictLabel}${visualCount} visual ${plural(
-      visualCount,
-      'difference',
-      'differences',
-    )}${scope}`;
+    parts.push(`${visualCount} visual ${plural(visualCount, 'difference', 'differences')}`);
+  }
+  if (model.captureFailures.length > 0) {
+    parts.push(`${model.captureFailures.length} not compared`);
+  }
+  if (model.missingBaselines.length > 0) {
+    parts.push(`${model.missingBaselines.length} baseline ${plural(model.missingBaselines.length, 'approval', 'approvals')}`);
+  }
+  if (model.coverageProblems.length > 0) {
+    parts.push(`${model.coverageProblems.length} coverage ${plural(model.coverageProblems.length, 'finding', 'findings')}`);
   }
 
-  return `[AUTHEON Visual Regression] Passed${scope}`;
+  if (model.infrastructureFailures.length > 0) {
+    return `[AUTHEON Visual Regression] ${prefix}INFRASTRUCTURE FAILURE${
+      parts.length > 0 ? ` — ${parts.join(', ')}` : ''
+    }${scope}`;
+  }
+
+  if (parts.length === 0) {
+    return `[AUTHEON Visual Regression] Clean — no visual changes${scope}`;
+  }
+
+  return `[AUTHEON Visual Regression] ${prefix}${parts.join(', ')}${scope}`;
 }
 
 function renderTextEmail(model, reportArtifacts) {
@@ -691,18 +756,28 @@ function renderTextEmail(model, reportArtifacts) {
     }
   }
 
-  if (model.executionFailures.length > 0 || model.missingBaselines.length > 0) {
-    lines.push('Execution failures / missing baselines:', '');
-    for (const failure of [...model.executionFailures, ...model.missingBaselines]) {
+  for (const reportSection of model.failureSections) {
+    lines.push(
+      `${reportSection.heading.toUpperCase()} (${reportSection.entries.length}):`,
+      '',
+      reportSection.meaning,
+      '',
+    );
+    for (const failure of reportSection.entries) {
       lines.push(
         `#${failure.index} ${failure.title}`,
         `Classification: ${failure.classification}`,
         `Spec: ${failure.file}`,
         failure.browser ? `Browser/project: ${failure.browser}` : null,
+        // Only a comparison produces evidence images; say so explicitly rather
+        // than leaving a reader to assume the diff was simply not attached.
+        reportSection.category === 'VISUAL_CHANGES'
+          ? null
+          : 'Visual comparison: NOT PERFORMED',
         failure.screenshot ? `Screenshot: ${failure.screenshot.path}` : 'Screenshot: not available',
         failure.trace ? `Trace: ${failure.trace.path}` : 'Trace: not available',
         failure.trace ? `Open trace: npx playwright show-trace ${failure.trace.path}` : null,
-        `Error: ${firstLine(failure.message)}`,
+        `Reason: ${firstLine(failure.message)}`,
         '',
       );
     }
@@ -761,11 +836,7 @@ function renderHtmlEmail(model, reportArtifacts) {
               </td>
             </tr>
             ${model.visualDifferences.length > 0 ? renderVisualDifferenceCards(model) : ''}
-            ${
-              model.executionFailures.length > 0 || model.missingBaselines.length > 0
-                ? renderFailureCards(model)
-                : ''
-            }
+            ${model.failureSections.map((entry) => renderFailureCards(model, entry)).join('')}
             <tr>
               <td style="padding:20px 28px 28px;border-top:1px solid #e8eaed;">
                 <h2 style="margin:0 0 10px;font-size:18px;line-height:24px;color:#202124;">Artifact References</h2>
@@ -810,7 +881,7 @@ function renderHtmlChangeGlance(model) {
       `${formatNumber(diff.changedPixels)} px (${formatPercent(diff.changedRatio)})`,
       formatBoundingBox(diff.changedRegion),
     ]),
-    ...[...model.executionFailures, ...model.missingBaselines].map((failure) => [
+    ...model.failureSections.flatMap((entry) => entry.entries).map((failure) => [
       `#${failure.index}`,
       failure.title,
       failure.applicationArea || '—',
@@ -950,21 +1021,41 @@ function renderPathReferences(diff) {
   </div>`;
 }
 
-function renderFailureCards(model) {
-  const failures = [...model.executionFailures, ...model.missingBaselines];
-  return failures
+/**
+ * One card per finding, grouped under its category heading.
+ *
+ * Each section states its meaning up front and, for every non-visual category,
+ * says outright that no comparison was performed — the single most important
+ * fact for a reader who would otherwise assume a diff was simply not attached.
+ */
+function renderFailureCards(model, reportSection) {
+  const header = `<tr>
+    <td style="padding:20px 28px 4px;border-top:1px solid #e8eaed;">
+      <h2 style="margin:0 0 6px;font-size:18px;line-height:24px;color:#202124;">${escapeHtml(
+        reportSection.heading,
+      )} (${reportSection.entries.length})</h2>
+      <p style="margin:0;font-size:13px;line-height:19px;color:#5f6368;">${escapeHtml(
+        reportSection.meaning,
+      )}</p>
+    </td>
+  </tr>`;
+
+  return header + reportSection.entries
     .map(
       (failure) => `<tr>
-        <td style="padding:0 28px 24px;">
+        <td style="padding:12px 28px 24px;">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #dadce0;border-radius:8px;">
             <tr>
               <td style="padding:18px;">
-                <h2 style="margin:0 0 8px;font-size:20px;line-height:26px;color:#202124;">${escapeHtml(
-                  titleCase(failure.classification),
-                )} #${failure.index}</h2>
+                <h3 style="margin:0 0 8px;font-size:17px;line-height:23px;color:#202124;">${escapeHtml(
+                  failure.snapshot || failure.title,
+                )} <span style="font-weight:400;color:#5f6368;">#${failure.index}</span></h3>
                 ${renderKeyValueTable([
+                  ['Snapshot', failure.snapshot ? escapeHtml(failure.snapshot) : null],
                   ['Test', escapeHtml(failure.title)],
                   ['Spec file', escapeHtml(failure.file)],
+                  ['Classification', escapeHtml(failure.classification)],
+                  ['Visual comparison', '<strong>NOT PERFORMED</strong>'],
                   ['Application area', failure.applicationArea ? escapeHtml(failure.applicationArea) : null],
                   ['Browser/project', failure.browser ? escapeHtml(failure.browser) : null],
                   ['Screenshot availability', failure.screenshot ? escapeHtml(failure.screenshot.path) : 'Not available'],
@@ -1083,10 +1174,10 @@ async function renderPdfHtml(model) {
     visualSections.push(await renderPdfImagePage(diff, 'diff', 'Visual Difference'));
   }
 
-  const failureSections =
-    model.executionFailures.length > 0 || model.missingBaselines.length > 0
-      ? [await renderPdfFailures([...model.executionFailures, ...model.missingBaselines])]
-      : [];
+  const failureSections = [];
+  for (const reportSection of model.failureSections) {
+    failureSections.push(await renderPdfFailures(reportSection));
+  }
 
   return `<!doctype html>
 <html>
@@ -1158,7 +1249,7 @@ function renderPdfOverview(model) {
       `${formatNumber(diff.changedPixels)} px (${formatPercent(diff.changedRatio)})`,
       formatBoundingBox(diff.changedRegion),
     ]),
-    ...[...model.executionFailures, ...model.missingBaselines].map((failure) => [
+    ...model.failureSections.flatMap((entry) => entry.entries).map((failure) => [
       `#${failure.index}`,
       failure.classification,
       failure.title,
@@ -1172,9 +1263,11 @@ function renderPdfOverview(model) {
 
   return `<section class="page">
     <h2>What Changed — Overview</h2>
-    <p>${model.visualDifferences.length} visual difference(s), ${model.executionFailures.length} execution failure(s), ${
+    <p>${model.visualDifferences.length} visual difference(s), ${model.captureFailures.length} not compared, ${
       model.missingBaselines.length
-    } missing baseline(s). ${escapeHtml(String(model.metadata.passed ?? 'n/a'))} of ${escapeHtml(
+    } baseline approval(s), ${model.coverageProblems.length} coverage finding(s), ${
+      model.infrastructureFailures.length
+    } infrastructure failure(s). ${escapeHtml(String(model.metadata.passed ?? 'n/a'))} of ${escapeHtml(
       String(model.metadata.totalTests ?? 'n/a'),
     )} tests passed. Each finding below has a detail section with side-by-side, zoomed-region, and full-size evidence pages.</p>
     <table>
@@ -1312,15 +1405,19 @@ async function renderPdfImagePage(diff, kind, title) {
   </section>`;
 }
 
-async function renderPdfFailures(failures) {
+async function renderPdfFailures(reportSection) {
   const sections = [];
 
-  for (const failure of failures) {
+  for (const failure of reportSection.entries) {
     sections.push(`<section class="page">
-      <h2>${escapeHtml(titleCase(failure.classification))} #${failure.index}</h2>
+      <h2>${escapeHtml(reportSection.heading)} #${failure.index}</h2>
+      <p>${escapeHtml(reportSection.meaning)}</p>
       ${renderPdfTable([
+        ['Snapshot', failure.snapshot],
         ['Test', failure.title],
         ['Spec file', failure.file],
+        ['Classification', failure.classification],
+        ['Visual comparison', 'NOT PERFORMED'],
         ['Application area', failure.applicationArea],
         ['Browser/project', failure.browser],
         ['Status', failure.status],
@@ -1342,9 +1439,9 @@ async function renderPdfFailures(failures) {
       const src = await imageDataUrl(screenshotPath);
       sections.push(`<section class="page image-page">
         <h2>State at Failure</h2>
-        <p class="caption">${escapeHtml(titleCase(failure.classification))} #${failure.index} · ${escapeHtml(
+        <p class="caption">${escapeHtml(reportSection.heading)} #${failure.index} · ${escapeHtml(
           failure.title,
-        )}</p>
+        )} · no comparison was performed</p>
         <img src="${src}" alt="Screenshot at failure">
       </section>`);
     }
@@ -1371,12 +1468,18 @@ async function imageDataUrl(filePath) {
 }
 
 async function createMissingSummaryFallback(error) {
+  // A missing summary means the engine could not report — an infrastructure
+  // failure. It is still non-blocking, but it must never look like a clean run.
   const classification = {
     kind: 'failure',
-    label: 'FAILURE — EXECUTION ERROR',
-    subjectStatus: 'CI failed',
-    blocking: true,
-    reason: 'Visual regression summary JSON was not available for notification.',
+    state: STATE.INFRASTRUCTURE_FAILURE,
+    categories: ['INFRASTRUCTURE_FAILURE'],
+    label: 'VISUAL REGRESSION INFRASTRUCTURE FAILURE',
+    subjectStatus: 'non-blocking',
+    blocking: false,
+    reason:
+      'The canonical summary.json was not available, so no visual-regression result could be classified. ' +
+      'This run cannot be read as a successful visual comparison.',
   };
   const html = `<!doctype html>
 <html>
@@ -1410,7 +1513,8 @@ Error: ${error.message || String(error)}
     email: {
       to: recipient,
       from: sender,
-      subject: '[AUTHEON Visual Regression] ❌ CI failed — summary unavailable',
+      subject:
+        '[AUTHEON Visual Regression] INFRASTRUCTURE FAILURE — no summary produced, nothing was compared',
       text,
       html,
       attachments: [],
@@ -1442,15 +1546,24 @@ function metadataRows(model) {
     ['Playwright version', metadata.playwrightVersion],
     ['Docker base image', metadata.dockerBaseImage],
     ['Viewport/image dimensions', metadata.viewport],
+    ['State', metadata.state],
+    ['Categories', metadata.categories?.length > 0 ? metadata.categories.join(', ') : null],
     ['Regression status', metadata.wrapperStatus],
     ['Blocking result', hasValue(metadata.blocking) ? (metadata.blocking ? 'YES' : 'no') : null],
     ['Strict visual mode', hasValue(metadata.strict) ? (metadata.strict ? 'yes' : 'no') : null],
     ['Total tests', formatNumber(metadata.totalTests)],
     ['Passed snapshots', formatNumber(metadata.passed)],
     ['Skipped', formatNumber(metadata.skipped)],
+    ['Expected', formatNumber(metadata.comparison?.expected)],
+    ['Captured', formatNumber(metadata.comparison?.captured)],
+    ['Compared', formatNumber(metadata.comparison?.compared)],
+    ['Unchanged', formatNumber(metadata.comparison?.unchanged)],
+    ['Changed', formatNumber(metadata.comparison?.changed)],
     ['Visual differences', formatNumber(metadata.visualDifferences)],
-    ['Execution failures', formatNumber(metadata.executionFailures)],
+    ['Capture failures (not compared)', formatNumber(metadata.captureFailures)],
     ['Missing baselines', formatNumber(metadata.missingBaselines)],
+    ['Coverage problems', formatNumber(metadata.coverageProblems)],
+    ['Infrastructure failures', formatNumber(metadata.infrastructureFailures)],
     ['Expected snapshots (profile)', formatNumber(metadata.expectedSnapshots)],
     ['Produced snapshots', formatNumber(metadata.producedSnapshots)],
     ['Coverage', hasValue(metadata.coveragePercent) ? `${metadata.coveragePercent}%` : null],

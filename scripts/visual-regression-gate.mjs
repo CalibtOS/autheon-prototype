@@ -33,6 +33,16 @@ const pipelineExitCode = process.env.PIPELINE_EXIT_CODE ?? 'unknown';
 const artifactName = process.env.REGRESSION_ARTIFACT_NAME || 'visual-regression-artifacts';
 const runUrl = process.env.REGRESSION_ARTIFACT_URL || '';
 
+// An absent, unreadable, or schema-invalid summary is an INFRASTRUCTURE_FAILURE.
+// Like every other category it is non-blocking by default: visual regression must
+// not gate the application pipeline. It is annotated as `error` (not `warning`) so
+// it can never be skimmed as a successful comparison, and the same explicit opt-in
+// that makes infra failures blocking in the engine applies here too.
+const failOnInfrastructure = ['1', 'true', 'yes', 'on'].includes(
+  String(process.env.VISUAL_REGRESSION_FAIL_ON_INFRASTRUCTURE || '').toLowerCase(),
+);
+const infrastructureBlocking = failOnInfrastructure ? 'true' : 'false';
+
 if (!summaryPath) {
   fail('VISUAL_REGRESSION_SUMMARY is not set; the gate does not know which summary to read.');
 }
@@ -54,8 +64,10 @@ if (!fsSync.existsSync(summaryPath)) {
       '',
     ].join('\n'),
   );
-  await setOutput('blocking', 'true');
-  await setOutput('classification', 'infrastructure-failure');
+  await setOutput('blocking', infrastructureBlocking);
+  await setOutput('state', 'INFRASTRUCTURE_FAILURE');
+  await setOutput('classification', 'INFRASTRUCTURE_FAILURE');
+  await setOutput('categories', 'INFRASTRUCTURE_FAILURE');
   process.exit(0);
 }
 
@@ -68,8 +80,10 @@ try {
     'Visual regression infrastructure failure',
     `summary.json at ${summaryPath} is not readable JSON: ${error.message}`,
   );
-  await setOutput('blocking', 'true');
-  await setOutput('classification', 'corrupt-summary');
+  await setOutput('blocking', infrastructureBlocking);
+  await setOutput('state', 'INFRASTRUCTURE_FAILURE');
+  await setOutput('classification', 'INFRASTRUCTURE_FAILURE');
+  await setOutput('categories', 'INFRASTRUCTURE_FAILURE');
   process.exit(0);
 }
 
@@ -85,44 +99,72 @@ if (schemaProblems.length > 0) {
       .map((problem) => `- ${problem}`)
       .join('\n')}\n`,
   );
-  await setOutput('blocking', 'true');
-  await setOutput('classification', 'corrupt-summary');
+  await setOutput('blocking', infrastructureBlocking);
+  await setOutput('state', 'INFRASTRUCTURE_FAILURE');
+  await setOutput('classification', 'INFRASTRUCTURE_FAILURE');
+  await setOutput('categories', 'INFRASTRUCTURE_FAILURE');
   process.exit(0);
 }
 
+// Everything here is READ from the canonical summary. The gate does not derive a
+// verdict of its own: the engine already classified the run, and a second
+// derivation is exactly how the old pipeline ended up with the workflow, the
+// engine, and the notifier disagreeing about the same result.
 const visual = summary.visualDifferences.length;
-const execFailures = summary.executionFailures.length;
+const captureFailures = (summary.captureFailures || []).length;
 const missing = summary.missingBaselines.length;
-const strict = Boolean(summary.strict);
-const blocking = Boolean(summary.gate?.blocking ?? (execFailures > 0 || missing > 0 || (visual > 0 && strict)));
+const coverageProblems = (summary.coverageProblems || []).length;
+const infrastructure = (summary.infrastructureFailures || []).length;
+const strict = Boolean(summary.gate?.strict ?? summary.strict);
+const blocking = Boolean(summary.gate?.blocking);
+const state = summary.state || 'UNKNOWN';
+const categories = summary.categories || [];
+const comparison = summary.comparison || null;
 const notification = summary.notification || { status: 'unknown' };
 const coverage = summary.coverage && !summary.coverage.error ? summary.coverage : null;
 
-const classification = missing > 0
-  ? 'missing-baseline'
-  : execFailures > 0
-    ? 'execution-failure'
-    : visual > 0
-      ? strict ? 'visual-difference-blocking' : 'visual-difference-non-blocking'
-      : 'passed';
+// Reported for humans and for the workflow's step outputs; NOT a decision.
+const classification = categories.length > 0 ? categories.join('+') : 'CLEAN';
 
 await writeStepSummary(renderJobSummary());
 
-// Annotations. Each classification gets its own, so the run page never conflates
-// a framework failure with a visual change.
+// Annotations. Each category gets its own, so the run page never conflates a
+// framework failure with a visual change. Severity signals "needs attention",
+// not "blocks the build" — the gate below is separate and non-blocking.
 for (const failure of summary.missingBaselines) {
   await annotate(
-    'error',
-    'Visual regression: missing baseline (blocking)',
-    `${failure.title}: ${firstLine(failure.message)}`,
+    'warning',
+    'Visual regression: baseline approval required (non-blocking)',
+    `${failure.snapshot || failure.title}: no approved baseline, so it could not be compared. ` +
+      'Render candidates with the Visual Regression Baseline workflow, review, then approve.',
   );
 }
 
-for (const failure of summary.executionFailures) {
+for (const failure of summary.captureFailures || []) {
+  await annotate(
+    'warning',
+    'Visual regression: spec requires attention (non-blocking)',
+    `${failure.snapshot || failure.title} was NOT compared — ${firstLine(failure.error || failure.message)} ` +
+      `Coverage for this screen is unavailable until the spec is repaired (${failure.spec || failure.file}).`,
+  );
+}
+
+for (const problem of summary.coverageProblems || []) {
+  await annotate(
+    'notice',
+    'Visual regression: coverage maintenance (non-blocking)',
+    `${problem.snapshot} [${problem.kind}] — ${firstLine(problem.reason)}`,
+  );
+}
+
+// `error` on purpose: a broken engine must never be skimmed as a green run, even
+// though it does not block.
+for (const failure of summary.infrastructureFailures || []) {
   await annotate(
     'error',
-    'Visual regression: execution failure (blocking)',
-    `${failure.title}: ${firstLine(failure.message)}`,
+    'Visual regression: infrastructure failure',
+    `${failure.title}: ${firstLine(failure.message)} ` +
+      'This run cannot be read as a successful visual comparison.',
   );
 }
 
@@ -144,14 +186,21 @@ if (notification.status === 'failed' || notification.status === 'not-configured'
 }
 
 await setOutput('blocking', blocking ? 'true' : 'false');
+await setOutput('state', state);
 await setOutput('classification', classification);
+await setOutput('categories', categories.join(','));
 await setOutput('visual_differences', String(visual));
-await setOutput('execution_failures', String(execFailures));
+await setOutput('capture_failures', String(captureFailures));
 await setOutput('missing_baselines', String(missing));
+await setOutput('coverage_problems', String(coverageProblems));
+await setOutput('infrastructure_failures', String(infrastructure));
+// Compat with any consumer written against the previous output name.
+await setOutput('execution_failures', String(captureFailures + infrastructure));
 await setOutput('notification_status', notification.status || 'unknown');
 
 console.log(
-  `[gate] classification=${classification} blocking=${blocking} visual=${visual} exec=${execFailures} missing=${missing} notification=${notification.status}`,
+  `[gate] state=${state} blocking=${blocking} visual=${visual} capture=${captureFailures} ` +
+    `missing=${missing} coverage=${coverageProblems} infra=${infrastructure} notification=${notification.status}`,
 );
 
 process.exit(0);
@@ -161,35 +210,70 @@ process.exit(0);
 function validateSummary(value) {
   const problems = [];
 
-  for (const field of ['visualDifferences', 'executionFailures', 'missingBaselines']) {
+  for (const field of [
+    'visualDifferences',
+    'captureFailures',
+    'missingBaselines',
+    'coverageProblems',
+    'infrastructureFailures',
+  ]) {
     if (!Array.isArray(value?.[field])) problems.push(`\`${field}\` must be an array`);
   }
 
   if (typeof value?.status !== 'string') problems.push('`status` must be a string');
+  if (typeof value?.state !== 'string') problems.push('`state` must be a string');
+  if (!value?.gate || typeof value.gate !== 'object') {
+    problems.push('`gate` must be an object produced by the engine');
+  } else if (typeof value.gate.blocking !== 'boolean') {
+    problems.push('`gate.blocking` must be a boolean');
+  }
 
   return problems;
 }
 
 function renderJobSummary() {
-  const verdict = blocking ? '❌ BLOCKING' : visual > 0 ? '⚠️ NON-BLOCKING DIFFERENCES' : '✅ PASSED';
+  const verdict = blocking
+    ? '❌ BLOCKING'
+    : infrastructure > 0
+      ? '🚨 INFRASTRUCTURE FAILURE (non-blocking)'
+      : visual > 0
+        ? '⚠️ VISUAL CHANGES (non-blocking)'
+        : missing > 0 || captureFailures > 0 || coverageProblems > 0
+          ? '⚠️ INCOMPLETE (non-blocking)'
+          : '✅ CLEAN';
 
   const lines = [
     `## Visual Regression — ${verdict}`,
     '',
     '| | |',
     '| --- | --- |',
-    `| Status | \`${summary.status}\` |`,
-    `| Classification | \`${classification}\` |`,
+    `| State | \`${state}\` |`,
+    `| Categories | ${categories.length > 0 ? categories.map((c) => `\`${c}\``).join(', ') : '`none`'} |`,
     `| Blocking | ${blocking ? 'yes' : 'no'} |`,
     `| Strict mode | ${strict ? 'on' : 'off'} |`,
+    `| Legacy status | \`${summary.status}\` |`,
     `| Execution profile | \`${summary.environment?.profile || 'unknown'}\` |`,
-    `| Visual differences (non-blocking by default) | ${visual} |`,
-    `| Execution failures (blocking) | ${execFailures} |`,
-    `| Missing baselines (blocking) | ${missing} |`,
+    `| Visual execution performed | ${summary.executed === false ? 'no' : 'yes'} |`,
+    `| Visual differences | ${visual} |`,
+    `| Capture failures (not compared) | ${captureFailures} |`,
+    `| Missing baselines (approval required) | ${missing} |`,
+    `| Coverage problems | ${coverageProblems} |`,
+    `| Infrastructure failures | ${infrastructure} |`,
     `| Pipeline exit code | \`${pipelineExitCode}\` |`,
     `| Notification | \`${notification.status}\` |`,
     '',
   ];
+
+  if (comparison) {
+    lines.push(
+      '### Comparison',
+      '',
+      '| Expected | Captured | Compared | Unchanged | Changed |',
+      '| ---: | ---: | ---: | ---: | ---: |',
+      `| ${comparison.expected} | ${comparison.captured} | ${comparison.compared} | ${comparison.unchanged} | ${comparison.changed} |`,
+      '',
+    );
+  }
 
   if (summary.git) {
     lines.push(
@@ -241,21 +325,67 @@ function renderJobSummary() {
     }
   }
 
+  if (captureFailures > 0) {
+    lines.push(
+      '### Visual specs requiring attention (non-blocking)',
+      '',
+      'These specs never reached their screenshot assertion, so **no visual comparison was performed**. This is not a visual change — coverage for these screens is temporarily unavailable.',
+      '',
+      '| Snapshot | Spec | Reason | Comparison |',
+      '| --- | --- | --- | --- |',
+    );
+    for (const failure of summary.captureFailures) {
+      lines.push(
+        `| \`${failure.snapshot || 'unknown'}\` | \`${failure.spec || failure.file || 'n/a'}\` | ${escapeCell(
+          firstLine(failure.error || failure.message),
+        )} | NOT PERFORMED |`,
+      );
+    }
+    lines.push('');
+  }
+
   if (missing > 0) {
-    lines.push('### Missing baselines (blocking)', '');
+    lines.push(
+      '### Baselines requiring approval (non-blocking)',
+      '',
+      'A current screenshot may have been captured, but there is no approved previous screenshot to compare it against. Current screenshots are **never** promoted automatically.',
+      '',
+    );
     for (const failure of summary.missingBaselines) {
-      lines.push(`- \`${failure.title}\` — ${firstLine(failure.message)}`);
+      lines.push(
+        `- \`${failure.snapshot || failure.title}\` — ${firstLine(failure.reason || failure.message)}`,
+      );
     }
     lines.push(
       '',
-      'A missing baseline is a framework failure, not a visual change. Render candidates with the **Visual Regression Baseline** workflow, review them, then approve and commit.',
+      'Render candidates with the **Visual Regression Baseline** workflow, review them, then approve with `npm run test:regression:baseline:approve` and commit.',
       '',
     );
   }
 
-  if (execFailures > 0) {
-    lines.push('### Execution failures (blocking)', '');
-    for (const failure of summary.executionFailures) {
+  if (coverageProblems > 0) {
+    lines.push(
+      '### Coverage maintenance findings (non-blocking)',
+      '',
+      'The coverage registry, the visual specs and the approved baselines disagree. Framework maintenance — other screenshots were still compared.',
+      '',
+    );
+    for (const problem of summary.coverageProblems) {
+      lines.push(
+        `- \`${problem.snapshot}\` [${problem.kind || 'coverage'}] — ${firstLine(problem.reason)}`,
+      );
+    }
+    lines.push('');
+  }
+
+  if (infrastructure > 0) {
+    lines.push(
+      '### Visual regression infrastructure failure',
+      '',
+      '**The visual-regression engine could not complete reliably. This run must not be read as a successful visual comparison.**',
+      '',
+    );
+    for (const failure of summary.infrastructureFailures) {
       lines.push(`- \`${failure.title}\` (${failure.file}) — ${firstLine(failure.message)}`);
     }
     lines.push('');

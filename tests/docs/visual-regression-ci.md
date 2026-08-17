@@ -21,9 +21,9 @@ GitHub event (pull_request / push / workflow_dispatch / schedule)
 │                                       -> exported as GITHUB_* env
 ├─ setup-node 24 + npm ci ............ launcher only (dotenv); no browsers on host
 │
-├─ Host preflight (advisory) ......... baseline manifest verify + coverage audit
-│                                       continue-on-error: fails fast and cheaply,
-│                                       but the in-container preflight is the gate
+├─ Host report (informational) ....... baseline manifest verify + coverage audit
+│                                       Both exit 0 by design. Puts the numbers in
+│                                       the log early; decides nothing.
 │
 ├─ npm run test:regression:ci ........ raw exit code captured; job NOT aborted
 │  │
@@ -37,14 +37,19 @@ GitHub event (pull_request / push / workflow_dispatch / schedule)
 │        │
 │        └─ scripts/docker-visual-regression-ci-entrypoint.mjs   (in container)
 │           ├─ mode=test     -> scripts/visual-regression-ci.mjs
-│           │  ├─ PREFLIGHT  baseline manifest + checksums + PNG validity
+│           │  ├─ PRECHECK   baseline manifest + checksums + PNG validity
 │           │  │             + platform guard + coverage registry validation
-│           │  │             BLOCKING. Playwright does not start if this fails.
+│           │  │             RECORDS findings; does NOT decide whether the run
+│           │  │             happens. Execution stops only when comparison is
+│           │  │             technically impossible (wrong renderer, no baselines
+│           │  │             at all, missing spec dir) — and even then the summary,
+│           │  │             artifacts and notification are still produced.
 │           │  ├─ playwright test tests/regression --grep <profile> \
 │           │  │             --project chromium --retries=0
-│           │  ├─ classify   visual difference | missing baseline | execution failure
+│           │  ├─ classify   VISUAL_CHANGES | CAPTURE_FAILURE | BASELINE_MISSING |
+│           │  │             COVERAGE_MISMATCH | INFRASTRUCTURE_FAILURE
 │           │  ├─ coverage   expected vs produced; missing captures; orphans
-│           │  ├─ gate       one canonical verdict object
+│           │  ├─ gate       one canonical verdict object (non-blocking by default)
 │           │  ├─ write      summary.json / summary.md / coverage.json /
 │           │  │             manifest.json + copies of both input manifests
 │           │  ├─ annotate   GitHub annotations + step summary
@@ -69,57 +74,133 @@ GitHub event (pull_request / push / workflow_dispatch / schedule)
 │
 ├─ Report notification status ....... annotation only; never changes the verdict
 │
-└─ Apply visual regression gate ..... LAST STEP. exit 1 iff blocking.
+└─ Apply visual regression gate ..... LAST STEP. exit 0 unless an explicit
+                                       strict policy was opted into.
 ```
 
 ### Why the gate is last
 
 Every step before it runs with `if: always()` and none of them exits non-zero. An
 early `exit 1` would skip artifact upload, so the diagnostics that explain the
-failure would never leave the runner — which is exactly what made the original run
+finding would never leave the runner — which is exactly what made the original run
 hard to diagnose.
 
 ---
 
-## Gate policy
+## What this system is
 
-| Classification | Blocking? | Rationale |
-| --- | --- | --- |
-| Confirmed visual difference | **No** (default) | The comparison worked and baselines exist. This is a review item, not a broken build. |
-| Confirmed visual difference, strict mode | Yes | `VISUAL_REGRESSION_STRICT=true`, or the `strict` dispatch input. |
-| Missing approved baseline | **Yes** | Nothing was compared. A green build here would be a lie. |
-| Missing expected capture | **Yes** | The test died before its assertion. Reported as an execution failure. |
-| Execution failure | **Yes** | Broken test or broken app. |
-| Browser / server startup failure | **Yes** | Infrastructure. |
-| Baseline retrieval failure | **Yes** | Includes checksum mismatch and corrupt PNG. |
-| Corrupt or absent `summary.json` | **Yes** | Without the canonical result there is nothing to classify. |
-| Invalid coverage registry | **Yes** | If the expected list cannot be trusted, neither can the coverage number. |
-| Failed report generation with no usable result | **Yes** | |
-| Incomplete shard | **Yes** | A missing shard summary is detected, not averaged away. |
-| Explicitly excluded scenario | No | Only when `exclusionReason` is documented. |
-| Notification failure | **No** | Reported separately. Never overwrites the regression classification. |
+It answers exactly one question:
 
-Missing baselines are **not** downgraded to warnings. That was the correct verdict
-in the original failing run and it stays.
+> Did the UI visually change compared with the last **approved** baseline?
+
+It is an **observability / review system, not a deployment gate**. A
+visual-regression problem must never block the application pipeline. The goal is
+`NON-BLOCKING`, not `INVISIBLE`: every finding is reported loudly — annotations,
+job summary, email, artifact — while the pipeline continues.
+
+## Classification model
+
+Defined once in [`scripts/lib/visual-classification.mjs`](../../scripts/lib/visual-classification.mjs).
+Nothing else derives a verdict.
+
+| Category | Meaning | Comparison performed? | Blocking? |
+| --- | --- | --- | --- |
+| `VISUAL_CHANGES` | A comparison ran and the pixels differ | yes | **No** (default) |
+| `CAPTURE_FAILURE` | The spec never reached its screenshot assertion | **no** | **No** |
+| `BASELINE_MISSING` | No approved image exists to compare against | **no** | **No** |
+| `COVERAGE_MISMATCH` | Registry / specs / baselines disagree | n/a | **No** |
+| `INFRASTRUCTURE_FAILURE` | The engine itself could not run reliably | **no** | **No** |
+
+Multiple categories legitimately coexist. "3 visual differences, 2 specs that
+failed before capture, 1 missing baseline" is a valid result and is reported as
+all three, not forced into one misleading reason.
+
+The two blocking policies are **opt-in only**:
+
+| Setting | Effect |
+| --- | --- |
+| `VISUAL_REGRESSION_STRICT=true` | `VISUAL_CHANGES` becomes blocking |
+| `VISUAL_REGRESSION_FAIL_ON_INFRASTRUCTURE=true` | `INFRASTRUCTURE_FAILURE` becomes blocking |
+
+### Why CAPTURE_FAILURE is separate from VISUAL_CHANGES
+
+If a spec does
+
+```ts
+await page.getByRole('button', { name: 'Rename' }).click()
+```
+
+and the product has since renamed that control to **Edit Document**, the test
+fails before it ever asks for a screenshot. That is **not** a visual change —
+no pixels were compared. Reporting it as one would send a reviewer hunting for a
+design regression that does not exist. It is a `CAPTURE_FAILURE`, and the report
+says so explicitly:
+
+```text
+Snapshot:            driver-profile.png
+Spec:                tests/regression/driver.visual.spec.ts
+Reason:              Profile button not found
+Visual comparison:   NOT PERFORMED
+```
+
+Coverage for that screen is unavailable until the spec is repaired.
+
+### Why BASELINE_MISSING is separate
+
+Without an expected image there is nothing to compare against. A current
+screenshot may exist, but nothing can be concluded from it. Current screenshots
+are **never** promoted into the approved baseline automatically — approval stays a
+deliberate human action.
+
+### Derived state
+
+| State | When |
+| --- | --- |
+| `CLEAN` | everything expected was compared, nothing changed |
+| `VISUAL_CHANGES` | changes found, everything else complete |
+| `INCOMPLETE` | some snapshots could not be compared |
+| `INCOMPLETE_WITH_VISUAL_CHANGES` | both of the above |
+| `INFRASTRUCTURE_FAILURE` | the engine could not run reliably (wins outright) |
 
 ### One result model
 
 `summary.json` is the canonical machine-readable result. The workflow gate, the
 job summary, the annotations, the email, the PDF, the coverage report, and the
 artifact metadata all read from it. Nothing re-derives the verdict from raw
-counters, so they cannot disagree.
-
-`summary.gate` holds the decision:
+counters or from a raw Playwright exit code, so they cannot disagree.
 
 ```json
 {
-  "blocking": true,
-  "strict": false,
-  "exitCode": 1,
-  "policy": { "visual-difference": "non-blocking", "missing-baseline": "blocking", "...": "..." },
-  "reasons": [ { "classification": "missing-baseline", "blocking": true, "detail": "..." } ]
+  "state": "INCOMPLETE_WITH_VISUAL_CHANGES",
+  "categories": ["VISUAL_CHANGES", "BASELINE_MISSING"],
+  "comparison": { "expected": 52, "captured": 52, "compared": 43, "unchanged": 40, "changed": 3 },
+  "visualDifferences":     [ { "snapshot": "...", "spec": "...", "expected": "...", "actual": "...", "diff": "..." } ],
+  "captureFailures":       [ { "snapshot": "...", "spec": "...", "error": "...", "comparisonPerformed": false } ],
+  "missingBaselines":      [ { "snapshot": "...", "comparisonPerformed": false } ],
+  "coverageProblems":      [ { "snapshot": "...", "kind": "orphan-baseline", "reason": "..." } ],
+  "infrastructureFailures": [],
+  "gate": { "blocking": false, "strict": false, "exitCode": 0, "policy": { }, "reasons": [ ] }
 }
 ```
+
+`executionFailures` is retained as a deprecated compatibility union of
+`captureFailures + infrastructureFailures`. Prefer the specific fields.
+
+### The raw Playwright exit code is input, not the verdict
+
+```text
+Playwright raw execution result
+        ↓
+visual result classifier        <- decides meaning
+        ↓
+summary.json                    <- single source of truth
+        ↓
+gate / report / notification    <- read only
+```
+
+`REGRESSION_CI_EXIT_CODE` is deliberately no longer read by the notifier. It
+previously fed a second verdict, which let a non-zero exit relabel a non-blocking
+visual difference as an execution failure.
 
 ---
 
@@ -156,6 +237,85 @@ nothing that already calls them breaks:
 CI never uses, so it looked like a baseline update while producing nothing usable.
 Use `test:regression:baseline` + `:approve`.
 
+### Reproduce the CI flow locally
+
+Byte-for-byte the same engine, image, and classification CI runs:
+
+```bash
+# Full pipeline in the canonical Docker/Linux environment, no email sent.
+REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:ci
+
+# Read the canonical result.
+cat visual-regression-artifacts/docker-ci/visual-regression-summary/summary.json | jq '.state, .categories, .comparison, .gate.blocking'
+
+# Human-readable version, and the rendered email that would have been sent.
+cat  visual-regression-artifacts/docker-ci/visual-regression-summary/summary.md
+open visual-regression-artifacts/docker-ci/visual-regression-summary/notification-email.html
+
+# Static coverage audit only (no browser, no Docker, exits 0).
+npm run test:regression:coverage
+```
+
+Reuse an already-built image with `-- --no-build`.
+
+---
+
+## CI-provider independence
+
+All of the intelligence lives in `scripts/`. The CI provider only supplies an
+environment and moves files.
+
+| Layer | Knows about GitHub? |
+| --- | --- |
+| `scripts/lib/visual-classification.mjs` | no |
+| `scripts/lib/visual-coverage.mjs` | no |
+| `scripts/lib/visual-baseline.mjs` | no |
+| `scripts/visual-regression-ci.mjs` (engine) | only reads optional `GITHUB_*` as **metadata** |
+| `scripts/notify-visual-regression.mjs` | no |
+| `scripts/run-visual-regression-docker-ci.mjs` | no |
+| `scripts/visual-regression-gate.mjs` | **yes** — writes GitHub outputs/annotations |
+| `.github/workflows/visual-regression.yml` | **yes** — orchestration only |
+
+GitHub-specific values reach the engine as optional environment metadata
+(`GITHUB_HEAD_SHA`, `GITHUB_BASE_SHA`, `GITHUB_PR_NUMBER`, `GITHUB_RUN_ID`, …).
+When absent, the engine falls back to local `git` and reports `n/a`. Nothing
+branches on the provider.
+
+### What Jenkins will need (not implemented yet)
+
+Unchanged — the entire engine:
+
+```text
+docker/visual-regression-ci.Dockerfile
+scripts/lib/*.mjs
+scripts/visual-regression-ci.mjs
+scripts/run-visual-regression-docker-ci.mjs
+scripts/docker-visual-regression-ci-entrypoint.mjs
+scripts/notify-visual-regression.mjs
+scripts/visual-coverage-audit.mjs
+scripts/visual-baseline-manifest.mjs
+tests/regression/**  (specs, registry, approved baselines)
+summary.json contract
+```
+
+To be written:
+
+1. A `Jenkinsfile` doing only: checkout (full history) → `npm ci` →
+   `npm run test:regression:ci` → archive artifacts.
+2. A replacement for `scripts/visual-regression-gate.mjs`, which is the one
+   GitHub-coupled script. Split it, or add a `--format=jenkins` output mode: the
+   *reading* of `summary.json` is already provider-neutral; only
+   `setOutput`/`annotate`/`GITHUB_STEP_SUMMARY` are GitHub-specific.
+3. Provenance env mapping — Jenkins exposes `GIT_COMMIT`, `CHANGE_ID`,
+   `BUILD_NUMBER`, `BUILD_URL` instead of `GITHUB_*`. `gitMetadata()` already
+   reads `GIT_BRANCH` and `GIT_COMMIT`, so this is a small addition.
+4. Credentials: `SMTP_PASSWORD` moves from GitHub Secrets to Jenkins credentials.
+
+Deliberately avoided so this stays portable: no `actions/*` dependency inside
+`scripts/`, no reliance on GitHub artifact URLs for correctness (the email names
+the artifact and the download command), and no provider-specific exit-code
+semantics — the gate reads `summary.gate.blocking` and nothing else.
+
 ---
 
 ## Workflows
@@ -174,6 +334,47 @@ host, account, sender, and recipient are committed values with a fallback in
 All three declare `permissions: contents: read`.
 
 Dispatch inputs on **Visual Regression**: `strict`, `profile`, `diagnostic`.
+
+---
+
+## Rendering-environment fingerprint
+
+The canonical environment must be identical for the run and for the baselines it
+compares against, or text rasterization shifts and every text-bearing screen
+reports a difference no developer caused. Two gaps are actively guarded:
+
+### CPU architecture
+
+Playwright's `{platform}` token in `snapshotPathTemplate` is only `linux`. It does
+**not** distinguish `linux/amd64` from `linux/arm64`, but Chromium rasterizes text
+differently on the two — so an Apple Silicon laptop and a standard CI runner
+produce different pixels for the same commit while writing to the same filename.
+
+- `baseline-manifest.json` records `architecture`.
+- A run whose `process.arch` differs from the baseline manifest's reports an
+  `INFRASTRUCTURE_FAILURE` (non-blocking) instead of ~50 false visual changes.
+- `VISUAL_REGRESSION_DOCKER_PLATFORM` pins the image (e.g. `linux/amd64`) so every
+  machine renders identically. Unset = host-native, which is faster locally but
+  only comparable to baselines approved on that same architecture.
+
+### Base image digest
+
+`node:24-bookworm-slim` is a **floating tag**. Rebuilding the image weeks later can
+pull a different `fontconfig`/`freetype` and shift text rendering globally.
+
+- The host launcher resolves the built image ID and passes it in as
+  `VISUAL_REGRESSION_IMAGE_DIGEST`; it is recorded in the manifest and the summary.
+- A digest difference between the run and the approved set is reported as a
+  `COVERAGE_MISMATCH` (`image-digest-drift`).
+
+**Diagnostic rule of thumb.** If a run reports that nearly every compared snapshot
+changed, `unchanged` is ~0, dimensions are unchanged, and the changed region spans
+the whole page — that is environment drift, not a UI regression. Check the two
+findings above before reviewing 40 diff images.
+
+Pinning the base image by digest would make this fully reproducible, at the cost of
+re-approving the whole baseline set whenever the pin moves. That is a deliberate
+product decision and is intentionally **not** applied automatically.
 
 ---
 

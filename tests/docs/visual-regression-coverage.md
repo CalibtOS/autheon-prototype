@@ -76,7 +76,7 @@ Available fields: `snapshotId`, `surface`, `route`, `screen`, `scenario`, `state
 
 | Status | Must have a spec | Must have a baseline | Missing → |
 | --- | --- | --- | --- |
-| `active` | yes | yes | **BLOCKING** |
+| `active` | yes | yes | reported as `BASELINE_MISSING` / `COVERAGE_MISMATCH` (non-blocking) |
 | `planned` | no | no | reported as missing coverage (non-blocking) |
 | `excluded` | no | no | reported, with a mandatory reason |
 | `deprecated` | no | baseline is an orphan to remove | reported, with a mandatory reason |
@@ -88,23 +88,25 @@ a validation failure, so a scenario cannot be quietly dropped by relabelling it.
 
 ## Findings
 
-Blocking:
+**No coverage finding blocks.** Each maps to a classification category (see
+[the CI doc](./visual-regression-ci.md#classification-model)) and is reported
+while the rest of the suite still runs:
 
-| Finding | Meaning |
-| --- | --- |
-| `missingBaselines` | Active scenario, selected by the profile, has no approved baseline |
-| `missingCaptures` | Expected snapshot the run never compared — the test died first |
-| `scenariosWithoutSpec` | Registered `active` but no spec declares it |
-| `unregisteredSnapshots` | A spec captures a snapshot the registry does not know |
-| `duplicateSnapshotIds` | The same ID declared in two places |
-| invalid registry | Unparseable, wrong version, unknown viewport/locale/theme/mode, or an undocumented exclusion |
+| Finding | Category | Meaning |
+| --- | --- | --- |
+| `missingBaselines` | `BASELINE_MISSING` | Active scenario, selected by the profile, has no approved baseline |
+| `missingCaptures` | `CAPTURE_FAILURE` | Expected snapshot the run never compared — the test died first |
+| `scenariosWithoutSpec` | `COVERAGE_MISMATCH` | Registered `active` but no spec declares it |
+| `unregisteredSnapshots` | `COVERAGE_MISMATCH` | A spec captures a snapshot the registry does not know |
+| `duplicateSnapshotIds` | `COVERAGE_MISMATCH` | The same ID declared in two places |
+| `orphanBaselines` | `COVERAGE_MISMATCH` | An approved baseline with no active registered scenario |
+| invalid registry | `COVERAGE_MISMATCH` | Unparseable, wrong version, unknown viewport/locale/theme/mode, or an undocumented exclusion. Coverage scoring is suppressed for the run; screenshot comparison continues. |
 
-Non-blocking, but always reported:
+Reported separately as declared/expected gaps:
 
 | Finding | Meaning |
 | --- | --- |
 | `baselineGapsOutsideProfile` | A baseline gap in a scenario this profile does not run |
-| `orphanBaselines` | An approved baseline with no active registered scenario |
 | `missingCoverage` | `planned` entries and declared gap groups |
 | `excludedScenarios` | Documented exclusions |
 
@@ -170,8 +172,10 @@ node scripts/visual-coverage-audit.mjs --results test-results/results.json
 node scripts/visual-coverage-audit.mjs --json
 ```
 
-Exit code is non-zero when a blocking finding exists. The CI wrapper calls the
-same model, so the standalone audit and the pipeline can never disagree.
+The audit exits **0 even when findings exist** — it is an observability tool, not
+a pipeline gate. Pass `--exit-code` to opt into a non-zero exit for chaining. The
+CI wrapper calls the same model, so the standalone audit and the pipeline can
+never disagree.
 
 ---
 
@@ -196,7 +200,10 @@ same model, so the standalone audit and the pipeline can never disagree.
 
 ### The 9 missing Linux baselines
 
-These have specs that run, so they are `active` and therefore **blocking**:
+These have specs that run, so they are correctly `active`. They are reported as
+`BASELINE_MISSING` — **non-blocking**, and awaiting deliberate human approval.
+The current screenshot is never promoted automatically, so the gap persists in the
+report until someone approves a baseline:
 
 | Snapshot | Spec | macOS baseline exists? |
 | --- | --- | --- |
@@ -214,10 +221,66 @@ A macOS baseline cannot be promoted — different font rasterization means a Dar
 PNG compared against a Linux screenshot reports a false 1–3% diff on every
 text-bearing screen. Run the **Visual Regression Baseline** workflow.
 
-Marking these `planned` would not make CI green. Playwright fails a missing
-snapshot on its own ("writing actual"), so the run would report them as
-missing-baseline failures even if the preflight let it start. The gap has to be
-closed by rendering, not by relabelling.
+Marking these `planned` would not silence them. Playwright reports a missing
+snapshot on its own ("writing actual"), so the run classifies them as
+`BASELINE_MISSING` regardless of the registry label. The gap has to be closed by
+rendering and approving, not by relabelling.
+
+> **Playwright writes missing snapshots to disk.** `toHaveScreenshot()` writes the
+> actual image into the snapshot directory *and then fails the test*, even with
+> `CI=true`. Inside the container that write is discarded with the container, but
+> it means anything re-listing the snapshot directory after a run would count those
+> unapproved images as approved. Two guards exist:
+>
+> - post-run coverage scores against the **preflight** baseline listing, so the
+>   approved count cannot drift upward mid-run;
+> - the artifact's `approved-baseline/` copy contains only preflight-verified files,
+>   so an unapproved screenshot can never be extracted from the artifact and
+>   committed as if it had been reviewed.
+>
+> Never bind-mount the repository into the visual-regression container.
+
+### Resolution of the original 10 coverage findings
+
+The 10 findings from the first failing CI run resolved as follows. Eight were
+already corrected in commit `b11951b`, which registered them — that moved them out
+of `COVERAGE_MISMATCH` and into `BASELINE_MISSING`, which is why the finding count
+looked unchanged.
+
+| Finding | Correct resolution | State now |
+| --- | --- | --- |
+| `admin-infopoint-edit-doc-modal.png` | `active` — real spec at `admin.visual.spec.ts:271` | `BASELINE_MISSING`, awaiting approval |
+| `admin-infopoint-delete-doc-modal.png` | `active` — real spec at `admin.visual.spec.ts:282` | `BASELINE_MISSING`, awaiting approval |
+| `driver-myjobs-special.png` | `deprecated` — the "Special cases" tab was replaced by "Empty run"; no spec declares it, no baseline exists | **resolved** (documented retirement) |
+| `driver-header-states.png` | `registered` + `active` — gallery page exists | `BASELINE_MISSING`, awaiting approval |
+| `driver-header-focus-visible.png` | `registered` + `active` — gallery page exists | `BASELINE_MISSING`, awaiting approval |
+| `driver-marketplace-filter-1.png` | `registered` + `active` | `BASELINE_MISSING`, awaiting approval |
+| `driver-marketplace-filter-3.png` | `registered` + `active` | `CAPTURE_FAILURE` — spec times out before capture |
+| `driver-myjobs-empty-run.png` | `registered` + `active` | `BASELINE_MISSING`, awaiting approval |
+| `marketplace-filter-states.png` | `registered` + `active` | `CAPTURE_FAILURE` — `toHaveCount` mismatch; spec is outdated |
+| `marketplace-filter-focus-visible.png` | `registered` + `active` | `CAPTURE_FAILURE` — `toHaveCount` mismatch; spec is outdated |
+
+Plus one finding the original run never reached, because it aborted first:
+
+| Finding | Correct resolution |
+| --- | --- |
+| `admin-infopoint-rename-modal.png` | `deprecated`, superseded by the edit-doc modal. Its approved Linux **and** Darwin baselines are orphans. Deleting an approved baseline requires human approval, so it is reported as `COVERAGE_MISMATCH` (`orphan-baseline`) and left in place. |
+
+Nothing here was resolved by generating a baseline automatically, by deleting a
+scenario, or by running `--update-snapshots`.
+
+### The three outdated specs
+
+These need a developer, not a baseline:
+
+| Spec | Symptom |
+| --- | --- |
+| `driver.visual.spec.ts:97` (`driver-marketplace-filter-3.png`) | `locator.click` times out after 15s — the third filter control no longer matches |
+| `marketplace-filter-states.visual.spec.ts:39` | `expect(locator).toHaveCount()` fails — the gallery no longer renders the expected number of stories |
+| `marketplace-filter-states.visual.spec.ts:46` | same root cause as above |
+
+Until they are repaired, coverage for those screens is **unavailable** — which the
+report states explicitly rather than showing them as passing or as visual changes.
 
 ### Component-gallery surface
 
