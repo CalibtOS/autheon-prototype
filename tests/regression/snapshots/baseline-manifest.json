@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "platform": "linux",
   "architecture": "arm64",
-  "generatedAt": "2026-08-17T11:15:40.055Z",
+  "generatedAt": "2026-08-17T13:28:51.015Z",
   "generator": "scripts/visual-baseline-manifest.mjs",
   "approvalNote": "Approved baselines are rendered inside docker/visual-regression-ci.Dockerfile and promoted only by scripts/approve-visual-baselines.mjs after human review.",
   "environment": {

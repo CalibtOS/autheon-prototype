@@ -1,9 +1,0 @@
-- banner:
-  - text: Transport Portal · Vehicle Transport Platform
-  - button "Driver PWA"
-  - button "Admin Backend"
-  - button "EN"
-  - button "DE"
-  - button "Light"
-  - button "Dark"
-  - text: v1.0 · Client preview Mock data
