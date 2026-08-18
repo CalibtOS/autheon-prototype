@@ -286,6 +286,11 @@ function Sheet({
 //               canonical 1:1.6 Cancel | Primary grid. For three, pick a
 //               documented treatment: `stackActions` (full width, stacked) or
 //               `rowActions` (right-aligned wrapping row, primary last).
+//   aside       optional — a control rendered OUTSIDE the panel, below it.
+//               Deliberately not part of `actions`: it is not one of the
+//               dialog's own choices, so it must not sit in the action row or
+//               inherit its grid. Currently used only by prototype/demo
+//               controls; keep real product actions in `actions`.
 //   size        "sm" (default 480px) | "md" (560) | "lg" (720)
 //
 // Escape closes, the backdrop closes, and content clicks never bubble to it.
@@ -300,6 +305,7 @@ function Dialog({
   icon,
   children,
   actions,
+  aside = null,
   stackActions = false,
   // The standard documents TWO three-action treatments — `--stack` (full-width
   // stacked) and `--row` (right-aligned wrapping row). The primitive only
@@ -328,7 +334,11 @@ function Dialog({
     size === "md" || size === "lg" ? ` dialog-panel--${size}` : "";
 
   return (
-    <div className="dialog-backdrop" onClick={onClose} role="presentation">
+    <div
+      className={`dialog-backdrop${aside ? " dialog-backdrop--with-aside" : ""}`}
+      onClick={onClose}
+      role="presentation"
+    >
       <div
         className={`dialog-panel${sizeClass} ${className}`.trim()}
         onClick={(e) => e.stopPropagation()}
@@ -364,6 +374,13 @@ function Dialog({
           </div>
         ) : null}
       </div>
+      {/* Outside the panel on purpose — see the `aside` prop note above. The
+          click guard keeps it from reaching the backdrop's close handler. */}
+      {aside ? (
+        <div className="dialog-aside" onClick={(e) => e.stopPropagation()}>
+          {aside}
+        </div>
+      ) : null}
     </div>
   );
 }

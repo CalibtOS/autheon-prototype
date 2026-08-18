@@ -6574,11 +6574,98 @@ const PendingNotice = ({ onClose, kind }) => {
   );
 };
 
+/**
+ * Is the prototype allowed to show client-facing demonstration controls?
+ *
+ * Resolved through the store's existing feature-flag channel, whose defaults
+ * live in `feature-flags.js` — a file only the two prototype entry points load.
+ * No hostname sniffing and no build-mode guessing.
+ */
+const demoControlsEnabled = () =>
+  Boolean(window.AuthStore?.getFeatureFlag?.("prototypeDemoControls"));
+
+/**
+ * PROTOTYPE-ONLY control that previews the already-booked conflict dialog.
+ *
+ * Why it exists: the prototype runs on one in-memory driver identity, so a
+ * client cannot reproduce two service partners racing for the same order and
+ * therefore cannot see how the loser is told. This button reveals that screen
+ * on demand. It simulates NOTHING — no second acceptance, no status change, no
+ * race — it just opens a dialog.
+ *
+ * Rendered through the shared `Dialog`'s `aside` slot, so it sits outside the
+ * panel and can never land in the success dialog's real action row.
+ */
+const DemoAlreadyBookedButton = ({ onClick }) => {
+  const { t } = useI18n();
+  return (
+    <button
+      type="button"
+      className="demo-control-btn"
+      onClick={onClick}
+      // The visible text is split into a badge + label for the "this is a demo"
+      // signal, so the accessible name is stated explicitly and reads as one
+      // phrase rather than as two loose fragments.
+      aria-label={t("demoAlreadyBookedLabel")}
+      title={t("demoAlreadyBookedLabel")}
+    >
+      <span className="demo-control-badge" aria-hidden="true">
+        {t("demoBadge")}
+      </span>
+      <span aria-hidden="true">{t("demoAlreadyBookedAction")}</span>
+    </button>
+  );
+};
+
+/**
+ * "Another partner booked it first" conflict dialog.
+ *
+ * Shared by both driver shells and written to be reusable by the REAL
+ * acceptance-failure path later: it takes only a dismiss handler and owns no
+ * state, so wiring it to an `acceptJob()` `not_available` result is a call-site
+ * change, not a rewrite. It is NOT connected to that path today — the real
+ * failure handler still shows its generic banner, deliberately out of scope.
+ *
+ * `alertdialog` because it reports a conflict the driver did not ask for, and
+ * the icon is decorative: the title and description carry the whole meaning.
+ */
+const AlreadyBookedDialog = ({ onBackToMarketplace }) => {
+  const { t } = useI18n();
+  return (
+    <UI.Dialog
+      open
+      alertdialog
+      onClose={onBackToMarketplace}
+      titleId="order-already-booked-title"
+      icon={<Ic.Alert />}
+      className="dialog-panel--narrow dialog-icon-warning"
+      title={t("alreadyBookedTitle")}
+      // Reuses the notification flow's reason-specific copy verbatim — same
+      // fact, so it must not be worded a second way.
+      description={t("notifUnavailableTaken")}
+      actions={
+        <button
+          type="button"
+          className="btn primary"
+          onClick={onBackToMarketplace}
+        >
+          {t("backToMarketplace")}
+        </button>
+      }
+    />
+  );
+};
+
 // Confirmation popup shown after a tour is booked (binding acceptance).
 // Mirrors the "Tour performed successfully" popup: a green check, a title,
 // a short body, and an OK button that dismisses back to the tour.
-const TourBookedSuccessSheet = ({ onClose }) => {
+//
+// `onDemoAlreadyBooked` attaches the prototype-only preview control beside this
+// dialog. Omitting it (or disabling the flag) renders the dialog exactly as it
+// always was — the success flow itself is untouched either way.
+const TourBookedSuccessSheet = ({ onClose, onDemoAlreadyBooked }) => {
   const { t } = useI18n();
+  const showDemo = Boolean(onDemoAlreadyBooked) && demoControlsEnabled();
   return (
     <UI.Dialog
       open
@@ -6592,6 +6679,11 @@ const TourBookedSuccessSheet = ({ onClose }) => {
         <button type="button" className="btn primary" onClick={onClose}>
           {t("ok")}
         </button>
+      }
+      aside={
+        showDemo ? (
+          <DemoAlreadyBookedButton onClick={onDemoAlreadyBooked} />
+        ) : null
       }
     />
   );
@@ -9651,6 +9743,9 @@ Object.assign(window, {
   ReportProblemSheet,
   PendingNotice,
   TourBookedSuccessSheet,
+  AlreadyBookedDialog,
+  DemoAlreadyBookedButton,
+  demoControlsEnabled,
   MarkPerformedSheet,
   ProbationLimitSheet,
   DocumentPreviewSheet,
