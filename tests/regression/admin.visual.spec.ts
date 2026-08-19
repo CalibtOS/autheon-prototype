@@ -1,6 +1,7 @@
 import { test, expect } from './support/fixtures/prototype-test.ts';
 import { prototypeFrame } from './support/helpers/selectors.ts';
 import {
+  openAdminPaneTab,
   openAdminSection,
   prepareAdminVisual,
   settleForCapture,
@@ -17,22 +18,38 @@ import {
  *
  *   - the Audit-Log's time column, because seeded audit events are dated as
  *     offsets from the current date and therefore render differently every day;
- *   - the generated credentials in the Account Access dialog;
  *   - the live status-history entry appended behind the admin toast.
  */
 
+/**
+ * Admin console LEFT-NAV entries.
+ *
+ * The console groups master data behind two centre panes, so several screens are
+ * no longer reachable from the nav directly:
+ *
+ *   Service Partners -> tab "Service Partners" | tab "Profile change requests"
+ *   Customer Center  -> tab "Customers"        | tab "Addresses"
+ *
+ * Reach the second tab of either pane with `TAB` below.
+ */
 const NAV = {
-  jobs: /^Jobs$/i,
+  jobs: /^Jobs$|^Aufträge$/i,
   notifications: /Notification feed|Benachrichtigungs/i,
-  masterData: /Profile change requests|Profiländerungen/i,
-  drivers: /^Drivers$|^Fahrer$/i,
+  servicePartners: /Service Partners|Servicepartner/i,
   staff: /^Staff$|^Personal$/i,
-  customers: /^Customers$|^Kunden$/i,
-  addresses: /^Addresses$|^Adressen$/i,
+  customerCenter: /Customer Center|Kundencenter/i,
   infopoint: /^Infopoint$/i,
   tourDocs: /Tour documents|Tour-Dokumente/i,
   audit: /Audit log|Audit-Log/i,
   settings: /^Settings$|^Einstellungen$/i,
+};
+
+/** Tabs inside the two grouping panes above. */
+const TAB = {
+  servicePartners: /Service Partners|Servicepartner/i,
+  changeRequests: /Profile change requests|Profiländerungen/i,
+  customers: /^Customers$|^Kunden$/i,
+  addresses: /^Addresses$|^Adressen$/i,
 };
 
 /** Open a job from the overview table by its tour number. */
@@ -95,13 +112,14 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
 
   test('profile change requests screen', async ({ page }) => {
     await prepareAdminVisual(page);
-    await openAdminSection(page, NAV.masterData);
+    await openAdminSection(page, NAV.servicePartners);
+    await openAdminPaneTab(page, TAB.changeRequests);
     await expect(page).toHaveScreenshot('admin-masterdata-list.png', { fullPage: true });
   });
 
   test('drivers screen', async ({ page }) => {
     await prepareAdminVisual(page);
-    await openAdminSection(page, NAV.drivers);
+    await openAdminSection(page, NAV.servicePartners);
     await expect(page).toHaveScreenshot('admin-drivers.png', { fullPage: true });
   });
 
@@ -113,13 +131,14 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
 
   test('customers screen', async ({ page }) => {
     await prepareAdminVisual(page);
-    await openAdminSection(page, NAV.customers);
+    await openAdminSection(page, NAV.customerCenter);
     await expect(page).toHaveScreenshot('admin-customers.png', { fullPage: true });
   });
 
   test('addresses screen', async ({ page }) => {
     await prepareAdminVisual(page);
-    await openAdminSection(page, NAV.addresses);
+    await openAdminSection(page, NAV.customerCenter);
+    await openAdminPaneTab(page, TAB.addresses);
     await expect(page).toHaveScreenshot('admin-addresses.png', { fullPage: true });
   });
 
@@ -150,7 +169,7 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
     await openAdminSection(page, NAV.audit);
     // Seeded audit events are dated as offsets from the current date, so the
     // time column reads differently every day -> mask it, the same idiom the
-    // Account Access dialog and the toast baselines below already use.
+    // toast baseline below already uses.
     await expect(page).toHaveScreenshot('admin-audit.png', {
       fullPage: true,
       mask: [prototypeFrame(page).locator('.tbl tbody td.mono')],
@@ -189,9 +208,9 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
 
   test('new driver modal', async ({ page }) => {
     await prepareAdminVisual(page);
-    await openAdminSection(page, NAV.drivers);
+    await openAdminSection(page, NAV.servicePartners);
     await prototypeFrame(page)
-      .getByRole('button', { name: /New driver|Neuer Fahrer/i })
+      .getByRole('button', { name: /New service partner|Neuer Servicepartner/i })
       .click();
     await waitForOpenDialog(page);
     await expect(page).toHaveScreenshot('admin-new-driver-modal.png', { fullPage: true });
@@ -207,42 +226,24 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
     await expect(page).toHaveScreenshot('admin-new-staff-modal.png', { fullPage: true });
   });
 
-  test('account access dialog (generated credentials)', async ({ page }) => {
-    await prepareAdminVisual(page);
-    await openAdminSection(page, NAV.drivers);
-    await prototypeFrame(page)
-      .getByRole('button', { name: /New driver|Neuer Fahrer/i })
-      .click();
-    const formDialog = await waitForOpenDialog(page);
-
-    const frame = prototypeFrame(page);
-    // The Driver ID field is generated by the store on create and is readonly.
-    const inputs = formDialog.locator('input');
-    await inputs.nth(0).fill('E2E Test Driver');
-    await inputs.nth(1).fill('E2E Logistics GmbH');
-    await inputs.nth(3).fill('+49 30 123456');
-    await inputs.nth(4).fill('e2e.driver.9001@example.test');
-    await frame.getByRole('button', { name: /^Save$|^Speichern$/i }).click();
-
-    const dialog = await waitForOpenDialog(page);
-    await expect(
-      frame.getByRole('heading', { name: /Account access|Zugangsdaten/i }),
-    ).toBeVisible();
-    // The generated login email and the live "Last invite" timestamp are
-    // volatile -> mask both so only the stable dialog layout is compared.
-    await expect(page).toHaveScreenshot('admin-account-access-dialog.png', {
-      fullPage: true,
-      mask: [
-        dialog.locator('.mono, code, input'),
-        dialog.getByText(/Last invite|Letzte Einladung/i),
-        frame.getByText(/e2e\.driver\.9001@example\.test/i),
-      ],
-    });
-  });
-
+  /**
+   * REMOVED: account access dialog (generated credentials).
+   *
+   * The console no longer generates or shows initial credentials. `admin.jsx`
+   * stubs the dialog out entirely (`const AccountAccessDialog = null;`) and the
+   * Service Partners pane states the new rule: production sends Keycloak invite
+   * emails so service partners set their own password. A newly created partner
+   * now starts with account access DISABLED and a "Resend invite" action, and no
+   * dialog opens on save.
+   *
+   * There is therefore nothing to capture. The scenario is marked `deprecated` in
+   * tests/regression/visual-coverage.manifest.json rather than deleted, so the
+   * retirement stays on the record. Re-adding coverage here needs a product
+   * decision about what the invite flow should look like, not a baseline update.
+   */
   test('customer modal', async ({ page }) => {
     await prepareAdminVisual(page);
-    await openAdminSection(page, NAV.customers);
+    await openAdminSection(page, NAV.customerCenter);
     await prototypeFrame(page)
       .getByRole('button', { name: /Add customer|Kunde anlegen/i })
       .click();
@@ -252,7 +253,8 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
 
   test('address modal', async ({ page }) => {
     await prepareAdminVisual(page);
-    await openAdminSection(page, NAV.addresses);
+    await openAdminSection(page, NAV.customerCenter);
+    await openAdminPaneTab(page, TAB.addresses);
     await prototypeFrame(page)
       .getByRole('button', { name: /Add address|Adresse hinzufügen/i })
       .click();
@@ -351,6 +353,19 @@ test.describe('Admin Backend visual regression @visual-regression', () => {
     await prototypeFrame(page)
       .getByRole('button', { name: /Publish to marketplace|Auf Marktplatz/i })
       .click();
+
+    // Publishing this seeded draft now trips the driver-offer threshold guard,
+    // which asks for confirmation BEFORE the order is published — so the toast
+    // never appeared and the test timed out on it. Confirm the amount to reach
+    // the toast. Asserted rather than treated as optional: the seed is fixed, so
+    // if this dialog stops appearing that is a product change worth failing on.
+    await expect(
+      prototypeFrame(page).getByText(/Offer above the usual range|Angebot über dem üblichen Bereich/i),
+    ).toBeVisible();
+    await prototypeFrame(page)
+      .getByRole('button', { name: /Accept amount|Betrag bestätigen/i })
+      .click();
+
     const toast = prototypeFrame(page).locator('.toast, [role="status"]').first();
     await expect(toast).toBeVisible();
     // Publishing appends a live-timestamped entry to the status-history card;

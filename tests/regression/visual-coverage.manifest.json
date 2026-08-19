@@ -17,11 +17,9 @@
     "",
     "Entries inherit every field from `defaults` and override only what differs."
   ],
-
   "registryVersion": 1,
   "grep": "@visual-regression",
   "approvedPlatform": "linux",
-
   "viewports": {
     "desktop-1440": {
       "project": "chromium",
@@ -64,30 +62,40 @@
       "height": 1112,
       "class": "wider tablet",
       "notes": "Driver PWA stretched to tablet width. Not a separate tablet product layout — the same phone layout at a wider viewport."
+    },
+    "document-a4": {
+      "project": "chromium",
+      "width": 794,
+      "height": 1123,
+      "class": "print document",
+      "notes": "A4 at 96dpi. The transport-order PDF preview sets this viewport itself inside the chromium project; it is not a separate Playwright project."
     }
   },
-
   "locales": {
-    "en": { "label": "English", "primary": true },
+    "en": {
+      "label": "English",
+      "primary": true
+    },
     "de": {
       "label": "Deutsch",
       "primary": false,
       "notes": "German is the longest-translation locale in this product and is the wrapping risk case for tabbars, table headers, and dialog action rows."
     }
   },
-
   "themes": {
-    "light": { "production": true },
-    "dark": { "production": true }
+    "light": {
+      "production": true
+    },
+    "dark": {
+      "production": true
+    }
   },
-
   "screenshotModes": {
     "fullPage": "Whole scrollable document. Proves complete content layout.",
     "viewport": "Visible viewport only at the project height. The only mode that proves fixed/sticky chrome (driver tabbar, admin sticky sidebars) sits correctly at real viewport height.",
     "locator": "Single component/dialog. Removes page-level noise for reusable components.",
     "segmentedScroll": "Sequence of viewport captures at defined scroll offsets. Proves sticky behavior while scrolling."
   },
-
   "profiles": {
     "smoke": {
       "description": "Critical representative subset — one screen per surface plus the shell.",
@@ -112,7 +120,6 @@
       "grep": "@visual-regression"
     }
   },
-
   "defaults": {
     "surface": "admin",
     "route": "/",
@@ -132,9 +139,10 @@
     "owner": "frontend",
     "tags": [],
     "status": "active",
-    "profiles": ["full"]
+    "profiles": [
+      "full"
+    ]
   },
-
   "scenarios": [
     {
       "snapshotId": "prototype-shell-default.png",
@@ -142,159 +150,289 @@
       "screen": "Presentation shell",
       "scenario": "default Driver PWA / EN / light",
       "role": "n/a",
-      "mask": ["live marketplace date label"],
-      "tags": ["shell", "header", "surface-switch"],
-      "profiles": ["smoke", "full"]
+      "mask": [
+        "live marketplace date label"
+      ],
+      "tags": [
+        "shell",
+        "header",
+        "surface-switch"
+      ],
+      "profiles": [
+        "smoke",
+        "full"
+      ]
     },
-
     {
       "snapshotId": "admin-overview.png",
       "screen": "Job overview",
       "scenario": "default populated table",
-      "tags": ["screen", "table", "navigation"],
-      "profiles": ["smoke", "full"]
+      "tags": [
+        "screen",
+        "table",
+        "navigation"
+      ],
+      "profiles": [
+        "smoke",
+        "full"
+      ]
     },
     {
       "snapshotId": "admin-job-detail.png",
       "screen": "Job detail",
       "scenario": "draft lifecycle status",
       "state": "lifecycle:draft",
-      "interactions": ["open job 0839-26 from the overview table"],
-      "tags": ["screen", "detail", "lifecycle"]
+      "interactions": [
+        "open job 0839-26 from the overview table"
+      ],
+      "tags": [
+        "screen",
+        "detail",
+        "lifecycle"
+      ]
     },
     {
       "snapshotId": "admin-job-detail-assigned.png",
       "screen": "Job detail",
       "scenario": "assigned lifecycle status",
       "state": "lifecycle:assigned",
-      "interactions": ["open job 0848-26 from the overview table"],
-      "tags": ["screen", "detail", "lifecycle"]
+      "interactions": [
+        "open job 0848-26 from the overview table"
+      ],
+      "tags": [
+        "screen",
+        "detail",
+        "lifecycle"
+      ]
     },
     {
       "snapshotId": "admin-new-order.png",
       "screen": "New job form",
       "scenario": "empty form",
       "state": "form:empty",
-      "interactions": ["click New job"],
-      "tags": ["screen", "form"]
+      "interactions": [
+        "click New job"
+      ],
+      "tags": [
+        "screen",
+        "form"
+      ]
     },
     {
       "snapshotId": "admin-edit-order.png",
       "screen": "Edit job form",
       "scenario": "form prefilled from a draft",
       "state": "form:prefilled",
-      "interactions": ["open job 0839-26", "click Edit draft"],
-      "tags": ["screen", "form"]
+      "interactions": [
+        "open job 0839-26",
+        "click Edit draft"
+      ],
+      "tags": [
+        "screen",
+        "form"
+      ]
     },
     {
       "snapshotId": "admin-notifications.png",
       "screen": "Notification feed",
       "scenario": "populated feed",
-      "interactions": ["open the Notification feed nav item"],
-      "tags": ["screen", "list", "notifications"]
+      "interactions": [
+        "open the Notification feed nav item"
+      ],
+      "tags": [
+        "screen",
+        "list",
+        "notifications"
+      ]
     },
     {
       "snapshotId": "admin-masterdata-list.png",
       "screen": "Profile change requests",
       "scenario": "populated request list",
-      "interactions": ["open the Profile change requests nav item"],
-      "tags": ["screen", "list", "approval"]
+      "interactions": [
+        "open the Profile change requests nav item"
+      ],
+      "tags": [
+        "screen",
+        "list",
+        "approval"
+      ]
     },
     {
       "snapshotId": "admin-drivers.png",
       "screen": "Drivers",
       "scenario": "populated list",
-      "interactions": ["open the Drivers nav item"],
-      "tags": ["screen", "table", "master-data"]
+      "interactions": [
+        "open the Drivers nav item"
+      ],
+      "tags": [
+        "screen",
+        "table",
+        "master-data"
+      ]
     },
     {
       "snapshotId": "admin-staff.png",
       "screen": "Staff",
       "scenario": "populated list",
-      "interactions": ["open the Staff nav item"],
-      "tags": ["screen", "table", "master-data"]
+      "interactions": [
+        "open the Staff nav item"
+      ],
+      "tags": [
+        "screen",
+        "table",
+        "master-data"
+      ]
     },
     {
       "snapshotId": "admin-customers.png",
       "screen": "Customers",
       "scenario": "populated list",
-      "interactions": ["open the Customers nav item"],
-      "tags": ["screen", "table", "master-data"]
+      "interactions": [
+        "open the Customers nav item"
+      ],
+      "tags": [
+        "screen",
+        "table",
+        "master-data"
+      ]
     },
     {
       "snapshotId": "admin-addresses.png",
       "screen": "Addresses",
       "scenario": "populated list",
-      "interactions": ["open the Addresses nav item"],
-      "tags": ["screen", "table", "master-data"]
+      "interactions": [
+        "open the Addresses nav item"
+      ],
+      "tags": [
+        "screen",
+        "table",
+        "master-data"
+      ]
     },
     {
       "snapshotId": "admin-infopoint.png",
       "screen": "Infopoint",
       "scenario": "documents tab",
-      "interactions": ["open the Infopoint nav item"],
-      "tags": ["screen", "tabs", "documents"]
+      "interactions": [
+        "open the Infopoint nav item"
+      ],
+      "tags": [
+        "screen",
+        "tabs",
+        "documents"
+      ]
     },
     {
       "snapshotId": "admin-infopoint-news.png",
       "screen": "Infopoint",
       "scenario": "news tab",
-      "interactions": ["open Infopoint", "switch to the New messages tab"],
-      "tags": ["screen", "tabs", "news"]
+      "interactions": [
+        "open Infopoint",
+        "switch to the New messages tab"
+      ],
+      "tags": [
+        "screen",
+        "tabs",
+        "news"
+      ]
     },
     {
       "snapshotId": "admin-tour-billing.png",
       "screen": "Tour documents",
       "scenario": "populated billing list",
-      "interactions": ["open the Tour documents nav item"],
-      "tags": ["screen", "table", "billing"]
+      "interactions": [
+        "open the Tour documents nav item"
+      ],
+      "tags": [
+        "screen",
+        "table",
+        "billing"
+      ]
     },
     {
       "snapshotId": "admin-audit.png",
       "screen": "Audit log",
       "scenario": "populated log",
-      "interactions": ["open the Audit log nav item"],
-      "tags": ["screen", "table", "audit"]
+      "interactions": [
+        "open the Audit log nav item"
+      ],
+      "tags": [
+        "screen",
+        "table",
+        "audit"
+      ]
     },
     {
       "snapshotId": "admin-features.png",
       "screen": "Settings / features",
       "scenario": "default settings state",
-      "interactions": ["open the Settings nav item"],
-      "tags": ["screen", "settings", "toggles"]
+      "interactions": [
+        "open the Settings nav item"
+      ],
+      "tags": [
+        "screen",
+        "settings",
+        "toggles"
+      ]
     },
-
     {
       "snapshotId": "admin-assign-driver-dialog.png",
       "screen": "Job detail",
       "scenario": "assign driver dialog",
       "state": "overlay:dialog",
-      "interactions": ["open job 0839-26", "click Assign driver"],
-      "tags": ["overlay", "dialog"]
+      "interactions": [
+        "open job 0839-26",
+        "click Assign driver"
+      ],
+      "tags": [
+        "overlay",
+        "dialog"
+      ]
     },
     {
       "snapshotId": "admin-reassign-driver-dialog.png",
       "screen": "Job detail",
       "scenario": "reassign driver dialog",
       "state": "overlay:dialog",
-      "interactions": ["open job 0848-26", "click Reassign driver"],
-      "tags": ["overlay", "dialog"]
+      "interactions": [
+        "open job 0848-26",
+        "click Reassign driver"
+      ],
+      "tags": [
+        "overlay",
+        "dialog"
+      ]
     },
     {
       "snapshotId": "admin-new-driver-modal.png",
       "screen": "Drivers",
       "scenario": "new driver modal, empty form",
       "state": "overlay:modal,form:empty",
-      "interactions": ["open Drivers", "click New driver"],
-      "tags": ["overlay", "modal", "form"]
+      "interactions": [
+        "open Drivers",
+        "click New driver"
+      ],
+      "tags": [
+        "overlay",
+        "modal",
+        "form"
+      ]
     },
     {
       "snapshotId": "admin-new-staff-modal.png",
       "screen": "Staff",
       "scenario": "new staff modal, empty form",
       "state": "overlay:modal,form:empty",
-      "interactions": ["open Staff", "click New staff"],
-      "tags": ["overlay", "modal", "form"]
+      "interactions": [
+        "open Staff",
+        "click New staff"
+      ],
+      "tags": [
+        "overlay",
+        "modal",
+        "form"
+      ]
     },
     {
       "snapshotId": "admin-account-access-dialog.png",
@@ -312,47 +450,89 @@
         "Last invite timestamp",
         "generated login email"
       ],
-      "tags": ["overlay", "dialog", "success", "credentials"]
+      "tags": [
+        "overlay",
+        "dialog",
+        "success",
+        "credentials"
+      ],
+      "status": "deprecated",
+      "exclusionReason": "The console no longer generates or shows initial credentials: admin.jsx stubs the dialog out (`const AccountAccessDialog = null;`) and production now sends Keycloak invite emails so service partners set their own password. A new partner starts with account access disabled plus a \"Resend invite\" action, and no dialog opens on save, so there is nothing to capture. Registered as deprecated rather than deleted so the retirement is recorded. Re-adding coverage for the invite flow is a product decision, not a baseline update."
     },
     {
       "snapshotId": "admin-customer-modal.png",
       "screen": "Customers",
       "scenario": "add customer modal, empty form",
       "state": "overlay:modal,form:empty",
-      "interactions": ["open Customers", "click Add customer"],
-      "tags": ["overlay", "modal", "form"]
+      "interactions": [
+        "open Customers",
+        "click Add customer"
+      ],
+      "tags": [
+        "overlay",
+        "modal",
+        "form"
+      ]
     },
     {
       "snapshotId": "admin-address-modal.png",
       "screen": "Addresses",
       "scenario": "add address modal, empty form",
       "state": "overlay:modal,form:empty",
-      "interactions": ["open Addresses", "click Add address"],
-      "tags": ["overlay", "modal", "form"]
+      "interactions": [
+        "open Addresses",
+        "click Add address"
+      ],
+      "tags": [
+        "overlay",
+        "modal",
+        "form"
+      ]
     },
     {
       "snapshotId": "admin-infopoint-doc-modal.png",
       "screen": "Infopoint",
       "scenario": "add document modal",
       "state": "overlay:modal,form:empty",
-      "interactions": ["open Infopoint", "click Add document"],
-      "tags": ["overlay", "modal", "upload"]
+      "interactions": [
+        "open Infopoint",
+        "click Add document"
+      ],
+      "tags": [
+        "overlay",
+        "modal",
+        "upload"
+      ]
     },
     {
       "snapshotId": "admin-infopoint-edit-doc-modal.png",
       "screen": "Infopoint",
       "scenario": "edit document modal",
       "state": "overlay:modal,form:prefilled",
-      "interactions": ["open Infopoint", "click Edit on the first document"],
-      "tags": ["overlay", "modal", "form"]
+      "interactions": [
+        "open Infopoint",
+        "click Edit on the first document"
+      ],
+      "tags": [
+        "overlay",
+        "modal",
+        "form"
+      ]
     },
     {
       "snapshotId": "admin-infopoint-delete-doc-modal.png",
       "screen": "Infopoint",
       "scenario": "delete document confirmation",
       "state": "overlay:confirmation",
-      "interactions": ["open Infopoint", "click Delete on the first document"],
-      "tags": ["overlay", "confirmation", "destructive"]
+      "interactions": [
+        "open Infopoint",
+        "click Delete on the first document"
+      ],
+      "tags": [
+        "overlay",
+        "confirmation",
+        "destructive"
+      ]
     },
     {
       "snapshotId": "admin-infopoint-news-modal.png",
@@ -364,23 +544,41 @@
         "switch to the New messages tab",
         "click Edit on the first message"
       ],
-      "tags": ["overlay", "modal", "form"]
+      "tags": [
+        "overlay",
+        "modal",
+        "form"
+      ]
     },
     {
       "snapshotId": "admin-tour-billing-register-dialog.png",
       "screen": "Tour documents",
       "scenario": "register off-channel document dialog",
       "state": "overlay:dialog,form:empty",
-      "interactions": ["open Tour documents", "click Register off-channel document"],
-      "tags": ["overlay", "dialog", "form"]
+      "interactions": [
+        "open Tour documents",
+        "click Register off-channel document"
+      ],
+      "tags": [
+        "overlay",
+        "dialog",
+        "form"
+      ]
     },
     {
       "snapshotId": "admin-tour-billing-view-invoice.png",
       "screen": "Tour documents",
       "scenario": "invoice document preview",
       "state": "overlay:dialog,preview",
-      "interactions": ["open Tour documents", "click View on the first document"],
-      "tags": ["overlay", "dialog", "document-preview"]
+      "interactions": [
+        "open Tour documents",
+        "click View on the first document"
+      ],
+      "tags": [
+        "overlay",
+        "dialog",
+        "document-preview"
+      ]
     },
     {
       "snapshotId": "admin-tour-billing-accept-invoice.png",
@@ -391,27 +589,47 @@
         "open Tour documents",
         "click Accept on the driver-invoice-0842.pdf row"
       ],
-      "tags": ["overlay", "confirmation", "billing"]
+      "tags": [
+        "overlay",
+        "confirmation",
+        "billing"
+      ]
     },
     {
       "snapshotId": "admin-toast.png",
       "screen": "Job detail",
       "scenario": "toast after publishing to marketplace",
       "state": "toast",
-      "interactions": ["open job 0839-26", "click Publish to marketplace"],
-      "mask": ["Status history card (live timestamp)"],
-      "tags": ["toast", "feedback"]
+      "interactions": [
+        "open job 0839-26",
+        "click Publish to marketplace"
+      ],
+      "mask": [
+        "Status history card (live timestamp)"
+      ],
+      "tags": [
+        "toast",
+        "feedback"
+      ]
     },
-
     {
       "snapshotId": "driver-marketplace.png",
       "surface": "driver",
       "screen": "Marketplace",
       "scenario": "populated open tours",
       "role": "driver",
-      "mask": ["open tours header date label (live date)"],
-      "tags": ["screen", "list", "marketplace"],
-      "profiles": ["smoke", "full"]
+      "mask": [
+        "open tours header date label (live date)"
+      ],
+      "tags": [
+        "screen",
+        "list",
+        "marketplace"
+      ],
+      "profiles": [
+        "smoke",
+        "full"
+      ]
     },
     {
       "snapshotId": "driver-marketplace-filter-1.png",
@@ -420,9 +638,19 @@
       "scenario": "one applied filter, badge shows 1",
       "state": "filter:applied,badge:1",
       "role": "driver",
-      "interactions": ["open Filters", "apply a single filter", "close the sheet"],
-      "mask": ["open tours header date label (live date)"],
-      "tags": ["screen", "filters", "badge"]
+      "interactions": [
+        "open Filters",
+        "apply a single filter",
+        "close the sheet"
+      ],
+      "mask": [
+        "open tours header date label (live date)"
+      ],
+      "tags": [
+        "screen",
+        "filters",
+        "badge"
+      ]
     },
     {
       "snapshotId": "driver-marketplace-filter-3.png",
@@ -431,9 +659,19 @@
       "scenario": "multiple applied filters, badge shows 3",
       "state": "filter:applied,badge:3",
       "role": "driver",
-      "interactions": ["open Filters", "apply three filters", "close the sheet"],
-      "mask": ["open tours header date label (live date)"],
-      "tags": ["screen", "filters", "badge"]
+      "interactions": [
+        "open Filters",
+        "apply three filters",
+        "close the sheet"
+      ],
+      "mask": [
+        "open tours header date label (live date)"
+      ],
+      "tags": [
+        "screen",
+        "filters",
+        "badge"
+      ]
     },
     {
       "snapshotId": "driver-job-locked.png",
@@ -442,8 +680,14 @@
       "scenario": "marketplace preview, locked (pre-acceptance)",
       "state": "permission:locked",
       "role": "driver",
-      "interactions": ["open the first marketplace tour card"],
-      "tags": ["screen", "detail", "permission"]
+      "interactions": [
+        "open the first marketplace tour card"
+      ],
+      "tags": [
+        "screen",
+        "detail",
+        "permission"
+      ]
     },
     {
       "snapshotId": "driver-myjobs-active.png",
@@ -451,8 +695,14 @@
       "screen": "My jobs",
       "scenario": "active tab",
       "role": "driver",
-      "interactions": ["open the My jobs tab"],
-      "tags": ["screen", "tabs", "list"]
+      "interactions": [
+        "open the My jobs tab"
+      ],
+      "tags": [
+        "screen",
+        "tabs",
+        "list"
+      ]
     },
     {
       "snapshotId": "driver-myjobs-performed.png",
@@ -460,8 +710,15 @@
       "screen": "My jobs",
       "scenario": "performed tab",
       "role": "driver",
-      "interactions": ["open My jobs", "switch to the Performed tab"],
-      "tags": ["screen", "tabs", "list"]
+      "interactions": [
+        "open My jobs",
+        "switch to the Performed tab"
+      ],
+      "tags": [
+        "screen",
+        "tabs",
+        "list"
+      ]
     },
     {
       "snapshotId": "driver-myjobs-cancelled.png",
@@ -469,8 +726,15 @@
       "screen": "My jobs",
       "scenario": "cancelled tab",
       "role": "driver",
-      "interactions": ["open My jobs", "switch to the Cancelled tab"],
-      "tags": ["screen", "tabs", "list"]
+      "interactions": [
+        "open My jobs",
+        "switch to the Cancelled tab"
+      ],
+      "tags": [
+        "screen",
+        "tabs",
+        "list"
+      ]
     },
     {
       "snapshotId": "driver-myjobs-special.png",
@@ -480,7 +744,11 @@
       "role": "driver",
       "status": "deprecated",
       "exclusionReason": "The My jobs 'Special cases' tab was replaced by the 'Empty run' tab; driver.visual.spec.ts no longer declares this snapshot. Registered as deprecated rather than deleted so the retirement is recorded. It has no baseline on any platform, so there is nothing to remove.",
-      "tags": ["screen", "tabs", "list"]
+      "tags": [
+        "screen",
+        "tabs",
+        "list"
+      ]
     },
     {
       "snapshotId": "driver-myjobs-empty-run.png",
@@ -489,8 +757,16 @@
       "scenario": "empty run tab",
       "state": "empty",
       "role": "driver",
-      "interactions": ["open My jobs", "switch to the Empty run tab"],
-      "tags": ["screen", "tabs", "list", "empty-state"]
+      "interactions": [
+        "open My jobs",
+        "switch to the Empty run tab"
+      ],
+      "tags": [
+        "screen",
+        "tabs",
+        "list",
+        "empty-state"
+      ]
     },
     {
       "snapshotId": "driver-job-unlocked.png",
@@ -499,8 +775,15 @@
       "scenario": "unlocked execution view",
       "state": "permission:unlocked",
       "role": "driver",
-      "interactions": ["open My jobs", "open the first active tour"],
-      "tags": ["screen", "detail", "permission"]
+      "interactions": [
+        "open My jobs",
+        "open the first active tour"
+      ],
+      "tags": [
+        "screen",
+        "detail",
+        "permission"
+      ]
     },
     {
       "snapshotId": "driver-infopoint.png",
@@ -508,8 +791,14 @@
       "screen": "Infopoint",
       "scenario": "populated documents and news",
       "role": "driver",
-      "interactions": ["open the Infopoint tab"],
-      "tags": ["screen", "list", "documents"]
+      "interactions": [
+        "open the Infopoint tab"
+      ],
+      "tags": [
+        "screen",
+        "list",
+        "documents"
+      ]
     },
     {
       "snapshotId": "driver-profile.png",
@@ -517,8 +806,13 @@
       "screen": "Profile",
       "scenario": "default profile with probation progress",
       "role": "driver",
-      "interactions": ["open the Profile tab"],
-      "tags": ["screen", "profile"]
+      "interactions": [
+        "open the Profile tab"
+      ],
+      "tags": [
+        "screen",
+        "profile"
+      ]
     },
     {
       "snapshotId": "driver-notifications.png",
@@ -526,8 +820,14 @@
       "screen": "Notifications",
       "scenario": "populated notification pane",
       "role": "driver",
-      "interactions": ["open the Notifications control"],
-      "tags": ["screen", "list", "notifications"]
+      "interactions": [
+        "open the Notifications control"
+      ],
+      "tags": [
+        "screen",
+        "list",
+        "notifications"
+      ]
     },
     {
       "snapshotId": "driver-filter-sheet.png",
@@ -536,8 +836,14 @@
       "scenario": "filter sheet open",
       "state": "overlay:sheet",
       "role": "driver",
-      "interactions": ["click Filters"],
-      "tags": ["overlay", "sheet", "filters"]
+      "interactions": [
+        "click Filters"
+      ],
+      "tags": [
+        "overlay",
+        "sheet",
+        "filters"
+      ]
     },
     {
       "snapshotId": "driver-acceptance-modal.png",
@@ -546,8 +852,15 @@
       "scenario": "tour acceptance confirmation",
       "state": "overlay:confirmation",
       "role": "driver",
-      "interactions": ["open the first marketplace tour", "click Accept tour"],
-      "tags": ["overlay", "confirmation", "booking"]
+      "interactions": [
+        "open the first marketplace tour",
+        "click Accept tour"
+      ],
+      "tags": [
+        "overlay",
+        "confirmation",
+        "booking"
+      ]
     },
     {
       "snapshotId": "driver-report-problem-sheet.png",
@@ -556,8 +869,15 @@
       "scenario": "report problem sheet",
       "state": "overlay:sheet,form:empty",
       "role": "driver",
-      "interactions": ["open an active tour", "click Report problem"],
-      "tags": ["overlay", "sheet", "form"]
+      "interactions": [
+        "open an active tour",
+        "click Report problem"
+      ],
+      "tags": [
+        "overlay",
+        "sheet",
+        "form"
+      ]
     },
     {
       "snapshotId": "driver-category-modal.png",
@@ -566,8 +886,15 @@
       "scenario": "upload document category modal",
       "state": "overlay:modal",
       "role": "driver",
-      "interactions": ["open an active tour", "click Upload document"],
-      "tags": ["overlay", "modal", "upload"]
+      "interactions": [
+        "open an active tour",
+        "click Upload document"
+      ],
+      "tags": [
+        "overlay",
+        "modal",
+        "upload"
+      ]
     },
     {
       "snapshotId": "driver-daily-limit-sheet.png",
@@ -578,9 +905,12 @@
       "role": "driver",
       "status": "excluded",
       "exclusionReason": "The legacy daily-limit request UI was replaced by the probation progress card. The spec is test.skip and the baseline is intentionally absent until an approved replacement flow exists. Re-registering this scenario requires a product decision, not a baseline update.",
-      "tags": ["overlay", "sheet", "deprecated-flow"]
+      "tags": [
+        "overlay",
+        "sheet",
+        "deprecated-flow"
+      ]
     },
-
     {
       "$comment": [
         "Component-gallery surface. This repository has no Storybook and no",
@@ -597,7 +927,13 @@
       "state": "gallery",
       "role": "n/a",
       "fixture": "gallery page mounts the real shared header per story",
-      "tags": ["component-gallery", "header", "states", "badge", "i18n-long-strings"],
+      "tags": [
+        "component-gallery",
+        "header",
+        "states",
+        "badge",
+        "i18n-long-strings"
+      ],
       "owner": "frontend"
     },
     {
@@ -614,7 +950,12 @@
         "press Tab until the gallery bell is document.activeElement",
         "assert it matches :focus-visible"
       ],
-      "tags": ["component-gallery", "header", "focus-visible", "accessibility"],
+      "tags": [
+        "component-gallery",
+        "header",
+        "focus-visible",
+        "accessibility"
+      ],
       "owner": "frontend"
     },
     {
@@ -626,7 +967,12 @@
       "state": "gallery",
       "role": "n/a",
       "fixture": "gallery page mounts the real filter button driven by committed-filter objects, plus the Badge primitive alone",
-      "tags": ["component-gallery", "filters", "badge", "states"],
+      "tags": [
+        "component-gallery",
+        "filters",
+        "badge",
+        "states"
+      ],
       "owner": "frontend"
     },
     {
@@ -643,20 +989,158 @@
         "press Tab until the gallery filter button is document.activeElement",
         "assert it matches :focus-visible"
       ],
-      "tags": ["component-gallery", "filters", "focus-visible", "accessibility"],
+      "tags": [
+        "component-gallery",
+        "filters",
+        "focus-visible",
+        "accessibility"
+      ],
       "owner": "frontend"
     },
-
     {
       "snapshotId": "admin-infopoint-rename-modal.png",
       "screen": "Infopoint",
       "scenario": "rename document modal",
       "status": "deprecated",
       "exclusionReason": "Superseded by admin-infopoint-edit-doc-modal.png when the rename action became a full edit modal. Its approved Linux baseline is an orphan and should be removed in the next approved baseline update.",
-      "tags": ["overlay", "modal"]
+      "tags": [
+        "overlay",
+        "modal"
+      ]
+    },
+    {
+      "snapshotId": "transport-order-pkw.png",
+      "surface": "document",
+      "route": "/prototype/project/transport-order-pdf.html",
+      "screen": "Transport order PDF",
+      "scenario": "passenger car (PKW) order",
+      "state": "rendered",
+      "role": "n/a",
+      "fixture": "committed transport-order fixture \"pkw\" with a fixed booking instant",
+      "viewport": "document-a4",
+      "mode": "fullPage",
+      "interactions": [
+        "render the \"pkw\" transport-order fixture"
+      ],
+      "tags": [
+        "document",
+        "pdf",
+        "print",
+        "layout"
+      ],
+      "owner": "frontend"
+    },
+    {
+      "snapshotId": "transport-order-lkw-up-to-7-5t.png",
+      "surface": "document",
+      "route": "/prototype/project/transport-order-pdf.html",
+      "screen": "Transport order PDF",
+      "scenario": "truck up to 7.5t order",
+      "state": "rendered",
+      "role": "n/a",
+      "fixture": "committed transport-order fixture \"lkw-up-to-7-5t\" with a fixed booking instant",
+      "viewport": "document-a4",
+      "mode": "fullPage",
+      "interactions": [
+        "render the \"lkw-up-to-7-5t\" transport-order fixture"
+      ],
+      "tags": [
+        "document",
+        "pdf",
+        "print",
+        "layout"
+      ],
+      "owner": "frontend"
+    },
+    {
+      "snapshotId": "transport-order-deregistered.png",
+      "surface": "document",
+      "route": "/prototype/project/transport-order-pdf.html",
+      "screen": "Transport order PDF",
+      "scenario": "deregistered vehicle order",
+      "state": "rendered",
+      "role": "n/a",
+      "fixture": "committed transport-order fixture \"deregistered\" with a fixed booking instant",
+      "viewport": "document-a4",
+      "mode": "fullPage",
+      "interactions": [
+        "render the \"deregistered\" transport-order fixture"
+      ],
+      "tags": [
+        "document",
+        "pdf",
+        "print",
+        "layout"
+      ],
+      "owner": "frontend"
+    },
+    {
+      "snapshotId": "transport-order-optional-missing.png",
+      "surface": "document",
+      "route": "/prototype/project/transport-order-pdf.html",
+      "screen": "Transport order PDF",
+      "scenario": "order with every optional field absent",
+      "state": "rendered",
+      "role": "n/a",
+      "fixture": "committed transport-order fixture \"optional-missing\" with a fixed booking instant",
+      "viewport": "document-a4",
+      "mode": "fullPage",
+      "interactions": [
+        "render the \"optional-missing\" transport-order fixture"
+      ],
+      "tags": [
+        "document",
+        "pdf",
+        "print",
+        "layout"
+      ],
+      "owner": "frontend"
+    },
+    {
+      "snapshotId": "transport-order-long-content.png",
+      "surface": "document",
+      "route": "/prototype/project/transport-order-pdf.html",
+      "screen": "Transport order PDF",
+      "scenario": "order whose content flows onto a continuation page",
+      "state": "rendered",
+      "role": "n/a",
+      "fixture": "committed transport-order fixture \"long-content\" with a fixed booking instant",
+      "viewport": "document-a4",
+      "mode": "fullPage",
+      "interactions": [
+        "render the \"long-content\" transport-order fixture"
+      ],
+      "tags": [
+        "document",
+        "pdf",
+        "print",
+        "layout"
+      ],
+      "owner": "frontend"
+    },
+    {
+      "snapshotId": "transport-order-international-umlauts.png",
+      "surface": "document",
+      "route": "/prototype/project/transport-order-pdf.html",
+      "screen": "Transport order PDF",
+      "scenario": "order with umlauts and international characters",
+      "state": "rendered",
+      "role": "n/a",
+      "fixture": "committed transport-order fixture \"international-umlauts\" with a fixed booking instant",
+      "viewport": "document-a4",
+      "mode": "fullPage",
+      "interactions": [
+        "render the \"international-umlauts\" transport-order fixture"
+      ],
+      "tags": [
+        "document",
+        "pdf",
+        "print",
+        "layout"
+      ],
+      "owner": "frontend"
     }
   ],
-
   "$plannedComment": [
     "Registered-but-not-yet-approved coverage. These entries are the honest record",
     "of what this framework does NOT yet prove. They are reported as MISSING",
@@ -664,14 +1148,16 @@
     "the Visual Regression Baseline workflow and approved. They become `active`",
     "in the same commit that adds their approved baseline."
   ],
-
   "planned": [
     {
       "id": "viewport-mode-sticky-chrome",
       "reason": "51 of the 53 registered captures are page-level fullPage: true; the other 2 are locator captures of a component gallery. NOTHING is captured in viewport mode. A full-page render stitches the document at its full height, so it cannot prove that the Driver PWA fixed bottom tabbar, the admin sticky job sidebars, or a sticky table header sit correctly at real viewport height.",
       "mode": "viewport",
       "expands": {
-        "surfaces": ["driver", "admin"],
+        "surfaces": [
+          "driver",
+          "admin"
+        ],
         "screens": [
           "Marketplace",
           "My jobs",
@@ -688,8 +1174,15 @@
       "reason": "Sticky headers, sticky validation summaries, and the fixed bottom navigation change appearance while scrolling. A single capture at scroll offset 0 cannot detect a sticky element that detaches mid-scroll.",
       "mode": "segmentedScroll",
       "expands": {
-        "surfaces": ["driver", "admin"],
-        "screens": ["Job overview", "New job form", "My jobs"]
+        "surfaces": [
+          "driver",
+          "admin"
+        ],
+        "screens": [
+          "Job overview",
+          "New job form",
+          "My jobs"
+        ]
       },
       "owner": "frontend"
     },
@@ -697,14 +1190,18 @@
       "id": "locale-de-matrix",
       "reason": "German is the longest-translation locale and the wrapping risk case, but no snapshot is captured in DE. Localization-sensitive screens (tabbars, table headers, dialog action rows, settings toggles) need a DE matrix.",
       "locale": "de",
-      "expands": { "profileFrom": "smoke-plus-overlays" },
+      "expands": {
+        "profileFrom": "smoke-plus-overlays"
+      },
       "owner": "frontend"
     },
     {
       "id": "theme-dark-matrix",
       "reason": "Dark is a production theme with its own tabbar box-shadow treatment, but every baseline is light-only.",
       "theme": "dark",
-      "expands": { "profileFrom": "smoke-plus-overlays" },
+      "expands": {
+        "profileFrom": "smoke-plus-overlays"
+      },
       "owner": "frontend"
     },
     {
@@ -713,8 +1210,18 @@
       "surface": "driver-pwa-standalone",
       "route": "/pwa/",
       "expands": {
-        "routes": ["/pwa/?tab=portal", "/pwa/?tab=mine", "/pwa/?tab=info", "/pwa/?tab=profile"],
-        "viewports": ["phone-320", "phone-390", "phone-430", "tablet-834"]
+        "routes": [
+          "/pwa/?tab=portal",
+          "/pwa/?tab=mine",
+          "/pwa/?tab=info",
+          "/pwa/?tab=profile"
+        ],
+        "viewports": [
+          "phone-320",
+          "phone-390",
+          "phone-430",
+          "tablet-834"
+        ]
       },
       "owner": "frontend"
     },
@@ -722,7 +1229,11 @@
       "id": "admin-large-desktop",
       "reason": "The admin console is only captured at 1440px. A large-desktop width changes table column visibility and sidebar proportions.",
       "viewport": "desktop-1920",
-      "expands": { "surfaces": ["admin"] },
+      "expands": {
+        "surfaces": [
+          "admin"
+        ]
+      },
       "owner": "frontend"
     },
     {

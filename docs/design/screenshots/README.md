@@ -61,7 +61,7 @@ Dark captures are required wherever a screen has dark-specific styling; otherwis
 
 ## Playwright integration
 
-`tests/regression/*.visual.spec.ts` already snapshots most of these states EN/light at the desktop viewport (`npm run test:regression:visual`; update via `npm run test:regression:visual:update`). Production autheon-fe should add 375px-viewport diffs against these baselines. Screenshots remain optional for CI in the prototype repo.
+`tests/regression/*.visual.spec.ts` already snapshots most of these states EN/light at the desktop viewport (`npm run test:regression:visual`; update via `npm run test:regression:baseline`). Production autheon-fe should add 375px-viewport diffs against these baselines. Screenshots remain optional for CI in the prototype repo.
 
 ## Open design decisions affecting baselines
 

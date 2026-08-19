@@ -209,10 +209,10 @@ Linux baselines on a non-Linux host.
 npm run test:regression:ci
 
 # Narrow to the smoke set while iterating.
-npm run test:regression:smoke
+npm run test:regression:ci -- --profile smoke
 
 # Keep a trace and video for EVERY scenario, not just failures.
-npm run test:regression:diagnostic
+npm run test:regression:ci -- --profile diagnostic --diagnostic
 
 # Skip the image rebuild when only test code changed.
 npm run test:regression:ci -- --no-build
@@ -238,8 +238,8 @@ report is labeled non-canonical:
 
 ```bash
 export VISUAL_REGRESSION_APPROVED_PLATFORM=darwin
-npm run test:regression:baseline:manifest      # writes baseline-manifest.darwin.json
-npm run test:regression:visual:ci -- --profile smoke
+node scripts/visual-baseline-manifest.mjs --write      # writes baseline-manifest.darwin.json
+node scripts/visual-regression-ci.mjs -- --profile smoke
 ```
 
 Never approve a baseline produced this way. Only `linux` baselines rendered in

@@ -189,7 +189,7 @@ Do not just delete the file. In one reviewed commit:
    `tests/regression/visual-coverage.manifest.json` and give it an
    `exclusionReason`. The registry rejects a deprecated entry without one.
 2. Delete the `*-linux.png` file.
-3. Run `npm run test:regression:baseline:manifest` to drop it from the manifest.
+3. Run `node scripts/visual-baseline-manifest.mjs --write` to drop it from the manifest.
 4. Commit all three changes together.
 
 Until step 2, the coverage audit reports the file as an **orphan baseline** — a
@@ -207,11 +207,11 @@ with a reason and is reported on every run, awaiting the next approved update.
 | --- | --- | --- |
 | `npm run test:regression:baseline` | Render candidates in Docker/Linux | Local (needs Docker) or the workflow |
 | `npm run test:regression:baseline:approve` | Promote reviewed candidates + regenerate the manifest | Local only, after review |
-| `npm run test:regression:baseline:manifest` | Regenerate the provenance record | Local |
+| `node scripts/visual-baseline-manifest.mjs --write` | Regenerate the provenance record | Local |
 | `npm run test:regression:baseline:verify` | Verify images against the manifest | Local and CI preflight |
 | `npm run test:regression:coverage` | Report coverage, orphans, and gaps | Local and CI |
 
-`npm run test:regression:update` (raw `--update-snapshots`) still exists for the
+`npm run test:regression:baseline` (raw `--update-snapshots`) still exists for the
 non-visual regression signals. **It is not the visual baseline path**: run on
 macOS it writes Darwin PNGs that CI will never use.
 

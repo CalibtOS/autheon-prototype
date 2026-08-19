@@ -67,7 +67,7 @@ npm run test:regression
 Run visual regression in CI artifact mode:
 
 ```bash
-npm run test:regression:visual:ci
+node scripts/visual-regression-ci.mjs
 ```
 
 This creates `visual-regression-artifacts/autheon-visual-regression-artifact.tar.gz`
@@ -89,13 +89,13 @@ Baseline lifecycle:
 
 ```text
 First-time platform setup:
-  npm run test:regression:visual:baseline:docker   # generate CANDIDATES
+  npm run test:regression:baseline   # generate CANDIDATES
   review visual-regression-artifacts/docker-ci/baseline-candidates/
-  npm run test:regression:visual:baseline:approve  # promote into tests/regression/snapshots
+  npm run test:regression:baseline:approve  # promote into tests/regression/snapshots
   git commit the snapshot changes                  # approval is final only when committed
 
 Normal CI run:
-  npm run test:regression:visual:docker-ci         # compare against approved Linux baselines
+  npm run test:regression:ci         # compare against approved Linux baselines
 
 Intentional UI change:
   review expected/actual/diff in the report, then regenerate candidates,
@@ -111,7 +111,7 @@ baselines (committed snapshots), baseline candidates
 (`test-results/**-actual.png`), and diff images (`test-results/**-diff.png`).
 
 For local development on macOS, run the visual suite through Docker
-(`npm run test:regression:visual:docker-ci`) so every comparison uses the one
+(`npm run test:regression:ci`) so every comparison uses the one
 canonical rendering environment. Native `npm run test:regression:visual` runs
 on a Mac compare against `*-chromium-darwin.png` baselines and are only
 meaningful if that legacy Darwin baseline set is kept up to date.
@@ -119,11 +119,11 @@ meaningful if that legacy Darwin baseline set is kept up to date.
 Run the local Docker-based CI simulation:
 
 ```bash
-REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:visual:docker-ci
+REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:ci
 ```
 
 This builds `autheon-visual-regression-ci:local`, installs dependencies with
-`npm ci` inside the image, runs `npm run test:regression:visual:ci` (visual
+`npm ci` inside the image, runs `node scripts/visual-regression-ci.mjs` (visual
 suite retries default to 0 — screenshot mismatches are deterministic, so
 retrying them only repeats the identical failure; override with
 `VISUAL_REGRESSION_RETRIES`), sends or dry-runs the notification email, and
@@ -190,23 +190,23 @@ Safe local validation commands:
 
 ```bash
 # Warning path: known visual differences should exit 0 and dry-run a warning email.
-REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:visual:docker-ci
+REGRESSION_NOTIFICATION_DRY_RUN=true npm run test:regression:ci
 
 # Failure path: missing test dir simulates a real execution failure and exits non-zero.
 REGRESSION_NOTIFICATION_DRY_RUN=true \
 VISUAL_REGRESSION_TEST_DIR=tests/regression/__missing__ \
-npm run test:regression:visual:docker-ci
+npm run test:regression:ci
 ```
 
 Update regression baselines after approved UI/accessibility changes:
 
 ```bash
 # Canonical Docker/Linux visual baselines (candidates -> review -> approve -> commit):
-npm run test:regression:visual:baseline:docker
-npm run test:regression:visual:baseline:approve
+npm run test:regression:baseline
+npm run test:regression:baseline:approve
 
 # Local-platform (non-visual or Darwin) baselines:
-npm run test:regression:update
+npm run test:regression:baseline
 ```
 
 Open the HTML report:
@@ -290,7 +290,7 @@ Evidence artifacts help debugging. Screenshots, HTML, current URL, failure summa
 
 Do not update snapshots automatically in CI.
 
-Only run `npm run test:regression:update` after reviewing the visual or ARIA diff and deciding the changed behavior is expected. Snapshot updates approve the new expected behavior.
+Only run `npm run test:regression:baseline` after reviewing the visual or ARIA diff and deciding the changed behavior is expected. Snapshot updates approve the new expected behavior.
 
 ## Known prototype limitations
 

@@ -72,3 +72,6 @@ lpt[1-9]
 LPT[1-9]
 # PDF generation: cached OFL font faces (build input, never committed)
 tools/pdf/.fonts/
+
+# Third-party runtime libs the visual suite serves locally instead of from unpkg.com.
+tests/regression/.vendor-cache/

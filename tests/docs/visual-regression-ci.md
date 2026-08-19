@@ -211,12 +211,12 @@ visual difference as an execution failure.
 | `npm run test:regression` | Full regression suite, chromium, locally |
 | `npm run test:regression:visual` | Visual specs only, no CI wrapper |
 | `npm run test:regression:ci` | **The pipeline.** Docker/Linux, classify, archive, notify |
-| `npm run test:regression:full` | Pipeline, `full` profile (the default) |
-| `npm run test:regression:smoke` | Pipeline, `smoke` profile |
-| `npm run test:regression:diagnostic` | Pipeline with traces/video for every scenario |
+| `npm run test:regression:ci` | Pipeline, `full` profile (the default) |
+| `npm run test:regression:ci -- --profile smoke` | Pipeline, `smoke` profile |
+| `npm run test:regression:ci -- --profile diagnostic --diagnostic` | Pipeline with traces/video for every scenario |
 | `npm run test:regression:baseline` | Render baseline candidates (approves nothing) |
 | `npm run test:regression:baseline:approve` | Promote reviewed candidates + regenerate the manifest |
-| `npm run test:regression:baseline:manifest` | Regenerate the provenance record |
+| `node scripts/visual-baseline-manifest.mjs --write` | Regenerate the provenance record |
 | `npm run test:regression:baseline:verify` | Verify approved images against the manifest |
 | `npm run test:regression:coverage` | Coverage audit: gaps, orphans, duplicates |
 | `npm run test:regression:notify-check` | SMTP smoke check (verify-only) |
@@ -227,13 +227,13 @@ nothing that already calls them breaks:
 
 | Legacy name | Now equivalent to |
 | --- | --- |
-| `test:regression:visual:docker-ci` | `test:regression:ci` |
-| `test:regression:visual:baseline:docker` | `test:regression:baseline` |
-| `test:regression:visual:baseline:approve` | `test:regression:baseline:approve` |
-| `test:regression:visual:ci` | in-container wrapper (unchanged; called directly by the entrypoint) |
-| `test:regression:visual:notify` | notifier (unchanged) |
+| `test:regression:ci` | `test:regression:ci` |
+| `test:regression:baseline` | `test:regression:baseline` |
+| `test:regression:baseline:approve` | `test:regression:baseline:approve` |
+| `scripts/visual-regression-ci.mjs` | in-container wrapper (unchanged; called directly by the entrypoint) |
+| `scripts/notify-visual-regression.mjs` | notifier (unchanged) |
 
-`test:regression:visual:update` was removed. It wrote Darwin PNGs on macOS, which
+`test:regression:baseline` was removed. It wrote Darwin PNGs on macOS, which
 CI never uses, so it looked like a baseline update while producing nothing usable.
 Use `test:regression:baseline` + `:approve`.
 

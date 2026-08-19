@@ -93,6 +93,27 @@ export async function openAdminSection(
 }
 
 /**
+ * Click a tab inside the currently open Admin pane.
+ *
+ * Two admin panes now group what used to be separate left-nav entries behind
+ * `role="tab"` switches:
+ *
+ *   Service Partners -> "Service Partners" | "Profile change requests"
+ *   Customer Center  -> "Customers"        | "Addresses"
+ *
+ * Scoped to `role=tab` rather than any button, because the Service Partners nav
+ * item and its default tab share the same label — an unscoped lookup would match
+ * both and be ambiguous.
+ */
+export async function openAdminPaneTab(page: Page, label: RegExp): Promise<void> {
+  await prototypeFrame(page)
+    .locator('.tabs')
+    .getByRole('tab', { name: label })
+    .click();
+  await settleForCapture(page);
+}
+
+/**
  * Wait for an open dialog/sheet to be fully mounted and visible before
  * capturing it. Uses the shared modal container classes in the prototype.
  */

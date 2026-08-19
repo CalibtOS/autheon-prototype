@@ -13,38 +13,23 @@
     "test:e2e:debug": "playwright test --debug",
     "test:smoke": "playwright test tests/e2e/smoke --project=chromium",
     "test:regression": "playwright test tests/regression --project=chromium",
-    "test:regression:update": "playwright test tests/regression --update-snapshots --project=chromium",
     "test:regression:visual": "playwright test tests/regression --grep @visual-regression --project=chromium",
-    "test:regression:visual:update": "playwright test tests/regression --grep @visual-regression --update-snapshots --project=chromium",
     "pdf:fonts": "node tools/pdf/fetch-fonts.mjs",
     "pdf:generate": "node tools/pdf/generate-transport-order-pdfs.mjs",
     "pdf:render": "node tools/pdf/render-pdf.mjs visual-regression-artifacts/transport-order-pdf/png visual-regression-artifacts/transport-order-pdf/*.pdf",
     "pdf:refs": "node tools/pdf/render-pdf.mjs visual-regression-artifacts/reference-templates \"references/Maschinelle Auftragsvorlage_PKW.pdf\" \"references/Maschinelle Auftragsvorlage_LKW.pdf\"",
     "pdf:verify": "npm run pdf:generate && npm run pdf:render && playwright test tests/regression/transport-order-pdf --project=chromium",
-
     "test:regression:ci": "node scripts/run-visual-regression-docker-ci.mjs",
-    "test:regression:full": "node scripts/run-visual-regression-docker-ci.mjs --profile full",
-    "test:regression:smoke": "node scripts/run-visual-regression-docker-ci.mjs --profile smoke",
-    "test:regression:diagnostic": "node scripts/run-visual-regression-docker-ci.mjs --profile diagnostic --diagnostic",
-
     "test:regression:baseline": "node scripts/run-visual-regression-docker-ci.mjs --baseline",
     "test:regression:baseline:approve": "node scripts/approve-visual-baselines.mjs",
-    "test:regression:baseline:manifest": "node scripts/visual-baseline-manifest.mjs --write",
     "test:regression:baseline:verify": "node scripts/visual-baseline-manifest.mjs --verify",
-
     "test:regression:coverage": "node scripts/visual-coverage-audit.mjs",
     "test:regression:notify-check": "node scripts/visual-regression-notify-check.mjs --verify-only",
-
-    "test:regression:visual:ci": "node scripts/visual-regression-ci.mjs",
-    "test:regression:visual:ci:strict": "node scripts/visual-regression-ci.mjs --strict",
-    "test:regression:visual:docker-ci": "node scripts/run-visual-regression-docker-ci.mjs",
-    "test:regression:visual:baseline:docker": "node scripts/run-visual-regression-docker-ci.mjs --baseline",
-    "test:regression:visual:baseline:approve": "node scripts/approve-visual-baselines.mjs",
-    "test:regression:visual:notify": "node scripts/notify-visual-regression.mjs",
     "test:report": "playwright show-report",
     "test:install-browsers": "playwright install chromium",
     "test:list": "playwright test --list",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:regression:vendor": "node scripts/warm-vendor-cache.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.55.1",

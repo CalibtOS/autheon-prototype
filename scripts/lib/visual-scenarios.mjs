@@ -71,6 +71,16 @@ export async function discoverSpecSnapshots({ grep = '@visual-regression' } = {}
       const callMatch = SCREENSHOT_CALL.exec(line);
       if (!callMatch) continue;
 
+      // A snapshot name built from a loop variable, e.g.
+      //   for (const key of ['pkw', 'lkw'] as const)
+      //     await expect(page).toHaveScreenshot(`transport-order-${key}.png`)
+      //
+      // Without expansion the scan yields the literal `transport-order-${key}.png`
+      // — one snapshot ID that does not exist — while the real per-key snapshots
+      // stay invisible to the registry and their approved baselines look like
+      // orphans forever. Resolve the loop's string literals instead.
+      const names = expandSnapshotName(callMatch[2], lines, index);
+
       // Options can span a few lines after the call; read a small window.
       const optionsWindow = lines.slice(index, index + 8).join('\n');
       const fullPage = /fullPage:\s*true/.test(optionsWindow);
@@ -83,23 +93,105 @@ export async function discoverSpecSnapshots({ grep = '@visual-regression' } = {}
       const pageSubject = /expect\(\s*page\s*\)/.test(subjectWindow);
       const mode = pageSubject ? (fullPage ? 'fullPage' : 'viewport') : 'locator';
 
-      snapshots.push({
-        snapshotId: callMatch[2],
-        spec: toWorkspacePath(filePath),
-        line: index + 1,
-        describeTitle,
-        testTitle,
-        skipped: testSkipped,
-        tagged: describeTagged || testTagged,
-        mode,
-        fullPage,
-        masked: /\bmask:/.test(optionsWindow),
-        clipped: /\bclip:/.test(optionsWindow),
-      });
+      for (const snapshotId of names) {
+        snapshots.push({
+          snapshotId,
+          spec: toWorkspacePath(filePath),
+          line: index + 1,
+          describeTitle,
+          testTitle,
+          skipped: testSkipped,
+          tagged: describeTagged || testTagged,
+          mode,
+          fullPage,
+          masked: /\bmask:/.test(optionsWindow),
+          clipped: /\bclip:/.test(optionsWindow),
+        });
+      }
     }
   }
 
   return snapshots;
+}
+
+const TEMPLATE_SLOT = /\$\{\s*([A-Za-z_$][\w$]*)\s*\}/g;
+
+/**
+ * Expand a snapshot name that interpolates a loop variable.
+ *
+ * Handles the one shape the suite actually uses — a `for (const <var> of [...])`
+ * over string literals, enclosing the `toHaveScreenshot()` call:
+ *
+ *   for (const key of ['pkw', 'lkw-over-7-5t'] as const) {
+ *     await expect(page).toHaveScreenshot(`transport-order-${key}.png`, { ... });
+ *   }
+ *
+ * Returns one name per literal. A name with no interpolation returns itself, and
+ * an interpolation whose loop cannot be resolved returns the raw name unchanged —
+ * so it surfaces as an unregistered snapshot finding rather than disappearing
+ * silently. That is the honest failure mode: a coverage gap you can see.
+ */
+function expandSnapshotName(rawName, lines, callIndex) {
+  TEMPLATE_SLOT.lastIndex = 0;
+  const slots = [...rawName.matchAll(TEMPLATE_SLOT)].map((match) => match[1]);
+  if (slots.length === 0) return [rawName];
+
+  let names = [rawName];
+
+  for (const variable of new Set(slots)) {
+    const values = findLoopLiterals(variable, lines, callIndex);
+    if (values.length === 0) return [rawName];
+
+    names = names.flatMap((name) =>
+      values.map((value) =>
+        name.replace(new RegExp(`\\$\\{\\s*${variable}\\s*\\}`, 'g'), value),
+      ),
+    );
+  }
+
+  return names;
+}
+
+/**
+ * String literals a `for (const <variable> of [...])` above this line iterates.
+ *
+ * Scans upward from the call, which is enough for a spec-local loop and avoids
+ * pulling a TypeScript parser into a static prototype for one construct.
+ */
+function findLoopLiterals(variable, lines, callIndex) {
+  const opener = new RegExp(
+    `for\\s*\\(\\s*(?:const|let|var)\\s+${variable}\\s+of\\s*\\[`,
+  );
+
+  for (let index = callIndex; index >= 0; index -= 1) {
+    if (!opener.test(lines[index])) continue;
+
+    // Collect literals from the opening bracket until it closes.
+    const window = lines.slice(index, callIndex + 1).join('\n');
+    const start = window.indexOf('[');
+    if (start < 0) return [];
+
+    let depth = 0;
+    let end = -1;
+    for (let position = start; position < window.length; position += 1) {
+      const character = window[position];
+      if (character === '[') depth += 1;
+      else if (character === ']') {
+        depth -= 1;
+        if (depth === 0) {
+          end = position;
+          break;
+        }
+      }
+    }
+    if (end < 0) return [];
+
+    return [...window.slice(start, end).matchAll(/['"]([^'"]+)['"]/g)].map(
+      (match) => match[1],
+    );
+  }
+
+  return [];
 }
 
 /** Snapshot IDs declared more than once across the visual specs. */
