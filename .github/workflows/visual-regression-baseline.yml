@@ -1,0 +1,138 @@
+name: Visual Regression Baseline
+
+# Renders approved-baseline CANDIDATES in the canonical Docker/Linux image and
+# publishes them for human review. Nothing here approves anything.
+#
+# Why this workflow exists
+# ------------------------
+# Approved baselines must be rendered in the same Linux/Chromium environment CI
+# compares in. Requiring every developer to have a working local Docker daemon
+# made that a bottleneck, and macOS-rendered PNGs are useless as baselines
+# (different font rasterisation -> 1-3% false diffs on every text-bearing
+# screen). This workflow gives the same deterministic image to anyone with
+# permission to dispatch it.
+#
+# Approval is a separate, human, local step:
+#   1. dispatch this workflow
+#   2. download the `visual-regression-baseline-candidates` artifact
+#   3. REVIEW every added/changed image against the old-vs-candidate report
+#   4. extract into visual-regression-artifacts/docker-ci/baseline-candidates/
+#   5. npm run test:regression:baseline:approve
+#   6. commit the changed snapshots + regenerated baseline-manifest.json
+#
+# The workflow cannot write to the repository: its token is read-only. That is
+# deliberate — an automated baseline commit is indistinguishable from approving
+# whatever the branch currently renders, including a blank page from a broken
+# fixture.
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Scenario set to render candidates for'
+        type: choice
+        default: full
+        options: [full, smoke]
+      reason:
+        description: 'Why are baselines being regenerated? (recorded in the candidate manifest)'
+        type: string
+        required: true
+
+concurrency:
+  group: visual-regression-baseline-${{ github.ref }}
+  cancel-in-progress: false
+
+# Read-only. See the note above: this workflow deliberately cannot approve.
+permissions:
+  contents: read
+
+jobs:
+  render-candidates:
+    name: render-baseline-candidates
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    env:
+      VISUAL_REGRESSION_PROFILE: ${{ inputs.profile }}
+      BASELINE_REASON: ${{ inputs.reason }}
+      CANDIDATE_DIR: visual-regression-artifacts/docker-ci/baseline-candidates
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install launcher dependencies
+        run: npm ci
+
+      # Snapshot the CURRENT approved set so the review report can show
+      # added / changed / removed / renamed instead of just "here are 46 PNGs".
+      - name: Record current approved baselines
+        run: |
+          mkdir -p /tmp/baseline-before
+          if [ -d tests/regression/snapshots ]; then
+            cp -R tests/regression/snapshots/. /tmp/baseline-before/
+          fi
+          node scripts/visual-baseline-manifest.mjs --verify --json > /tmp/baseline-before/verify.json || true
+
+      - name: Render baseline candidates (Docker/Linux)
+        id: render
+        run: |
+          set +e
+          npm run test:regression:baseline
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+
+      - name: Build old-vs-candidate review report
+        if: always()
+        env:
+          BASELINE_BEFORE_DIR: /tmp/baseline-before
+        run: |
+          node scripts/visual-baseline-review.mjs \
+            --before /tmp/baseline-before \
+            --candidates "${CANDIDATE_DIR}" \
+            --reason "${BASELINE_REASON}" \
+            --out "${CANDIDATE_DIR}/review"
+
+      - name: Upload baseline candidates for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-baseline-candidates
+          path: |
+            visual-regression-artifacts/docker-ci/baseline-candidates/**
+          if-no-files-found: error
+          retention-days: 30
+
+      # Traces/report from the candidate run. A candidate rendered by a test that
+      # limped through a broken selector is exactly what must not be approved,
+      # so the evidence to spot it travels with the candidates.
+      - name: Upload candidate run diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-baseline-diagnostics
+          path: |
+            visual-regression-artifacts/docker-ci/visual-regression-artifact/playwright-report/**
+            visual-regression-artifacts/docker-ci/visual-regression-artifact/test-results/**
+            visual-regression-artifacts/docker-ci/visual-regression-summary/**
+          if-no-files-found: warn
+          retention-days: 30
+
+      # A non-zero render exit is blocking. Candidates from a run that failed
+      # part-way are the classic source of accidental mass approval: broken CSS,
+      # missing fonts, a failed fixture, or a blank page all produce a PNG.
+      - name: Fail if candidate rendering did not complete cleanly
+        if: always()
+        run: |
+          if [ "${{ steps.render.outputs.exit_code }}" != "0" ]; then
+            echo "::error title=Baseline candidate rendering failed::The candidate run exited ${{ steps.render.outputs.exit_code }}. Do NOT approve these candidates. Open the visual-regression-baseline-diagnostics artifact and fix the run first."
+            exit 1
+          fi

@@ -22,7 +22,28 @@ const DISABLE_ANIMATIONS_STYLE = `
 
 export async function gotoPrototype(page: Page, path = '/'): Promise<void> {
   await page.goto(path, { waitUntil: 'domcontentloaded' });
+  await assertServingAutheon(page);
   await waitForPrototypeShell(page);
+}
+
+/**
+ * Confirm the base URL really serves AUTHEON before anything is captured.
+ *
+ * `webServer.reuseExistingServer` is true, so an unrelated process already
+ * listening on the dev port is reused silently. Without this check a visual run
+ * can compare approved AUTHEON baselines against a completely different
+ * application and report the result as a set of visual differences.
+ */
+async function assertServingAutheon(page: Page): Promise<void> {
+  const title = await page.title();
+
+  if (/AUTHEON/i.test(title)) return;
+
+  throw new Error(
+    `The base URL ${page.url()} is not serving the AUTHEON prototype (document title: "${title}"). ` +
+      'Another process is probably already listening on the dev port and was reused by ' +
+      'webServer.reuseExistingServer. Stop it, or set E2E_PORT / E2E_BASE_URL to the right target.',
+  );
 }
 
 export async function waitForPrototypeShell(page: Page): Promise<void> {

@@ -1,0 +1,118 @@
+name: Visual Regression Notification Check
+
+# Manually verifies that visual regression email notifications are configured
+# and deliverable, WITHOUT running the visual suite.
+#
+# Use this after adding or rotating SMTP secrets. It answers three questions in
+# one run:
+#   1. Are the required variables present? (reported by NAME, never by value)
+#   2. Does the SMTP connection and do the credentials work?
+#   3. Do the approved baselines exist? — because email working while the
+#      baseline set is empty still means CI blocks.
+#
+# workflow_dispatch only. An untrusted fork PR can never trigger it, so the
+# repository secrets are never exposed to fork-provided code.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'How far to go'
+        type: choice
+        default: verify-only
+        options:
+          - dry-run       # report configuration presence only; no network
+          - verify-only   # connect and authenticate; send nothing
+          - send          # connect and send a clearly-labelled test message
+
+concurrency:
+  group: visual-regression-notification-check
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  notification-check:
+    name: notification-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      # SMTP_PASSWORD is the only value in GitHub Secrets. The rest are committed
+      # routing values; keep them in sync with NOTIFICATION_DEFAULTS in
+      # scripts/lib/smtp-preflight.mjs and with the Visual Regression workflow.
+      SMTP_HOST: smtppro.zoho.eu
+      SMTP_USER: youssef.elkondakly@calibtos.com
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP_FROM: youssef.elkondakly@calibtos.com
+      REGRESSION_NOTIFICATION_EMAIL: calibtos.services@gmail.com
+      SMTP_PORT: 465
+      SMTP_SECURE: true
+      REGRESSION_ARTIFACT_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run notification check
+        id: check
+        run: |
+          case "${{ inputs.mode }}" in
+            dry-run)     FLAG="--dry-run" ;;
+            verify-only) FLAG="--verify-only" ;;
+            send)        FLAG="" ;;
+            *)           echo "::error::Unknown mode ${{ inputs.mode }}"; exit 1 ;;
+          esac
+
+          node scripts/visual-regression-notify-check.mjs $FLAG
+
+      - name: Write job summary
+        if: always()
+        run: |
+          REPORT="visual-regression-artifacts/notification-check/notification-check.json"
+
+          {
+            echo "## Visual Regression Notification Check"
+            echo ""
+            echo "- Mode: \`${{ inputs.mode }}\`"
+            echo "- Result: \`${{ steps.check.outcome }}\`"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f "$REPORT" ]; then
+            {
+              echo "<details><summary>notification-check.json</summary>"
+              echo ""
+              echo '```json'
+              cat "$REPORT"
+              echo '```'
+              echo ""
+              echo "</details>"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No report file was produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # The report records only variable NAMES, derived port/secure flags, and a
+      # classified failure kind. It never contains a host, user, password, or
+      # address, so it is safe to publish as an artifact.
+      - name: Upload notification check report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-notification-check
+          path: visual-regression-artifacts/notification-check/**
+          if-no-files-found: error
+          retention-days: 7

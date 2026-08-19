@@ -54,7 +54,7 @@ async function openMyJobsExecution(page: import('@playwright/test').Page) {
 }
 
 test.describe('Driver PWA visual regression @visual-regression', () => {
-  test('marketplace screen', async ({ page }) => {
+  test('marketplace screen @visual-smoke', async ({ page }) => {
     await prepareDriverVisual(page);
     await expect(page).toHaveScreenshot('driver-marketplace.png', {
       fullPage: true,
@@ -80,10 +80,31 @@ test.describe('Driver PWA visual regression @visual-regression', () => {
     await settleForCapture(page);
   }
 
+  /**
+   * Commit a postal-area filter.
+   *
+   * The PLZ fields are chip inputs, not plain text inputs: typing sets a draft,
+   * and the two-digit prefix only becomes an applied filter once it is added.
+   * `fill()` alone therefore leaves the applied count at 0 and the badge absent,
+   * because `Badge` renders nothing for a count of 0. Targeted by the stable
+   * element id rather than `.input` position, so adding another field to the
+   * sheet cannot silently repoint this at the wrong control.
+   */
+  async function addPostalArea(
+    panel: import('@playwright/test').Locator,
+    field: 'pickup' | 'delivery',
+    prefix: string,
+  ) {
+    const input = panel.locator(`#filter-${field}-plz`);
+    await input.fill(prefix);
+    await input.press('Enter');
+    await expect(panel.locator('.filter-plz-pill').filter({ hasText: prefix })).toBeVisible();
+  }
+
   test('marketplace — one applied filter (badge = 1)', async ({ page }) => {
     await prepareDriverVisual(page);
     await applyMarketplaceFilters(page, async (panel) => {
-      await panel.locator('.input').first().fill('80');
+      await addPostalArea(panel, 'pickup', '80');
     });
     await expect(
       prototypeFrame(page).locator('.header-filter-btn .header-btn-badge'),
@@ -97,8 +118,8 @@ test.describe('Driver PWA visual regression @visual-regression', () => {
   test('marketplace — multiple applied filters (badge = 3)', async ({ page }) => {
     await prepareDriverVisual(page);
     await applyMarketplaceFilters(page, async (panel) => {
-      await panel.locator('.input').nth(0).fill('80');
-      await panel.locator('.input').nth(1).fill('10');
+      await addPostalArea(panel, 'pickup', '80');
+      await addPostalArea(panel, 'delivery', '10');
       await panel.locator('.chip-btn').filter({ hasText: 'Passenger car' }).first().click();
     });
     await expect(
@@ -218,7 +239,10 @@ test.describe('Driver PWA visual regression @visual-regression', () => {
     await expect(page).toHaveScreenshot('driver-report-problem-sheet.png', { fullPage: true });
   });
 
-  test('daily limit request sheet popup', async ({ page }) => {
+  test.skip('daily limit request sheet popup', async ({ page }) => {
+    // Legacy daily-limit request UI was replaced by the probation progress
+    // card. Keep this baseline out of CI until an approved replacement flow is
+    // added instead of letting a dead selector fail as an execution error.
     await prepareDriverVisual(page);
     await openDriverTab(page, TAB.profile);
     await prototypeFrame(page)
@@ -231,8 +255,19 @@ test.describe('Driver PWA visual regression @visual-regression', () => {
   test('upload document category modal popup', async ({ page }) => {
     await prepareDriverVisual(page);
     await openMyJobsExecution(page);
+
+    // Tour-document upload moved out of the job-detail body into the execution
+    // screen's "My documents" tab, behind a fixed bottom upload bar. The old
+    // in-body control (`JobTourDocuments`) is still defined in driver.jsx but is
+    // no longer rendered anywhere, so looking for it found nothing.
     await prototypeFrame(page)
-      .getByRole('button', { name: /Upload document|Dokument \/ Beleg hochladen/i })
+      .getByRole('tab', { name: /My documents|Meine Dokumente/i })
+      .click();
+    await settleForCapture(page);
+
+    await prototypeFrame(page)
+      .locator('.mydocs-upload-bar')
+      .getByRole('button', { name: /Upload document|Dokument hochladen/i })
       .click();
     await waitForOpenDialog(page);
     await expect(page).toHaveScreenshot('driver-category-modal.png', { fullPage: true });

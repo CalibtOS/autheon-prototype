@@ -5,12 +5,31 @@ import {
   type ConsoleErrorCollector,
 } from '../collectors/console-errors.ts';
 import { attachFailureEvidence, attachJsonEvidence } from '../evidence/attachments.ts';
+import { installVendorRoutes } from './vendor-cache.ts';
 
 type PrototypeFixtures = {
   consoleErrors: ConsoleErrorCollector;
+  vendorCache: void;
 };
 
 export const test = base.extend<PrototypeFixtures>({
+  /**
+   * Serve the prototype's pinned React/Babel/pdf.js from a local cache instead of
+   * unpkg.com.
+   *
+   * `auto` so EVERY test gets it without opting in. The prototype transpiles JSX
+   * in the browser, so a throttled or failed CDN request means the page renders
+   * nothing at all — which previously surfaced as three unrelated-looking spec
+   * failures late in a full run while the same specs passed in isolation.
+   */
+  vendorCache: [
+    async ({ page }, use) => {
+      await installVendorRoutes(page);
+      await use();
+    },
+    { auto: true },
+  ],
+
   consoleErrors: async ({ page }, use, testInfo) => {
     const collector = startConsoleErrorCollector(page);
     let thrown: Error | undefined;

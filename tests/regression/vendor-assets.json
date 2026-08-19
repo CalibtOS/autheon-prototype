@@ -1,0 +1,27 @@
+{
+  "$comment": [
+    "Third-party runtime assets the prototype pages load from unpkg.com, pinned.",
+    "",
+    "The prototype is bundler-less: six pages under prototype/ and pwa/ pull React,",
+    "ReactDOM, Babel Standalone and pdf.js from the CDN at runtime and transpile JSX",
+    "in the browser. That is ~5.5 MB per page load, so a 53-test visual run made",
+    "150+ CDN requests and got throttled partway through — the scripts then failed,",
+    "React never mounted, and specs failed before reaching their screenshot",
+    "assertion. The visual suite therefore serves these from a local cache.",
+    "",
+    "This file is DATA read by two consumers that cannot import each other:",
+    "  tests/regression/support/fixtures/vendor-cache.ts  (CommonJS, via Playwright)",
+    "  scripts/warm-vendor-cache.mjs                     (ES module, via node)",
+    "",
+    "`npm run test:regression:vendor` fails if a page requests something absent",
+    "here, so this list and the pages cannot drift apart silently."
+  ],
+  "cacheDir": "tests/regression/.vendor-cache",
+  "assets": [
+    "https://unpkg.com/react@18.3.1/umd/react.development.js",
+    "https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js",
+    "https://unpkg.com/@babel/standalone@7.29.0/babel.min.js",
+    "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js",
+    "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js"
+  ]
+}

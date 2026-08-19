@@ -13,24 +13,30 @@
     "test:e2e:debug": "playwright test --debug",
     "test:smoke": "playwright test tests/e2e/smoke --project=chromium",
     "test:regression": "playwright test tests/regression --project=chromium",
-    "test:regression:update": "playwright test tests/regression --update-snapshots --project=chromium",
     "test:regression:visual": "playwright test tests/regression --grep @visual-regression --project=chromium",
-    "test:regression:visual:update": "playwright test tests/regression --grep @visual-regression --update-snapshots --project=chromium",
     "pdf:fonts": "node tools/pdf/fetch-fonts.mjs",
     "pdf:generate": "node tools/pdf/generate-transport-order-pdfs.mjs",
     "pdf:render": "node tools/pdf/render-pdf.mjs visual-regression-artifacts/transport-order-pdf/png visual-regression-artifacts/transport-order-pdf/*.pdf",
     "pdf:refs": "node tools/pdf/render-pdf.mjs visual-regression-artifacts/reference-templates \"references/Maschinelle Auftragsvorlage_PKW.pdf\" \"references/Maschinelle Auftragsvorlage_LKW.pdf\"",
     "pdf:verify": "npm run pdf:generate && npm run pdf:render && playwright test tests/regression/transport-order-pdf --project=chromium",
+    "test:regression:ci": "node scripts/run-visual-regression-docker-ci.mjs",
+    "test:regression:baseline": "node scripts/run-visual-regression-docker-ci.mjs --baseline",
+    "test:regression:baseline:approve": "node scripts/approve-visual-baselines.mjs",
+    "test:regression:baseline:verify": "node scripts/visual-baseline-manifest.mjs --verify",
+    "test:regression:coverage": "node scripts/visual-coverage-audit.mjs",
+    "test:regression:notify-check": "node scripts/visual-regression-notify-check.mjs --verify-only",
     "test:report": "playwright show-report",
     "test:install-browsers": "playwright install chromium",
     "test:list": "playwright test --list",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:regression:vendor": "node scripts/warm-vendor-cache.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.55.1",
     "@types/node": "^25.9.3",
     "dotenv": "^16.4.7",
     "http-server": "^14.1.1",
+    "nodemailer": "^9.0.3",
     "typescript": "^6.0.3"
   }
 }

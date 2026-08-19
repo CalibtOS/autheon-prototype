@@ -1,0 +1,20 @@
+{
+  "source": "https://fonts.googleapis.com/css?family=Montserrat:400,700",
+  "license": "SIL Open Font License 1.1",
+  "faces": [
+    {
+      "file": "Montserrat-Regular.ttf",
+      "weight": 400,
+      "url": "https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtr6Hw5aX8.ttf",
+      "bytes": 48532,
+      "sha256": "76c4f058aac767f2f886d4f29393f6c38b47c7dc48f502dd9e30a273b4987e81"
+    },
+    {
+      "file": "Montserrat-Bold.ttf",
+      "weight": 700,
+      "url": "https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCuM73w5aX8.ttf",
+      "bytes": 48520,
+      "sha256": "5a491022018fd3965df4c071a581b055971e5be605b6df79d7ab03437a10234e"
+    }
+  ]
+}
